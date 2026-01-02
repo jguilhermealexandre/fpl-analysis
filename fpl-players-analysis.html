@@ -1061,13 +1061,38 @@
             return await response.json();
         }
 
-        async function fetchPlayerDetails(elementId) {
-            // Player details change frequently, always use API
-            const url = `https://fantasy.premierleague.com/api/element-summary/${elementId}/`;
-            const response = await fetch(API_PROXY + encodeURIComponent(url));
-            if (!response.ok) throw new Error(`Failed to fetch player ${elementId}`);
-            return await response.json();
+let cachedPlayerDetails = null;
+
+async function loadCachedPlayerDetails() {
+    if (cachedPlayerDetails) return cachedPlayerDetails;
+    
+    try {
+        const response = await fetch('/data/player-details.json');
+        if (response.ok) {
+            cachedPlayerDetails = await response.json();
+            console.log('✅ Loaded cached player details');
+            return cachedPlayerDetails;
         }
+    } catch (e) {
+        console.log('ℹ️ No cached player details');
+    }
+    return null;
+}
+
+async function fetchPlayerDetails(elementId) {
+    // Try cached data first
+    const cached = await loadCachedPlayerDetails();
+    if (cached && cached[elementId]) {
+        return cached[elementId];
+    }
+    
+    // Fallback to API if not in cache
+    console.log(`Fetching live data for player ${elementId}`);
+    const url = `https://fantasy.premierleague.com/api/element-summary/${elementId}/`;
+    const response = await fetch(API_PROXY + encodeURIComponent(url));
+    if (!response.ok) throw new Error(`Failed to fetch player ${elementId}`);
+    return await response.json();
+}
 
         function calculateStats(history, last5 = false) {
             const games = last5 ? history.slice(-5) : history;
