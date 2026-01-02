@@ -1080,11 +1080,25 @@ let cachedPlayerDetails = null;
 async function loadCachedPlayerDetails() {
     if (cachedPlayerDetails) return cachedPlayerDetails;
     
+    // Check browser localStorage
+    const cached = localStorage.getItem('fpl_player_details');
+    const cacheTime = localStorage.getItem('fpl_player_details_time');
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
+        console.log('✅ Loaded player details from browser cache');
+        cachedPlayerDetails = JSON.parse(cached);
+        return cachedPlayerDetails;
+    }
+    
     try {
         const response = await fetch('/data/player-details.json');
         if (response.ok) {
             cachedPlayerDetails = await response.json();
-            console.log('✅ Loaded cached player details');
+            console.log('✅ Loaded cached player details from server');
+            // Save to localStorage
+            localStorage.setItem('fpl_player_details', JSON.stringify(cachedPlayerDetails));
+            localStorage.setItem('fpl_player_details_time', Date.now().toString());
             return cachedPlayerDetails;
         }
     } catch (e) {
