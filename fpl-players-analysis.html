@@ -1088,36 +1088,24 @@
                 return playerDetailsLoadPromise;
             }
             
-            // Return cached data if already loaded
+            // Return cached data if already loaded in memory
             if (cachedPlayerDetails) {
+                console.log('✅ Using cached player details from memory');
                 return cachedPlayerDetails;
             }
             
-            // Create a promise for loading player details
+            // Create a promise for loading player details (only happens once per session)
             playerDetailsLoadPromise = (async () => {
-                // Check browser localStorage
-                const cached = localStorage.getItem('fpl_player_details');
-                const cacheTime = localStorage.getItem('fpl_player_details_time');
-                const oneDay = 24 * 60 * 60 * 1000;
-                
-                if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
-                    console.log('✅ Loaded player details from browser cache (instant)');
-                    cachedPlayerDetails = JSON.parse(cached);
-                    return cachedPlayerDetails;
-                }
-                
                 try {
+                    console.log('📥 Loading player details file...');
                     const response = await fetch('/data/player-details.json');
                     if (response.ok) {
-                        console.log('✅ Loaded player details from server cache');
                         cachedPlayerDetails = await response.json();
-                        // Save to localStorage
-                        localStorage.setItem('fpl_player_details', JSON.stringify(cachedPlayerDetails));
-                        localStorage.setItem('fpl_player_details_time', Date.now().toString());
+                        console.log(`✅ Loaded ${Object.keys(cachedPlayerDetails).length} player details from server (will stay in memory)`);
                         return cachedPlayerDetails;
                     }
                 } catch (e) {
-                    console.log('ℹ️ No cached player details available');
+                    console.log('ℹ️ No cached player details file available, will fetch individually');
                 }
                 
                 return null;
@@ -1134,7 +1122,7 @@
             }
             
             // Fallback to API if not in cache
-            console.log(`Fetching live data for player ${elementId}`);
+            console.log(`📡 Fetching live data for player ${elementId}`);
             const url = `https://fantasy.premierleague.com/api/element-summary/${elementId}/`;
             const response = await fetch(API_PROXY + encodeURIComponent(url));
             if (!response.ok) throw new Error(`Failed to fetch player ${elementId}`);
