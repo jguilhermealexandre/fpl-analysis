@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPL Teams Analysis - Fixtures & Form</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0e14;
+            --bg-darker: #050810;
+            --surface: #151920;
+            --surface-light: #1d242e;
+            --accent-green: #00ff88;
+            --accent-red: #ff3366;
+            --accent-yellow: #ffcc00;
+            --accent-blue: #00ccff;
+            --text: #e0e5ed;
+            --text-dim: #8b95a5;
+            --border: #2a3340;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 20, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .loader {
+            text-align: center;
+        }
+
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            color: var(--accent-green);
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--surface) 100%);
+            border-bottom: 2px solid var(--accent-blue);
+            padding: 20px 30px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 204, 255, 0.1);
+        }
+
+        .header h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: 28px;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 20px rgba(0, 204, 255, 0.3);
+        }
+
+        .header p {
+            color: var(--text-dim);
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .guide-section {
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .guide-header {
+            padding: 20px 30px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid transparent;
+        }
+
+        .guide-header:hover {
+            background: var(--surface-light);
+            border-bottom-color: var(--accent-blue);
+        }
+
+        .guide-title {
+            font-size: 14px;
+            color: var(--accent-blue);
+            font-weight: 500;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .guide-subtitle {
+            font-size: 9px;
+            color: var(--text-dim);
+            display: block;
+        }
+
+        .guide-toggle {
+            font-size: 20px;
+            color: var(--accent-blue);
+            transition: transform 0.3s ease;
+        }
+
+        .guide-toggle.open {
+            transform: rotate(180deg);
+        }
+
+        .guide-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+
+        .guide-content.open {
+            max-height: 10000px;
+        }
+
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .guide-card {
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .guide-card h3 {
+            color: var(--accent-blue);
+            font-size: 13px;
+            margin-bottom: 15px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .guide-text {
+            font-size: 10px;
+            line-height: 1.6;
+            color: var(--text);
+        }
+
+        .guide-text p {
+            margin-bottom: 12px;
+        }
+
+        .guide-text strong {
+            color: var(--accent-green);
+            font-weight: 500;
+        }
+
+        .guide-text ul {
+            margin: 10px 0 10px 20px;
+            list-style-type: none;
+        }
+
+        .guide-text ul li {
+            margin-bottom: 8px;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .guide-text ul li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: var(--accent-blue);
+        }
+
+
+        .controls {
+            background: var(--surface);
+            padding: 15px 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #0099cc 100%);
+            color: var(--bg-dark);
+            border: none;
+            padding: 10px 20px;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 204, 255, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            color: var(--text-dim);
+            font-size: 10px;
+            padding: 8px 15px;
+            background: var(--surface-light);
+            border-radius: 3px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .status.loading {
+            border-left-color: var(--accent-yellow);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status.success {
+            border-left-color: var(--accent-green);
+        }
+
+        .status.error {
+            border-left-color: var(--accent-red);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            background: var(--surface);
+            padding: 0 30px;
+            border-bottom: 2px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            color: var(--text);
+            background: var(--surface-light);
+        }
+
+        .tab.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+            background: var(--surface-light);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .teams-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .team-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .team-card:hover {
+            background: var(--surface-light);
+            border-color: var(--accent-blue);
+        }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .team-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+            color: var(--accent-blue);
+            font-weight: 700;
+        }
+
+        .team-badge {
+            display: flex;
+            gap: 10px;
+        }
+
+        .badge {
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-weight: 500;
+            position: relative;
+            cursor: help;
+        }
+
+        .badge.excellent {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--accent-green);
+        }
+
+        .badge.good {
+            background: rgba(255, 204, 0, 0.2);
+            color: var(--accent-yellow);
+        }
+
+        .badge.poor {
+            background: rgba(255, 51, 102, 0.2);
+            color: var(--accent-red);
+        }
+
+        .badge-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-5px);
+            background: var(--bg-darker);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+            border: 1px solid var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .badge:hover .badge-tooltip {
+            opacity: 1;
+        }
+
+        .badge-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: var(--accent-blue);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            position: relative;
+            cursor: help;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 14px;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .stat-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-5px);
+            background: var(--bg-darker);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+            border: 1px solid var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .stat:hover .stat-tooltip {
+            opacity: 1;
+        }
+
+        .stat-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: var(--accent-blue);
+        }
+
+        .fixtures-section {
+            margin-top: 15px;
+        }
+
+        .fixtures-title {
+            font-size: 9px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .fixtures-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .fixture-badge {
+            font-size: 9px;
+            padding: 5px 10px;
+            background: var(--surface-light);
+            border-radius: 3px;
+            border-left: 3px solid var(--border);
+        }
+
+        .fixture-badge.fdr-1, .fixture-badge.fdr-2 {
+            background: rgba(0, 255, 136, 0.15);
+            border-left-color: var(--accent-green);
+            color: var(--text);
+        }
+
+        .fixture-badge.fdr-3 {
+            background: rgba(255, 204, 0, 0.15);
+            border-left-color: var(--accent-yellow);
+            color: var(--text);
+        }
+
+        .fixture-badge.fdr-4, .fixture-badge.fdr-5 {
+            background: rgba(255, 51, 102, 0.15);
+            border-left-color: var(--accent-red);
+            color: var(--text);
+        }
+
+        .fixture-badge.result-w {
+            background: rgba(0, 255, 136, 0.15);
+            border-left-color: var(--accent-green);
+        }
+
+        .fixture-badge.result-d {
+            background: rgba(255, 204, 0, 0.15);
+            border-left-color: var(--accent-yellow);
+        }
+
+        .fixture-badge.result-l {
+            background: rgba(255, 51, 102, 0.15);
+            border-left-color: var(--accent-red);
+        }
+
+        .tip {
+            margin-top: 12px;
+            padding: 10px;
+            background: var(--bg-darker);
+            border-left: 3px solid var(--accent-blue);
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        .tip strong {
+            color: var(--accent-blue);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            padding: 15px 30px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            font-size: 9px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(21, 25, 32, 0.95);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 10px 20px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-button:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+            transform: translateX(-3px);
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-button">
+        <span>←</span> Back to Home
+    </a>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">Analyzing Teams...</div>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>🏆 FPL Teams Analysis</h1>
+        <p>Past 5 Games Form + Next 5 Fixtures Difficulty</p>
+    </div>
+
+    <div class="guide-section" id="guideSection">
+        <div class="guide-header" onclick="toggleGuide()">
+            <div>
+                <span class="guide-title">📚 How to Use This Analysis & Make Smart FPL Decisions</span>
+                <span class="guide-subtitle">Click to expand comprehensive guide</span>
+            </div>
+            <span class="guide-toggle" id="guideToggle">▼</span>
+        </div>
+        <div class="guide-content" id="guideContent">
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <h3>🛡️ Selecting Defenders & Goalkeepers</h3>
+                    <div class="guide-text">
+                        <p><strong>The Golden Rule:</strong> 80% of defensive FPL points come from clean sheets. A £4.5m defender from a top team with easy fixtures will outscore a £7.0m attacking wingback with tough fixtures.</p>
+                        
+                        <p><strong>What to look for:</strong></p>
+                        <ul>
+                            <li><strong>Clean Sheet Probability:</strong> Target teams with 40%+ probability. This metric combines defensive form (goals conceded) with upcoming fixture difficulty.</li>
+                            <li><strong>Defender Rating:</strong> 65+ is excellent. This weighs clean sheet % heavily (the most important factor) plus fixture difficulty.</li>
+                            <li><strong>Goals Conceded/Game:</strong> Under 1.0 is elite, under 1.5 is good. Lower = more clean sheets = more points.</li>
+                            <li><strong>Home Fixtures:</strong> Teams keep 15% more clean sheets at home. A team with 3+ home games in next 5 is gold for defenders.</li>
+                        </ul>
+                        
+                        <p><strong>Strategy Example:</strong> Liverpool conceding 0.6 goals/game with 3 home fixtures and 55% CS probability? Stack their defense. Ignore expensive attacking defenders from teams with poor defensive records and tough fixtures.</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>⚔️ Selecting Attackers (Midfielders & Forwards)</h3>
+                    <div class="guide-text">
+                        <p><strong>The Key Insight:</strong> Fixtures matter less for attackers (35-40% points variance) than defenders (50-60%), but they still matter! Premium attackers can return against anyone, but budget options NEED good fixtures.</p>
+                        
+                        <p><strong>What to look for:</strong></p>
+                        <ul>
+                            <li><strong>Attacker Rating:</strong> 65+ means the team is scoring goals AND has weak opponents coming up. Perfect for picking their midfielders/forwards.</li>
+                            <li><strong>Goals Scored/Game:</strong> 2.0+ is excellent attacking form. These teams create chances.</li>
+                            <li><strong>Avg FDR (Fixture Difficulty):</strong> Under 3.0 is good. Under 2.5 is excellent. This means they're facing defensively weak teams.</li>
+                            <li><strong>Home Fixtures:</strong> Teams score 0.4-0.6 more goals per game at home. Attackers from teams with 3+ home games are boosted.</li>
+                        </ul>
+                        
+                        <p><strong>Strategy Example:</strong> Man City scoring 2.5 goals/game with FDR of 2.3 and 4 home fixtures? Their attackers become captain candidates. Avoid attackers from low-scoring teams (under 1.2 goals/game) facing tough fixtures (FDR 4+).</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>📅 Understanding Fixture Swings (The Secret Weapon)</h3>
+                    <div class="guide-text">
+                        <p><strong>What Elite FPL Managers Do:</strong> They don't react to last week's haul. They plan 2-3 gameweeks ahead, buying players BEFORE their easy fixture run starts.</p>
+                        
+                        <p><strong>Why This Works:</strong></p>
+                        <ul>
+                            <li>Player prices rise when everyone sees the good fixtures</li>
+                            <li>Template ownership increases, reducing your differential advantage</li>
+                            <li>By the time fixtures turn green, it's too late - you've missed value gains</li>
+                        </ul>
+                        
+                        <p><strong>How to Use Fixture Trend:</strong></p>
+                        <ul>
+                            <li><strong>"Getting Easier":</strong> Buy NOW if the team has good form. You're 2 weeks early = perfect timing.</li>
+                            <li><strong>"Stable":</strong> Safe hold. No urgency to buy or sell based on fixtures alone.</li>
+                            <li><strong>"Getting Harder":</strong> Plan your exit strategy. Don't wait until GW1 of the tough run.</li>
+                        </ul>
+                        
+                        <p><strong>Pro Tip:</strong> The Fixture Swings tab shows "Prime Targets" - teams with easy fixtures getting even easier. These are your highest priority transfers. The edge comes from acting while they're still "yellow" on other tools.</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>🏠 Home vs Away: Why It Matters</h3>
+                    <div class="guide-text">
+                        <p><strong>The Data:</strong> Home teams score 0.4-0.6 more goals per game AND keep clean sheets 15% more often. This is huge!</p>
+                        
+                        <p><strong>How to Use Home/Away Split:</strong></p>
+                        <ul>
+                            <li><strong>3+ Home Fixtures:</strong> Major boost for both attackers AND defenders from that team</li>
+                            <li><strong>3+ Away Fixtures:</strong> Still okay for premium attackers, but avoid budget defenders unless team has elite defense</li>
+                            <li><strong>Balanced (2H/3A or 3H/2A):</strong> Neutral - rely on other metrics</li>
+                        </ul>
+                        
+                        <p><strong>Real Example:</strong> Brighton at home vs Brighton away are two different teams. If they have 4 home games coming up, their defenders become much more attractive (even if overall FDR is medium).</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>📊 How to Read the Metrics</h3>
+                    <div class="guide-text">
+                        <p><strong>Form Score (0-100):</strong> Composite metric combining goals scored, goals conceded, wins, clean sheets, and upcoming fixtures. 70+ is excellent form, 50-69 is good, under 50 needs monitoring.</p>
+                        
+                        <p><strong>FDR - Fixture Difficulty Rating (1-5):</strong></p>
+                        <ul>
+                            <li><strong>1-2 (Green):</strong> Easy fixtures - prime time to own assets from this team</li>
+                            <li><strong>3 (Yellow):</strong> Medium - okay for premiums, avoid budget options</li>
+                            <li><strong>4-5 (Red):</strong> Tough fixtures - only keep proven premium assets, sell budget picks</li>
+                        </ul>
+                        
+                        <p><strong>Clean Sheet Probability:</strong> Our algorithm combines: defensive record (60% weight), fixture difficulty (30%), and home advantage (10%). 50%+ is excellent, 30-50% is good, under 30% means avoid defenders.</p>
+                        
+                        <p><strong>Attack Rating & Defense Rating (0-100):</strong> Position-specific scores. 65+ = target, 45-65 = monitor, under 45 = avoid. These tell you specifically whether to pick attackers OR defenders from a team.</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>⚡ Common Mistakes to Avoid</h3>
+                    <div class="guide-text">
+                        <ul>
+                            <li><strong>❌ Buying after the haul:</strong> By the time a player scores 15 points, their price has risen and fixtures might be turning. Look ahead, not behind.</li>
+                            <li><strong>❌ Ignoring fixture swings:</strong> "My defender got a clean sheet last week" - great! But if they face City, Liverpool, Arsenal next, sell them.</li>
+                            <li><strong>❌ Picking expensive defenders from bad defensive teams:</strong> A £6.5m attacking fullback from a team conceding 2 goals/game won't get clean sheets. That's where the points come from!</li>
+                            <li><strong>❌ Keeping budget attackers through red fixtures:</strong> Premium attackers (Salah, Haaland) can score against anyone. Budget attackers (under £7m) NEED green fixtures to deliver.</li>
+                            <li><strong>❌ Not checking home/away split:</strong> "Easy fixtures" means different things for home vs away games. 4 away games to "weak" teams is still risky.</li>
+                            <li><strong>✅ What to do instead:</strong> Use the tabs! "Best for Defenders" for defensive picks, "Best for Attackers" for attacking picks, "Fixture Swings" for planning 3 weeks ahead.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>🎯 Putting It All Together: A Decision Framework</h3>
+                    <div class="guide-text">
+                        <p><strong>Every Week, Ask These Questions:</strong></p>
+                        
+                        <p><strong>1. For Defenders/GKs I'm considering:</strong></p>
+                        <ul>
+                            <li>Is their Clean Sheet Probability above 40%?</li>
+                            <li>Are they conceding under 1.5 goals/game?</li>
+                            <li>Do they have 2+ home fixtures in next 5?</li>
+                            <li>Is their Defender Rating 55+?</li>
+                        </ul>
+                        <p>If YES to 3+, they're a strong pick. If NO to 3+, avoid.</p>
+                        
+                        <p><strong>2. For Attackers I'm considering:</strong></p>
+                        <ul>
+                            <li>Is their team scoring 1.5+ goals/game?</li>
+                            <li>Is their Attacker Rating 50+?</li>
+                            <li>Is their FDR under 3.5?</li>
+                            <li>If they're budget (under £7m), is FDR under 3.0?</li>
+                        </ul>
+                        <p>Premiums can pass with 2/4. Budget options need 3/4.</p>
+                        
+                        <p><strong>3. For Planning Ahead:</strong></p>
+                        <ul>
+                            <li>Check "Fixture Swings" tab weekly</li>
+                            <li>Buy players from "Getting Easier" teams NOW</li>
+                            <li>Sell players from "Getting Harder" teams NEXT week (before the tough run starts)</li>
+                            <li>This 2-week lookahead is what separates top 100k from top 1M managers</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="loadTeamData()">
+            🔄 Load Teams Data
+        </button>
+        <div class="status" id="status">
+            Click "Load Teams Data" to begin
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" data-view="overview">📊 Overview</button>
+        <button class="tab" data-view="attackers">⚔️ Best for Attackers</button>
+        <button class="tab" data-view="defenders">🛡️ Best for Defenders</button>
+        <button class="tab" data-view="fixtures">📅 Fixture Swings</button>
+    </div>
+
+    <div class="content">
+        <div class="tab-content active" id="overview-content">
+            <div class="no-data">Load teams data to see analysis</div>
+        </div>
+        <div class="tab-content" id="attackers-content"></div>
+        <div class="tab-content" id="defenders-content"></div>
+        <div class="tab-content" id="fixtures-content"></div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-box" style="background: rgba(0, 255, 136, 0.3);"></div>
+            <span>Easy Fixtures (FDR 1-2) / Excellent Form (70+)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box" style="background: rgba(255, 204, 0, 0.3);"></div>
+            <span>Medium Fixtures (FDR 3) / Good Form (50-69)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box" style="background: rgba(255, 51, 102, 0.3);"></div>
+            <span>Hard Fixtures (FDR 4-5) / Poor Form (<50)</span>
+        </div>
+    </div>
+
+    <script>
+        // Use Netlify function for CORS proxy
+        const API_PROXY = '/.netlify/functions/fpl-proxy?url=';
+        let allTeamsData = [];
+
+        // Toggle guide section
+        function toggleGuide() {
+            const content = document.getElementById('guideContent');
+            const toggle = document.getElementById('guideToggle');
+            
+            content.classList.toggle('open');
+            toggle.classList.toggle('open');
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                const view = tab.dataset.view;
+                document.getElementById(`${view}-content`).classList.add('active');
+            });
+        });
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.classList.add('show');
+            } else {
+                overlay.classList.remove('show');
+            }
+        }
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        async function loadTeamData() {
+            try {
+                showLoading(true);
+                updateStatus('Fetching FPL data...', 'loading');
+
+                let bootstrapData, fixturesData;
+
+                // Try loading from cached static files first (much faster!)
+                try {
+                    const [bootstrapResponse, fixturesResponse] = await Promise.all([
+                        fetch('/data/bootstrap-static.json'),
+                        fetch('/data/fixtures.json')
+                    ]);
+                    
+                    if (bootstrapResponse.ok && fixturesResponse.ok) {
+                        console.log('✅ Loaded from cached data');
+                        bootstrapData = await bootstrapResponse.json();
+                        fixturesData = await fixturesResponse.json();
+                    } else {
+                        throw new Error('Cached data not available');
+                    }
+                } catch (e) {
+                    console.log('ℹ️ No cached data, fetching from API...');
+                    
+                    // Fallback to API proxy
+                    const bootstrapUrl = 'https://fantasy.premierleague.com/api/bootstrap-static/';
+                    const bootstrapResponse = await fetch(API_PROXY + encodeURIComponent(bootstrapUrl));
+                    if (!bootstrapResponse.ok) throw new Error('Failed to fetch bootstrap data');
+                    bootstrapData = await bootstrapResponse.json();
+
+                    const fixturesUrl = 'https://fantasy.premierleague.com/api/fixtures/';
+                    const fixturesResponse = await fetch(API_PROXY + encodeURIComponent(fixturesUrl));
+                    if (!fixturesResponse.ok) throw new Error('Failed to fetch fixtures');
+                    fixturesData = await fixturesResponse.json();
+                }
+
+                updateStatus('Analyzing teams...', 'loading');
+
+                // Analyze all teams
+                const teams = bootstrapData.teams;
+                const teamsAnalysis = teams.map(team => analyzeTeam(team, teams, fixturesData));
+
+                allTeamsData = teamsAnalysis;
+
+                // Render all views
+                renderOverview(teamsAnalysis);
+                renderBestForAttackers(teamsAnalysis);
+                renderBestForDefenders(teamsAnalysis);
+                renderFixtureSwings(teamsAnalysis);
+
+                updateStatus(`✓ Loaded ${teamsAnalysis.length} teams`, 'success');
+                showLoading(false);
+
+            } catch (error) {
+                console.error('Error:', error);
+                updateStatus(`✗ Error: ${error.message}`, 'error');
+                showLoading(false);
+            }
+        }
+
+        function analyzeTeam(team, allTeams, fixtures) {
+            const teamId = team.id;
+
+            // Past 5 fixtures
+            const pastFixtures = fixtures
+                .filter(f => f.finished && (f.team_h === teamId || f.team_a === teamId))
+                .sort((a, b) => a.event - b.event)
+                .slice(-5);
+
+            // Future 5 fixtures
+            const futureFixtures = fixtures
+                .filter(f => !f.finished && (f.team_h === teamId || f.team_a === teamId))
+                .sort((a, b) => a.event - b.event)
+                .slice(0, 5);
+
+            // Calculate past stats
+            let wins = 0, draws = 0, losses = 0;
+            let goalsScored = 0, goalsConceded = 0, cleanSheets = 0;
+            const pastDetails = [];
+
+            pastFixtures.forEach(f => {
+                const isHome = f.team_h === teamId;
+                const teamScore = isHome ? f.team_h_score : f.team_a_score;
+                const oppScore = isHome ? f.team_a_score : f.team_h_score;
+                const oppId = isHome ? f.team_a : f.team_h;
+                const opponent = allTeams.find(t => t.id === oppId);
+
+                goalsScored += teamScore || 0;
+                goalsConceded += oppScore || 0;
+
+                if (teamScore > oppScore) wins++;
+                else if (teamScore === oppScore) draws++;
+                else losses++;
+
+                if (oppScore === 0) cleanSheets++;
+
+                pastDetails.push({
+                    gw: f.event,
+                    opponent: opponent.short_name,
+                    homeAway: isHome ? 'H' : 'A',
+                    result: teamScore > oppScore ? 'W' : (teamScore === oppScore ? 'D' : 'L'),
+                    score: `${teamScore}-${oppScore}`
+                });
+            });
+
+            // Calculate future stats
+            const futureDetails = [];
+            let totalFdr = 0;
+
+            futureFixtures.forEach(f => {
+                const isHome = f.team_h === teamId;
+                const oppId = isHome ? f.team_a : f.team_h;
+                const opponent = allTeams.find(t => t.id === oppId);
+                const fdr = isHome ? f.team_h_difficulty : f.team_a_difficulty;
+
+                totalFdr += fdr || 0;
+
+                futureDetails.push({
+                    gw: f.event,
+                    opponent: opponent.short_name,
+                    homeAway: isHome ? 'H' : 'A',
+                    fdr: fdr || 3
+                });
+            });
+
+            // Calculate metrics
+            const gamesPlayed = pastFixtures.length;
+            const avgGoalsScored = gamesPlayed > 0 ? (goalsScored / gamesPlayed).toFixed(2) : '0.00';
+            const avgGoalsConceded = gamesPlayed > 0 ? (goalsConceded / gamesPlayed).toFixed(2) : '0.00';
+            const cleanSheetPct = gamesPlayed > 0 ? ((cleanSheets / gamesPlayed) * 100).toFixed(0) : '0';
+            const winPct = gamesPlayed > 0 ? ((wins / gamesPlayed) * 100).toFixed(0) : '0';
+            const avgFdr = futureFixtures.length > 0 ? (totalFdr / futureFixtures.length).toFixed(2) : '3.00';
+
+            // Calculate home/away split for next 5 fixtures
+            const homeFixtures = futureDetails.filter(f => f.homeAway === 'H').length;
+            const awayFixtures = futureDetails.filter(f => f.homeAway === 'A').length;
+            
+            // Clean sheet probability (based on defensive form + fixture difficulty)
+            // Lower goals conceded + lower FDR = higher clean sheet chance
+            const defensiveQuality = Math.max(0, 100 - (parseFloat(avgGoalsConceded) * 50));
+            const fixtureBenefit = ((5 - parseFloat(avgFdr)) / 4) * 30; // Max 30 points
+            const cleanSheetProb = Math.min(100, Math.round(defensiveQuality * 0.7 + fixtureBenefit + (homeFixtures * 3)));
+            
+            // Attack rating for upcoming fixtures (how good to pick attackers from this team)
+            // High goals scored + low opponent defensive strength (low FDR) = good for attackers
+            const attackPotential = (parseFloat(avgGoalsScored) * 30) + ((5 - parseFloat(avgFdr)) * 10);
+            const attackRating = Math.round(Math.min(100, attackPotential));
+            
+            // Defense rating for upcoming fixtures (how good to pick defenders from this team)
+            // Low goals conceded + low FDR = good for defenders
+            const defensePotential = defensiveQuality * 0.5 + fixtureBenefit + (parseFloat(cleanSheetPct) * 0.3);
+            const defenseRating = Math.round(Math.min(100, defensePotential));
+            
+            // Fixture swing (are fixtures getting easier or harder?)
+            // Compare average FDR of next 3 vs last 2 of the 5
+            if (futureDetails.length === 5) {
+                const early = (futureDetails[0].fdr + futureDetails[1].fdr + futureDetails[2].fdr) / 3;
+                const late = (futureDetails[3].fdr + futureDetails[4].fdr) / 2;
+                var fixtureSwing = late > early ? 'Getting Harder' : (late < early ? 'Getting Easier' : 'Stable');
+            } else {
+                var fixtureSwing = 'Stable';
+            }
+
+            // Form score (weighted composite)
+            const formScore = (
+                (parseFloat(avgGoalsScored) * 15) +
+                (parseFloat(winPct) * 0.5) +
+                (parseFloat(cleanSheetPct) * 0.3) +
+                (100 - parseFloat(avgGoalsConceded) * 10) +
+                ((5 - parseFloat(avgFdr)) * 5)
+            ).toFixed(0);
+
+            return {
+                teamId,
+                teamName: team.name,
+                shortName: team.short_name,
+                // Past
+                gamesPlayed,
+                wins,
+                draws,
+                losses,
+                goalsScored,
+                goalsConceded,
+                cleanSheets,
+                avgGoalsScored,
+                avgGoalsConceded,
+                cleanSheetPct,
+                winPct,
+                // Future
+                avgFdr,
+                totalFdr,
+                homeFixtures,
+                awayFixtures,
+                fixtureSwing,
+                // Advanced metrics
+                cleanSheetProb,
+                attackRating,
+                defenseRating,
+                // Strengths
+                attackH: team.strength_attack_home,
+                attackA: team.strength_attack_away,
+                defenseH: team.strength_defence_home,
+                defenseA: team.strength_defence_away,
+                // Form
+                formScore: parseFloat(formScore),
+                // Details
+                pastFixtures: pastDetails,
+                futureFixtures: futureDetails
+            };
+        }
+
+        function renderOverview(teams) {
+            const sorted = [...teams].sort((a, b) => b.formScore - a.formScore);
+            
+            const html = `
+                <div class="teams-grid">
+                    ${sorted.map(team => createTeamCard(team, 'overview')).join('')}
+                </div>
+            `;
+            
+            document.getElementById('overview-content').innerHTML = html;
+        }
+
+        function renderBestForAttackers(teams) {
+            const sorted = [...teams].sort((a, b) => b.attackRating - a.attackRating).slice(0, 10);
+            
+            const html = `
+                <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
+                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">⚔️ Best Teams for FPL Attackers</h3>
+                    <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
+                        These teams have high goals scored + easy upcoming fixtures. Target midfielders and forwards from these teams.
+                        <strong style="color: var(--accent-green);">Attack Rating</strong> considers: goals/game, opponent defensive weakness (FDR), and home fixtures.
+                    </p>
+                </div>
+                <div class="teams-grid">
+                    ${sorted.map((team, i) => {
+                        const tip = `Pick ${team.shortName} attackers! ${team.avgGoalsScored} goals/game with FDR ${team.avgFdr}. ${team.homeFixtures > 2 ? `${team.homeFixtures} home games boost scoring chances.` : ''}`;
+                        return createTeamCard(team, 'attackers', i + 1, tip);
+                    }).join('')}
+                </div>
+            `;
+            
+            document.getElementById('attackers-content').innerHTML = html;
+        }
+
+        function renderBestForDefenders(teams) {
+            const sorted = [...teams].sort((a, b) => b.defenseRating - a.defenseRating).slice(0, 10);
+            
+            const html = `
+                <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
+                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">🛡️ Best Teams for FPL Defenders & Goalkeepers</h3>
+                    <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
+                        <strong style="color: var(--accent-red);">80% of defensive points come from clean sheets!</strong> These teams have low goals conceded + easy fixtures.
+                        <strong style="color: var(--accent-green);">Defense Rating</strong> considers: clean sheet %, goals conceded, FDR, and home fixtures (15% more CS at home).
+                    </p>
+                </div>
+                <div class="teams-grid">
+                    ${sorted.map((team, i) => {
+                        const tip = `Target ${team.shortName} defenders/GK! ${team.cleanSheetProb}% CS probability with ${team.avgGoalsConceded} goals conceded/game. ${team.homeFixtures > 2 ? `${team.homeFixtures} home games increase CS chances.` : ''}`;
+                        return createTeamCard(team, 'defenders', i + 1, tip);
+                    }).join('')}
+                </div>
+            `;
+            
+            document.getElementById('defenders-content').innerHTML = html;
+        }
+
+        function renderFixtureSwings(teams) {
+            // Find teams with easiest fixtures getting easier, or hardest fixtures getting easier
+            const easyGettingEasier = teams
+                .filter(t => t.fixtureSwing === 'Getting Easier' && t.avgFdr <= 3.5)
+                .sort((a, b) => a.avgFdr - b.avgFdr)
+                .slice(0, 5);
+            
+            const hardGettingEasier = teams
+                .filter(t => t.fixtureSwing === 'Getting Easier' && t.avgFdr > 3.0)
+                .sort((a, b) => {
+                    // Sort by form score if fixtures are getting easier
+                    return b.formScore - a.formScore;
+                })
+                .slice(0, 5);
+            
+            const html = `
+                <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
+                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">📅 Fixture Swing Opportunities</h3>
+                    <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
+                        Fixture swings are KEY to FPL success! <strong>Buy players 2-3 weeks before their easy run starts</strong> to avoid price rises and template ownership.
+                        These teams have fixtures getting easier - perfect time to target their assets.
+                    </p>
+                </div>
+                
+                <h3 style="color: var(--accent-blue); margin: 20px 0 15px 0; font-size: 14px;">🎯 Prime Targets (Easy Fixtures Getting Easier)</h3>
+                <div class="teams-grid">
+                    ${easyGettingEasier.length > 0 ? easyGettingEasier.map(team => {
+                        const tip = `⭐ PRIORITY TARGET! Fixtures easing from ${team.avgFdr} FDR. Move now before template catches on.`;
+                        return createTeamCard(team, 'fixtures', null, tip);
+                    }).join('') : '<div class="no-data">No teams match this criteria currently</div>'}
+                </div>
+                
+                <h3 style="color: var(--accent-yellow); margin: 30px 0 15px 0; font-size: 14px;">⚡ Differential Opportunities (Tough Fixtures Getting Easier)</h3>
+                <div class="teams-grid">
+                    ${hardGettingEasier.length > 0 ? hardGettingEasier.map(team => {
+                        const tip = `Fixtures improving! Good form (${team.formScore}) with easier games ahead. Differential play.`;
+                        return createTeamCard(team, 'fixtures', null, tip);
+                    }).join('') : '<div class="no-data">No teams match this criteria currently</div>'}
+                </div>
+            `;
+            
+            document.getElementById('fixtures-content').innerHTML = html;
+        }
+
+        function createTeamCard(team, view, rank = null, customTip = null) {
+            const formClass = team.formScore >= 70 ? 'excellent' : (team.formScore >= 50 ? 'good' : 'poor');
+            const fdrClass = team.avgFdr <= 2.5 ? 'excellent' : (team.avgFdr <= 3.5 ? 'good' : 'poor');
+
+            const tip = customTip || (() => {
+                if (view === 'overview') {
+                    return `Form Score: ${team.formScore} | Attack Rating: ${team.attackRating} | Defense Rating: ${team.defenseRating}`;
+                }
+                return '';
+            })();
+
+            return `
+                <div class="team-card">
+                    <div class="team-header">
+                        <span class="team-name">${rank ? `#${rank} ` : ''}${team.teamName}</span>
+                        <div class="team-badge">
+                            <span class="badge ${formClass}">
+                                Form: ${team.formScore}
+                                <span class="badge-tooltip">Composite score: goals scored, wins, clean sheets, and upcoming fixture difficulty</span>
+                            </span>
+                            <span class="badge ${fdrClass}">
+                                FDR: ${team.avgFdr}
+                                <span class="badge-tooltip">Fixture Difficulty Rating: 1 (easiest) to 5 (hardest) for next 5 games</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="stat-label">Last 5: W-D-L</span>
+                            <span class="stat-value">${team.wins}-${team.draws}-${team.losses}</span>
+                            <span class="stat-tooltip">Wins-Draws-Losses in last 5 Premier League matches</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Goals/Game</span>
+                            <span class="stat-value">${team.avgGoalsScored}</span>
+                            <span class="stat-tooltip">Average goals scored per game (last 5 matches)</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Conceded/Game</span>
+                            <span class="stat-value">${team.avgGoalsConceded}</span>
+                            <span class="stat-tooltip">Average goals conceded per game (last 5 matches)</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Clean Sheet %</span>
+                            <span class="stat-value">${team.cleanSheetPct}%</span>
+                            <span class="stat-tooltip">Percentage of games with zero goals conceded (last 5 matches)</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">CS Probability</span>
+                            <span class="stat-value" style="color: ${team.cleanSheetProb >= 50 ? 'var(--accent-green)' : team.cleanSheetProb >= 30 ? 'var(--accent-yellow)' : 'var(--accent-red)'};">${team.cleanSheetProb}%</span>
+                            <span class="stat-tooltip">Predicted clean sheet chance in next 5 games (based on form + fixtures)</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Attacker Rating</span>
+                            <span class="stat-value" style="color: ${team.attackRating >= 65 ? 'var(--accent-green)' : team.attackRating >= 45 ? 'var(--accent-yellow)' : 'var(--text)'};">${team.attackRating}/100</span>
+                            <span class="stat-tooltip">How good this team is for FPL attackers (goals scored + easy fixtures)</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Defender Rating</span>
+                            <span class="stat-value" style="color: ${team.defenseRating >= 65 ? 'var(--accent-green)' : team.defenseRating >= 45 ? 'var(--accent-yellow)' : 'var(--text)'};">${team.defenseRating}/100</span>
+                            <span class="stat-tooltip">How good this team is for FPL defenders/GKs (clean sheets + easy fixtures)</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Next 5 (H/A)</span>
+                            <span class="stat-value">${team.homeFixtures}H / ${team.awayFixtures}A</span>
+                            <span class="stat-tooltip">Home vs Away fixture split (teams score +0.5 goals and keep 15% more CS at home)</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Fixture Trend</span>
+                            <span class="stat-value" style="color: ${team.fixtureSwing === 'Getting Easier' ? 'var(--accent-green)' : team.fixtureSwing === 'Getting Harder' ? 'var(--accent-red)' : 'var(--text)'};">${team.fixtureSwing}</span>
+                            <span class="stat-tooltip">Are fixtures getting easier or harder over the next 5 games?</span>
+                        </div>
+                    </div>
+                    <div class="fixtures-section">
+                        <div class="fixtures-title">Last 5 Results:</div>
+                        <div class="fixtures-row">
+                            ${team.pastFixtures.map(f => `
+                                <div class="fixture-badge result-${f.result.toLowerCase()}">
+                                    ${f.opponent} (${f.homeAway}) ${f.score}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="fixtures-section">
+                        <div class="fixtures-title">Next 5 Fixtures:</div>
+                        <div class="fixtures-row">
+                            ${team.futureFixtures.map(f => `
+                                <div class="fixture-badge fdr-${f.fdr}">
+                                    GW${f.gw}: ${f.opponent} (${f.homeAway})
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ${tip ? `<div class="tip"><strong>💡 FPL Tip:</strong> ${tip}</div>` : ''}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

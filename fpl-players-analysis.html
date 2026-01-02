@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPL Live Analysis Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0e14;
+            --bg-darker: #050810;
+            --surface: #151920;
+            --surface-light: #1d242e;
+            --accent-green: #00ff88;
+            --accent-red: #ff3366;
+            --accent-yellow: #ffcc00;
+            --accent-blue: #00ccff;
+            --text: #e0e5ed;
+            --text-dim: #8b95a5;
+            --border: #2a3340;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--surface) 100%);
+            border-bottom: 2px solid var(--accent-green);
+            padding: 20px 30px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.1);
+        }
+
+        .header h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: 28px;
+            color: var(--accent-green);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .header p {
+            color: var(--text-dim);
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            background: var(--surface);
+            padding: 15px 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-green) 0%, #00cc70 100%);
+            color: var(--bg-dark);
+            border: none;
+            padding: 10px 20px;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            color: var(--text-dim);
+            font-size: 10px;
+            padding: 8px 15px;
+            background: var(--surface-light);
+            border-radius: 3px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .status.loading {
+            border-left-color: var(--accent-yellow);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status.success {
+            border-left-color: var(--accent-green);
+        }
+
+        .status.error {
+            border-left-color: var(--accent-red);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            background: var(--surface);
+            padding: 0 30px;
+            border-bottom: 2px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 3px solid transparent;
+            position: relative;
+        }
+
+        .tab:hover {
+            color: var(--text);
+            background: var(--surface-light);
+        }
+
+        .tab.active {
+            color: var(--accent-green);
+            border-bottom-color: var(--accent-green);
+            background: var(--surface-light);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .position-section {
+            display: none;
+        }
+
+        .position-section.active {
+            display: block;
+        }
+
+        .table-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+
+        thead {
+            background: var(--surface-light);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        th {
+            padding: 8px 6px;
+            text-align: left;
+            font-weight: 500;
+            color: var(--accent-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--accent-green);
+            border-right: 1px solid var(--border);
+            font-size: 9px;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        th:hover {
+            background: var(--surface);
+        }
+
+        th:first-child {
+            position: sticky;
+            left: 0;
+            background: var(--surface-light);
+            z-index: 101;
+        }
+
+        th:first-child:hover {
+            background: var(--surface);
+        }
+
+        .sort-icon {
+            display: inline-block;
+            margin-left: 4px;
+            font-size: 8px;
+            opacity: 0.5;
+        }
+
+        .sort-icon.active {
+            opacity: 1;
+            color: var(--accent-green);
+        }
+
+        .filter-row {
+            background: var(--surface-light);
+        }
+
+        .filter-row th {
+            padding: 4px 3px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .filter-row th:first-child {
+            position: sticky;
+            left: 0;
+            background: var(--surface-light);
+            z-index: 101;
+        }
+
+        .filter-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 9px;
+            padding: 3px 4px;
+            outline: none;
+        }
+
+        .filter-input:focus {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 5px rgba(0, 255, 136, 0.2);
+        }
+
+        .filter-input::placeholder {
+            color: var(--text-dim);
+            opacity: 0.5;
+        }
+
+        td {
+            padding: 6px 6px;
+            border-bottom: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        td:first-child {
+            position: sticky;
+            left: 0;
+            background: var(--surface);
+            z-index: 99;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        tr:hover td {
+            background: var(--surface-light);
+        }
+
+        tr:hover td:first-child {
+            background: var(--surface-light);
+        }
+
+        .trend-positive {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--accent-green);
+        }
+
+        .trend-negative {
+            background: rgba(255, 51, 102, 0.15);
+            color: var(--accent-red);
+        }
+
+        .trend-neutral {
+            background: rgba(255, 204, 0, 0.15);
+            color: var(--accent-yellow);
+        }
+
+        .stat-high {
+            color: var(--accent-green);
+            font-weight: 500;
+        }
+
+        .stat-low {
+            color: var(--accent-red);
+        }
+
+        .stat-medium {
+            color: var(--text-dim);
+        }
+
+        .player-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .team-badge {
+            font-size: 8px;
+            padding: 2px 4px;
+            background: var(--surface-light);
+            border-radius: 2px;
+            color: var(--accent-blue);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 20, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .loader {
+            text-align: center;
+        }
+
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            color: var(--accent-green);
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            padding: 15px 30px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            font-size: 9px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+
+        .recommendations-container {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .position-recommendations {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 25px;
+        }
+
+        .position-recommendations h2 {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            color: var(--accent-green);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid var(--accent-green);
+            padding-bottom: 10px;
+        }
+
+        .recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .rec-category {
+            background: var(--surface-light);
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .rec-category h3 {
+            font-size: 13px;
+            color: var(--accent-blue);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .rec-category.budget h3 {
+            color: var(--accent-green);
+        }
+
+        .rec-category.premium h3 {
+            color: var(--accent-yellow);
+        }
+
+        .player-rec-card {
+            background: var(--bg-dark);
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid var(--accent-green);
+            transition: all 0.2s ease;
+        }
+
+        .player-rec-card:hover {
+            background: var(--surface);
+            transform: translateX(5px);
+        }
+
+        .player-rec-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .player-rec-name {
+            font-weight: 500;
+            font-size: 12px;
+            color: var(--text);
+        }
+
+        .player-rec-price {
+            font-size: 11px;
+            color: var(--accent-yellow);
+            font-weight: 500;
+        }
+
+        .player-rec-team {
+            font-size: 9px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .player-rec-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            font-size: 9px;
+        }
+
+        .player-rec-stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .player-rec-stat-label {
+            color: var(--text-dim);
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .player-rec-stat-value {
+            color: var(--accent-green);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .player-rec-stat-value.trend-up {
+            color: var(--accent-green);
+        }
+
+        .player-rec-stat-value.trend-down {
+            color: var(--accent-red);
+        }
+
+        .rec-reason {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            font-size: 9px;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        /* Guide Section Styles */
+        .guide-section {
+            background: var(--surface);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .guide-header {
+            padding: 20px 30px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid transparent;
+        }
+
+        .guide-header:hover {
+            background: var(--surface-light);
+            border-bottom-color: var(--accent-green);
+        }
+
+        .guide-title {
+            font-size: 14px;
+            color: var(--accent-green);
+            font-weight: 500;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .guide-subtitle {
+            font-size: 9px;
+            color: var(--text-dim);
+            display: block;
+        }
+
+        .guide-toggle {
+            font-size: 20px;
+            color: var(--accent-green);
+            transition: transform 0.3s ease;
+        }
+
+        .guide-toggle.open {
+            transform: rotate(180deg);
+        }
+
+        .guide-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+
+        .guide-content.open {
+            max-height: 15000px;
+        }
+
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .guide-card {
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-left: 3px solid var(--accent-green);
+        }
+
+        .guide-card h3 {
+            color: var(--accent-green);
+            font-size: 13px;
+            margin-bottom: 15px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .guide-text {
+            font-size: 10px;
+            line-height: 1.6;
+            color: var(--text);
+        }
+
+        .guide-text p {
+            margin-bottom: 12px;
+        }
+
+        .guide-text strong {
+            color: var(--accent-green);
+            font-weight: 500;
+        }
+
+        .guide-text ul {
+            margin: 10px 0 10px 20px;
+            list-style-type: none;
+        }
+
+        .guide-text ul li {
+            margin-bottom: 8px;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .guide-text ul li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: var(--accent-green);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            th, td {
+                padding: 4px 3px;
+                font-size: 9px;
+            }
+
+            .recommendations-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(21, 25, 32, 0.95);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 10px 20px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-button:hover {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+            transform: translateX(-3px);
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-button">
+        <span>←</span> Back to Home
+    </a>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">Fetching Live FPL Data...</div>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>⚡ FPL Live Analysis</h1>
+        <p>Real-time player performance metrics from Fantasy Premier League API</p>
+    </div>
+
+    <div class="guide-section" id="guideSection">
+        <div class="guide-header" onclick="toggleGuide()">
+            <div>
+                <span class="guide-title">📚 How to Use This Tool & Make Smart Player Decisions</span>
+                <span class="guide-subtitle">Click to expand comprehensive guide on player selection strategy</span>
+            </div>
+            <span class="guide-toggle" id="guideToggle">▼</span>
+        </div>
+        <div class="guide-content" id="guideContent">
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <h3>⭐ Using the Recommendations Tab</h3>
+                    <div class="guide-text">
+                        <p><strong>What it does:</strong> Automatically identifies the best value players in each position based on research-backed FPL metrics.</p>
+                        
+                        <p><strong>How players are scored:</strong></p>
+                        <ul>
+                            <li><strong>Points per Million (30% weight):</strong> The #1 factor. Shows true value - a £5m player averaging 5pts/game (1.0 pts/£m) beats an £8m player averaging 6pts/game (0.75 pts/£m)</li>
+                            <li><strong>xGI - Expected Goal Involvements (25%):</strong> More predictive than actual goals. High xGI with low returns = player is DUE</li>
+                            <li><strong>Minutes Consistency (15%):</strong> Must average 75+ mins in last 5 games. "Nailed on" starters only</li>
+                            <li><strong>Form Direction (10%):</strong> Is xGI improving? Bonus for rising trend</li>
+                        </ul>
+                        
+                        <p><strong>Budget vs Premium split:</strong></p>
+                        <ul>
+                            <li><strong>Budget:</strong> GK ≤£5.0m, DEF ≤£5.5m, MID ≤£7.0m, FWD ≤£7.5m</li>
+                            <li><strong>Premium:</strong> Above these thresholds - your captaincy candidates and consistent performers</li>
+                        </ul>
+                        
+                        <p><strong>Key indicators:</strong></p>
+                        <ul>
+                            <li>"Excellent value at 1.52 pts/£m" = Strong pick</li>
+                            <li>"Nailed on starter" = 75+ mins consistently</li>
+                            <li>"Underperforming xGI - due returns" = HIGH PRIORITY! Player creating chances but not converting yet</li>
+                            <li>"Strong xGI of 0.68/game" = Attacking threat</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>📊 Understanding xG, xA, and xGI</h3>
+                    <div class="guide-text">
+                        <p><strong>Why these matter more than goals/assists:</strong> They predict FUTURE performance, not just past results. A player with high xG but few goals is due for a scoring run.</p>
+                        
+                        <p><strong>xG (Expected Goals):</strong></p>
+                        <ul>
+                            <li>Measures quality of scoring chances from 0.0 to 1.0</li>
+                            <li>0.05 = 25-yard shot (5% chance to score)</li>
+                            <li>0.95 = open goal 6 yards out (95% chance)</li>
+                            <li><strong>How to use:</strong> Compare xG to actual goals. If actual goals < xG = unlucky, due for returns. If actual > xG = overperforming, may regress</li>
+                        </ul>
+                        
+                        <p><strong>xA (Expected Assists):</strong></p>
+                        <ul>
+                            <li>Probability that a pass leads to a goal</li>
+                            <li>Measures creativity and chance creation</li>
+                            <li><strong>How to use:</strong> High xA players are creating chances. If teammates start finishing, assists will come</li>
+                        </ul>
+                        
+                        <p><strong>xGI (Expected Goal Involvement = xG + xA):</strong></p>
+                        <ul>
+                            <li>Total attacking threat per game</li>
+                            <li><strong>Excellent:</strong> 0.6+ per game</li>
+                            <li><strong>Good:</strong> 0.4-0.6 per game</li>
+                            <li><strong>Average:</strong> 0.2-0.4 per game</li>
+                        </ul>
+                        
+                        <p><strong>Pro tip:</strong> Sort by xGI (L5) to find in-form players. Look for discrepancies - players with high xGI but low actual returns are your differentials!</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>📈 Season vs Last 5 Games (L5)</h3>
+                    <div class="guide-text">
+                        <p><strong>The Core Concept:</strong> Recent form (L5) predicts immediate performance better than season averages. But you need BOTH.</p>
+                        
+                        <p><strong>How to interpret trends (Δ%):</strong></p>
+                        <ul>
+                            <li><strong>Green (>10%):</strong> Player improving! L5 stats significantly better than season average. Prime target if sustained</li>
+                            <li><strong>Yellow (-10% to +10%):</strong> Consistent. What you see is what you get</li>
+                            <li><strong>Red (<-10%):</strong> Declining. Recent form worse than season average. Sell or avoid unless fixtures are about to turn</li>
+                        </ul>
+                        
+                        <p><strong>Key metrics to compare:</strong></p>
+                        <ul>
+                            <li><strong>Minutes:</strong> Trending up = nailed on. Trending down = rotation risk</li>
+                            <li><strong>xGI:</strong> Trending up = improving underlying stats, returns coming</li>
+                            <li><strong>Points:</strong> Trending up + high xGI = hold. Trending up + low xGI = may regress (got lucky)</li>
+                        </ul>
+                        
+                        <p><strong>Example:</strong> Player has 0.3 xGI season average but 0.6 xGI in L5 (green +100%). Even if points are still low, this player's chances have DOUBLED. Returns are coming.</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>💰 Points Per Million: The Value Game</h3>
+                    <div class="guide-text">
+                        <p><strong>Why it matters:</strong> FPL is about maximizing points with limited budget. A £5m player scoring 5pts/week (1.0 pts/£m) is better value than a £10m player scoring 8pts/week (0.8 pts/£m).</p>
+                        
+                        <p><strong>Value benchmarks by position:</strong></p>
+                        <ul>
+                            <li><strong>Goalkeepers:</strong> 0.8+ pts/£m is good, 1.0+ is excellent</li>
+                            <li><strong>Defenders:</strong> 0.9+ pts/£m is good, 1.2+ is excellent</li>
+                            <li><strong>Midfielders:</strong> 0.8+ pts/£m is good, 1.1+ is excellent</li>
+                            <li><strong>Forwards:</strong> 0.7+ pts/£m is good, 1.0+ is excellent</li>
+                        </ul>
+                        
+                        <p><strong>Strategy:</strong></p>
+                        <ul>
+                            <li><strong>3 Premium + 8 Value:</strong> Spend on 2-3 premiums (Salah, Haaland) who score regardless of value. Fill rest with high pts/£m picks</li>
+                            <li><strong>Budget enablers:</strong> £4.5m-£5.5m players with good pts/£m who free up budget for premiums</li>
+                            <li><strong>Sweet spot:</strong> £6.5m-£8.0m midfielders with 1.0+ pts/£m often outperform £9m+ options</li>
+                        </ul>
+                        
+                        <p><strong>Use filtering:</strong> Filter by price range, then sort by pts/£m (L5) to find budget gems</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>🎯 Position-Specific Strategies</h3>
+                    <div class="guide-text">
+                        <p><strong>Goalkeepers:</strong></p>
+                        <ul>
+                            <li><strong>Key stats:</strong> Clean sheets (most points), saves (bonus points)</li>
+                            <li><strong>Strategy:</strong> Pick from top 6 teams with good fixtures. Rotate two £4.5m options based on fixtures OR go premium (£5.5m+) and set-and-forget</li>
+                            <li><strong>Red flag:</strong> Team conceding 2+ goals/game = fewer clean sheets</li>
+                        </ul>
+                        
+                        <p><strong>Defenders:</strong></p>
+                        <ul>
+                            <li><strong>Key stats:</strong> Clean sheets > attacking returns. xGI is bonus, not requirement</li>
+                            <li><strong>Strategy:</strong> 3-4 defenders from teams with good defensive stats (low goals conceded) AND easy fixtures. £4.5m-£5.5m sweet spot</li>
+                            <li><strong>Premium pick:</strong> Only if they combine clean sheets + high xGI (TAA, Cancelo types)</li>
+                        </ul>
+                        
+                        <p><strong>Midfielders:</strong></p>
+                        <ul>
+                            <li><strong>Key stats:</strong> xGI, key passes, BCC (big chances created). Goals = 5pts, assists = 3pts</li>
+                            <li><strong>Strategy:</strong> 1-2 premium captaincy options (Salah, Son). 2-3 value picks (£6.5m-£8.0m with high xGI)</li>
+                            <li><strong>Look for:</strong> Set piece takers (corners, free kicks) = bonus xA</li>
+                        </ul>
+                        
+                        <p><strong>Forwards:</strong></p>
+                        <ul>
+                            <li><strong>Key stats:</strong> xG, big chances missed (high BCM + high xG = player getting chances). Goals = 4pts only</li>
+                            <li><strong>Strategy:</strong> 1-2 forwards max. Either premium (Haaland) or budget enabler (£6.5m-£7.5m with high xG)</li>
+                            <li><strong>Avoid:</strong> Mid-price (£8m-£9.5m) forwards - usually worse value than midfielders at same price</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>🔍 Using Filters & Sorting Effectively</h3>
+                    <div class="guide-text">
+                        <p><strong>Filter operators:</strong></p>
+                        <ul>
+                            <li><strong>Default (numbers):</strong> >= (greater than or equal)</li>
+                            <li><strong>Type >= to find:</strong> "80" in minutes = all players with 80+ average minutes</li>
+                            <li><strong>Other operators:</strong> > (greater), < (less), <= (less than or equal)</li>
+                            <li><strong>Text:</strong> Partial matching. "Liv" finds Liverpool players</li>
+                        </ul>
+                        
+                        <p><strong>Power user workflows:</strong></p>
+                        <ul>
+                            <li><strong>Find nailed budget defenders:</strong> Filter price <5.5, minutes (L5) >=75, sort by pts/£m</li>
+                            <li><strong>Find value midfielders:</strong> Filter price 6.5-8.0, xGI (L5) >=0.4, sort by pts/£m</li>
+                            <li><strong>Find due-for-returns players:</strong> Sort by xGI (L5), look for high xGI with low goals/assists</li>
+                            <li><strong>Check rotation risk:</strong> Filter minutes (L5) <75 to see who's being rotated</li>
+                        </ul>
+                        
+                        <p><strong>Click any header to sort:</strong> Click again to reverse. ↑ = ascending, ↓ = descending</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>💡 Common Stat Abbreviations Explained</h3>
+                    <div class="guide-text">
+                        <ul>
+                            <li><strong>GP:</strong> Games Played</li>
+                            <li><strong>Mins:</strong> Average minutes per game</li>
+                            <li><strong>Pts:</strong> Total FPL points</li>
+                            <li><strong>G:</strong> Goals scored</li>
+                            <li><strong>A:</strong> Assists</li>
+                            <li><strong>xG:</strong> Expected Goals (quality of chances)</li>
+                            <li><strong>xA:</strong> Expected Assists (quality of passes)</li>
+                            <li><strong>xGI:</strong> Expected Goal Involvement (xG + xA)</li>
+                            <li><strong>CS:</strong> Clean Sheets (defenders/GK)</li>
+                            <li><strong>GC:</strong> Goals Conceded (defenders/GK)</li>
+                            <li><strong>xGC:</strong> Expected Goals Conceded</li>
+                            <li><strong>BCC:</strong> Big Chances Created (pass that should result in a goal)</li>
+                            <li><strong>BCM:</strong> Big Chances Missed (should have scored but didn't)</li>
+                            <li><strong>KP:</strong> Key Passes (pass that leads to a shot)</li>
+                            <li><strong>Bonus:</strong> Bonus points earned (best 3 performers get 3/2/1 pts)</li>
+                            <li><strong>BPS:</strong> Bonus Points System score (determines who gets bonus)</li>
+                            <li><strong>ICT:</strong> Index combining Influence, Creativity, Threat</li>
+                            <li><strong>Δ%:</strong> Percent change (L5 vs Season average)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>⚠️ Common Mistakes to Avoid</h3>
+                    <div class="guide-text">
+                        <ul>
+                            <li><strong>❌ Chasing last week's points:</strong> Player scored 15 pts? Everyone sees it. Price rises, ownership spikes. You're late. Use xGI to find NEXT week's haul</li>
+                            <li><strong>❌ Ignoring minutes:</strong> 60 min average in L5 = rotation risk. You need 75+ for confidence. One benching ruins your gameweek</li>
+                            <li><strong>❌ Only looking at goals/assists:</strong> Actual returns fluctuate wildly. xGI is more stable and predictive. High xGI player blank 3 games = buy. Low xGI player scores twice = sell</li>
+                            <li><strong>❌ Overvaluing expensive players:</strong> An £11m player needs 8+ pts/week to match a £6m player scoring 4.5pts/week. Many don't deliver the value</li>
+                            <li><strong>❌ Ignoring fixtures:</strong> Even premiums struggle with 4 consecutive red fixtures. Always check team analysis alongside player stats</li>
+                            <li><strong>❌ Not using the Recommendations tab:</strong> It does the math for you! Budget + Premium picks based on all the metrics discussed here</li>
+                        </ul>
+                        
+                        <p><strong>✅ What to do instead:</strong></p>
+                        <ul>
+                            <li>Start with Recommendations tab for ideas</li>
+                            <li>Verify with position tabs - check full stats</li>
+                            <li>Look at xGI trends (green = buy signal)</li>
+                            <li>Filter by minutes to ensure they're nailed</li>
+                            <li>Check pts/£m for value confirmation</li>
+                            <li>Cross-reference with team fixtures (use teams analysis tool)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="refreshBtn" onclick="loadData()">
+            🔄 Refresh Data
+        </button>
+        <div class="status" id="status">
+            Ready to load data
+        </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+        <button class="tab" data-position="RECOMMENDATIONS">⭐ Recommendations</button>
+        <button class="tab" data-position="GK">🧤 Goalkeepers</button>
+        <button class="tab" data-position="DEF">🛡️ Defenders</button>
+        <button class="tab" data-position="MID">⚡ Midfielders</button>
+        <button class="tab" data-position="FWD">🎯 Forwards</button>
+    </div>
+
+    <div class="content">
+        <div class="position-section" id="section-RECOMMENDATIONS"></div>
+        <div class="position-section" id="section-GK"></div>
+        <div class="position-section" id="section-DEF"></div>
+        <div class="position-section" id="section-MID"></div>
+        <div class="position-section" id="section-FWD"></div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-box trend-positive"></div>
+            <span>Improving (>10%)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box trend-neutral"></div>
+            <span>Stable (-10% to 10%)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box trend-negative"></div>
+            <span>Declining (<-10%)</span>
+        </div>
+        <div class="legend-item" style="margin-left: 30px; border-left: 2px solid var(--border); padding-left: 20px;">
+            <span>📊 <strong>Filter Tips:</strong> Use >= (greater/equal), <= (less/equal), > (greater), < (less). Default: >= for numbers</span>
+        </div>
+        <div class="legend-item" style="margin-left: 30px; border-left: 2px solid var(--border); padding-left: 20px;">
+            <span>⭐ <strong>Recommendations based on:</strong> Value (pts/£m), xGI, minutes consistency, position-specific metrics. "Budget" uses FPL meta thresholds.</span>
+        </div>
+    </div>
+
+    <script>
+        // Use Netlify function for CORS proxy
+        const API_PROXY = '/.netlify/functions/fpl-proxy?url=';
+
+        let bootstrapData = null;
+        let playerAnalyses = {};
+
+        // Toggle guide section
+        function toggleGuide() {
+            const content = document.getElementById('guideContent');
+            const toggle = document.getElementById('guideToggle');
+            
+            content.classList.toggle('open');
+            toggle.classList.toggle('open');
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.position-section').forEach(s => s.classList.remove('active'));
+                
+                tab.classList.add('active');
+                const position = tab.dataset.position;
+                document.getElementById(`section-${position}`).classList.add('active');
+            });
+        });
+
+        // Set Recommendations as default active tab
+        document.addEventListener('DOMContentLoaded', () => {
+            const firstTab = document.querySelector('.tab[data-position="RECOMMENDATIONS"]');
+            if (firstTab) {
+                firstTab.classList.add('active');
+                document.getElementById('section-RECOMMENDATIONS').classList.add('active');
+            }
+        });
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.classList.add('show');
+            } else {
+                overlay.classList.remove('show');
+            }
+        }
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        async function fetchBootstrapData() {
+            try {
+                // Try loading from cached static file first (much faster!)
+                const response = await fetch('/data/bootstrap-static.json');
+                if (response.ok) {
+                    console.log('✅ Loaded from cached data');
+                    return await response.json();
+                }
+            } catch (e) {
+                console.log('ℹ️ No cached data, fetching from API...');
+            }
+            
+            // Fallback to API proxy
+            const url = 'https://fantasy.premierleague.com/api/bootstrap-static/';
+            const response = await fetch(API_PROXY + encodeURIComponent(url));
+            if (!response.ok) throw new Error('Failed to fetch bootstrap data');
+            return await response.json();
+        }
+
+        async function fetchPlayerDetails(elementId) {
+            // Player details change frequently, always use API
+            const url = `https://fantasy.premierleague.com/api/element-summary/${elementId}/`;
+            const response = await fetch(API_PROXY + encodeURIComponent(url));
+            if (!response.ok) throw new Error(`Failed to fetch player ${elementId}`);
+            return await response.json();
+        }
+
+        function calculateStats(history, last5 = false) {
+            const games = last5 ? history.slice(-5) : history;
+            const numGames = games.length;
+            
+            if (numGames === 0) return null;
+
+            const sum = (arr, key) => arr.reduce((acc, g) => acc + (parseFloat(g[key]) || 0), 0);
+            
+            return {
+                games: numGames,  // This is the count of games, not a sum
+                minutes: sum(games, 'minutes'),
+                points: sum(games, 'total_points'),
+                goals: sum(games, 'goals_scored'),
+                assists: sum(games, 'assists'),
+                cleanSheets: sum(games, 'clean_sheets'),
+                goalsConceded: sum(games, 'goals_conceded'),
+                ownGoals: sum(games, 'own_goals'),
+                penaltiesSaved: sum(games, 'penalties_saved'),
+                penaltiesMissed: sum(games, 'penalties_missed'),
+                yellowCards: sum(games, 'yellow_cards'),
+                redCards: sum(games, 'red_cards'),
+                saves: sum(games, 'saves'),
+                bonus: sum(games, 'bonus'),
+                bps: sum(games, 'bps'),
+                xG: sum(games, 'expected_goals'),
+                xA: sum(games, 'expected_assists'),
+                xGI: sum(games, 'expected_goal_involvements'),
+                xGC: sum(games, 'expected_goals_conceded'),
+                ict: sum(games, 'ict_index'),
+                influence: sum(games, 'influence'),
+                creativity: sum(games, 'creativity'),
+                threat: sum(games, 'threat'),
+                bigChancesCreated: sum(games, 'big_chances_created'),
+                bigChancesMissed: sum(games, 'big_chances_missed'),
+                keyPasses: sum(games, 'key_passes')
+            };
+        }
+
+        function calculateTrend(seasonVal, l5Val, seasonGames, l5Games) {
+            if (seasonGames === 0 || l5Games === 0) return 0;
+            const seasonAvg = seasonVal / seasonGames;
+            const l5Avg = l5Val / l5Games;
+            if (seasonAvg === 0) return 0;
+            return ((l5Avg - seasonAvg) / seasonAvg) * 100;
+        }
+
+        function getTrendClass(trend, reverse = false) {
+            const threshold = 10;
+            if (reverse) {
+                if (trend < -threshold) return 'trend-positive';
+                if (trend > threshold) return 'trend-negative';
+            } else {
+                if (trend > threshold) return 'trend-positive';
+                if (trend < -threshold) return 'trend-negative';
+            }
+            return 'trend-neutral';
+        }
+
+        async function analyzePlayer(elementId, playerName, position, team) {
+            try {
+                // Make the actual API call to get player's detailed history
+                const data = await fetchPlayerDetails(elementId);
+                const history = data.history || [];
+                
+                // Skip players with no game history
+                if (history.length === 0) {
+                    console.log(`Skipping ${playerName} - no history`);
+                    return null;
+                }
+
+                const seasonStats = calculateStats(history);
+                const l5Stats = calculateStats(history, true);
+
+                // Verify we got valid stats
+                if (!seasonStats || !l5Stats) {
+                    console.log(`Skipping ${playerName} - invalid stats`);
+                    return null;
+                }
+
+                return {
+                    name: playerName,
+                    team: team,
+                    position: position,
+                    season: seasonStats,
+                    l5: l5Stats
+                };
+            } catch (error) {
+                console.error(`Error analyzing ${playerName}:`, error);
+                return null;
+            }
+        }
+
+        function createTable(position, analyses) {
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const filteredAnalyses = analyses.filter(a => a && positionMap[a.position] === position);
+
+            if (filteredAnalyses.length === 0) {
+                return '<div class="no-data">No data available for this position</div>';
+            }
+
+            // Metric descriptions for tooltips
+            const tooltips = {
+                'GP': 'Games Played - Number of matches the player has appeared in',
+                'Mins': 'Minutes - Total minutes played',
+                'Pts': 'Points - Total FPL points scored',
+                'CS': 'Clean Sheets - Games where the team did not concede a goal',
+                'Saves': 'Saves - Total saves made by goalkeeper',
+                'GC': 'Goals Conceded - Goals conceded while on the pitch',
+                'xGC': 'Expected Goals Conceded - Statistical measure of goals likely to be conceded based on shot quality',
+                'Pen S': 'Penalties Saved - Number of penalty kicks saved',
+                'G': 'Goals - Goals scored by the player',
+                'A': 'Assists - Assists provided by the player',
+                'xG': 'Expected Goals - Statistical measure of goals a player should score based on shot quality',
+                'xA': 'Expected Assists - Statistical measure of assists a player should have based on chances created',
+                'xGI': 'Expected Goal Involvements - Combined xG and xA',
+                'BCC': 'Big Chances Created - Clear goal-scoring opportunities created',
+                'BCM': 'Big Chances Missed - Clear goal-scoring opportunities missed',
+                'KP': 'Key Passes - Passes that lead to a shot on goal',
+                'Bonus': 'Bonus Points - Extra FPL points awarded to top performers',
+                'BPS': 'Bonus Points System - Score determining bonus point allocation',
+                'ICT': 'ICT Index - Combined measure of Influence, Creativity, and Threat',
+                'Infl': 'Influence - Impact on match outcome',
+                'Creat': 'Creativity - Ability to create scoring chances',
+                'Threat': 'Threat - Likelihood to score goals',
+                'Player': 'Player Name',
+                'Team': 'Team',
+                'Δ%': 'Trend Percentage - Percentage change between season average and last 5 games average'
+            };
+
+            let columns = [];
+            
+            if (position === 'GK') {
+                columns = [
+                    { key: 'name', label: 'Player', seasonal: false },
+                    { key: 'team', label: 'Team', seasonal: false },
+                    { key: 'games', label: 'GP', seasonal: true },
+                    { key: 'minutes', label: 'Mins', seasonal: true },
+                    { key: 'points', label: 'Pts', seasonal: true },
+                    { key: 'cleanSheets', label: 'CS', seasonal: true },
+                    { key: 'saves', label: 'Saves', seasonal: true },
+                    { key: 'goalsConceded', label: 'GC', seasonal: true },
+                    { key: 'xGC', label: 'xGC', seasonal: true },
+                    { key: 'penaltiesSaved', label: 'Pen S', seasonal: true },
+                    { key: 'bonus', label: 'Bonus', seasonal: true },
+                    { key: 'bps', label: 'BPS', seasonal: true }
+                ];
+            } else if (position === 'DEF') {
+                columns = [
+                    { key: 'name', label: 'Player', seasonal: false },
+                    { key: 'team', label: 'Team', seasonal: false },
+                    { key: 'games', label: 'GP', seasonal: true },
+                    { key: 'minutes', label: 'Mins', seasonal: true },
+                    { key: 'points', label: 'Pts', seasonal: true },
+                    { key: 'cleanSheets', label: 'CS', seasonal: true },
+                    { key: 'goalsConceded', label: 'GC', seasonal: true },
+                    { key: 'xGC', label: 'xGC', seasonal: true },
+                    { key: 'goals', label: 'G', seasonal: true },
+                    { key: 'assists', label: 'A', seasonal: true },
+                    { key: 'xG', label: 'xG', seasonal: true },
+                    { key: 'xA', label: 'xA', seasonal: true },
+                    { key: 'bigChancesCreated', label: 'BCC', seasonal: true },
+                    { key: 'keyPasses', label: 'KP', seasonal: true },
+                    { key: 'bonus', label: 'Bonus', seasonal: true },
+                    { key: 'bps', label: 'BPS', seasonal: true },
+                    { key: 'ict', label: 'ICT', seasonal: true }
+                ];
+            } else if (position === 'MID') {
+                columns = [
+                    { key: 'name', label: 'Player', seasonal: false },
+                    { key: 'team', label: 'Team', seasonal: false },
+                    { key: 'games', label: 'GP', seasonal: true },
+                    { key: 'minutes', label: 'Mins', seasonal: true },
+                    { key: 'points', label: 'Pts', seasonal: true },
+                    { key: 'goals', label: 'G', seasonal: true },
+                    { key: 'assists', label: 'A', seasonal: true },
+                    { key: 'xG', label: 'xG', seasonal: true },
+                    { key: 'xA', label: 'xA', seasonal: true },
+                    { key: 'xGI', label: 'xGI', seasonal: true },
+                    { key: 'bigChancesCreated', label: 'BCC', seasonal: true },
+                    { key: 'bigChancesMissed', label: 'BCM', seasonal: true },
+                    { key: 'keyPasses', label: 'KP', seasonal: true },
+                    { key: 'cleanSheets', label: 'CS', seasonal: true },
+                    { key: 'bonus', label: 'Bonus', seasonal: true },
+                    { key: 'bps', label: 'BPS', seasonal: true },
+                    { key: 'ict', label: 'ICT', seasonal: true },
+                    { key: 'influence', label: 'Infl', seasonal: true },
+                    { key: 'creativity', label: 'Creat', seasonal: true },
+                    { key: 'threat', label: 'Threat', seasonal: true }
+                ];
+            } else if (position === 'FWD') {
+                columns = [
+                    { key: 'name', label: 'Player', seasonal: false },
+                    { key: 'team', label: 'Team', seasonal: false },
+                    { key: 'games', label: 'GP', seasonal: true },
+                    { key: 'minutes', label: 'Mins', seasonal: true },
+                    { key: 'points', label: 'Pts', seasonal: true },
+                    { key: 'goals', label: 'G', seasonal: true },
+                    { key: 'assists', label: 'A', seasonal: true },
+                    { key: 'xG', label: 'xG', seasonal: true },
+                    { key: 'xA', label: 'xA', seasonal: true },
+                    { key: 'xGI', label: 'xGI', seasonal: true },
+                    { key: 'bigChancesCreated', label: 'BCC', seasonal: true },
+                    { key: 'bigChancesMissed', label: 'BCM', seasonal: true },
+                    { key: 'keyPasses', label: 'KP', seasonal: true },
+                    { key: 'bonus', label: 'Bonus', seasonal: true },
+                    { key: 'bps', label: 'BPS', seasonal: true },
+                    { key: 'ict', label: 'ICT', seasonal: true },
+                    { key: 'influence', label: 'Infl', seasonal: true },
+                    { key: 'creativity', label: 'Creat', seasonal: true },
+                    { key: 'threat', label: 'Threat', seasonal: true }
+                ];
+            }
+
+            const tableId = `table-${position}`;
+            let html = `<div class="table-container"><table id="${tableId}"><thead>`;
+            
+            // Header row with sortable columns and tooltips
+            html += '<tr>';
+            let colIndex = 0;
+            columns.forEach(col => {
+                const tooltip = tooltips[col.label] || '';
+                if (!col.seasonal) {
+                    html += `<th onclick="sortTable('${tableId}', ${colIndex}, '${col.key}')" title="${tooltip}">${col.label}<span class="sort-icon">⇅</span></th>`;
+                    colIndex++;
+                } else {
+                    html += `<th onclick="sortTable('${tableId}', ${colIndex}, '${col.key}-season')" title="${tooltip} (Season Average)">${col.label} (S)<span class="sort-icon">⇅</span></th>`;
+                    colIndex++;
+                    html += `<th onclick="sortTable('${tableId}', ${colIndex}, '${col.key}-l5')" title="${tooltip} (Last 5 Games Average)">${col.label} (L5)<span class="sort-icon">⇅</span></th>`;
+                    colIndex++;
+                    html += `<th onclick="sortTable('${tableId}', ${colIndex}, '${col.key}-trend')" title="${tooltips['Δ%']}">Δ%<span class="sort-icon">⇅</span></th>`;
+                    colIndex++;
+                }
+            });
+            html += '</tr>';
+
+            // Filter row
+            html += '<tr class="filter-row">';
+            colIndex = 0;
+            columns.forEach(col => {
+                if (!col.seasonal) {
+                    const placeholder = col.key === 'name' || col.key === 'team' ? 'Filter...' : '>=';
+                    html += `<th><input type="text" class="filter-input" placeholder="${placeholder}" onkeyup="filterTable('${tableId}', ${colIndex})"></th>`;
+                    colIndex++;
+                } else {
+                    html += `<th><input type="text" class="filter-input" placeholder=">=" onkeyup="filterTable('${tableId}', ${colIndex})"></th>`;
+                    colIndex++;
+                    html += `<th><input type="text" class="filter-input" placeholder=">=" onkeyup="filterTable('${tableId}', ${colIndex})"></th>`;
+                    colIndex++;
+                    html += `<th><input type="text" class="filter-input" placeholder=">=" onkeyup="filterTable('${tableId}', ${colIndex})"></th>`;
+                    colIndex++;
+                }
+            });
+            html += '</tr>';
+            
+            html += '</thead><tbody>';
+
+            filteredAnalyses.forEach(analysis => {
+                html += '<tr>';
+                
+                columns.forEach(col => {
+                    if (col.key === 'name') {
+                        html += `<td data-value="${analysis.name}">${analysis.name}</td>`;
+                    } else if (col.key === 'team') {
+                        html += `<td data-value="${analysis.team}"><span class="team-badge">${analysis.team}</span></td>`;
+                    } else if (col.seasonal) {
+                        const seasonVal = analysis.season[col.key];
+                        const l5Val = analysis.l5[col.key];
+                        const trend = calculateTrend(seasonVal, l5Val, analysis.season.games, analysis.l5.games);
+                        
+                        // For 'games', show the count directly, not an average
+                        if (col.key === 'games') {
+                            html += `<td data-value="${seasonVal}">${seasonVal}</td>`;
+                            html += `<td data-value="${l5Val}">${l5Val}</td>`;
+                            html += `<td class="trend-neutral" data-value="0">-</td>`;
+                        } else {
+                            const seasonAvg = seasonVal / analysis.season.games;
+                            const l5Avg = l5Val / analysis.l5.games;
+                            
+                            const reverse = ['goalsConceded', 'xGC', 'ownGoals', 'penaltiesMissed', 'yellowCards', 'redCards', 'bigChancesMissed'].includes(col.key);
+                            const trendClass = getTrendClass(trend, reverse);
+                            
+                            html += `<td data-value="${seasonAvg.toFixed(1)}">${seasonAvg.toFixed(1)}</td>`;
+                            html += `<td data-value="${l5Avg.toFixed(1)}">${l5Avg.toFixed(1)}</td>`;
+                            html += `<td class="${trendClass}" data-value="${trend.toFixed(0)}">${trend > 0 ? '+' : ''}${trend.toFixed(0)}%</td>`;
+                        }
+                    }
+                });
+                
+                html += '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+            return html;
+        }
+
+        function sortTable(tableId, columnIndex, columnKey) {
+            const table = document.getElementById(tableId);
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Determine sort direction
+            const currentSort = table.dataset.sortColumn;
+            const currentDir = table.dataset.sortDirection || 'asc';
+            const newDir = (currentSort === columnIndex.toString() && currentDir === 'asc') ? 'desc' : 'asc';
+            
+            // Update sort indicators
+            table.querySelectorAll('.sort-icon').forEach(icon => {
+                icon.classList.remove('active');
+                icon.textContent = '⇅';
+            });
+            
+            const header = table.querySelectorAll('thead tr:first-child th')[columnIndex];
+            const sortIcon = header.querySelector('.sort-icon');
+            sortIcon.classList.add('active');
+            sortIcon.textContent = newDir === 'asc' ? '↑' : '↓';
+            
+            // Sort rows
+            rows.sort((a, b) => {
+                const aCell = a.cells[columnIndex];
+                const bCell = b.cells[columnIndex];
+                
+                const aValue = aCell.dataset.value || aCell.textContent;
+                const bValue = bCell.dataset.value || bCell.textContent;
+                
+                // Try to parse as number
+                const aNum = parseFloat(aValue);
+                const bNum = parseFloat(bValue);
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return newDir === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+                
+                // String comparison
+                return newDir === 'asc' 
+                    ? aValue.localeCompare(bValue)
+                    : bValue.localeCompare(aValue);
+            });
+            
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Store sort state
+            table.dataset.sortColumn = columnIndex;
+            table.dataset.sortDirection = newDir;
+        }
+
+        function filterTable(tableId, columnIndex) {
+            const table = document.getElementById(tableId);
+            const filterInputs = table.querySelectorAll('.filter-row input');
+            const tbody = table.querySelector('tbody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                let showRow = true;
+                
+                filterInputs.forEach((input, idx) => {
+                    const filterValue = input.value.trim();
+                    if (filterValue) {
+                        const cell = row.cells[idx];
+                        const cellValue = cell.dataset.value || cell.textContent;
+                        const cellText = cellValue.toLowerCase();
+                        const filterText = filterValue.toLowerCase();
+                        
+                        // Try to parse as number for numeric comparisons
+                        const cellNum = parseFloat(cellValue);
+                        const isNumeric = !isNaN(cellNum);
+                        
+                        let matches = false;
+                        
+                        // Check for comparison operators
+                        if (isNumeric) {
+                            if (filterText.startsWith('>=')) {
+                                const threshold = parseFloat(filterText.substring(2));
+                                matches = !isNaN(threshold) && cellNum >= threshold;
+                            } else if (filterText.startsWith('<=')) {
+                                const threshold = parseFloat(filterText.substring(2));
+                                matches = !isNaN(threshold) && cellNum <= threshold;
+                            } else if (filterText.startsWith('>')) {
+                                const threshold = parseFloat(filterText.substring(1));
+                                matches = !isNaN(threshold) && cellNum > threshold;
+                            } else if (filterText.startsWith('<')) {
+                                const threshold = parseFloat(filterText.substring(1));
+                                matches = !isNaN(threshold) && cellNum < threshold;
+                            } else {
+                                // If just a number is entered, treat it as >= for numeric columns
+                                const threshold = parseFloat(filterText);
+                                if (!isNaN(threshold)) {
+                                    matches = cellNum >= threshold;
+                                } else {
+                                    // Text search fallback
+                                    matches = cellText.includes(filterText);
+                                }
+                            }
+                        } else {
+                            // Text search for non-numeric columns
+                            matches = cellText.includes(filterText);
+                        }
+                        
+                        if (!matches) {
+                            showRow = false;
+                        }
+                    }
+                });
+                
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+
+        async function loadData() {
+            try {
+                showLoading(true);
+                updateStatus('Fetching bootstrap data...', 'loading');
+
+                bootstrapData = await fetchBootstrapData();
+                
+                const teams = {};
+                bootstrapData.teams.forEach(team => {
+                    teams[team.id] = team.short_name;
+                });
+
+                // Get all players from the API
+                const allPlayers = bootstrapData.elements.map(player => ({
+                    id: player.id,
+                    name: player.web_name,
+                    position: player.element_type,
+                    team: teams[player.team],
+                    totalPoints: player.total_points,
+                    minutes: player.minutes,
+                    price: player.now_cost / 10, // Convert to actual price
+                    form: parseFloat(player.form),
+                    selectedByPercent: parseFloat(player.selected_by_percent)
+                }));
+
+                // Filter players who have played at least some minutes
+                const activePlayers = allPlayers.filter(p => p.minutes > 0);
+                
+                updateStatus(`Found ${activePlayers.length} active players. Starting detailed analysis...`, 'loading');
+                console.log(`Analyzing ${activePlayers.length} players with game time`);
+
+                const analyses = [];
+                let successCount = 0;
+                let skipCount = 0;
+                
+                for (let i = 0; i < activePlayers.length; i++) {
+                    const player = activePlayers[i];
+                    
+                    if (i % 10 === 0) {
+                        updateStatus(`Analyzing ${player.name} (${i + 1}/${activePlayers.length}) - ${successCount} loaded, ${skipCount} skipped`, 'loading');
+                    }
+                    
+                    try {
+                        // This makes the actual API call to element-summary endpoint
+                        const analysis = await analyzePlayer(player.id, player.name, player.position, player.team);
+                        if (analysis) {
+                            // Add price and form data to analysis
+                            analysis.price = player.price;
+                            analysis.form = player.form;
+                            analysis.selectedByPercent = player.selectedByPercent;
+                            analyses.push(analysis);
+                            successCount++;
+                        } else {
+                            skipCount++;
+                        }
+                    } catch (error) {
+                        console.error(`Failed to analyze ${player.name}:`, error);
+                        skipCount++;
+                    }
+                    
+                    // Add a small delay every 20 players to avoid overwhelming the API
+                    if (i > 0 && i % 20 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+
+                console.log(`Analysis complete: ${successCount} players loaded, ${skipCount} skipped`);
+
+                // Generate recommendations
+                document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
+
+                // Render tables
+                document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
+                document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
+                document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
+                document.getElementById('section-FWD').innerHTML = createTable('FWD', analyses);
+
+                updateStatus(`✓ Successfully loaded ${successCount} players (${skipCount} skipped due to no data)`, 'success');
+                showLoading(false);
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                updateStatus(`✗ Error: ${error.message}`, 'error');
+                showLoading(false);
+            }
+        }
+
+        function generateRecommendations(analyses) {
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const positionNames = { 'GK': 'Goalkeepers', 'DEF': 'Defenders', 'MID': 'Midfielders', 'FWD': 'Forwards' };
+            
+            let html = '<div class="recommendations-container">';
+            
+            ['GK', 'DEF', 'MID', 'FWD'].forEach(position => {
+                const players = analyses.filter(a => positionMap[a.position] === position);
+                
+                // Enhanced filtering criteria based on FPL research
+                const eligiblePlayers = players.filter(p => {
+                    const avgMinutes = p.season.minutes / p.season.games;
+                    const l5AvgMinutes = p.l5.minutes / p.l5.games;
+                    
+                    // Must be "nailed on" - consistent high minutes in last 5
+                    const isNailedOn = l5AvgMinutes >= 75 && p.l5.games >= 4;
+                    
+                    // Must have reasonable season minutes (not just a recent flash)
+                    const hasSeasonMinutes = avgMinutes >= 60 && p.season.games >= 8;
+                    
+                    return isNailedOn && hasSeasonMinutes && p.price > 3.9;
+                });
+                
+                // Calculate comprehensive scores for each player
+                eligiblePlayers.forEach(p => {
+                    const l5Games = p.l5.games;
+                    const seasonGames = p.season.games;
+                    
+                    // VALUE METRIC (most important in FPL)
+                    const l5AvgPoints = p.l5.points / l5Games;
+                    const pointsPerMillion = l5AvgPoints / p.price;
+                    
+                    // UNDERLYING STATS (xG, xA - better predictors than actual goals)
+                    const l5xGI = p.l5.xGI / l5Games;
+                    const seasonxGI = p.season.xGI / seasonGames;
+                    
+                    // FORM vs EXPECTED (identify over/underperformers)
+                    const l5ActualGI = (p.l5.goals + p.l5.assists) / l5Games;
+                    const xGIDiff = l5ActualGI - l5xGI; // Negative means underperforming (due for returns)
+                    
+                    // MINUTES CONSISTENCY (rotation risk)
+                    const minutesConsistency = (p.l5.minutes / p.l5.games) / 90;
+                    
+                    // POSITION-SPECIFIC SCORING
+                    let positionScore = 0;
+                    
+                    if (position === 'GK') {
+                        const l5CS = p.l5.cleanSheets / l5Games;
+                        const l5SavesPerGame = p.l5.saves / l5Games;
+                        const l5xGC = p.l5.xGC / l5Games;
+                        
+                        // GK score: Clean sheets + saves bonus, penalize high xGC
+                        positionScore = (l5CS * 15) + (l5SavesPerGame * 0.5) - (l5xGC * 2);
+                        
+                    } else if (position === 'DEF') {
+                        const l5CS = p.l5.cleanSheets / l5Games;
+                        const l5xGC = p.l5.xGC / l5Games;
+                        
+                        // DEF score: Clean sheets + attacking threat, penalize high xGC
+                        positionScore = (l5CS * 12) + (l5xGI * 20) - (l5xGC * 1.5);
+                        
+                    } else {
+                        // MID/FWD score: Pure attacking threat via xGI
+                        positionScore = l5xGI * 25;
+                        
+                        // Bonus for big chance creation (creativity)
+                        const l5BCC = p.l5.bigChancesCreated / l5Games;
+                        positionScore += l5BCC * 3;
+                    }
+                    
+                    // COMPREHENSIVE SCORE combining all factors
+                    p.recommendationScore = (
+                        pointsPerMillion * 30 +        // Value is king
+                        positionScore * 1.5 +           // Position-specific performance
+                        minutesConsistency * 10 +       // Rotation risk penalty
+                        (l5xGI > seasonxGI ? 5 : -2)   // Bonus for improving xGI
+                    );
+                    
+                    // Store metrics for display
+                    p.valueScore = pointsPerMillion;
+                    p.l5xGIperGame = l5xGI;
+                    p.minutesConsistency = minutesConsistency;
+                    p.isUnderperforming = xGIDiff < -0.15; // Flag players due returns
+                });
+                
+                // Sort by recommendation score
+                eligiblePlayers.sort((a, b) => b.recommendationScore - a.recommendationScore);
+                
+                // Define budget thresholds by position (based on FPL meta)
+                const budgetThresholds = {
+                    'GK': 5.0,
+                    'DEF': 5.5,
+                    'MID': 7.0,
+                    'FWD': 7.5
+                };
+                
+                const threshold = budgetThresholds[position];
+                const budgetPlayers = eligiblePlayers.filter(p => p.price <= threshold).slice(0, 5);
+                const premiumPlayers = eligiblePlayers.filter(p => p.price > threshold).slice(0, 5);
+                
+                html += `
+                    <div class="position-recommendations">
+                        <h2>${positionNames[position]}</h2>
+                        <div class="recommendations-grid">
+                            ${createRecommendationCategory('Budget Options', budgetPlayers, position, threshold, 'budget')}
+                            ${createRecommendationCategory('Premium Options', premiumPlayers, position, threshold, 'premium')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function createRecommendationCategory(title, players, position, priceThreshold, categoryType) {
+            const categoryClass = categoryType;
+            
+            let html = `<div class="rec-category ${categoryClass}">
+                <h3>${title} (${categoryType === 'budget' ? '≤' : '>'} £${priceThreshold.toFixed(1)}m)</h3>`;
+            
+            if (players.length === 0) {
+                html += '<div class="no-data" style="padding: 20px;">No players meet the criteria</div>';
+            } else {
+                players.forEach(player => {
+                    const l5AvgPoints = player.l5.points / player.l5.games;
+                    const l5AvgMinutes = player.l5.minutes / player.l5.games;
+                    
+                    // Generate smart reasoning based on metrics
+                    let reasons = [];
+                    
+                    if (player.valueScore > 1.2) {
+                        reasons.push(`Excellent value at ${player.valueScore.toFixed(2)} pts/£m`);
+                    } else if (player.valueScore > 0.9) {
+                        reasons.push(`Good value at ${player.valueScore.toFixed(2)} pts/£m`);
+                    }
+                    
+                    if (player.minutesConsistency > 0.95) {
+                        reasons.push('Nailed on starter');
+                    }
+                    
+                    if (player.isUnderperforming) {
+                        reasons.push('Underperforming xGI - due returns');
+                    }
+                    
+                    if (player.l5xGIperGame > 0.5 && (position === 'MID' || position === 'FWD')) {
+                        reasons.push(`Strong xGI of ${player.l5xGIperGame.toFixed(2)}/game`);
+                    }
+                    
+                    const pointsTrend = calculateTrend(player.season.points, player.l5.points, player.season.games, player.l5.games);
+                    if (pointsTrend > 20) {
+                        reasons.push('Exceptional recent form');
+                    } else if (pointsTrend > 10) {
+                        reasons.push('Improving form');
+                    }
+                    
+                    if (reasons.length === 0) {
+                        reasons.push('Consistent performer');
+                    }
+                    
+                    const reason = reasons.slice(0, 2).join(' • ');
+                    
+                    let keyStats = '';
+                    if (position === 'GK') {
+                        const l5CS = player.l5.cleanSheets / player.l5.games;
+                        const l5Saves = player.l5.saves / player.l5.games;
+                        const l5xGC = player.l5.xGC / player.l5.games;
+                        keyStats = `
+                            <div class="player-rec-stat">
+                                <span class="player-rec-stat-label">Pts/Game</span>
+                                <span class="player-rec-stat-value">${l5AvgPoints.toFixed(1)}</span>
+                            </div>
+                            <div class="player-rec-stat">
+                                <span class="player-rec-stat-label">Value</span>
+                                <span class="player-rec-stat-value">${player.valueScore.toFixed(2)}/£m</span>
+                            </div>
+                            <div class="player-rec-stat">
+                                <span class="player-rec-stat-label">CS%</span>
+                                <span class="player-rec-stat-value">${(l5CS * 100).toFixed(0)}%</span>
+                            </div>
+                        `;
+                    } else if (position === 'DEF') {
+                        const l5CS = player.l5.cleanSheets / player.l5.games;
+                        const l5xGI = player.l5xGI / player.l5.games;
+                        keyStats = `
+                            <div class="player-rec-stat">
+                                <span class="player-rec-stat-label">Pts/Game</span>
+                                <span class="player-rec-stat-value">${l5AvgPoints.toFixed(1)}</span>
+                            </div>
+                            <div class="player-rec-stat">
+                                <span class="player-rec-stat-label">Value</span>
+                                <span class="player-rec-stat-value">${player.valueScore.toFixed(2)}/£m</span>
+                            </div>
+                            <div class="player-rec-stat">
+                                <span class="player-rec-stat-label">xGI</span>
+                                <span class="player-rec-stat-value">${l5xGI.toFixed(2)}</span>
+                            </div>
+                        `;
+                    } else {
+                        const l5xGI = player.l5xGI / player.l5.games;
+                        const l5GA = (player.l5.goals + player.l5.assists) / player.l5.games;
+                        keyStats = `
+                            <div class="player-rec-stat">
+                                <span class="player-rec-stat-label">Pts/Game</span>
+                                <span class="player-rec-stat-value">${l5AvgPoints.toFixed(1)}</span>
+                            </div>
+                            <div class="player-rec-stat">
+                                <span class="player-rec-stat-label">Value</span>
+                                <span class="player-rec-stat-value">${player.valueScore.toFixed(2)}/£m</span>
+                            </div>
+                            <div class="player-rec-stat">
+                                <span class="player-rec-stat-label">xGI</span>
+                                <span class="player-rec-stat-value">${l5xGI.toFixed(2)}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `
+                        <div class="player-rec-card">
+                            <div class="player-rec-header">
+                                <span class="player-rec-name">${player.name}</span>
+                                <span class="player-rec-price">£${player.price.toFixed(1)}m</span>
+                            </div>
+                            <div class="player-rec-team">${player.team} • ${l5AvgMinutes.toFixed(0)}min avg</div>
+                            <div class="player-rec-stats">
+                                ${keyStats}
+                            </div>
+                            <div class="rec-reason">
+                                💡 ${reason}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        // Auto-load on page load
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>

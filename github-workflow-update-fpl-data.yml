@@ -1,0 +1,34 @@
+name: Update FPL Data Daily
+
+on:
+  schedule:
+    # Runs every day at 3 AM UTC (after gameweek data is usually finalized)
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Fetch FPL Bootstrap Data
+        run: |
+          curl -o data/bootstrap-static.json https://fantasy.premierleague.com/api/bootstrap-static/
+          
+      - name: Fetch FPL Fixtures Data
+        run: |
+          curl -o data/fixtures.json https://fantasy.premierleague.com/api/fixtures/
+      
+      - name: Add timestamp
+        run: |
+          echo "{\"lastUpdated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > data/last-updated.json
+      
+      - name: Commit and push if changed
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add data/*.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🔄 Daily FPL data update [automated]" && git push)
