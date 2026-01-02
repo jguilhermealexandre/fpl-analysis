@@ -855,24 +855,40 @@
             status.className = 'status ' + type;
         }
 
-        async function loadTeamData() {
+async function loadTeamData() {
+    try {
+        showLoading(true);
+        updateStatus('Fetching FPL data...', 'loading');
+
+        let bootstrapData, fixturesData;
+
+        // Check browser localStorage first
+        const cachedBootstrap = localStorage.getItem('fpl_bootstrap_data');
+        const cachedFixtures = localStorage.getItem('fpl_fixtures_data');
+        const cacheTime = localStorage.getItem('fpl_teams_cache_time');
+        const oneDay = 24 * 60 * 60 * 1000;
+        
+        if (cachedBootstrap && cachedFixtures && cacheTime && 
+            (Date.now() - parseInt(cacheTime) < oneDay)) {
+            console.log('✅ Loaded from browser cache (instant)');
+            bootstrapData = JSON.parse(cachedBootstrap);
+            fixturesData = JSON.parse(cachedFixtures);
+        } else {
+            // Try loading from cached static files
             try {
-                showLoading(true);
-                updateStatus('Fetching FPL data...', 'loading');
-
-                let bootstrapData, fixturesData;
-
-                // Try loading from cached static files first (much faster!)
-                try {
-                    const [bootstrapResponse, fixturesResponse] = await Promise.all([
-                        fetch('/data/bootstrap-static.json'),
-                        fetch('/data/fixtures.json')
-                    ]);
+                const [bootstrapResponse, fixturesResponse] = await Promise.all([
+                    fetch('/data/bootstrap-static.json'),
+                    fetch('/data/fixtures.json')
+                ]);
                     
                     if (bootstrapResponse.ok && fixturesResponse.ok) {
                         console.log('✅ Loaded from cached data');
                         bootstrapData = await bootstrapResponse.json();
                         fixturesData = await fixturesResponse.json();
+                        // Save to localStorage for instant loading next time
+                localStorage.setItem('fpl_bootstrap_data', JSON.stringify(bootstrapData));
+                localStorage.setItem('fpl_fixtures_data', JSON.stringify(fixturesData));
+                localStorage.setItem('fpl_teams_cache_time', Date.now().toString());
                     } else {
                         throw new Error('Cached data not available');
                     }
