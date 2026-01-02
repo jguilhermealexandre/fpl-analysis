@@ -996,6 +996,8 @@
 
         let bootstrapData = null;
         let playerAnalyses = {};
+        let cachedPlayerDetails = null;
+        let playerDetailsLoadPromise = null;
 
         // Toggle guide section
         function toggleGuide() {
@@ -1042,85 +1044,102 @@
             status.className = 'status ' + type;
         }
 
-async function fetchBootstrapData() {
-    // Check browser localStorage first
-    const cached = localStorage.getItem('fpl_bootstrap_data');
-    const cacheTime = localStorage.getItem('fpl_bootstrap_time');
-    const oneDay = 24 * 60 * 60 * 1000;
-    
-    if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
-        console.log('✅ Loaded from browser cache (instant)');
-        return JSON.parse(cached);
-    }
-    
-    try {
-        // Try loading from cached static file
-        const response = await fetch('/data/bootstrap-static.json');
-        if (response.ok) {
-            console.log('✅ Loaded from server cache');
-            const data = await response.json();
-            // Save to localStorage for next time
-            localStorage.setItem('fpl_bootstrap_data', JSON.stringify(data));
-            localStorage.setItem('fpl_bootstrap_time', Date.now().toString());
-            return data;
-        }
-    } catch (e) {
-        console.log('ℹ️ No cached data, fetching from API...');
-    }
+        async function fetchBootstrapData() {
+            // Check browser localStorage first
+            const cached = localStorage.getItem('fpl_bootstrap_data');
+            const cacheTime = localStorage.getItem('fpl_bootstrap_time');
+            const oneDay = 24 * 60 * 60 * 1000;
+            
+            if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
+                console.log('✅ Loaded bootstrap from browser cache (instant)');
+                return JSON.parse(cached);
+            }
+            
+            try {
+                // Try loading from cached static file
+                const response = await fetch('/data/bootstrap-static.json');
+                if (response.ok) {
+                    console.log('✅ Loaded bootstrap from server cache');
+                    const data = await response.json();
+                    // Save to localStorage for next time
+                    localStorage.setItem('fpl_bootstrap_data', JSON.stringify(data));
+                    localStorage.setItem('fpl_bootstrap_time', Date.now().toString());
+                    return data;
+                }
+            } catch (e) {
+                console.log('ℹ️ No cached data, fetching from API...');
+            }
             
             // Fallback to API proxy
             const url = 'https://fantasy.premierleague.com/api/bootstrap-static/';
             const response = await fetch(API_PROXY + encodeURIComponent(url));
             if (!response.ok) throw new Error('Failed to fetch bootstrap data');
+            const data = await response.json();
+            
+            // Save to localStorage
+            localStorage.setItem('fpl_bootstrap_data', JSON.stringify(data));
+            localStorage.setItem('fpl_bootstrap_time', Date.now().toString());
+            return data;
+        }
+
+        async function loadCachedPlayerDetails() {
+            // Return existing promise if already loading
+            if (playerDetailsLoadPromise) {
+                return playerDetailsLoadPromise;
+            }
+            
+            // Return cached data if already loaded
+            if (cachedPlayerDetails) {
+                return cachedPlayerDetails;
+            }
+            
+            // Create a promise for loading player details
+            playerDetailsLoadPromise = (async () => {
+                // Check browser localStorage
+                const cached = localStorage.getItem('fpl_player_details');
+                const cacheTime = localStorage.getItem('fpl_player_details_time');
+                const oneDay = 24 * 60 * 60 * 1000;
+                
+                if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
+                    console.log('✅ Loaded player details from browser cache (instant)');
+                    cachedPlayerDetails = JSON.parse(cached);
+                    return cachedPlayerDetails;
+                }
+                
+                try {
+                    const response = await fetch('/data/player-details.json');
+                    if (response.ok) {
+                        console.log('✅ Loaded player details from server cache');
+                        cachedPlayerDetails = await response.json();
+                        // Save to localStorage
+                        localStorage.setItem('fpl_player_details', JSON.stringify(cachedPlayerDetails));
+                        localStorage.setItem('fpl_player_details_time', Date.now().toString());
+                        return cachedPlayerDetails;
+                    }
+                } catch (e) {
+                    console.log('ℹ️ No cached player details available');
+                }
+                
+                return null;
+            })();
+            
+            return playerDetailsLoadPromise;
+        }
+
+        async function fetchPlayerDetails(elementId) {
+            // Try cached data first
+            const cached = await loadCachedPlayerDetails();
+            if (cached && cached[elementId]) {
+                return cached[elementId];
+            }
+            
+            // Fallback to API if not in cache
+            console.log(`Fetching live data for player ${elementId}`);
+            const url = `https://fantasy.premierleague.com/api/element-summary/${elementId}/`;
+            const response = await fetch(API_PROXY + encodeURIComponent(url));
+            if (!response.ok) throw new Error(`Failed to fetch player ${elementId}`);
             return await response.json();
         }
-
-let cachedPlayerDetails = null;
-
-async function loadCachedPlayerDetails() {
-    if (cachedPlayerDetails) return cachedPlayerDetails;
-    
-    // Check browser localStorage
-    const cached = localStorage.getItem('fpl_player_details');
-    const cacheTime = localStorage.getItem('fpl_player_details_time');
-    const oneDay = 24 * 60 * 60 * 1000;
-    
-    if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
-        console.log('✅ Loaded player details from browser cache');
-        cachedPlayerDetails = JSON.parse(cached);
-        return cachedPlayerDetails;
-    }
-    
-    try {
-        const response = await fetch('/data/player-details.json');
-        if (response.ok) {
-            cachedPlayerDetails = await response.json();
-            console.log('✅ Loaded cached player details from server');
-            // Save to localStorage
-            localStorage.setItem('fpl_player_details', JSON.stringify(cachedPlayerDetails));
-            localStorage.setItem('fpl_player_details_time', Date.now().toString());
-            return cachedPlayerDetails;
-        }
-    } catch (e) {
-        console.log('ℹ️ No cached player details');
-    }
-    return null;
-}
-
-async function fetchPlayerDetails(elementId) {
-    // Try cached data first
-    const cached = await loadCachedPlayerDetails();
-    if (cached && cached[elementId]) {
-        return cached[elementId];
-    }
-    
-    // Fallback to API if not in cache
-    console.log(`Fetching live data for player ${elementId}`);
-    const url = `https://fantasy.premierleague.com/api/element-summary/${elementId}/`;
-    const response = await fetch(API_PROXY + encodeURIComponent(url));
-    if (!response.ok) throw new Error(`Failed to fetch player ${elementId}`);
-    return await response.json();
-}
 
         function calculateStats(history, last5 = false) {
             const games = last5 ? history.slice(-5) : history;
