@@ -1042,17 +1042,31 @@
             status.className = 'status ' + type;
         }
 
-        async function fetchBootstrapData() {
-            try {
-                // Try loading from cached static file first (much faster!)
-                const response = await fetch('/data/bootstrap-static.json');
-                if (response.ok) {
-                    console.log('✅ Loaded from cached data');
-                    return await response.json();
-                }
-            } catch (e) {
-                console.log('ℹ️ No cached data, fetching from API...');
-            }
+async function fetchBootstrapData() {
+    // Check browser localStorage first
+    const cached = localStorage.getItem('fpl_bootstrap_data');
+    const cacheTime = localStorage.getItem('fpl_bootstrap_time');
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
+        console.log('✅ Loaded from browser cache (instant)');
+        return JSON.parse(cached);
+    }
+    
+    try {
+        // Try loading from cached static file
+        const response = await fetch('/data/bootstrap-static.json');
+        if (response.ok) {
+            console.log('✅ Loaded from server cache');
+            const data = await response.json();
+            // Save to localStorage for next time
+            localStorage.setItem('fpl_bootstrap_data', JSON.stringify(data));
+            localStorage.setItem('fpl_bootstrap_time', Date.now().toString());
+            return data;
+        }
+    } catch (e) {
+        console.log('ℹ️ No cached data, fetching from API...');
+    }
             
             // Fallback to API proxy
             const url = 'https://fantasy.premierleague.com/api/bootstrap-static/';
