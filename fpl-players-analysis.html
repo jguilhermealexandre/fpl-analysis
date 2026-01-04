@@ -1549,72 +1549,96 @@
                     teams[team.id] = team.short_name;
                 });
 
-                // Get all players from the API
-                const allPlayers = bootstrapData.elements.map(player => ({
-                    id: player.id,
-                    name: player.web_name,
-                    position: player.element_type,
-                    team: teams[player.team],
-                    totalPoints: player.total_points,
-                    minutes: player.minutes,
-                    price: player.now_cost / 10, // Convert to actual price
-                    form: parseFloat(player.form),
-                    selectedByPercent: parseFloat(player.selected_by_percent)
-                }));
-
-                // Filter players who have played at least some minutes
-                const activePlayers = allPlayers.filter(p => p.minutes > 0);
+                // Check if we have cached analysis results in sessionStorage
+                const cacheKey = 'fpl_analyzed_players';
+                const cacheTimeKey = 'fpl_analyzed_players_time';
+                const cached = sessionStorage.getItem(cacheKey);
+                const cacheTime = sessionStorage.getItem(cacheTimeKey);
+                const oneDay = 24 * 60 * 60 * 1000;
                 
-                updateStatus(`Found ${activePlayers.length} active players. Starting detailed analysis...`, 'loading');
-                console.log(`Analyzing ${activePlayers.length} players with game time`);
-
-                const analyses = [];
-                let successCount = 0;
-                let skipCount = 0;
+                let analyses;
                 
-                for (let i = 0; i < activePlayers.length; i++) {
-                    const player = activePlayers[i];
+                if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
+                    // Load from cache - INSTANT!
+                    console.log('⚡ Loading from session cache (instant!)');
+                    updateStatus('Loading from cache...', 'loading');
+                    analyses = JSON.parse(cached);
+                    console.log(`✅ Loaded ${analyses.length} analyzed players from cache`);
+                } else {
+                    // No cache - do full analysis
+                    console.log('🔄 No cache found, performing full analysis...');
                     
-                    if (i % 10 === 0) {
-                        updateStatus(`Analyzing ${player.name} (${i + 1}/${activePlayers.length}) - ${successCount} loaded, ${skipCount} skipped`, 'loading');
-                    }
+                    // Get all players from the API
+                    const allPlayers = bootstrapData.elements.map(player => ({
+                        id: player.id,
+                        name: player.web_name,
+                        position: player.element_type,
+                        team: teams[player.team],
+                        totalPoints: player.total_points,
+                        minutes: player.minutes,
+                        price: player.now_cost / 10,
+                        form: parseFloat(player.form),
+                        selectedByPercent: parseFloat(player.selected_by_percent)
+                    }));
+
+                    // Filter players who have played at least some minutes
+                    const activePlayers = allPlayers.filter(p => p.minutes > 0);
                     
-                    try {
-                        // This makes the actual API call to element-summary endpoint
-                        const analysis = await analyzePlayer(player.id, player.name, player.position, player.team);
-                        if (analysis) {
-                            // Add price and form data to analysis
-                            analysis.price = player.price;
-                            analysis.form = player.form;
-                            analysis.selectedByPercent = player.selectedByPercent;
-                            analyses.push(analysis);
-                            successCount++;
-                        } else {
+                    updateStatus(`Found ${activePlayers.length} active players. Starting detailed analysis...`, 'loading');
+                    console.log(`Analyzing ${activePlayers.length} players with game time`);
+
+                    analyses = [];
+                    let successCount = 0;
+                    let skipCount = 0;
+                    
+                    for (let i = 0; i < activePlayers.length; i++) {
+                        const player = activePlayers[i];
+                        
+                        if (i % 10 === 0) {
+                            updateStatus(`Analyzing ${player.name} (${i + 1}/${activePlayers.length}) - ${successCount} loaded, ${skipCount} skipped`, 'loading');
+                        }
+                        
+                        try {
+                            const analysis = await analyzePlayer(player.id, player.name, player.position, player.team);
+                            if (analysis) {
+                                analysis.price = player.price;
+                                analysis.form = player.form;
+                                analysis.selectedByPercent = player.selectedByPercent;
+                                analyses.push(analysis);
+                                successCount++;
+                            } else {
+                                skipCount++;
+                            }
+                        } catch (error) {
+                            console.error(`Failed to analyze ${player.name}:`, error);
                             skipCount++;
                         }
-                    } catch (error) {
-                        console.error(`Failed to analyze ${player.name}:`, error);
-                        skipCount++;
+                        
+                        if (i > 0 && i % 20 === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
                     }
+
+                    console.log(`Analysis complete: ${successCount} players loaded, ${skipCount} skipped`);
                     
-                    // Add a small delay every 20 players to avoid overwhelming the API
-                    if (i > 0 && i % 20 === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                    // Save to sessionStorage for instant loading next time
+                    try {
+                        sessionStorage.setItem(cacheKey, JSON.stringify(analyses));
+                        sessionStorage.setItem(cacheTimeKey, Date.now().toString());
+                        console.log('💾 Saved analysis results to session cache');
+                    } catch (e) {
+                        console.warn('Could not save to sessionStorage:', e.message);
                     }
                 }
 
-                console.log(`Analysis complete: ${successCount} players loaded, ${skipCount} skipped`);
-
-                // Generate recommendations
+                // Render the UI with the analyses (whether from cache or fresh)
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
-
-                // Render tables
                 document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
                 document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
                 document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
                 document.getElementById('section-FWD').innerHTML = createTable('FWD', analyses);
 
-                updateStatus(`✓ Successfully loaded ${successCount} players (${skipCount} skipped due to no data)`, 'success');
+                updateStatus(`✓ Successfully loaded ${analyses.length} players`, 'success');
                 showLoading(false);
 
             } catch (error) {
