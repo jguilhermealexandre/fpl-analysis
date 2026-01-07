@@ -1517,54 +1517,54 @@
 
         function renderFixtureSwings(teams) {
             // Find teams with fixtures getting meaningfully easier
-            // More selective criteria: must have decent fixtures AND improving trend
+            // Show all teams where fixtures are improving
             const primeTargets = teams
                 .filter(t => {
                     // Must be getting easier (with our improved weighted logic)
                     if (t.fixtureSwing !== 'Getting Easier') return false;
                     
-                    // Must have reasonable fixtures (not terrible, not already perfect)
-                    if (t.avgFdr <= 2.0 || t.avgFdr > 3.8) return false;
-                    
-                    // Must have decent form (at least 40/100)
-                    if (t.formScore < 40) return false;
+                    // Show teams with any fixtures up to 4.0 FDR
+                    // (Exclude only the very worst fixtures)
+                    if (t.avgFdr > 4.0) return false;
                     
                     return true;
                 })
                 .sort((a, b) => {
                     // Sort by combination of: how much easier + current form
-                    // Teams with better form and improving fixtures are best
-                    const aScore = (5 - a.avgFdr) * 10 + a.formScore * 0.5;
-                    const bScore = (5 - b.avgFdr) * 10 + b.formScore * 0.5;
+                    // Prioritize easier fixtures first, then form
+                    const aScore = (5 - a.avgFdr) * 15 + a.formScore * 0.3;
+                    const bScore = (5 - b.avgFdr) * 15 + b.formScore * 0.3;
                     return bScore - aScore;
                 })
-                .slice(0, 6);
+                .slice(0, 8); // Show up to 8 teams
             
             const html = `
                 <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
                     <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">📅 Fixture Swing Opportunities</h3>
                     <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
                         Fixture swings are KEY to FPL success! <strong>Buy players 2-3 weeks before their easy run starts</strong> to beat price rises and template ownership.
-                        These teams have fixtures getting easier AND decent current form - the perfect combination for transfers.
+                        These teams have fixtures getting easier - ranked by fixture quality and current form.
                     </p>
                 </div>
                 
-                <h3 style="color: var(--accent-blue); margin: 20px 0 15px 0; font-size: 14px;">🎯 Prime Targets (Fixtures Improving)</h3>
+                <h3 style="color: var(--accent-blue); margin: 20px 0 15px 0; font-size: 14px;">🎯 Fixtures Improving (Best to Worst)</h3>
                 ${primeTargets.length > 0 ? `
                     <div class="teams-grid">
                         ${primeTargets.map((team, i) => {
-                            const tip = `⭐ ${i === 0 ? 'TOP PRIORITY!' : 'Great opportunity!'} Fixtures easing from ${team.avgFdr} FDR with ${team.formScore} form. Act now before template catches on.`;
+                            const priority = i < 3 ? 'TOP PRIORITY!' : 'Good opportunity!';
+                            const tip = `${i === 0 ? '⭐ ' : ''}${priority} Fixtures improving from ${team.avgFdr} FDR. Current form: ${team.formScore}. Act before template ownership rises.`;
                             return createTeamCard(team, 'fixtures', i + 1, tip);
                         }).join('')}
                     </div>
                 ` : `
                     <div class="no-data">
-                        <p>No teams currently have fixtures significantly improving.</p>
+                        <p>No teams currently have fixtures improving.</p>
                         <p style="margin-top: 10px; font-size: 10px; color: var(--text-dim);">
-                            Check back next gameweek or view "All Teams" tab to see fixture trends.
+                            Check back next gameweek or view "All Teams" tab to see fixture trends for all teams.
                         </p>
                     </div>
                 `}
+            `;
             `;
             
             document.getElementById('fixtures-content').innerHTML = html;
