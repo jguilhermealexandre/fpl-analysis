@@ -1002,8 +1002,10 @@
                             <th onclick="sortOverview('formScore')" class="tooltip" data-tooltip="Form score: 70+ excellent, 50-69 good, <50 risky. Based on goals, wins, and fixtures">Form <span class="sort-arrow">↕</span></th>
                             <th onclick="sortOverview('attackRating')" class="tooltip" data-tooltip="How good for FPL attackers: 65+ target, 45-65 monitor, <45 avoid">Attack <span class="sort-arrow">↕</span></th>
                             <th onclick="sortOverview('defenseRating')" class="tooltip" data-tooltip="How good for FPL defenders: 65+ target, 45-65 monitor, <45 avoid">Defense <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('seasonGF')" class="tooltip" data-tooltip="Goals scored per game this season">GF/GP <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('seasonGA')" class="tooltip" data-tooltip="Goals conceded per game this season">GA/GP <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('seasonGF')" class="tooltip" data-tooltip="Goals scored per game this season">Seas GF <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('seasonGA')" class="tooltip" data-tooltip="Goals conceded per game this season">Seas GA <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('goalsScored')" class="tooltip" data-tooltip="Total goals scored in last 5 games">L5 GF <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('cleanSheets')" class="tooltip" data-tooltip="Clean sheets in last 5 games">L5 CS <span class="sort-arrow">↕</span></th>
                             <th class="tooltip" data-tooltip="Last 5 results: W=Win, D=Draw, L=Loss">Last 5</th>
                             <th onclick="sortOverview('avgFdr')" class="tooltip" data-tooltip="Fixture Difficulty Rating next 5 games: 1-2 easy, 3 medium, 4-5 tough">FDR <span class="sort-arrow">↕</span></th>
                             <th onclick="sortOverview('cleanSheetProb')" class="tooltip" data-tooltip="Clean sheet probability next 5 games: 50%+ target, 30-50% okay, <30% avoid">CS% <span class="sort-arrow">↕</span></th>
@@ -1272,23 +1274,57 @@
             const defensePotential = defensiveQuality * 0.5 + fixtureBenefit + (parseFloat(cleanSheetPct) * 0.3);
             const defenseRating = Math.round(Math.min(100, defensePotential));
             
-            // Fixture swing (are fixtures getting easier or harder?)
-            // Compare average FDR of next 3 vs last 2 of the 5
-            if (futureDetails.length === 5) {
-                const early = (futureDetails[0].fdr + futureDetails[1].fdr + futureDetails[2].fdr) / 3;
-                const late = (futureDetails[3].fdr + futureDetails[4].fdr) / 2;
-                var fixtureSwing = late > early ? 'Getting Harder' : (late < early ? 'Getting Easier' : 'Stable');
+            // Fixture swing (improved logic - weighted trend analysis)
+            // Instead of comparing first 3 vs last 2, we look at the overall trend
+            // Give more weight to later fixtures since they're more relevant
+            if (futureDetails.length >= 4) {
+                // Calculate weighted average where later fixtures have more weight
+                // Game 1: weight 1, Game 2: weight 1.5, Game 3: weight 2, Game 4: weight 2.5, Game 5: weight 3
+                const weights = [1, 1.5, 2, 2.5, 3];
+                let weightedEarly = 0, weightedLate = 0;
+                let earlySum = 0, lateSum = 0;
+                
+                // First 2-3 games
+                for (let i = 0; i < Math.min(3, futureDetails.length); i++) {
+                    weightedEarly += futureDetails[i].fdr * weights[i];
+                    earlySum += weights[i];
+                }
+                const avgEarly = weightedEarly / earlySum;
+                
+                // Last 2-3 games
+                const startLate = Math.max(2, futureDetails.length - 3);
+                for (let i = startLate; i < futureDetails.length; i++) {
+                    weightedLate += futureDetails[i].fdr * weights[i];
+                    lateSum += weights[i];
+                }
+                const avgLate = weightedLate / lateSum;
+                
+                // Significant change threshold: 0.5 FDR difference
+                const diff = avgLate - avgEarly;
+                if (diff > 0.5) {
+                    var fixtureSwing = 'Getting Harder';
+                } else if (diff < -0.5) {
+                    var fixtureSwing = 'Getting Easier';
+                } else {
+                    var fixtureSwing = 'Stable';
+                }
             } else {
                 var fixtureSwing = 'Stable';
             }
 
-            // Form score (weighted composite)
+            // Form score (normalized 0-100)
+            // Components weighted and scaled to fit 0-100:
+            // - Goals scored: max ~4.0/game = 20 points
+            // - Win%: max 100% = 25 points  
+            // - Clean sheet%: max 100% = 20 points
+            // - Goals conceded: 0 conceded = 20 points, 2+ = 0 points
+            // - Fixtures: FDR 1 = 15 points, FDR 5 = 0 points
             const formScore = (
-                (parseFloat(avgGoalsScored) * 15) +
-                (parseFloat(winPct) * 0.5) +
-                (parseFloat(cleanSheetPct) * 0.3) +
-                (100 - parseFloat(avgGoalsConceded) * 10) +
-                ((5 - parseFloat(avgFdr)) * 5)
+                (Math.min(parseFloat(avgGoalsScored), 4.0) / 4.0 * 20) +     // 0-20 points
+                (parseFloat(winPct) * 0.25) +                                  // 0-25 points
+                (parseFloat(cleanSheetPct) * 0.20) +                          // 0-20 points
+                (Math.max(0, (2.0 - parseFloat(avgGoalsConceded))) / 2.0 * 20) + // 0-20 points
+                ((5 - parseFloat(avgFdr)) / 4.0 * 15)                         // 0-15 points
             ).toFixed(0);
 
             return {
@@ -1406,6 +1442,12 @@
                                     team.fixtureSwing === 'Getting Harder' ? 'Fixtures worsening - consider selling' : 
                                     'Fixtures staying similar';
                 
+                // Color code L5 stats
+                const l5GoalsClass = team.goalsScored >= 10 ? 'cell-excellent' : 
+                                    team.goalsScored >= 6 ? 'cell-good' : '';
+                const l5CSClass = team.cleanSheets >= 3 ? 'cell-excellent' : 
+                                 team.cleanSheets >= 2 ? 'cell-good' : '';
+                
                 return `
                     <tr onclick="expandTeamDetails(${team.teamId})">
                         <td>${index + 1}</td>
@@ -1416,6 +1458,8 @@
                         <td class="${defenseClass} tooltip" data-tooltip="${defenseTooltip}">${team.defenseRating}</td>
                         <td title="Season average: ${team.seasonGF} goals scored per game">${team.seasonGF}</td>
                         <td title="Season average: ${team.seasonGA} goals conceded per game">${team.seasonGA}</td>
+                        <td class="${l5GoalsClass}" title="Total goals scored in last 5 games">${team.goalsScored}</td>
+                        <td class="${l5CSClass}" title="Clean sheets in last 5 games">${team.cleanSheets}</td>
                         <td><div class="form-visual">${formVisual}</div></td>
                         <td class="${fdrClass} tooltip" data-tooltip="${fdrTooltip}">${team.avgFdr}</td>
                         <td class="${csClass} tooltip" data-tooltip="${csTooltip}">${team.cleanSheetProb}%</td>
@@ -1455,13 +1499,13 @@
         }
 
         function renderBestForAttackers(teams) {
-            const sorted = [...teams].sort((a, b) => b.attackRating - a.attackRating).slice(0, 10);
+            const sorted = [...teams].sort((a, b) => b.attackRating - a.attackRating).slice(0, 5);
             
             const html = `
                 <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
-                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">⚔️ Best Teams for FPL Attackers</h3>
+                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">⚔️ Top 5 Teams for FPL Attackers</h3>
                     <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
-                        These teams have high goals scored + easy upcoming fixtures. Target midfielders and forwards from these teams.
+                        These are the absolute best teams for midfielders and forwards. High goals scored + easy upcoming fixtures.
                         <strong style="color: var(--accent-green);">Attack Rating</strong> considers: goals/game, opponent defensive weakness (FDR), and home fixtures.
                     </p>
                 </div>
@@ -1477,13 +1521,13 @@
         }
 
         function renderBestForDefenders(teams) {
-            const sorted = [...teams].sort((a, b) => b.defenseRating - a.defenseRating).slice(0, 10);
+            const sorted = [...teams].sort((a, b) => b.defenseRating - a.defenseRating).slice(0, 5);
             
             const html = `
                 <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
-                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">🛡️ Best Teams for FPL Defenders & Goalkeepers</h3>
+                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">🛡️ Top 5 Teams for FPL Defenders & Goalkeepers</h3>
                     <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
-                        <strong style="color: var(--accent-red);">80% of defensive points come from clean sheets!</strong> These teams have low goals conceded + easy fixtures.
+                        <strong style="color: var(--accent-red);">80% of defensive points come from clean sheets!</strong> These are the absolute best teams for defenders and goalkeepers.
                         <strong style="color: var(--accent-green);">Defense Rating</strong> considers: clean sheet %, goals conceded, FDR, and home fixtures (15% more CS at home).
                     </p>
                 </div>
@@ -1499,44 +1543,55 @@
         }
 
         function renderFixtureSwings(teams) {
-            // Find teams with easiest fixtures getting easier, or hardest fixtures getting easier
-            const easyGettingEasier = teams
-                .filter(t => t.fixtureSwing === 'Getting Easier' && t.avgFdr <= 2.8)
-                .sort((a, b) => a.avgFdr - b.avgFdr)
-                .slice(0, 5);
-            
-            const hardGettingEasier = teams
-                .filter(t => t.fixtureSwing === 'Getting Easier' && t.avgFdr >= 3.5)
-                .sort((a, b) => {
-                    // Sort by form score if fixtures are getting easier
-                    return b.formScore - a.formScore;
+            // Find teams with fixtures getting meaningfully easier
+            // More selective criteria: must have decent fixtures AND improving trend
+            const primeTargets = teams
+                .filter(t => {
+                    // Must be getting easier (with our improved weighted logic)
+                    if (t.fixtureSwing !== 'Getting Easier') return false;
+                    
+                    // Must have reasonable fixtures (not terrible, not already perfect)
+                    if (t.avgFdr <= 2.0 || t.avgFdr > 3.8) return false;
+                    
+                    // Must have decent form (at least 40/100)
+                    if (t.formScore < 40) return false;
+                    
+                    return true;
                 })
-                .slice(0, 5);
+                .sort((a, b) => {
+                    // Sort by combination of: how much easier + current form
+                    // Teams with better form and improving fixtures are best
+                    const aScore = (5 - a.avgFdr) * 10 + a.formScore * 0.5;
+                    const bScore = (5 - b.avgFdr) * 10 + b.formScore * 0.5;
+                    return bScore - aScore;
+                })
+                .slice(0, 6);
             
             const html = `
                 <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
                     <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">📅 Fixture Swing Opportunities</h3>
                     <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
-                        Fixture swings are KEY to FPL success! <strong>Buy players 2-3 weeks before their easy run starts</strong> to avoid price rises and template ownership.
-                        These teams have fixtures getting easier - perfect time to target their assets.
+                        Fixture swings are KEY to FPL success! <strong>Buy players 2-3 weeks before their easy run starts</strong> to beat price rises and template ownership.
+                        These teams have fixtures getting easier AND decent current form - the perfect combination for transfers.
                     </p>
                 </div>
                 
-                <h3 style="color: var(--accent-blue); margin: 20px 0 15px 0; font-size: 14px;">🎯 Prime Targets (Easy Fixtures Getting Easier)</h3>
-                <div class="teams-grid">
-                    ${easyGettingEasier.length > 0 ? easyGettingEasier.map(team => {
-                        const tip = `⭐ PRIORITY TARGET! Fixtures easing from ${team.avgFdr} FDR. Move now before template catches on.`;
-                        return createTeamCard(team, 'fixtures', null, tip);
-                    }).join('') : '<div class="no-data">No teams match this criteria currently</div>'}
-                </div>
-                
-                <h3 style="color: var(--accent-yellow); margin: 30px 0 15px 0; font-size: 14px;">⚡ Differential Opportunities (Tough Fixtures Getting Easier)</h3>
-                <div class="teams-grid">
-                    ${hardGettingEasier.length > 0 ? hardGettingEasier.map(team => {
-                        const tip = `Fixtures improving! Good form (${team.formScore}) with easier games ahead. Differential play.`;
-                        return createTeamCard(team, 'fixtures', null, tip);
-                    }).join('') : '<div class="no-data">No teams match this criteria currently</div>'}
-                </div>
+                <h3 style="color: var(--accent-blue); margin: 20px 0 15px 0; font-size: 14px;">🎯 Prime Targets (Fixtures Improving)</h3>
+                ${primeTargets.length > 0 ? `
+                    <div class="teams-grid">
+                        ${primeTargets.map((team, i) => {
+                            const tip = `⭐ ${i === 0 ? 'TOP PRIORITY!' : 'Great opportunity!'} Fixtures easing from ${team.avgFdr} FDR with ${team.formScore} form. Act now before template catches on.`;
+                            return createTeamCard(team, 'fixtures', i + 1, tip);
+                        }).join('')}
+                    </div>
+                ` : `
+                    <div class="no-data">
+                        <p>No teams currently have fixtures significantly improving.</p>
+                        <p style="margin-top: 10px; font-size: 10px; color: var(--text-dim);">
+                            Check back next gameweek or view "All Teams" tab to see fixture trends.
+                        </p>
+                    </div>
+                `}
             `;
             
             document.getElementById('fixtures-content').innerHTML = html;
