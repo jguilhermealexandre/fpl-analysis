@@ -604,6 +604,168 @@
             color: var(--accent-blue);
             transform: translateX(-3px);
         }
+
+        /* Overview Table Styles */
+        .overview-search {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            padding: 0 5px;
+        }
+
+        .overview-search input {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 10px 15px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            width: 300px;
+            transition: all 0.3s ease;
+        }
+
+        .overview-search input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .overview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            background: var(--surface);
+        }
+
+        .overview-table thead {
+            background: var(--surface-light);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .overview-table th {
+            padding: 10px 8px;
+            text-align: center;
+            font-weight: 700;
+            border-bottom: 2px solid var(--accent-blue);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .overview-table th:hover {
+            background: var(--surface);
+        }
+
+        .overview-table th.team-name-header {
+            text-align: left;
+            padding-left: 15px;
+        }
+
+        .overview-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .overview-table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .overview-table tbody tr:hover {
+            background: var(--surface-light);
+            cursor: pointer;
+        }
+
+        .team-name-cell {
+            text-align: left;
+            font-weight: 700;
+            color: var(--accent-blue);
+            padding-left: 15px;
+        }
+
+        .cell-excellent {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
+        .cell-good {
+            background: rgba(255, 204, 0, 0.15);
+            color: var(--accent-yellow);
+        }
+
+        .cell-poor {
+            background: rgba(255, 51, 102, 0.15);
+            color: var(--accent-red);
+        }
+
+        .form-visual {
+            display: flex;
+            gap: 2px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-result {
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .form-result.W {
+            background: var(--accent-green);
+            color: var(--bg-dark);
+        }
+
+        .form-result.D {
+            background: var(--accent-yellow);
+            color: var(--bg-dark);
+        }
+
+        .form-result.L {
+            background: var(--accent-red);
+            color: var(--text);
+        }
+
+        .sort-arrow {
+            margin-left: 3px;
+            font-size: 10px;
+            opacity: 0.3;
+        }
+
+        th.sorted .sort-arrow {
+            opacity: 1;
+            color: var(--accent-green);
+        }
+
+        .trend-easier {
+            color: var(--accent-green);
+        }
+
+        .trend-harder {
+            color: var(--accent-red);
+        }
+
+        .trend-stable {
+            color: var(--text-dim);
+        }
     </style>
 </head>
 <body>
@@ -611,188 +773,177 @@
         <span>←</span> Back to Home
     </a>
 
-    <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-overlay show" id="loadingOverlay">
         <div class="loader">
             <div class="loader-spinner"></div>
-            <div class="loader-text">Analyzing Teams...</div>
+            <div class="loader-text">Loading team data...</div>
         </div>
     </div>
 
     <div class="header">
         <h1>🏆 FPL Teams Analysis</h1>
-        <p>Past 5 Games Form + Next 5 Fixtures Difficulty</p>
+        <p>Find the best teams to target for your FPL transfers</p>
     </div>
 
     <div class="guide-section" id="guideSection">
         <div class="guide-header" onclick="toggleGuide()">
             <div>
-                <span class="guide-title">📚 How to Use This Analysis & Make Smart FPL Decisions</span>
-                <span class="guide-subtitle">Click to expand comprehensive guide</span>
+                <span class="guide-title">📚 Strategy Guide: Get the Most From This Tool</span>
+                <span class="guide-subtitle">4-minute read • Learn the tactics top managers use</span>
             </div>
             <span class="guide-toggle" id="guideToggle">▼</span>
         </div>
         <div class="guide-content" id="guideContent">
             <div class="guide-grid">
                 <div class="guide-card">
-                    <h3>🛡️ Selecting Defenders & Goalkeepers</h3>
+                    <h3>📊 What the Numbers Mean</h3>
                     <div class="guide-text">
-                        <p><strong>The Golden Rule:</strong> 80% of defensive FPL points come from clean sheets. A £4.5m defender from a top team with easy fixtures will outscore a £7.0m attacking wingback with tough fixtures.</p>
-                        
-                        <p><strong>What to look for:</strong></p>
+                        <p><strong>Quick Reference:</strong></p>
                         <ul>
-                            <li><strong>Clean Sheet Probability:</strong> Target teams with 40%+ probability. This metric combines defensive form (goals conceded) with upcoming fixture difficulty.</li>
-                            <li><strong>Defender Rating:</strong> 65+ is excellent. This weighs clean sheet % heavily (the most important factor) plus fixture difficulty.</li>
-                            <li><strong>Goals Conceded/Game:</strong> Under 1.0 is elite, under 1.5 is good. Lower = more clean sheets = more points.</li>
-                            <li><strong>Home Fixtures:</strong> Teams keep 15% more clean sheets at home. A team with 3+ home games in next 5 is gold for defenders.</li>
+                            <li><strong>Form Score:</strong> 70+ excellent • 50-69 good • &lt;50 risky</li>
+                            <li><strong>FDR (Fixtures):</strong> 1-2 easy • 3 medium • 4-5 tough</li>
+                            <li><strong>Clean Sheet Prob:</strong> 50%+ target • 30-50% okay • &lt;30% avoid</li>
+                            <li><strong>Attack/Defense Rating:</strong> 65+ target • 45-65 monitor • &lt;45 avoid</li>
                         </ul>
-                        
-                        <p><strong>Strategy Example:</strong> Liverpool conceding 0.6 goals/game with 3 home fixtures and 55% CS probability? Stack their defense. Ignore expensive attacking defenders from teams with poor defensive records and tough fixtures.</p>
+                        <p><strong>Colors:</strong> Green = good opportunity • Yellow = okay option • Red = risky pick</p>
                     </div>
                 </div>
 
                 <div class="guide-card">
-                    <h3>⚔️ Selecting Attackers (Midfielders & Forwards)</h3>
+                    <h3>🛡️ Picking Defenders</h3>
                     <div class="guide-text">
-                        <p><strong>The Key Insight:</strong> Fixtures matter less for attackers (35-40% points variance) than defenders (50-60%), but they still matter! Premium attackers can return against anyone, but budget options NEED good fixtures.</p>
+                        <p>Clean sheets are everything for defenders. Pick a £4.5m defender from Liverpool over a £7.0m attacking wingback from a struggling team—you'll get more points, guaranteed.</p>
                         
-                        <p><strong>What to look for:</strong></p>
+                        <p><strong>Target teams with:</strong></p>
                         <ul>
-                            <li><strong>Attacker Rating:</strong> 65+ means the team is scoring goals AND has weak opponents coming up. Perfect for picking their midfielders/forwards.</li>
-                            <li><strong>Goals Scored/Game:</strong> 2.0+ is excellent attacking form. These teams create chances.</li>
-                            <li><strong>Avg FDR (Fixture Difficulty):</strong> Under 3.0 is good. Under 2.5 is excellent. This means they're facing defensively weak teams.</li>
-                            <li><strong>Home Fixtures:</strong> Teams score 0.4-0.6 more goals per game at home. Attackers from teams with 3+ home games are boosted.</li>
+                            <li><strong>Clean sheet probability 40%+</strong></li>
+                            <li><strong>Conceding under 1.2 goals/game</strong></li>
+                            <li><strong>Defender rating 60+</strong></li>
+                            <li><strong>Bonus: 3+ home fixtures</strong> (teams keep more clean sheets at home)</li>
                         </ul>
                         
-                        <p><strong>Strategy Example:</strong> Man City scoring 2.5 goals/game with FDR of 2.3 and 4 home fixtures? Their attackers become captain candidates. Avoid attackers from low-scoring teams (under 1.2 goals/game) facing tough fixtures (FDR 4+).</p>
+                        <p><strong>Example:</strong> Liverpool conceding 0.6 goals/game with 55% CS probability and 3 home fixtures? Stack their defense.</p>
                     </div>
                 </div>
 
                 <div class="guide-card">
-                    <h3>📅 Understanding Fixture Swings (The Secret Weapon)</h3>
+                    <h3>⚔️ Picking Attackers</h3>
                     <div class="guide-text">
-                        <p><strong>What Elite FPL Managers Do:</strong> They don't react to last week's haul. They plan 2-3 gameweeks ahead, buying players BEFORE their easy fixture run starts.</p>
+                        <p>Premium attackers (£10m+) can score against anyone. Budget attackers? They need easy fixtures to deliver.</p>
                         
-                        <p><strong>Why This Works:</strong></p>
+                        <p><strong>Target teams with:</strong></p>
+                        <ul>
+                            <li><strong>2+ goals scored per game</strong></li>
+                            <li><strong>Attacker rating 60+</strong></li>
+                            <li><strong>FDR under 3.5</strong> (under 3.0 for budget picks)</li>
+                            <li><strong>Bonus: 3+ home fixtures</strong> (teams score more at home)</li>
+                        </ul>
+                        
+                        <p><strong>Example:</strong> Man City scoring 2.5 goals/game with FDR 2.3? Their attackers become captain candidates.</p>
+                    </div>
+                </div>
+
+                <div class="guide-card">
+                    <h3>📅 Fixture Swings (The Secret Weapon)</h3>
+                    <div class="guide-text">
+                        <p>Top managers don't react to last week's haul—they plan 2-3 gameweeks ahead, buying players BEFORE their easy fixture run starts.</p>
+                        
+                        <p><strong>Why this works:</strong></p>
                         <ul>
                             <li>Player prices rise when everyone sees the good fixtures</li>
-                            <li>Template ownership increases, reducing your differential advantage</li>
-                            <li>By the time fixtures turn green, it's too late - you've missed value gains</li>
+                            <li>You avoid template ownership</li>
+                            <li>Act before other managers notice—that's your edge</li>
                         </ul>
                         
-                        <p><strong>How to Use Fixture Trend:</strong></p>
+                        <p><strong>How to use fixture trends:</strong></p>
                         <ul>
-                            <li><strong>"Getting Easier":</strong> Buy NOW if the team has good form. You're 2 weeks early = perfect timing.</li>
-                            <li><strong>"Stable":</strong> Safe hold. No urgency to buy or sell based on fixtures alone.</li>
-                            <li><strong>"Getting Harder":</strong> Plan your exit strategy. Don't wait until GW1 of the tough run.</li>
+                            <li><strong>"Getting Easier":</strong> Buy NOW if team has good form</li>
+                            <li><strong>"Stable":</strong> Safe hold, no urgency</li>
+                            <li><strong>"Getting Harder":</strong> Plan your exit before the tough run</li>
                         </ul>
-                        
-                        <p><strong>Pro Tip:</strong> The Fixture Swings tab shows "Prime Targets" - teams with easy fixtures getting even easier. These are your highest priority transfers. The edge comes from acting while they're still "yellow" on other tools.</p>
                     </div>
                 </div>
 
                 <div class="guide-card">
-                    <h3>🏠 Home vs Away: Why It Matters</h3>
+                    <h3>✅ Quick Decision Checklist</h3>
                     <div class="guide-text">
-                        <p><strong>The Data:</strong> Home teams score 0.4-0.6 more goals per game AND keep clean sheets 15% more often. This is huge!</p>
-                        
-                        <p><strong>How to Use Home/Away Split:</strong></p>
-                        <ul>
-                            <li><strong>3+ Home Fixtures:</strong> Major boost for both attackers AND defenders from that team</li>
-                            <li><strong>3+ Away Fixtures:</strong> Still okay for premium attackers, but avoid budget defenders unless team has elite defense</li>
-                            <li><strong>Balanced (2H/3A or 3H/2A):</strong> Neutral - rely on other metrics</li>
+                        <p><strong>Considering a defender?</strong></p>
+                        <ul style="list-style: none; padding-left: 0;">
+                            <li>☐ Clean sheet probability 40%+</li>
+                            <li>☐ Conceding under 1.2 goals/game</li>
+                            <li>☐ Defender rating 60+</li>
                         </ul>
                         
-                        <p><strong>Real Example:</strong> Brighton at home vs Brighton away are two different teams. If they have 4 home games coming up, their defenders become much more attractive (even if overall FDR is medium).</p>
-                    </div>
-                </div>
-
-                <div class="guide-card">
-                    <h3>📊 How to Read the Metrics</h3>
-                    <div class="guide-text">
-                        <p><strong>Form Score (0-100):</strong> Composite metric combining goals scored, goals conceded, wins, clean sheets, and upcoming fixtures. 70+ is excellent form, 50-69 is good, under 50 needs monitoring.</p>
-                        
-                        <p><strong>FDR - Fixture Difficulty Rating (1-5):</strong></p>
-                        <ul>
-                            <li><strong>1-2 (Green):</strong> Easy fixtures - prime time to own assets from this team</li>
-                            <li><strong>3 (Yellow):</strong> Medium - okay for premiums, avoid budget options</li>
-                            <li><strong>4-5 (Red):</strong> Tough fixtures - only keep proven premium assets, sell budget picks</li>
+                        <p><strong>Considering an attacker?</strong></p>
+                        <ul style="list-style: none; padding-left: 0;">
+                            <li>☐ Team scoring 1.5+ goals/game</li>
+                            <li>☐ Attacker rating 60+</li>
+                            <li>☐ FDR under 3.5 (under 3.0 for budget picks)</li>
                         </ul>
                         
-                        <p><strong>Clean Sheet Probability:</strong> Our algorithm combines: defensive record (60% weight), fixture difficulty (30%), and home advantage (10%). 50%+ is excellent, 30-50% is good, under 30% means avoid defenders.</p>
-                        
-                        <p><strong>Attack Rating & Defense Rating (0-100):</strong> Position-specific scores. 65+ = target, 45-65 = monitor, under 45 = avoid. These tell you specifically whether to pick attackers OR defenders from a team.</p>
+                        <p><strong>Planning ahead?</strong></p>
+                        <ul style="list-style: none; padding-left: 0;">
+                            <li>☐ Check "Fixture Swings" tab weekly</li>
+                            <li>☐ Buy "Getting Easier" teams now</li>
+                            <li>☐ Sell "Getting Harder" teams next week</li>
+                        </ul>
                     </div>
                 </div>
 
                 <div class="guide-card">
                     <h3>⚡ Common Mistakes to Avoid</h3>
                     <div class="guide-text">
+                        <p><strong>Don't:</strong></p>
                         <ul>
-                            <li><strong>❌ Buying after the haul:</strong> By the time a player scores 15 points, their price has risen and fixtures might be turning. Look ahead, not behind.</li>
-                            <li><strong>❌ Ignoring fixture swings:</strong> "My defender got a clean sheet last week" - great! But if they face City, Liverpool, Arsenal next, sell them.</li>
-                            <li><strong>❌ Picking expensive defenders from bad defensive teams:</strong> A £6.5m attacking fullback from a team conceding 2 goals/game won't get clean sheets. That's where the points come from!</li>
-                            <li><strong>❌ Keeping budget attackers through red fixtures:</strong> Premium attackers (Salah, Haaland) can score against anyone. Budget attackers (under £7m) NEED green fixtures to deliver.</li>
-                            <li><strong>❌ Not checking home/away split:</strong> "Easy fixtures" means different things for home vs away games. 4 away games to "weak" teams is still risky.</li>
-                            <li><strong>✅ What to do instead:</strong> Use the tabs! "Best for Defenders" for defensive picks, "Best for Attackers" for attacking picks, "Fixture Swings" for planning 3 weeks ahead.</li>
+                            <li><strong>❌ Buy after the haul</strong> → ✅ Buy before easy fixtures start</li>
+                            <li><strong>❌ Keep budget attackers through tough fixtures</strong> → ✅ Sell before the tough run</li>
+                            <li><strong>❌ Ignore fixture swings</strong> → ✅ Check "Fixture Swings" tab weekly</li>
+                            <li><strong>❌ Pick expensive defenders from bad defensive teams</strong> → ✅ Target cheap defenders from top defensive teams</li>
                         </ul>
-                    </div>
-                </div>
-
-                <div class="guide-card">
-                    <h3>🎯 Putting It All Together: A Decision Framework</h3>
-                    <div class="guide-text">
-                        <p><strong>Every Week, Ask These Questions:</strong></p>
                         
-                        <p><strong>1. For Defenders/GKs I'm considering:</strong></p>
-                        <ul>
-                            <li>Is their Clean Sheet Probability above 40%?</li>
-                            <li>Are they conceding under 1.5 goals/game?</li>
-                            <li>Do they have 2+ home fixtures in next 5?</li>
-                            <li>Is their Defender Rating 55+?</li>
-                        </ul>
-                        <p>If YES to 3+, they're a strong pick. If NO to 3+, avoid.</p>
-                        
-                        <p><strong>2. For Attackers I'm considering:</strong></p>
-                        <ul>
-                            <li>Is their team scoring 1.5+ goals/game?</li>
-                            <li>Is their Attacker Rating 50+?</li>
-                            <li>Is their FDR under 3.5?</li>
-                            <li>If they're budget (under £7m), is FDR under 3.0?</li>
-                        </ul>
-                        <p>Premiums can pass with 2/4. Budget options need 3/4.</p>
-                        
-                        <p><strong>3. For Planning Ahead:</strong></p>
-                        <ul>
-                            <li>Check "Fixture Swings" tab weekly</li>
-                            <li>Buy players from "Getting Easier" teams NOW</li>
-                            <li>Sell players from "Getting Harder" teams NEXT week (before the tough run starts)</li>
-                            <li>This 2-week lookahead is what separates top 100k from top 1M managers</li>
-                        </ul>
+                        <p><strong>Use the tabs:</strong> "Target Defenders" for defensive picks, "Target Attackers" for attacking picks, "Fixture Swings" for planning ahead.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="controls">
-        <button class="btn" onclick="loadTeamData()">
-            🔄 Load Teams Data
-        </button>
-        <div class="status" id="status">
-            Click "Load Teams Data" to begin
-        </div>
-    </div>
-
     <div class="tabs">
-        <button class="tab active" data-view="overview">📊 Overview</button>
-        <button class="tab" data-view="attackers">⚔️ Best for Attackers</button>
-        <button class="tab" data-view="defenders">🛡️ Best for Defenders</button>
+        <button class="tab active" data-view="overview">🏟️ All Teams</button>
+        <button class="tab" data-view="attackers">⚔️ Target Attackers</button>
+        <button class="tab" data-view="defenders">🛡️ Target Defenders</button>
         <button class="tab" data-view="fixtures">📅 Fixture Swings</button>
     </div>
 
     <div class="content">
         <div class="tab-content active" id="overview-content">
-            <div class="no-data">Load teams data to see analysis</div>
+            <div class="overview-search">
+                <input type="text" id="teamSearch" placeholder="🔍 Search teams..." onkeyup="filterOverview()">
+                <span id="teamCount" style="color: var(--text-dim); font-size: 11px;"></span>
+            </div>
+            <div class="table-container">
+                <table class="overview-table" id="overviewTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortOverview('rank')"># <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('teamName')" class="team-name-header">Team <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('leaguePos')">Pos <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('formScore')">Form <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('attackRating')">Attack <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('defenseRating')">Defense <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('seasonGF')">GF/GP <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('seasonGA')">GA/GP <span class="sort-arrow">↕</span></th>
+                            <th>Last 5</th>
+                            <th onclick="sortOverview('avgFdr')">FDR <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('cleanSheetProb')">CS% <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('fixtureSwing')">Trend <span class="sort-arrow">↕</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="overviewTableBody">
+                        <!-- Generated by JS -->
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div class="tab-content" id="attackers-content"></div>
         <div class="tab-content" id="defenders-content"></div>
@@ -800,17 +951,18 @@
     </div>
 
     <div class="legend">
+        <h4 style="margin-bottom: 10px; color: var(--text); font-size: 12px;">Color Guide:</h4>
         <div class="legend-item">
             <div class="legend-box" style="background: rgba(0, 255, 136, 0.3);"></div>
-            <span>Easy Fixtures (FDR 1-2) / Excellent Form (70+)</span>
+            <span>Good opportunity (easy fixtures or strong form)</span>
         </div>
         <div class="legend-item">
             <div class="legend-box" style="background: rgba(255, 204, 0, 0.3);"></div>
-            <span>Medium Fixtures (FDR 3) / Good Form (50-69)</span>
+            <span>Okay option (medium fixtures or decent form)</span>
         </div>
         <div class="legend-item">
             <div class="legend-box" style="background: rgba(255, 51, 102, 0.3);"></div>
-            <span>Hard Fixtures (FDR 4-5) / Poor Form (<50)</span>
+            <span>Risky pick (tough fixtures or poor form)</span>
         </div>
     </div>
 
@@ -850,9 +1002,7 @@
         }
 
         function updateStatus(message, type = 'info') {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = 'status ' + type;
+            console.log(`[${type.toUpperCase()}] ${message}`);
         }
 
         async function loadTeamData() {
@@ -946,6 +1096,26 @@
                 .filter(f => f.finished && (f.team_h === teamId || f.team_a === teamId))
                 .sort((a, b) => a.event - b.event)
                 .slice(-5);
+
+            // ALL finished fixtures for season stats
+            const allFinishedFixtures = fixtures
+                .filter(f => f.finished && (f.team_h === teamId || f.team_a === teamId));
+            
+            // Calculate season totals
+            let seasonGF = 0, seasonGA = 0, seasonCS = 0;
+            allFinishedFixtures.forEach(f => {
+                const isHome = f.team_h === teamId;
+                const teamScore = isHome ? f.team_h_score : f.team_a_score;
+                const oppScore = isHome ? f.team_a_score : f.team_h_score;
+                seasonGF += teamScore || 0;
+                seasonGA += oppScore || 0;
+                if (oppScore === 0) seasonCS++;
+            });
+            
+            const seasonGames = allFinishedFixtures.length;
+            const seasonGFperGame = seasonGames > 0 ? (seasonGF / seasonGames).toFixed(2) : '0.00';
+            const seasonGAperGame = seasonGames > 0 ? (seasonGA / seasonGames).toFixed(2) : '0.00';
+            const seasonCSPct = seasonGames > 0 ? ((seasonCS / seasonGames) * 100).toFixed(0) : '0';
 
             // Future 5 fixtures
             const futureFixtures = fixtures
@@ -1054,7 +1224,15 @@
                 teamId,
                 teamName: team.name,
                 shortName: team.short_name,
-                // Past
+                // League context
+                leaguePos: team.position || null,
+                leaguePoints: team.points || null,
+                // Season stats
+                seasonGames,
+                seasonGF: seasonGFperGame,
+                seasonGA: seasonGAperGame,
+                seasonCSPct,
+                // Past 5 games
                 gamesPlayed,
                 wins,
                 draws,
@@ -1089,16 +1267,105 @@
             };
         }
 
+        let overviewData = [];
+        let currentSort = { column: 'formScore', direction: 'desc' };
+
         function renderOverview(teams) {
-            const sorted = [...teams].sort((a, b) => b.formScore - a.formScore);
+            overviewData = [...teams];
+            renderOverviewTable();
+        }
+
+        function renderOverviewTable() {
+            const tbody = document.getElementById('overviewTableBody');
+            const teamCount = document.getElementById('teamCount');
             
-            const html = `
-                <div class="teams-grid">
-                    ${sorted.map(team => createTeamCard(team, 'overview')).join('')}
-                </div>
-            `;
+            if (!tbody) return;
             
-            document.getElementById('overview-content').innerHTML = html;
+            teamCount.textContent = `Showing ${overviewData.length} teams`;
+            
+            // Sort data
+            const sorted = [...overviewData].sort((a, b) => {
+                let aVal = a[currentSort.column];
+                let bVal = b[currentSort.column];
+                
+                // Handle string comparisons
+                if (typeof aVal === 'string') {
+                    return currentSort.direction === 'asc' ? 
+                        aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                }
+                
+                // Handle numeric comparisons
+                return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+            });
+            
+            tbody.innerHTML = sorted.map((team, index) => {
+                const formClass = team.formScore >= 70 ? 'cell-excellent' : 
+                                  team.formScore >= 50 ? 'cell-good' : 'cell-poor';
+                const attackClass = team.attackRating >= 65 ? 'cell-excellent' : 
+                                   team.attackRating >= 45 ? 'cell-good' : '';
+                const defenseClass = team.defenseRating >= 65 ? 'cell-excellent' : 
+                                    team.defenseRating >= 45 ? 'cell-good' : '';
+                const fdrClass = team.avgFdr <= 2.5 ? 'cell-excellent' : 
+                                team.avgFdr <= 3.5 ? 'cell-good' : 'cell-poor';
+                const csClass = team.cleanSheetProb >= 50 ? 'cell-excellent' : 
+                               team.cleanSheetProb >= 30 ? 'cell-good' : 'cell-poor';
+                
+                const trendClass = team.fixtureSwing === 'Getting Easier' ? 'trend-easier' :
+                                  team.fixtureSwing === 'Getting Harder' ? 'trend-harder' : 'trend-stable';
+                const trendSymbol = team.fixtureSwing === 'Getting Easier' ? '↓' :
+                                   team.fixtureSwing === 'Getting Harder' ? '↑' : '→';
+                
+                // Create form visual (last 5 results)
+                const formVisual = team.pastFixtures.slice(-5).map(f => {
+                    return `<div class="form-result ${f.result}">${f.result}</div>`;
+                }).join('');
+                
+                return `
+                    <tr onclick="expandTeamDetails(${team.teamId})">
+                        <td>${index + 1}</td>
+                        <td class="team-name-cell">${team.shortName}</td>
+                        <td>${team.leaguePos || '-'}</td>
+                        <td class="${formClass}">${team.formScore}</td>
+                        <td class="${attackClass}">${team.attackRating}</td>
+                        <td class="${defenseClass}">${team.defenseRating}</td>
+                        <td>${team.seasonGF}</td>
+                        <td>${team.seasonGA}</td>
+                        <td><div class="form-visual">${formVisual}</div></td>
+                        <td class="${fdrClass}">${team.avgFdr}</td>
+                        <td class="${csClass}">${team.cleanSheetProb}%</td>
+                        <td class="${trendClass}">${trendSymbol}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            // Update sorted column indicator
+            document.querySelectorAll('.overview-table th').forEach(th => {
+                th.classList.remove('sorted');
+            });
+        }
+
+        function sortOverview(column) {
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'desc';
+            }
+            renderOverviewTable();
+        }
+
+        function filterOverview() {
+            const searchTerm = document.getElementById('teamSearch').value.toLowerCase();
+            overviewData = allTeamsData.filter(team => 
+                team.teamName.toLowerCase().includes(searchTerm) ||
+                team.shortName.toLowerCase().includes(searchTerm)
+            );
+            renderOverviewTable();
+        }
+
+        function expandTeamDetails(teamId) {
+            // Future enhancement: show modal or expand row with full team card
+            console.log('Team details for:', teamId);
         }
 
         function renderBestForAttackers(teams) {
@@ -1148,12 +1415,12 @@
         function renderFixtureSwings(teams) {
             // Find teams with easiest fixtures getting easier, or hardest fixtures getting easier
             const easyGettingEasier = teams
-                .filter(t => t.fixtureSwing === 'Getting Easier' && t.avgFdr <= 3.5)
+                .filter(t => t.fixtureSwing === 'Getting Easier' && t.avgFdr <= 2.8)
                 .sort((a, b) => a.avgFdr - b.avgFdr)
                 .slice(0, 5);
             
             const hardGettingEasier = teams
-                .filter(t => t.fixtureSwing === 'Getting Easier' && t.avgFdr > 3.0)
+                .filter(t => t.fixtureSwing === 'Getting Easier' && t.avgFdr >= 3.5)
                 .sort((a, b) => {
                     // Sort by form score if fixtures are getting easier
                     return b.formScore - a.formScore;
