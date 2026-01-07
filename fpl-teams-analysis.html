@@ -606,30 +606,7 @@
         }
 
         /* Overview Table Styles */
-        .overview-search {
-            margin-bottom: 15px;
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            padding: 0 5px;
-        }
-
-        .overview-search input {
-            background: var(--surface);
-            border: 2px solid var(--border);
-            color: var(--text);
-            padding: 10px 15px;
-            font-family: 'DM Mono', monospace;
-            font-size: 12px;
-            width: 300px;
-            transition: all 0.3s ease;
-        }
-
-        .overview-search input:focus {
-            outline: none;
-            border-color: var(--accent-blue);
-        }
-
+        /* Overview Table Styles */
         .table-container {
             overflow-x: auto;
             border: 2px solid var(--border);
@@ -871,9 +848,9 @@
                     <div class="guide-text">
                         <p><strong>Quick Reference:</strong></p>
                         <ul>
-                            <li><strong>Form Score:</strong> 70+ excellent • 50-69 good • &lt;50 risky</li>
-                            <li><strong>FDR (Fixtures):</strong> 1-2 easy • 3 medium • 4-5 tough</li>
-                            <li><strong>Clean Sheet Prob:</strong> 50%+ target • 30-50% okay • &lt;30% avoid</li>
+                            <li><strong>Form Score:</strong> 75+ excellent • 50-74 good • 25-49 average • &lt;25 poor</li>
+                            <li><strong>Fixture Difficulty:</strong> 1-2 easy • 3 medium • 4-5 tough</li>
+                            <li><strong>Clean Sheet %:</strong> 50%+ target • 30-50% okay • &lt;30% avoid</li>
                             <li><strong>Attack/Defense Rating:</strong> 65+ target • 45-65 monitor • &lt;45 avoid</li>
                         </ul>
                         <p><strong>Colors:</strong> Green = good opportunity • Yellow = okay option • Red = risky pick</p>
@@ -988,8 +965,7 @@
 
     <div class="content">
         <div class="tab-content active" id="overview-content">
-            <div class="overview-search">
-                <input type="text" id="teamSearch" placeholder="🔍 Search teams..." onkeyup="filterOverview()">
+            <div style="margin-bottom: 15px; padding: 0 5px;">
                 <span id="teamCount" style="color: var(--text-dim); font-size: 11px;"></span>
             </div>
             <div class="table-container">
@@ -998,18 +974,18 @@
                         <tr>
                             <th onclick="sortOverview('rank')" class="tooltip" data-tooltip="Ranking by current sort"># <span class="sort-arrow">↕</span></th>
                             <th onclick="sortOverview('teamName')" class="team-name-header tooltip" data-tooltip="Team name">Team <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('leaguePos')" class="tooltip" data-tooltip="Current Premier League table position">Pos <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('formScore')" class="tooltip" data-tooltip="Form score: 70+ excellent, 50-69 good, <50 risky. Based on goals, wins, and fixtures">Form <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('attackRating')" class="tooltip" data-tooltip="How good for FPL attackers: 65+ target, 45-65 monitor, <45 avoid">Attack <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('defenseRating')" class="tooltip" data-tooltip="How good for FPL defenders: 65+ target, 45-65 monitor, <45 avoid">Defense <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('seasonGF')" class="tooltip" data-tooltip="Goals scored per game this season">Seas GF <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('seasonGA')" class="tooltip" data-tooltip="Goals conceded per game this season">Seas GA <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('goalsScored')" class="tooltip" data-tooltip="Total goals scored in last 5 games">L5 GF <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('cleanSheets')" class="tooltip" data-tooltip="Clean sheets in last 5 games">L5 CS <span class="sort-arrow">↕</span></th>
-                            <th class="tooltip" data-tooltip="Last 5 results: W=Win, D=Draw, L=Loss">Last 5</th>
-                            <th onclick="sortOverview('avgFdr')" class="tooltip" data-tooltip="Fixture Difficulty Rating next 5 games: 1-2 easy, 3 medium, 4-5 tough">FDR <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('cleanSheetProb')" class="tooltip" data-tooltip="Clean sheet probability next 5 games: 50%+ target, 30-50% okay, <30% avoid">CS% <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('fixtureSwing')" class="tooltip" data-tooltip="Are fixtures getting easier (↓), harder (↑), or staying stable (→)">Trend <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('leaguePos')" class="tooltip" data-tooltip="Current position in Premier League table">League Pos <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('formScore')" class="tooltip" data-tooltip="Overall form: 75+ excellent, 50-74 good, 25-49 average, <25 poor">Form Score <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('attackRating')" class="tooltip" data-tooltip="How good for FPL attackers: 65+ target, 45-65 monitor, <45 avoid">Attack Rating <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('defenseRating')" class="tooltip" data-tooltip="How good for FPL defenders: 65+ target, 45-65 monitor, <45 avoid">Defense Rating <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('seasonGF')" class="tooltip" data-tooltip="Average goals scored per game this season">Season Goals/Game <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('seasonGA')" class="tooltip" data-tooltip="Average goals conceded per game this season">Season Conceded/Game <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('goalsScored')" class="tooltip" data-tooltip="Total goals scored in last 5 games">Last 5 Goals <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('cleanSheets')" class="tooltip" data-tooltip="Clean sheets in last 5 games">Last 5 CS <span class="sort-arrow">↕</span></th>
+                            <th class="tooltip" data-tooltip="Last 5 results: W=Win, D=Draw, L=Loss">Last 5 Results</th>
+                            <th onclick="sortOverview('avgFdr')" class="tooltip" data-tooltip="Fixture Difficulty Rating next 5 games: 1-2 easy, 3 medium, 4-5 tough">Fixture Difficulty <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('cleanSheetProb')" class="tooltip" data-tooltip="Clean sheet probability next 5 games: 50%+ target, 30-50% okay, <30% avoid">Clean Sheet % <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('fixtureSwing')" class="tooltip" data-tooltip="Are fixtures getting easier (↓), harder (↑), or staying stable (→)">Fixture Trend <span class="sort-arrow">↕</span></th>
                         </tr>
                     </thead>
                     <tbody id="overviewTableBody">
@@ -1312,19 +1288,23 @@
                 var fixtureSwing = 'Stable';
             }
 
-            // Form score (normalized 0-100)
-            // Components weighted and scaled to fit 0-100:
-            // - Goals scored: max ~4.0/game = 20 points
-            // - Win%: max 100% = 25 points  
-            // - Clean sheet%: max 100% = 20 points
-            // - Goals conceded: 0 conceded = 20 points, 2+ = 0 points
-            // - Fixtures: FDR 1 = 15 points, FDR 5 = 0 points
+            // Form score (improved 0-100 scale with better distribution)
+            // Adjusted to give more realistic spread: Top teams 75-90, Mid teams 45-65, Bottom teams 20-45
             const formScore = (
-                (Math.min(parseFloat(avgGoalsScored), 4.0) / 4.0 * 20) +     // 0-20 points
-                (parseFloat(winPct) * 0.25) +                                  // 0-25 points
-                (parseFloat(cleanSheetPct) * 0.20) +                          // 0-20 points
-                (Math.max(0, (2.0 - parseFloat(avgGoalsConceded))) / 2.0 * 20) + // 0-20 points
-                ((5 - parseFloat(avgFdr)) / 4.0 * 15)                         // 0-15 points
+                // Goals scored: 0.5/game=0pts, 3.0/game=100pts scaled to 30 pts max
+                (Math.max(0, Math.min(parseFloat(avgGoalsScored) - 0.5, 2.5)) / 2.5 * 30) +
+                
+                // Win %: scaled to 25 points max
+                (parseFloat(winPct) * 0.25) +
+                
+                // Clean sheet %: scaled to 20 points max  
+                (parseFloat(cleanSheetPct) * 0.20) +
+                
+                // Goals conceded: 0.5/game=20pts, 2.5/game=0pts
+                (Math.max(0, (2.5 - parseFloat(avgGoalsConceded))) / 2.0 * 20) +
+                
+                // FDR bonus: Easy fixtures add points (FDR 1=5pts, FDR 5=0pts)
+                ((5.5 - parseFloat(avgFdr)) / 4.5 * 5)
             ).toFixed(0);
 
             return {
@@ -1406,8 +1386,9 @@
             });
             
             tbody.innerHTML = sorted.map((team, index) => {
-                const formClass = team.formScore >= 70 ? 'cell-excellent' : 
-                                  team.formScore >= 50 ? 'cell-good' : 'cell-poor';
+                const formClass = team.formScore >= 75 ? 'cell-excellent' : 
+                                  team.formScore >= 50 ? 'cell-good' : 
+                                  team.formScore >= 25 ? '' : 'cell-poor';
                 const attackClass = team.attackRating >= 65 ? 'cell-excellent' : 
                                    team.attackRating >= 45 ? 'cell-good' : '';
                 const defenseClass = team.defenseRating >= 65 ? 'cell-excellent' : 
@@ -1428,8 +1409,9 @@
                 }).join('');
                 
                 // Create tooltips for cells
-                const formTooltip = team.formScore >= 70 ? 'Excellent form' : 
-                                    team.formScore >= 50 ? 'Good form' : 'Poor form';
+                const formTooltip = team.formScore >= 75 ? 'Excellent form - top team' : 
+                                    team.formScore >= 50 ? 'Good form - solid option' :
+                                    team.formScore >= 25 ? 'Average form - monitor closely' : 'Poor form - avoid';
                 const attackTooltip = team.attackRating >= 65 ? 'Target their attackers' : 
                                       team.attackRating >= 45 ? 'Monitor their attackers' : 'Avoid their attackers';
                 const defenseTooltip = team.defenseRating >= 65 ? 'Target their defenders' : 
@@ -1481,15 +1463,6 @@
                 currentSort.column = column;
                 currentSort.direction = 'desc';
             }
-            renderOverviewTable();
-        }
-
-        function filterOverview() {
-            const searchTerm = document.getElementById('teamSearch').value.toLowerCase();
-            overviewData = allTeamsData.filter(team => 
-                team.teamName.toLowerCase().includes(searchTerm) ||
-                team.shortName.toLowerCase().includes(searchTerm)
-            );
             renderOverviewTable();
         }
 
