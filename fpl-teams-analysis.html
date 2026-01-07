@@ -766,6 +766,77 @@
         .trend-stable {
             color: var(--text-dim);
         }
+
+        /* Tooltips */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background: var(--bg-darker);
+            border: 2px solid var(--accent-blue);
+            color: var(--text);
+            font-size: 11px;
+            line-height: 1.4;
+            white-space: normal;
+            width: 200px;
+            text-align: center;
+            border-radius: 4px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* Tooltip for table headers */
+        .overview-table th.tooltip::after {
+            width: 220px;
+            font-size: 10px;
+        }
+
+        /* Tooltip arrow */
+        .tooltip::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--accent-blue);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1001;
+            margin-bottom: 2px;
+        }
+
+        .tooltip:hover::before {
+            opacity: 1;
+        }
+
+        /* Visual indicator for tooltips */
+        .overview-table th.tooltip:hover,
+        .overview-table td.tooltip:hover {
+            text-decoration: underline;
+            text-decoration-style: dotted;
+        }
+
+        /* Don't trigger row click when hovering tooltip cells */
+        .overview-table td.tooltip {
+            cursor: help;
+        }
     </style>
 </head>
 <body>
@@ -925,18 +996,18 @@
                 <table class="overview-table" id="overviewTable">
                     <thead>
                         <tr>
-                            <th onclick="sortOverview('rank')"># <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('teamName')" class="team-name-header">Team <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('leaguePos')">Pos <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('formScore')">Form <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('attackRating')">Attack <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('defenseRating')">Defense <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('seasonGF')">GF/GP <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('seasonGA')">GA/GP <span class="sort-arrow">↕</span></th>
-                            <th>Last 5</th>
-                            <th onclick="sortOverview('avgFdr')">FDR <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('cleanSheetProb')">CS% <span class="sort-arrow">↕</span></th>
-                            <th onclick="sortOverview('fixtureSwing')">Trend <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('rank')" class="tooltip" data-tooltip="Ranking by current sort"># <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('teamName')" class="team-name-header tooltip" data-tooltip="Team name">Team <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('leaguePos')" class="tooltip" data-tooltip="Current Premier League table position">Pos <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('formScore')" class="tooltip" data-tooltip="Form score: 70+ excellent, 50-69 good, <50 risky. Based on goals, wins, and fixtures">Form <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('attackRating')" class="tooltip" data-tooltip="How good for FPL attackers: 65+ target, 45-65 monitor, <45 avoid">Attack <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('defenseRating')" class="tooltip" data-tooltip="How good for FPL defenders: 65+ target, 45-65 monitor, <45 avoid">Defense <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('seasonGF')" class="tooltip" data-tooltip="Goals scored per game this season">GF/GP <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('seasonGA')" class="tooltip" data-tooltip="Goals conceded per game this season">GA/GP <span class="sort-arrow">↕</span></th>
+                            <th class="tooltip" data-tooltip="Last 5 results: W=Win, D=Draw, L=Loss">Last 5</th>
+                            <th onclick="sortOverview('avgFdr')" class="tooltip" data-tooltip="Fixture Difficulty Rating next 5 games: 1-2 easy, 3 medium, 4-5 tough">FDR <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('cleanSheetProb')" class="tooltip" data-tooltip="Clean sheet probability next 5 games: 50%+ target, 30-50% okay, <30% avoid">CS% <span class="sort-arrow">↕</span></th>
+                            <th onclick="sortOverview('fixtureSwing')" class="tooltip" data-tooltip="Are fixtures getting easier (↓), harder (↑), or staying stable (→)">Trend <span class="sort-arrow">↕</span></th>
                         </tr>
                     </thead>
                     <tbody id="overviewTableBody">
@@ -1317,23 +1388,38 @@
                 
                 // Create form visual (last 5 results)
                 const formVisual = team.pastFixtures.slice(-5).map(f => {
-                    return `<div class="form-result ${f.result}">${f.result}</div>`;
+                    return `<div class="form-result ${f.result}" title="${f.opponent} (${f.homeAway}) ${f.score}">${f.result}</div>`;
                 }).join('');
+                
+                // Create tooltips for cells
+                const formTooltip = team.formScore >= 70 ? 'Excellent form' : 
+                                    team.formScore >= 50 ? 'Good form' : 'Poor form';
+                const attackTooltip = team.attackRating >= 65 ? 'Target their attackers' : 
+                                      team.attackRating >= 45 ? 'Monitor their attackers' : 'Avoid their attackers';
+                const defenseTooltip = team.defenseRating >= 65 ? 'Target their defenders' : 
+                                       team.defenseRating >= 45 ? 'Monitor their defenders' : 'Avoid their defenders';
+                const fdrTooltip = team.avgFdr <= 2.5 ? 'Easy fixtures ahead' : 
+                                   team.avgFdr <= 3.5 ? 'Medium fixtures' : 'Tough fixtures ahead';
+                const csTooltip = team.cleanSheetProb >= 50 ? 'High CS chance - target defenders' : 
+                                  team.cleanSheetProb >= 30 ? 'Moderate CS chance' : 'Low CS chance - avoid defenders';
+                const trendTooltip = team.fixtureSwing === 'Getting Easier' ? 'Fixtures improving - good time to buy' :
+                                    team.fixtureSwing === 'Getting Harder' ? 'Fixtures worsening - consider selling' : 
+                                    'Fixtures staying similar';
                 
                 return `
                     <tr onclick="expandTeamDetails(${team.teamId})">
                         <td>${index + 1}</td>
                         <td class="team-name-cell">${team.shortName}</td>
-                        <td>${team.leaguePos || '-'}</td>
-                        <td class="${formClass}">${team.formScore}</td>
-                        <td class="${attackClass}">${team.attackRating}</td>
-                        <td class="${defenseClass}">${team.defenseRating}</td>
-                        <td>${team.seasonGF}</td>
-                        <td>${team.seasonGA}</td>
+                        <td title="League position: ${team.leaguePos || 'N/A'}">${team.leaguePos || '-'}</td>
+                        <td class="${formClass} tooltip" data-tooltip="${formTooltip}">${team.formScore}</td>
+                        <td class="${attackClass} tooltip" data-tooltip="${attackTooltip}">${team.attackRating}</td>
+                        <td class="${defenseClass} tooltip" data-tooltip="${defenseTooltip}">${team.defenseRating}</td>
+                        <td title="Season average: ${team.seasonGF} goals scored per game">${team.seasonGF}</td>
+                        <td title="Season average: ${team.seasonGA} goals conceded per game">${team.seasonGA}</td>
                         <td><div class="form-visual">${formVisual}</div></td>
-                        <td class="${fdrClass}">${team.avgFdr}</td>
-                        <td class="${csClass}">${team.cleanSheetProb}%</td>
-                        <td class="${trendClass}">${trendSymbol}</td>
+                        <td class="${fdrClass} tooltip" data-tooltip="${fdrTooltip}">${team.avgFdr}</td>
+                        <td class="${csClass} tooltip" data-tooltip="${csTooltip}">${team.cleanSheetProb}%</td>
+                        <td class="${trendClass} tooltip" data-tooltip="${trendTooltip}">${trendSymbol}</td>
                     </tr>
                 `;
             }).join('');
