@@ -955,7 +955,6 @@
 
     <div class="tabs" id="tabs">
         <button class="tab" data-position="RECOMMENDATIONS">⭐ Recommendations</button>
-        <button class="tab" data-position="FORM">🔥 Form Players</button>
         <button class="tab" data-position="GK">🧤 Goalkeepers</button>
         <button class="tab" data-position="DEF">🛡️ Defenders</button>
         <button class="tab" data-position="MID">⚡ Midfielders</button>
@@ -964,7 +963,6 @@
 
     <div class="content">
         <div class="position-section" id="section-RECOMMENDATIONS"></div>
-        <div class="position-section" id="section-FORM"></div>
         <div class="position-section" id="section-GK"></div>
         <div class="position-section" id="section-DEF"></div>
         <div class="position-section" id="section-MID"></div>
@@ -993,10 +991,13 @@
     </div>
 
     <script>
-        const CORS_PROXY = 'https://corsproxy.io/?';
+        // Use Netlify function for CORS proxy
+        const API_PROXY = '/.netlify/functions/fpl-proxy?url=';
 
         let bootstrapData = null;
         let playerAnalyses = {};
+        let cachedPlayerDetails = null;
+        let playerDetailsLoadPromise = null;
 
         // Toggle guide section
         function toggleGuide() {
@@ -1044,13 +1045,86 @@
         }
 
         async function fetchBootstrapData() {
-            const response = await fetch(CORS_PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/'));
+            // Check browser localStorage first
+            const cached = localStorage.getItem('fpl_bootstrap_data');
+            const cacheTime = localStorage.getItem('fpl_bootstrap_time');
+            const oneDay = 24 * 60 * 60 * 1000;
+            
+            if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
+                console.log('✅ Loaded bootstrap from browser cache (instant)');
+                return JSON.parse(cached);
+            }
+            
+            try {
+                // Try loading from cached static file
+                const response = await fetch('/data/bootstrap-static.json');
+                if (response.ok) {
+                    console.log('✅ Loaded bootstrap from server cache');
+                    const data = await response.json();
+                    // Save to localStorage for next time
+                    localStorage.setItem('fpl_bootstrap_data', JSON.stringify(data));
+                    localStorage.setItem('fpl_bootstrap_time', Date.now().toString());
+                    return data;
+                }
+            } catch (e) {
+                console.log('ℹ️ No cached data, fetching from API...');
+            }
+            
+            // Fallback to API proxy
+            const url = 'https://fantasy.premierleague.com/api/bootstrap-static/';
+            const response = await fetch(API_PROXY + encodeURIComponent(url));
             if (!response.ok) throw new Error('Failed to fetch bootstrap data');
-            return await response.json();
+            const data = await response.json();
+            
+            // Save to localStorage
+            localStorage.setItem('fpl_bootstrap_data', JSON.stringify(data));
+            localStorage.setItem('fpl_bootstrap_time', Date.now().toString());
+            return data;
+        }
+
+        async function loadCachedPlayerDetails() {
+            // Return existing promise if already loading
+            if (playerDetailsLoadPromise) {
+                return playerDetailsLoadPromise;
+            }
+            
+            // Return cached data if already loaded in memory
+            if (cachedPlayerDetails) {
+                console.log('✅ Using cached player details from memory');
+                return cachedPlayerDetails;
+            }
+            
+            // Create a promise for loading player details (only happens once per session)
+            playerDetailsLoadPromise = (async () => {
+                try {
+                    console.log('📥 Loading player details file...');
+                    const response = await fetch('/data/player-details.json');
+                    if (response.ok) {
+                        cachedPlayerDetails = await response.json();
+                        console.log(`✅ Loaded ${Object.keys(cachedPlayerDetails).length} player details from server (will stay in memory)`);
+                        return cachedPlayerDetails;
+                    }
+                } catch (e) {
+                    console.log('ℹ️ No cached player details file available, will fetch individually');
+                }
+                
+                return null;
+            })();
+            
+            return playerDetailsLoadPromise;
         }
 
         async function fetchPlayerDetails(elementId) {
-            const response = await fetch(CORS_PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/element-summary/${elementId}/`));
+            // Try cached data first
+            const cached = await loadCachedPlayerDetails();
+            if (cached && cached[elementId]) {
+                return cached[elementId];
+            }
+            
+            // Fallback to API if not in cache
+            console.log(`📡 Fetching live data for player ${elementId}`);
+            const url = `https://fantasy.premierleague.com/api/element-summary/${elementId}/`;
+            const response = await fetch(API_PROXY + encodeURIComponent(url));
             if (!response.ok) throw new Error(`Failed to fetch player ${elementId}`);
             return await response.json();
         }
@@ -1475,75 +1549,96 @@
                     teams[team.id] = team.short_name;
                 });
 
-                // Get all players from the API
-                const allPlayers = bootstrapData.elements.map(player => ({
-                    id: player.id,
-                    name: player.web_name,
-                    position: player.element_type,
-                    team: teams[player.team],
-                    totalPoints: player.total_points,
-                    minutes: player.minutes,
-                    price: player.now_cost / 10, // Convert to actual price
-                    form: parseFloat(player.form),
-                    selectedByPercent: parseFloat(player.selected_by_percent)
-                }));
-
-                // Filter players who have played at least some minutes
-                const activePlayers = allPlayers.filter(p => p.minutes > 0);
+                // Check if we have cached analysis results in sessionStorage
+                const cacheKey = 'fpl_analyzed_players';
+                const cacheTimeKey = 'fpl_analyzed_players_time';
+                const cached = sessionStorage.getItem(cacheKey);
+                const cacheTime = sessionStorage.getItem(cacheTimeKey);
+                const oneDay = 24 * 60 * 60 * 1000;
                 
-                updateStatus(`Found ${activePlayers.length} active players. Starting detailed analysis...`, 'loading');
-                console.log(`Analyzing ${activePlayers.length} players with game time`);
-
-                const analyses = [];
-                let successCount = 0;
-                let skipCount = 0;
+                let analyses;
                 
-                for (let i = 0; i < activePlayers.length; i++) {
-                    const player = activePlayers[i];
+                if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < oneDay)) {
+                    // Load from cache - INSTANT!
+                    console.log('⚡ Loading from session cache (instant!)');
+                    updateStatus('Loading from cache...', 'loading');
+                    analyses = JSON.parse(cached);
+                    console.log(`✅ Loaded ${analyses.length} analyzed players from cache`);
+                } else {
+                    // No cache - do full analysis
+                    console.log('🔄 No cache found, performing full analysis...');
                     
-                    if (i % 10 === 0) {
-                        updateStatus(`Analyzing ${player.name} (${i + 1}/${activePlayers.length}) - ${successCount} loaded, ${skipCount} skipped`, 'loading');
-                    }
+                    // Get all players from the API
+                    const allPlayers = bootstrapData.elements.map(player => ({
+                        id: player.id,
+                        name: player.web_name,
+                        position: player.element_type,
+                        team: teams[player.team],
+                        totalPoints: player.total_points,
+                        minutes: player.minutes,
+                        price: player.now_cost / 10,
+                        form: parseFloat(player.form),
+                        selectedByPercent: parseFloat(player.selected_by_percent)
+                    }));
+
+                    // Filter players who have played at least some minutes
+                    const activePlayers = allPlayers.filter(p => p.minutes > 0);
                     
-                    try {
-                        // This makes the actual API call to element-summary endpoint
-                        const analysis = await analyzePlayer(player.id, player.name, player.position, player.team);
-                        if (analysis) {
-                            // Add price and form data to analysis
-                            analysis.price = player.price;
-                            analysis.form = player.form;
-                            analysis.selectedByPercent = player.selectedByPercent;
-                            analyses.push(analysis);
-                            successCount++;
-                        } else {
+                    updateStatus(`Found ${activePlayers.length} active players. Starting detailed analysis...`, 'loading');
+                    console.log(`Analyzing ${activePlayers.length} players with game time`);
+
+                    analyses = [];
+                    let successCount = 0;
+                    let skipCount = 0;
+                    
+                    for (let i = 0; i < activePlayers.length; i++) {
+                        const player = activePlayers[i];
+                        
+                        if (i % 10 === 0) {
+                            updateStatus(`Analyzing ${player.name} (${i + 1}/${activePlayers.length}) - ${successCount} loaded, ${skipCount} skipped`, 'loading');
+                        }
+                        
+                        try {
+                            const analysis = await analyzePlayer(player.id, player.name, player.position, player.team);
+                            if (analysis) {
+                                analysis.price = player.price;
+                                analysis.form = player.form;
+                                analysis.selectedByPercent = player.selectedByPercent;
+                                analyses.push(analysis);
+                                successCount++;
+                            } else {
+                                skipCount++;
+                            }
+                        } catch (error) {
+                            console.error(`Failed to analyze ${player.name}:`, error);
                             skipCount++;
                         }
-                    } catch (error) {
-                        console.error(`Failed to analyze ${player.name}:`, error);
-                        skipCount++;
+                        
+                        if (i > 0 && i % 20 === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
                     }
+
+                    console.log(`Analysis complete: ${successCount} players loaded, ${skipCount} skipped`);
                     
-                    // Add a small delay every 20 players to avoid overwhelming the API
-                    if (i > 0 && i % 20 === 0) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                    // Save to sessionStorage for instant loading next time
+                    try {
+                        sessionStorage.setItem(cacheKey, JSON.stringify(analyses));
+                        sessionStorage.setItem(cacheTimeKey, Date.now().toString());
+                        console.log('💾 Saved analysis results to session cache');
+                    } catch (e) {
+                        console.warn('Could not save to sessionStorage:', e.message);
                     }
                 }
 
-                console.log(`Analysis complete: ${successCount} players loaded, ${skipCount} skipped`);
-
-                // Generate recommendations
+                // Render the UI with the analyses (whether from cache or fresh)
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
-                
-                // Generate form players
-                document.getElementById('section-FORM').innerHTML = generateFormPlayers(analyses);
-
-                // Render tables
                 document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
                 document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
                 document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
                 document.getElementById('section-FWD').innerHTML = createTable('FWD', analyses);
 
-                updateStatus(`✓ Successfully loaded ${successCount} players (${skipCount} skipped due to no data)`, 'success');
+                updateStatus(`✓ Successfully loaded ${analyses.length} players`, 'success');
                 showLoading(false);
 
             } catch (error) {
@@ -1789,254 +1884,6 @@
             }
             
             html += '</div>';
-            return html;
-        }
-        
-        function generateFormPlayers(analyses) {
-            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const formSignals = [];
-            
-            // Analyze all players for form signals
-            analyses.forEach(player => {
-                const position = positionMap[player.position];
-                
-                // Skip players with no meaningful data
-                if (player.l5.games < 3 || player.season.games < 5) return;
-                
-                let signal = 0;
-                const reasons = [];
-                
-                // Calculate key metrics
-                const l5AvgPoints = player.l5.points / player.l5.games;
-                const seasonAvgPoints = player.season.points / player.season.games;
-                const l5AvgMinutes = player.l5.minutes / player.l5.games;
-                const l5xGIperGame = player.l5.xGI / player.l5.games;
-                const ownership = player.selectedBy || 0;
-                
-                // 1. Form Improvement (30 points max)
-                const pointsImprovement = ((l5AvgPoints - seasonAvgPoints) / seasonAvgPoints) * 100;
-                if (pointsImprovement > 50) {
-                    signal += 30;
-                    reasons.push(`🔥 Form surging (+${pointsImprovement.toFixed(0)}%)`);
-                } else if (pointsImprovement > 25) {
-                    signal += 20;
-                    reasons.push(`📈 Form improving (+${pointsImprovement.toFixed(0)}%)`);
-                } else if (l5AvgPoints >= 5) {
-                    signal += 15;
-                    reasons.push(`Hot form (${l5AvgPoints.toFixed(1)} pts/game)`);
-                }
-                
-                // 2. xGI Quality (25 points max)
-                if (position !== 'GK') {
-                    if (l5xGIperGame >= 0.6) {
-                        signal += 25;
-                        reasons.push(`💎 Elite xGI (${l5xGIperGame.toFixed(2)}/game)`);
-                    } else if (l5xGIperGame >= 0.4) {
-                        signal += 15;
-                        reasons.push(`⚡ Strong xGI (${l5xGIperGame.toFixed(2)}/game)`);
-                    } else if (l5xGIperGame >= 0.25) {
-                        signal += 8;
-                        reasons.push(`Good xGI (${l5xGIperGame.toFixed(2)}/game)`);
-                    }
-                } else {
-                    // For GK, use clean sheets
-                    const l5CS = player.l5.cleanSheets / player.l5.games;
-                    if (l5CS >= 0.6) {
-                        signal += 25;
-                        reasons.push(`💎 Excellent CS rate (${(l5CS * 100).toFixed(0)}%)`);
-                    } else if (l5CS >= 0.4) {
-                        signal += 15;
-                        reasons.push(`Strong CS rate (${(l5CS * 100).toFixed(0)}%)`);
-                    }
-                }
-                
-                // 3. Minutes Trend (15 points max)
-                if (l5AvgMinutes >= 85) {
-                    signal += 15;
-                    reasons.push(`✅ Nailed on (${l5AvgMinutes.toFixed(0)} mins)`);
-                } else if (l5AvgMinutes >= 70) {
-                    signal += 10;
-                    reasons.push(`Regular starter (${l5AvgMinutes.toFixed(0)} mins)`);
-                } else if (l5AvgMinutes >= 60) {
-                    signal += 5;
-                    reasons.push(`Getting minutes (${l5AvgMinutes.toFixed(0)} mins)`);
-                }
-                
-                // 4. Ownership Sweet Spot (10 points max)
-                if (ownership < 5 && l5AvgPoints >= 3) {
-                    signal += 10;
-                    reasons.push(`🔓 Ultra differential (${ownership.toFixed(1)}%)`);
-                } else if (ownership < 10 && l5AvgPoints >= 2) {
-                    signal += 6;
-                    reasons.push(`Low owned (${ownership.toFixed(1)}%)`);
-                }
-                
-                // 5. Underperformance Bonus (10 points)
-                const l5ActualGI = (player.l5.goals + player.l5.assists) / player.l5.games;
-                const underperformance = l5xGIperGame - l5ActualGI;
-                if (underperformance > 0.15 && l5xGIperGame > 0.3) {
-                    signal += 10;
-                    reasons.push(`📊 Underperforming xGI - DUE`);
-                }
-                
-                // 6. Value Score (10 points)
-                const ptsPerMillion = l5AvgPoints / player.price;
-                if (ptsPerMillion > 1.0) {
-                    signal += 10;
-                    reasons.push(`💰 Great value (${ptsPerMillion.toFixed(2)}/£m)`);
-                } else if (ptsPerMillion > 0.7) {
-                    signal += 5;
-                    reasons.push(`Good value (${ptsPerMillion.toFixed(2)}/£m)`);
-                }
-                
-                // Only include if signal >= 45
-                if (signal >= 45 && reasons.length > 0) {
-                    formSignals.push({
-                        ...player,
-                        signal,
-                        reasons,
-                        position,
-                        priority: signal >= 70 ? 'HIGH' : signal >= 55 ? 'MEDIUM' : 'WATCH',
-                        l5AvgPoints,
-                        l5AvgMinutes,
-                        l5xGIperGame,
-                        ownership
-                    });
-                }
-            });
-            
-            // Sort by signal strength
-            formSignals.sort((a, b) => b.signal - a.signal);
-            
-            // Take top 20
-            const topSignals = formSignals.slice(0, 20);
-            
-            // Group by priority
-            const highPriority = topSignals.filter(p => p.priority === 'HIGH');
-            const mediumPriority = topSignals.filter(p => p.priority === 'MEDIUM');
-            const watchList = topSignals.filter(p => p.priority === 'WATCH');
-            
-            let html = `
-                <div style="margin-bottom: 25px; padding: 20px; background: var(--surface); border-left: 4px solid var(--accent-red); border-radius: 4px;">
-                    <h2 style="color: var(--accent-red); margin-bottom: 12px; font-size: 18px; font-family: 'Space Mono', monospace;">
-                        🔥 FORM PLAYERS - Early Detection
-                    </h2>
-                    <p style="font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-bottom: 10px;">
-                        These players show <strong>early form signals</strong> based on improving stats, minutes consistency, and low ownership.
-                        Act NOW before template managers catch on and prices rise. Perfect for transfers and wildcards.
-                    </p>
-                    <div style="display: flex; gap: 20px; margin-top: 15px; font-size: 11px;">
-                        <span style="color: var(--accent-red);">🔥 <strong>HIGH (70+)</strong> = Buy now</span>
-                        <span style="color: var(--accent-yellow);">⚡ <strong>MEDIUM (55-69)</strong> = Strong option</span>
-                        <span style="color: var(--accent-blue);">👀 <strong>WATCH (45-54)</strong> = Monitor</span>
-                    </div>
-                </div>
-            `;
-            
-            if (topSignals.length === 0) {
-                html += '<div style="padding: 30px; text-align: center; color: var(--text-dim);">No strong form signals detected. Check back after next gameweek.</div>';
-                return html;
-            }
-            
-            // Helper to create player card
-            function createFormPlayerCard(player, rank) {
-                const priorityColor = player.priority === 'HIGH' ? 'var(--accent-red)' : 
-                                    player.priority === 'MEDIUM' ? 'var(--accent-yellow)' : 'var(--accent-blue)';
-                const priorityEmoji = player.priority === 'HIGH' ? '🔥' : 
-                                     player.priority === 'MEDIUM' ? '⚡' : '👀';
-                
-                return `
-                    <div style="background: var(--surface-light); border-left: 3px solid ${priorityColor}; padding: 15px; border-radius: 4px; margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                            <div>
-                                <div style="font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px;">
-                                    #${rank} ${player.name}
-                                </div>
-                                <div style="font-size: 10px; color: var(--text-dim);">
-                                    ${player.team} • ${player.position} • ${player.l5AvgMinutes.toFixed(0)}min avg
-                                </div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-size: 16px; font-weight: 700; color: ${priorityColor};">
-                                    ${priorityEmoji} ${player.signal}
-                                </div>
-                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">
-                                    ${player.priority}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; padding: 10px; background: var(--bg-dark); border-radius: 3px;">
-                            <div>
-                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">Price</div>
-                                <div style="font-size: 12px; font-weight: 600; color: var(--accent-green);">£${player.price.toFixed(1)}m</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">Owned</div>
-                                <div style="font-size: 12px; font-weight: 600; color: var(--text);">${player.ownership.toFixed(1)}%</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">Pts/Game</div>
-                                <div style="font-size: 12px; font-weight: 600; color: var(--text);">${player.l5AvgPoints.toFixed(1)}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">xGI/Game</div>
-                                <div style="font-size: 12px; font-weight: 600; color: var(--text);">${player.l5xGIperGame.toFixed(2)}</div>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-bottom: 12px;">
-                            <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Why This Player:</div>
-                            ${player.reasons.map(r => `<div style="font-size: 11px; color: var(--text); margin-bottom: 3px; padding-left: 8px; border-left: 2px solid ${priorityColor}; margin-left: 4px;">• ${r}</div>`).join('')}
-                        </div>
-                        
-                        <div style="padding: 8px 12px; background: linear-gradient(135deg, ${priorityColor} 0%, ${priorityColor}dd 100%); border-radius: 3px; text-align: center;">
-                            <span style="font-size: 11px; color: white; font-weight: 600;">
-                                ${player.priority === 'HIGH' ? '🎯 BUY NOW before price rises' : 
-                                  player.priority === 'MEDIUM' ? '⚡ Strong transfer target' : 
-                                  '👀 Monitor for next gameweek'}
-                            </span>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // Render each priority group
-            if (highPriority.length > 0) {
-                html += `
-                    <h3 style="color: var(--accent-red); margin: 25px 0 15px 0; font-size: 15px; font-weight: 600;">
-                        🔥 HIGH PRIORITY (Buy Now)
-                    </h3>
-                `;
-                highPriority.forEach((player, i) => {
-                    html += createFormPlayerCard(player, i + 1);
-                });
-            }
-            
-            if (mediumPriority.length > 0) {
-                html += `
-                    <h3 style="color: var(--accent-yellow); margin: 25px 0 15px 0; font-size: 15px; font-weight: 600;">
-                        ⚡ MEDIUM PRIORITY (Strong Options)
-                    </h3>
-                `;
-                const offset = highPriority.length;
-                mediumPriority.forEach((player, i) => {
-                    html += createFormPlayerCard(player, offset + i + 1);
-                });
-            }
-            
-            if (watchList.length > 0) {
-                html += `
-                    <h3 style="color: var(--accent-blue); margin: 25px 0 15px 0; font-size: 15px; font-weight: 600;">
-                        👀 WATCH LIST (Monitor Closely)
-                    </h3>
-                `;
-                const offset = highPriority.length + mediumPriority.length;
-                watchList.forEach((player, i) => {
-                    html += createFormPlayerCard(player, offset + i + 1);
-                });
-            }
-            
             return html;
         }
 
