@@ -1,0 +1,124 @@
+name: Update FPL Player Data
+
+on:
+  schedule:
+    # Run at 4 AM UTC daily (1 hour after teams data)
+    - cron: '0 4 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-player-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Fetch and process player data
+        run: |
+          # Create data directory if it doesn't exist
+          mkdir -p data
+          
+          # Fetch bootstrap-static (has all basic player info)
+          echo "Fetching bootstrap data..."
+          curl -s "https://fantasy.premierleague.com/api/bootstrap-static/" > data/bootstrap-temp.json
+          
+          # Extract player IDs
+          echo "Processing player data..."
+          node << 'EOF'
+          const fs = require('fs');
+          
+          // Read bootstrap data
+          const bootstrap = JSON.parse(fs.readFileSync('data/bootstrap-temp.json', 'utf8'));
+          
+          // Filter active players (those with minutes played)
+          const activePlayers = bootstrap.elements.filter(p => p.minutes > 0);
+          console.log(`Found ${activePlayers.length} active players`);
+          
+          // Fetch detailed data for each player
+          async function fetchPlayerDetails(playerId) {
+            const response = await fetch(`https://fantasy.premierleague.com/api/element-summary/${playerId}/`);
+            if (!response.ok) {
+              console.log(`Failed to fetch player ${playerId}`);
+              return null;
+            }
+            return await response.json();
+          }
+          
+          async function processAllPlayers() {
+            const playerData = [];
+            let processed = 0;
+            let failed = 0;
+            
+            for (const player of activePlayers) {
+              try {
+                // Add delay to avoid rate limiting (20 players per batch)
+                if (processed > 0 && processed % 20 === 0) {
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  console.log(`Processed ${processed}/${activePlayers.length} players...`);
+                }
+                
+                const details = await fetchPlayerDetails(player.id);
+                if (details && details.history && details.history.length > 0) {
+                  playerData.push({
+                    id: player.id,
+                    name: player.web_name,
+                    fullName: player.first_name + ' ' + player.second_name,
+                    position: player.element_type,
+                    team: player.team,
+                    price: player.now_cost,
+                    form: player.form,
+                    ownership: player.selected_by_percent,
+                    totalPoints: player.total_points,
+                    minutes: player.minutes,
+                    history: details.history,
+                    fixtures: details.fixtures
+                  });
+                  processed++;
+                } else {
+                  failed++;
+                }
+              } catch (error) {
+                console.error(`Error processing player ${player.id}:`, error.message);
+                failed++;
+              }
+            }
+            
+            console.log(`\nComplete: ${processed} players processed, ${failed} failed`);
+            
+            // Save combined data
+            const output = {
+              metadata: {
+                lastUpdated: new Date().toISOString(),
+                playerCount: processed,
+                gameweek: bootstrap.events.find(e => e.is_current)?.id || null
+              },
+              teams: bootstrap.teams,
+              elementTypes: bootstrap.element_types,
+              players: playerData
+            };
+            
+            fs.writeFileSync('data/players-data.json', JSON.stringify(output, null, 2));
+            console.log(`Saved ${processed} players to data/players-data.json`);
+            console.log(`File size: ${(fs.statSync('data/players-data.json').size / 1024 / 1024).toFixed(2)} MB`);
+          }
+          
+          processAllPlayers().catch(console.error);
+          EOF
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add data/players-data.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update player data - $(date +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
