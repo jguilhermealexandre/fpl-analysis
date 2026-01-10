@@ -945,12 +945,16 @@
     </div>
 
     <div class="controls">
-        <button class="btn" id="refreshBtn" onclick="loadData()">
-            🔄 Refresh Data
+        <button class="btn" id="refreshBtn" onclick="loadData(true)">
+            🔄 Force Refresh
+        </button>
+        <button class="btn" onclick="clearCache()" style="background: linear-gradient(135deg, var(--accent-red) 0%, #cc2952 100%);">
+            🗑️ Clear Cache
         </button>
         <div class="status" id="status">
-            Ready to load data
+            Ready to load data (will auto-load from cache if available)
         </div>
+        <div id="cacheInfo" style="font-size: 10px; color: var(--text-dim); margin-left: 10px;"></div>
     </div>
 
     <div class="tabs" id="tabs">
@@ -1005,6 +1009,36 @@
             
             content.classList.toggle('open');
             toggle.classList.toggle('open');
+        }
+        
+        // Clear cache function
+        function clearCache() {
+            localStorage.removeItem('fpl_players_cache');
+            localStorage.removeItem('fpl_players_cache_time');
+            updateStatus('Cache cleared! Click "Force Refresh" to reload data.', 'info');
+            showCacheInfo();
+            console.log('Cache cleared');
+        }
+        
+        // Show cache info
+        function showCacheInfo() {
+            const cacheInfo = document.getElementById('cacheInfo');
+            const cacheTime = localStorage.getItem('fpl_players_cache_time');
+            
+            if (cacheTime) {
+                const ageHours = (Date.now() - parseInt(cacheTime)) / (1000 * 60 * 60);
+                const date = new Date(parseInt(cacheTime));
+                if (ageHours < 24) {
+                    cacheInfo.textContent = `📦 Cached: ${date.toLocaleString()} (${ageHours.toFixed(1)}h ago)`;
+                    cacheInfo.style.color = 'var(--accent-green)';
+                } else {
+                    cacheInfo.textContent = `⚠️ Cache expired (${ageHours.toFixed(1)}h ago)`;
+                    cacheInfo.style.color = 'var(--accent-yellow)';
+                }
+            } else {
+                cacheInfo.textContent = '💾 No cache - will fetch fresh data';
+                cacheInfo.style.color = 'var(--text-dim)';
+            }
         }
 
         // Tab switching
@@ -1463,10 +1497,131 @@
             });
         }
 
-        async function loadData() {
+        async function loadData(forceRefresh = false) {
             try {
                 showLoading(true);
-                updateStatus('Fetching bootstrap data...', 'loading');
+                
+                // PRIORITY 1: Try to load from static file (GitHub Actions generated)
+                if (!forceRefresh) {
+                    try {
+                        updateStatus('Loading from pre-generated data file...', 'loading');
+                        const response = await fetch('/data/players-data.json');
+                        
+                        if (response.ok) {
+                            console.log('Loading from static file (GitHub Actions)');
+                            const staticData = await response.json();
+                            
+                            // Process the pre-fetched data
+                            bootstrapData = {
+                                teams: staticData.teams,
+                                element_types: staticData.elementTypes,
+                                elements: staticData.players.map(p => ({
+                                    id: p.id,
+                                    web_name: p.name,
+                                    element_type: p.position,
+                                    team: p.team,
+                                    now_cost: p.price,
+                                    form: p.form,
+                                    selected_by_percent: p.ownership,
+                                    total_points: p.totalPoints,
+                                    minutes: p.minutes
+                                }))
+                            };
+                            
+                            const teams = {};
+                            staticData.teams.forEach(team => {
+                                teams[team.id] = team.short_name;
+                            });
+                            
+                            // Process player analyses from pre-fetched history
+                            const analyses = [];
+                            for (const player of staticData.players) {
+                                if (player.history && player.history.length > 0) {
+                                    const season = calculateStats(player.history, false);
+                                    const l5 = calculateStats(player.history, true);
+                                    
+                                    if (season && l5) {
+                                        analyses.push({
+                                            id: player.id,
+                                            name: player.name,
+                                            fullName: player.fullName || player.name,
+                                            position: player.position,
+                                            team: teams[player.team],
+                                            price: player.price / 10,
+                                            form: parseFloat(player.form),
+                                            selectedBy: parseFloat(player.ownership),
+                                            totalPoints: player.totalPoints,
+                                            season,
+                                            l5
+                                        });
+                                    }
+                                }
+                            }
+                            
+                            console.log(`Loaded ${analyses.length} players from static file`);
+                            
+                            // Render everything
+                            document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
+                            document.getElementById('section-FORM').innerHTML = generateFormPlayers(analyses);
+                            document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
+                            document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
+                            document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
+                            document.getElementById('section-FWD').innerHTML = createTable('FWD', analyses);
+                            
+                            const lastUpdated = new Date(staticData.metadata.lastUpdated).toLocaleString();
+                            updateStatus(`✓ Loaded ${analyses.length} players from static file (updated: ${lastUpdated})`, 'success');
+                            showLoading(false);
+                            showCacheInfo();
+                            return;
+                        }
+                    } catch (error) {
+                        console.log('Static file not available, trying cache:', error.message);
+                    }
+                }
+                
+                // PRIORITY 2: Check localStorage cache (if static file unavailable)
+                if (!forceRefresh) {
+                    const cached = localStorage.getItem('fpl_players_cache');
+                    const cacheTime = localStorage.getItem('fpl_players_cache_time');
+                    
+                    if (cached && cacheTime) {
+                        const ageHours = (Date.now() - parseInt(cacheTime)) / (1000 * 60 * 60);
+                        
+                        if (ageHours < 24) {
+                            console.log(`Using cached data (${ageHours.toFixed(1)} hours old)`);
+                            updateStatus('Loading from cache...', 'loading');
+                            
+                            try {
+                                const cachedData = JSON.parse(cached);
+                                bootstrapData = cachedData.bootstrapData;
+                                const analyses = cachedData.analyses;
+                                
+                                // Render everything
+                                document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
+                                document.getElementById('section-FORM').innerHTML = generateFormPlayers(analyses);
+                                document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
+                                document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
+                                document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
+                                document.getElementById('section-FWD').innerHTML = createTable('FWD', analyses);
+                                
+                                updateStatus(`✓ Loaded ${analyses.length} players from cache (${ageHours.toFixed(1)}h old)`, 'success');
+                                showLoading(false);
+                                showCacheInfo();
+                                return;
+                            } catch (e) {
+                                console.warn('Cache corrupted, fetching fresh data');
+                                localStorage.removeItem('fpl_players_cache');
+                                localStorage.removeItem('fpl_players_cache_time');
+                            }
+                        } else {
+                            console.log('Cache expired (>24 hours), fetching fresh data');
+                        }
+                    }
+                }
+                
+                // PRIORITY 3: Fetch from API (last resort)
+                console.log('Fetching from FPL API (this may take 30-60 seconds)');
+                updateStatus('Fetching bootstrap data from API...', 'loading');
 
                 bootstrapData = await fetchBootstrapData();
                 
@@ -1530,6 +1685,20 @@
                 }
 
                 console.log(`Analysis complete: ${successCount} players loaded, ${skipCount} skipped`);
+                
+                // Cache the results
+                try {
+                    const cacheData = {
+                        bootstrapData: bootstrapData,
+                        analyses: analyses,
+                        timestamp: Date.now()
+                    };
+                    localStorage.setItem('fpl_players_cache', JSON.stringify(cacheData));
+                    localStorage.setItem('fpl_players_cache_time', Date.now().toString());
+                    console.log('Data cached successfully');
+                } catch (e) {
+                    console.warn('Failed to cache data (localStorage full?):', e);
+                }
 
                 // Generate recommendations
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
@@ -1545,6 +1714,7 @@
 
                 updateStatus(`✓ Successfully loaded ${successCount} players (${skipCount} skipped due to no data)`, 'success');
                 showLoading(false);
+                showCacheInfo();
 
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -2040,8 +2210,11 @@
             return html;
         }
 
-        // Auto-load on page load
-        window.addEventListener('load', loadData);
+        // Auto-load on page load and show cache info
+        window.addEventListener('load', () => {
+            showCacheInfo();
+            loadData(); // Will use cache if available
+        });
     </script>
 </body>
 </html>
