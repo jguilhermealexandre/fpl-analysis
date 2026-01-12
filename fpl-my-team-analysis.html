@@ -2419,19 +2419,68 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 }
             }
             
-            // OWNERSHIP ANALYSIS
+            // OWNERSHIP ANALYSIS - "SHIELD vs SWORD" EFFECT
             metrics.ownership = player.ownership.toFixed(1) + '%';
             
-            if (player.ownership < 2.0) {
-                sellRating += 10;
-                issues.push({ text: 'Very Low Ownership', type: 'info', points: 10 });
-                reasons.push('Under 2% owned - high template opportunity cost');
-            }
+            // Effective Ownership (EO) considerations
+            // HIGH ownership = SHIELD (risky to sell - everyone has them)
+            // LOW ownership = SWORD (safe to sell - differential)
             
-            if (player.ownership > 40) {
-                sellRating += 5;
-                issues.push({ text: 'Template Player', type: 'info', points: 5 });
-                reasons.push('High ownership (>40%) - less differential value');
+            if (player.ownership >= 60) {
+                // TEMPLATE PLAYER - Major shield, very risky to sell
+                sellRating -= 25; // REDUCE sell rating (harder to sell)
+                issues.push({ text: '🛡️ Template Player (60%+)', type: 'shield', points: -25 });
+                reasons.push(`Ultra-high ownership (${player.ownership.toFixed(1)}%) - extreme rank risk if kept and they haul`);
+                metrics.ownershipTag = '🛡️ TEMPLATE (60%+)';
+                
+                detailedInsights.push({
+                    type: 'info',
+                    title: '🛡️ Template Player - High Rank Risk',
+                    text: `Owned by ${player.ownership.toFixed(1)}% of managers - this is a "template" player. Selling them is EXTREMELY RISKY: if they haul while you don't own them, you lose massive rank because everyone else benefits. Only sell if: (1) Long-term injured, or (2) Form catastrophically poor AND fixtures brutal. Even 3-4 blanks isn't enough reason to sell a 60%+ template - wait for fixture swing or clear decline.`
+                });
+            } else if (player.ownership >= 40) {
+                // HIGH OWNERSHIP - Shield player, risky to sell
+                sellRating -= 15; // REDUCE sell rating
+                issues.push({ text: '🛡️ High Ownership (40%+)', type: 'shield', points: -15 });
+                reasons.push(`High ownership (${player.ownership.toFixed(1)}%) - significant rank risk if sold`);
+                metrics.ownershipTag = '🛡️ SHIELD (40-59%)';
+                
+                detailedInsights.push({
+                    type: 'info',
+                    title: '🛡️ High Ownership - Shield Player',
+                    text: `Owned by ${player.ownership.toFixed(1)}% of managers. This is a "shield" player - not selling protects your rank even if they blank. If they haul without you, you lose significant rank. Be conservative selling these - need strong evidence of decline (4+ blanks + poor xGI + tough fixtures) before moving on.`
+                });
+            } else if (player.ownership >= 20) {
+                // MODERATE OWNERSHIP - Neutral
+                sellRating -= 5; // Small reduction
+                issues.push({ text: 'Moderate Ownership (20-39%)', type: 'info', points: -5 });
+                metrics.ownershipTag = 'Moderate (20-39%)';
+            } else if (player.ownership >= 10) {
+                // LOW OWNERSHIP - Slight differential
+                // No penalty - neutral
+                metrics.ownershipTag = 'Differential (10-19%)';
+            } else if (player.ownership >= 5) {
+                // CLEAR DIFFERENTIAL - Sword player
+                sellRating += 5; // INCREASE sell rating (easier to sell)
+                issues.push({ text: '⚔️ Differential (5-9%)', type: 'sword', points: 5 });
+                metrics.ownershipTag = '⚔️ DIFFERENTIAL (5-9%)';
+                
+                detailedInsights.push({
+                    type: 'positive',
+                    title: '⚔️ Differential - Low Rank Risk',
+                    text: `Only ${player.ownership.toFixed(1)}% owned - this is a differential pick. Selling has minimal rank risk: if they haul, most managers don't have them anyway. You can be more aggressive selling differentials based on form/fixtures - you're not protected by the template like with high-owned players.`
+                });
+            } else {
+                // VERY LOW OWNERSHIP - Extreme differential
+                sellRating += 10; // Significant increase
+                issues.push({ text: '⚔️ Extreme Differential (<5%)', type: 'sword', points: 10 });
+                metrics.ownershipTag = '⚔️ PUNT (<5%)';
+                
+                detailedInsights.push({
+                    type: 'positive',
+                    title: '⚔️ Punt Pick - Zero Rank Protection',
+                    text: `Under ${player.ownership.toFixed(1)}% owned - this is a punt/differential. Zero rank protection from the template: if they blank, you're fine (others don't have them either). Sell freely based on form - these picks are about hitting differentials that work, not about holding through blanks.`
+                });
             }
             
             // FIXTURE DIFFICULTY ANALYSIS - Applied BEFORE tier adjustments so rating is still high
@@ -2762,6 +2811,21 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                     <div class="metric-item">
                         <div class="metric-label">Ownership</div>
                         <div class="metric-value">${metrics.ownership}</div>
+                    </div>
+                `;
+            }
+            if (metrics.ownershipTag) {
+                // Color code based on shield vs sword
+                let tagClass = '';
+                if (metrics.ownershipTag.includes('TEMPLATE') || metrics.ownershipTag.includes('SHIELD')) {
+                    tagClass = 'bad'; // Red for template/shield (risky to sell)
+                } else if (metrics.ownershipTag.includes('DIFFERENTIAL') || metrics.ownershipTag.includes('PUNT')) {
+                    tagClass = 'good'; // Green for differential (safe to sell)
+                }
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">EO Category</div>
+                        <div class="metric-value ${tagClass}">${metrics.ownershipTag}</div>
                     </div>
                 `;
             }
