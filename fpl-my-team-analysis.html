@@ -672,6 +672,78 @@
             color: var(--text-dim);
         }
 
+        .settings-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .setting-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .setting-desc {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--text-dim);
+        }
+
+        .setting-item input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .setting-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            cursor: pointer;
+        }
+
+        .setting-item input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            cursor: pointer;
+            border: none;
+        }
+
+        .setting-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-green);
+            text-align: right;
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .settings-actions .btn {
+            flex: 1;
+        }
+
         .loading-overlay {
             display: none;
             position: fixed;
@@ -1139,6 +1211,9 @@
             <button class="btn btn-secondary" onclick="analyzeTeam()">
                 📊 Analyze Team
             </button>
+            <button class="btn btn-secondary" onclick="openSettings()">
+                ⚙️ Settings
+            </button>
             <button class="btn btn-danger" onclick="clearTeam()">
                 🗑️ Clear Team
             </button>
@@ -1220,6 +1295,86 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>⚙️ Customizable Analysis Settings</h2>
+                <button class="close-btn" onclick="closeSettings()">×</button>
+            </div>
+
+            <div style="padding: 20px 0;">
+                <p style="color: var(--text-dim); margin-bottom: 20px;">
+                    Adjust thresholds to match your FPL strategy. Changes apply immediately to analysis.
+                </p>
+
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            🎯 Blank Tolerance
+                            <span class="setting-desc">Number of consecutive blanks before concern</span>
+                        </label>
+                        <input type="range" min="2" max="6" step="1" id="blankTolerance" 
+                               value="4" oninput="updateSettingDisplay('blankTolerance', this.value)">
+                        <div class="setting-value" id="blankToleranceValue">4 games</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            📅 Fixture Weight
+                            <span class="setting-desc">How much fixtures impact ratings (higher = more impact)</span>
+                        </label>
+                        <input type="range" min="0.5" max="2.0" step="0.1" id="fixtureWeight" 
+                               value="1.0" oninput="updateSettingDisplay('fixtureWeight', this.value)">
+                        <div class="setting-value" id="fixtureWeightValue">1.0x (Default)</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            💎 Premium Patience
+                            <span class="setting-desc">Discount for premium players (lower = more patience)</span>
+                        </label>
+                        <input type="range" min="0.70" max="0.95" step="0.05" id="premiumPatience" 
+                               value="0.85" oninput="updateSettingDisplay('premiumPatience', this.value)">
+                        <div class="setting-value" id="premiumPatienceValue">0.85x (15% more patient)</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            💰 Budget Harshness
+                            <span class="setting-desc">Penalty for budget players (higher = less patience)</span>
+                        </label>
+                        <input type="range" min="1.0" max="1.3" step="0.05" id="budgetHarshness" 
+                               value="1.1" oninput="updateSettingDisplay('budgetHarshness', this.value)">
+                        <div class="setting-value" id="budgetHarshnessValue">1.1x (10% less patient)</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            ⏱️ Minutes Threshold
+                            <span class="setting-desc">Minutes needed to avoid rotation concerns</span>
+                        </label>
+                        <input type="range" min="50" max="75" step="5" id="minutesThreshold" 
+                               value="60" oninput="updateSettingDisplay('minutesThreshold', this.value)">
+                        <div class="setting-value" id="minutesThresholdValue">60 minutes</div>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="btn" onclick="applySettings()">✅ Apply Settings</button>
+                    <button class="btn btn-secondary" onclick="resetSettings()">🔄 Reset to Defaults</button>
+                </div>
+
+                <div style="margin-top: 20px; padding: 15px; background: var(--bg); border-radius: 8px; font-size: 12px; color: var(--text-dim);">
+                    <strong>💡 Strategy Tips:</strong><br>
+                    <strong>Aggressive:</strong> Blank Tolerance 3, Fixture Weight 1.5x, Budget Harshness 1.2x<br>
+                    <strong>Patient:</strong> Blank Tolerance 5, Premium Patience 0.75x, Fixture Weight 0.5x<br>
+                    <strong>Fixture-Focused:</strong> Fixture Weight 2.0x, less emphasis on form
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let allPlayers = [];
         let allPlayersDetailed = {}; // Store detailed stats by player ID
@@ -1290,9 +1445,6 @@
         }
 
         // Load team from localStorage on page load
-        window.addEventListener('load', () => {
-            loadSavedTeam();
-        });
 
         function loadSavedTeam() {
             const saved = localStorage.getItem('fpl_my_team');
@@ -1336,10 +1488,7 @@
                     response = await fetch('https://fantasy.premierleague.com/api/bootstrap-static/');
                     data = await response.json();
                     
-                    // Load fixtures for FDR
-                    await loadFixtures();
-                    
-                    // API format
+                    // Build teams object FIRST
                     teams = {};
                     data.teams.forEach(t => {
                         teams[t.id] = {
@@ -1355,6 +1504,9 @@
                             strength_defence_away: t.strength_defence_away
                         };
                     });
+                    
+                    // THEN load fixtures (needs teams object!)
+                    await loadFixtures();
                     
                     allPlayers = data.elements
                         .filter(p => p.minutes > 0)
@@ -1391,15 +1543,15 @@
                     // Static file format (already has detailed data)
                     data = await response.json();
                     
-                    // Load fixtures for FDR
-                    await loadFixtures();
-                    
-                    // Build teams object
+                    // Build teams object FIRST
                     if (data.teams) {
                         data.teams.forEach(t => {
                             teams[t.id] = t;
                         });
                     }
+                    
+                    // THEN load fixtures (needs teams object!)
+                    await loadFixtures();
                     
                     allPlayers = data.players.map(p => ({
                         id: p.id,
@@ -2029,52 +2181,6 @@
                 }
             }
             
-            // FIXTURE DIFFICULTY ANALYSIS - More aggressive weighting
-            if (player.teamId && teamFixtures[player.teamId]) {
-                const upcoming = teamFixtures[player.teamId];
-                if (upcoming.length > 0) {
-                    const avgFDR = upcoming.reduce((sum, f) => sum + f.difficulty, 0) / upcoming.length;
-                    metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H' : '(A'}, ${f.difficulty})`).join(', ');
-                    metrics.avgFDR = avgFDR.toFixed(1);
-                    
-                    // More aggressive fixture multipliers (uses customizable weight)
-                    let fixtureMultiplier = 1.0;
-                    const baseFixtureImpact = userSettings.fixtureWeight;
-                    
-                    if (avgFDR < 2.5) {
-                        // Green fixtures - aggressive discount (25% base * fixtureWeight)
-                        fixtureMultiplier = 1.0 - (0.25 * baseFixtureImpact);
-                        const discount = Math.round(sellRating * (0.25 * baseFixtureImpact));
-                        issues.push({ text: `Easy Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'positive', points: -discount });
-                        
-                        detailedInsights.push({
-                            type: 'positive',
-                            title: 'Green Fixture Run Coming',
-                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very favorable. Research shows top managers hold through poor form when easy fixtures approach. Saka example: 0.20 xGI/90 vs City/Liverpool doesn't matter if Luton (H, 2) is next. These games could turn the season around - worth the patience.`
-                        });
-                    } else if (avgFDR > 3.5) {
-                        // Brutal fixtures - aggressive penalty (25% base * fixtureWeight)
-                        fixtureMultiplier = 1.0 + (0.25 * baseFixtureImpact);
-                        const penalty = Math.round(sellRating * (0.25 * baseFixtureImpact));
-                        issues.push({ text: `Tough Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: penalty });
-                        
-                        detailedInsights.push({
-                            type: 'warning',
-                            title: 'Brutal Fixture Run Ahead',
-                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very tough. Facing top 6 teams or in-form defenses. ${player.position === 2 || player.position === 1 ? 'Defensive assets' : 'Attackers'} typically blank against these opponents. Historical data: premiums blank 65% vs FDR 5 teams. Consider selling before the fixture swing.`
-                        });
-                    } else {
-                        detailedInsights.push({
-                            type: 'info',
-                            title: 'Neutral Fixture Difficulty',
-                            text: `Next 3 games (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - mid-table opposition. No fixture advantage or disadvantage - performance will be on their own merit.`
-                        });
-                    }
-                    
-                    // Apply fixture multiplier BEFORE other adjustments
-                    sellRating = sellRating * fixtureMultiplier;
-                }
-            }
             
             // BENCH FODDER DETECTION
             const floorPrice = POSITION_CONFIG[player.position].floorPrice;
@@ -2141,7 +2247,52 @@
                 reasons.push('High ownership (>40%) - less differential value');
             }
             
-            // PRICE TIER CLASSIFICATION (single source of truth, uses customizable patience)
+            // FIXTURE DIFFICULTY ANALYSIS - Applied BEFORE tier adjustments so rating is still high
+            if (player.teamId && teamFixtures[player.teamId]) {
+                const upcoming = teamFixtures[player.teamId];
+                if (upcoming.length > 0) {
+                    const avgFDR = upcoming.reduce((sum, f) => sum + f.difficulty, 0) / upcoming.length;
+                    metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H' : '(A'}, ${f.difficulty})`).join(', ');
+                    metrics.avgFDR = avgFDR.toFixed(1);
+                    
+                    // Smart fixture adjustments (uses customizable weight)
+                    const baseFixtureImpact = userSettings.fixtureWeight;
+                    
+                    if (avgFDR < 2.5) {
+                        // Green fixtures - discount to help borderline sells become holds
+                        if (sellRating > 30) {
+                            const fixtureDiscount = sellRating * (0.30 * baseFixtureImpact); // 30% discount
+                            sellRating -= fixtureDiscount;
+                            issues.push({ text: `Easy Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'positive', points: -Math.round(fixtureDiscount) });
+                        }
+                        
+                        detailedInsights.push({
+                            type: 'positive',
+                            title: 'Green Fixture Run Coming',
+                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very favorable. Research shows top managers hold through poor form when easy fixtures approach. Saka example: 0.20 xGI/90 vs City/Liverpool doesn't matter if Luton (H, 2) is next. These games could turn the season around - worth the patience.`
+                        });
+                    } else if (avgFDR > 3.5) {
+                        // Brutal fixtures - always add penalty (helps borderline holds become sells)
+                        const fixturePenalty = 20 * baseFixtureImpact; // Base 20 points
+                        sellRating += fixturePenalty;
+                        issues.push({ text: `Tough Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: Math.round(fixturePenalty) });
+                        
+                        detailedInsights.push({
+                            type: 'warning',
+                            title: 'Brutal Fixture Run Ahead',
+                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very tough. Facing top 6 teams or in-form defenses. ${player.position === 2 || player.position === 1 ? 'Defensive assets' : 'Attackers'} typically blank against these opponents. Historical data: premiums blank 65% vs FDR 5 teams. Consider selling before the fixture swing.`
+                        });
+                    } else {
+                        detailedInsights.push({
+                            type: 'info',
+                            title: 'Neutral Fixture Difficulty',
+                            text: `Next 3 games (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - mid-table opposition. No fixture advantage or disadvantage - performance will be on their own merit.`
+                        });
+                    }
+                }
+            }
+            
+            // PRICE TIER ADJUSTMENTS - Applied AFTER fixtures
             if (isBenchFodder) {
                 metrics.tier = 'Bench Fodder';
             } else if (isPremium) {
@@ -2159,6 +2310,11 @@
             
             // Cap rating at 0-100
             sellRating = Math.max(0, Math.min(100, sellRating));
+            
+            // Debug logging
+            if (sellRating > 30) {
+                console.log(`${player.name}: Rating=${sellRating.toFixed(1)}, Form=${player.form}, FDR=${metrics.avgFDR || 'N/A'}`);
+            }
             
             // Determine action
             let action, priority;
@@ -2477,6 +2633,99 @@
             content.classList.toggle('open');
             toggle.classList.toggle('open');
         }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('show');
+            
+            // Load current settings into inputs
+            document.getElementById('blankTolerance').value = userSettings.blankTolerance;
+            document.getElementById('fixtureWeight').value = userSettings.fixtureWeight;
+            document.getElementById('premiumPatience').value = userSettings.premiumPatience;
+            document.getElementById('budgetHarshness').value = userSettings.budgetHarshness;
+            document.getElementById('minutesThreshold').value = userSettings.minutesThreshold;
+            
+            // Update displays
+            updateSettingDisplay('blankTolerance', userSettings.blankTolerance);
+            updateSettingDisplay('fixtureWeight', userSettings.fixtureWeight);
+            updateSettingDisplay('premiumPatience', userSettings.premiumPatience);
+            updateSettingDisplay('budgetHarshness', userSettings.budgetHarshness);
+            updateSettingDisplay('minutesThreshold', userSettings.minutesThreshold);
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+
+        function updateSettingDisplay(setting, value) {
+            const displayElement = document.getElementById(setting + 'Value');
+            const numValue = parseFloat(value);
+            
+            switch(setting) {
+                case 'blankTolerance':
+                    displayElement.textContent = `${value} games`;
+                    break;
+                case 'fixtureWeight':
+                    const fixtureDesc = numValue === 1.0 ? '(Default)' : 
+                                       numValue > 1.0 ? '(More emphasis)' : '(Less emphasis)';
+                    displayElement.textContent = `${numValue.toFixed(1)}x ${fixtureDesc}`;
+                    break;
+                case 'premiumPatience':
+                    const premiumPercent = Math.round((1 - numValue) * 100);
+                    displayElement.textContent = `${numValue.toFixed(2)}x (${premiumPercent}% more patient)`;
+                    break;
+                case 'budgetHarshness':
+                    const budgetPercent = Math.round((numValue - 1) * 100);
+                    displayElement.textContent = `${numValue.toFixed(2)}x (${budgetPercent}% less patient)`;
+                    break;
+                case 'minutesThreshold':
+                    displayElement.textContent = `${value} minutes`;
+                    break;
+            }
+        }
+
+        function applySettings() {
+            userSettings.blankTolerance = parseInt(document.getElementById('blankTolerance').value);
+            userSettings.fixtureWeight = parseFloat(document.getElementById('fixtureWeight').value);
+            userSettings.premiumPatience = parseFloat(document.getElementById('premiumPatience').value);
+            userSettings.budgetHarshness = parseFloat(document.getElementById('budgetHarshness').value);
+            userSettings.minutesThreshold = parseInt(document.getElementById('minutesThreshold').value);
+            
+            // Save to localStorage
+            localStorage.setItem('fpl_analysis_settings', JSON.stringify(userSettings));
+            
+            closeSettings();
+            updateStatus('⚙️ Settings applied! Re-analyze your team to see changes.', 'success');
+            
+            // Auto re-analyze if team is loaded
+            if (selectedPlayers.length === 15) {
+                setTimeout(() => analyzeTeam(), 1000);
+            }
+        }
+
+        function resetSettings() {
+            userSettings = {
+                blankTolerance: 4,
+                fixtureWeight: 1.0,
+                premiumPatience: 0.85,
+                budgetHarshness: 1.1,
+                minutesThreshold: 60,
+                xgiMultiplier: 1.0,
+                formWeight: 1.0
+            };
+            
+            localStorage.removeItem('fpl_analysis_settings');
+            openSettings(); // Reload displays
+            updateStatus('⚙️ Settings reset to defaults', 'info');
+        }
+
+        // Load saved settings on page load
+        window.addEventListener('load', () => {
+            const savedSettings = localStorage.getItem('fpl_analysis_settings');
+            if (savedSettings) {
+                userSettings = JSON.parse(savedSettings);
+            }
+            loadSavedTeam();
+        });
     </script>
 </body>
 </html>
