@@ -613,6 +613,65 @@
             line-height: 1.6;
         }
 
+        .detailed-insights {
+            margin-top: 15px;
+        }
+
+        .insight-card {
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .insight-card.insight-critical {
+            background: rgba(255, 71, 87, 0.1);
+            border-left-color: var(--accent-red);
+        }
+
+        .insight-card.insight-warning {
+            background: rgba(255, 165, 2, 0.1);
+            border-left-color: var(--accent-yellow);
+        }
+
+        .insight-card.insight-info {
+            background: rgba(0, 204, 255, 0.1);
+            border-left-color: var(--accent-blue);
+        }
+
+        .insight-card.insight-positive {
+            background: rgba(0, 255, 135, 0.1);
+            border-left-color: var(--accent-green);
+        }
+
+        .insight-title {
+            font-weight: 700;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .insight-card.insight-critical .insight-title {
+            color: var(--accent-red);
+        }
+
+        .insight-card.insight-warning .insight-title {
+            color: var(--accent-yellow);
+        }
+
+        .insight-card.insight-info .insight-title {
+            color: var(--accent-blue);
+        }
+
+        .insight-card.insight-positive .insight-title {
+            color: var(--accent-green);
+        }
+
+        .insight-text {
+            color: var(--text-dim);
+        }
+
         .loading-overlay {
             display: none;
             position: fixed;
@@ -1600,11 +1659,31 @@
             }
             
             document.getElementById('loadingOverlay').classList.add('show');
-            updateStatus('Analyzing with research-backed metrics...', 'loading');
+            updateStatus('Fetching detailed player data and analyzing...', 'loading');
             
             try {
+                // Fetch detailed data for each player
+                const detailedPlayers = await Promise.all(
+                    selectedPlayers.map(async (player) => {
+                        try {
+                            const response = await fetch(`https://fantasy.premierleague.com/api/element-summary/${player.id}/`);
+                            const data = await response.json();
+                            
+                            // Combine player data with detailed history
+                            return {
+                                ...player,
+                                history: data.history || [],
+                                fixtures: data.fixtures || []
+                            };
+                        } catch (error) {
+                            console.error(`Error fetching data for player ${player.id}:`, error);
+                            return player; // Return original if fetch fails
+                        }
+                    })
+                );
+                
                 // Analyze each player with research-backed system
-                const analyses = selectedPlayers.map(p => analyzePlayerResearchBacked(p));
+                const analyses = detailedPlayers.map(p => analyzePlayerResearchBacked(p));
                 
                 // Sort by sell rating (highest first)
                 analyses.sort((a, b) => b.sellRating - a.sellRating);
@@ -1628,25 +1707,126 @@
             const issues = [];
             const reasons = [];
             const metrics = {};
+            const detailedInsights = [];
             
             // Get position thresholds
             const isPremium = player.price >= 8.0;
             const isMidPrice = player.price >= 5.5 && player.price < 8.0;
             
+            // Calculate per-game stats from history
+            let recentGames = [];
+            let seasonGames = [];
+            let recentXG = 0, recentXA = 0, recentXGI = 0;
+            let seasonXG = 0, seasonXA = 0, seasonXGI = 0;
+            let recentMinutes = 0, seasonMinutes = 0;
+            let recentPoints = 0;
+            
+            if (player.history && player.history.length > 0) {
+                seasonGames = player.history;
+                recentGames = player.history.slice(-4);
+                
+                // Calculate season averages
+                seasonGames.forEach(g => {
+                    seasonXG += parseFloat(g.expected_goals || 0);
+                    seasonXA += parseFloat(g.expected_assists || 0);
+                    seasonXGI += parseFloat(g.expected_goal_involvements || 0);
+                    seasonMinutes += g.minutes || 0;
+                });
+                
+                // Calculate recent (last 4 games) averages
+                recentGames.forEach(g => {
+                    recentXG += parseFloat(g.expected_goals || 0);
+                    recentXA += parseFloat(g.expected_assists || 0);
+                    recentXGI += parseFloat(g.expected_goal_involvements || 0);
+                    recentMinutes += g.minutes || 0;
+                    recentPoints += g.total_points || 0;
+                });
+                
+                // Per 90 calculations
+                const seasonXGIPer90 = seasonMinutes > 0 ? (seasonXGI / seasonMinutes) * 90 : 0;
+                const recentXGIPer90 = recentMinutes > 0 ? (recentXGI / recentMinutes) * 90 : 0;
+                const recentXGPer90 = recentMinutes > 0 ? (recentXG / recentMinutes) * 90 : 0;
+                const recentXAPer90 = recentMinutes > 0 ? (recentXA / recentMinutes) * 90 : 0;
+                const avgMinutes = recentGames.length > 0 ? recentMinutes / recentGames.length : 0;
+                const avgPoints = recentGames.length > 0 ? recentPoints / recentGames.length : 0;
+                
+                metrics.seasonXGIPer90 = seasonXGIPer90.toFixed(2);
+                metrics.recentXGIPer90 = recentXGIPer90.toFixed(2);
+                metrics.recentXGPer90 = recentXGPer90.toFixed(2);
+                metrics.recentXAPer90 = recentXAPer90.toFixed(2);
+                metrics.avgMinutes = avgMinutes.toFixed(0);
+                metrics.avgPoints = avgPoints.toFixed(1);
+                
+                // Detailed insight about xGI trend
+                if (recentXGIPer90 > seasonXGIPer90 * 1.2 && recentMinutes >= 180) {
+                    detailedInsights.push({
+                        type: 'positive',
+                        title: 'Improving Underlying Stats',
+                        text: `Recent xGI/90 (${recentXGIPer90.toFixed(2)}) is ${((recentXGIPer90/seasonXGIPer90 - 1) * 100).toFixed(0)}% higher than season average (${seasonXGIPer90.toFixed(2)}). Player is in better form than their season numbers suggest - could be due for returns.`
+                    });
+                } else if (recentXGIPer90 < seasonXGIPer90 * 0.8 && recentMinutes >= 180) {
+                    detailedInsights.push({
+                        type: 'warning',
+                        title: 'Declining Underlying Stats',
+                        text: `Recent xGI/90 (${recentXGIPer90.toFixed(2)}) has dropped ${((1 - recentXGIPer90/seasonXGIPer90) * 100).toFixed(0)}% from season average (${seasonXGIPer90.toFixed(2)}). This suggests a genuine decline in attacking involvement, not just bad luck.`
+                    });
+                }
+                
+                // Insight about minutes trend
+                const minutesTrend = recentGames.map(g => g.minutes || 0);
+                const isDecreasing = minutesTrend.length >= 3 && 
+                    minutesTrend[3] < minutesTrend[2] && 
+                    minutesTrend[2] < minutesTrend[1];
+                
+                if (isDecreasing && avgMinutes < 75) {
+                    detailedInsights.push({
+                        type: 'critical',
+                        title: 'Minutes Trending Down',
+                        text: `Minutes over last 4 games: ${minutesTrend.join(' → ')}. Clear downward trend suggests potential rotation or loss of starting spot. Manager may be phasing them out.`
+                    });
+                } else if (avgMinutes >= 85) {
+                    detailedInsights.push({
+                        type: 'positive',
+                        title: 'Guaranteed Starter',
+                        text: `Averaging ${avgMinutes.toFixed(0)} minutes per game (${(avgMinutes/90 * 100).toFixed(0)}% of available time). Clearly first choice - manager trusts them fully.`
+                    });
+                }
+                
+                // Insight about shot volume
+                const recentShots = recentGames.reduce((sum, g) => sum + (g.threat ? parseFloat(g.threat) / 10 : 0), 0);
+                if (recentShots > 120 && recentPoints < 15) {
+                    detailedInsights.push({
+                        type: 'positive',
+                        title: 'High Shot Volume Despite Blanks',
+                        text: `Threat score of ${recentShots.toFixed(0)} over 4 games indicates consistent shooting. Points (${recentPoints}) haven't followed yet but underlying fundamentals are strong - classic "due a haul" profile.`
+                    });
+                }
+            }
+            
             // FACTOR 1: INJURY FLAGS (Binary Multiplier) - Most Critical
             let injuryMultiplier = 1.0;
             if (player.status === 'i' || player.status === 'u') {
-                // Red flag - confirmed injury/unavailable
                 injuryMultiplier = 0.3;
                 sellRating += 60;
                 issues.push({ text: '🔴 Injured/Unavailable', type: 'critical', points: 60 });
                 reasons.push(`Red flag injury: ${player.news || 'Confirmed unavailable'}`);
+                
+                detailedInsights.push({
+                    type: 'critical',
+                    title: 'Injury Status: Confirmed Unavailable',
+                    text: `${player.news || 'Player is currently injured or unavailable.'}. Research shows elite managers transfer out injured players immediately - holding ties up funds and bench spots. Consider replacing with a fit player even if taking a hit.`
+                });
             } else if (player.status === 'd') {
-                // Yellow/orange flag - doubtful
                 injuryMultiplier = 0.7;
                 sellRating += 30;
                 issues.push({ text: '🟡 Injury Doubt', type: 'critical', points: 30 });
                 reasons.push(`Doubtful for next match: ${player.news || '75% or less chance of playing'}`);
+                
+                detailedInsights.push({
+                    type: 'warning',
+                    title: 'Injury Status: Doubtful',
+                    text: `${player.news || 'Player is flagged as doubtful.'}. Yellow flags have no price protection - if they drop in value, you take the full hit. Monitor press conferences closely and consider your bench strength.`
+                });
             }
             
             if (player.chance_of_playing_next_round !== null && player.chance_of_playing_next_round < 50) {
@@ -1656,117 +1836,166 @@
             
             // FACTOR 2: FORM & xGI - Underlying Performance
             metrics.form = player.form.toFixed(1);
-            metrics.xGI = (player.expected_goal_involvements || 0).toFixed(2);
             
             if (player.form < THRESHOLDS.form.critical) {
                 sellRating += 35;
                 issues.push({ text: 'Very Poor Form', type: 'critical', points: 35 });
                 reasons.push(`Form ${player.form.toFixed(1)} is critically low - consistent blanks likely`);
+                
+                detailedInsights.push({
+                    type: 'critical',
+                    title: 'Form Rating Breakdown',
+                    text: `Official FPL form of ${player.form.toFixed(1)} is critically low (under 1.5 threshold). This weighted average of recent points shows the player is delivering consistent blanks. ${isPremium ? 'Even for a premium, this is concerning.' : 'Budget players at this form level should be moved quickly.'}`
+                });
             } else if (player.form < THRESHOLDS.form.poor) {
                 sellRating += 20;
                 issues.push({ text: 'Below Average Form', type: 'warning', points: 20 });
                 reasons.push(`Form ${player.form.toFixed(1)} suggests underperformance`);
+                
+                detailedInsights.push({
+                    type: 'warning',
+                    title: 'Below Average Form',
+                    text: `Form of ${player.form.toFixed(1)} is below the 3.0 threshold for sustained returns. Check if this matches underlying stats (xGI) - if xGI is strong, could be bad luck. If xGI is also low, it's a genuine performance issue.`
+                });
             } else if (player.form >= THRESHOLDS.form.excellent) {
                 sellRating -= 20;
                 issues.push({ text: 'Excellent Form', type: 'positive', points: -20 });
                 reasons.push(`Hot form (${player.form.toFixed(1)}) - strong hold`);
+                
+                detailedInsights.push({
+                    type: 'positive',
+                    title: 'Hot Form - Premium Hold',
+                    text: `Form of ${player.form.toFixed(1)} is elite (6.0+ threshold). Player is delivering consistent big hauls. Research shows top managers ride hot form rather than selling into tough fixtures - keep until the streak breaks.`
+                });
             } else if (player.form >= THRESHOLDS.form.good) {
                 sellRating -= 10;
                 issues.push({ text: 'Good Form', type: 'positive', points: -10 });
                 reasons.push(`Solid form (${player.form.toFixed(1)}) - performing well`);
             }
-            // Position-specific xGI analysis
-            if (player.position === 4) { // Forwards
-                const threshold = isPremium ? THRESHOLDS.xgi[4].premium : 
-                                isMidPrice ? THRESHOLDS.xgi[4].mid : THRESHOLDS.xgi[4].budget;
-                const critical = THRESHOLDS.xgi[4].critical;
+            
+            // Position-specific xGI analysis using ACTUAL per-game data
+            if (metrics.recentXGIPer90) {
+                const recentXGI = parseFloat(metrics.recentXGIPer90);
                 
-                if (player.expected_goal_involvements < critical && player.expected_goal_involvements > 0) {
-                    sellRating += 30;
-                    issues.push({ text: 'Low xGI Output', type: 'critical', points: 30 });
-                    reasons.push(`xGI ${player.expected_goal_involvements.toFixed(2)} below ${critical} threshold for forwards`);
-                }
-            } else if (player.position === 3) { // Midfielders
-                const threshold = isPremium ? THRESHOLDS.xgi[3].premium : 
-                                isMidPrice ? THRESHOLDS.xgi[3].mid : THRESHOLDS.xgi[3].budget;
-                const critical = THRESHOLDS.xgi[3].critical;
-                
-                if (player.expected_goal_involvements < critical && player.expected_goal_involvements > 0) {
-                    sellRating += 25;
-                    issues.push({ text: 'Low xGI Output', type: 'warning', points: 25 });
-                    reasons.push(`xGI ${player.expected_goal_involvements.toFixed(2)} below ${critical} threshold for midfielders`);
-                }
-            } else if (player.position === 2) { // Defenders
-                if (player.expected_goal_involvements < THRESHOLDS.xgi[2].critical && player.expected_goal_involvements > 0) {
-                    sellRating += 15;
-                    issues.push({ text: 'Low Attacking Output', type: 'info', points: 15 });
-                    reasons.push(`Defender with minimal attacking involvement (xGI ${player.expected_goal_involvements.toFixed(2)})`);
+                if (player.position === 4) { // Forwards
+                    const threshold = isPremium ? THRESHOLDS.xgi[4].premium : 
+                                    isMidPrice ? THRESHOLDS.xgi[4].mid : THRESHOLDS.xgi[4].budget;
+                    const critical = THRESHOLDS.xgi[4].critical;
+                    
+                    if (recentXGI < critical && recentMinutes >= 180) {
+                        sellRating += 30;
+                        issues.push({ text: `Low Recent xGI (${recentXGI.toFixed(2)})`, type: 'critical', points: 30 });
+                        reasons.push(`Recent xGI/90 of ${recentXGI.toFixed(2)} below ${critical} critical threshold for forwards`);
+                        
+                        detailedInsights.push({
+                            type: 'critical',
+                            title: 'Attacking Threat Has Evaporated',
+                            text: `Forward with xGI/90 of only ${recentXGI.toFixed(2)} (xG: ${metrics.recentXGPer90}, xA: ${metrics.recentXAPer90}). This means they're getting just ${recentXGI.toFixed(2)} combined expected goal involvements per full game. For context, elite forwards hit 0.70+, good forwards 0.50+. They're not getting chances or creating them - fundamental issue.`
+                        });
+                    } else if (recentXGI >= 0.70) {
+                        detailedInsights.push({
+                            type: 'positive',
+                            title: 'Elite Attacking Threat',
+                            text: `Recent xGI/90 of ${recentXGI.toFixed(2)} (xG: ${metrics.recentXGPer90}, xA: ${metrics.recentXAPer90}) is elite-level for forwards. Getting consistent high-quality chances. If points haven't matched xGI, they're due for big returns soon.`
+                        });
+                    }
+                } else if (player.position === 3) { // Midfielders
+                    const threshold = isPremium ? THRESHOLDS.xgi[3].premium : 
+                                    isMidPrice ? THRESHOLDS.xgi[3].mid : THRESHOLDS.xgi[3].budget;
+                    const critical = THRESHOLDS.xgi[3].critical;
+                    
+                    if (recentXGI < critical && recentMinutes >= 180) {
+                        sellRating += 25;
+                        issues.push({ text: `Low Recent xGI (${recentXGI.toFixed(2)})`, type: 'warning', points: 25 });
+                        reasons.push(`Recent xGI/90 of ${recentXGI.toFixed(2)} below ${critical} threshold for midfielders`);
+                        
+                        detailedInsights.push({
+                            type: 'warning',
+                            title: 'Insufficient Attacking Output',
+                            text: `Midfielder with xGI/90 of ${recentXGI.toFixed(2)} (xG: ${metrics.recentXGPer90}, xA: ${metrics.recentXAPer90}). ${isPremium ? 'Premium midfielders should be hitting 0.50+' : isMidPrice ? 'Mid-price mids need 0.40+' : 'Even budget options need 0.30+'}. Current output suggests limited attacking involvement - possibly playing too deep or lacking service.`
+                        });
+                    } else if (recentXGI >= 0.60) {
+                        detailedInsights.push({
+                            type: 'positive',
+                            title: 'Premium Attacking Output',
+                            text: `Recent xGI/90 of ${recentXGI.toFixed(2)} is excellent for a midfielder. Consistently involved in attacks with balanced threat (xG: ${metrics.recentXGPer90}) and creativity (xA: ${metrics.recentXAPer90}). Strong fundamentals for sustained returns.`
+                        });
+                    }
+                } else if (player.position === 2) { // Defenders
+                    if (recentXGI < THRESHOLDS.xgi[2].critical && recentMinutes >= 180) {
+                        sellRating += 15;
+                        issues.push({ text: `Minimal Attack (xGI ${recentXGI.toFixed(2)})`, type: 'info', points: 15 });
+                        reasons.push(`Defender with minimal attacking involvement (xGI/90 ${recentXGI.toFixed(2)})`);
+                        
+                        detailedInsights.push({
+                            type: 'info',
+                            title: 'Pure Defensive Asset',
+                            text: `xGI/90 of ${recentXGI.toFixed(2)} indicates minimal attacking involvement. This defender is purely about clean sheets - no attacking bonus points. Fine if your team defends well, but won't match wing-backs with 0.25+ xGI who offer both clean sheets AND attacking potential.`
+                        });
+                    } else if (recentXGI >= 0.25) {
+                        detailedInsights.push({
+                            type: 'positive',
+                            title: 'Attacking Defender',
+                            text: `Recent xGI/90 of ${recentXGI.toFixed(2)} excellent for a defender. Getting forward consistently - likely a wing-back or set-piece threat. Offers dual routes to points: clean sheets + attacking returns.`
+                        });
+                    }
                 }
             }
             
             // FACTOR 3: MINUTES & ROTATION RISK
-            if (player.history && player.history.length >= 4) {
-                const last4Games = player.history.slice(-4);
-                const avgMinutes = last4Games.reduce((sum, g) => sum + (g.minutes || 0), 0) / 4;
-                metrics.avgMinutes = avgMinutes.toFixed(0);
+            if (metrics.avgMinutes) {
+                const avgMins = parseFloat(metrics.avgMinutes);
                 
-                if (avgMinutes < THRESHOLDS.minutes.critical) {
+                if (avgMins < THRESHOLDS.minutes.critical) {
                     sellRating += 35;
                     issues.push({ text: 'Severe Rotation Risk', type: 'critical', points: 35 });
-                    reasons.push(`Averaging ${avgMinutes.toFixed(0)} mins - serious rotation concerns`);
-                } else if (avgMinutes < THRESHOLDS.minutes.rotation) {
+                    reasons.push(`Averaging ${avgMins.toFixed(0)} mins - serious rotation concerns`);
+                } else if (avgMins < THRESHOLDS.minutes.rotation) {
                     sellRating += 20;
                     issues.push({ text: 'Rotation Concerns', type: 'warning', points: 20 });
-                    reasons.push(`Averaging ${avgMinutes.toFixed(0)} mins - below 60-minute threshold`);
-                } else if (avgMinutes >= THRESHOLDS.minutes.secure) {
+                    reasons.push(`Averaging ${avgMins.toFixed(0)} mins - below 60-minute threshold`);
+                    
+                    detailedInsights.push({
+                        type: 'warning',
+                        title: '60-Minute Threshold Critical',
+                        text: `Averaging ${avgMins.toFixed(0)} minutes means they're being subbed off regularly or not starting every game. For ${player.position === 1 || player.position === 2 ? 'defensive players, this kills clean sheet points (need 60+)' : 'attacking players, this limits haul potential'}. Rotation risk is real - monitor team news closely.`
+                    });
+                } else if (avgMins >= THRESHOLDS.minutes.secure) {
                     sellRating -= 10;
                     issues.push({ text: 'Minutes Secure', type: 'positive', points: -10 });
-                    reasons.push(`Averaging ${avgMinutes.toFixed(0)} mins - nailed starter`);
+                    reasons.push(`Averaging ${avgMins.toFixed(0)} mins - nailed starter`);
                 }
             }
             
-            // FACTOR 4: BLANK STREAK (Research shows 4+ blanks is critical)
-            if (player.history && player.history.length >= 4) {
-                const last4Games = player.history.slice(-4);
-                const blanks = last4Games.filter(g => (g.total_points || 0) <= 2).length;
+            // FACTOR 4: BLANK STREAK
+            if (recentGames.length >= 4) {
+                const blanks = recentGames.filter(g => (g.total_points || 0) <= 2).length;
+                const pointsList = recentGames.map(g => g.total_points || 0);
                 
                 if (blanks === 4) {
                     sellRating += 30;
                     issues.push({ text: '4 Consecutive Blanks', type: 'critical', points: 30 });
                     reasons.push('4-game blank streak indicates serious issues');
+                    
+                    detailedInsights.push({
+                        type: 'critical',
+                        title: '4-Blank Streak Analysis',
+                        text: `Last 4 scores: ${pointsList.join(', ')} points. Research from top 50 managers shows 4 consecutive blanks is the threshold for action. However, check xGI - if it's strong (0.50+), this could be bad luck. If xGI is also poor, it's a genuine decline.`
+                    });
                 } else if (blanks === 3) {
                     sellRating += 15;
                     issues.push({ text: '3 Recent Blanks', type: 'warning', points: 15 });
                     reasons.push('3 blanks in last 4 games - monitoring required');
+                    
+                    detailedInsights.push({
+                        type: 'warning',
+                        title: 'Blank Streak Emerging',
+                        text: `Last 4 scores: ${pointsList.join(', ')} points. Three blanks triggers monitoring phase. One more blank and you hit the critical 4-game threshold. Start identifying replacements now.`
+                    });
                 }
             }
             
-            // IMPROVEMENT 1: CALCULATE RECENT xGI (Last 4 Games) - Gold Standard
-            if (player.history && player.history.length >= 4) {
-                const last4Games = player.history.slice(-4);
-                const recentXGI = last4Games.reduce((sum, g) => sum + (g.expected_goal_involvements || 0), 0);
-                const recentMinutes = last4Games.reduce((sum, g) => sum + (g.minutes || 0), 0);
-                const recentXGIPer90 = recentMinutes > 0 ? (recentXGI / recentMinutes) * 90 : 0;
-                
-                metrics.recentXGI = recentXGIPer90.toFixed(2);
-                
-                // Use recent xGI for more accurate assessment
-                if (player.position === 4 && recentXGIPer90 < 0.45 && recentMinutes >= 180) {
-                    sellRating += 30;
-                    issues.push({ text: 'Recent xGI Below Threshold', type: 'critical', points: 30 });
-                    reasons.push(`Recent xGI ${recentXGIPer90.toFixed(2)}/90 well below forward threshold (0.45)`);
-                } else if (player.position === 3 && recentXGIPer90 < 0.40 && recentMinutes >= 180) {
-                    sellRating += 25;
-                    issues.push({ text: 'Recent xGI Below Threshold', type: 'warning', points: 25 });
-                    reasons.push(`Recent xGI ${recentXGIPer90.toFixed(2)}/90 below midfielder threshold (0.40)`);
-                } else if (recentXGIPer90 > 0.60 && recentMinutes >= 270) {
-                    sellRating -= 15;
-                    issues.push({ text: 'Excellent Recent xGI', type: 'positive', points: -15 });
-                    reasons.push(`Recent xGI ${recentXGIPer90.toFixed(2)}/90 indicates strong attacking threat - due for returns`);
-                }
-            }
-            
-            // IMPROVEMENT 2: FIXTURE DIFFICULTY DISCOUNT - "Fixture Blindness" Fix
+            // IMPROVEMENT: FIXTURE DIFFICULTY ANALYSIS
             if (player.teamId && teamFixtures[player.teamId]) {
                 const upcoming = teamFixtures[player.teamId];
                 if (upcoming.length > 0) {
@@ -1774,34 +2003,56 @@
                     metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H)' : '(A)'}`).join(', ');
                     metrics.avgFDR = avgFDR.toFixed(1);
                     
-                    // Green fixtures = discount on sell rating
                     if (avgFDR < 2.5 && sellRating > 40) {
-                        const fixtureDiscount = Math.round(sellRating * 0.20); // 20% discount for easy fixtures
+                        const fixtureDiscount = Math.round(sellRating * 0.20);
                         sellRating -= fixtureDiscount;
                         issues.push({ text: `Easy Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'positive', points: -fixtureDiscount });
                         reasons.push(`Next 3 fixtures are favorable (avg FDR ${avgFDR.toFixed(1)}) - worth holding through rough form`);
+                        
+                        detailedInsights.push({
+                            type: 'positive',
+                            title: 'Green Fixture Run Coming',
+                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very favorable. Research shows top managers hold through poor form when easy fixtures approach. These games could turn the season around - worth the patience.`
+                        });
                     } else if (avgFDR > 3.5) {
                         sellRating += 15;
                         issues.push({ text: `Tough Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: 15 });
                         reasons.push(`Difficult upcoming fixtures (avg FDR ${avgFDR.toFixed(1)}) compound concerns`);
+                        
+                        detailedInsights.push({
+                            type: 'warning',
+                            title: 'Brutal Fixture Run Ahead',
+                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very tough. Facing top 6 teams or in-form defenses. ${player.position === 2 || player.position === 1 ? 'Defensive assets' : 'Attackers'} typically blank against these opponents. Consider selling before the fixture swing.`
+                        });
+                    } else {
+                        detailedInsights.push({
+                            type: 'info',
+                            title: 'Neutral Fixture Difficulty',
+                            text: `Next 3 games (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - mid-table opposition. No fixture advantage or disadvantage - performance will be on their own merit.`
+                        });
                     }
                 }
             }
             
-            // IMPROVEMENT 3: BENCH FODDER DETECTION - "The Bench Problem" Fix
+            // IMPROVEMENT: BENCH FODDER DETECTION
             const floorPrice = POSITION_CONFIG[player.position].floorPrice;
-            const isBenchFodder = player.price <= floorPrice + 0.1; // Within £0.1m of floor
+            const isBenchFodder = player.price <= floorPrice + 0.1;
             
             if (isBenchFodder && injuryMultiplier === 1.0) {
-                // Only suppress if not injured (bench fodder injuries still matter)
                 const originalRating = sellRating;
-                sellRating = Math.min(sellRating, 35); // Cap at 35 (safely in HOLD range)
+                sellRating = Math.min(sellRating, 35);
                 
                 if (originalRating > 35) {
                     const suppression = originalRating - sellRating;
                     issues.push({ text: '🪑 Bench Fodder (Suppressed)', type: 'info', points: -suppression });
                     reasons.push(`Bench fodder (£${player.price.toFixed(1)}m) - low priority unless starting. Original rating: ${Math.round(originalRating)}`);
                     metrics.tier = 'Bench Fodder';
+                    
+                    detailedInsights.push({
+                        type: 'info',
+                        title: 'Bench Enabler Status',
+                        text: `Price at floor (£${player.price.toFixed(1)}m) identifies this as bench fodder. Zero minutes and poor stats don't matter if they're your 3rd sub - they're just parking funds. Only action needed if: (1) they get injured (bench depth), (2) you need to play them, or (3) you have spare funds to upgrade.`
+                    });
                 }
             }
             
@@ -1821,18 +2072,17 @@
             }
             
             // FACTOR 6: PRICE TIER ADJUSTMENT
-            // Premium players get more patience
             if (isPremium) {
-                sellRating *= 0.85; // 15% more patience for premiums
-                metrics.tier = 'Premium (£8m+)';
+                sellRating *= 0.85;
+                if (!metrics.tier) metrics.tier = 'Premium (£8m+)';
             } else if (isMidPrice) {
-                metrics.tier = 'Mid-price';
+                if (!metrics.tier) metrics.tier = 'Mid-price';
             } else {
-                sellRating *= 1.1; // 10% less patience for budget
-                metrics.tier = 'Budget';
+                sellRating *= 1.1;
+                if (!metrics.tier) metrics.tier = 'Budget';
             }
             
-            // Apply injury multiplier (if injured, rating stays very high)
+            // Apply injury multiplier
             sellRating = sellRating * (1 / Math.max(injuryMultiplier, 0.3));
             
             // Cap rating at 0-100
@@ -1858,7 +2108,8 @@
                 priority,
                 issues,
                 reasons,
-                metrics
+                metrics,
+                detailedInsights
             };
         }
 
@@ -1934,15 +2185,17 @@
         }
 
         function createPlayerCardDetailed(analysis) {
-            const { player, sellRating, action, priority, issues, reasons, metrics } = analysis;
+            const { player, sellRating, action, priority, issues, reasons, metrics, detailedInsights } = analysis;
             const config = POSITION_CONFIG[player.position];
             
             const ratingColor = priority === 'urgent' ? 'var(--accent-red)' : 
                                priority === 'consider' ? 'var(--accent-yellow)' : 
                                'var(--accent-green)';
             
-            // Build metrics display
+            // Build metrics display - now including actual xGI data
             let metricsHtml = '';
+            
+            // Row 1: Form and Points
             if (metrics.form) {
                 const formClass = parseFloat(metrics.form) >= 4.5 ? 'good' : 
                                  parseFloat(metrics.form) < 3.0 ? 'bad' : 'warning';
@@ -1953,20 +2206,62 @@
                     </div>
                 `;
             }
-            if (metrics.xGI) {
+            if (metrics.avgPoints) {
+                const ptsClass = parseFloat(metrics.avgPoints) >= 5 ? 'good' : 
+                                 parseFloat(metrics.avgPoints) < 3 ? 'bad' : 'warning';
                 metricsHtml += `
                     <div class="metric-item">
-                        <div class="metric-label">xGI</div>
-                        <div class="metric-value">${metrics.xGI}</div>
+                        <div class="metric-label">Avg Pts (L4)</div>
+                        <div class="metric-value ${ptsClass}">${metrics.avgPoints}</div>
                     </div>
                 `;
             }
+            
+            // Row 2: xGI Data (Season and Recent)
+            if (metrics.seasonXGIPer90) {
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Season xGI/90</div>
+                        <div class="metric-value">${metrics.seasonXGIPer90}</div>
+                    </div>
+                `;
+            }
+            if (metrics.recentXGIPer90) {
+                const xgiClass = parseFloat(metrics.recentXGIPer90) >= 0.60 ? 'good' : 
+                                parseFloat(metrics.recentXGIPer90) < 0.30 ? 'bad' : 'warning';
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Recent xGI/90 (L4)</div>
+                        <div class="metric-value ${xgiClass}">${metrics.recentXGIPer90}</div>
+                    </div>
+                `;
+            }
+            
+            // Row 3: xG and xA Breakdown
+            if (metrics.recentXGPer90) {
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">xG/90 (L4)</div>
+                        <div class="metric-value">${metrics.recentXGPer90}</div>
+                    </div>
+                `;
+            }
+            if (metrics.recentXAPer90) {
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">xA/90 (L4)</div>
+                        <div class="metric-value">${metrics.recentXAPer90}</div>
+                    </div>
+                `;
+            }
+            
+            // Row 4: Minutes and Ownership
             if (metrics.avgMinutes) {
                 const minutesClass = parseFloat(metrics.avgMinutes) >= 75 ? 'good' : 
                                     parseFloat(metrics.avgMinutes) < 60 ? 'bad' : 'warning';
                 metricsHtml += `
                     <div class="metric-item">
-                        <div class="metric-label">Avg Mins</div>
+                        <div class="metric-label">Avg Mins (L4)</div>
                         <div class="metric-value ${minutesClass}">${metrics.avgMinutes}</div>
                     </div>
                 `;
@@ -1979,24 +2274,8 @@
                     </div>
                 `;
             }
-            if (metrics.tier) {
-                metricsHtml += `
-                    <div class="metric-item">
-                        <div class="metric-label">Tier</div>
-                        <div class="metric-value">${metrics.tier}</div>
-                    </div>
-                `;
-            }
-            if (metrics.recentXGI) {
-                const xgiClass = parseFloat(metrics.recentXGI) >= 0.60 ? 'good' : 
-                                parseFloat(metrics.recentXGI) < 0.30 ? 'bad' : 'warning';
-                metricsHtml += `
-                    <div class="metric-item">
-                        <div class="metric-label">Recent xGI/90</div>
-                        <div class="metric-value ${xgiClass}">${metrics.recentXGI}</div>
-                    </div>
-                `;
-            }
+            
+            // Row 5: Fixtures
             if (metrics.avgFDR) {
                 const fdrClass = parseFloat(metrics.avgFDR) < 2.5 ? 'good' : 
                                 parseFloat(metrics.avgFDR) > 3.5 ? 'bad' : 'warning';
@@ -2007,6 +2286,16 @@
                     </div>
                 `;
             }
+            if (metrics.tier) {
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Tier</div>
+                        <div class="metric-value">${metrics.tier}</div>
+                    </div>
+                `;
+            }
+            
+            // Full Width: Fixtures List
             if (metrics.nextFixtures) {
                 metricsHtml += `
                     <div class="metric-item" style="grid-column: span 2;">
@@ -2014,6 +2303,17 @@
                         <div class="metric-value" style="font-size: 11px;">${metrics.nextFixtures}</div>
                     </div>
                 `;
+            }
+            
+            // Build detailed insights section
+            let insightsHtml = '';
+            if (detailedInsights && detailedInsights.length > 0) {
+                insightsHtml = detailedInsights.map(insight => `
+                    <div class="insight-card insight-${insight.type}">
+                        <div class="insight-title">${insight.title}</div>
+                        <div class="insight-text">${insight.text}</div>
+                    </div>
+                `).join('');
             }
             
             return `
@@ -2041,10 +2341,17 @@
                         `).join('')}
                     </div>
                     
-                    <div class="recommendation">
-                        <strong>📊 Research-Based Analysis:</strong><br>
-                        ${reasons.length > 0 ? reasons.join('. ') + '.' : 'Strong performer with no major concerns. Underlying stats support continued ownership.'}
-                    </div>
+                    ${insightsHtml ? `
+                        <div class="detailed-insights">
+                            <strong style="display: block; margin-bottom: 12px; font-size: 14px;">📊 Detailed Analysis:</strong>
+                            ${insightsHtml}
+                        </div>
+                    ` : `
+                        <div class="recommendation">
+                            <strong>📊 Research-Based Analysis:</strong><br>
+                            ${reasons.length > 0 ? reasons.join('. ') + '.' : 'Strong performer with no major concerns. Underlying stats support continued ownership.'}
+                        </div>
+                    `}
                 </div>
             `;
         }
