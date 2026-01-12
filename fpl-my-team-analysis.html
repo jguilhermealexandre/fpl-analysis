@@ -1231,6 +1231,17 @@
         let fixtures = []; // Fixture data for FDR
         let teamFixtures = {}; // Fixtures organized by team
 
+        // CUSTOMIZABLE SETTINGS - User can adjust these
+        let userSettings = {
+            blankTolerance: 4,           // Number of blanks before concern (default: 4)
+            fixtureWeight: 1.0,          // Multiplier for fixture impact (default: 1.0, can increase to 1.5 for more weight)
+            premiumPatience: 0.85,       // Multiplier for premium players (default: 0.85 = 15% more patience)
+            budgetHarshness: 1.1,        // Multiplier for budget players (default: 1.1 = 10% less patience)
+            minutesThreshold: 60,        // Minutes threshold for rotation concerns (default: 60)
+            xgiMultiplier: 1.0,          // Increase to make xGI more important (default: 1.0)
+            formWeight: 1.0              // Increase to make form rating more important (default: 1.0)
+        };
+
         const POSITION_CONFIG = {
             1: { name: 'Goalkeeper', shortName: 'GK', emoji: '🧤', count: 2, row: 'gk', floorPrice: 4.0 },
             2: { name: 'Defender', shortName: 'DEF', emoji: '🛡️', count: 5, row: 'def', floorPrice: 4.0 },
@@ -1964,23 +1975,24 @@
                 }
             }
             
-            // FACTOR 3: MINUTES & ROTATION RISK
+            // MINUTES & ROTATION RISK (uses customizable threshold)
             if (metrics.avgMinutes) {
                 const avgMins = parseFloat(metrics.avgMinutes);
+                const rotationThreshold = userSettings.minutesThreshold;
                 
                 if (avgMins < THRESHOLDS.minutes.critical) {
                     sellRating += 35;
                     issues.push({ text: 'Severe Rotation Risk', type: 'critical', points: 35 });
                     reasons.push(`Averaging ${avgMins.toFixed(0)} mins - serious rotation concerns`);
-                } else if (avgMins < THRESHOLDS.minutes.rotation) {
+                } else if (avgMins < rotationThreshold) {
                     sellRating += 20;
                     issues.push({ text: 'Rotation Concerns', type: 'warning', points: 20 });
-                    reasons.push(`Averaging ${avgMins.toFixed(0)} mins - below 60-minute threshold`);
+                    reasons.push(`Averaging ${avgMins.toFixed(0)} mins - below ${rotationThreshold}-minute threshold`);
                     
                     detailedInsights.push({
                         type: 'warning',
-                        title: '60-Minute Threshold Critical',
-                        text: `Averaging ${avgMins.toFixed(0)} minutes means they're being subbed off regularly or not starting every game. For ${player.position === 1 || player.position === 2 ? 'defensive players, this kills clean sheet points (need 60+)' : 'attacking players, this limits haul potential'}. Rotation risk is real - monitor team news closely.`
+                        title: `${rotationThreshold}-Minute Threshold Critical`,
+                        text: `Averaging ${avgMins.toFixed(0)} minutes means they're being subbed off regularly or not starting every game. For ${player.position === 1 || player.position === 2 ? 'defensive players, this kills clean sheet points (need ' + rotationThreshold + '+)' : 'attacking players, this limits haul potential'}. Rotation risk is real - monitor team news closely.`
                     });
                 } else if (avgMins >= THRESHOLDS.minutes.secure) {
                     sellRating -= 10;
@@ -1989,35 +2001,35 @@
                 }
             }
             
-            // FACTOR 4: BLANK STREAK
+            // BLANK STREAK DETECTION (uses customizable threshold)
             if (recentGames.length >= 4) {
                 const blanks = recentGames.filter(g => (g.total_points || 0) <= 2).length;
                 const pointsList = recentGames.map(g => g.total_points || 0);
                 
-                if (blanks === 4) {
+                if (blanks >= userSettings.blankTolerance) {
                     sellRating += 30;
-                    issues.push({ text: '4 Consecutive Blanks', type: 'critical', points: 30 });
-                    reasons.push('4-game blank streak indicates serious issues');
+                    issues.push({ text: `${blanks} Consecutive Blanks`, type: 'critical', points: 30 });
+                    reasons.push(`${blanks}-game blank streak indicates serious issues`);
                     
                     detailedInsights.push({
                         type: 'critical',
-                        title: '4-Blank Streak Analysis',
-                        text: `Last 4 scores: ${pointsList.join(', ')} points. Research from top 50 managers shows 4 consecutive blanks is the threshold for action. However, check xGI - if it's strong (0.50+), this could be bad luck. If xGI is also poor, it's a genuine decline.`
+                        title: `${blanks}-Blank Streak Analysis`,
+                        text: `Last 4 scores: ${pointsList.join(', ')} points. Research from top 50 managers shows ${userSettings.blankTolerance} consecutive blanks is the threshold for action. However, check xGI - if it's strong (0.50+), this could be bad luck. If xGI is also poor, it's a genuine decline.`
                     });
-                } else if (blanks === 3) {
+                } else if (blanks >= (userSettings.blankTolerance - 1)) {
                     sellRating += 15;
-                    issues.push({ text: '3 Recent Blanks', type: 'warning', points: 15 });
-                    reasons.push('3 blanks in last 4 games - monitoring required');
+                    issues.push({ text: `${blanks} Recent Blanks`, type: 'warning', points: 15 });
+                    reasons.push(`${blanks} blanks in last 4 games - monitoring required`);
                     
                     detailedInsights.push({
                         type: 'warning',
                         title: 'Blank Streak Emerging',
-                        text: `Last 4 scores: ${pointsList.join(', ')} points. Three blanks triggers monitoring phase. One more blank and you hit the critical 4-game threshold. Start identifying replacements now.`
+                        text: `Last 4 scores: ${pointsList.join(', ')} points. ${blanks} blanks triggers monitoring phase. One more blank and you hit the critical ${userSettings.blankTolerance}-game threshold. Start identifying replacements now.`
                     });
                 }
             }
             
-            // IMPROVEMENT: FIXTURE DIFFICULTY ANALYSIS
+            // FIXTURE DIFFICULTY ANALYSIS - More aggressive weighting
             if (player.teamId && teamFixtures[player.teamId]) {
                 const upcoming = teamFixtures[player.teamId];
                 if (upcoming.length > 0) {
@@ -2025,26 +2037,31 @@
                     metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H' : '(A'}, ${f.difficulty})`).join(', ');
                     metrics.avgFDR = avgFDR.toFixed(1);
                     
-                    if (avgFDR < 2.5 && sellRating > 40) {
-                        const fixtureDiscount = Math.round(sellRating * 0.20);
-                        sellRating -= fixtureDiscount;
-                        issues.push({ text: `Easy Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'positive', points: -fixtureDiscount });
-                        reasons.push(`Next 3 fixtures are favorable (avg FDR ${avgFDR.toFixed(1)}) - worth holding through rough form`);
+                    // More aggressive fixture multipliers (uses customizable weight)
+                    let fixtureMultiplier = 1.0;
+                    const baseFixtureImpact = userSettings.fixtureWeight;
+                    
+                    if (avgFDR < 2.5) {
+                        // Green fixtures - aggressive discount (25% base * fixtureWeight)
+                        fixtureMultiplier = 1.0 - (0.25 * baseFixtureImpact);
+                        const discount = Math.round(sellRating * (0.25 * baseFixtureImpact));
+                        issues.push({ text: `Easy Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'positive', points: -discount });
                         
                         detailedInsights.push({
                             type: 'positive',
                             title: 'Green Fixture Run Coming',
-                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very favorable. Research shows top managers hold through poor form when easy fixtures approach. These games could turn the season around - worth the patience.`
+                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very favorable. Research shows top managers hold through poor form when easy fixtures approach. Saka example: 0.20 xGI/90 vs City/Liverpool doesn't matter if Luton (H, 2) is next. These games could turn the season around - worth the patience.`
                         });
                     } else if (avgFDR > 3.5) {
-                        sellRating += 15;
-                        issues.push({ text: `Tough Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: 15 });
-                        reasons.push(`Difficult upcoming fixtures (avg FDR ${avgFDR.toFixed(1)}) compound concerns`);
+                        // Brutal fixtures - aggressive penalty (25% base * fixtureWeight)
+                        fixtureMultiplier = 1.0 + (0.25 * baseFixtureImpact);
+                        const penalty = Math.round(sellRating * (0.25 * baseFixtureImpact));
+                        issues.push({ text: `Tough Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: penalty });
                         
                         detailedInsights.push({
                             type: 'warning',
                             title: 'Brutal Fixture Run Ahead',
-                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very tough. Facing top 6 teams or in-form defenses. ${player.position === 2 || player.position === 1 ? 'Defensive assets' : 'Attackers'} typically blank against these opponents. Consider selling before the fixture swing.`
+                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very tough. Facing top 6 teams or in-form defenses. ${player.position === 2 || player.position === 1 ? 'Defensive assets' : 'Attackers'} typically blank against these opponents. Historical data: premiums blank 65% vs FDR 5 teams. Consider selling before the fixture swing.`
                         });
                     } else {
                         detailedInsights.push({
@@ -2053,10 +2070,13 @@
                             text: `Next 3 games (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - mid-table opposition. No fixture advantage or disadvantage - performance will be on their own merit.`
                         });
                     }
+                    
+                    // Apply fixture multiplier BEFORE other adjustments
+                    sellRating = sellRating * fixtureMultiplier;
                 }
             }
             
-            // IMPROVEMENT: BENCH FODDER DETECTION
+            // BENCH FODDER DETECTION
             const floorPrice = POSITION_CONFIG[player.position].floorPrice;
             const isBenchFodder = player.price <= floorPrice + 0.1;
             
@@ -2068,7 +2088,6 @@
                     const suppression = originalRating - sellRating;
                     issues.push({ text: '🪑 Bench Fodder (Suppressed)', type: 'info', points: -suppression });
                     reasons.push(`Bench fodder (£${player.price.toFixed(1)}m) - low priority unless starting. Original rating: ${Math.round(originalRating)}`);
-                    metrics.tier = 'Bench Fodder';
                     
                     detailedInsights.push({
                         type: 'info',
@@ -2078,7 +2097,36 @@
                 }
             }
             
-            // FACTOR 5: OWNERSHIP - Template Risk
+            // GOALKEEPER-SPECIFIC METRICS
+            if (player.position === 1 && recentGames.length >= 4) {
+                // Calculate clean sheet rate and saves
+                const cleanSheets = recentGames.reduce((sum, g) => sum + (g.clean_sheets || 0), 0);
+                const saves = recentGames.reduce((sum, g) => sum + (g.saves || 0), 0);
+                const avgSaves = saves / recentGames.length;
+                const csRate = (cleanSheets / recentGames.length) * 100;
+                
+                metrics.cleanSheetRate = csRate.toFixed(0) + '%';
+                metrics.avgSaves = avgSaves.toFixed(1);
+                
+                if (csRate < 25 && recentMinutes >= 270) {
+                    sellRating += 20;
+                    issues.push({ text: 'Poor Clean Sheet Rate', type: 'warning', points: 20 });
+                    
+                    detailedInsights.push({
+                        type: 'warning',
+                        title: 'Clean Sheet Drought',
+                        text: `Only ${cleanSheets} clean sheet${cleanSheets !== 1 ? 's' : ''} in last 4 games (${csRate.toFixed(0)}% rate). Goalkeepers need 40%+ clean sheet rate to justify ownership. Averaging ${avgSaves.toFixed(1)} saves per game - ${avgSaves >= 4 ? 'high save volume suggests team under pressure' : 'low saves means few bonus points'}.`
+                    });
+                } else if (csRate >= 50) {
+                    detailedInsights.push({
+                        type: 'positive',
+                        title: 'Excellent Clean Sheet Record',
+                        text: `${cleanSheets} clean sheets in last 4 games (${csRate.toFixed(0)}% rate) is elite. Team defending well, goalkeeper is delivering. ${avgSaves >= 3 ? `Plus averaging ${avgSaves.toFixed(1)} saves - bonus point magnet.` : 'Low save volume but clean sheets more valuable.'}`
+                    });
+                }
+            }
+            
+            // OWNERSHIP ANALYSIS
             metrics.ownership = player.ownership.toFixed(1) + '%';
             
             if (player.ownership < 2.0) {
@@ -2093,15 +2141,17 @@
                 reasons.push('High ownership (>40%) - less differential value');
             }
             
-            // FACTOR 6: PRICE TIER ADJUSTMENT
-            if (isPremium) {
-                sellRating *= 0.85;
-                if (!metrics.tier) metrics.tier = 'Premium (£8m+)';
+            // PRICE TIER CLASSIFICATION (single source of truth, uses customizable patience)
+            if (isBenchFodder) {
+                metrics.tier = 'Bench Fodder';
+            } else if (isPremium) {
+                sellRating *= userSettings.premiumPatience; // Default: 0.85 = 15% more patience
+                metrics.tier = 'Premium (£8m+)';
             } else if (isMidPrice) {
-                if (!metrics.tier) metrics.tier = 'Mid-price';
+                metrics.tier = 'Mid-price';
             } else {
-                sellRating *= 1.1;
-                if (!metrics.tier) metrics.tier = 'Budget';
+                sellRating *= userSettings.budgetHarshness; // Default: 1.1 = 10% less patience
+                metrics.tier = 'Budget';
             }
             
             // Apply injury multiplier
@@ -2293,6 +2343,26 @@
                     <div class="metric-item">
                         <div class="metric-label">Ownership</div>
                         <div class="metric-value">${metrics.ownership}</div>
+                    </div>
+                `;
+            }
+            
+            // GK-Specific Metrics
+            if (metrics.cleanSheetRate) {
+                const csClass = parseFloat(metrics.cleanSheetRate) >= 50 ? 'good' : 
+                               parseFloat(metrics.cleanSheetRate) < 25 ? 'bad' : 'warning';
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Clean Sheet Rate (L4)</div>
+                        <div class="metric-value ${csClass}">${metrics.cleanSheetRate}</div>
+                    </div>
+                `;
+            }
+            if (metrics.avgSaves) {
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Avg Saves (L4)</div>
+                        <div class="metric-value">${metrics.avgSaves}</div>
                     </div>
                 `;
             }
