@@ -2071,26 +2071,35 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 const avgMinutes = recentGames.length > 0 ? recentMinutes / recentGames.length : 0;
                 const avgPoints = recentGames.length > 0 ? recentPoints / recentGames.length : 0;
                 
+                // WEIGHTED xGI - xG is more "sticky" (repeatable) than xA
+                // xG = player shoots (1.2x weight) vs xA = teammate finishes (1.0x weight)
+                const seasonXGPer90 = seasonMinutes > 0 ? (seasonXG / seasonMinutes) * 90 : 0;
+                const seasonXAPer90 = seasonMinutes > 0 ? (seasonXA / seasonMinutes) * 90 : 0;
+                const weightedSeasonXGI = (seasonXGPer90 * 1.2) + seasonXAPer90;
+                const weightedRecentXGI = (recentXGPer90 * 1.2) + recentXAPer90;
+                
                 metrics.seasonXGIPer90 = seasonXGIPer90.toFixed(2);
                 metrics.recentXGIPer90 = recentXGIPer90.toFixed(2);
                 metrics.recentXGPer90 = recentXGPer90.toFixed(2);
                 metrics.recentXAPer90 = recentXAPer90.toFixed(2);
+                metrics.weightedRecentXGI = weightedRecentXGI.toFixed(2);
                 metrics.avgMinutes = avgMinutes.toFixed(0);
                 metrics.avgPoints = avgPoints.toFixed(1);
                 
                 // Detailed insight about xGI trend (ONLY for attackers - DEF, MID, FWD)
+                // Use WEIGHTED xGI for more reliable trend analysis
                 if (player.position >= 2) {
-                    if (recentXGIPer90 > seasonXGIPer90 * 1.2 && recentMinutes >= 180 && seasonXGIPer90 > 0.1) {
+                    if (weightedRecentXGI > weightedSeasonXGI * 1.2 && recentMinutes >= 180 && weightedSeasonXGI > 0.1) {
                         detailedInsights.push({
                             type: 'positive',
                             title: 'Improving Underlying Stats',
-                            text: `Recent xGI/90 (${recentXGIPer90.toFixed(2)}) is ${((recentXGIPer90/seasonXGIPer90 - 1) * 100).toFixed(0)}% higher than season average (${seasonXGIPer90.toFixed(2)}). Player is in better form than their season numbers suggest - could be due for returns.`
+                            text: `Recent weighted xGI/90 (${weightedRecentXGI.toFixed(2)}) is ${((weightedRecentXGI/weightedSeasonXGI - 1) * 100).toFixed(0)}% higher than season average (${weightedSeasonXGI.toFixed(2)}). Weighted xGI counts goals (xG) 1.2x more than assists (xA) because shooting is more reliable than teammate finishing. Player is trending up - could be due for returns.`
                         });
-                    } else if (recentXGIPer90 < seasonXGIPer90 * 0.8 && recentMinutes >= 180 && seasonXGIPer90 > 0.1) {
+                    } else if (weightedRecentXGI < weightedSeasonXGI * 0.8 && recentMinutes >= 180 && weightedSeasonXGI > 0.1) {
                         detailedInsights.push({
                             type: 'warning',
                             title: 'Declining Underlying Stats',
-                            text: `Recent xGI/90 (${recentXGIPer90.toFixed(2)}) has dropped ${((1 - recentXGIPer90/seasonXGIPer90) * 100).toFixed(0)}% from season average (${seasonXGIPer90.toFixed(2)}). This suggests a genuine decline in attacking involvement, not just bad luck.`
+                            text: `Recent weighted xGI/90 (${weightedRecentXGI.toFixed(2)}) has dropped ${((1 - weightedRecentXGI/weightedSeasonXGI) * 100).toFixed(0)}% from season average (${weightedSeasonXGI.toFixed(2)}). This suggests a genuine decline in attacking involvement, not just bad luck. Weighted xGI prioritizes shooting (xG) over creating (xA) because it's more reliable - decline in shots is particularly concerning.`
                         });
                     }
                 }
@@ -2196,55 +2205,60 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 reasons.push(`Solid form (${player.form.toFixed(1)}) - performing well`);
             }
             
-            // Position-specific xGI analysis using ACTUAL per-game data
-            if (metrics.recentXGIPer90) {
-                const recentXGI = parseFloat(metrics.recentXGIPer90);
+            // Position-specific xGI analysis using WEIGHTED xGI (xG = 1.2x, xA = 1.0x)
+            // xG is more "sticky" (repeatable) than xA - player shooting is more reliable than teammate finishing
+            if (metrics.weightedRecentXGI) {
+                const weightedXGI = parseFloat(metrics.weightedRecentXGI);
+                const recentXGI = parseFloat(metrics.recentXGIPer90); // For display
+                const xG = parseFloat(metrics.recentXGPer90);
+                const xA = parseFloat(metrics.recentXAPer90);
                 
                 if (player.position === 4) { // Forwards
-                    const threshold = isPremium ? THRESHOLDS.xgi[4].premium : 
-                                    isMidPrice ? THRESHOLDS.xgi[4].mid : THRESHOLDS.xgi[4].budget;
-                    const critical = THRESHOLDS.xgi[4].critical;
+                    // Adjusted thresholds for weighted xGI (higher due to 1.2x multiplier on xG)
+                    const weightedCritical = 0.54; // Was 0.45 for raw xGI
+                    const weightedElite = 0.84;    // Was 0.70 for raw xGI
                     
-                    if (recentXGI < critical && recentMinutes >= 180) {
+                    if (weightedXGI < weightedCritical && recentMinutes >= 180) {
                         sellRating += 30;
-                        issues.push({ text: `Low Recent xGI (${recentXGI.toFixed(2)})`, type: 'critical', points: 30 });
-                        reasons.push(`Recent xGI/90 of ${recentXGI.toFixed(2)} below ${critical} critical threshold for forwards`);
+                        issues.push({ text: `Low Weighted xGI (${weightedXGI.toFixed(2)})`, type: 'critical', points: 30 });
+                        reasons.push(`Weighted xGI/90 of ${weightedXGI.toFixed(2)} below critical threshold`);
                         
                         detailedInsights.push({
                             type: 'critical',
                             title: 'Attacking Threat Has Evaporated',
-                            text: `Forward with xGI/90 of only ${recentXGI.toFixed(2)} (xG: ${metrics.recentXGPer90}, xA: ${metrics.recentXAPer90}). This means they're getting just ${recentXGI.toFixed(2)} combined expected goal involvements per full game. For context, elite forwards hit 0.70+, good forwards 0.50+. They're not getting chances or creating them - fundamental issue.`
+                            text: `Forward with weighted xGI/90 of only ${weightedXGI.toFixed(2)} (xG: ${xG} [1.2x weight], xA: ${xA}). Weighted xGI prioritizes shooting because it's more repeatable than assists. Raw xGI: ${recentXGI}. For context: elite forwards hit 0.84+ weighted xGI, good forwards 0.60+. ${xG < 0.30 ? 'Critically low xG - not getting shots' : xA > xG * 2 ? 'Over-reliant on teammates finishing' : 'Fundamental attacking issue'}.`
                         });
-                    } else if (recentXGI >= 0.70) {
+                    } else if (weightedXGI >= weightedElite) {
                         detailedInsights.push({
                             type: 'positive',
                             title: 'Elite Attacking Threat',
-                            text: `Recent xGI/90 of ${recentXGI.toFixed(2)} (xG: ${metrics.recentXGPer90}, xA: ${metrics.recentXAPer90}) is elite-level for forwards. Getting consistent high-quality chances. If points haven't matched xGI, they're due for big returns soon.`
+                            text: `Weighted xGI/90 of ${weightedXGI.toFixed(2)} (xG: ${xG} [1.2x], xA: ${xA}) is elite for forwards. ${xG > 0.50 ? 'High xG shows they\'re getting quality shots - most reliable metric' : 'Good balance of shooting and creating'}. Raw xGI: ${recentXGI}. If points haven't matched, they're due for returns.`
                         });
                     }
                 } else if (player.position === 3) { // Midfielders
-                    const threshold = isPremium ? THRESHOLDS.xgi[3].premium : 
-                                    isMidPrice ? THRESHOLDS.xgi[3].mid : THRESHOLDS.xgi[3].budget;
-                    const critical = THRESHOLDS.xgi[3].critical;
+                    // Adjusted thresholds for weighted xGI
+                    const weightedCritical = 0.48; // Was 0.40 for raw xGI
+                    const weightedElite = 0.72;    // Was 0.60 for raw xGI
                     
-                    if (recentXGI < critical && recentMinutes >= 180) {
+                    if (weightedXGI < weightedCritical && recentMinutes >= 180) {
                         sellRating += 25;
-                        issues.push({ text: `Low Recent xGI (${recentXGI.toFixed(2)})`, type: 'warning', points: 25 });
-                        reasons.push(`Recent xGI/90 of ${recentXGI.toFixed(2)} below ${critical} threshold for midfielders`);
+                        issues.push({ text: `Low Weighted xGI (${weightedXGI.toFixed(2)})`, type: 'warning', points: 25 });
+                        reasons.push(`Weighted xGI/90 of ${weightedXGI.toFixed(2)} below threshold`);
                         
                         detailedInsights.push({
                             type: 'warning',
                             title: 'Insufficient Attacking Output',
-                            text: `Midfielder with xGI/90 of ${recentXGI.toFixed(2)} (xG: ${metrics.recentXGPer90}, xA: ${metrics.recentXAPer90}). ${isPremium ? 'Premium midfielders should be hitting 0.50+' : isMidPrice ? 'Mid-price mids need 0.40+' : 'Even budget options need 0.30+'}. Current output suggests limited attacking involvement - possibly playing too deep or lacking service.`
+                            text: `Midfielder with weighted xGI/90 of ${weightedXGI.toFixed(2)} (xG: ${xG} [1.2x], xA: ${xA}). Raw xGI: ${recentXGI}. ${isPremium ? 'Premium mids need 0.60+ weighted xGI' : 'Mid-price mids need 0.48+'}. ${xG < 0.20 ? 'Low xG - not shooting enough' : 'Limited attacking involvement'} - possibly playing too deep.`
                         });
-                    } else if (recentXGI >= 0.60) {
+                    } else if (weightedXGI >= weightedElite) {
                         detailedInsights.push({
                             type: 'positive',
                             title: 'Premium Attacking Output',
-                            text: `Recent xGI/90 of ${recentXGI.toFixed(2)} is excellent for a midfielder. Consistently involved in attacks with balanced threat (xG: ${metrics.recentXGPer90}) and creativity (xA: ${metrics.recentXAPer90}). Strong fundamentals for sustained returns.`
+                            text: `Weighted xGI/90 of ${weightedXGI.toFixed(2)} is excellent for a midfielder. Consistently involved in attacks. ${xG > xA ? 'Shooting-focused (more reliable)' : 'Creator-focused (needs teammates)'}. xG: ${xG} [1.2x weight], xA: ${xA}. Raw xGI: ${recentXGI}. Strong fundamentals.`
                         });
                     }
                 } else if (player.position === 2) { // Defenders
+                    // Defenders still use raw xGI (less relevant, more about clean sheets)
                     if (recentXGI < THRESHOLDS.xgi[2].critical && recentMinutes >= 180) {
                         sellRating += 15;
                         issues.push({ text: `Minimal Attack (xGI ${recentXGI.toFixed(2)})`, type: 'info', points: 15 });
@@ -2763,6 +2777,17 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                         <div class="metric-item">
                             <div class="metric-label">Recent xGI/90 (L4)</div>
                             <div class="metric-value ${xgiClass}">${metrics.recentXGIPer90}</div>
+                        </div>
+                    `;
+                }
+                // Show weighted xGI for better analysis
+                if (metrics.weightedRecentXGI) {
+                    const weightedClass = parseFloat(metrics.weightedRecentXGI) >= 0.72 ? 'good' : 
+                                         parseFloat(metrics.weightedRecentXGI) < 0.48 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">Weighted xGI/90 ⚖️</div>
+                            <div class="metric-value ${weightedClass}" title="xG weighted 1.2x (more reliable than xA)">${metrics.weightedRecentXGI}</div>
                         </div>
                     `;
                 }
