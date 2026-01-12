@@ -1690,7 +1690,32 @@
                     });
                 }
                 
-                console.log(`Loaded ${allPlayers.length} players with detailed stats`);
+                console.log(`✅ Loaded ${allPlayers.length} players with detailed stats`);
+                
+                // DEBUG: Check if fixtures were attached to players
+                if (allPlayers.length > 0) {
+                    console.log('
+═══════════════════════════════════════════');
+                    console.log('🔍 FIXTURE ATTACHMENT CHECK');
+                    console.log('═══════════════════════════════════════════');
+                    const samplePlayer = allPlayers[0];
+                    console.log('Sample player:', samplePlayer.name);
+                    console.log('Sample player team:', samplePlayer.team);
+                    console.log('Sample player teamId:', samplePlayer.teamId);
+                    console.log('Sample player has fixtures:', !!samplePlayer.fixtures);
+                    console.log('Sample player fixtures:', samplePlayer.fixtures);
+                    
+                    // Check a few more
+                    const playersWithFixtures = allPlayers.filter(p => p.fixtures && p.fixtures.length > 0).length;
+                    const playersWithoutFixtures = allPlayers.filter(p => !p.fixtures || p.fixtures.length === 0).length;
+                    console.log(`
+Players WITH fixtures: ${playersWithFixtures}
+Players WITHOUT fixtures: ${playersWithoutFixtures}
+teamFixtures object keys: ${Object.keys(teamFixtures).length}
+                    `);
+                    console.log('═══════════════════════════════════════════
+');
+                }
             } catch (error) {
                 console.error('Error loading players:', error);
                 alert('Failed to load players. Please try again.');
@@ -2410,8 +2435,18 @@
             }
             
             // FIXTURE DIFFICULTY ANALYSIS - Applied BEFORE tier adjustments so rating is still high
-            console.log(`Analyzing fixtures for ${player.name} (Team: ${player.team})`);
-            console.log(`Player fixtures:`, player.fixtures);
+            console.log(`
+═══════════════════════════════════════════
+🔍 FIXTURE DEBUG for ${player.name}
+═══════════════════════════════════════════
+Team: ${player.team}
+Team ID: ${player.teamId}
+player.fixtures exists: ${!!player.fixtures}
+player.fixtures type: ${typeof player.fixtures}
+player.fixtures length: ${player.fixtures ? player.fixtures.length : 'N/A'}
+player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
+═══════════════════════════════════════════
+            `);
             
             if (player.fixtures && player.fixtures.length > 0) {
                 const upcoming = player.fixtures;
@@ -2419,7 +2454,7 @@
                 metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H' : '(A'}, ${f.difficulty})`).join(', ');
                 metrics.avgFDR = avgFDR.toFixed(1);
                 
-                console.log(`${player.name} FDR: ${avgFDR}, Fixtures: ${metrics.nextFixtures}`);
+                console.log(`✅ ${player.name} FDR: ${avgFDR}, Fixtures: ${metrics.nextFixtures}`);
                     
                     // Smart fixture adjustments (uses customizable weight)
                     const baseFixtureImpact = userSettings.fixtureWeight;
