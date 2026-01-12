@@ -1538,14 +1538,22 @@
         }
 
         async function openTeamSelector() {
-            document.getElementById('teamModal').classList.add('show');
-            
-            if (allPlayers.length === 0) {
-                await loadPlayers();
+            try {
+                console.log('Opening team selector...');
+                document.getElementById('teamModal').classList.add('show');
+                
+                if (allPlayers.length === 0) {
+                    console.log('Loading players...');
+                    await loadPlayers();
+                    console.log('Players loaded:', allPlayers.length);
+                }
+                
+                renderFormation();
+                updateProgress();
+            } catch (error) {
+                console.error('Error in openTeamSelector:', error);
+                alert('Error opening team selector. Check console for details.');
             }
-            
-            renderFormation();
-            updateProgress();
         }
 
         function closeTeamSelector() {
@@ -1637,37 +1645,44 @@
                     // THEN load fixtures (needs teams object!)
                     await loadFixtures();
                     
-                    allPlayers = data.players.map(p => ({
-                        id: p.id,
-                        name: p.name,
-                        fullName: p.fullName || p.name,
-                        team: data.teams?.find(t => t.id === p.team)?.short_name || 'Unknown',
-                        teamId: p.team,
-                        position: parseInt(p.position),
-                        price: p.price / 10,
-                        form: parseFloat(p.form),
-                        ownership: parseFloat(p.ownership),
-                        minutes: p.minutes || 0,
-                        status: p.status || 'a',
-                        news: p.news || '',
-                        chance_of_playing_this_round: p.chance_of_playing_this_round,
-                        chance_of_playing_next_round: p.chance_of_playing_next_round,
-                        expected_goals: parseFloat(p.expected_goals) || 0,
-                        expected_assists: parseFloat(p.expected_assists) || 0,
-                        expected_goal_involvements: parseFloat(p.expected_goal_involvements) || 0,
-                        goals_scored: p.goals_scored || 0,
-                        assists: p.assists || 0,
-                        clean_sheets: p.clean_sheets || 0,
-                        goals_conceded: p.goals_conceded || 0,
-                        bonus: p.bonus || 0,
-                        bps: p.bps || 0,
-                        influence: parseFloat(p.influence) || 0,
-                        creativity: parseFloat(p.creativity) || 0,
-                        threat: parseFloat(p.threat) || 0,
-                        ict_index: parseFloat(p.ict_index) || 0,
-                        // Additional detailed stats if available
-                        history: p.history || []
-                    }));
+                    allPlayers = data.players.map(p => {
+                        // Get this player's team fixtures
+                        const playerTeamFixtures = teamFixtures[p.team] || [];
+                        
+                        return {
+                            id: p.id,
+                            name: p.name,
+                            fullName: p.fullName || p.name,
+                            team: data.teams?.find(t => t.id === p.team)?.short_name || 'Unknown',
+                            teamId: p.team,
+                            position: parseInt(p.position),
+                            price: p.price / 10,
+                            form: parseFloat(p.form),
+                            ownership: parseFloat(p.ownership),
+                            minutes: p.minutes || 0,
+                            status: p.status || 'a',
+                            news: p.news || '',
+                            chance_of_playing_this_round: p.chance_of_playing_this_round,
+                            chance_of_playing_next_round: p.chance_of_playing_next_round,
+                            expected_goals: parseFloat(p.expected_goals) || 0,
+                            expected_assists: parseFloat(p.expected_assists) || 0,
+                            expected_goal_involvements: parseFloat(p.expected_goal_involvements) || 0,
+                            goals_scored: p.goals_scored || 0,
+                            assists: p.assists || 0,
+                            clean_sheets: p.clean_sheets || 0,
+                            goals_conceded: p.goals_conceded || 0,
+                            bonus: p.bonus || 0,
+                            bps: p.bps || 0,
+                            influence: parseFloat(p.influence) || 0,
+                            creativity: parseFloat(p.creativity) || 0,
+                            threat: parseFloat(p.threat) || 0,
+                            ict_index: parseFloat(p.ict_index) || 0,
+                            // Additional detailed stats if available
+                            history: p.history || [],
+                            // Add fixtures for static path too
+                            fixtures: playerTeamFixtures
+                        };
+                    });
                     
                     // Store detailed data indexed by ID
                     allPlayers.forEach(p => {
