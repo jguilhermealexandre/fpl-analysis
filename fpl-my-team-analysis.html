@@ -801,6 +801,58 @@
             transform: translateX(-3px);
         }
 
+        .quick-settings {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            flex-wrap: wrap;
+        }
+
+        .quick-settings-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        .preset-btn {
+            padding: 8px 16px;
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent-green);
+            transform: translateY(-2px);
+        }
+
+        .preset-btn.active {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+            color: var(--bg);
+        }
+
+        @media (max-width: 768px) {
+            .quick-settings {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .preset-btn {
+                width: 100%;
+            }
+        }
+
         .guide-section {
             background: var(--surface);
             border-bottom: 2px solid var(--border);
@@ -966,7 +1018,24 @@
         <div class="header">
             <h1>⚽ My Team Analysis</h1>
             <p>Research-backed sell/hold recommendations using xGI, fixtures, injuries, and position-specific thresholds</p>
-            <span class="badge">🔬 Research-Backed v3.0</span>
+            <span class="badge">🔬 Research-Backed v4.3</span>
+        </div>
+
+        <!-- Quick Settings Presets -->
+        <div class="quick-settings">
+            <span class="quick-settings-label">Analysis Style:</span>
+            <button class="preset-btn" onclick="applyPreset('aggressive')" title="Sell after 3 blanks, high fixture weight, lower thresholds">
+                🔥 Aggressive
+            </button>
+            <button class="preset-btn active" onclick="applyPreset('balanced')" title="Default balanced settings">
+                ⚖️ Balanced
+            </button>
+            <button class="preset-btn" onclick="applyPreset('patient')" title="Hold through 5 blanks, more patience with premiums">
+                🧘 Patient
+            </button>
+            <button class="preset-btn" onclick="openSettings()" title="Customize individual thresholds">
+                ⚙️ Custom Settings
+            </button>
         </div>
 
         <div class="guide-section">
@@ -1405,6 +1474,14 @@
         };
 
         // RESEARCH-BACKED THRESHOLDS
+        // Position-based premium/budget thresholds
+        const PRICE_TIERS = {
+            1: { premium: 5.5, mid: 5.0, budget: 4.5 },  // Goalkeepers
+            2: { premium: 6.0, mid: 5.0, budget: 4.5 },  // Defenders
+            3: { premium: 9.0, mid: 6.0, budget: 5.0 },  // Midfielders
+            4: { premium: 9.0, mid: 6.5, budget: 5.5 }   // Forwards
+        };
+
         const THRESHOLDS = {
             // xGI per 90 minutes (position-specific)
             xgi: {
@@ -1626,6 +1703,8 @@
                 });
                 
                 console.log('Loaded fixtures for FDR calculation');
+                console.log('Sample teamFixtures:', Object.keys(teamFixtures).length, 'teams');
+                console.log('First team fixtures:', teamFixtures[Object.keys(teamFixtures)[0]]);
             } catch (error) {
                 console.error('Error loading fixtures:', error);
                 // Non-critical - analysis can work without fixtures
@@ -1894,9 +1973,11 @@
             const metrics = {};
             const detailedInsights = [];
             
-            // Get position thresholds
-            const isPremium = player.price >= 8.0;
-            const isMidPrice = player.price >= 5.5 && player.price < 8.0;
+            // Position-based price tier classification
+            const positionTiers = PRICE_TIERS[player.position];
+            const isPremium = player.price >= positionTiers.premium;
+            const isMidPrice = player.price >= positionTiers.mid && player.price < positionTiers.premium;
+            const isBudget = player.price < positionTiers.mid;
             
             // Calculate per-game stats from history
             let recentGames = [];
@@ -2250,10 +2331,14 @@
             // FIXTURE DIFFICULTY ANALYSIS - Applied BEFORE tier adjustments so rating is still high
             if (player.teamId && teamFixtures[player.teamId]) {
                 const upcoming = teamFixtures[player.teamId];
+                console.log(`${player.name} fixtures:`, upcoming);
+                
                 if (upcoming.length > 0) {
                     const avgFDR = upcoming.reduce((sum, f) => sum + f.difficulty, 0) / upcoming.length;
                     metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H' : '(A'}, ${f.difficulty})`).join(', ');
                     metrics.avgFDR = avgFDR.toFixed(1);
+                    
+                    console.log(`${player.name} FDR:`, avgFDR, 'Fixtures:', metrics.nextFixtures);
                     
                     // Smart fixture adjustments (uses customizable weight)
                     const baseFixtureImpact = userSettings.fixtureWeight;
@@ -2316,12 +2401,12 @@
                 console.log(`${player.name}: Rating=${sellRating.toFixed(1)}, Form=${player.form}, FDR=${metrics.avgFDR || 'N/A'}`);
             }
             
-            // Determine action
+            // Determine action (adjusted for less conservative ratings)
             let action, priority;
-            if (sellRating >= 60) {
+            if (sellRating >= 55) {  // Lowered from 60
                 action = '🚨 SELL URGENT';
                 priority = 'urgent';
-            } else if (sellRating >= 40) {
+            } else if (sellRating >= 35) {  // Lowered from 40
                 action = '⚠️ CONSIDER SELLING';
                 priority = 'consider';
             } else {
@@ -2651,6 +2736,44 @@
             updateSettingDisplay('budgetHarshness', userSettings.budgetHarshness);
             updateSettingDisplay('minutesThreshold', userSettings.minutesThreshold);
         }
+
+        function applyPreset(preset) {
+            // Update active button
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (preset === 'aggressive') {
+                userSettings.blankTolerance = 3;
+                userSettings.fixtureWeight = 1.5;
+                userSettings.premiumPatience = 0.90;  // Less patience
+                userSettings.budgetHarshness = 1.2;
+                userSettings.minutesThreshold = 70;
+                updateStatus('🔥 Aggressive settings applied - quicker sell triggers', 'success');
+            } else if (preset === 'balanced') {
+                userSettings.blankTolerance = 4;
+                userSettings.fixtureWeight = 1.0;
+                userSettings.premiumPatience = 0.85;
+                userSettings.budgetHarshness = 1.1;
+                userSettings.minutesThreshold = 60;
+                updateStatus('⚖️ Balanced settings applied - default thresholds', 'success');
+            } else if (preset === 'patient') {
+                userSettings.blankTolerance = 5;
+                userSettings.fixtureWeight = 0.5;  // Fixtures matter less
+                userSettings.premiumPatience = 0.75;  // More patience
+                userSettings.budgetHarshness = 1.0;   // Equal treatment
+                userSettings.minutesThreshold = 50;
+                updateStatus('🧘 Patient settings applied - ride form, hold through blanks', 'success');
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('fpl_analysis_settings', JSON.stringify(userSettings));
+            
+            // Auto re-analyze if team is loaded
+            if (selectedPlayers.length === 15) {
+                setTimeout(() => analyzeTeam(), 500);
+            }
+        }
+
 
         function closeSettings() {
             document.getElementById('settingsModal').classList.remove('show');
