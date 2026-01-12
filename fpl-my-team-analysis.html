@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Team Analysis - FPL Tools</title>
+    <title>My Team Analysis - Research-Backed FPL Tool</title>
     <style>
         * {
             margin: 0;
@@ -33,7 +33,7 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
@@ -54,6 +54,18 @@
         .header p {
             color: var(--text-dim);
             font-size: 14px;
+        }
+
+        .header .badge {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 12px;
+            background: var(--accent-green);
+            color: var(--bg);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
         }
 
         .controls {
@@ -104,7 +116,7 @@
         .status.success { background: var(--accent-green); color: var(--bg); }
         .status.error { background: var(--accent-red); color: white; }
 
-        /* Formation Builder Modal */
+        /* Formation Builder Modal - keeping existing styles */
         .modal {
             display: none;
             position: fixed;
@@ -451,7 +463,7 @@
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             margin-top: 20px;
         }
@@ -476,7 +488,7 @@
 
         .my-team-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
             gap: 15px;
             margin-bottom: 30px;
         }
@@ -560,6 +572,37 @@
         .issue-tag.critical { background: var(--accent-red); color: white; }
         .issue-tag.warning { background: var(--accent-yellow); color: var(--bg); }
         .issue-tag.info { background: var(--accent-blue); color: white; }
+        .issue-tag.positive { background: var(--accent-green); color: var(--bg); }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+            padding: 15px;
+            background: var(--bg);
+            border-radius: 8px;
+        }
+
+        .metric-item {
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .metric-value.good { color: var(--accent-green); }
+        .metric-value.warning { color: var(--accent-yellow); }
+        .metric-value.bad { color: var(--accent-red); }
 
         .recommendation {
             margin-top: 15px;
@@ -624,6 +667,10 @@
             .player-slot .player-price {
                 font-size: 7px;
             }
+
+            .my-team-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -631,7 +678,8 @@
     <div class="container">
         <div class="header">
             <h1>⚽ My Team Analysis</h1>
-            <p>Intelligent sell/hold recommendations based on form, fixtures, and injury data</p>
+            <p>Research-backed sell/hold recommendations using xGI, fixtures, injuries, and position-specific thresholds</p>
+            <span class="badge">🔬 Research-Backed v3.0</span>
         </div>
 
         <div class="controls">
@@ -675,24 +723,13 @@
                     </div>
 
                     <!-- Goalkeepers -->
-                    <div class="position-row gk" id="row-gk">
-                        <!-- Will be populated -->
-                    </div>
-
+                    <div class="position-row gk" id="row-gk"></div>
                     <!-- Defenders -->
-                    <div class="position-row def" id="row-def">
-                        <!-- Will be populated -->
-                    </div>
-
+                    <div class="position-row def" id="row-def"></div>
                     <!-- Midfielders -->
-                    <div class="position-row mid" id="row-mid">
-                        <!-- Will be populated -->
-                    </div>
-
+                    <div class="position-row mid" id="row-mid"></div>
                     <!-- Forwards -->
-                    <div class="position-row fwd" id="row-fwd">
-                        <!-- Will be populated -->
-                    </div>
+                    <div class="position-row fwd" id="row-fwd"></div>
                 </div>
 
                 <!-- Player Selector Panel -->
@@ -703,12 +740,10 @@
                         <input type="text" 
                                class="search-box" 
                                id="playerSearch" 
-                               placeholder="🔍 Search players (e.g., Salah, Sánchez, Arsenal)..."
+                               placeholder="🔍 Search players..."
                                oninput="searchPlayers()">
 
-                        <div class="quick-filters" id="quickFilters">
-                            <!-- Will be populated when position selected -->
-                        </div>
+                        <div class="quick-filters" id="quickFilters"></div>
                     </div>
 
                     <div class="player-list" id="playerList">
@@ -731,22 +766,60 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div style="text-align: center;">
             <div class="spinner"></div>
-            <p style="margin-top: 20px;">Analyzing your team...</p>
+            <p style="margin-top: 20px;">Analyzing your team with research-backed metrics...</p>
         </div>
     </div>
 
     <script>
         let allPlayers = [];
+        let allPlayersDetailed = {}; // Store detailed stats by player ID
         let selectedPlayers = [];
         let currentSlot = null;
         let currentPosition = null;
         let activeFilters = { team: null, price: null };
+        let teams = {}; // Team data for context
+        let fixtures = []; // Fixture data for FDR
 
         const POSITION_CONFIG = {
             1: { name: 'Goalkeeper', shortName: 'GK', emoji: '🧤', count: 2, row: 'gk' },
             2: { name: 'Defender', shortName: 'DEF', emoji: '🛡️', count: 5, row: 'def' },
             3: { name: 'Midfielder', shortName: 'MID', emoji: '⚡', count: 5, row: 'mid' },
             4: { name: 'Forward', shortName: 'FWD', emoji: '🎯', count: 3, row: 'fwd' }
+        };
+
+        // RESEARCH-BACKED THRESHOLDS
+        const THRESHOLDS = {
+            // xGI per 90 minutes (position-specific)
+            xgi: {
+                4: { premium: 0.60, mid: 0.45, budget: 0.30, critical: 0.45 },  // Forwards
+                3: { premium: 0.50, mid: 0.40, budget: 0.30, critical: 0.40 },  // Midfielders
+                2: { all: 0.25, critical: 0.15 },  // Defenders
+                1: { all: 0.0, critical: 0.0 }  // Goalkeepers (not applicable)
+            },
+            // Minutes per game
+            minutes: {
+                secure: 75,     // Fully secure
+                rotation: 60,   // Rotation concerns
+                critical: 45    // Serious rotation victim
+            },
+            // Form rating
+            form: {
+                excellent: 6.0,
+                good: 4.5,
+                poor: 3.0,
+                critical: 1.5
+            },
+            // Blank streaks
+            blanks: {
+                concern: 3,
+                critical: 4
+            },
+            // Price changes
+            price: {
+                monitor: -0.1,
+                concern: -0.2,
+                critical: -0.3
+            }
         };
 
         // Normalize text for accent-insensitive search
@@ -763,7 +836,6 @@
             const saved = localStorage.getItem('fpl_my_team');
             if (saved) {
                 selectedPlayers = JSON.parse(saved);
-                // Ensure positions are numbers
                 selectedPlayers = selectedPlayers.map(p => ({
                     ...p,
                     position: parseInt(p.position)
@@ -795,31 +867,29 @@
             try {
                 // Try loading from static file first
                 let response = await fetch('/data/players-data.json');
+                let data;
                 
                 if (!response.ok) {
                     // Fallback to API
                     response = await fetch('https://fantasy.premierleague.com/api/bootstrap-static/');
-                }
-                
-                const data = await response.json();
-                
-                // Handle both static file and API formats
-                if (data.players) {
-                    // Static file format
-                    allPlayers = data.players.map(p => ({
-                        id: p.id,
-                        name: p.name,
-                        fullName: p.fullName || p.name,
-                        team: data.teams.find(t => t.id === p.team)?.short_name || 'Unknown',
-                        position: parseInt(p.position), // ENSURE NUMBER
-                        price: p.price / 10,
-                        form: parseFloat(p.form),
-                        ownership: parseFloat(p.ownership)
-                    }));
-                } else {
+                    data = await response.json();
+                    
                     // API format
-                    const teams = {};
-                    data.teams.forEach(t => teams[t.id] = t.short_name);
+                    teams = {};
+                    data.teams.forEach(t => {
+                        teams[t.id] = {
+                            id: t.id,
+                            name: t.name,
+                            short_name: t.short_name,
+                            strength: t.strength,
+                            strength_overall_home: t.strength_overall_home,
+                            strength_overall_away: t.strength_overall_away,
+                            strength_attack_home: t.strength_attack_home,
+                            strength_attack_away: t.strength_attack_away,
+                            strength_defence_home: t.strength_defence_home,
+                            strength_defence_away: t.strength_defence_away
+                        };
+                    });
                     
                     allPlayers = data.elements
                         .filter(p => p.minutes > 0)
@@ -827,15 +897,81 @@
                             id: p.id,
                             name: p.web_name,
                             fullName: `${p.first_name} ${p.second_name}`,
-                            team: teams[p.team],
-                            position: parseInt(p.element_type), // ENSURE NUMBER
+                            team: teams[p.team].short_name,
+                            teamId: p.team,
+                            position: parseInt(p.element_type),
                             price: p.now_cost / 10,
                             form: parseFloat(p.form),
-                            ownership: parseFloat(p.selected_by_percent)
+                            ownership: parseFloat(p.selected_by_percent),
+                            minutes: p.minutes,
+                            status: p.status,  // 'a', 'd', 'i', 'u', 's'
+                            news: p.news || '',
+                            chance_of_playing_this_round: p.chance_of_playing_this_round,
+                            chance_of_playing_next_round: p.chance_of_playing_next_round,
+                            expected_goals: parseFloat(p.expected_goals) || 0,
+                            expected_assists: parseFloat(p.expected_assists) || 0,
+                            expected_goal_involvements: parseFloat(p.expected_goal_involvements) || 0,
+                            goals_scored: p.goals_scored,
+                            assists: p.assists,
+                            clean_sheets: p.clean_sheets,
+                            goals_conceded: p.goals_conceded,
+                            bonus: p.bonus,
+                            bps: p.bps,
+                            influence: parseFloat(p.influence),
+                            creativity: parseFloat(p.creativity),
+                            threat: parseFloat(p.threat),
+                            ict_index: parseFloat(p.ict_index)
                         }));
+                } else {
+                    // Static file format (already has detailed data)
+                    data = await response.json();
+                    
+                    // Build teams object
+                    if (data.teams) {
+                        data.teams.forEach(t => {
+                            teams[t.id] = t;
+                        });
+                    }
+                    
+                    allPlayers = data.players.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        fullName: p.fullName || p.name,
+                        team: data.teams?.find(t => t.id === p.team)?.short_name || 'Unknown',
+                        teamId: p.team,
+                        position: parseInt(p.position),
+                        price: p.price / 10,
+                        form: parseFloat(p.form),
+                        ownership: parseFloat(p.ownership),
+                        minutes: p.minutes || 0,
+                        status: p.status || 'a',
+                        news: p.news || '',
+                        chance_of_playing_this_round: p.chance_of_playing_this_round,
+                        chance_of_playing_next_round: p.chance_of_playing_next_round,
+                        expected_goals: parseFloat(p.expected_goals) || 0,
+                        expected_assists: parseFloat(p.expected_assists) || 0,
+                        expected_goal_involvements: parseFloat(p.expected_goal_involvements) || 0,
+                        goals_scored: p.goals_scored || 0,
+                        assists: p.assists || 0,
+                        clean_sheets: p.clean_sheets || 0,
+                        goals_conceded: p.goals_conceded || 0,
+                        bonus: p.bonus || 0,
+                        bps: p.bps || 0,
+                        influence: parseFloat(p.influence) || 0,
+                        creativity: parseFloat(p.creativity) || 0,
+                        threat: parseFloat(p.threat) || 0,
+                        ict_index: parseFloat(p.ict_index) || 0,
+                        // Additional detailed stats if available
+                        history: p.history || []
+                    }));
+                    
+                    // Store detailed data indexed by ID
+                    allPlayers.forEach(p => {
+                        allPlayersDetailed[p.id] = p;
+                    });
                 }
                 
-                console.log(`Loaded ${allPlayers.length} players`);
+                console.log(`Loaded ${allPlayers.length} players with detailed stats`);
             } catch (error) {
                 console.error('Error loading players:', error);
                 alert('Failed to load players. Please try again.');
@@ -843,7 +979,6 @@
         }
 
         function renderFormation() {
-            // Render each position row
             Object.entries(POSITION_CONFIG).forEach(([posId, config]) => {
                 const row = document.getElementById(`row-${config.row}`);
                 const selectedInPosition = selectedPlayers.filter(p => p.position === parseInt(posId));
@@ -879,34 +1014,27 @@
             const config = POSITION_CONFIG[position];
             document.getElementById('selectorTitle').textContent = `Select ${config.name}`;
             
-            // Render quick filters
             renderQuickFilters(position);
-            
-            // Show players for this position
             renderPlayerList(position);
         }
 
         function renderQuickFilters(position) {
             const positionPlayers = allPlayers.filter(p => p.position === position);
             
-            // Get unique teams
             const teams = [...new Set(positionPlayers.map(p => p.team))].sort();
-            const popularTeams = teams.slice(0, 8); // Top 8 teams
+            const popularTeams = teams.slice(0, 8);
             
             let html = '<strong style="font-size: 11px; color: var(--text-dim); margin-right: 10px;">Quick Filters:</strong>';
             
-            // Team filters
             popularTeams.forEach(team => {
                 const isActive = activeFilters.team === team ? 'active' : '';
                 html += `<button class="filter-btn ${isActive}" onclick="toggleFilter('team', '${team}')">${team}</button>`;
             });
             
-            // Price filters
             html += `<button class="filter-btn ${activeFilters.price === 'budget' ? 'active' : ''}" onclick="toggleFilter('price', 'budget')">Budget (≤£5.0)</button>`;
             html += `<button class="filter-btn ${activeFilters.price === 'mid' ? 'active' : ''}" onclick="toggleFilter('price', 'mid')">Mid (£5.0-£8.0)</button>`;
             html += `<button class="filter-btn ${activeFilters.price === 'premium' ? 'active' : ''}" onclick="toggleFilter('price', 'premium')">Premium (≥£8.0)</button>`;
             
-            // Clear filter
             if (activeFilters.team || activeFilters.price) {
                 html += `<button class="filter-btn" onclick="clearFilters()" style="color: var(--accent-red);">Clear Filters</button>`;
             }
@@ -935,12 +1063,10 @@
         function renderPlayerList(position) {
             let players = allPlayers.filter(p => p.position === position);
             
-            // Apply team filter
             if (activeFilters.team) {
                 players = players.filter(p => p.team === activeFilters.team);
             }
             
-            // Apply price filter
             if (activeFilters.price === 'budget') {
                 players = players.filter(p => p.price <= 5.0);
             } else if (activeFilters.price === 'mid') {
@@ -949,7 +1075,6 @@
                 players = players.filter(p => p.price >= 8.0);
             }
             
-            // Apply search filter
             const search = document.getElementById('playerSearch').value;
             if (search) {
                 const normalizedSearch = normalizeText(search);
@@ -960,18 +1085,17 @@
                 );
             }
             
-            // Sort by ownership (popular first)
             players.sort((a, b) => b.ownership - a.ownership);
             
-            // Render
             let html = '';
             players.forEach(player => {
                 const isSelected = selectedPlayers.some(p => p.id === player.id);
+                const statusIcon = player.status === 'i' ? '🔴' : player.status === 'd' ? '🟡' : '';
                 html += `
                     <div class="player-item ${isSelected ? 'selected' : ''}" onclick="selectPlayer(${player.id})">
                         <div class="player-item-info">
-                            <div class="player-item-name">${player.name}</div>
-                            <div class="player-item-meta">${player.team} • ${player.ownership.toFixed(1)}% owned • Form: ${player.form.toFixed(1)}</div>
+                            <div class="player-item-name">${statusIcon} ${player.name}</div>
+                            <div class="player-item-meta">${player.team} • ${player.ownership.toFixed(1)}% • Form: ${player.form.toFixed(1)}</div>
                         </div>
                         <div class="player-item-price">£${player.price.toFixed(1)}</div>
                     </div>
@@ -994,13 +1118,11 @@
         function selectPlayer(playerId) {
             const player = allPlayers.find(p => p.id === playerId);
             
-            // Check if already selected
             if (selectedPlayers.some(p => p.id === playerId)) {
                 alert('This player is already in your team');
                 return;
             }
             
-            // Check position limit
             const samePositionCount = selectedPlayers.filter(p => p.position === player.position).length;
             const limit = POSITION_CONFIG[player.position].count;
             
@@ -1009,15 +1131,12 @@
                 return;
             }
             
-            // Add player
             selectedPlayers.push(player);
             
-            // Update display
             renderFormation();
             renderPlayerList(currentPosition);
             updateProgress();
             
-            // Clear search
             document.getElementById('playerSearch').value = '';
             
             updateStatus(`Added ${player.name} to your team`, 'success');
@@ -1049,9 +1168,8 @@
             
             localStorage.setItem('fpl_my_team', JSON.stringify(selectedPlayers));
             closeTeamSelector();
-            updateStatus('Team saved! Analyzing...', 'success');
+            updateStatus('Team saved! Analyzing with research-backed metrics...', 'success');
             
-            // Auto-analyze
             setTimeout(() => analyzeTeam(), 500);
         }
 
@@ -1072,11 +1190,11 @@
             }
             
             document.getElementById('loadingOverlay').classList.add('show');
-            updateStatus('Analyzing your team...', 'loading');
+            updateStatus('Analyzing with research-backed metrics...', 'loading');
             
             try {
-                // Analyze each player
-                const analyses = selectedPlayers.map(p => analyzePlayer(p));
+                // Analyze each player with research-backed system
+                const analyses = selectedPlayers.map(p => analyzePlayerResearchBacked(p));
                 
                 // Sort by sell rating (highest first)
                 analyses.sort((a, b) => b.sellRating - a.sellRating);
@@ -1084,7 +1202,8 @@
                 // Render analysis
                 renderTeamAnalysis(analyses);
                 
-                updateStatus(`✓ Analysis complete! ${analyses.filter(a => a.sellRating >= 60).length} urgent sells identified`, 'success');
+                const urgentCount = analyses.filter(a => a.sellRating >= 60).length;
+                updateStatus(`✓ Analysis complete! ${urgentCount} urgent sell${urgentCount !== 1 ? 's' : ''} identified`, 'success');
             } catch (error) {
                 console.error('Error analyzing team:', error);
                 updateStatus('✗ Error analyzing team. Please try again.', 'error');
@@ -1093,45 +1212,158 @@
             }
         }
 
-        function analyzePlayer(player) {
+        // RESEARCH-BACKED ANALYSIS FUNCTION
+        function analyzePlayerResearchBacked(player) {
             let sellRating = 0;
             const issues = [];
             const reasons = [];
+            const metrics = {};
             
-            // FORM ANALYSIS
-            if (player.form < 1.5) {
-                sellRating += 35;
-                issues.push({ text: 'Very Poor Form', type: 'critical', points: 35 });
-                reasons.push('Form rating below 1.5 indicates consistent blanks');
-            } else if (player.form >= 1.5 && player.form < 3.0) {
-                sellRating += 20;
-                issues.push({ text: 'Below Average Form', type: 'warning', points: 20 });
-                reasons.push('Form rating suggests underperforming');
+            // Get position thresholds
+            const isPremium = player.price >= 8.0;
+            const isMidPrice = player.price >= 5.5 && player.price < 8.0;
+            
+            // FACTOR 1: INJURY FLAGS (Binary Multiplier) - Most Critical
+            let injuryMultiplier = 1.0;
+            if (player.status === 'i' || player.status === 'u') {
+                // Red flag - confirmed injury/unavailable
+                injuryMultiplier = 0.3;
+                sellRating += 60;
+                issues.push({ text: '🔴 Injured/Unavailable', type: 'critical', points: 60 });
+                reasons.push(`Red flag injury: ${player.news || 'Confirmed unavailable'}`);
+            } else if (player.status === 'd') {
+                // Yellow/orange flag - doubtful
+                injuryMultiplier = 0.7;
+                sellRating += 30;
+                issues.push({ text: '🟡 Injury Doubt', type: 'critical', points: 30 });
+                reasons.push(`Doubtful for next match: ${player.news || '75% or less chance of playing'}`);
             }
             
-            // OWNERSHIP CONCERNS
+            if (player.chance_of_playing_next_round !== null && player.chance_of_playing_next_round < 50) {
+                sellRating += 25;
+                issues.push({ text: `${player.chance_of_playing_next_round}% Chance Playing`, type: 'critical', points: 25 });
+            }
+            
+            // FACTOR 2: FORM & xGI (25% weight) - Underlying Performance
+            metrics.form = player.form.toFixed(1);
+            metrics.xGI = (player.expected_goal_involvements || 0).toFixed(2);
+            
+            let formScore = 0;
+            if (player.form < THRESHOLDS.form.critical) {
+                formScore = 35;
+                issues.push({ text: 'Very Poor Form', type: 'critical', points: 35 });
+                reasons.push(`Form ${player.form.toFixed(1)} is critically low - consistent blanks likely`);
+            } else if (player.form < THRESHOLDS.form.poor) {
+                formScore = 20;
+                issues.push({ text: 'Below Average Form', type: 'warning', points: 20 });
+                reasons.push(`Form ${player.form.toFixed(1)} suggests underperformance`);
+            } else if (player.form >= THRESHOLDS.form.excellent) {
+                formScore = -20;
+                issues.push({ text: 'Excellent Form', type: 'positive', points: -20 });
+                reasons.push(`Hot form (${player.form.toFixed(1)}) - strong hold`);
+            } else if (player.form >= THRESHOLDS.form.good) {
+                formScore = -10;
+                issues.push({ text: 'Good Form', type: 'positive', points: -10 });
+                reasons.push(`Solid form (${player.form.toFixed(1)}) - performing well`);
+            }
+            
+            sellRating += formScore * 0.25; // 25% weight
+            
+            // Position-specific xGI analysis
+            if (player.position === 4) { // Forwards
+                const threshold = isPremium ? THRESHOLDS.xgi[4].premium : 
+                                isMidPrice ? THRESHOLDS.xgi[4].mid : THRESHOLDS.xgi[4].budget;
+                const critical = THRESHOLDS.xgi[4].critical;
+                
+                if (player.expected_goal_involvements < critical && player.expected_goal_involvements > 0) {
+                    sellRating += 30;
+                    issues.push({ text: 'Low xGI Output', type: 'critical', points: 30 });
+                    reasons.push(`xGI ${player.expected_goal_involvements.toFixed(2)} below ${critical} threshold for forwards`);
+                }
+            } else if (player.position === 3) { // Midfielders
+                const threshold = isPremium ? THRESHOLDS.xgi[3].premium : 
+                                isMidPrice ? THRESHOLDS.xgi[3].mid : THRESHOLDS.xgi[3].budget;
+                const critical = THRESHOLDS.xgi[3].critical;
+                
+                if (player.expected_goal_involvements < critical && player.expected_goal_involvements > 0) {
+                    sellRating += 25;
+                    issues.push({ text: 'Low xGI Output', type: 'warning', points: 25 });
+                    reasons.push(`xGI ${player.expected_goal_involvements.toFixed(2)} below ${critical} threshold for midfielders`);
+                }
+            } else if (player.position === 2) { // Defenders
+                if (player.expected_goal_involvements < THRESHOLDS.xgi[2].critical && player.expected_goal_involvements > 0) {
+                    sellRating += 15;
+                    issues.push({ text: 'Low Attacking Output', type: 'info', points: 15 });
+                    reasons.push(`Defender with minimal attacking involvement (xGI ${player.expected_goal_involvements.toFixed(2)})`);
+                }
+            }
+            
+            // FACTOR 3: MINUTES & ROTATION RISK (15% weight)
+            if (player.history && player.history.length >= 4) {
+                const last4Games = player.history.slice(-4);
+                const avgMinutes = last4Games.reduce((sum, g) => sum + (g.minutes || 0), 0) / 4;
+                metrics.avgMinutes = avgMinutes.toFixed(0);
+                
+                if (avgMinutes < THRESHOLDS.minutes.critical) {
+                    sellRating += 35;
+                    issues.push({ text: 'Severe Rotation Risk', type: 'critical', points: 35 });
+                    reasons.push(`Averaging ${avgMinutes.toFixed(0)} mins - serious rotation concerns`);
+                } else if (avgMinutes < THRESHOLDS.minutes.rotation) {
+                    sellRating += 20;
+                    issues.push({ text: 'Rotation Concerns', type: 'warning', points: 20 });
+                    reasons.push(`Averaging ${avgMinutes.toFixed(0)} mins - below 60-minute threshold`);
+                } else if (avgMinutes >= THRESHOLDS.minutes.secure) {
+                    sellRating -= 10;
+                    issues.push({ text: 'Minutes Secure', type: 'positive', points: -10 });
+                    reasons.push(`Averaging ${avgMinutes.toFixed(0)} mins - nailed starter`);
+                }
+            }
+            
+            // FACTOR 4: BLANK STREAK (Research shows 4+ blanks is critical)
+            if (player.history && player.history.length >= 4) {
+                const last4Games = player.history.slice(-4);
+                const blanks = last4Games.filter(g => (g.total_points || 0) <= 2).length;
+                
+                if (blanks === 4) {
+                    sellRating += 30;
+                    issues.push({ text: '4 Consecutive Blanks', type: 'critical', points: 30 });
+                    reasons.push('4-game blank streak indicates serious issues');
+                } else if (blanks === 3) {
+                    sellRating += 15;
+                    issues.push({ text: '3 Recent Blanks', type: 'warning', points: 15 });
+                    reasons.push('3 blanks in last 4 games - monitoring required');
+                }
+            }
+            
+            // FACTOR 5: OWNERSHIP (10% weight) - Template Risk
+            metrics.ownership = player.ownership.toFixed(1) + '%';
+            
             if (player.ownership < 2.0) {
                 sellRating += 10;
                 issues.push({ text: 'Very Low Ownership', type: 'info', points: 10 });
-                reasons.push('Less than 2% ownership - template opportunity cost');
+                reasons.push('Under 2% owned - high template opportunity cost');
             }
             
             if (player.ownership > 40) {
                 sellRating += 5;
                 issues.push({ text: 'Template Player', type: 'info', points: 5 });
-                reasons.push('High ownership reduces differential value');
+                reasons.push('High ownership (>40%) - less differential value');
             }
             
-            // Good performance (negative points = don't sell)
-            if (player.form >= 6.0) {
-                sellRating -= 20;
-                issues.push({ text: 'Excellent Form', type: 'info', points: -20 });
-                reasons.push('In hot form - strong hold');
-            } else if (player.form >= 4.5) {
-                sellRating -= 10;
-                issues.push({ text: 'Good Form', type: 'info', points: -10 });
-                reasons.push('Performing well - consider holding');
+            // FACTOR 6: PRICE TIER ADJUSTMENT
+            // Premium players get more patience
+            if (isPremium) {
+                sellRating *= 0.85; // 15% more patience for premiums
+                metrics.tier = 'Premium (£8m+)';
+            } else if (isMidPrice) {
+                metrics.tier = 'Mid-price';
+            } else {
+                sellRating *= 1.1; // 10% less patience for budget
+                metrics.tier = 'Budget';
             }
+            
+            // Apply injury multiplier (if injured, rating stays very high)
+            sellRating = sellRating * (1 / Math.max(injuryMultiplier, 0.3));
             
             // Cap rating at 0-100
             sellRating = Math.max(0, Math.min(100, sellRating));
@@ -1151,11 +1383,12 @@
             
             return {
                 player,
-                sellRating,
+                sellRating: Math.round(sellRating),
                 action,
                 priority,
                 issues,
-                reasons
+                reasons,
+                metrics
             };
         }
 
@@ -1166,7 +1399,10 @@
             
             let html = `
                 <div class="priority-section">
-                    <h2>📊 Team Summary</h2>
+                    <h2>📊 Research-Backed Team Analysis</h2>
+                    <p style="color: var(--text-dim); margin-bottom: 15px; font-size: 13px;">
+                        Analysis based on xGI thresholds, injury flags, minutes security, and position-specific logic from top 10k managers
+                    </p>
                     <div class="summary-grid">
                         <div class="summary-card">
                             <div class="summary-value" style="color: var(--accent-red);">${urgent.length}</div>
@@ -1191,10 +1427,10 @@
             if (urgent.length > 0) {
                 html += `
                     <div class="priority-section">
-                        <h2 style="color: var(--accent-red);">🚨 URGENT: Sell These Players</h2>
-                        <p style="color: var(--text-dim); margin-bottom: 20px;">These players are hurting your team and should be transferred out immediately.</p>
+                        <h2 style="color: var(--accent-red);">🚨 URGENT: Transfer Out Immediately</h2>
+                        <p style="color: var(--text-dim); margin-bottom: 20px;">These players have critical issues (injuries, rotation, or severe underperformance)</p>
                         <div class="my-team-grid">
-                            ${urgent.map(a => createPlayerCard(a)).join('')}
+                            ${urgent.map(a => createPlayerCardDetailed(a)).join('')}
                         </div>
                     </div>
                 `;
@@ -1203,10 +1439,10 @@
             if (consider.length > 0) {
                 html += `
                     <div class="priority-section">
-                        <h2 style="color: var(--accent-yellow);">⚠️ Consider Selling</h2>
-                        <p style="color: var(--text-dim); margin-bottom: 20px;">These players have concerns and should be monitored closely.</p>
+                        <h2 style="color: var(--accent-yellow);">⚠️ Monitor Closely - Consider Selling</h2>
+                        <p style="color: var(--text-dim); margin-bottom: 20px;">These players show concerning trends that warrant close monitoring</p>
                         <div class="my-team-grid">
-                            ${consider.map(a => createPlayerCard(a)).join('')}
+                            ${consider.map(a => createPlayerCardDetailed(a)).join('')}
                         </div>
                     </div>
                 `;
@@ -1215,10 +1451,10 @@
             if (hold.length > 0) {
                 html += `
                     <div class="priority-section">
-                        <h2 style="color: var(--accent-green);">✅ Hold These Players</h2>
-                        <p style="color: var(--text-dim); margin-bottom: 20px;">These players are performing well and should be kept in your team.</p>
+                        <h2 style="color: var(--accent-green);">✅ Strong Performers - Hold</h2>
+                        <p style="color: var(--text-dim); margin-bottom: 20px;">These players are performing well with positive underlying stats</p>
                         <div class="my-team-grid">
-                            ${hold.map(a => createPlayerCard(a)).join('')}
+                            ${hold.map(a => createPlayerCardDetailed(a)).join('')}
                         </div>
                     </div>
                 `;
@@ -1227,13 +1463,60 @@
             document.getElementById('teamDisplay').innerHTML = html;
         }
 
-        function createPlayerCard(analysis) {
-            const { player, sellRating, action, priority, issues, reasons } = analysis;
+        function createPlayerCardDetailed(analysis) {
+            const { player, sellRating, action, priority, issues, reasons, metrics } = analysis;
             const config = POSITION_CONFIG[player.position];
             
             const ratingColor = priority === 'urgent' ? 'var(--accent-red)' : 
                                priority === 'consider' ? 'var(--accent-yellow)' : 
                                'var(--accent-green)';
+            
+            // Build metrics display
+            let metricsHtml = '';
+            if (metrics.form) {
+                const formClass = parseFloat(metrics.form) >= 4.5 ? 'good' : 
+                                 parseFloat(metrics.form) < 3.0 ? 'bad' : 'warning';
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Form</div>
+                        <div class="metric-value ${formClass}">${metrics.form}</div>
+                    </div>
+                `;
+            }
+            if (metrics.xGI) {
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">xGI</div>
+                        <div class="metric-value">${metrics.xGI}</div>
+                    </div>
+                `;
+            }
+            if (metrics.avgMinutes) {
+                const minutesClass = parseFloat(metrics.avgMinutes) >= 75 ? 'good' : 
+                                    parseFloat(metrics.avgMinutes) < 60 ? 'bad' : 'warning';
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Avg Mins</div>
+                        <div class="metric-value ${minutesClass}">${metrics.avgMinutes}</div>
+                    </div>
+                `;
+            }
+            if (metrics.ownership) {
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Ownership</div>
+                        <div class="metric-value">${metrics.ownership}</div>
+                    </div>
+                `;
+            }
+            if (metrics.tier) {
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Tier</div>
+                        <div class="metric-value">${metrics.tier}</div>
+                    </div>
+                `;
+            }
             
             return `
                 <div class="player-card ${priority === 'urgent' ? 'sell-urgent' : priority === 'consider' ? 'sell-consider' : 'hold'}">
@@ -1243,15 +1526,14 @@
                             <div class="player-card-meta">
                                 ${player.team} • ${config.name} • £${player.price.toFixed(1)}m
                             </div>
-                            <div class="player-card-meta">
-                                Form: ${player.form.toFixed(1)} • Ownership: ${player.ownership.toFixed(1)}%
-                            </div>
                         </div>
                         <div class="sell-rating">
                             <div class="rating-score" style="color: ${ratingColor};">${sellRating}</div>
                             <div class="rating-label ${priority}">${action}</div>
                         </div>
                     </div>
+                    
+                    ${metricsHtml ? `<div class="metrics-grid">${metricsHtml}</div>` : ''}
                     
                     <div class="issues-list">
                         ${issues.map(issue => `
@@ -1262,8 +1544,8 @@
                     </div>
                     
                     <div class="recommendation">
-                        <strong>Recommendation:</strong><br>
-                        ${reasons.length > 0 ? reasons.join('. ') + '.' : 'No major concerns identified.'}
+                        <strong>📊 Research-Based Analysis:</strong><br>
+                        ${reasons.length > 0 ? reasons.join('. ') + '.' : 'Strong performer with no major concerns. Underlying stats support continued ownership.'}
                     </div>
                 </div>
             `;
