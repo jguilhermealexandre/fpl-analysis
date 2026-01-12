@@ -2023,19 +2023,21 @@
                 metrics.avgMinutes = avgMinutes.toFixed(0);
                 metrics.avgPoints = avgPoints.toFixed(1);
                 
-                // Detailed insight about xGI trend
-                if (recentXGIPer90 > seasonXGIPer90 * 1.2 && recentMinutes >= 180) {
-                    detailedInsights.push({
-                        type: 'positive',
-                        title: 'Improving Underlying Stats',
-                        text: `Recent xGI/90 (${recentXGIPer90.toFixed(2)}) is ${((recentXGIPer90/seasonXGIPer90 - 1) * 100).toFixed(0)}% higher than season average (${seasonXGIPer90.toFixed(2)}). Player is in better form than their season numbers suggest - could be due for returns.`
-                    });
-                } else if (recentXGIPer90 < seasonXGIPer90 * 0.8 && recentMinutes >= 180) {
-                    detailedInsights.push({
-                        type: 'warning',
-                        title: 'Declining Underlying Stats',
-                        text: `Recent xGI/90 (${recentXGIPer90.toFixed(2)}) has dropped ${((1 - recentXGIPer90/seasonXGIPer90) * 100).toFixed(0)}% from season average (${seasonXGIPer90.toFixed(2)}). This suggests a genuine decline in attacking involvement, not just bad luck.`
-                    });
+                // Detailed insight about xGI trend (ONLY for attackers - DEF, MID, FWD)
+                if (player.position >= 2) {
+                    if (recentXGIPer90 > seasonXGIPer90 * 1.2 && recentMinutes >= 180 && seasonXGIPer90 > 0.1) {
+                        detailedInsights.push({
+                            type: 'positive',
+                            title: 'Improving Underlying Stats',
+                            text: `Recent xGI/90 (${recentXGIPer90.toFixed(2)}) is ${((recentXGIPer90/seasonXGIPer90 - 1) * 100).toFixed(0)}% higher than season average (${seasonXGIPer90.toFixed(2)}). Player is in better form than their season numbers suggest - could be due for returns.`
+                        });
+                    } else if (recentXGIPer90 < seasonXGIPer90 * 0.8 && recentMinutes >= 180 && seasonXGIPer90 > 0.1) {
+                        detailedInsights.push({
+                            type: 'warning',
+                            title: 'Declining Underlying Stats',
+                            text: `Recent xGI/90 (${recentXGIPer90.toFixed(2)}) has dropped ${((1 - recentXGIPer90/seasonXGIPer90) * 100).toFixed(0)}% from season average (${seasonXGIPer90.toFixed(2)}). This suggests a genuine decline in attacking involvement, not just bad luck.`
+                        });
+                    }
                 }
                 
                 // Insight about minutes trend
@@ -2313,6 +2315,32 @@
                 }
             }
             
+            // DEFENDER-SPECIFIC METRICS
+            if (player.position === 2 && recentGames.length >= 4) {
+                // Calculate clean sheet rate
+                const cleanSheets = recentGames.reduce((sum, g) => sum + (g.clean_sheets || 0), 0);
+                const csRate = (cleanSheets / recentGames.length) * 100;
+                
+                metrics.cleanSheetRate = csRate.toFixed(0) + '%';
+                
+                if (csRate < 25 && recentMinutes >= 270) {
+                    sellRating += 15;
+                    issues.push({ text: 'Poor Clean Sheet Rate', type: 'warning', points: 15 });
+                    
+                    detailedInsights.push({
+                        type: 'warning',
+                        title: 'Defensive Returns Lacking',
+                        text: `Only ${cleanSheets} clean sheet${cleanSheets !== 1 ? 's' : ''} in last 4 games (${csRate.toFixed(0)}% rate). Defenders rely heavily on clean sheets for points. Team defensive form is concerning - check if this is a tactical issue or just bad luck with fixtures.`
+                    });
+                } else if (csRate >= 50) {
+                    detailedInsights.push({
+                        type: 'positive',
+                        title: 'Strong Defensive Record',
+                        text: `${cleanSheets} clean sheets in last 4 games (${csRate.toFixed(0)}% rate) is excellent for defenders. Team defending well - reliable source of clean sheet points. ${parseFloat(metrics.recentXGIPer90) > 0.15 ? 'Plus has attacking threat on top.' : ''}`
+                    });
+                }
+            }
+            
             // OWNERSHIP ANALYSIS
             metrics.ownership = player.ownership.toFixed(1) + '%';
             
@@ -2530,28 +2558,74 @@
                 `;
             }
             
-            // Row 2: xGI Data (Season and Recent)
-            if (metrics.seasonXGIPer90) {
-                metricsHtml += `
-                    <div class="metric-item">
-                        <div class="metric-label">Season xGI/90</div>
-                        <div class="metric-value">${metrics.seasonXGIPer90}</div>
-                    </div>
-                `;
-            }
-            if (metrics.recentXGIPer90) {
-                const xgiClass = parseFloat(metrics.recentXGIPer90) >= 0.60 ? 'good' : 
-                                parseFloat(metrics.recentXGIPer90) < 0.30 ? 'bad' : 'warning';
-                metricsHtml += `
-                    <div class="metric-item">
-                        <div class="metric-label">Recent xGI/90 (L4)</div>
-                        <div class="metric-value ${xgiClass}">${metrics.recentXGIPer90}</div>
-                    </div>
-                `;
+            // Row 2: Position-Specific Primary Metrics
+            if (player.position === 1) {
+                // GOALKEEPERS: Clean Sheet Rate & Saves
+                if (metrics.cleanSheetRate) {
+                    const csClass = parseFloat(metrics.cleanSheetRate) >= 50 ? 'good' : 
+                                   parseFloat(metrics.cleanSheetRate) < 25 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">Clean Sheet Rate (L4)</div>
+                            <div class="metric-value ${csClass}">${metrics.cleanSheetRate}</div>
+                        </div>
+                    `;
+                }
+                if (metrics.avgSaves) {
+                    const savesClass = parseFloat(metrics.avgSaves) >= 4 ? 'good' : '';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">Avg Saves (L4)</div>
+                            <div class="metric-value ${savesClass}">${metrics.avgSaves}</div>
+                        </div>
+                    `;
+                }
+            } else if (player.position === 2) {
+                // DEFENDERS: Clean Sheets & Points (no xGI)
+                if (metrics.cleanSheetRate) {
+                    const csClass = parseFloat(metrics.cleanSheetRate) >= 50 ? 'good' : 
+                                   parseFloat(metrics.cleanSheetRate) < 25 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">Clean Sheet Rate (L4)</div>
+                            <div class="metric-value ${csClass}">${metrics.cleanSheetRate}</div>
+                        </div>
+                    `;
+                }
+                if (metrics.avgPoints) {
+                    const ptsClass = parseFloat(metrics.avgPoints) >= 5 ? 'good' : 
+                                     parseFloat(metrics.avgPoints) < 3 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">Avg Pts (L4)</div>
+                            <div class="metric-value ${ptsClass}">${metrics.avgPoints}</div>
+                        </div>
+                    `;
+                }
+            } else {
+                // MIDFIELDERS & FORWARDS: xGI metrics
+                if (metrics.seasonXGIPer90) {
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">Season xGI/90</div>
+                            <div class="metric-value">${metrics.seasonXGIPer90}</div>
+                        </div>
+                    `;
+                }
+                if (metrics.recentXGIPer90) {
+                    const xgiClass = parseFloat(metrics.recentXGIPer90) >= 0.60 ? 'good' : 
+                                    parseFloat(metrics.recentXGIPer90) < 0.30 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">Recent xGI/90 (L4)</div>
+                            <div class="metric-value ${xgiClass}">${metrics.recentXGIPer90}</div>
+                        </div>
+                    `;
+                }
             }
             
-            // Row 3: xG and xA Breakdown
-            if (metrics.recentXGPer90) {
+            // Row 3: xG and xA Breakdown (ONLY for MID and FWD)
+            if (player.position >= 3 && metrics.recentXGPer90) {
                 metricsHtml += `
                     <div class="metric-item">
                         <div class="metric-label">xG/90 (L4)</div>
@@ -2559,7 +2633,7 @@
                     </div>
                 `;
             }
-            if (metrics.recentXAPer90) {
+            if (player.position >= 3 && metrics.recentXAPer90) {
                 metricsHtml += `
                     <div class="metric-item">
                         <div class="metric-label">xA/90 (L4)</div>
@@ -2584,26 +2658,6 @@
                     <div class="metric-item">
                         <div class="metric-label">Ownership</div>
                         <div class="metric-value">${metrics.ownership}</div>
-                    </div>
-                `;
-            }
-            
-            // GK-Specific Metrics
-            if (metrics.cleanSheetRate) {
-                const csClass = parseFloat(metrics.cleanSheetRate) >= 50 ? 'good' : 
-                               parseFloat(metrics.cleanSheetRate) < 25 ? 'bad' : 'warning';
-                metricsHtml += `
-                    <div class="metric-item">
-                        <div class="metric-label">Clean Sheet Rate (L4)</div>
-                        <div class="metric-value ${csClass}">${metrics.cleanSheetRate}</div>
-                    </div>
-                `;
-            }
-            if (metrics.avgSaves) {
-                metricsHtml += `
-                    <div class="metric-item">
-                        <div class="metric-label">Avg Saves (L4)</div>
-                        <div class="metric-value">${metrics.avgSaves}</div>
                     </div>
                 `;
             }
