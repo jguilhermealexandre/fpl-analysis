@@ -1244,31 +1244,27 @@
                 issues.push({ text: `${player.chance_of_playing_next_round}% Chance Playing`, type: 'critical', points: 25 });
             }
             
-            // FACTOR 2: FORM & xGI (25% weight) - Underlying Performance
+            // FACTOR 2: FORM & xGI - Underlying Performance
             metrics.form = player.form.toFixed(1);
             metrics.xGI = (player.expected_goal_involvements || 0).toFixed(2);
             
-            let formScore = 0;
             if (player.form < THRESHOLDS.form.critical) {
-                formScore = 35;
+                sellRating += 35;
                 issues.push({ text: 'Very Poor Form', type: 'critical', points: 35 });
                 reasons.push(`Form ${player.form.toFixed(1)} is critically low - consistent blanks likely`);
             } else if (player.form < THRESHOLDS.form.poor) {
-                formScore = 20;
+                sellRating += 20;
                 issues.push({ text: 'Below Average Form', type: 'warning', points: 20 });
                 reasons.push(`Form ${player.form.toFixed(1)} suggests underperformance`);
             } else if (player.form >= THRESHOLDS.form.excellent) {
-                formScore = -20;
+                sellRating -= 20;
                 issues.push({ text: 'Excellent Form', type: 'positive', points: -20 });
                 reasons.push(`Hot form (${player.form.toFixed(1)}) - strong hold`);
             } else if (player.form >= THRESHOLDS.form.good) {
-                formScore = -10;
+                sellRating -= 10;
                 issues.push({ text: 'Good Form', type: 'positive', points: -10 });
                 reasons.push(`Solid form (${player.form.toFixed(1)}) - performing well`);
             }
-            
-            sellRating += formScore * 0.25; // 25% weight
-            
             // Position-specific xGI analysis
             if (player.position === 4) { // Forwards
                 const threshold = isPremium ? THRESHOLDS.xgi[4].premium : 
@@ -1298,7 +1294,7 @@
                 }
             }
             
-            // FACTOR 3: MINUTES & ROTATION RISK (15% weight)
+            // FACTOR 3: MINUTES & ROTATION RISK
             if (player.history && player.history.length >= 4) {
                 const last4Games = player.history.slice(-4);
                 const avgMinutes = last4Games.reduce((sum, g) => sum + (g.minutes || 0), 0) / 4;
@@ -1335,7 +1331,7 @@
                 }
             }
             
-            // FACTOR 5: OWNERSHIP (10% weight) - Template Risk
+            // FACTOR 5: OWNERSHIP - Template Risk
             metrics.ownership = player.ownership.toFixed(1) + '%';
             
             if (player.ownership < 2.0) {
