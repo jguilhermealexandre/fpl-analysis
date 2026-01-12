@@ -1587,35 +1587,42 @@
                     
                     allPlayers = data.elements
                         .filter(p => p.minutes > 0)
-                        .map(p => ({
-                            id: p.id,
-                            name: p.web_name,
-                            fullName: `${p.first_name} ${p.second_name}`,
-                            team: teams[p.team].short_name,
-                            teamId: p.team,
-                            position: parseInt(p.element_type),
-                            price: p.now_cost / 10,
-                            form: parseFloat(p.form),
-                            ownership: parseFloat(p.selected_by_percent),
-                            minutes: p.minutes,
-                            status: p.status,  // 'a', 'd', 'i', 'u', 's'
-                            news: p.news || '',
-                            chance_of_playing_this_round: p.chance_of_playing_this_round,
-                            chance_of_playing_next_round: p.chance_of_playing_next_round,
-                            expected_goals: parseFloat(p.expected_goals) || 0,
-                            expected_assists: parseFloat(p.expected_assists) || 0,
-                            expected_goal_involvements: parseFloat(p.expected_goal_involvements) || 0,
-                            goals_scored: p.goals_scored,
-                            assists: p.assists,
-                            clean_sheets: p.clean_sheets,
-                            goals_conceded: p.goals_conceded,
-                            bonus: p.bonus,
-                            bps: p.bps,
-                            influence: parseFloat(p.influence),
-                            creativity: parseFloat(p.creativity),
-                            threat: parseFloat(p.threat),
-                            ict_index: parseFloat(p.ict_index)
-                        }));
+                        .map(p => {
+                            // Get this player's team fixtures
+                            const playerTeamFixtures = teamFixtures[p.team] || [];
+                            
+                            return {
+                                id: p.id,
+                                name: p.web_name,
+                                fullName: `${p.first_name} ${p.second_name}`,
+                                team: teams[p.team].short_name,
+                                teamId: p.team,
+                                position: parseInt(p.element_type),
+                                price: p.now_cost / 10,
+                                form: parseFloat(p.form),
+                                ownership: parseFloat(p.selected_by_percent),
+                                minutes: p.minutes,
+                                status: p.status,
+                                news: p.news || '',
+                                chance_of_playing_this_round: p.chance_of_playing_this_round,
+                                chance_of_playing_next_round: p.chance_of_playing_next_round,
+                                expected_goals: parseFloat(p.expected_goals) || 0,
+                                expected_assists: parseFloat(p.expected_assists) || 0,
+                                expected_goal_involvements: parseFloat(p.expected_goal_involvements) || 0,
+                                goals_scored: p.goals_scored,
+                                assists: p.assists,
+                                clean_sheets: p.clean_sheets,
+                                goals_conceded: p.goals_conceded,
+                                bonus: p.bonus,
+                                bps: p.bps,
+                                influence: parseFloat(p.influence),
+                                creativity: parseFloat(p.creativity),
+                                threat: parseFloat(p.threat),
+                                ict_index: parseFloat(p.ict_index),
+                                // Add fixtures directly to player
+                                fixtures: playerTeamFixtures
+                            };
+                        });
                 } else {
                     // Static file format (already has detailed data)
                     data = await response.json();
@@ -1677,16 +1684,23 @@
 
         async function loadFixtures() {
             try {
+                console.log('Starting to load fixtures...');
+                console.log('Teams object exists:', !!teams);
+                console.log('Teams count:', Object.keys(teams).length);
+                
                 const response = await fetch('https://fantasy.premierleague.com/api/fixtures/');
                 fixtures = await response.json();
+                console.log('Fetched fixtures:', fixtures.length);
                 
                 // Organize fixtures by team (next 3 upcoming games)
                 teamFixtures = {};
                 
-                // Filter to only未完成 fixtures and sort by event
+                // Filter to only unfinished fixtures and sort by event
                 const upcomingFixtures = fixtures
                     .filter(f => !f.finished && f.event !== null)
                     .sort((a, b) => a.event - b.event);
+                
+                console.log('Upcoming fixtures:', upcomingFixtures.length);
                 
                 // Get next 3 fixtures for each team
                 Object.keys(teams).forEach(teamId => {
@@ -1702,12 +1716,13 @@
                     }));
                 });
                 
-                console.log('Loaded fixtures for FDR calculation');
+                console.log('✅ Loaded fixtures for FDR calculation');
                 console.log('Sample teamFixtures:', Object.keys(teamFixtures).length, 'teams');
-                console.log('First team fixtures:', teamFixtures[Object.keys(teamFixtures)[0]]);
+                console.log('First team (ID 1) fixtures:', teamFixtures[1]);
+                console.log('Arsenal (ID 3) fixtures:', teamFixtures[3]);
             } catch (error) {
-                console.error('Error loading fixtures:', error);
-                // Non-critical - analysis can work without fixtures
+                console.error('❌ Error loading fixtures:', error);
+                teamFixtures = {}; // Initialize empty to prevent undefined errors
             }
         }
 
@@ -2380,20 +2395,16 @@
             }
             
             // FIXTURE DIFFICULTY ANALYSIS - Applied BEFORE tier adjustments so rating is still high
-            console.log(`Analyzing fixtures for ${player.name} (Team ID: ${player.teamId})`);
-            console.log('teamFixtures object:', teamFixtures);
-            console.log(`teamFixtures[${player.teamId}]:`, teamFixtures[player.teamId]);
+            console.log(`Analyzing fixtures for ${player.name} (Team: ${player.team})`);
+            console.log(`Player fixtures:`, player.fixtures);
             
-            if (player.teamId && teamFixtures[player.teamId]) {
-                const upcoming = teamFixtures[player.teamId];
-                console.log(`${player.name} fixtures:`, upcoming);
+            if (player.fixtures && player.fixtures.length > 0) {
+                const upcoming = player.fixtures;
+                const avgFDR = upcoming.reduce((sum, f) => sum + f.difficulty, 0) / upcoming.length;
+                metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H' : '(A'}, ${f.difficulty})`).join(', ');
+                metrics.avgFDR = avgFDR.toFixed(1);
                 
-                if (upcoming.length > 0) {
-                    const avgFDR = upcoming.reduce((sum, f) => sum + f.difficulty, 0) / upcoming.length;
-                    metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H' : '(A'}, ${f.difficulty})`).join(', ');
-                    metrics.avgFDR = avgFDR.toFixed(1);
-                    
-                    console.log(`${player.name} FDR:`, avgFDR, 'Fixtures:', metrics.nextFixtures);
+                console.log(`${player.name} FDR: ${avgFDR}, Fixtures: ${metrics.nextFixtures}`);
                     
                     // Smart fixture adjustments (uses customizable weight)
                     const baseFixtureImpact = userSettings.fixtureWeight;
