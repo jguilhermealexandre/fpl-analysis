@@ -2321,7 +2321,12 @@
                 const cleanSheets = recentGames.reduce((sum, g) => sum + (g.clean_sheets || 0), 0);
                 const csRate = (cleanSheets / recentGames.length) * 100;
                 
+                // Calculate xGC (expected goals conceded)
+                const xGC = recentGames.reduce((sum, g) => sum + (parseFloat(g.expected_goals_conceded) || 0), 0);
+                const xGCPer90 = recentMinutes > 0 ? (xGC / recentMinutes) * 90 : 0;
+                
                 metrics.cleanSheetRate = csRate.toFixed(0) + '%';
+                metrics.xGCPer90 = xGCPer90.toFixed(2);
                 
                 if (csRate < 25 && recentMinutes >= 270) {
                     sellRating += 15;
@@ -2330,13 +2335,31 @@
                     detailedInsights.push({
                         type: 'warning',
                         title: 'Defensive Returns Lacking',
-                        text: `Only ${cleanSheets} clean sheet${cleanSheets !== 1 ? 's' : ''} in last 4 games (${csRate.toFixed(0)}% rate). Defenders rely heavily on clean sheets for points. Team defensive form is concerning - check if this is a tactical issue or just bad luck with fixtures.`
+                        text: `Only ${cleanSheets} clean sheet${cleanSheets !== 1 ? 's' : ''} in last 4 games (${csRate.toFixed(0)}% rate). Defenders rely heavily on clean sheets for points. Team conceding xGC of ${xGCPer90.toFixed(2)} per 90 mins - ${xGCPer90 > 1.2 ? 'very high, team defensive form is concerning' : 'reasonable but not converting to clean sheets'}.`
                     });
                 } else if (csRate >= 50) {
                     detailedInsights.push({
                         type: 'positive',
                         title: 'Strong Defensive Record',
-                        text: `${cleanSheets} clean sheets in last 4 games (${csRate.toFixed(0)}% rate) is excellent for defenders. Team defending well - reliable source of clean sheet points. ${parseFloat(metrics.recentXGIPer90) > 0.15 ? 'Plus has attacking threat on top.' : ''}`
+                        text: `${cleanSheets} clean sheets in last 4 games (${csRate.toFixed(0)}% rate) is excellent. Team conceding only ${xGCPer90.toFixed(2)} xGC per 90 - solid defense. ${parseFloat(metrics.recentXGIPer90) > 0.15 ? 'Plus has attacking threat on top.' : 'Reliable clean sheet source.'}`
+                    });
+                }
+                
+                // xGC analysis for defenders
+                if (xGCPer90 > 1.5 && recentMinutes >= 270) {
+                    sellRating += 10;
+                    issues.push({ text: `High xGC (${xGCPer90.toFixed(2)})`, type: 'warning', points: 10 });
+                    
+                    detailedInsights.push({
+                        type: 'warning',
+                        title: 'Team Defense Under Pressure',
+                        text: `Team conceding ${xGCPer90.toFixed(2)} expected goals per 90 minutes - very high. Elite defensive teams concede under 1.0 xGC/90. Clean sheets unlikely to continue at this rate. Consider switching to a better defensive side.`
+                    });
+                } else if (xGCPer90 < 0.8 && recentMinutes >= 270) {
+                    detailedInsights.push({
+                        type: 'positive',
+                        title: 'Elite Defensive Unit',
+                        text: `Team conceding only ${xGCPer90.toFixed(2)} expected goals per 90 minutes - elite defensive metrics. Teams under 0.8 xGC/90 typically maintain 50%+ clean sheet rates. Excellent hold for defensive returns.`
                     });
                 }
             }
@@ -2357,6 +2380,10 @@
             }
             
             // FIXTURE DIFFICULTY ANALYSIS - Applied BEFORE tier adjustments so rating is still high
+            console.log(`Analyzing fixtures for ${player.name} (Team ID: ${player.teamId})`);
+            console.log('teamFixtures object:', teamFixtures);
+            console.log(`teamFixtures[${player.teamId}]:`, teamFixtures[player.teamId]);
+            
             if (player.teamId && teamFixtures[player.teamId]) {
                 const upcoming = teamFixtures[player.teamId];
                 console.log(`${player.name} fixtures:`, upcoming);
@@ -2410,7 +2437,14 @@
                 metrics.tier = 'Bench Fodder';
             } else if (isPremium) {
                 sellRating *= userSettings.premiumPatience; // Default: 0.85 = 15% more patience
-                metrics.tier = 'Premium (£8m+)';
+                // Position-specific tier labels
+                if (player.position === 1) {
+                    metrics.tier = 'Premium (£5.5m+)';
+                } else if (player.position === 2) {
+                    metrics.tier = 'Premium (£6.0m+)';
+                } else {
+                    metrics.tier = 'Premium (£9.0m+)';
+                }
             } else if (isMidPrice) {
                 metrics.tier = 'Mid-price';
             } else {
@@ -2581,7 +2615,7 @@
                     `;
                 }
             } else if (player.position === 2) {
-                // DEFENDERS: Clean Sheets & Points (no xGI)
+                // DEFENDERS: Clean Sheets, xGC & Points
                 if (metrics.cleanSheetRate) {
                     const csClass = parseFloat(metrics.cleanSheetRate) >= 50 ? 'good' : 
                                    parseFloat(metrics.cleanSheetRate) < 25 ? 'bad' : 'warning';
@@ -2589,6 +2623,16 @@
                         <div class="metric-item">
                             <div class="metric-label">Clean Sheet Rate (L4)</div>
                             <div class="metric-value ${csClass}">${metrics.cleanSheetRate}</div>
+                        </div>
+                    `;
+                }
+                if (metrics.xGCPer90) {
+                    const xgcClass = parseFloat(metrics.xGCPer90) < 0.8 ? 'good' : 
+                                    parseFloat(metrics.xGCPer90) > 1.5 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">xGC/90 (L4)</div>
+                            <div class="metric-value ${xgcClass}">${metrics.xGCPer90}</div>
                         </div>
                     `;
                 }
@@ -2704,6 +2748,14 @@
                     <div class="metric-item" style="grid-column: span 2;">
                         <div class="metric-label">Upcoming Fixtures (with FDR 1-5)</div>
                         <div class="metric-value" style="font-size: 11px;">${coloredFixtures}</div>
+                    </div>
+                `;
+            } else {
+                // Fixtures not available - show debug message
+                metricsHtml += `
+                    <div class="metric-item" style="grid-column: span 2;">
+                        <div class="metric-label">Upcoming Fixtures</div>
+                        <div class="metric-value" style="font-size: 11px; color: var(--accent-red);">Not available (check console F12)</div>
                     </div>
                 `;
             }
