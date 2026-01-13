@@ -2280,14 +2280,51 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
             }
             
             // MINUTES & ROTATION RISK (uses customizable threshold)
+            // BUT: Detect injury returns first - don't penalize players coming back from injury!
             if (metrics.avgMinutes) {
                 const avgMins = parseFloat(metrics.avgMinutes);
                 const rotationThreshold = userSettings.minutesThreshold;
                 
-                if (avgMins < THRESHOLDS.minutes.critical) {
+                // INJURY RETURN DETECTION
+                // Check if player is returning from injury (low avg minutes but increasing trend)
+                const isReturningFromInjury = recentGames.length >= 3 && (
+                    // Pattern 1: 0, 0, 0, 60+ (missed games, then played)
+                    (recentGames[0].minutes === 0 && recentGames[1].minutes === 0 && recentGames[recentGames.length - 1].minutes >= 30) ||
+                    // Pattern 2: Minutes increasing (10, 20, 45, 60)
+                    (recentGames.length >= 4 && 
+                     recentGames[recentGames.length - 1].minutes > recentGames[recentGames.length - 2].minutes &&
+                     recentGames[recentGames.length - 2].minutes > recentGames[0].minutes) ||
+                    // Pattern 3: News mentions "return" or "back" or "fit"
+                    (player.news && (
+                        player.news.toLowerCase().includes('return') ||
+                        player.news.toLowerCase().includes('back') ||
+                        player.news.toLowerCase().includes('fit again') ||
+                        player.news.toLowerCase().includes('recovered')
+                    ))
+                );
+                
+                if (isReturningFromInjury && avgMins < 60) {
+                    // Player is returning from injury - don't penalize for low minutes!
+                    sellRating -= 15; // Actually REDUCE rating - this is positive!
+                    issues.push({ text: '💚 Returning from Injury', type: 'positive', points: -15 });
+                    reasons.push(`Recently returned - minutes will increase`);
+                    
+                    detailedInsights.push({
+                        type: 'positive',
+                        title: '💚 Injury Return - Minutes Increasing',
+                        text: `Averaging ${avgMins.toFixed(0)} minutes BUT this is due to recent injury return, not rotation. ${player.news ? player.news + '. ' : ''}Minutes trend shows they're building back to full fitness. Last game: ${recentGames[recentGames.length - 1].minutes} mins. Elite managers often bring in players just after injury return to catch price rises and beat the template. Monitor next game - if they play 60+ mins, they're back to being nailed.`
+                    });
+                } else if (avgMins < THRESHOLDS.minutes.critical) {
+                    // Actual rotation risk (not injury return)
                     sellRating += 35;
                     issues.push({ text: 'Severe Rotation Risk', type: 'critical', points: 35 });
                     reasons.push(`Averaging ${avgMins.toFixed(0)} mins - serious rotation concerns`);
+                    
+                    detailedInsights.push({
+                        type: 'critical',
+                        title: 'Severe Rotation Risk',
+                        text: `Averaging just ${avgMins.toFixed(0)} minutes per game. This isn't injury recovery - it's tactical rotation. Recent minutes: ${recentGames.map(g => g.minutes).join(', ')}. Players under ${THRESHOLDS.minutes.critical} mins are rarely worth holding - too unpredictable for consistent returns.`
+                    });
                 } else if (avgMins < rotationThreshold) {
                     sellRating += 20;
                     issues.push({ text: 'Rotation Concerns', type: 'warning', points: 20 });
@@ -2306,11 +2343,15 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
             }
             
             // BLANK STREAK DETECTION (uses customizable threshold)
+            // Only count games where player actually played (>0 minutes)
             if (recentGames.length >= 4) {
-                const blanks = recentGames.filter(g => (g.total_points || 0) <= 2).length;
-                const pointsList = recentGames.map(g => g.total_points || 0);
+                const gamesPlayed = recentGames.filter(g => g.minutes > 0);
+                const blanks = gamesPlayed.filter(g => (g.total_points || 0) <= 2).length;
+                const pointsList = recentGames.map(g => g.minutes > 0 ? `${g.total_points || 0}pts` : '0min').join(', ');
+                const injuryGames = recentGames.filter(g => g.minutes === 0).length;
                 
-                if (blanks >= userSettings.blankTolerance) {
+                // Only flag blank streaks if player actually played the games
+                if (blanks >= userSettings.blankTolerance && gamesPlayed.length >= 3) {
                     sellRating += 30;
                     issues.push({ text: `${blanks} Consecutive Blanks`, type: 'critical', points: 30 });
                     reasons.push(`${blanks}-game blank streak indicates serious issues`);
@@ -2318,17 +2359,24 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                     detailedInsights.push({
                         type: 'critical',
                         title: `${blanks}-Blank Streak Analysis`,
-                        text: `Last 4 scores: ${pointsList.join(', ')} points. Research from top 50 managers shows ${userSettings.blankTolerance} consecutive blanks is the threshold for action. However, check xGI - if it's strong (0.50+), this could be bad luck. If xGI is also poor, it's a genuine decline.`
+                        text: `Last 4 games: ${pointsList}. ${blanks} blanks in ${gamesPlayed.length} games played${injuryGames > 0 ? ` (${injuryGames} missed due to injury)` : ''}. Research from top 50 managers shows ${userSettings.blankTolerance} consecutive blanks is the threshold for action. However, check xGI - if it's strong (0.50+), this could be bad luck. If xGI is also poor, it's a genuine decline.`
                     });
-                } else if (blanks >= (userSettings.blankTolerance - 1)) {
+                } else if (blanks >= (userSettings.blankTolerance - 1) && gamesPlayed.length >= 3) {
                     sellRating += 15;
                     issues.push({ text: `${blanks} Recent Blanks`, type: 'warning', points: 15 });
-                    reasons.push(`${blanks} blanks in last 4 games - monitoring required`);
+                    reasons.push(`${blanks} blanks in last ${gamesPlayed.length} games - monitoring required`);
                     
                     detailedInsights.push({
                         type: 'warning',
                         title: 'Blank Streak Emerging',
-                        text: `Last 4 scores: ${pointsList.join(', ')} points. ${blanks} blanks triggers monitoring phase. One more blank and you hit the critical ${userSettings.blankTolerance}-game threshold. Start identifying replacements now.`
+                        text: `Last 4 games: ${pointsList}. ${blanks} blanks in ${gamesPlayed.length} games played${injuryGames > 0 ? ` (${injuryGames} missed due to injury)` : ''}. One more blank and you hit the critical ${userSettings.blankTolerance}-game threshold. ${injuryGames > 0 ? 'Note: injury absences don\'t count as blanks - only actual performances.' : 'Start identifying replacements now.'}`
+                    });
+                } else if (injuryGames > 0 && gamesPlayed.length < 3) {
+                    // Player missed most games due to injury - don't penalize for blanks
+                    detailedInsights.push({
+                        type: 'info',
+                        title: 'Recent Injury Absence',
+                        text: `Last 4 games: ${pointsList}. Missed ${injuryGames} game${injuryGames > 1 ? 's' : ''} due to injury. Only played ${gamesPlayed.length} game${gamesPlayed.length !== 1 ? 's' : ''} - not enough data to assess blank streak. Wait for 2-3 more games to evaluate performance properly.`
                     });
                 }
             }
