@@ -777,6 +777,82 @@
             box-shadow: 0 2px 10px rgba(0, 204, 255, 0.3);
         }
 
+        /* Advanced Filters Row */
+        .advanced-filters {
+            background: var(--surface-light);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 4px 10px;
+            font-family: 'DM Mono', monospace;
+            font-size: 9px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 12px;
+        }
+
+        .filter-chip:hover {
+            border-color: var(--accent-green);
+            background: var(--surface-light);
+            transform: translateY(-1px);
+        }
+
+        .filter-chip.active {
+            border-color: var(--accent-green);
+            background: var(--accent-green);
+            color: var(--bg-dark);
+            font-weight: 500;
+        }
+
+        .filter-apply-btn {
+            background: var(--accent-green);
+            border: none;
+            color: var(--bg-dark);
+            padding: 4px 12px;
+            font-family: 'DM Mono', monospace;
+            font-size: 9px;
+            cursor: pointer;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+        }
+
+        .filter-apply-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0, 255, 136, 0.3);
+        }
+
+        #priceMin, #priceMax, #ownershipMin, #ownershipMax {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 9px;
+            padding: 4px 6px;
+            outline: none;
+            text-align: center;
+        }
+
+        #priceMin:focus, #priceMax:focus, #ownershipMin:focus, #ownershipMax:focus {
+            border-color: var(--accent-green);
+        }
+
         /* Column Group Toggles */
         .column-toggles {
             background: var(--surface-light);
@@ -1149,6 +1225,42 @@
         </div>
     </div>
 
+    <!-- Advanced Filters Row -->
+    <div class="advanced-filters" id="advancedFilters" style="display: none;">
+        <div class="filter-group">
+            <span style="color: var(--text-dim); font-size: 10px; margin-right: 8px;">🎯 FIXTURES:</span>
+            <button class="filter-chip" onclick="applyAdvancedFilter('fdr', 'easy')">🟢🟢 Easy (<2.6)</button>
+            <button class="filter-chip" onclick="applyAdvancedFilter('fdr', 'favorable')">🟢 Favorable (<2.9)</button>
+            <button class="filter-chip" onclick="applyAdvancedFilter('fdr', 'neutral')">🟡 Neutral (2.9-3.1)</button>
+            <button class="filter-chip" onclick="applyAdvancedFilter('fdr', 'tough')">🔴 Tough (>3.4)</button>
+        </div>
+        
+        <div class="filter-group">
+            <span style="color: var(--text-dim); font-size: 10px; margin-right: 8px;">💰 PRICE:</span>
+            <button class="filter-chip" onclick="applyAdvancedFilter('price', 'budget')">Budget (<£5.5)</button>
+            <button class="filter-chip" onclick="applyAdvancedFilter('price', 'mid')">Mid (£5.5-£8.0)</button>
+            <button class="filter-chip" onclick="applyAdvancedFilter('price', 'premium')">Premium (>£8.0)</button>
+            <span style="color: var(--text-dim); font-size: 10px; margin: 0 8px;">or</span>
+            <input type="number" id="priceMin" placeholder="Min" step="0.1" min="4" max="15" style="width: 60px;">
+            <span style="color: var(--text-dim); margin: 0 4px;">-</span>
+            <input type="number" id="priceMax" placeholder="Max" step="0.1" min="4" max="15" style="width: 60px;">
+            <button class="filter-apply-btn" onclick="applyCustomPriceFilter()">Apply</button>
+        </div>
+        
+        <div class="filter-group">
+            <span style="color: var(--text-dim); font-size: 10px; margin-right: 8px;">👥 OWNERSHIP:</span>
+            <button class="filter-chip" onclick="applyAdvancedFilter('ownership', 'template')">Template (>20%)</button>
+            <button class="filter-chip" onclick="applyAdvancedFilter('ownership', 'popular')">Popular (10-20%)</button>
+            <button class="filter-chip" onclick="applyAdvancedFilter('ownership', 'differential')">Differential (<10%)</button>
+            <button class="filter-chip" onclick="applyAdvancedFilter('ownership', 'unique')">Unique (<5%)</button>
+            <span style="color: var(--text-dim); font-size: 10px; margin: 0 8px;">or</span>
+            <input type="number" id="ownershipMin" placeholder="Min %" step="1" min="0" max="100" style="width: 60px;">
+            <span style="color: var(--text-dim); margin: 0 4px;">-</span>
+            <input type="number" id="ownershipMax" placeholder="Max %" step="1" min="0" max="100" style="width: 60px;">
+            <button class="filter-apply-btn" onclick="applyCustomOwnershipFilter()">Apply</button>
+        </div>
+    </div>
+
     <div class="content">
         <div class="position-section" id="section-RECOMMENDATIONS"></div>
         <div class="position-section" id="section-FORM"></div>
@@ -1490,7 +1602,9 @@
                 'Team': 'Team',
                 'Δ%': 'Trend Percentage - Percentage change between season average and last 5 games average',
                 'FDR': 'Fixture Difficulty Rating - Average difficulty of next 3 fixtures (1=Easy, 5=Hard)',
-                'Next 3': 'Next 3 Fixtures - Upcoming opponents with home/away indicator'
+                'Next 3': 'Next 3 Fixtures - Upcoming opponents with home/away indicator',
+                'Price': 'Current Price in £m',
+                'Own%': 'Ownership Percentage - How many managers own this player'
             };
 
             let columns = [];
@@ -1499,6 +1613,8 @@
                 columns = [
                     { key: 'name', label: 'Player', seasonal: false },
                     { key: 'team', label: 'Team', seasonal: false },
+                    { key: 'price', label: 'Price', seasonal: false },
+                    { key: 'ownership', label: 'Own%', seasonal: false },
                     { key: 'games', label: 'GP', seasonal: true },
                     { key: 'minutes', label: 'Mins', seasonal: true },
                     { key: 'points', label: 'Pts', seasonal: true },
@@ -1516,6 +1632,8 @@
                 columns = [
                     { key: 'name', label: 'Player', seasonal: false },
                     { key: 'team', label: 'Team', seasonal: false },
+                    { key: 'price', label: 'Price', seasonal: false },
+                    { key: 'ownership', label: 'Own%', seasonal: false },
                     { key: 'games', label: 'GP', seasonal: true },
                     { key: 'minutes', label: 'Mins', seasonal: true },
                     { key: 'points', label: 'Pts', seasonal: true },
@@ -1538,6 +1656,8 @@
                 columns = [
                     { key: 'name', label: 'Player', seasonal: false },
                     { key: 'team', label: 'Team', seasonal: false },
+                    { key: 'price', label: 'Price', seasonal: false },
+                    { key: 'ownership', label: 'Own%', seasonal: false },
                     { key: 'games', label: 'GP', seasonal: true },
                     { key: 'minutes', label: 'Mins', seasonal: true },
                     { key: 'points', label: 'Pts', seasonal: true },
@@ -1563,6 +1683,8 @@
                 columns = [
                     { key: 'name', label: 'Player', seasonal: false },
                     { key: 'team', label: 'Team', seasonal: false },
+                    { key: 'price', label: 'Price', seasonal: false },
+                    { key: 'ownership', label: 'Own%', seasonal: false },
                     { key: 'games', label: 'GP', seasonal: true },
                     { key: 'minutes', label: 'Mins', seasonal: true },
                     { key: 'points', label: 'Pts', seasonal: true },
@@ -1612,7 +1734,9 @@
             colIndex = 0;
             columns.forEach(col => {
                 if (!col.seasonal) {
-                    const placeholder = col.key === 'name' || col.key === 'team' ? 'Filter...' : '>=';
+                    const placeholder = (col.key === 'name' || col.key === 'team') ? 'Filter...' : 
+                                      (col.key === 'price') ? '£' :
+                                      (col.key === 'ownership') ? '%' : '>=';
                     html += `<th><input type="text" class="filter-input" placeholder="${placeholder}" onkeyup="filterTable('${tableId}', ${colIndex})"></th>`;
                     colIndex++;
                 } else {
@@ -1636,6 +1760,14 @@
                         html += `<td data-value="${analysis.name}">${analysis.name}</td>`;
                     } else if (col.key === 'team') {
                         html += `<td data-value="${analysis.team}"><span class="team-badge">${analysis.team}</span></td>`;
+                    } else if (col.key === 'price') {
+                        // Price column
+                        const price = analysis.price || 0;
+                        html += `<td data-value="${price.toFixed(1)}">£${price.toFixed(1)}</td>`;
+                    } else if (col.key === 'ownership') {
+                        // Ownership column
+                        const ownership = analysis.selectedBy || analysis.selectedByPercent || 0;
+                        html += `<td data-value="${ownership.toFixed(1)}">${ownership.toFixed(1)}%</td>`;
                     } else if (col.key === 'fdr') {
                         // FDR column with visual indicators
                         if (analysis.fixtures && analysis.fixtures.avgFDR3) {
@@ -2635,6 +2767,13 @@
         // ============================================
 
         let currentPosition = null; // Track current tab
+        let activeAdvancedFilters = {
+            fdr: null,
+            price: null,
+            ownership: null,
+            priceRange: null,
+            ownershipRange: null
+        };
 
         // Global Search across all players
         function globalSearch() {
@@ -2678,6 +2817,9 @@
                 const tbody = table.querySelector('tbody');
                 const rows = tbody.querySelectorAll('tr');
                 rows.forEach(row => row.style.display = '');
+                
+                // Clear advanced filters too
+                clearAdvancedFilters();
                 return;
             }
             
@@ -2745,6 +2887,195 @@
             });
         }
 
+        // Apply Advanced Filters (FDR, Price presets, Ownership presets)
+        function applyAdvancedFilter(filterType, filterValue) {
+            if (!currentPosition || ['RECOMMENDATIONS', 'FORM'].includes(currentPosition)) {
+                alert('Please select a position tab (GK/DEF/MID/FWD) to use filters');
+                return;
+            }
+            
+            // Toggle filter (click again to deactivate)
+            if (activeAdvancedFilters[filterType] === filterValue) {
+                activeAdvancedFilters[filterType] = null;
+                // Remove active class from button
+                document.querySelectorAll('.filter-chip').forEach(btn => {
+                    if (btn.textContent.includes(filterValue)) {
+                        btn.classList.remove('active');
+                    }
+                });
+            } else {
+                activeAdvancedFilters[filterType] = filterValue;
+                // Add active class to button, remove from others in same group
+                document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+            }
+            
+            applyAllAdvancedFilters();
+        }
+
+        // Apply custom price range filter
+        function applyCustomPriceFilter() {
+            const minPrice = parseFloat(document.getElementById('priceMin').value);
+            const maxPrice = parseFloat(document.getElementById('priceMax').value);
+            
+            if (!isNaN(minPrice) || !isNaN(maxPrice)) {
+                activeAdvancedFilters.priceRange = {
+                    min: isNaN(minPrice) ? 0 : minPrice,
+                    max: isNaN(maxPrice) ? 999 : maxPrice
+                };
+                activeAdvancedFilters.price = null; // Clear preset
+                document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+            }
+            
+            applyAllAdvancedFilters();
+        }
+
+        // Apply custom ownership range filter
+        function applyCustomOwnershipFilter() {
+            const minOwnership = parseFloat(document.getElementById('ownershipMin').value);
+            const maxOwnership = parseFloat(document.getElementById('ownershipMax').value);
+            
+            if (!isNaN(minOwnership) || !isNaN(maxOwnership)) {
+                activeAdvancedFilters.ownershipRange = {
+                    min: isNaN(minOwnership) ? 0 : minOwnership,
+                    max: isNaN(maxOwnership) ? 999 : maxOwnership
+                };
+                activeAdvancedFilters.ownership = null; // Clear preset
+                document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+            }
+            
+            applyAllAdvancedFilters();
+        }
+
+        // Apply all active advanced filters
+        function applyAllAdvancedFilters() {
+            if (!currentPosition) return;
+            
+            const table = document.getElementById(`table-${currentPosition}`);
+            if (!table) return;
+            
+            const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Helper to get column index
+            const getColIndex = (label) => headers.findIndex(h => h.textContent.includes(label));
+            
+            rows.forEach(row => {
+                let show = true;
+                const cells = row.cells;
+                
+                // FDR Filter
+                if (activeAdvancedFilters.fdr) {
+                    const fdrIdx = getColIndex('FDR');
+                    if (fdrIdx !== -1) {
+                        const fdrText = cells[fdrIdx]?.textContent || '';
+                        const fdr = parseFloat(fdrText.replace(/[^\d.]/g, ''));
+                        
+                        if (!isNaN(fdr)) {
+                            if (activeAdvancedFilters.fdr === 'easy' && fdr >= 2.6) show = false;
+                            if (activeAdvancedFilters.fdr === 'favorable' && (fdr < 2.6 || fdr >= 2.9)) show = false;
+                            if (activeAdvancedFilters.fdr === 'neutral' && (fdr < 2.9 || fdr >= 3.1)) show = false;
+                            if (activeAdvancedFilters.fdr === 'tough' && fdr <= 3.4) show = false;
+                        }
+                    }
+                }
+                
+                // Price Filter (presets)
+                if (activeAdvancedFilters.price) {
+                    const priceIdx = getColIndex('Price');
+                    if (priceIdx !== -1) {
+                        const priceText = cells[priceIdx]?.textContent || '';
+                        const price = parseFloat(priceText.replace(/[£,]/g, ''));
+                        
+                        if (!isNaN(price)) {
+                            if (activeAdvancedFilters.price === 'budget' && price > 5.5) show = false;
+                            if (activeAdvancedFilters.price === 'mid' && (price < 5.5 || price > 8.0)) show = false;
+                            if (activeAdvancedFilters.price === 'premium' && price <= 8.0) show = false;
+                        }
+                    }
+                }
+                
+                // Price Range Filter
+                if (activeAdvancedFilters.priceRange) {
+                    const priceIdx = getColIndex('Price');
+                    if (priceIdx !== -1) {
+                        const priceText = cells[priceIdx]?.textContent || '';
+                        const price = parseFloat(priceText.replace(/[£,]/g, ''));
+                        
+                        if (!isNaN(price)) {
+                            if (price < activeAdvancedFilters.priceRange.min || price > activeAdvancedFilters.priceRange.max) {
+                                show = false;
+                            }
+                        }
+                    }
+                }
+                
+                // Ownership Filter (presets)
+                if (activeAdvancedFilters.ownership) {
+                    const ownIdx = getColIndex('Own%');
+                    if (ownIdx !== -1) {
+                        const ownText = cells[ownIdx]?.textContent || '';
+                        const ownership = parseFloat(ownText.replace(/[%,]/g, ''));
+                        
+                        if (!isNaN(ownership)) {
+                            if (activeAdvancedFilters.ownership === 'template' && ownership <= 20) show = false;
+                            if (activeAdvancedFilters.ownership === 'popular' && (ownership < 10 || ownership > 20)) show = false;
+                            if (activeAdvancedFilters.ownership === 'differential' && ownership >= 10) show = false;
+                            if (activeAdvancedFilters.ownership === 'unique' && ownership >= 5) show = false;
+                        }
+                    }
+                }
+                
+                // Ownership Range Filter
+                if (activeAdvancedFilters.ownershipRange) {
+                    const ownIdx = getColIndex('Own%');
+                    if (ownIdx !== -1) {
+                        const ownText = cells[ownIdx]?.textContent || '';
+                        const ownership = parseFloat(ownText.replace(/[%,]/g, ''));
+                        
+                        if (!isNaN(ownership)) {
+                            if (ownership < activeAdvancedFilters.ownershipRange.min || ownership > activeAdvancedFilters.ownershipRange.max) {
+                                show = false;
+                            }
+                        }
+                    }
+                }
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+
+        // Clear all advanced filters
+        function clearAdvancedFilters() {
+            activeAdvancedFilters = {
+                fdr: null,
+                price: null,
+                ownership: null,
+                priceRange: null,
+                ownershipRange: null
+            };
+            
+            // Clear input fields
+            document.getElementById('priceMin').value = '';
+            document.getElementById('priceMax').value = '';
+            document.getElementById('ownershipMin').value = '';
+            document.getElementById('ownershipMax').value = '';
+            
+            // Remove active classes
+            document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+            
+            // Show all rows
+            if (currentPosition) {
+                const table = document.getElementById(`table-${currentPosition}`);
+                if (table) {
+                    const tbody = table.querySelector('tbody');
+                    const rows = tbody.querySelectorAll('tr');
+                    rows.forEach(row => row.style.display = '');
+                }
+            }
+        }
+
         // Export Table to CSV
         function exportToCSV() {
             if (!currentPosition || ['RECOMMENDATIONS', 'FORM'].includes(currentPosition)) {
@@ -2803,15 +3134,21 @@
                 currentPosition = position;
                 
                 const presetFilters = document.getElementById('presetFilters');
+                const advancedFilters = document.getElementById('advancedFilters');
                 
                 // Show filters only for position tabs (not recommendations/form)
                 if (['GK', 'DEF', 'MID', 'FWD'].includes(position)) {
                     presetFilters.style.display = 'flex';
+                    advancedFilters.style.display = 'flex';
                     
                     // Clear global search
                     document.getElementById('globalSearch').value = '';
+                    
+                    // Clear advanced filters
+                    clearAdvancedFilters();
                 } else {
                     presetFilters.style.display = 'none';
+                    advancedFilters.style.display = 'none';
                 }
             }
         });
