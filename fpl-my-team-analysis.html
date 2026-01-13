@@ -1827,7 +1827,10 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
             currentPosition = parseInt(position);
             
             const config = POSITION_CONFIG[position];
-            document.getElementById('selectorTitle').textContent = `Select ${config.name}`;
+            document.getElementById('selectorTitle').innerHTML = `
+                <div style="font-size: 20px; font-weight: 700; margin-bottom: 4px;">Select ${config.name}</div>
+                <div style="font-size: 11px; color: var(--text-dim); font-weight: 400;">Sorted by AI Recommendation Score (Form + xGI + Fixtures)</div>
+            `;
             
             renderQuickFilters(position);
             renderPlayerList(position);
@@ -1875,6 +1878,71 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
             renderQuickFilters(currentPosition);
         }
 
+        function calculateRecommendationScore(player) {
+            // Base score from form and expected stats
+            let score = 0;
+            
+            // 1. Form component (0-10 scale, weight: 35%)
+            const formScore = Math.min(player.form * 2, 10);
+            score += formScore * 0.35;
+            
+            // 2. Expected stats component (weight: 40%)
+            const xGI = player.expected_goal_involvements || 0;
+            const xGIper90 = player.minutes > 0 ? (xGI / player.minutes) * 90 : 0;
+            const xGIScore = Math.min(xGIper90 * 10, 10); // Scale to 0-10
+            score += xGIScore * 0.40;
+            
+            // 3. ICT Index component (weight: 15%)
+            const ictScore = Math.min(player.ict_index / 20, 10); // Scale to 0-10
+            score += ictScore * 0.15;
+            
+            // 4. Ownership factor (weight: 10%)
+            const ownershipScore = Math.min(player.ownership / 5, 10); // Popular = higher
+            score += ownershipScore * 0.10;
+            
+            // 5. FIXTURE MULTIPLIER - This is the key forward-looking component!
+            if (player.fixtures && player.fixtures.length > 0) {
+                const next3Fixtures = player.fixtures.slice(0, 3);
+                const avgFDR = next3Fixtures.reduce((sum, f) => sum + f.difficulty, 0) / next3Fixtures.length;
+                
+                // FDR multiplier logic:
+                // < 2.6: 1.25x (Easy fixtures - BIG boost)
+                // 2.6-2.9: 1.15x (Favorable - good boost)
+                // 2.9-3.1: 1.0x (Neutral - no change)
+                // 3.1-3.4: 0.85x (Challenging - slight penalty)
+                // >= 3.4: 0.70x (Difficult - big penalty)
+                let fixtureMultiplier = 1.0;
+                
+                if (avgFDR < 2.6) {
+                    fixtureMultiplier = 1.25;
+                } else if (avgFDR < 2.9) {
+                    fixtureMultiplier = 1.15;
+                } else if (avgFDR < 3.1) {
+                    fixtureMultiplier = 1.0;
+                } else if (avgFDR < 3.4) {
+                    fixtureMultiplier = 0.85;
+                } else {
+                    fixtureMultiplier = 0.70;
+                }
+                
+                score *= fixtureMultiplier;
+                
+                // Store for display
+                player.avgFDR = avgFDR;
+                player.fixtureMultiplier = fixtureMultiplier;
+            }
+            
+            // 6. Status penalty (injured/doubtful players)
+            if (player.status === 'i') {
+                score *= 0.3; // 70% penalty for injured
+            } else if (player.status === 'd') {
+                score *= 0.7; // 30% penalty for doubtful
+            }
+            
+            player.recommendationScore = score;
+            return score;
+        }
+
         function renderPlayerList(position) {
             let players = allPlayers.filter(p => p.position === position);
             
@@ -1900,17 +1968,73 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 );
             }
             
-            players.sort((a, b) => b.ownership - a.ownership);
+            // Calculate recommendation scores for all players
+            players.forEach(p => calculateRecommendationScore(p));
+            
+            // Sort by recommendation score (best first)
+            players.sort((a, b) => b.recommendationScore - a.recommendationScore);
             
             let html = '';
+            
+            // Add legend at top
+            if (players.length > 0) {
+                html += `
+                    <div style="background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; padding: 12px; margin-bottom: 15px; border-radius: 8px; font-size: 11px; color: var(--text-dim);">
+                        <div style="font-weight: 700; color: var(--text); margin-bottom: 6px;">📊 How Players Are Ranked:</div>
+                        <div style="line-height: 1.6;">
+                            • <strong>Score Badge:</strong> AI recommendation (Form 35% + xGI 40% + ICT 15% + Ownership 10%)<br>
+                            • <strong>Fixture Multiplier:</strong> Easy fixtures (🟢🟢) boost score by 25%, Difficult (🔴) reduce by 30%<br>
+                            • <strong>★ 70+:</strong> Excellent pick • <strong>50-69:</strong> Good option • <strong><50:</strong> Avoid
+                        </div>
+                    </div>
+                `;
+            }
+            
             players.forEach(player => {
                 const isSelected = selectedPlayers.some(p => p.id === player.id);
                 const statusIcon = player.status === 'i' ? '🔴' : player.status === 'd' ? '🟡' : '';
+                
+                // Color code FDR
+                let fdrColor = '#f59e0b'; // default yellow
+                let fdrIcon = '🟡';
+                if (player.avgFDR) {
+                    if (player.avgFDR < 2.6) {
+                        fdrColor = '#10b981';
+                        fdrIcon = '🟢🟢'; // Double green for easy
+                    } else if (player.avgFDR < 2.9) {
+                        fdrColor = '#22c55e';
+                        fdrIcon = '🟢'; // Single green for favorable
+                    } else if (player.avgFDR < 3.1) {
+                        fdrColor = '#f59e0b';
+                        fdrIcon = '🟡'; // Yellow for neutral
+                    } else if (player.avgFDR < 3.4) {
+                        fdrColor = '#fb923c';
+                        fdrIcon = '🟠'; // Orange for challenging
+                    } else {
+                        fdrColor = '#ef4444';
+                        fdrIcon = '🔴'; // Red for difficult
+                    }
+                }
+                
+                // Recommendation score badge
+                const scorePercent = Math.round((player.recommendationScore / 10) * 100);
+                let scoreBadge = '';
+                if (scorePercent >= 70) {
+                    scoreBadge = `<span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">★ ${scorePercent}</span>`;
+                } else if (scorePercent >= 50) {
+                    scoreBadge = `<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">${scorePercent}</span>`;
+                } else {
+                    scoreBadge = `<span style="background: #6b7280; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">${scorePercent}</span>`;
+                }
+                
                 html += `
                     <div class="player-item ${isSelected ? 'selected' : ''}" onclick="selectPlayer(${player.id})">
                         <div class="player-item-info">
-                            <div class="player-item-name">${statusIcon} ${player.name}</div>
-                            <div class="player-item-meta">${player.team} • ${player.ownership.toFixed(1)}% • Form: ${player.form.toFixed(1)}</div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                                <div class="player-item-name">${statusIcon} ${player.name}</div>
+                                ${scoreBadge}
+                            </div>
+                            <div class="player-item-meta">${player.team} • ${player.ownership.toFixed(1)}% • Form: ${player.form.toFixed(1)}${player.avgFDR ? ` • FDR: <span style="color: ${fdrColor}; font-weight: 700;">${fdrIcon}${player.avgFDR.toFixed(1)}</span>` : ''}</div>
                         </div>
                         <div class="player-item-price">£${player.price.toFixed(1)}</div>
                     </div>
@@ -2049,17 +2173,22 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                     return true;
                 })
                 .map(p => {
-                    // Calculate essential score for sorting
+                    // Calculate comprehensive recommendation score
                     const teamId = p.teamId || p.team;
                     const fixtures = teamFixtures[teamId];
                     const next3 = fixtures.slice(0, 3);
                     const avgFDR = next3.reduce((sum, f) => sum + f.difficulty, 0) / next3.length;
                     
+                    // Use the same comprehensive score calculation
                     const ownership = p.ownership || parseFloat(p.selected_by_percent) || 0;
                     const form = p.form || 0;
                     
-                    // Score = ownership * form / FDR (higher is better)
-                    const essentialScore = (ownership * form) / avgFDR;
+                    // Calculate full recommendation score using shared function
+                    p.fixtures = next3; // Temporarily set fixtures for score calculation
+                    calculateRecommendationScore(p);
+                    
+                    // For essentials, boost by ownership (template = must-have)
+                    const essentialScore = p.recommendationScore * (1 + ownership / 100);
                     
                     return {
                         ...p,
@@ -3020,7 +3149,7 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                             </h2>
                             <div id="missing-template-content" style="display: none;">
                                 <p style="color: var(--text-dim); margin-bottom: 20px; margin-top: 15px; font-size: 13px;">
-                                    High-ownership players (20%+) with strong form (4.0+) and favorable fixtures (FDR <3.0) that you don't own
+                                    High-ownership players (20%+) with strong form (4.0+) and favorable fixtures (FDR <3.0) that you don't own. Sorted by AI Recommendation Score (form + xGI + fixtures + ownership).
                                 </p>
                                 ${createMissingEssentialsHTML(missingEssentials)}
                             </div>
