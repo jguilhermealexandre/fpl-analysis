@@ -2609,7 +2609,16 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             if (player.fixtures && player.fixtures.length > 0) {
                 const upcoming = player.fixtures;
                 const avgFDR = upcoming.reduce((sum, f) => sum + f.difficulty, 0) / upcoming.length;
-                metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H' : '(A'}, ${f.difficulty})`).join(', ');
+                
+                // Map fixtures with opponent names looked up from teams object
+                metrics.nextFixtures = upcoming.map(f => {
+                    // Determine opponent team ID
+                    const opponentId = f.is_home ? f.team_a : f.team_h;
+                    // Look up opponent short name from teams object
+                    const opponentName = teams[opponentId] ? teams[opponentId].short_name : 'UNK';
+                    return `${opponentName}${f.is_home ? '(H' : '(A'}, ${f.difficulty})`;
+                }).join(', ');
+                
                 metrics.avgFDR = avgFDR.toFixed(1);
                 
                 console.log(`✅ ${player.name} FDR: ${avgFDR}, Fixtures: ${metrics.nextFixtures}`);
