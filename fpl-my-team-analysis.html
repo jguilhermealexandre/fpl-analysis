@@ -1569,8 +1569,12 @@
                 let data;
                 
                 if (!response.ok) {
-                    // Fallback to API
-                    response = await fetch('https://fantasy.premierleague.com/api/bootstrap-static/');
+                    // Fallback to API with CORS proxy
+                    console.log('Trying bootstrap-static with CORS proxy...');
+                    const bootstrapUrl = 'https://fantasy.premierleague.com/api/bootstrap-static/';
+                    const corsProxy = 'https://corsproxy.io/?';
+                    
+                    response = await fetch(corsProxy + encodeURIComponent(bootstrapUrl));
                     data = await response.json();
                     
                     // Build teams object FIRST
@@ -1728,7 +1732,11 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 console.log('Teams object exists:', !!teams);
                 console.log('Teams count:', Object.keys(teams).length);
                 
-                const response = await fetch('https://fantasy.premierleague.com/api/fixtures/');
+                // Use CORS proxy to bypass browser restrictions
+                const fixturesUrl = 'https://fantasy.premierleague.com/api/fixtures/';
+                const corsProxy = 'https://corsproxy.io/?';
+                
+                const response = await fetch(corsProxy + encodeURIComponent(fixturesUrl));
                 fixtures = await response.json();
                 console.log('Fetched fixtures:', fixtures.length);
                 
@@ -1985,7 +1993,11 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 const detailedPlayers = await Promise.all(
                     selectedPlayers.map(async (player) => {
                         try {
-                            const response = await fetch(`https://fantasy.premierleague.com/api/element-summary/${player.id}/`);
+                            // Use CORS proxy to bypass browser restrictions
+                            const elementUrl = `https://fantasy.premierleague.com/api/element-summary/${player.id}/`;
+                            const corsProxy = 'https://corsproxy.io/?';
+                            
+                            const response = await fetch(corsProxy + encodeURIComponent(elementUrl));
                             const data = await response.json();
                             
                             // Combine player data with detailed history
@@ -2879,17 +2891,71 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                 `;
             }
             if (metrics.ownershipTag) {
-                // Color code based on shield vs sword
-                let tagClass = '';
-                if (metrics.ownershipTag.includes('TEMPLATE') || metrics.ownershipTag.includes('SHIELD')) {
-                    tagClass = 'bad'; // Red for template/shield (risky to sell)
-                } else if (metrics.ownershipTag.includes('DIFFERENTIAL') || metrics.ownershipTag.includes('PUNT')) {
-                    tagClass = 'good'; // Green for differential (safe to sell)
+                // Enhanced visual design for ownership categories
+                let icon = '';
+                let borderColor = '';
+                let bgColor = '';
+                let textColor = '';
+                let description = '';
+                
+                if (metrics.ownershipTag.includes('TEMPLATE')) {
+                    icon = '🛡️🛡️🛡️'; // Triple shield
+                    borderColor = '#ef4444'; // Red
+                    bgColor = 'rgba(239, 68, 68, 0.1)';
+                    textColor = '#ef4444';
+                    description = 'Maximum Rank Risk';
+                } else if (metrics.ownershipTag.includes('SHIELD')) {
+                    icon = '🛡️'; // Single shield
+                    borderColor = '#f97316'; // Orange
+                    bgColor = 'rgba(249, 115, 22, 0.1)';
+                    textColor = '#f97316';
+                    description = 'Moderate Rank Risk';
+                } else if (metrics.ownershipTag.includes('DIFFERENTIAL')) {
+                    icon = '⚔️'; // Single sword
+                    borderColor = '#10b981'; // Green
+                    bgColor = 'rgba(16, 185, 129, 0.1)';
+                    textColor = '#10b981';
+                    description = 'Low Rank Risk';
+                } else if (metrics.ownershipTag.includes('PUNT')) {
+                    icon = '⚔️⚔️'; // Double sword
+                    borderColor = '#06b6d4'; // Cyan
+                    bgColor = 'rgba(6, 182, 212, 0.1)';
+                    textColor = '#06b6d4';
+                    description = 'Zero Rank Risk';
                 }
+                
                 metricsHtml += `
-                    <div class="metric-item">
-                        <div class="metric-label">EO Category</div>
-                        <div class="metric-value ${tagClass}">${metrics.ownershipTag}</div>
+                    <div class="metric-item" style="grid-column: span 2;">
+                        <div class="metric-label">Ownership Risk Profile</div>
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 12px;
+                            border: 2px solid ${borderColor};
+                            border-radius: 8px;
+                            background: ${bgColor};
+                            margin-top: 4px;
+                        ">
+                            <div style="
+                                font-size: 32px;
+                                line-height: 1;
+                                flex-shrink: 0;
+                            ">${icon}</div>
+                            <div style="flex: 1;">
+                                <div style="
+                                    font-weight: 600;
+                                    font-size: 13px;
+                                    color: ${textColor};
+                                    margin-bottom: 2px;
+                                ">${metrics.ownershipTag}</div>
+                                <div style="
+                                    font-size: 11px;
+                                    color: var(--text-secondary);
+                                    opacity: 0.8;
+                                ">${description}</div>
+                            </div>
+                        </div>
                     </div>
                 `;
             }
