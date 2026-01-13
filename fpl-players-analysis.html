@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FPL Live Analysis Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -698,6 +699,173 @@
             color: var(--accent-green);
             transform: translateX(-3px);
         }
+
+        /* Preset Filters & Global Search */
+        .preset-filters {
+            background: var(--surface);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 12px;
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent-green);
+            background: var(--surface);
+            color: var(--accent-green);
+        }
+
+        .preset-btn.active {
+            border-color: var(--accent-green);
+            background: linear-gradient(135deg, var(--accent-green) 0%, #00cc70 100%);
+            color: var(--bg-dark);
+        }
+
+        .global-search {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .global-search input {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            padding: 6px 12px;
+            min-width: 200px;
+            outline: none;
+        }
+
+        .global-search input:focus {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 5px rgba(0, 255, 136, 0.2);
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #0099cc 100%);
+            color: var(--bg-dark);
+            border: none;
+            padding: 6px 12px;
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 10px rgba(0, 204, 255, 0.3);
+        }
+
+        /* Column Group Toggles */
+        .column-toggles {
+            background: var(--surface-light);
+            padding: 8px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 10px;
+        }
+
+        .column-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .column-toggle input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .column-toggle label {
+            cursor: pointer;
+            color: var(--text);
+        }
+
+        /* Sparkline Canvas */
+        .sparkline-cell {
+            padding: 2px !important;
+            width: 60px;
+            min-width: 60px;
+            max-width: 60px;
+        }
+
+        .sparkline-canvas {
+            width: 55px;
+            height: 20px;
+            display: block;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            th, td {
+                font-size: 8px;
+                padding: 4px 3px;
+            }
+
+            .table-container {
+                font-size: 8px;
+            }
+
+            .preset-filters {
+                padding: 8px 10px;
+            }
+
+            .preset-btn {
+                font-size: 8px;
+                padding: 4px 8px;
+            }
+
+            .global-search input {
+                min-width: 120px;
+                font-size: 9px;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Column group classes for show/hide */
+        .col-basic { }
+        .col-attacking { }
+        .col-defensive { }
+        .col-advanced { }
+
+        .col-attacking.hidden,
+        .col-defensive.hidden,
+        .col-advanced.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -964,6 +1132,21 @@
         <button class="tab" data-position="DEF">🛡️ Defenders</button>
         <button class="tab" data-position="MID">⚡ Midfielders</button>
         <button class="tab" data-position="FWD">🎯 Forwards</button>
+    </div>
+
+    <!-- Preset Filters & Global Search -->
+    <div class="preset-filters" id="presetFilters" style="display: none;">
+        <button class="preset-btn" onclick="applyPreset('budget-enablers')">💰 Budget Enablers</button>
+        <button class="preset-btn" onclick="applyPreset('form-players')">🔥 Form Players</button>
+        <button class="preset-btn" onclick="applyPreset('nailed-starters')">🔒 Nailed Starters</button>
+        <button class="preset-btn" onclick="applyPreset('value-picks')">💎 Value Picks</button>
+        <button class="preset-btn" onclick="applyPreset('easy-fixtures')">🟢 Easy Fixtures</button>
+        <button class="preset-btn" onclick="applyPreset('clear')">✖️ Clear</button>
+        <div class="global-search">
+            <span style="color: var(--text-dim); font-size: 10px;">🔍 SEARCH:</span>
+            <input type="text" id="globalSearch" placeholder="Search all players..." oninput="globalSearch()">
+            <button class="export-btn" onclick="exportToCSV()">📊 Export CSV</button>
+        </div>
     </div>
 
     <div class="content">
@@ -2446,6 +2629,192 @@
             
             return html;
         }
+
+        // ============================================
+        // NEW FEATURES: Presets, Search, Export, Sparklines
+        // ============================================
+
+        let currentPosition = null; // Track current tab
+
+        // Global Search across all players
+        function globalSearch() {
+            const searchTerm = document.getElementById('globalSearch').value.toLowerCase();
+            if (!currentPosition) return;
+            
+            const table = document.getElementById(`table-${currentPosition}`);
+            if (!table) return;
+            
+            const tbody = table.querySelector('tbody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const playerName = row.cells[0]?.textContent.toLowerCase() || '';
+                const teamName = row.cells[1]?.textContent.toLowerCase() || '';
+                
+                if (playerName.includes(searchTerm) || teamName.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Apply Preset Filters
+        function applyPreset(presetType) {
+            if (!currentPosition || ['RECOMMENDATIONS', 'FORM'].includes(currentPosition)) {
+                alert('Please select a position tab (GK/DEF/MID/FWD) to use presets');
+                return;
+            }
+            
+            const table = document.getElementById(`table-${currentPosition}`);
+            if (!table) return;
+            
+            // Clear all filters first
+            const filterInputs = table.querySelectorAll('.filter-input');
+            filterInputs.forEach(input => input.value = '');
+            
+            if (presetType === 'clear') {
+                // Show all rows
+                const tbody = table.querySelector('tbody');
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach(row => row.style.display = '');
+                return;
+            }
+            
+            // Get column indices (varies by position)
+            const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
+            const getColIndex = (label) => {
+                const index = headers.findIndex(h => h.textContent.includes(label));
+                return index;
+            };
+            
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Define price column based on whether Price column exists
+            const hasPriceCol = headers.some(h => h.textContent.includes('Price'));
+            
+            // Apply preset logic
+            rows.forEach(row => {
+                let show = true;
+                const cells = row.cells;
+                
+                if (presetType === 'budget-enablers') {
+                    // Minutes (L5) >=75 - removed price filter since it's not in table
+                    const minsL5Idx = headers.findIndex(h => h.textContent.includes('Mins') && h.textContent.includes('L5'));
+                    const minsL5 = parseFloat(cells[minsL5Idx]?.textContent || 0);
+                    show = minsL5 >= 75;
+                    
+                } else if (presetType === 'form-players') {
+                    // Pts (L5) >=5, Minutes (L5) >=60
+                    const ptsL5Idx = headers.findIndex(h => h.textContent.includes('Pts') && h.textContent.includes('L5'));
+                    const minsL5Idx = headers.findIndex(h => h.textContent.includes('Mins') && h.textContent.includes('L5'));
+                    
+                    const ptsL5 = parseFloat(cells[ptsL5Idx]?.textContent || 0);
+                    const minsL5 = parseFloat(cells[minsL5Idx]?.textContent || 0);
+                    
+                    show = ptsL5 >= 5 && minsL5 >= 60;
+                    
+                } else if (presetType === 'nailed-starters') {
+                    // Minutes (L5) >=80
+                    const minsL5Idx = headers.findIndex(h => h.textContent.includes('Mins') && h.textContent.includes('L5'));
+                    const minsL5 = parseFloat(cells[minsL5Idx]?.textContent || 0);
+                    show = minsL5 >= 80;
+                    
+                } else if (presetType === 'value-picks') {
+                    // Pts (L5) >=4, Minutes (L5) >=70
+                    const ptsL5Idx = headers.findIndex(h => h.textContent.includes('Pts') && h.textContent.includes('L5'));
+                    const minsL5Idx = headers.findIndex(h => h.textContent.includes('Mins') && h.textContent.includes('L5'));
+                    
+                    const ptsL5 = parseFloat(cells[ptsL5Idx]?.textContent || 0);
+                    const minsL5 = parseFloat(cells[minsL5Idx]?.textContent || 0);
+                    
+                    show = ptsL5 >= 4 && minsL5 >= 70;
+                    
+                } else if (presetType === 'easy-fixtures') {
+                    // FDR <3.0
+                    const fdrIdx = getColIndex('FDR');
+                    if (fdrIdx !== -1) {
+                        const fdrText = cells[fdrIdx]?.textContent || '';
+                        const fdr = parseFloat(fdrText.replace(/[^\d.]/g, ''));
+                        show = !isNaN(fdr) && fdr < 3.0;
+                    }
+                }
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+
+        // Export Table to CSV
+        function exportToCSV() {
+            if (!currentPosition || ['RECOMMENDATIONS', 'FORM'].includes(currentPosition)) {
+                alert('Please select a position tab (GK/DEF/MID/FWD) to export');
+                return;
+            }
+            
+            const table = document.getElementById(`table-${currentPosition}`);
+            if (!table) return;
+            
+            const rows = [];
+            
+            // Get headers
+            const headerRow = table.querySelectorAll('thead tr:first-child th');
+            const headers = Array.from(headerRow).map(th => {
+                const text = th.textContent.replace(/⇅/g, '').trim();
+                return text;
+            });
+            rows.push(headers.join(','));
+            
+            // Get data rows (only visible ones)
+            const dataRows = table.querySelectorAll('tbody tr');
+            dataRows.forEach(row => {
+                if (row.style.display === 'none') return; // Skip hidden rows
+                
+                const cells = Array.from(row.cells).map(td => {
+                    let text = td.textContent.trim();
+                    // Clean up emoji and special chars for CSV
+                    text = text.replace(/[🟢🟡🔴🟠]/g, '');
+                    // Escape commas
+                    if (text.includes(',')) text = `"${text}"`;
+                    return text;
+                });
+                rows.push(cells.join(','));
+            });
+            
+            // Create CSV file
+            const csv = rows.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            
+            // Download
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fpl-${currentPosition.toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Tab switching - show/hide preset filters
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab')) {
+                const position = e.target.dataset.position;
+                currentPosition = position;
+                
+                const presetFilters = document.getElementById('presetFilters');
+                
+                // Show filters only for position tabs (not recommendations/form)
+                if (['GK', 'DEF', 'MID', 'FWD'].includes(position)) {
+                    presetFilters.style.display = 'flex';
+                    
+                    // Clear global search
+                    document.getElementById('globalSearch').value = '';
+                } else {
+                    presetFilters.style.display = 'none';
+                }
+            }
+        });
 
         // Auto-load on page load and show cache info
         window.addEventListener('load', () => {
