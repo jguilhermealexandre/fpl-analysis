@@ -1724,13 +1724,28 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
 
         async function loadFixtures() {
             try {
-                console.log('Starting to load fixtures...');
+                console.log('
+🔥🔥🔥 STARTING FIXTURE LOAD 🔥🔥🔥');
                 console.log('Teams object exists:', !!teams);
                 console.log('Teams count:', Object.keys(teams).length);
                 
+                if (Object.keys(teams).length === 0) {
+                    console.error('❌ TEAMS OBJECT IS EMPTY! Cannot load fixtures.');
+                    alert('ERROR: Teams not loaded before fixtures. Refresh page.');
+                    return;
+                }
+                
+                console.log('Fetching fixtures from API...');
                 const response = await fetch('https://fantasy.premierleague.com/api/fixtures/');
+                
+                if (!response.ok) {
+                    console.error('❌ Fixtures API returned error:', response.status);
+                    alert(`ERROR: Fixtures API failed (${response.status}). Try again.`);
+                    return;
+                }
+                
                 fixtures = await response.json();
-                console.log('Fetched fixtures:', fixtures.length);
+                console.log('✅ Fetched fixtures:', fixtures.length, 'total fixtures');
                 
                 // Organize fixtures by team (next 3 upcoming games)
                 teamFixtures = {};
@@ -1740,7 +1755,16 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                     .filter(f => !f.finished && f.event !== null)
                     .sort((a, b) => a.event - b.event);
                 
-                console.log('Upcoming fixtures:', upcomingFixtures.length);
+                console.log('📊 Upcoming (unfinished) fixtures:', upcomingFixtures.length);
+                
+                if (upcomingFixtures.length === 0) {
+                    console.warn('⚠️ NO UPCOMING FIXTURES FOUND!');
+                    console.warn('This usually means:');
+                    console.warn('1. Season has ended (all fixtures finished)');
+                    console.warn('2. Fixtures API has issues');
+                    console.warn('Sample finished fixture:', fixtures[0]);
+                    alert('⚠️ No upcoming fixtures found. Season may have ended or API issue.');
+                }
                 
                 // Get next 3 fixtures for each team
                 Object.keys(teams).forEach(teamId => {
@@ -1754,14 +1778,23 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                         difficulty: f.team_h === tid ? f.team_h_difficulty : f.team_a_difficulty,
                         isHome: f.team_h === tid
                     }));
+                    
+                    if (tid === 1) { // Arsenal
+                        console.log('Sample: Arsenal fixtures:', teamFixtures[1]);
+                    }
                 });
                 
                 console.log('✅ Loaded fixtures for FDR calculation');
                 console.log('Sample teamFixtures:', Object.keys(teamFixtures).length, 'teams');
                 console.log('First team (ID 1) fixtures:', teamFixtures[1]);
-                console.log('Arsenal (ID 3) fixtures:', teamFixtures[3]);
+                console.log('Man City (ID 13) fixtures:', teamFixtures[13]);
+                console.log('
+🔥🔥🔥 FIXTURE LOAD COMPLETE 🔥🔥🔥
+');
             } catch (error) {
-                console.error('❌ Error loading fixtures:', error);
+                console.error('❌❌❌ CRITICAL ERROR loading fixtures:', error);
+                console.error('Error details:', error.message, error.stack);
+                alert(`ERROR loading fixtures: ${error.message}. Check console for details.`);
                 teamFixtures = {}; // Initialize empty to prevent undefined errors
             }
         }
@@ -1986,17 +2019,27 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                     selectedPlayers.map(async (player) => {
                         try {
                             const response = await fetch(`https://fantasy.premierleague.com/api/element-summary/${player.id}/`);
+                            
+                            if (!response.ok) {
+                                console.warn(`Element-summary API returned ${response.status} for player ${player.id}`);
+                                return player; // Keep existing data including fixtures from teamFixtures
+                            }
+                            
                             const data = await response.json();
                             
                             // Combine player data with detailed history
+                            // IMPORTANT: Preserve player.fixtures if element-summary fails (CORS)
                             return {
                                 ...player,
                                 history: data.history || [],
-                                fixtures: data.fixtures || []
+                                // Use element-summary fixtures ONLY if they exist AND are non-empty
+                                // Otherwise keep the fixtures we already attached from teamFixtures
+                                fixtures: (data.fixtures && data.fixtures.length > 0) ? data.fixtures : player.fixtures
                             };
                         } catch (error) {
-                            console.error(`Error fetching data for player ${player.id}:`, error);
-                            return player; // Return original if fetch fails
+                            // CORS or network error - preserve existing player data including fixtures
+                            console.warn(`CORS/Network error for player ${player.id} (${player.name}):`, error.message);
+                            return player; // Return original WITH teamFixtures fixtures
                         }
                     })
                 );
