@@ -2007,6 +2007,15 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
             const MIN_FORM = 4.0;       // Good recent form
             const MAX_FDR = 3.0;        // Favorable fixtures
             
+            // Helper to convert position number to string
+            const positionToString = (pos) => {
+                const positions = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+                return positions[pos] || 'UNK';
+            };
+            
+            console.log('🔍 Finding missing essentials from', allPlayers.length, 'total players');
+            console.log('My team player IDs:', Array.from(myPlayerIds));
+            
             // Filter all players for essentials not in team
             const essentials = allPlayers
                 .filter(p => {
@@ -2017,19 +2026,23 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                     if (p.chance_of_playing_next_round !== null && 
                         p.chance_of_playing_next_round < 75) return false;
                     
-                    // High ownership
-                    if (parseFloat(p.selected_by_percent) < MIN_OWNERSHIP) return false;
+                    // High ownership - use 'ownership' property (already parsed from selected_by_percent)
+                    const ownership = p.ownership || parseFloat(p.selected_by_percent) || 0;
+                    if (ownership < MIN_OWNERSHIP) return false;
                     
                     // Good form
-                    if (parseFloat(p.form) < MIN_FORM) return false;
+                    const form = p.form || 0;
+                    if (form < MIN_FORM) return false;
                     
                     // Has fixtures data
-                    const teamId = p.team;
+                    const teamId = p.teamId || p.team;
                     const fixtures = teamFixtures[teamId];
                     if (!fixtures || fixtures.length === 0) return false;
                     
                     // Good fixtures (average FDR)
                     const next3 = fixtures.slice(0, 3);
+                    if (next3.length === 0) return false;
+                    
                     const avgFDR = next3.reduce((sum, f) => sum + f.difficulty, 0) / next3.length;
                     if (avgFDR > MAX_FDR) return false;
                     
@@ -2037,19 +2050,20 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 })
                 .map(p => {
                     // Calculate essential score for sorting
-                    const teamId = p.team;
+                    const teamId = p.teamId || p.team;
                     const fixtures = teamFixtures[teamId];
                     const next3 = fixtures.slice(0, 3);
                     const avgFDR = next3.reduce((sum, f) => sum + f.difficulty, 0) / next3.length;
                     
-                    const ownership = parseFloat(p.selected_by_percent);
-                    const form = parseFloat(p.form);
+                    const ownership = p.ownership || parseFloat(p.selected_by_percent) || 0;
+                    const form = p.form || 0;
                     
                     // Score = ownership * form / FDR (higher is better)
                     const essentialScore = (ownership * form) / avgFDR;
                     
                     return {
                         ...p,
+                        positionStr: positionToString(p.position),
                         avgFDR,
                         essentialScore,
                         next3Fixtures: next3
@@ -2058,12 +2072,17 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 .sort((a, b) => b.essentialScore - a.essentialScore)
                 .slice(0, 10); // Top 10 missing essentials
             
+            console.log('✅ Found', essentials.length, 'missing essentials');
+            if (essentials.length > 0) {
+                console.log('Top 3:', essentials.slice(0, 3).map(p => `${p.name} (${p.ownership}% own, ${p.form} form)`));
+            }
+            
             // Group by position
             const grouped = {
-                GK: essentials.filter(p => p.position === 'GK'),
-                DEF: essentials.filter(p => p.position === 'DEF'),
-                MID: essentials.filter(p => p.position === 'MID'),
-                FWD: essentials.filter(p => p.position === 'FWD')
+                GK: essentials.filter(p => p.positionStr === 'GK'),
+                DEF: essentials.filter(p => p.positionStr === 'DEF'),
+                MID: essentials.filter(p => p.positionStr === 'MID'),
+                FWD: essentials.filter(p => p.positionStr === 'FWD')
             };
             
             return grouped;
@@ -2814,8 +2833,9 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
         }
         
         function createMissingPlayerCard(player) {
-            const config = POSITION_CONFIG[player.position];
-            const team = teams[player.team];
+            const config = POSITION_CONFIG[player.positionStr];
+            const teamId = player.teamId || player.team;
+            const team = teams[teamId];
             
             // Format fixtures
             const fixturesStr = player.next3Fixtures
@@ -2858,10 +2878,10 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                         ">${config.icon}</div>
                         <div style="min-width: 0;">
                             <div style="font-weight: 600; font-size: 14px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${player.web_name}
+                                ${player.name}
                             </div>
                             <div style="font-size: 11px; color: var(--text-dim);">
-                                ${team.short_name} • £${player.now_cost / 10}m
+                                ${team.short_name} • £${player.price.toFixed(1)}m
                             </div>
                         </div>
                     </div>
@@ -2871,13 +2891,13 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                         <div>
                             <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 2px;">OWN</div>
                             <div style="font-size: 14px; font-weight: 700; color: #3b82f6;">
-                                ${player.selected_by_percent}%
+                                ${player.ownership.toFixed(1)}%
                             </div>
                         </div>
                         <div>
                             <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 2px;">FORM</div>
                             <div style="font-size: 14px; font-weight: 700; color: #10b981;">
-                                ${player.form}
+                                ${player.form.toFixed(1)}
                             </div>
                         </div>
                         <div>
