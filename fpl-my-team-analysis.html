@@ -1570,12 +1570,14 @@
                 
                 if (!response.ok) {
                     // Fallback to API with CORS proxy
-                    console.log('Trying bootstrap-static with CORS proxy...');
+                    console.log('📡 Static file not found, fetching from FPL API with CORS proxy...');
                     const bootstrapUrl = 'https://fantasy.premierleague.com/api/bootstrap-static/';
                     const corsProxy = 'https://corsproxy.io/?';
                     
                     response = await fetch(corsProxy + encodeURIComponent(bootstrapUrl));
                     data = await response.json();
+                    
+                    console.log('✅ Loaded from FPL API');
                     
                     // Build teams object FIRST
                     teams = {};
@@ -1593,6 +1595,8 @@
                             strength_defence_away: t.strength_defence_away
                         };
                     });
+                    
+                    console.log('✅ Teams object built from API:', Object.keys(teams).length, 'teams', 'Sample:', teams[1]);
                     
                     // THEN load fixtures (needs teams object!)
                     await loadFixtures();
@@ -1639,11 +1643,26 @@
                     // Static file format (already has detailed data)
                     data = await response.json();
                     
-                    // Build teams object FIRST
+                    console.log('📂 Loaded from static file');
+                    
+                    // Build teams object FIRST - ensure proper structure
                     if (data.teams) {
+                        teams = {};
                         data.teams.forEach(t => {
-                            teams[t.id] = t;
+                            teams[t.id] = {
+                                id: t.id,
+                                name: t.name,
+                                short_name: t.short_name || t.name, // Fallback to name if short_name missing
+                                strength: t.strength,
+                                strength_overall_home: t.strength_overall_home,
+                                strength_overall_away: t.strength_overall_away,
+                                strength_attack_home: t.strength_attack_home,
+                                strength_attack_away: t.strength_attack_away,
+                                strength_defence_home: t.strength_defence_home,
+                                strength_defence_away: t.strength_defence_away
+                            };
                         });
+                        console.log('✅ Teams object built from static file:', Object.keys(teams).length, 'teams');
                     }
                     
                     // THEN load fixtures (needs teams object!)
@@ -2565,7 +2584,33 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             if (player.fixtures && player.fixtures.length > 0) {
                 const upcoming = player.fixtures;
                 const avgFDR = upcoming.reduce((sum, f) => sum + f.difficulty, 0) / upcoming.length;
-                metrics.nextFixtures = upcoming.map(f => `${f.opponent}${f.isHome ? '(H' : '(A'}, ${f.difficulty})`).join(', ');
+                
+                // Debug teams object
+                console.log('🔍 Teams object check:', {
+                    teamsExists: !!teams,
+                    teamsKeys: Object.keys(teams).length,
+                    sampleTeam: teams[1] || teams[Object.keys(teams)[0]],
+                    player: player.name,
+                    playerTeam: player.team
+                });
+                
+                // Look up opponent names from teams object
+                metrics.nextFixtures = upcoming.map(f => {
+                    // Determine opponent ID based on home/away
+                    const opponentId = f.is_home ? f.team_a : f.team_h;
+                    // Look up team name - more defensive
+                    const opponentName = (teams[opponentId] && teams[opponentId].short_name) || 
+                                        teams[opponentId]?.short_name || 
+                                        'UNK';
+                    
+                    // Debug if opponent is UNK
+                    if (opponentName === 'UNK') {
+                        console.warn(`⚠️ No opponent name for ID ${opponentId}, teams[${opponentId}]:`, teams[opponentId]);
+                    }
+                    
+                    return `${opponentName}(${f.is_home ? 'H' : 'A'}, ${f.difficulty})`;
+                }).join(', ');
+                
                 metrics.avgFDR = avgFDR.toFixed(1);
                 
                 console.log(`✅ ${player.name} FDR: ${avgFDR}, Fixtures: ${metrics.nextFixtures}`);
@@ -2938,7 +2983,7 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                             margin-top: 4px;
                         ">
                             <div style="
-                                font-size: 32px;
+                                font-size: 20px;
                                 line-height: 1;
                                 flex-shrink: 0;
                             ">${icon}</div>
