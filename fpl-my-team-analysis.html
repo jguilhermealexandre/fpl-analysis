@@ -1997,6 +1997,78 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
             }
         }
 
+        // FIND MISSING ESSENTIALS (Template Players Not in Squad)
+        function findMissingEssentials(myTeam) {
+            // Get IDs of players already in team
+            const myPlayerIds = new Set(myTeam.map(p => p.id));
+            
+            // Define criteria for "essential" players
+            const MIN_OWNERSHIP = 20;  // 20%+ ownership
+            const MIN_FORM = 4.0;       // Good recent form
+            const MAX_FDR = 3.0;        // Favorable fixtures
+            
+            // Filter all players for essentials not in team
+            const essentials = allPlayers
+                .filter(p => {
+                    // Not in my team
+                    if (myPlayerIds.has(p.id)) return false;
+                    
+                    // Must be available (not injured/suspended)
+                    if (p.chance_of_playing_next_round !== null && 
+                        p.chance_of_playing_next_round < 75) return false;
+                    
+                    // High ownership
+                    if (parseFloat(p.selected_by_percent) < MIN_OWNERSHIP) return false;
+                    
+                    // Good form
+                    if (parseFloat(p.form) < MIN_FORM) return false;
+                    
+                    // Has fixtures data
+                    const teamId = p.team;
+                    const fixtures = teamFixtures[teamId];
+                    if (!fixtures || fixtures.length === 0) return false;
+                    
+                    // Good fixtures (average FDR)
+                    const next3 = fixtures.slice(0, 3);
+                    const avgFDR = next3.reduce((sum, f) => sum + f.difficulty, 0) / next3.length;
+                    if (avgFDR > MAX_FDR) return false;
+                    
+                    return true;
+                })
+                .map(p => {
+                    // Calculate essential score for sorting
+                    const teamId = p.team;
+                    const fixtures = teamFixtures[teamId];
+                    const next3 = fixtures.slice(0, 3);
+                    const avgFDR = next3.reduce((sum, f) => sum + f.difficulty, 0) / next3.length;
+                    
+                    const ownership = parseFloat(p.selected_by_percent);
+                    const form = parseFloat(p.form);
+                    
+                    // Score = ownership * form / FDR (higher is better)
+                    const essentialScore = (ownership * form) / avgFDR;
+                    
+                    return {
+                        ...p,
+                        avgFDR,
+                        essentialScore,
+                        next3Fixtures: next3
+                    };
+                })
+                .sort((a, b) => b.essentialScore - a.essentialScore)
+                .slice(0, 10); // Top 10 missing essentials
+            
+            // Group by position
+            const grouped = {
+                GK: essentials.filter(p => p.position === 'GK'),
+                DEF: essentials.filter(p => p.position === 'DEF'),
+                MID: essentials.filter(p => p.position === 'MID'),
+                FWD: essentials.filter(p => p.position === 'FWD')
+            };
+            
+            return grouped;
+        }
+
         async function analyzeTeam() {
             if (selectedPlayers.length === 0) {
                 alert('Please build your team first');
@@ -2038,8 +2110,11 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 // Sort by sell rating (highest first)
                 analyses.sort((a, b) => b.sellRating - a.sellRating);
                 
-                // Render analysis
-                renderTeamAnalysis(analyses);
+                // Find missing essentials (template players not in squad)
+                const missingEssentials = findMissingEssentials(detailedPlayers);
+                
+                // Render analysis with missing essentials
+                renderTeamAnalysis(analyses, missingEssentials);
                 
                 const urgentCount = analyses.filter(a => a.sellRating >= 60).length;
                 updateStatus(`✓ Analysis complete! ${urgentCount} urgent sell${urgentCount !== 1 ? 's' : ''} identified`, 'success');
@@ -2707,7 +2782,121 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             };
         }
 
-        function renderTeamAnalysis(analyses) {
+        // CREATE HTML FOR MISSING ESSENTIALS
+        function createMissingEssentialsHTML(grouped) {
+            let html = '';
+            
+            const positions = ['GK', 'DEF', 'MID', 'FWD'];
+            const posLabels = {
+                'GK': 'Goalkeepers',
+                'DEF': 'Defenders', 
+                'MID': 'Midfielders',
+                'FWD': 'Forwards'
+            };
+            
+            positions.forEach(pos => {
+                const players = grouped[pos];
+                if (players.length === 0) return;
+                
+                html += `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: var(--text-primary); font-size: 14px; font-weight: 600; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            ${posLabels[pos]}
+                        </h3>
+                        <div style="display: grid; gap: 12px;">
+                            ${players.map(p => createMissingPlayerCard(p)).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        function createMissingPlayerCard(player) {
+            const config = POSITION_CONFIG[player.position];
+            const team = teams[player.team];
+            
+            // Format fixtures
+            const fixturesStr = player.next3Fixtures
+                .map(f => {
+                    const fdrClass = f.difficulty <= 2 ? 'good' : f.difficulty >= 4 ? 'bad' : 'warning';
+                    const color = f.difficulty <= 2 ? '#10b981' : f.difficulty >= 4 ? '#ef4444' : '#f59e0b';
+                    return `<span style="color: ${color}; font-weight: 600;">${f.opponent}</span>`;
+                })
+                .join(' • ');
+            
+            return `
+                <div style="
+                    background: var(--card-bg);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    padding: 12px;
+                    display: grid;
+                    grid-template-columns: auto 1fr auto;
+                    gap: 12px;
+                    align-items: center;
+                    transition: all 0.2s;
+                    cursor: pointer;
+                " onmouseover="this.style.borderColor='#3b82f6'; this.style.transform='translateY(-2px)'" 
+                   onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)'">
+                    
+                    <!-- Player Info -->
+                    <div style="display: flex; align-items: center; gap: 10px; min-width: 200px;">
+                        <div style="
+                            background: ${config.bgColor};
+                            color: ${config.color};
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-weight: 700;
+                            font-size: 11px;
+                            flex-shrink: 0;
+                        ">${config.icon}</div>
+                        <div style="min-width: 0;">
+                            <div style="font-weight: 600; font-size: 14px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${player.web_name}
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-dim);">
+                                ${team.short_name} • £${player.now_cost / 10}m
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 0 10px;">
+                        <div>
+                            <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 2px;">OWN</div>
+                            <div style="font-size: 14px; font-weight: 700; color: #3b82f6;">
+                                ${player.selected_by_percent}%
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 2px;">FORM</div>
+                            <div style="font-size: 14px; font-weight: 700; color: #10b981;">
+                                ${player.form}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 2px;">FDR</div>
+                            <div style="font-size: 14px; font-weight: 700; color: ${player.avgFDR <= 2.5 ? '#10b981' : player.avgFDR >= 3.5 ? '#ef4444' : '#f59e0b'};">
+                                ${player.avgFDR.toFixed(1)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Fixtures -->
+                    <div style="min-width: 150px; text-align: right; font-size: 12px;">
+                        ${fixturesStr}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTeamAnalysis(analyses, missingEssentials = null) {
             const urgent = analyses.filter(a => a.priority === 'urgent');
             const consider = analyses.filter(a => a.priority === 'consider');
             const hold = analyses.filter(a => a.priority === 'hold');
@@ -2738,6 +2927,25 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                     </div>
                 </div>
             `;
+            
+            // Add Missing Essentials section if available
+            if (missingEssentials) {
+                const totalMissing = Object.values(missingEssentials).flat().length;
+                if (totalMissing > 0) {
+                    html += `
+                        <div class="priority-section" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1)); border: 2px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 20px;">
+                            <h2 style="color: #3b82f6; display: flex; align-items: center; gap: 10px;">
+                                <span>🎯</span>
+                                <span>Missing Template Players</span>
+                            </h2>
+                            <p style="color: var(--text-dim); margin-bottom: 20px; font-size: 13px;">
+                                High-ownership players (20%+) with strong form (4.0+) and favorable fixtures (FDR <3.0) that you don't own
+                            </p>
+                            ${createMissingEssentialsHTML(missingEssentials)}
+                        </div>
+                    `;
+                }
+            }
             
             if (urgent.length > 0) {
                 html += `
