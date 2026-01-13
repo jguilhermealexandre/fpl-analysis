@@ -2839,13 +2839,16 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             
             // Defensive check
             if (!config) {
-                console.warn('❌ Missing config for player:', player.name, 'position:', player.position);
+                console.warn('❌ Missing config for player:', player.name || player.web_name, 'position:', player.position);
                 return '';
             }
             if (!team) {
-                console.warn('❌ Missing team for player:', player.name, 'teamId:', teamId);
+                console.warn('❌ Missing team for player:', player.name || player.web_name, 'teamId:', teamId);
                 return '';
             }
+            
+            // Use web_name if name is not available
+            const playerName = player.web_name || player.name || 'Unknown Player';
             
             // Format fixtures
             const fixturesStr = player.next3Fixtures
@@ -2888,7 +2891,7 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                         ">${config.icon}</div>
                         <div style="min-width: 0;">
                             <div style="font-weight: 600; font-size: 14px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${player.name || 'Unknown Player'}
+                                ${playerName}
                             </div>
                             <div style="font-size: 11px; color: var(--text-dim);">
                                 ${team?.short_name || 'N/A'} • £${player.price.toFixed(1)}m
@@ -2924,6 +2927,18 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                     </div>
                 </div>
             `;
+        }
+
+        function toggleAccordion(sectionId) {
+            const content = document.getElementById(sectionId);
+            const icon = document.getElementById(sectionId + '-icon');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▶';
+            }
         }
 
         function renderTeamAnalysis(analyses, missingEssentials = null) {
@@ -2964,14 +2979,17 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                 if (totalMissing > 0) {
                     html += `
                         <div class="priority-section" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1)); border: 2px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 20px;">
-                            <h2 style="color: #3b82f6; display: flex; align-items: center; gap: 10px;">
+                            <h2 style="color: #3b82f6; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;" onclick="toggleAccordion('missing-template-content')">
+                                <span id="missing-template-content-icon">▶</span>
                                 <span>🎯</span>
-                                <span>Missing Template Players</span>
+                                <span>Missing Template Players (${totalMissing})</span>
                             </h2>
-                            <p style="color: var(--text-dim); margin-bottom: 20px; font-size: 13px;">
-                                High-ownership players (20%+) with strong form (4.0+) and favorable fixtures (FDR <3.0) that you don't own
-                            </p>
-                            ${createMissingEssentialsHTML(missingEssentials)}
+                            <div id="missing-template-content" style="display: none;">
+                                <p style="color: var(--text-dim); margin-bottom: 20px; margin-top: 15px; font-size: 13px;">
+                                    High-ownership players (20%+) with strong form (4.0+) and favorable fixtures (FDR <3.0) that you don't own
+                                </p>
+                                ${createMissingEssentialsHTML(missingEssentials)}
+                            </div>
                         </div>
                     `;
                 }
@@ -2980,10 +2998,15 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             if (urgent.length > 0) {
                 html += `
                     <div class="priority-section">
-                        <h2 style="color: var(--accent-red);">🚨 URGENT: Transfer Out Immediately</h2>
-                        <p style="color: var(--text-dim); margin-bottom: 20px;">These players have critical issues (injuries, rotation, or severe underperformance)</p>
-                        <div class="my-team-grid">
-                            ${urgent.map(a => createPlayerCardDetailed(a)).join('')}
+                        <h2 style="color: var(--accent-red); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 10px;" onclick="toggleAccordion('urgent-sells-content')">
+                            <span id="urgent-sells-content-icon">▼</span>
+                            <span>🚨 URGENT: Transfer Out Immediately (${urgent.length})</span>
+                        </h2>
+                        <div id="urgent-sells-content" style="display: block;">
+                            <p style="color: var(--text-dim); margin-bottom: 20px; margin-top: 15px;">These players have critical issues (injuries, rotation, or severe underperformance)</p>
+                            <div class="my-team-grid">
+                                ${urgent.map(a => createPlayerCardDetailed(a)).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -2992,10 +3015,15 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             if (consider.length > 0) {
                 html += `
                     <div class="priority-section">
-                        <h2 style="color: var(--accent-yellow);">⚠️ Monitor Closely - Consider Selling</h2>
-                        <p style="color: var(--text-dim); margin-bottom: 20px;">These players show concerning trends that warrant close monitoring</p>
-                        <div class="my-team-grid">
-                            ${consider.map(a => createPlayerCardDetailed(a)).join('')}
+                        <h2 style="color: var(--accent-yellow); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 10px;" onclick="toggleAccordion('consider-sells-content')">
+                            <span id="consider-sells-content-icon">▼</span>
+                            <span>⚠️ Monitor Closely - Consider Selling (${consider.length})</span>
+                        </h2>
+                        <div id="consider-sells-content" style="display: block;">
+                            <p style="color: var(--text-dim); margin-bottom: 20px; margin-top: 15px;">These players show concerning trends that warrant close monitoring</p>
+                            <div class="my-team-grid">
+                                ${consider.map(a => createPlayerCardDetailed(a)).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -3004,10 +3032,15 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             if (hold.length > 0) {
                 html += `
                     <div class="priority-section">
-                        <h2 style="color: var(--accent-green);">✅ Strong Performers - Hold</h2>
-                        <p style="color: var(--text-dim); margin-bottom: 20px;">These players are performing well with positive underlying stats</p>
-                        <div class="my-team-grid">
-                            ${hold.map(a => createPlayerCardDetailed(a)).join('')}
+                        <h2 style="color: var(--accent-green); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 10px;" onclick="toggleAccordion('hold-content')">
+                            <span id="hold-content-icon">▶</span>
+                            <span>✅ Strong Performers - Hold (${hold.length})</span>
+                        </h2>
+                        <div id="hold-content" style="display: none;">
+                            <p style="color: var(--text-dim); margin-bottom: 20px; margin-top: 15px;">These players are performing well with positive underlying stats</p>
+                            <div class="my-team-grid">
+                                ${hold.map(a => createPlayerCardDetailed(a)).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
