@@ -2712,8 +2712,11 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                     // Smart fixture adjustments (uses customizable weight)
                     const baseFixtureImpact = userSettings.fixtureWeight;
                     
-                    if (avgFDR < 2.5) {
-                        // Green fixtures - discount to help borderline sells become holds
+                    // Ensure avgFDR is a number for comparisons
+                    const fdrNum = parseFloat(avgFDR);
+                    
+                    if (fdrNum < 2.6) {
+                        // Easy fixtures - significant discount
                         if (sellRating > 30) {
                             const fixtureDiscount = sellRating * (0.30 * baseFixtureImpact); // 30% discount
                             sellRating -= fixtureDiscount;
@@ -2722,25 +2725,50 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                         
                         detailedInsights.push({
                             type: 'positive',
-                            title: 'Green Fixture Run Coming',
+                            title: 'Easy Fixture Run Coming',
                             text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very favorable. Research shows top managers hold through poor form when easy fixtures approach. Saka example: 0.20 xGI/90 vs City/Liverpool doesn't matter if Luton (H, 2) is next. These games could turn the season around - worth the patience.`
                         });
-                    } else if (avgFDR > 3.5) {
-                        // Brutal fixtures - always add penalty (helps borderline holds become sells)
-                        const fixturePenalty = 20 * baseFixtureImpact; // Base 20 points
-                        sellRating += fixturePenalty;
-                        issues.push({ text: `Tough Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: Math.round(fixturePenalty) });
+                    } else if (fdrNum >= 2.6 && fdrNum < 2.9) {
+                        // Favorable fixtures - moderate discount
+                        if (sellRating > 30) {
+                            const fixtureDiscount = sellRating * (0.15 * baseFixtureImpact); // 15% discount
+                            sellRating -= fixtureDiscount;
+                            issues.push({ text: `Favorable Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'positive', points: -Math.round(fixtureDiscount) });
+                        }
                         
                         detailedInsights.push({
-                            type: 'warning',
-                            title: 'Brutal Fixture Run Ahead',
-                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very tough. Facing top 6 teams or in-form defenses. ${player.position === 2 || player.position === 1 ? 'Defensive assets' : 'Attackers'} typically blank against these opponents. Historical data: premiums blank 65% vs FDR 5 teams. Consider selling before the fixture swing.`
+                            type: 'positive',
+                            title: 'Favorable Fixtures Ahead',
+                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - good matchups against weaker defenses. Historical data shows consistent returns likely. Good time to hold and expect points.`
                         });
-                    } else {
+                    } else if (fdrNum >= 2.9 && fdrNum < 3.1) {
+                        // Neutral fixtures (2.9 to 3.1)
                         detailedInsights.push({
                             type: 'info',
                             title: 'Neutral Fixture Difficulty',
-                            text: `Next 3 games (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - mid-table opposition. No fixture advantage or disadvantage - performance will be on their own merit.`
+                            text: `Next 3 games (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - balanced mix of mid-table opposition. No significant fixture advantage or disadvantage - performance will be on their own merit.`
+                        });
+                    } else if (fdrNum >= 3.1 && fdrNum < 3.4) {
+                        // Challenging fixtures - slight penalty
+                        const fixturePenalty = 10 * baseFixtureImpact; // 10 points
+                        sellRating += fixturePenalty;
+                        issues.push({ text: `Challenging Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: Math.round(fixturePenalty) });
+                        
+                        detailedInsights.push({
+                            type: 'warning',
+                            title: 'Challenging Fixtures Coming',
+                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - tougher than average. Facing solid defenses and mid-to-upper table teams. Returns less reliable - monitor closely.`
+                        });
+                    } else {
+                        // Difficult fixtures (3.4+)
+                        const fixturePenalty = 20 * baseFixtureImpact; // Base 20 points
+                        sellRating += fixturePenalty;
+                        issues.push({ text: `Difficult Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: Math.round(fixturePenalty) });
+                        
+                        detailedInsights.push({
+                            type: 'warning',
+                            title: 'Difficult Fixture Run Ahead',
+                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very tough. Facing top 6 teams or in-form defenses. ${player.position === 2 || player.position === 1 ? 'Defensive assets' : 'Attackers'} typically blank against these opponents. Historical data: premiums blank 65% vs FDR 5 teams. Consider selling before the fixture swing.`
                         });
                     }
                 }
@@ -2915,7 +2943,13 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                         </div>
                         <div>
                             <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 2px;">FDR</div>
-                            <div style="font-size: 14px; font-weight: 700; color: ${player.avgFDR <= 2.5 ? '#10b981' : player.avgFDR >= 3.5 ? '#ef4444' : '#f59e0b'};">
+                            <div style="font-size: 14px; font-weight: 700; color: ${
+                                player.avgFDR < 2.6 ? '#10b981' : 
+                                player.avgFDR < 2.9 ? '#22c55e' : 
+                                player.avgFDR < 3.1 ? '#f59e0b' : 
+                                player.avgFDR < 3.4 ? '#fb923c' : 
+                                '#ef4444'
+                            };">
                                 ${player.avgFDR.toFixed(1)}
                             </div>
                         </div>
@@ -3278,8 +3312,12 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             
             // Row 5: Fixtures
             if (metrics.avgFDR) {
-                const fdrClass = parseFloat(metrics.avgFDR) < 2.5 ? 'good' : 
-                                parseFloat(metrics.avgFDR) > 3.5 ? 'bad' : 'warning';
+                const fdrValue = parseFloat(metrics.avgFDR);
+                const fdrClass = fdrValue < 2.6 ? 'good' :      // Easy
+                                fdrValue < 2.9 ? 'good' :        // Favorable (still good)
+                                fdrValue < 3.1 ? 'warning' :     // Neutral
+                                fdrValue < 3.4 ? 'warning' :     // Challenging (warning)
+                                'bad';                            // Difficult
                 metricsHtml += `
                     <div class="metric-item">
                         <div class="metric-label">Next 3 FDR</div>
