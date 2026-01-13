@@ -2837,6 +2837,16 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             const teamId = player.teamId || player.team;
             const team = teams[teamId];
             
+            // Defensive check
+            if (!config) {
+                console.warn('❌ Missing config for player:', player.name, 'position:', player.position);
+                return '';
+            }
+            if (!team) {
+                console.warn('❌ Missing team for player:', player.name, 'teamId:', teamId);
+                return '';
+            }
+            
             // Format fixtures
             const fixturesStr = player.next3Fixtures
                 .map(f => {
@@ -2878,10 +2888,10 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                         ">${config.icon}</div>
                         <div style="min-width: 0;">
                             <div style="font-weight: 600; font-size: 14px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${player.name}
+                                ${player.name || 'Unknown Player'}
                             </div>
                             <div style="font-size: 11px; color: var(--text-dim);">
-                                ${team.short_name} • £${player.price.toFixed(1)}m
+                                ${team?.short_name || 'N/A'} • £${player.price.toFixed(1)}m
                             </div>
                         </div>
                     </div>
