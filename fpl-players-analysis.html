@@ -2347,15 +2347,25 @@
                         positionScore += l5BCC * 3;
                     }
                     
+                    // FIXTURE DIFFICULTY BONUS (critical for short-term picks)
+                    let fixtureBonus = 0;
+                    if (p.fixtures && p.fixtures.avgFDR3) {
+                        if (p.fixtures.avgFDR3 < 2.5) fixtureBonus = 15;       // Easy run
+                        else if (p.fixtures.avgFDR3 < 3.0) fixtureBonus = 8;   // Favorable
+                        else if (p.fixtures.avgFDR3 > 3.5) fixtureBonus = -10; // Tough run
+                    }
+                    
                     // COMPREHENSIVE SCORE combining all factors
                     p.recommendationScore = (
                         pointsPerMillion * 30 +        // Value is king
                         positionScore * 1.5 +           // Position-specific performance
                         minutesConsistency * 10 +       // Rotation risk penalty
-                        (l5xGI > seasonxGI ? 5 : -2)   // Bonus for improving xGI
+                        (l5xGI > seasonxGI ? 5 : -2) + // Bonus for improving xGI
+                        fixtureBonus                    // Fixture difficulty adjustment
                     );
                     
                     // Store metrics for display
+                    p.fixtureBonus = fixtureBonus;
                     p.valueScore = pointsPerMillion;
                     p.l5xGIperGame = l5xGI;
                     p.minutesConsistency = minutesConsistency;
@@ -2433,6 +2443,15 @@
                         reasons.push('Improving form');
                     }
                     
+                    // Add fixture-based reasoning
+                    if (player.fixtureBonus >= 15) {
+                        reasons.push('🟢 Easy fixtures ahead');
+                    } else if (player.fixtureBonus >= 8) {
+                        reasons.push('🟢 Favorable fixtures');
+                    } else if (player.fixtureBonus <= -10) {
+                        reasons.push('⚠️ Tough fixtures - short-term caution');
+                    }
+                    
                     if (reasons.length === 0) {
                         reasons.push('Consistent performer');
                     }
@@ -2494,6 +2513,28 @@
                         `;
                     }
                     
+                    // Build fixture badge
+                    let fixtureBadge = '';
+                    if (player.fixtures && player.fixtures.avgFDR3) {
+                        const fdr = player.fixtures.avgFDR3;
+                        const fixtureStr = player.fixtures.fixtureString || '';
+                        let badgeColor = 'var(--text-dim)';
+                        let badgeText = 'Neutral';
+                        
+                        if (fdr < 2.5) { badgeColor = 'var(--accent-green)'; badgeText = '🟢 Easy'; }
+                        else if (fdr < 3.0) { badgeColor = '#88cc88'; badgeText = '🟢 Good'; }
+                        else if (fdr > 3.5) { badgeColor = 'var(--accent-red)'; badgeText = '🔴 Tough'; }
+                        else { badgeColor = 'var(--accent-yellow)'; badgeText = '🟡 Mixed'; }
+                        
+                        fixtureBadge = `
+                            <div style="margin-top: 8px; padding: 6px 8px; background: var(--bg-darker); border-radius: 3px; border-left: 2px solid ${badgeColor};">
+                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 2px;">Next 3 Fixtures</div>
+                                <div style="font-size: 9px; color: ${badgeColor}; font-weight: 500;">${badgeText} (FDR ${fdr.toFixed(1)})</div>
+                                <div style="font-size: 8px; color: var(--text-dim); margin-top: 2px;">${fixtureStr}</div>
+                            </div>
+                        `;
+                    }
+                    
                     html += `
                         <div class="player-rec-card">
                             <div class="player-rec-header">
@@ -2504,6 +2545,7 @@
                             <div class="player-rec-stats">
                                 ${keyStats}
                             </div>
+                            ${fixtureBadge}
                             <div class="rec-reason">
                                 💡 ${reason}
                             </div>
@@ -2613,6 +2655,21 @@
                     reasons.push(`Good value (${ptsPerMillion.toFixed(2)}/£m)`);
                 }
                 
+                // 7. Fixture Difficulty (15 points max)
+                if (player.fixtures && player.fixtures.avgFDR3) {
+                    const fdr = player.fixtures.avgFDR3;
+                    if (fdr < 2.5) {
+                        signal += 15;
+                        reasons.push(`🟢🟢 Easy fixtures (FDR ${fdr.toFixed(1)})`);
+                    } else if (fdr < 3.0) {
+                        signal += 8;
+                        reasons.push(`🟢 Good fixtures (FDR ${fdr.toFixed(1)})`);
+                    } else if (fdr > 3.5) {
+                        signal -= 5;
+                        reasons.push(`🔴 Tough fixtures (FDR ${fdr.toFixed(1)})`);
+                    }
+                }
+                
                 // Only include if signal >= 45
                 if (signal >= 45 && reasons.length > 0) {
                     formSignals.push({
@@ -2708,6 +2765,13 @@
                                 <div style="font-size: 12px; font-weight: 600; color: var(--text);">${player.l5xGIperGame.toFixed(2)}</div>
                             </div>
                         </div>
+                        
+                        ${player.fixtures && player.fixtures.fixtureString ? `
+                        <div style="margin-bottom: 12px; padding: 8px 10px; background: var(--bg-darker); border-radius: 3px; border-left: 2px solid ${player.fixtures.avgFDR3 < 3.0 ? 'var(--accent-green)' : player.fixtures.avgFDR3 > 3.5 ? 'var(--accent-red)' : 'var(--accent-yellow)'};">
+                            <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 3px;">Next 3 Fixtures (FDR ${player.fixtures.avgFDR3.toFixed(1)})</div>
+                            <div style="font-size: 10px; color: var(--text);">${player.fixtures.fixtureString}</div>
+                        </div>
+                        ` : ''}
                         
                         <div style="margin-bottom: 12px;">
                             <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Why This Player:</div>
