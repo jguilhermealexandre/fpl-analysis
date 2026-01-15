@@ -1456,6 +1456,15 @@
                 excellentCS: 0.6,
                 strongCS: 0.4
             },
+            // GK scoring weights
+            gkScoring: {
+                cleanSheet: 15,
+                savesPerGame: 0.5,
+                penaltySave: 25,      // Huge swing - 5 pts per save
+                bonusPerGame: 3,
+                assistPerGame: 8,
+                xGCPenalty: 2
+            },
             // Display settings
             display: {
                 maxPlayersPerCategory: 5,
@@ -2500,6 +2509,129 @@
             }
         }
 
+        // ============================================
+        // REUSABLE PLAYER STATS COMPONENT
+        // Single source of truth for stat display
+        // ============================================
+        
+        /**
+         * Renders player stats in a consistent format
+         * @param {Object} player - Player object with l5, season, etc.
+         * @param {string} position - 'GK', 'DEF', 'MID', 'FWD'
+         * @param {string} format - 'card' (recommendation cards) or 'grid' (form player cards)
+         * @returns {string} HTML string
+         */
+        function renderPlayerStats(player, position, format = 'card') {
+            const l5Games = player.l5?.games || 1;
+            const l5AvgPoints = (player.l5?.points || 0) / l5Games;
+            const valueScore = player.valueScore || (l5AvgPoints / player.price);
+            
+            // Position-specific stats
+            let stats = [];
+            
+            if (position === 'GK') {
+                const csRate = (player.l5?.cleanSheets || 0) / l5Games;
+                const savesPerGame = (player.l5?.saves || 0) / l5Games;
+                const bonusPerGame = (player.l5?.bonus || 0) / l5Games;
+                const penaltiesSaved = player.l5?.penaltiesSaved || 0;
+                
+                stats = [
+                    { label: 'Pts/Game', value: l5AvgPoints.toFixed(1), color: 'var(--text)' },
+                    { label: 'CS Rate', value: `${(csRate * 100).toFixed(0)}%`, color: csRate >= 0.4 ? 'var(--accent-green)' : 'var(--text)' },
+                    { label: 'Saves/G', value: savesPerGame.toFixed(1), color: savesPerGame >= 3 ? 'var(--accent-green)' : 'var(--text)' },
+                    { label: 'Bonus/G', value: bonusPerGame.toFixed(1), color: bonusPerGame >= 1 ? 'var(--accent-yellow)' : 'var(--text)' }
+                ];
+                
+                // Add penalty saves badge if any
+                if (penaltiesSaved > 0) {
+                    stats.push({ label: '🧤 Pen Saves', value: penaltiesSaved.toString(), color: 'var(--accent-green)', highlight: true });
+                }
+                
+            } else if (position === 'DEF') {
+                const csRate = (player.l5?.cleanSheets || 0) / l5Games;
+                const l5xGI = (player.l5?.xGI || 0) / l5Games;
+                const bonusPerGame = (player.l5?.bonus || 0) / l5Games;
+                
+                stats = [
+                    { label: 'Pts/Game', value: l5AvgPoints.toFixed(1), color: 'var(--text)' },
+                    { label: 'Value', value: `${valueScore.toFixed(2)}/£m`, color: valueScore >= 1.0 ? 'var(--accent-green)' : 'var(--text)' },
+                    { label: 'CS Rate', value: `${(csRate * 100).toFixed(0)}%`, color: csRate >= 0.4 ? 'var(--accent-green)' : 'var(--text)' },
+                    { label: 'xGI/G', value: l5xGI.toFixed(2), color: l5xGI >= 0.15 ? 'var(--accent-green)' : 'var(--text)' }
+                ];
+                
+            } else {
+                // MID/FWD
+                const l5xGI = (player.l5?.xGI || 0) / l5Games;
+                const l5Goals = (player.l5?.goals || 0) / l5Games;
+                const l5Assists = (player.l5?.assists || 0) / l5Games;
+                
+                stats = [
+                    { label: 'Pts/Game', value: l5AvgPoints.toFixed(1), color: 'var(--text)' },
+                    { label: 'Value', value: `${valueScore.toFixed(2)}/£m`, color: valueScore >= 1.0 ? 'var(--accent-green)' : 'var(--text)' },
+                    { label: 'xGI/G', value: l5xGI.toFixed(2), color: l5xGI >= 0.4 ? 'var(--accent-green)' : 'var(--text)' },
+                    { label: 'G+A/G', value: (l5Goals + l5Assists).toFixed(2), color: (l5Goals + l5Assists) >= 0.4 ? 'var(--accent-green)' : 'var(--text)' }
+                ];
+            }
+            
+            // Render based on format
+            if (format === 'grid') {
+                // Form player card format (4-column grid)
+                return `
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; padding: 10px; background: var(--bg-dark); border-radius: 3px;">
+                        <div>
+                            <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">Price</div>
+                            <div style="font-size: 12px; font-weight: 600; color: var(--accent-green);">£${player.price.toFixed(1)}m</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">Owned</div>
+                            <div style="font-size: 12px; font-weight: 600; color: var(--text);">${(player.selectedBy || player.ownership || 0).toFixed(1)}%</div>
+                        </div>
+                        ${stats.slice(0, 2).map(s => `
+                            <div>
+                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">${s.label}</div>
+                                <div style="font-size: 12px; font-weight: 600; color: ${s.color};">${s.value}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                // Recommendation card format (3-column)
+                return stats.slice(0, 3).map(s => `
+                    <div class="player-rec-stat">
+                        <span class="player-rec-stat-label">${s.label}</span>
+                        <span class="player-rec-stat-value" style="color: ${s.color};">${s.value}</span>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        /**
+         * Renders fixture info badge
+         * @param {Object} player - Player object with fixtures
+         * @returns {string} HTML string
+         */
+        function renderFixtureBadge(player) {
+            if (!player.fixtures || !player.fixtures.avgFDR3) return '';
+            
+            const fdr = player.fixtures.avgFDR3;
+            const fixtureStr = player.fixtures.fixtureString || '';
+            let badgeColor = 'var(--text-dim)';
+            let badgeText = 'Neutral';
+            
+            if (fdr < 2.5) { badgeColor = 'var(--accent-green)'; badgeText = '🟢🟢 Easy'; }
+            else if (fdr < 3.0) { badgeColor = '#88cc88'; badgeText = '🟢 Good'; }
+            else if (fdr > 3.5) { badgeColor = 'var(--accent-red)'; badgeText = '🔴 Tough'; }
+            else { badgeColor = 'var(--accent-yellow)'; badgeText = '🟡 Mixed'; }
+            
+            return `
+                <div style="margin-top: 8px; padding: 6px 8px; background: var(--bg-darker); border-radius: 3px; border-left: 2px solid ${badgeColor};">
+                    <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 2px;">Next 3 Fixtures</div>
+                    <div style="font-size: 9px; color: ${badgeColor}; font-weight: 500;">${badgeText} (FDR ${fdr.toFixed(1)})</div>
+                    <div style="font-size: 8px; color: var(--text-dim); margin-top: 2px;">${fixtureStr}</div>
+                </div>
+            `;
+        }
+
         function generateRecommendations(analyses) {
             const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             const positionNames = { 'GK': 'Goalkeepers', 'DEF': 'Defenders', 'MID': 'Midfielders', 'FWD': 'Forwards' };
@@ -2582,9 +2714,34 @@
                         const l5CS = p.l5.cleanSheets / l5Games;
                         const l5SavesPerGame = p.l5.saves / l5Games;
                         const l5xGC = p.l5.xGC / l5Games;
+                        const l5PenaltiesSaved = (p.l5.penaltiesSaved || 0) / l5Games;
+                        const l5BonusPerGame = (p.l5.bonus || 0) / l5Games;
+                        const l5AssistsPerGame = (p.l5.assists || 0) / l5Games;
                         
-                        // GK score: Clean sheets + saves bonus, penalize high xGC
-                        positionScore = (l5CS * 15) + (l5SavesPerGame * 0.5) - (l5xGC * 2);
+                        const gkWeights = cfg.gkScoring;
+                        
+                        // Enhanced GK score:
+                        // - Clean sheets (4 pts each, most important)
+                        // - Saves bonus (every 3 saves = 1 pt, ~0.33 per save)
+                        // - Penalty saves (huge 5 pt swing)
+                        // - Bonus points (indicates BPS performance)
+                        // - Distribution/assists (rare but valuable)
+                        // - Penalize high xGC (team defensive weakness)
+                        positionScore = (l5CS * gkWeights.cleanSheet) +
+                                       (l5SavesPerGame * gkWeights.savesPerGame) +
+                                       (l5PenaltiesSaved * gkWeights.penaltySave) +
+                                       (l5BonusPerGame * gkWeights.bonusPerGame) +
+                                       (l5AssistsPerGame * gkWeights.assistPerGame) -
+                                       (l5xGC * gkWeights.xGCPenalty);
+                        
+                        // Store GK-specific metrics for display
+                        p.gkMetrics = {
+                            csRate: l5CS,
+                            savesPerGame: l5SavesPerGame,
+                            penaltiesSaved: p.l5.penaltiesSaved || 0,
+                            bonusPerGame: l5BonusPerGame,
+                            xGC: l5xGC
+                        };
                         
                     } else if (position === 'DEF') {
                         const l5CS = p.l5.cleanSheets / l5Games;
@@ -2726,82 +2883,11 @@
                     
                     const reason = reasons.slice(0, 2).join(' • ');
                     
-                    let keyStats = '';
-                    if (position === 'GK') {
-                        const l5CS = player.l5.cleanSheets / player.l5.games;
-                        const l5Saves = player.l5.saves / player.l5.games;
-                        const l5xGC = player.l5.xGC / player.l5.games;
-                        keyStats = `
-                            <div class="player-rec-stat">
-                                <span class="player-rec-stat-label">Pts/Game</span>
-                                <span class="player-rec-stat-value">${l5AvgPoints.toFixed(1)}</span>
-                            </div>
-                            <div class="player-rec-stat">
-                                <span class="player-rec-stat-label">Value</span>
-                                <span class="player-rec-stat-value">${player.valueScore.toFixed(2)}/£m</span>
-                            </div>
-                            <div class="player-rec-stat">
-                                <span class="player-rec-stat-label">CS%</span>
-                                <span class="player-rec-stat-value">${(l5CS * 100).toFixed(0)}%</span>
-                            </div>
-                        `;
-                    } else if (position === 'DEF') {
-                        const l5CS = player.l5.cleanSheets / player.l5.games;
-                        const l5xGI = player.l5xGI / player.l5.games;
-                        keyStats = `
-                            <div class="player-rec-stat">
-                                <span class="player-rec-stat-label">Pts/Game</span>
-                                <span class="player-rec-stat-value">${l5AvgPoints.toFixed(1)}</span>
-                            </div>
-                            <div class="player-rec-stat">
-                                <span class="player-rec-stat-label">Value</span>
-                                <span class="player-rec-stat-value">${player.valueScore.toFixed(2)}/£m</span>
-                            </div>
-                            <div class="player-rec-stat">
-                                <span class="player-rec-stat-label">xGI</span>
-                                <span class="player-rec-stat-value">${l5xGI.toFixed(2)}</span>
-                            </div>
-                        `;
-                    } else {
-                        const l5xGI = player.l5xGI / player.l5.games;
-                        const l5GA = (player.l5.goals + player.l5.assists) / player.l5.games;
-                        keyStats = `
-                            <div class="player-rec-stat">
-                                <span class="player-rec-stat-label">Pts/Game</span>
-                                <span class="player-rec-stat-value">${l5AvgPoints.toFixed(1)}</span>
-                            </div>
-                            <div class="player-rec-stat">
-                                <span class="player-rec-stat-label">Value</span>
-                                <span class="player-rec-stat-value">${player.valueScore.toFixed(2)}/£m</span>
-                            </div>
-                            <div class="player-rec-stat">
-                                <span class="player-rec-stat-label">xGI</span>
-                                <span class="player-rec-stat-value">${l5xGI.toFixed(2)}</span>
-                            </div>
-                        `;
-                    }
+                    // Use reusable stats component
+                    const keyStats = renderPlayerStats(player, position, 'card');
                     
-                    // Build fixture badge
-                    let fixtureBadge = '';
-                    if (player.fixtures && player.fixtures.avgFDR3) {
-                        const fdr = player.fixtures.avgFDR3;
-                        const fixtureStr = player.fixtures.fixtureString || '';
-                        let badgeColor = 'var(--text-dim)';
-                        let badgeText = 'Neutral';
-                        
-                        if (fdr < 2.5) { badgeColor = 'var(--accent-green)'; badgeText = '🟢 Easy'; }
-                        else if (fdr < 3.0) { badgeColor = '#88cc88'; badgeText = '🟢 Good'; }
-                        else if (fdr > 3.5) { badgeColor = 'var(--accent-red)'; badgeText = '🔴 Tough'; }
-                        else { badgeColor = 'var(--accent-yellow)'; badgeText = '🟡 Mixed'; }
-                        
-                        fixtureBadge = `
-                            <div style="margin-top: 8px; padding: 6px 8px; background: var(--bg-darker); border-radius: 3px; border-left: 2px solid ${badgeColor};">
-                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 2px;">Next 3 Fixtures</div>
-                                <div style="font-size: 9px; color: ${badgeColor}; font-weight: 500;">${badgeText} (FDR ${fdr.toFixed(1)})</div>
-                                <div style="font-size: 8px; color: var(--text-dim); margin-top: 2px;">${fixtureStr}</div>
-                            </div>
-                        `;
-                    }
+                    // Use reusable fixture badge component
+                    const fixtureBadge = renderFixtureBadge(player);
                     
                     html += `
                         <div class="player-rec-card">
@@ -2996,6 +3082,10 @@
                 const priorityEmoji = player.priority === 'HIGH' ? '🔥' : 
                                      player.priority === 'MEDIUM' ? '⚡' : '👀';
                 
+                // Use reusable components
+                const statsGrid = renderPlayerStats(player, player.position, 'grid');
+                const fixtureBadge = renderFixtureBadge(player);
+                
                 return `
                     <div style="background: var(--surface-light); border-left: 3px solid ${priorityColor}; padding: 15px; border-radius: 4px; margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
@@ -3017,31 +3107,9 @@
                             </div>
                         </div>
                         
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; padding: 10px; background: var(--bg-dark); border-radius: 3px;">
-                            <div>
-                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">Price</div>
-                                <div style="font-size: 12px; font-weight: 600; color: var(--accent-green);">£${player.price.toFixed(1)}m</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">Owned</div>
-                                <div style="font-size: 12px; font-weight: 600; color: var(--text);">${player.ownership.toFixed(1)}%</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">Pts/Game</div>
-                                <div style="font-size: 12px; font-weight: 600; color: var(--text);">${player.l5AvgPoints.toFixed(1)}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">xGI/Game</div>
-                                <div style="font-size: 12px; font-weight: 600; color: var(--text);">${player.l5xGIperGame.toFixed(2)}</div>
-                            </div>
-                        </div>
+                        ${statsGrid}
                         
-                        ${player.fixtures && player.fixtures.fixtureString ? `
-                        <div style="margin-bottom: 12px; padding: 8px 10px; background: var(--bg-darker); border-radius: 3px; border-left: 2px solid ${player.fixtures.avgFDR3 < 3.0 ? 'var(--accent-green)' : player.fixtures.avgFDR3 > 3.5 ? 'var(--accent-red)' : 'var(--accent-yellow)'};">
-                            <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 3px;">Next 3 Fixtures (FDR ${player.fixtures.avgFDR3.toFixed(1)})</div>
-                            <div style="font-size: 10px; color: var(--text);">${player.fixtures.fixtureString}</div>
-                        </div>
-                        ` : ''}
+                        ${fixtureBadge ? `<div style="margin-bottom: 12px;">${fixtureBadge}</div>` : ''}
                         
                         <div style="margin-bottom: 12px;">
                             <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Why This Player:</div>
