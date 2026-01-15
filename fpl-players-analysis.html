@@ -1300,6 +1300,90 @@
         let playerAnalyses = {};
         let teamFixtures = {}; // Store fixtures by team ID
         let teams = {}; // Store team data by ID
+        let currentGameweek = null; // Current gameweek (detected from data)
+        let currentPhase = 'mid'; // Current season phase: 'early', 'mid', 'late'
+
+        // ============================================
+        // GAMEWEEK & PHASE DETECTION
+        // ============================================
+        
+        // Detect current gameweek from player history data
+        function detectCurrentGameweek(analyses) {
+            if (!analyses || analyses.length === 0) return 1;
+            
+            // Find the maximum gameweek from all player season games
+            // This assumes season.games roughly equals current gameweek for active players
+            let maxGames = 0;
+            analyses.forEach(p => {
+                if (p.season && p.season.games > maxGames) {
+                    maxGames = p.season.games;
+                }
+            });
+            
+            // The current gameweek is approximately the max games played + 1
+            // (since max games = completed gameweeks for ever-present players)
+            return Math.min(maxGames + 1, 38);
+        }
+        
+        // Determine season phase based on gameweek
+        function getSeasonPhase(gameweek) {
+            const phases = RECOMMENDATION_CONFIG.gameweekPhases;
+            
+            if (gameweek >= phases.early.start && gameweek <= phases.early.end) {
+                return 'early';
+            } else if (gameweek >= phases.late.start && gameweek <= phases.late.end) {
+                return 'late';
+            } else {
+                return 'mid';
+            }
+        }
+        
+        // Get phase-adjusted weights
+        function getPhaseAdjustedWeights() {
+            const cfg = RECOMMENDATION_CONFIG;
+            const baseWeights = cfg.weights;
+            const modifiers = cfg.gameweekPhases.weightModifiers[currentPhase];
+            
+            return {
+                value: baseWeights.value * modifiers.value,
+                positionScore: baseWeights.positionScore * modifiers.positionScore,
+                minutesConsistency: baseWeights.minutesConsistency * modifiers.minutesConsistency,
+                formImprovement: baseWeights.formImprovement * modifiers.formImprovement,
+                formDecline: baseWeights.formDecline,
+                easyFixtures: baseWeights.easyFixtures * modifiers.easyFixtures,
+                favorableFixtures: baseWeights.favorableFixtures * modifiers.favorableFixtures,
+                toughFixtures: baseWeights.toughFixtures * modifiers.toughFixtures,
+                differentialBonus: modifiers.differentialBonus
+            };
+        }
+        
+        // Get phase display info
+        function getPhaseInfo() {
+            const phaseDetails = {
+                early: {
+                    name: 'Early Season',
+                    emoji: '🌱',
+                    color: 'var(--accent-green)',
+                    description: 'Focus on fixtures & nailed starters. Form data is limited.',
+                    tips: ['Prioritize easy fixture runs', 'Avoid rotation risks', 'Trust preseason expectations']
+                },
+                mid: {
+                    name: 'Mid Season',
+                    emoji: '⚡',
+                    color: 'var(--accent-blue)',
+                    description: 'Balanced approach. Trust form and underlying stats.',
+                    tips: ['Follow the form', 'Watch for fixture swings', 'Build for double gameweeks']
+                },
+                late: {
+                    name: 'Late Season',
+                    emoji: '🏁',
+                    color: 'var(--accent-red)',
+                    description: 'Rank push time! Differentials and DGW players are key.',
+                    tips: ['Target differentials (<10% owned)', 'Plan for DGW/BGW', 'Take calculated risks']
+                }
+            };
+            return phaseDetails[currentPhase];
+        }
 
         // ============================================
         // RECOMMENDATION CONFIGURATION
@@ -1324,7 +1408,8 @@
                 minAvgMinutes: 60,      // Minimum average minutes per game
                 nailedOnMinutes: 75,    // Minutes threshold for "nailed on"
                 minPrice: 3.9,          // Minimum price to consider
-                underperformanceXGI: 0.15, // xGI gap to flag underperformance
+                underperformanceXGI: 0.2,  // xGI gap to flag underperformance
+                minXGIForUnderperformance: 0.35, // Minimum xGI to consider underperformance (otherwise they're just bad)
                 goodValue: 0.9,         // pts/£m threshold for "good value"
                 excellentValue: 1.2,    // pts/£m threshold for "excellent value"
                 strongXGI: 0.5,         // xGI/game for attackers
@@ -1356,7 +1441,7 @@
                 gettingMinutes: { threshold: 60, points: 5 },
                 ultraDifferential: { threshold: 5, points: 10 }, // Ownership %
                 lowOwned: { threshold: 10, points: 6 },
-                underperforming: { xgiGap: 0.15, minXGI: 0.3, points: 10 },
+                underperforming: { xgiGap: 0.2, minXGI: 0.35, points: 10 },
                 greatValue: { threshold: 1.0, points: 10 },
                 goodValueForm: { threshold: 0.7, points: 5 },
                 easyFixturesForm: { points: 15 },
@@ -1375,6 +1460,52 @@
             display: {
                 maxPlayersPerCategory: 5,
                 maxFormPlayers: 20
+            },
+            // Gameweek phase configuration
+            gameweekPhases: {
+                // Phase definitions
+                early: { start: 1, end: 8 },      // GW1-8: Limited data
+                mid: { start: 9, end: 30 },       // GW9-30: Full data available
+                late: { start: 31, end: 38 },     // GW31-38: Rank push time
+                
+                // Weight multipliers by phase (1.0 = normal, >1 = more important, <1 = less important)
+                weightModifiers: {
+                    early: {
+                        // Early season: fixtures and nailed starters are king, form data is unreliable
+                        value: 0.8,              // Less reliable early
+                        positionScore: 0.7,      // Less reliable early
+                        minutesConsistency: 1.5, // Very important - want nailed players
+                        formImprovement: 0.5,    // Unreliable with small sample
+                        easyFixtures: 1.5,       // Fixtures are crucial early
+                        favorableFixtures: 1.3,
+                        toughFixtures: 1.3,      // Avoid tough fixtures more
+                        differentialBonus: 0     // Don't chase differentials early
+                    },
+                    mid: {
+                        // Mid season: balanced approach, trust the data
+                        value: 1.0,
+                        positionScore: 1.0,
+                        minutesConsistency: 1.0,
+                        formImprovement: 1.0,
+                        easyFixtures: 1.0,
+                        favorableFixtures: 1.0,
+                        toughFixtures: 1.0,
+                        differentialBonus: 0
+                    },
+                    late: {
+                        // Late season: differentials for rank climbing, DGW targets
+                        value: 0.9,
+                        positionScore: 1.1,      // Trust underlying stats
+                        minutesConsistency: 1.2, // Still want starters
+                        formImprovement: 1.2,    // Hot form matters for final push
+                        easyFixtures: 1.3,       // DGW teams often have good fixtures
+                        favorableFixtures: 1.2,
+                        toughFixtures: 0.8,      // Can take more risks
+                        differentialBonus: 15    // Big bonus for low ownership
+                    }
+                },
+                // Ownership thresholds for differential bonus in late season
+                differentialThreshold: 10  // Below this % = differential
             }
         };
 
@@ -2128,6 +2259,11 @@
                             
                             console.log(`Loaded ${analyses.length} players from static file`);
                             
+                            // Detect current gameweek and phase
+                            currentGameweek = detectCurrentGameweek(analyses);
+                            currentPhase = getSeasonPhase(currentGameweek);
+                            console.log(`📅 Detected GW${currentGameweek} (${currentPhase} season phase)`);
+                            
                             // Render everything
                             document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
                             document.getElementById('section-FORM').innerHTML = generateFormPlayers(analyses);
@@ -2212,6 +2348,11 @@
                                         fixtures: fixtureData
                                     };
                                 });
+                                
+                                // Detect current gameweek and phase
+                                currentGameweek = detectCurrentGameweek(analyses);
+                                currentPhase = getSeasonPhase(currentGameweek);
+                                console.log(`📅 Detected GW${currentGameweek} (${currentPhase} season phase)`);
                                 
                                 // Render everything
                                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
@@ -2331,6 +2472,11 @@
                     console.warn('Failed to cache data (localStorage full?):', e);
                 }
 
+                // Detect current gameweek and phase
+                currentGameweek = detectCurrentGameweek(analyses);
+                currentPhase = getSeasonPhase(currentGameweek);
+                console.log(`📅 Detected GW${currentGameweek} (${currentPhase} season phase)`);
+
                 // Generate recommendations
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
                 
@@ -2359,7 +2505,38 @@
             const positionNames = { 'GK': 'Goalkeepers', 'DEF': 'Defenders', 'MID': 'Midfielders', 'FWD': 'Forwards' };
             const cfg = RECOMMENDATION_CONFIG; // Shorthand
             
-            let html = '<div class="recommendations-container">';
+            // Get phase-adjusted weights
+            const weights = getPhaseAdjustedWeights();
+            const phaseInfo = getPhaseInfo();
+            
+            // Phase info banner
+            let html = `
+                <div style="margin-bottom: 25px; padding: 20px; background: var(--surface); border-left: 4px solid ${phaseInfo.color}; border-radius: 4px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <h2 style="color: ${phaseInfo.color}; margin-bottom: 8px; font-size: 18px; font-family: 'Space Mono', monospace;">
+                                ${phaseInfo.emoji} ${phaseInfo.name} (GW${currentGameweek})
+                            </h2>
+                            <p style="font-size: 12px; color: var(--text-dim); line-height: 1.5; margin-bottom: 10px;">
+                                ${phaseInfo.description}
+                            </p>
+                            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                                ${phaseInfo.tips.map(tip => `<span style="font-size: 10px; color: var(--text); background: var(--surface-light); padding: 4px 10px; border-radius: 12px;">💡 ${tip}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div style="text-align: right; min-width: 120px;">
+                            <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;">Weight Focus</div>
+                            <div style="font-size: 10px; color: var(--text);">
+                                ${currentPhase === 'early' ? '📅 Fixtures +50%<br>🔒 Minutes +50%<br>📊 Stats -30%' : ''}
+                                ${currentPhase === 'mid' ? '⚖️ Balanced<br>All weights normal' : ''}
+                                ${currentPhase === 'late' ? '🎯 Differentials +15<br>🔥 Form +20%<br>📅 Fixtures +30%' : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            html += '<div class="recommendations-container">';
             
             ['GK', 'DEF', 'MID', 'FWD'].forEach(position => {
                 const players = analyses.filter(a => positionMap[a.position] === position);
@@ -2425,29 +2602,40 @@
                         positionScore += l5BCC * 3;
                     }
                     
-                    // FIXTURE DIFFICULTY BONUS (critical for short-term picks)
+                    // FIXTURE DIFFICULTY BONUS (phase-adjusted)
                     let fixtureBonus = 0;
                     if (p.fixtures && p.fixtures.avgFDR3) {
-                        if (p.fixtures.avgFDR3 < cfg.fdr.easy) fixtureBonus = cfg.weights.easyFixtures;
-                        else if (p.fixtures.avgFDR3 < cfg.fdr.favorable) fixtureBonus = cfg.weights.favorableFixtures;
-                        else if (p.fixtures.avgFDR3 > cfg.fdr.tough) fixtureBonus = cfg.weights.toughFixtures;
+                        if (p.fixtures.avgFDR3 < cfg.fdr.easy) fixtureBonus = weights.easyFixtures;
+                        else if (p.fixtures.avgFDR3 < cfg.fdr.favorable) fixtureBonus = weights.favorableFixtures;
+                        else if (p.fixtures.avgFDR3 > cfg.fdr.tough) fixtureBonus = weights.toughFixtures;
                     }
                     
-                    // COMPREHENSIVE SCORE combining all factors
+                    // DIFFERENTIAL BONUS (late season only)
+                    let differentialBonus = 0;
+                    const ownership = p.selectedBy || 0;
+                    if (weights.differentialBonus > 0 && ownership < cfg.gameweekPhases.differentialThreshold) {
+                        differentialBonus = weights.differentialBonus;
+                    }
+                    
+                    // COMPREHENSIVE SCORE combining all factors (phase-adjusted)
                     p.recommendationScore = (
-                        pointsPerMillion * cfg.weights.value +
-                        positionScore * cfg.weights.positionScore +
-                        minutesConsistency * cfg.weights.minutesConsistency +
-                        (l5xGI > seasonxGI ? cfg.weights.formImprovement : cfg.weights.formDecline) +
-                        fixtureBonus
+                        pointsPerMillion * weights.value +
+                        positionScore * weights.positionScore +
+                        minutesConsistency * weights.minutesConsistency +
+                        (l5xGI > seasonxGI ? weights.formImprovement : weights.formDecline) +
+                        fixtureBonus +
+                        differentialBonus
                     );
                     
                     // Store metrics for display
                     p.fixtureBonus = fixtureBonus;
+                    p.differentialBonus = differentialBonus;
                     p.valueScore = pointsPerMillion;
                     p.l5xGIperGame = l5xGI;
                     p.minutesConsistency = minutesConsistency;
-                    p.isUnderperforming = xGIDiff < -cfg.thresholds.underperformanceXGI; // Flag players due returns
+                    // Only flag underperformance if xGI is meaningful (otherwise they're just not good)
+                    p.isUnderperforming = l5xGI >= cfg.thresholds.minXGIForUnderperformance && 
+                                          (l5xGI - l5ActualGI) > cfg.thresholds.underperformanceXGI;
                 });
                 
                 // Sort by recommendation score
@@ -2480,6 +2668,7 @@
                 <h3>${title} (${categoryType === 'budget' ? '≤' : '>'} £${priceThreshold.toFixed(1)}m)</h3>`;
             
             const cfg = RECOMMENDATION_CONFIG; // Shorthand
+            const weights = getPhaseAdjustedWeights(); // Get phase-adjusted weights
             
             if (players.length === 0) {
                 html += '<div class="no-data" style="padding: 20px;">No players meet the criteria</div>';
@@ -2487,9 +2676,15 @@
                 players.forEach(player => {
                     const l5AvgPoints = player.l5.points / player.l5.games;
                     const l5AvgMinutes = player.l5.minutes / player.l5.games;
+                    const ownership = player.selectedBy || 0;
                     
                     // Generate smart reasoning based on metrics
                     let reasons = [];
+                    
+                    // Differential bonus (late season)
+                    if (player.differentialBonus > 0) {
+                        reasons.push(`🎯 Differential pick (${ownership.toFixed(1)}% owned)`);
+                    }
                     
                     if (player.valueScore > cfg.thresholds.excellentValue) {
                         reasons.push(`Excellent value at ${player.valueScore.toFixed(2)} pts/£m`);
@@ -2516,12 +2711,12 @@
                         reasons.push('Improving form');
                     }
                     
-                    // Add fixture-based reasoning
-                    if (player.fixtureBonus >= cfg.weights.easyFixtures) {
+                    // Add fixture-based reasoning (use base weights for comparison since fixtureBonus was calculated with phase weights)
+                    if (player.fixtureBonus >= weights.easyFixtures) {
                         reasons.push('🟢 Easy fixtures ahead');
-                    } else if (player.fixtureBonus >= cfg.weights.favorableFixtures) {
+                    } else if (player.fixtureBonus >= weights.favorableFixtures) {
                         reasons.push('🟢 Favorable fixtures');
-                    } else if (player.fixtureBonus <= cfg.weights.toughFixtures) {
+                    } else if (player.fixtureBonus <= weights.toughFixtures) {
                         reasons.push('⚠️ Tough fixtures - short-term caution');
                     }
                     
