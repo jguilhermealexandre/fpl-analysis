@@ -1258,6 +1258,8 @@
             <span style="color: var(--text-dim); margin: 0 4px;">-</span>
             <input type="number" id="ownershipMax" placeholder="Max %" step="1" min="0" max="100" style="width: 60px;">
             <button class="filter-apply-btn" onclick="applyCustomOwnershipFilter()">Apply</button>
+            <span style="margin-left: 20px;"></span>
+            <button class="filter-apply-btn" onclick="clearAdvancedFilters()" style="background: var(--accent-red);">✖ Clear All Filters</button>
         </div>
     </div>
 
@@ -2894,20 +2896,32 @@
                 return;
             }
             
+            // Find the parent filter group of the clicked button
+            const clickedBtn = event.target;
+            const filterGroup = clickedBtn.closest('.filter-group');
+            
             // Toggle filter (click again to deactivate)
             if (activeAdvancedFilters[filterType] === filterValue) {
                 activeAdvancedFilters[filterType] = null;
-                // Remove active class from button
-                document.querySelectorAll('.filter-chip').forEach(btn => {
-                    if (btn.textContent.includes(filterValue)) {
-                        btn.classList.remove('active');
-                    }
-                });
+                clickedBtn.classList.remove('active');
             } else {
                 activeAdvancedFilters[filterType] = filterValue;
-                // Add active class to button, remove from others in same group
-                document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
-                event.target.classList.add('active');
+                // Remove active class only from chips in the SAME filter group
+                if (filterGroup) {
+                    filterGroup.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+                }
+                clickedBtn.classList.add('active');
+                
+                // Clear custom range input if using preset for same type
+                if (filterType === 'price') {
+                    document.getElementById('priceMin').value = '';
+                    document.getElementById('priceMax').value = '';
+                    activeAdvancedFilters.priceRange = null;
+                } else if (filterType === 'ownership') {
+                    document.getElementById('ownershipMin').value = '';
+                    document.getElementById('ownershipMax').value = '';
+                    activeAdvancedFilters.ownershipRange = null;
+                }
             }
             
             applyAllAdvancedFilters();
@@ -2924,7 +2938,11 @@
                     max: isNaN(maxPrice) ? 999 : maxPrice
                 };
                 activeAdvancedFilters.price = null; // Clear preset
-                document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+                // Only clear price filter chips (in the same filter group)
+                const priceGroup = document.getElementById('priceMin').closest('.filter-group');
+                if (priceGroup) {
+                    priceGroup.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+                }
             }
             
             applyAllAdvancedFilters();
@@ -2941,7 +2959,11 @@
                     max: isNaN(maxOwnership) ? 999 : maxOwnership
                 };
                 activeAdvancedFilters.ownership = null; // Clear preset
-                document.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+                // Only clear ownership filter chips (in the same filter group)
+                const ownershipGroup = document.getElementById('ownershipMin').closest('.filter-group');
+                if (ownershipGroup) {
+                    ownershipGroup.querySelectorAll('.filter-chip').forEach(btn => btn.classList.remove('active'));
+                }
             }
             
             applyAllAdvancedFilters();
