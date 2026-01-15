@@ -1293,6 +1293,20 @@
         </div>
     </div>
 
+    <!-- Floating Compare Button -->
+    <div id="compareBtn" style="display: none; position: fixed; bottom: 30px; right: 30px; background: linear-gradient(135deg, var(--accent-green) 0%, #00aa88 100%); color: var(--bg-dark); padding: 14px 24px; border-radius: 30px; cursor: pointer; font-family: 'Space Mono', monospace; font-weight: 600; font-size: 13px; box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4); z-index: 1000; align-items: center; gap: 10px;" onclick="openComparisonModal()">
+        <span>⚖️ Compare</span>
+        <span id="compareCount" style="background: var(--bg-dark); color: var(--accent-green); padding: 2px 8px; border-radius: 12px; font-size: 11px;">0</span>
+        <span onclick="event.stopPropagation(); clearComparisonSelection();" style="margin-left: 8px; padding: 4px 8px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 10px;">✕ Clear</span>
+    </div>
+
+    <!-- Comparison Modal -->
+    <div id="comparisonModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: flex-start; padding: 40px; overflow-y: auto;">
+        <div id="comparisonContent" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; max-width: 1200px; width: 100%; padding: 25px; max-height: 90vh; overflow-y: auto;">
+            <!-- Content will be injected by JavaScript -->
+        </div>
+    </div>
+
     <script>
         const CORS_PROXY = 'https://corsproxy.io/?';
 
@@ -1302,6 +1316,183 @@
         let teams = {}; // Store team data by ID
         let currentGameweek = null; // Current gameweek (detected from data)
         let currentPhase = 'mid'; // Current season phase: 'early', 'mid', 'late'
+        let allAnalyses = []; // Store all player analyses for comparison feature
+        
+        // ============================================
+        // PLAYER COMPARISON MODE
+        // ============================================
+        let selectedForComparison = []; // Array of player IDs selected for comparison
+        const MAX_COMPARISON = 4; // Maximum players to compare
+        
+        // Toggle player selection for comparison
+        function togglePlayerComparison(playerId, checkbox) {
+            const player = allAnalyses.find(p => p.id === playerId);
+            if (!player) return;
+            
+            if (checkbox.checked) {
+                if (selectedForComparison.length >= MAX_COMPARISON) {
+                    checkbox.checked = false;
+                    alert(`Maximum ${MAX_COMPARISON} players can be compared at once`);
+                    return;
+                }
+                selectedForComparison.push(playerId);
+            } else {
+                selectedForComparison = selectedForComparison.filter(id => id !== playerId);
+            }
+            
+            updateCompareButton();
+        }
+        
+        // Update compare button visibility and count
+        function updateCompareButton() {
+            const btn = document.getElementById('compareBtn');
+            const count = document.getElementById('compareCount');
+            
+            if (selectedForComparison.length >= 2) {
+                btn.style.display = 'flex';
+                count.textContent = selectedForComparison.length;
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+        
+        // Clear all selections
+        function clearComparisonSelection() {
+            selectedForComparison = [];
+            document.querySelectorAll('.compare-checkbox').forEach(cb => cb.checked = false);
+            updateCompareButton();
+        }
+        
+        // Open comparison modal
+        function openComparisonModal() {
+            if (selectedForComparison.length < 2) return;
+            
+            const players = selectedForComparison.map(id => allAnalyses.find(p => p.id === id)).filter(Boolean);
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            
+            const modal = document.getElementById('comparisonModal');
+            const content = document.getElementById('comparisonContent');
+            
+            // Build comparison table
+            let html = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="color: var(--accent-green); font-family: 'Space Mono', monospace;">⚖️ Player Comparison</h2>
+                    <button onclick="closeComparisonModal()" style="background: var(--accent-red); border: none; color: white; padding: 8px 16px; cursor: pointer; font-family: 'DM Mono', monospace;">✕ Close</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+            `;
+            
+            // Header row with player names
+            html += '<thead><tr style="background: var(--surface-light);">';
+            html += '<th style="padding: 12px; text-align: left; color: var(--accent-green); border-bottom: 2px solid var(--accent-green);">Stat</th>';
+            players.forEach(p => {
+                html += `<th style="padding: 12px; text-align: center; color: var(--text); border-bottom: 2px solid var(--accent-green); min-width: 140px;">
+                    <div style="font-size: 14px; font-weight: 600;">${p.name}</div>
+                    <div style="font-size: 10px; color: var(--text-dim);">${p.team} • ${positionMap[p.position]}</div>
+                    <div style="font-size: 12px; color: var(--accent-yellow); margin-top: 4px;">£${p.price.toFixed(1)}m</div>
+                </th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            // Define comparison stats
+            const comparisonStats = [
+                { label: '📊 Points (Season)', getValue: p => p.season.points, format: v => v.toFixed(0), highlight: 'high' },
+                { label: '📊 Points/Game (L5)', getValue: p => p.l5.points / p.l5.games, format: v => v.toFixed(1), highlight: 'high' },
+                { label: '⚡ xGI/Game (L5)', getValue: p => p.l5.xGI / p.l5.games, format: v => v.toFixed(2), highlight: 'high' },
+                { label: '⚽ Goals (L5)', getValue: p => p.l5.goals, format: v => v.toFixed(0), highlight: 'high' },
+                { label: '🅰️ Assists (L5)', getValue: p => p.l5.assists, format: v => v.toFixed(0), highlight: 'high' },
+                { label: '🎯 xG/Game (L5)', getValue: p => p.l5.xG / p.l5.games, format: v => v.toFixed(2), highlight: 'high' },
+                { label: '🎯 xA/Game (L5)', getValue: p => p.l5.xA / p.l5.games, format: v => v.toFixed(2), highlight: 'high' },
+                { label: '⏱️ Minutes (L5)', getValue: p => p.l5.minutes / p.l5.games, format: v => v.toFixed(0), highlight: 'high' },
+                { label: '🛡️ Clean Sheets (L5)', getValue: p => p.l5.cleanSheets, format: v => v.toFixed(0), highlight: 'high' },
+                { label: '💰 Value (pts/£m)', getValue: p => (p.l5.points / p.l5.games) / p.price, format: v => v.toFixed(2), highlight: 'high' },
+                { label: '👥 Ownership', getValue: p => p.selectedBy || 0, format: v => v.toFixed(1) + '%', highlight: 'none' },
+                { label: '⭐ Bonus (L5)', getValue: p => p.l5.bonus || 0, format: v => v.toFixed(0), highlight: 'high' },
+                { label: '📅 FDR (Next 3)', getValue: p => p.fixtures?.avgFDR3 || 0, format: v => v.toFixed(2), highlight: 'low' },
+                { label: '📅 Next Fixtures', getValue: p => p.fixtures?.fixtureString || '-', format: v => v, highlight: 'none' }
+            ];
+            
+            comparisonStats.forEach(stat => {
+                html += '<tr>';
+                html += `<td style="padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: 11px;">${stat.label}</td>`;
+                
+                // Get values and find best
+                const values = players.map(p => {
+                    try { return stat.getValue(p); } catch { return 0; }
+                });
+                
+                const numericValues = values.filter(v => typeof v === 'number' && !isNaN(v));
+                const best = stat.highlight === 'high' ? Math.max(...numericValues) : 
+                            stat.highlight === 'low' ? Math.min(...numericValues) : null;
+                
+                players.forEach((p, i) => {
+                    const val = values[i];
+                    const formatted = stat.format(val);
+                    const isBest = stat.highlight !== 'none' && val === best && numericValues.length > 1;
+                    
+                    html += `<td style="padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: center; font-size: 12px; font-weight: ${isBest ? '600' : '400'}; color: ${isBest ? 'var(--accent-green)' : 'var(--text)'}; background: ${isBest ? 'rgba(0, 255, 136, 0.1)' : 'transparent'};">
+                        ${formatted}
+                        ${isBest ? ' ✓' : ''}
+                    </td>`;
+                });
+                
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table></div>';
+            
+            // Verdict section
+            html += `
+                <div style="margin-top: 25px; padding: 20px; background: var(--surface-light); border-left: 4px solid var(--accent-green);">
+                    <h3 style="color: var(--accent-green); margin-bottom: 15px; font-size: 14px;">📝 Quick Verdict</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            `;
+            
+            players.forEach(p => {
+                const l5Pts = p.l5.points / p.l5.games;
+                const l5xGI = p.l5.xGI / p.l5.games;
+                const value = l5Pts / p.price;
+                const fdr = p.fixtures?.avgFDR3 || 3;
+                
+                let verdict = '';
+                let verdictColor = 'var(--text)';
+                
+                if (l5Pts >= 5 && fdr < 3) {
+                    verdict = '🔥 HOT PICK - Form + Fixtures';
+                    verdictColor = 'var(--accent-green)';
+                } else if (value > 1.0 && l5xGI > 0.3) {
+                    verdict = '💰 VALUE PICK - Good underlying';
+                    verdictColor = 'var(--accent-green)';
+                } else if (l5Pts < 3 && fdr > 3.5) {
+                    verdict = '⚠️ AVOID - Poor form + tough fixtures';
+                    verdictColor = 'var(--accent-red)';
+                } else if (l5xGI > l5Pts * 0.15) {
+                    verdict = '📈 DUE RETURNS - underperforming xGI';
+                    verdictColor = 'var(--accent-yellow)';
+                } else {
+                    verdict = '➡️ HOLD - Monitor form';
+                    verdictColor = 'var(--text-dim)';
+                }
+                
+                html += `
+                    <div style="background: var(--bg-dark); padding: 12px; border-radius: 4px;">
+                        <div style="font-weight: 600; margin-bottom: 6px; color: var(--text);">${p.name}</div>
+                        <div style="font-size: 11px; color: ${verdictColor};">${verdict}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+            
+            content.innerHTML = html;
+            modal.style.display = 'flex';
+        }
+        
+        // Close comparison modal
+        function closeComparisonModal() {
+            document.getElementById('comparisonModal').style.display = 'none';
+        }
 
         // ============================================
         // GAMEWEEK & PHASE DETECTION
@@ -1931,7 +2122,9 @@
             
             // Header row with sortable columns and tooltips
             html += '<tr>';
-            let colIndex = 0;
+            // Add compare checkbox column
+            html += '<th style="width: 40px; text-align: center;" title="Select players to compare">⚖️</th>';
+            let colIndex = 1; // Start at 1 because of compare column
             columns.forEach(col => {
                 const tooltip = tooltips[col.label] || '';
                 if (!col.seasonal) {
@@ -1950,7 +2143,9 @@
 
             // Filter row
             html += '<tr class="filter-row">';
-            colIndex = 0;
+            // Empty cell for compare column
+            html += '<th></th>';
+            colIndex = 1;
             columns.forEach(col => {
                 if (!col.seasonal) {
                     const placeholder = (col.key === 'name' || col.key === 'team') ? 'Filter...' : 
@@ -1972,7 +2167,16 @@
             html += '</thead><tbody>';
 
             filteredAnalyses.forEach(analysis => {
+                const isSelected = selectedForComparison.includes(analysis.id);
                 html += '<tr>';
+                
+                // Compare checkbox column
+                html += `<td style="text-align: center;">
+                    <input type="checkbox" class="compare-checkbox" 
+                        ${isSelected ? 'checked' : ''} 
+                        onchange="togglePlayerComparison(${analysis.id}, this)"
+                        style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent-green);">
+                </td>`;
                 
                 columns.forEach(col => {
                     if (col.key === 'name') {
@@ -2268,6 +2472,9 @@
                             
                             console.log(`Loaded ${analyses.length} players from static file`);
                             
+                            // Store analyses globally for comparison feature
+                            allAnalyses = analyses;
+                            
                             // Detect current gameweek and phase
                             currentGameweek = detectCurrentGameweek(analyses);
                             currentPhase = getSeasonPhase(currentGameweek);
@@ -2362,6 +2569,9 @@
                                 currentGameweek = detectCurrentGameweek(analyses);
                                 currentPhase = getSeasonPhase(currentGameweek);
                                 console.log(`📅 Detected GW${currentGameweek} (${currentPhase} season phase)`);
+                                
+                                // Store analyses globally for comparison feature
+                                allAnalyses = analyses;
                                 
                                 // Render everything
                                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
@@ -2485,6 +2695,9 @@
                 currentGameweek = detectCurrentGameweek(analyses);
                 currentPhase = getSeasonPhase(currentGameweek);
                 console.log(`📅 Detected GW${currentGameweek} (${currentPhase} season phase)`);
+
+                // Store analyses globally for comparison feature
+                allAnalyses = analyses;
 
                 // Generate recommendations
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
@@ -2632,6 +2845,236 @@
             `;
         }
 
+        // ============================================
+        // RECOMMENDATION CATEGORY FUNCTIONS
+        // ============================================
+        
+        /**
+         * Get top captaincy options - highest ceiling players
+         */
+        function getTopCaptainOptions(analyses, limit = 5) {
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            
+            return analyses
+                .filter(p => {
+                    const pos = positionMap[p.position];
+                    if (pos === 'GK') return false;
+                    if (!p.l5 || p.l5.games < 3) return false;
+                    const l5Mins = p.l5.minutes / p.l5.games;
+                    return l5Mins >= 70;
+                })
+                .map(p => {
+                    const l5Games = p.l5.games;
+                    const l5xGI = p.l5.xGI / l5Games;
+                    const l5Pts = p.l5.points / l5Games;
+                    const fdr = p.fixtures?.avgFDR3 || 3;
+                    
+                    const captaincyScore = (l5xGI * 40) + (l5Pts * 3) + 
+                                          (fdr < 2.5 ? 20 : fdr < 3 ? 10 : fdr > 3.5 ? -15 : 0) +
+                                          (p.l5.goals / l5Games * 10) + (p.l5.bonus / l5Games * 2);
+                    
+                    return { ...p, captaincyScore, l5xGI, l5Pts, fdr, position: positionMap[p.position] };
+                })
+                .sort((a, b) => b.captaincyScore - a.captaincyScore)
+                .slice(0, limit);
+        }
+        
+        /**
+         * Get best transfer targets - form + fixtures + differential value
+         */
+        function getBestTransferTargets(analyses, limit = 5) {
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            
+            return analyses
+                .filter(p => {
+                    if (!p.l5 || !p.season || p.l5.games < 4 || p.season.games < 6) return false;
+                    const l5Mins = p.l5.minutes / p.l5.games;
+                    return l5Mins >= 70 && p.price > 4.0;
+                })
+                .map(p => {
+                    const l5Games = p.l5.games;
+                    const seasonGames = p.season.games;
+                    const l5Pts = p.l5.points / l5Games;
+                    const seasonPts = p.season.points / seasonGames;
+                    const l5xGI = p.l5.xGI / l5Games;
+                    const fdr = p.fixtures?.avgFDR3 || 3;
+                    const ownership = p.selectedBy || 0;
+                    
+                    const formImprovement = ((l5Pts - seasonPts) / seasonPts) * 100;
+                    
+                    const transferScore = (formImprovement > 0 ? formImprovement * 0.5 : 0) +
+                                         (l5xGI * 30) + (l5Pts * 2) +
+                                         (fdr < 2.5 ? 15 : fdr < 3 ? 8 : fdr > 3.5 ? -10 : 0) +
+                                         (ownership < 10 ? 10 : ownership < 20 ? 5 : 0);
+                    
+                    return { ...p, transferScore, formImprovement, l5xGI, l5Pts, fdr, ownership, position: positionMap[p.position] };
+                })
+                .sort((a, b) => b.transferScore - a.transferScore)
+                .slice(0, limit);
+        }
+        
+        /**
+         * Get set-and-forget picks - consistent performers
+         */
+        function getSetAndForgetPicks(analyses, limit = 5) {
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            
+            return analyses
+                .filter(p => {
+                    if (!p.l5 || !p.season || p.season.games < 10) return false;
+                    const seasonMins = p.season.minutes / p.season.games;
+                    const l5Mins = p.l5.minutes / p.l5.games;
+                    return seasonMins >= 80 && l5Mins >= 80;
+                })
+                .map(p => {
+                    const seasonGames = p.season.games;
+                    const seasonPts = p.season.points / seasonGames;
+                    const seasonxGI = p.season.xGI / seasonGames;
+                    const value = seasonPts / p.price;
+                    const l5Pts = p.l5.points / p.l5.games;
+                    const l5xGI = p.l5.xGI / p.l5.games;
+                    
+                    const consistencyScore = (seasonPts * 5) + (value * 15) + (seasonxGI * 20) +
+                                            ((p.season.minutes / p.season.games) / 90 * 10);
+                    
+                    return { ...p, consistencyScore, seasonPts, value, seasonxGI, l5Pts, l5xGI, position: positionMap[p.position] };
+                })
+                .sort((a, b) => b.consistencyScore - a.consistencyScore)
+                .slice(0, limit);
+        }
+        
+        /**
+         * Get differentials - low ownership gems (<5%)
+         */
+        function getDifferentials(analyses, limit = 5) {
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            
+            return analyses
+                .filter(p => {
+                    if (!p.l5 || p.l5.games < 3) return false;
+                    const ownership = p.selectedBy || 0;
+                    const l5Mins = p.l5.minutes / p.l5.games;
+                    const l5Pts = p.l5.points / p.l5.games;
+                    return ownership < 5 && l5Mins >= 60 && l5Pts >= 2;
+                })
+                .map(p => {
+                    const l5Games = p.l5.games;
+                    const l5Pts = p.l5.points / l5Games;
+                    const l5xGI = p.l5.xGI / l5Games;
+                    const ownership = p.selectedBy || 0;
+                    const fdr = p.fixtures?.avgFDR3 || 3;
+                    
+                    const diffScore = (l5Pts * 5) + (l5xGI * 25) + ((5 - ownership) * 3) + (fdr < 3 ? 10 : 0);
+                    
+                    return { ...p, diffScore, l5Pts, l5xGI, ownership, fdr, position: positionMap[p.position] };
+                })
+                .sort((a, b) => b.diffScore - a.diffScore)
+                .slice(0, limit);
+        }
+        
+        /**
+         * Get players to avoid - sell candidates
+         */
+        function getPlayersToAvoid(analyses, limit = 5) {
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            
+            return analyses
+                .filter(p => {
+                    if (!p.l5 || !p.season || p.l5.games < 3) return false;
+                    const ownership = p.selectedBy || 0;
+                    return ownership >= 10;
+                })
+                .map(p => {
+                    const l5Games = p.l5.games;
+                    const seasonGames = p.season.games;
+                    const l5Pts = p.l5.points / l5Games;
+                    const seasonPts = p.season.points / seasonGames;
+                    const l5xGI = p.l5.xGI / l5Games;
+                    const l5Mins = p.l5.minutes / l5Games;
+                    const fdr = p.fixtures?.avgFDR3 || 3;
+                    const ownership = p.selectedBy || 0;
+                    
+                    const formDecline = ((seasonPts - l5Pts) / seasonPts) * 100;
+                    
+                    let avoidScore = 0;
+                    if (formDecline > 20) avoidScore += formDecline * 0.5;
+                    if (l5Mins < 70) avoidScore += (70 - l5Mins) * 0.5;
+                    if (fdr > 3.5) avoidScore += (fdr - 3) * 10;
+                    if (l5xGI < 0.15 && positionMap[p.position] !== 'GK') avoidScore += 10;
+                    if (l5Pts / p.price < 0.5) avoidScore += 10;
+                    
+                    const reasons = [];
+                    if (formDecline > 20) reasons.push(`📉 Form -${formDecline.toFixed(0)}%`);
+                    if (l5Mins < 70) reasons.push(`⚠️ ${l5Mins.toFixed(0)}min avg`);
+                    if (fdr > 3.5) reasons.push(`🔴 FDR ${fdr.toFixed(1)}`);
+                    if (l5xGI < 0.15 && positionMap[p.position] !== 'GK') reasons.push(`📊 Low xGI`);
+                    
+                    return { ...p, avoidScore, formDecline, l5Pts, l5xGI, l5Mins, fdr, ownership, reasons, position: positionMap[p.position] };
+                })
+                .filter(p => p.avoidScore >= 15)
+                .sort((a, b) => b.avoidScore - a.avoidScore)
+                .slice(0, limit);
+        }
+        
+        /**
+         * Render a special category card
+         */
+        function renderSpecialCategoryCard(player, rank, categoryType) {
+            const positionColors = { 'GK': '#f59e0b', 'DEF': '#3b82f6', 'MID': '#10b981', 'FWD': '#ef4444' };
+            const categoryColors = {
+                'captain': 'var(--accent-yellow)',
+                'transfer': 'var(--accent-green)',
+                'setforget': 'var(--accent-blue)',
+                'differential': '#a855f7',
+                'avoid': 'var(--accent-red)'
+            };
+            
+            const posColor = positionColors[player.position] || 'var(--text)';
+            const catColor = categoryColors[categoryType] || 'var(--accent-green)';
+            
+            const scoreLabels = {
+                'captain': ['Cap Score', player.captaincyScore],
+                'transfer': ['Transfer', player.transferScore],
+                'setforget': ['Consistency', player.consistencyScore],
+                'differential': ['Diff Score', player.diffScore],
+                'avoid': ['Risk', player.avoidScore]
+            };
+            
+            const [scoreLabel, scoreVal] = scoreLabels[categoryType] || ['Score', 0];
+            const l5Pts = player.l5Pts || (player.l5?.points / player.l5?.games) || 0;
+            const l5xGI = player.l5xGI || (player.l5?.xGI / player.l5?.games) || 0;
+            const fdr = player.fdr || player.fixtures?.avgFDR3 || 3;
+            const ownership = player.ownership || player.selectedBy || 0;
+            
+            let fdrColor = fdr < 2.5 ? 'var(--accent-green)' : fdr < 3 ? '#88cc88' : fdr > 3.5 ? 'var(--accent-red)' : 'var(--accent-yellow)';
+            
+            return `
+                <div style="background: var(--surface-light); border-left: 3px solid ${catColor}; padding: 12px; border-radius: 4px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                        <div>
+                            <div style="font-size: 13px; font-weight: 600; color: var(--text);">
+                                <span style="color: ${catColor}; margin-right: 6px;">#${rank}</span>${player.name}
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-dim); margin-top: 2px;">
+                                ${player.team} • <span style="color: ${posColor}; font-weight: 500;">${player.position}</span> • £${player.price.toFixed(1)}m
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 14px; font-weight: 700; color: ${catColor};">${(scoreVal || 0).toFixed(0)}</div>
+                            <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">${scoreLabel}</div>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 8px; background: var(--bg-dark); border-radius: 3px; font-size: 10px;">
+                        <div><div style="color: var(--text-dim); font-size: 8px;">Pts/G</div><div style="color: var(--text); font-weight: 600;">${l5Pts.toFixed(1)}</div></div>
+                        <div><div style="color: var(--text-dim); font-size: 8px;">xGI/G</div><div style="color: var(--text); font-weight: 600;">${l5xGI.toFixed(2)}</div></div>
+                        <div><div style="color: var(--text-dim); font-size: 8px;">FDR</div><div style="color: ${fdrColor}; font-weight: 600;">${fdr.toFixed(1)}</div></div>
+                        <div><div style="color: var(--text-dim); font-size: 8px;">Own%</div><div style="color: var(--text); font-weight: 600;">${ownership.toFixed(1)}%</div></div>
+                    </div>
+                    ${categoryType === 'avoid' && player.reasons?.length ? `<div style="margin-top: 8px; font-size: 10px; color: var(--accent-red);">${player.reasons.slice(0, 2).join(' • ')}</div>` : ''}
+                </div>
+            `;
+        }
+
         function generateRecommendations(analyses) {
             const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             const positionNames = { 'GK': 'Goalkeepers', 'DEF': 'Defenders', 'MID': 'Midfielders', 'FWD': 'Forwards' };
@@ -2640,6 +3083,13 @@
             // Get phase-adjusted weights
             const weights = getPhaseAdjustedWeights();
             const phaseInfo = getPhaseInfo();
+            
+            // Get special categories
+            const captainOptions = getTopCaptainOptions(analyses);
+            const transferTargets = getBestTransferTargets(analyses);
+            const setAndForget = getSetAndForgetPicks(analyses);
+            const differentials = getDifferentials(analyses);
+            const avoidList = getPlayersToAvoid(analyses);
             
             // Phase info banner
             let html = `
@@ -2666,6 +3116,70 @@
                         </div>
                     </div>
                 </div>
+            `;
+            
+            // Special Categories Section
+            html += `
+                <div style="margin-bottom: 30px;">
+                    <h2 style="color: var(--accent-green); font-family: 'Space Mono', monospace; margin-bottom: 20px; font-size: 16px;">
+                        🎯 Quick Actions
+                    </h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                        
+                        <!-- Captain Options -->
+                        <div style="background: var(--surface); padding: 15px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: var(--accent-yellow); font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                👑 Captain Options
+                                <span style="font-size: 9px; background: var(--accent-yellow); color: var(--bg-dark); padding: 2px 6px; border-radius: 8px;">TOP ${captainOptions.length}</span>
+                            </h3>
+                            ${captainOptions.length > 0 ? captainOptions.map((p, i) => renderSpecialCategoryCard(p, i + 1, 'captain')).join('') : '<div style="color: var(--text-dim); font-size: 11px;">No strong captain options found</div>'}
+                        </div>
+                        
+                        <!-- Transfer Targets -->
+                        <div style="background: var(--surface); padding: 15px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: var(--accent-green); font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                🔄 Transfer Targets
+                                <span style="font-size: 9px; background: var(--accent-green); color: var(--bg-dark); padding: 2px 6px; border-radius: 8px;">TOP ${transferTargets.length}</span>
+                            </h3>
+                            ${transferTargets.length > 0 ? transferTargets.map((p, i) => renderSpecialCategoryCard(p, i + 1, 'transfer')).join('') : '<div style="color: var(--text-dim); font-size: 11px;">No strong transfer targets found</div>'}
+                        </div>
+                        
+                        <!-- Set & Forget -->
+                        <div style="background: var(--surface); padding: 15px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: var(--accent-blue); font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                🔒 Set & Forget
+                                <span style="font-size: 9px; background: var(--accent-blue); color: var(--bg-dark); padding: 2px 6px; border-radius: 8px;">TOP ${setAndForget.length}</span>
+                            </h3>
+                            ${setAndForget.length > 0 ? setAndForget.map((p, i) => renderSpecialCategoryCard(p, i + 1, 'setforget')).join('') : '<div style="color: var(--text-dim); font-size: 11px;">No set-and-forget picks found</div>'}
+                        </div>
+                        
+                        <!-- Differentials -->
+                        <div style="background: var(--surface); padding: 15px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: #a855f7; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                💎 Differentials
+                                <span style="font-size: 9px; background: #a855f7; color: white; padding: 2px 6px; border-radius: 8px;">&lt;5% OWNED</span>
+                            </h3>
+                            ${differentials.length > 0 ? differentials.map((p, i) => renderSpecialCategoryCard(p, i + 1, 'differential')).join('') : '<div style="color: var(--text-dim); font-size: 11px;">No differentials meeting criteria</div>'}
+                        </div>
+                        
+                        <!-- Avoid List -->
+                        <div style="background: var(--surface); padding: 15px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3);">
+                            <h3 style="color: var(--accent-red); font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                ⚠️ Avoid / Sell
+                                <span style="font-size: 9px; background: var(--accent-red); color: white; padding: 2px 6px; border-radius: 8px;">CAUTION</span>
+                            </h3>
+                            ${avoidList.length > 0 ? avoidList.map((p, i) => renderSpecialCategoryCard(p, i + 1, 'avoid')).join('') : '<div style="color: var(--text-dim); font-size: 11px;">No highly-owned players to avoid</div>'}
+                        </div>
+                        
+                    </div>
+                </div>
+            `;
+            
+            // Section header for position picks
+            html += `
+                <h2 style="color: var(--accent-green); font-family: 'Space Mono', monospace; margin-bottom: 20px; font-size: 16px;">
+                    📋 By Position
+                </h2>
             `;
             
             html += '<div class="recommendations-container">';
