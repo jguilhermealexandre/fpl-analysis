@@ -1204,6 +1204,8 @@
     <div class="tabs" id="tabs">
         <button class="tab" data-position="RECOMMENDATIONS">⭐ Recommendations</button>
         <button class="tab" data-position="FORM">🔥 Form Players</button>
+        <button class="tab" data-position="CHARTS">📊 Charts</button>
+        <button class="tab" data-position="FIXTURES">📅 Fixtures</button>
         <button class="tab" data-position="GK">🧤 Goalkeepers</button>
         <button class="tab" data-position="DEF">🛡️ Defenders</button>
         <button class="tab" data-position="MID">⚡ Midfielders</button>
@@ -1266,6 +1268,8 @@
     <div class="content">
         <div class="position-section" id="section-RECOMMENDATIONS"></div>
         <div class="position-section" id="section-FORM"></div>
+        <div class="position-section" id="section-CHARTS"></div>
+        <div class="position-section" id="section-FIXTURES"></div>
         <div class="position-section" id="section-GK"></div>
         <div class="position-section" id="section-DEF"></div>
         <div class="position-section" id="section-MID"></div>
@@ -2483,6 +2487,8 @@
                             // Render everything
                             document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
                             document.getElementById('section-FORM').innerHTML = generateFormPlayers(analyses);
+                            document.getElementById('section-CHARTS').innerHTML = generateCharts(analyses);
+                            document.getElementById('section-FIXTURES').innerHTML = generateFixtureTicker(analyses);
                             document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
                             document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
                             document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
@@ -2576,6 +2582,8 @@
                                 // Render everything
                                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
                                 document.getElementById('section-FORM').innerHTML = generateFormPlayers(analyses);
+                                document.getElementById('section-CHARTS').innerHTML = generateCharts(analyses);
+                                document.getElementById('section-FIXTURES').innerHTML = generateFixtureTicker(analyses);
                                 document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
                                 document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
                                 document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
@@ -2704,6 +2712,10 @@
                 
                 // Generate form players
                 document.getElementById('section-FORM').innerHTML = generateFormPlayers(analyses);
+                
+                // Generate charts and fixture ticker
+                document.getElementById('section-CHARTS').innerHTML = generateCharts(analyses);
+                document.getElementById('section-FIXTURES').innerHTML = generateFixtureTicker(analyses);
 
                 // Render tables
                 document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
@@ -3676,6 +3688,560 @@
                     html += createFormPlayerCard(player, offset + i + 1);
                 });
             }
+            
+            return html;
+        }
+
+        // ============================================
+        // CHARTS: Scatter Plots for Visual Analysis
+        // ============================================
+        
+        let chartInstances = {}; // Store chart instances for cleanup
+        
+        function generateCharts(analyses) {
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const positionColors = {
+                'GK': 'rgba(245, 158, 11, 0.8)',
+                'DEF': 'rgba(59, 130, 246, 0.8)',
+                'MID': 'rgba(16, 185, 129, 0.8)',
+                'FWD': 'rgba(239, 68, 68, 0.8)'
+            };
+            
+            // Filter valid players
+            const validPlayers = analyses.filter(p => 
+                p.l5 && p.l5.games >= 3 && p.season && p.season.games >= 5
+            );
+            
+            let html = `
+                <div style="padding: 20px;">
+                    <div style="margin-bottom: 25px; padding: 20px; background: var(--surface); border-left: 4px solid var(--accent-blue); border-radius: 4px;">
+                        <h2 style="color: var(--accent-blue); font-family: 'Space Mono', monospace; margin-bottom: 10px;">
+                            📊 Visual Analysis
+                        </h2>
+                        <p style="font-size: 12px; color: var(--text-dim);">
+                            Scatter plots to identify outliers: underperformers (below the line) are due for returns, 
+                            overperformers (above the line) may regress. Hover over points for player details.
+                        </p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 25px;">
+                        <!-- Price vs Points Chart -->
+                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: var(--accent-green); font-size: 14px; margin-bottom: 15px;">
+                                💰 Price vs Points/Game (L5)
+                                <span style="font-size: 10px; color: var(--text-dim); font-weight: normal; margin-left: 10px;">Find value picks</span>
+                            </h3>
+                            <div style="position: relative; height: 400px;">
+                                <canvas id="priceVsPointsChart"></canvas>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 10px; color: var(--text-dim);">
+                                <strong>Above diagonal</strong> = Great value | <strong>Below diagonal</strong> = Overpriced
+                            </div>
+                        </div>
+                        
+                        <!-- xGI vs Actual Returns Chart -->
+                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: var(--accent-yellow); font-size: 14px; margin-bottom: 15px;">
+                                🎯 xGI vs Actual G+A (L5)
+                                <span style="font-size: 10px; color: var(--text-dim); font-weight: normal; margin-left: 10px;">Find underperformers</span>
+                            </h3>
+                            <div style="position: relative; height: 400px;">
+                                <canvas id="xgiVsActualChart"></canvas>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 10px; color: var(--text-dim);">
+                                <strong>Above line</strong> = Overperforming (may regress) | <strong>Below line</strong> = Due returns
+                            </div>
+                        </div>
+                        
+                        <!-- Ownership vs Form Chart -->
+                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: #a855f7; font-size: 14px; margin-bottom: 15px;">
+                                💎 Ownership vs Form
+                                <span style="font-size: 10px; color: var(--text-dim); font-weight: normal; margin-left: 10px;">Find differentials</span>
+                            </h3>
+                            <div style="position: relative; height: 400px;">
+                                <canvas id="ownershipVsFormChart"></canvas>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 10px; color: var(--text-dim);">
+                                <strong>Top-left quadrant</strong> = Low owned + high form = DIFFERENTIALS
+                            </div>
+                        </div>
+                        
+                        <!-- Position Distribution -->
+                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: var(--accent-red); font-size: 14px; margin-bottom: 15px;">
+                                📈 Points Distribution by Position
+                                <span style="font-size: 10px; color: var(--text-dim); font-weight: normal; margin-left: 10px;">Where to invest?</span>
+                            </h3>
+                            <div style="position: relative; height: 400px;">
+                                <canvas id="positionDistChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Legend -->
+                    <div style="margin-top: 20px; padding: 15px; background: var(--surface); border-radius: 6px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+                        <span style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
+                            <span style="width: 12px; height: 12px; background: ${positionColors['GK']}; border-radius: 50%;"></span> GK
+                        </span>
+                        <span style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
+                            <span style="width: 12px; height: 12px; background: ${positionColors['DEF']}; border-radius: 50%;"></span> DEF
+                        </span>
+                        <span style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
+                            <span style="width: 12px; height: 12px; background: ${positionColors['MID']}; border-radius: 50%;"></span> MID
+                        </span>
+                        <span style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
+                            <span style="width: 12px; height: 12px; background: ${positionColors['FWD']}; border-radius: 50%;"></span> FWD
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            // Destroy existing charts
+            Object.values(chartInstances).forEach(chart => chart?.destroy());
+            chartInstances = {};
+            
+            // Schedule chart creation after DOM update
+            setTimeout(() => {
+                createScatterCharts(validPlayers, positionMap, positionColors);
+            }, 100);
+            
+            return html;
+        }
+        
+        function createScatterCharts(players, positionMap, positionColors) {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(21, 25, 32, 0.95)',
+                        titleColor: '#00ff88',
+                        bodyColor: '#e0e5ed',
+                        borderColor: '#2a3340',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const p = context.raw;
+                                return [
+                                    `${p.name} (${p.team})`,
+                                    `Price: £${p.price.toFixed(1)}m`,
+                                    `Pts/G: ${p.ptsPerGame?.toFixed(1) || '-'}`,
+                                    `xGI/G: ${p.xgiPerGame?.toFixed(2) || '-'}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(42, 51, 64, 0.5)' },
+                        ticks: { color: '#8b95a5', font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(42, 51, 64, 0.5)' },
+                        ticks: { color: '#8b95a5', font: { size: 10 } }
+                    }
+                }
+            };
+            
+            // 1. Price vs Points Chart
+            const priceVsPointsData = players
+                .filter(p => positionMap[p.position] !== 'GK')
+                .map(p => ({
+                    x: p.price,
+                    y: p.l5.points / p.l5.games,
+                    name: p.name,
+                    team: p.team,
+                    price: p.price,
+                    ptsPerGame: p.l5.points / p.l5.games,
+                    position: positionMap[p.position]
+                }));
+            
+            const priceCtx = document.getElementById('priceVsPointsChart')?.getContext('2d');
+            if (priceCtx) {
+                chartInstances.priceVsPoints = new Chart(priceCtx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: ['DEF', 'MID', 'FWD'].map(pos => ({
+                            label: pos,
+                            data: priceVsPointsData.filter(p => p.position === pos),
+                            backgroundColor: positionColors[pos],
+                            borderColor: positionColors[pos].replace('0.8', '1'),
+                            pointRadius: 6,
+                            pointHoverRadius: 9
+                        }))
+                    },
+                    options: {
+                        ...chartOptions,
+                        scales: {
+                            ...chartOptions.scales,
+                            x: { ...chartOptions.scales.x, title: { display: true, text: 'Price (£m)', color: '#8b95a5' } },
+                            y: { ...chartOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' } }
+                        },
+                        plugins: {
+                            ...chartOptions.plugins,
+                            annotation: {
+                                annotations: {
+                                    line1: {
+                                        type: 'line',
+                                        xMin: 4, yMin: 2,
+                                        xMax: 14, yMax: 7,
+                                        borderColor: 'rgba(0, 255, 136, 0.3)',
+                                        borderWidth: 2,
+                                        borderDash: [5, 5]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 2. xGI vs Actual G+A Chart
+            const xgiVsActualData = players
+                .filter(p => positionMap[p.position] !== 'GK')
+                .map(p => ({
+                    x: p.l5.xGI / p.l5.games,
+                    y: (p.l5.goals + p.l5.assists) / p.l5.games,
+                    name: p.name,
+                    team: p.team,
+                    price: p.price,
+                    xgiPerGame: p.l5.xGI / p.l5.games,
+                    actualGI: (p.l5.goals + p.l5.assists) / p.l5.games,
+                    position: positionMap[p.position]
+                }));
+            
+            const xgiCtx = document.getElementById('xgiVsActualChart')?.getContext('2d');
+            if (xgiCtx) {
+                chartInstances.xgiVsActual = new Chart(xgiCtx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            // Reference line (y = x)
+                            {
+                                label: 'Expected',
+                                data: [{x: 0, y: 0}, {x: 1.5, y: 1.5}],
+                                type: 'line',
+                                borderColor: 'rgba(0, 255, 136, 0.4)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            ...['DEF', 'MID', 'FWD'].map(pos => ({
+                                label: pos,
+                                data: xgiVsActualData.filter(p => p.position === pos),
+                                backgroundColor: positionColors[pos],
+                                borderColor: positionColors[pos].replace('0.8', '1'),
+                                pointRadius: 6,
+                                pointHoverRadius: 9
+                            }))
+                        ]
+                    },
+                    options: {
+                        ...chartOptions,
+                        scales: {
+                            ...chartOptions.scales,
+                            x: { ...chartOptions.scales.x, title: { display: true, text: 'xGI per Game', color: '#8b95a5' }, min: 0 },
+                            y: { ...chartOptions.scales.y, title: { display: true, text: 'Actual G+A per Game', color: '#8b95a5' }, min: 0 }
+                        }
+                    }
+                });
+            }
+            
+            // 3. Ownership vs Form Chart
+            const ownershipVsFormData = players.map(p => ({
+                x: p.selectedBy || 0,
+                y: p.l5.points / p.l5.games,
+                name: p.name,
+                team: p.team,
+                price: p.price,
+                ptsPerGame: p.l5.points / p.l5.games,
+                position: positionMap[p.position]
+            }));
+            
+            const ownershipCtx = document.getElementById('ownershipVsFormChart')?.getContext('2d');
+            if (ownershipCtx) {
+                chartInstances.ownershipVsForm = new Chart(ownershipCtx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: ['GK', 'DEF', 'MID', 'FWD'].map(pos => ({
+                            label: pos,
+                            data: ownershipVsFormData.filter(p => p.position === pos),
+                            backgroundColor: positionColors[pos],
+                            borderColor: positionColors[pos].replace('0.8', '1'),
+                            pointRadius: 5,
+                            pointHoverRadius: 8
+                        }))
+                    },
+                    options: {
+                        ...chartOptions,
+                        scales: {
+                            ...chartOptions.scales,
+                            x: { ...chartOptions.scales.x, title: { display: true, text: 'Ownership %', color: '#8b95a5' } },
+                            y: { ...chartOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' } }
+                        }
+                    }
+                });
+            }
+            
+            // 4. Position Distribution (Box-like visualization using bar chart)
+            const positionStats = ['GK', 'DEF', 'MID', 'FWD'].map(pos => {
+                const posPlayers = players.filter(p => positionMap[p.position] === pos);
+                const points = posPlayers.map(p => p.l5.points / p.l5.games).sort((a, b) => a - b);
+                
+                return {
+                    position: pos,
+                    avg: points.reduce((a, b) => a + b, 0) / points.length || 0,
+                    max: Math.max(...points) || 0,
+                    top5Avg: points.slice(-5).reduce((a, b) => a + b, 0) / 5 || 0
+                };
+            });
+            
+            const distCtx = document.getElementById('positionDistChart')?.getContext('2d');
+            if (distCtx) {
+                chartInstances.positionDist = new Chart(distCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['GK', 'DEF', 'MID', 'FWD'],
+                        datasets: [
+                            {
+                                label: 'Average',
+                                data: positionStats.map(p => p.avg),
+                                backgroundColor: 'rgba(139, 149, 165, 0.6)',
+                                borderColor: 'rgba(139, 149, 165, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Top 5 Average',
+                                data: positionStats.map(p => p.top5Avg),
+                                backgroundColor: 'rgba(0, 255, 136, 0.6)',
+                                borderColor: 'rgba(0, 255, 136, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Best Player',
+                                data: positionStats.map(p => p.max),
+                                backgroundColor: 'rgba(255, 204, 0, 0.6)',
+                                borderColor: 'rgba(255, 204, 0, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        ...chartOptions,
+                        plugins: {
+                            ...chartOptions.plugins,
+                            legend: { 
+                                display: true,
+                                labels: { color: '#8b95a5', font: { size: 10 } }
+                            }
+                        },
+                        scales: {
+                            ...chartOptions.scales,
+                            y: { ...chartOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' } }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // ============================================
+        // FIXTURE TICKER: Visual Team Fixture Display
+        // ============================================
+        
+        function generateFixtureTicker(analyses) {
+            // Get unique teams from analyses
+            const teamData = {};
+            analyses.forEach(p => {
+                if (p.teamId && p.fixtures && !teamData[p.teamId]) {
+                    teamData[p.teamId] = {
+                        id: p.teamId,
+                        name: p.team,
+                        fixtures: p.fixtures
+                    };
+                }
+            });
+            
+            // Sort by average FDR (easiest first)
+            const sortedTeams = Object.values(teamData)
+                .filter(t => t.fixtures && t.fixtures.next5)
+                .sort((a, b) => (a.fixtures.avgFDR5 || 5) - (b.fixtures.avgFDR5 || 5));
+            
+            const getFDRColor = (fdr) => {
+                if (fdr <= 2) return '#10b981'; // Very easy - bright green
+                if (fdr <= 2.5) return '#22c55e'; // Easy - green
+                if (fdr <= 3) return '#84cc16'; // Fairly easy - lime
+                if (fdr <= 3.5) return '#f59e0b'; // Medium - amber
+                if (fdr <= 4) return '#ef4444'; // Hard - red
+                return '#991b1b'; // Very hard - dark red
+            };
+            
+            const getFDRLabel = (fdr) => {
+                if (fdr <= 2) return 'Very Easy';
+                if (fdr <= 2.5) return 'Easy';
+                if (fdr <= 3) return 'Medium';
+                if (fdr <= 3.5) return 'Tricky';
+                if (fdr <= 4) return 'Hard';
+                return 'Very Hard';
+            };
+            
+            let html = `
+                <div style="padding: 20px;">
+                    <div style="margin-bottom: 25px; padding: 20px; background: var(--surface); border-left: 4px solid var(--accent-yellow); border-radius: 4px;">
+                        <h2 style="color: var(--accent-yellow); font-family: 'Space Mono', monospace; margin-bottom: 10px;">
+                            📅 Fixture Ticker - Next 5 Gameweeks
+                        </h2>
+                        <p style="font-size: 12px; color: var(--text-dim);">
+                            Teams sorted by fixture difficulty (easiest first). Target players from teams with green runs.
+                            <strong>H</strong> = Home, <strong>A</strong> = Away
+                        </p>
+                    </div>
+                    
+                    <!-- FDR Legend -->
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; padding: 15px; background: var(--surface); border-radius: 6px;">
+                        <span style="font-size: 11px; color: var(--text-dim);">FDR Scale:</span>
+                        ${[1, 2, 2.5, 3, 3.5, 4, 5].map(fdr => `
+                            <span style="display: flex; align-items: center; gap: 4px; font-size: 10px;">
+                                <span style="width: 20px; height: 20px; background: ${getFDRColor(fdr)}; border-radius: 3px;"></span>
+                                ${fdr <= 2 ? '1-2' : fdr <= 2.5 ? '2-2.5' : fdr <= 3 ? '2.5-3' : fdr <= 3.5 ? '3-3.5' : fdr <= 4 ? '3.5-4' : '4-5'}
+                            </span>
+                        `).join('')}
+                    </div>
+                    
+                    <!-- Fixture Table -->
+                    <div style="background: var(--surface); border-radius: 6px; overflow: hidden; border: 1px solid var(--border);">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: var(--surface-light);">
+                                    <th style="padding: 12px 15px; text-align: left; color: var(--accent-green); font-size: 11px; border-bottom: 2px solid var(--accent-green);">Team</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-dim); font-size: 10px; border-bottom: 2px solid var(--accent-green);">GW+1</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-dim); font-size: 10px; border-bottom: 2px solid var(--accent-green);">GW+2</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-dim); font-size: 10px; border-bottom: 2px solid var(--accent-green);">GW+3</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-dim); font-size: 10px; border-bottom: 2px solid var(--accent-green);">GW+4</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-dim); font-size: 10px; border-bottom: 2px solid var(--accent-green);">GW+5</th>
+                                    <th style="padding: 12px 15px; text-align: center; color: var(--accent-yellow); font-size: 10px; border-bottom: 2px solid var(--accent-green);">Avg FDR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            sortedTeams.forEach((team, index) => {
+                const fixtures = team.fixtures.next5 || [];
+                const avgFDR = team.fixtures.avgFDR5 || 3;
+                const rowBg = index % 2 === 0 ? 'var(--surface)' : 'var(--surface-light)';
+                
+                html += `
+                    <tr style="background: ${rowBg};">
+                        <td style="padding: 10px 15px; font-weight: 600; color: var(--text); font-size: 12px; border-bottom: 1px solid var(--border);">
+                            ${team.name}
+                            <span style="font-size: 9px; color: var(--text-dim); margin-left: 6px;">#${index + 1}</span>
+                        </td>
+                `;
+                
+                // Render 5 fixtures
+                for (let i = 0; i < 5; i++) {
+                    const fixture = fixtures[i];
+                    if (fixture) {
+                        const opponentTeam = teams[fixture.opponent];
+                        const opponentName = opponentTeam ? opponentTeam.short_name : 'UNK';
+                        const isHome = fixture.is_home;
+                        const fdr = fixture.difficulty;
+                        const bgColor = getFDRColor(fdr);
+                        const textColor = fdr <= 3 ? '#000' : '#fff';
+                        
+                        html += `
+                            <td style="padding: 6px; text-align: center; border-bottom: 1px solid var(--border);">
+                                <div style="background: ${bgColor}; color: ${textColor}; padding: 8px 4px; border-radius: 4px; font-size: 10px; font-weight: 600;">
+                                    ${opponentName}
+                                    <div style="font-size: 8px; opacity: 0.8; margin-top: 2px;">${isHome ? 'H' : 'A'}</div>
+                                </div>
+                            </td>
+                        `;
+                    } else {
+                        html += `
+                            <td style="padding: 6px; text-align: center; border-bottom: 1px solid var(--border);">
+                                <div style="background: var(--bg-dark); color: var(--text-dim); padding: 8px 4px; border-radius: 4px; font-size: 10px;">
+                                    -
+                                </div>
+                            </td>
+                        `;
+                    }
+                }
+                
+                // Average FDR
+                const avgColor = getFDRColor(avgFDR);
+                html += `
+                        <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid var(--border);">
+                            <div style="display: inline-block; background: ${avgColor}; color: ${avgFDR <= 3 ? '#000' : '#fff'}; padding: 6px 12px; border-radius: 15px; font-size: 11px; font-weight: 600;">
+                                ${avgFDR.toFixed(2)}
+                            </div>
+                            <div style="font-size: 8px; color: var(--text-dim); margin-top: 4px;">${getFDRLabel(avgFDR)}</div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Quick Summary Cards -->
+                    <div style="margin-top: 25px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border-left: 4px solid var(--accent-green);">
+                            <h4 style="color: var(--accent-green); font-size: 12px; margin-bottom: 10px;">🟢 Easiest Runs (Next 5)</h4>
+                            <div style="font-size: 11px; color: var(--text);">
+                                ${sortedTeams.slice(0, 5).map((t, i) => `
+                                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border);">
+                                        <span>${i + 1}. ${t.name}</span>
+                                        <span style="color: var(--accent-green);">${t.fixtures.avgFDR5.toFixed(2)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border-left: 4px solid var(--accent-red);">
+                            <h4 style="color: var(--accent-red); font-size: 12px; margin-bottom: 10px;">🔴 Toughest Runs (Next 5)</h4>
+                            <div style="font-size: 11px; color: var(--text);">
+                                ${sortedTeams.slice(-5).reverse().map((t, i) => `
+                                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border);">
+                                        <span>${i + 1}. ${t.name}</span>
+                                        <span style="color: var(--accent-red);">${t.fixtures.avgFDR5.toFixed(2)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border-left: 4px solid var(--accent-yellow);">
+                            <h4 style="color: var(--accent-yellow); font-size: 12px; margin-bottom: 10px;">⚡ Fixture Swing (Improving)</h4>
+                            <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 8px;">Teams whose fixtures get easier</div>
+                            <div style="font-size: 11px; color: var(--text);">
+                                ${sortedTeams
+                                    .filter(t => t.fixtures.next5 && t.fixtures.next5.length >= 5)
+                                    .map(t => {
+                                        const first2 = t.fixtures.next5.slice(0, 2).reduce((a, f) => a + f.difficulty, 0) / 2;
+                                        const last2 = t.fixtures.next5.slice(3, 5).reduce((a, f) => a + f.difficulty, 0) / 2;
+                                        return { ...t, swing: first2 - last2 };
+                                    })
+                                    .sort((a, b) => b.swing - a.swing)
+                                    .slice(0, 5)
+                                    .map((t, i) => `
+                                        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border);">
+                                            <span>${i + 1}. ${t.name}</span>
+                                            <span style="color: ${t.swing > 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">
+                                                ${t.swing > 0 ? '↗' : '↘'} ${Math.abs(t.swing).toFixed(1)}
+                                            </span>
+                                        </div>
+                                    `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
             
             return html;
         }
