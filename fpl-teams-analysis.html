@@ -619,7 +619,7 @@
     </div>
 
     <div class="header">
-        <h1>🏆 FPL Teams Analysis</h1>
+        <h1>🏆 FPL Teams Analysis <span id="currentGW" style="font-size: 16px; color: var(--accent-green); margin-left: 10px;"></span></h1>
         <p>Advanced xG-Based Analysis | 2025/26 Season Rules | Optimal Window Detection</p>
         <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
             <span style="font-size: 9px; padding: 4px 8px; background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 204, 255, 0.2) 100%); border-radius: 3px; color: var(--accent-green);">📊 xG/xGA Metrics</span>
@@ -935,6 +935,11 @@
                 const fixturesData = await fixturesResponse.json();
 
                 updateStatus('Analyzing teams...', 'loading');
+                
+                // Get current gameweek
+                const currentGW = bootstrapData.events.find(e => e.is_current)?.id || 
+                                  bootstrapData.events.find(e => e.is_next)?.id || 1;
+                document.getElementById('currentGW').textContent = `GW${currentGW}`;
 
                 // Analyze all teams
                 const teams = bootstrapData.teams;
@@ -948,7 +953,7 @@
                 renderBestForDefenders(teamsAnalysis);
                 renderFixtureSwings(teamsAnalysis);
 
-                updateStatus(`✓ Loaded ${teamsAnalysis.length} teams`, 'success');
+                updateStatus(`✓ GW${currentGW} | Loaded ${teamsAnalysis.length} teams`, 'success');
                 showLoading(false);
 
             } catch (error) {
@@ -957,6 +962,9 @@
                 showLoading(false);
             }
         }
+
+        // Big Six team IDs (these are consistent in the FPL API)
+        const BIG_SIX_NAMES = ['Arsenal', 'Chelsea', 'Liverpool', 'Man City', 'Man Utd', 'Spurs'];
 
         // =====================================================
         // ADVANCED ANALYTICS ENGINE - 2025/26 SEASON UPDATED
@@ -1329,11 +1337,23 @@
                 formComponents.defensiveRecord +
                 formComponents.fixtureQuality
             )));
+            
+            // ========== BIG SIX FIXTURE COUNTER ==========
+            const bigSixCount = futureDetails.filter(f => 
+                BIG_SIX_NAMES.some(name => 
+                    f.opponent.toLowerCase().includes(name.toLowerCase().substring(0, 3))
+                )
+            ).length;
+            
+            // Team badge URL (FPL official badges)
+            const badgeUrl = `https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png`;
 
             return {
                 teamId,
                 teamName: team.name,
                 shortName: team.short_name,
+                teamCode: team.code,
+                badgeUrl,
                 
                 // Basic stats
                 gamesPlayed,
@@ -1358,6 +1378,7 @@
                 homeFixtures, awayFixtures,
                 fixtureSwing, swingDetails,
                 optimalWindow3, optimalWindow5,
+                bigSixCount, // NEW: Big Six fixture counter
                 
                 // Ratings (IMPROVED)
                 cleanSheetProb,
@@ -1631,7 +1652,10 @@
             return `
                 <div class="team-card" style="${isUrgent ? 'border: 2px solid var(--accent-red);' : ''}">
                     <div class="team-header">
-                        <span class="team-name">${team.teamName}</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <img src="${team.badgeUrl}" alt="${team.shortName}" style="width: 28px; height: 28px; object-fit: contain;" onerror="this.style.display='none'">
+                            <span class="team-name">${team.teamName}</span>
+                        </div>
                         <div class="team-badge">
                             <span class="badge ${xGClass}">
                                 xG±: ${team.xGDiff}
@@ -1641,11 +1665,15 @@
                                 FDR: ${team.avgFdr}
                                 <span class="badge-tooltip">Average Fixture Difficulty (next 5)</span>
                             </span>
+                            <span class="badge ${team.bigSixCount === 0 ? 'excellent' : team.bigSixCount <= 2 ? 'good' : 'poor'}">
+                                Big 6: ${team.bigSixCount}
+                                <span class="badge-tooltip">Fixtures vs Arsenal, Chelsea, Liverpool, Man City, Man Utd, Spurs</span>
+                            </span>
                         </div>
                     </div>
                     
                     <!-- xG Quick Stats -->
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; padding: 10px; background: var(--bg-darker); border-radius: 4px;">
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; padding: 10px; background: var(--bg-darker); border-radius: 4px;">
                         <div style="text-align: center;">
                             <div style="font-size: 8px; color: var(--text-dim);">xG/Game</div>
                             <div style="font-size: 12px; font-weight: 600; color: ${parseFloat(team.avgXG) >= 1.5 ? 'var(--accent-green)' : 'var(--text)'};">${team.avgXG}</div>
@@ -1659,6 +1687,10 @@
                         <div style="text-align: center;">
                             <div style="font-size: 8px; color: var(--text-dim);">Proj. xG</div>
                             <div style="font-size: 12px; font-weight: 600; color: var(--text);">${team.avgProjectedXG}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 8px; color: var(--text-dim);">Home Games</div>
+                            <div style="font-size: 12px; font-weight: 600; color: ${team.homeFixtures >= 3 ? 'var(--accent-green)' : 'var(--text)'};">${team.homeFixtures}/5</div>
                         </div>
                     </div>
                     
@@ -1707,17 +1739,29 @@
                 return '';
             })();
             
-            // Determine fixture trend color
-            const getTrendColor = (swing) => {
-                if (swing.includes('Easier') || swing.includes('Improving')) return 'var(--accent-green)';
-                if (swing.includes('Harder') || swing.includes('Worsening')) return 'var(--accent-red)';
-                return 'var(--text)';
+            // Determine fixture trend color and arrow
+            const getTrendInfo = (swing) => {
+                if (swing.includes('Improving Throughout')) return { color: 'var(--accent-green)', arrow: '⬆️⬆️', label: swing };
+                if (swing.includes('Easier Soon') || swing.includes('Getting Easier')) return { color: 'var(--accent-green)', arrow: '⬆️', label: swing };
+                if (swing.includes('Easier Later')) return { color: '#4ade80', arrow: '↗️', label: swing };
+                if (swing.includes('Worsening Throughout')) return { color: 'var(--accent-red)', arrow: '⬇️⬇️', label: swing };
+                if (swing.includes('Harder Soon') || swing.includes('Getting Harder')) return { color: 'var(--accent-red)', arrow: '⬇️', label: swing };
+                if (swing.includes('Harder Later')) return { color: '#f87171', arrow: '↘️', label: swing };
+                return { color: 'var(--text-dim)', arrow: '➡️', label: swing };
             };
+            
+            const trendInfo = getTrendInfo(team.fixtureSwing);
+            
+            // Big Six badge styling
+            const bigSixClass = team.bigSixCount === 0 ? 'excellent' : (team.bigSixCount <= 2 ? 'good' : 'poor');
 
             return `
                 <div class="team-card">
                     <div class="team-header">
-                        <span class="team-name">${rank ? `#${rank} ` : ''}${team.teamName}</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <img src="${team.badgeUrl}" alt="${team.shortName}" style="width: 32px; height: 32px; object-fit: contain;" onerror="this.style.display='none'">
+                            <span class="team-name">${rank ? `#${rank} ` : ''}${team.teamName}</span>
+                        </div>
                         <div class="team-badge">
                             <span class="badge ${formClass}">
                                 Form: ${team.formScore}
@@ -1782,14 +1826,9 @@
                             <span class="stat-tooltip">Based on xGA, CS prob, defense FDR (${team.avgDefenseFdr}), and CBIT potential</span>
                         </div>
                         <div class="stat">
-                            <span class="stat-label">Attack FDR</span>
-                            <span class="stat-value" style="color: ${parseFloat(team.avgAttackFdr) <= 2.5 ? 'var(--accent-green)' : parseFloat(team.avgAttackFdr) <= 3.5 ? 'var(--accent-yellow)' : 'var(--accent-red)'};">${team.avgAttackFdr}</span>
-                            <span class="stat-tooltip">How hard to SCORE against upcoming opponents (based on their defense strength)</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Defense FDR</span>
-                            <span class="stat-value" style="color: ${parseFloat(team.avgDefenseFdr) <= 2.5 ? 'var(--accent-green)' : parseFloat(team.avgDefenseFdr) <= 3.5 ? 'var(--accent-yellow)' : 'var(--accent-red)'};">${team.avgDefenseFdr}</span>
-                            <span class="stat-tooltip">How hard to keep CLEAN SHEETS against upcoming opponents (based on their attack strength)</span>
+                            <span class="stat-label">vs Big Six</span>
+                            <span class="stat-value" style="color: ${team.bigSixCount === 0 ? 'var(--accent-green)' : team.bigSixCount <= 2 ? 'var(--accent-yellow)' : 'var(--accent-red)'};">${team.bigSixCount}/5</span>
+                            <span class="stat-tooltip">Number of fixtures against Arsenal, Chelsea, Liverpool, Man City, Man Utd, Spurs in next 5</span>
                         </div>
                         <div class="stat">
                             <span class="stat-label">CBIT Potential</span>
@@ -1803,8 +1842,8 @@
                         </div>
                         <div class="stat">
                             <span class="stat-label">Fixture Trend</span>
-                            <span class="stat-value" style="color: ${getTrendColor(team.fixtureSwing)}; font-size: 11px;">${team.fixtureSwing}</span>
-                            <span class="stat-tooltip">Detailed fixture trajectory analysis</span>
+                            <span class="stat-value" style="color: ${trendInfo.color}; font-size: 11px;">${trendInfo.arrow} ${trendInfo.label}</span>
+                            <span class="stat-tooltip">Detailed fixture trajectory analysis with direction indicator</span>
                         </div>
                     </div>
                     
