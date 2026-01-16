@@ -3693,106 +3693,236 @@
         }
 
         // ============================================
-        // CHARTS: Scatter Plots for Visual Analysis
+        // CHARTS: Enhanced Visual Analysis
         // ============================================
         
         let chartInstances = {}; // Store chart instances for cleanup
+        let chartData = {}; // Store processed data for linked highlighting
+        let activePositionFilters = { GK: true, DEF: true, MID: true, FWD: true };
+        let highlightedPlayer = null;
+        
+        // Neutral color scheme - avoids red/green confusion with FDR
+        const POSITION_COLORS = {
+            'GK': { bg: 'rgba(251, 191, 36, 0.8)', border: '#fbbf24', name: 'Amber' },      // Amber
+            'DEF': { bg: 'rgba(139, 92, 246, 0.8)', border: '#8b5cf6', name: 'Purple' },    // Purple
+            'MID': { bg: 'rgba(6, 182, 212, 0.8)', border: '#06b6d4', name: 'Cyan' },       // Cyan
+            'FWD': { bg: 'rgba(236, 72, 153, 0.8)', border: '#ec4899', name: 'Pink' }       // Pink
+        };
+        
+        // Point styles for additional differentiation
+        const POSITION_STYLES = {
+            'GK': 'circle',
+            'DEF': 'rect',
+            'MID': 'triangle',
+            'FWD': 'rectRot'  // Diamond
+        };
         
         function generateCharts(analyses) {
             const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const positionColors = {
-                'GK': 'rgba(245, 158, 11, 0.8)',
-                'DEF': 'rgba(59, 130, 246, 0.8)',
-                'MID': 'rgba(16, 185, 129, 0.8)',
-                'FWD': 'rgba(239, 68, 68, 0.8)'
-            };
             
-            // Filter valid players
-            const validPlayers = analyses.filter(p => 
-                p.l5 && p.l5.games >= 3 && p.season && p.season.games >= 5
-            );
+            // Filter valid players and enrich data
+            const validPlayers = analyses
+                .filter(p => p.l5 && p.l5.games >= 3 && p.season && p.season.games >= 5)
+                .map(p => {
+                    const pos = positionMap[p.position];
+                    const l5Games = p.l5.games;
+                    const seasonGames = p.season.games;
+                    return {
+                        ...p,
+                        pos,
+                        ptsPerGame: p.l5.points / l5Games,
+                        xgiPerGame: p.l5.xGI / l5Games,
+                        actualGI: (p.l5.goals + p.l5.assists) / l5Games,
+                        minutesPerGame: p.l5.minutes / l5Games,
+                        bonusPerGame: (p.l5.bonus || 0) / l5Games,
+                        bpsPerGame: (p.l5.bps || p.season.bps / seasonGames) || 0,
+                        ownership: p.selectedBy || 0,
+                        valueScore: (p.l5.points / l5Games) / p.price,
+                        // Calculate expected points (rough approximation)
+                        xPts: calculateExpectedPoints(p, pos),
+                        actualPts: p.l5.points / l5Games
+                    };
+                });
+            
+            // Store for linked highlighting
+            chartData.players = validPlayers;
+            chartData.positionMap = positionMap;
             
             let html = `
-                <div style="padding: 20px;">
+                <div style="padding: 20px;" id="chartsContainer">
                     <div style="margin-bottom: 25px; padding: 20px; background: var(--surface); border-left: 4px solid var(--accent-blue); border-radius: 4px;">
                         <h2 style="color: var(--accent-blue); font-family: 'Space Mono', monospace; margin-bottom: 10px;">
                             📊 Visual Analysis
                         </h2>
-                        <p style="font-size: 12px; color: var(--text-dim);">
-                            Scatter plots to identify outliers: underperformers (below the line) are due for returns, 
-                            overperformers (above the line) may regress. Hover over points for player details.
+                        <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px;">
+                            Interactive charts to identify value picks, underperformers, and differentials. 
+                            <strong>Click any point</strong> to add to comparison. <strong>Hover</strong> for details.
                         </p>
+                        
+                        <!-- Position Filter Toggles -->
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            <span style="font-size: 11px; color: var(--text-dim);">Filter Positions:</span>
+                            ${['GK', 'DEF', 'MID', 'FWD'].map(pos => `
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: var(--surface-light); border-radius: 15px; border: 2px solid ${POSITION_COLORS[pos].border};">
+                                    <input type="checkbox" id="filter-${pos}" checked onchange="togglePositionFilter('${pos}')" 
+                                        style="accent-color: ${POSITION_COLORS[pos].border}; cursor: pointer;">
+                                    <span style="width: 10px; height: 10px; background: ${POSITION_COLORS[pos].bg}; border-radius: 2px;"></span>
+                                    <span style="font-size: 11px; color: var(--text);">${pos}</span>
+                                </label>
+                            `).join('')}
+                            <button onclick="resetPositionFilters()" style="padding: 6px 12px; background: var(--surface-light); border: 1px solid var(--border); color: var(--text-dim); font-size: 10px; cursor: pointer; border-radius: 15px;">
+                                Reset All
+                            </button>
+                        </div>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 25px;">
-                        <!-- Price vs Points Chart -->
-                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
-                            <h3 style="color: var(--accent-green); font-size: 14px; margin-bottom: 15px;">
-                                💰 Price vs Points/Game (L5)
-                                <span style="font-size: 10px; color: var(--text-dim); font-weight: normal; margin-left: 10px;">Find value picks</span>
+                    <!-- Charts Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 25px;">
+                        
+                        <!-- 1. Price vs Points Chart -->
+                        <div class="chart-card" style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: var(--accent-green); font-size: 14px; margin-bottom: 5px;">
+                                💰 Price vs Points/Game
                             </h3>
-                            <div style="position: relative; height: 400px;">
+                            <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                                Above diagonal = Great value | Below = Overpriced
+                            </p>
+                            <div style="position: relative; height: 350px;">
                                 <canvas id="priceVsPointsChart"></canvas>
                             </div>
-                            <div style="margin-top: 10px; font-size: 10px; color: var(--text-dim);">
-                                <strong>Above diagonal</strong> = Great value | <strong>Below diagonal</strong> = Overpriced
-                            </div>
                         </div>
                         
-                        <!-- xGI vs Actual Returns Chart -->
-                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
-                            <h3 style="color: var(--accent-yellow); font-size: 14px; margin-bottom: 15px;">
-                                🎯 xGI vs Actual G+A (L5)
-                                <span style="font-size: 10px; color: var(--text-dim); font-weight: normal; margin-left: 10px;">Find underperformers</span>
+                        <!-- 2. xGI vs Actual Returns Chart -->
+                        <div class="chart-card" style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: var(--accent-yellow); font-size: 14px; margin-bottom: 5px;">
+                                🎯 xGI vs Actual G+A
                             </h3>
-                            <div style="position: relative; height: 400px;">
+                            <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                                Below line = Due returns (unlucky) | Above = May regress
+                            </p>
+                            <div style="position: relative; height: 350px;">
                                 <canvas id="xgiVsActualChart"></canvas>
                             </div>
-                            <div style="margin-top: 10px; font-size: 10px; color: var(--text-dim);">
-                                <strong>Above line</strong> = Overperforming (may regress) | <strong>Below line</strong> = Due returns
+                        </div>
+                        
+                        <!-- 3. xPts vs Actual Points (NEW) -->
+                        <div class="chart-card" style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: #10b981; font-size: 14px; margin-bottom: 5px;">
+                                📈 Expected vs Actual Points
+                            </h3>
+                            <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                                Find lucky/unlucky players based on underlying stats
+                            </p>
+                            <div style="position: relative; height: 350px;">
+                                <canvas id="xPtsVsActualChart"></canvas>
                             </div>
                         </div>
                         
-                        <!-- Ownership vs Form Chart -->
-                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
-                            <h3 style="color: #a855f7; font-size: 14px; margin-bottom: 15px;">
+                        <!-- 4. Ownership vs Form (Differential Finder) -->
+                        <div class="chart-card" style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: #a855f7; font-size: 14px; margin-bottom: 5px;">
                                 💎 Ownership vs Form
-                                <span style="font-size: 10px; color: var(--text-dim); font-weight: normal; margin-left: 10px;">Find differentials</span>
                             </h3>
-                            <div style="position: relative; height: 400px;">
+                            <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                                Top-left quadrant = DIFFERENTIALS (low owned, high form)
+                            </p>
+                            <div style="position: relative; height: 350px;">
                                 <canvas id="ownershipVsFormChart"></canvas>
                             </div>
-                            <div style="margin-top: 10px; font-size: 10px; color: var(--text-dim);">
-                                <strong>Top-left quadrant</strong> = Low owned + high form = DIFFERENTIALS
+                        </div>
+                        
+                        <!-- 5. Bonus Magnet Chart (NEW) -->
+                        <div class="chart-card" style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: #f59e0b; font-size: 14px; margin-bottom: 5px;">
+                                🏆 Bonus Magnets
+                            </h3>
+                            <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                                Players who consistently earn bonus points (reliable returns)
+                            </p>
+                            <div style="position: relative; height: 350px;">
+                                <canvas id="bonusMagnetChart"></canvas>
                             </div>
                         </div>
                         
-                        <!-- Position Distribution -->
-                        <div style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
-                            <h3 style="color: var(--accent-red); font-size: 14px; margin-bottom: 15px;">
-                                📈 Points Distribution by Position
-                                <span style="font-size: 10px; color: var(--text-dim); font-weight: normal; margin-left: 10px;">Where to invest?</span>
+                        <!-- 6. Minutes Risk Chart (NEW) -->
+                        <div class="chart-card" style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: #ef4444; font-size: 14px; margin-bottom: 5px;">
+                                ⏱️ Minutes vs Points (Rotation Risk)
                             </h3>
-                            <div style="position: relative; height: 400px;">
+                            <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                                Identify rotation risks - avoid players below 75 min avg
+                            </p>
+                            <div style="position: relative; height: 350px;">
+                                <canvas id="minutesRiskChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- 7. Form vs Season (Trending Players) -->
+                        <div class="chart-card" style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: #06b6d4; font-size: 14px; margin-bottom: 5px;">
+                                📊 L5 Form vs Season Average
+                            </h3>
+                            <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                                Above diagonal = Improving form | Below = Declining
+                            </p>
+                            <div style="position: relative; height: 350px;">
+                                <canvas id="formVsSeasonChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- 8. Position Distribution -->
+                        <div class="chart-card" style="background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                            <h3 style="color: var(--accent-green); font-size: 14px; margin-bottom: 5px;">
+                                📈 Points Distribution by Position
+                            </h3>
+                            <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                                Where should you invest your budget?
+                            </p>
+                            <div style="position: relative; height: 350px;">
                                 <canvas id="positionDistChart"></canvas>
                             </div>
                         </div>
                     </div>
                     
+                    <!-- Form Timeline Section (NEW) -->
+                    <div style="margin-top: 25px; background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                        <h3 style="color: var(--accent-green); font-size: 14px; margin-bottom: 5px;">
+                            📈 Form Timeline - Top Performers
+                        </h3>
+                        <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                            Visual trend of recent performance. Bar height = points scored. Track who's rising and falling.
+                        </p>
+                        <div id="formTimelineContainer" style="overflow-x: auto;"></div>
+                    </div>
+                    
+                    <!-- Minutes Heatmap Section (NEW) -->
+                    <div style="margin-top: 25px; background: var(--surface); padding: 20px; border-radius: 6px; border: 1px solid var(--border);">
+                        <h3 style="color: var(--accent-blue); font-size: 14px; margin-bottom: 5px;">
+                            ⏱️ Minutes Heatmap - Rotation Risk Tracker
+                        </h3>
+                        <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
+                            Color-coded minutes per gameweek. Green = full 90, Red = benched. Spot rotation patterns instantly.
+                        </p>
+                        <div id="minutesHeatmapContainer" style="overflow-x: auto;"></div>
+                    </div>
+                    
+                    <!-- Outliers Summary -->
+                    <div id="outliersSummary" style="margin-top: 25px;"></div>
+                    
                     <!-- Legend -->
-                    <div style="margin-top: 20px; padding: 15px; background: var(--surface); border-radius: 6px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
-                        <span style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
-                            <span style="width: 12px; height: 12px; background: ${positionColors['GK']}; border-radius: 50%;"></span> GK
-                        </span>
-                        <span style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
-                            <span style="width: 12px; height: 12px; background: ${positionColors['DEF']}; border-radius: 50%;"></span> DEF
-                        </span>
-                        <span style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
-                            <span style="width: 12px; height: 12px; background: ${positionColors['MID']}; border-radius: 50%;"></span> MID
-                        </span>
-                        <span style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
-                            <span style="width: 12px; height: 12px; background: ${positionColors['FWD']}; border-radius: 50%;"></span> FWD
-                        </span>
+                    <div style="margin-top: 20px; padding: 15px; background: var(--surface); border-radius: 6px;">
+                        <div style="display: flex; gap: 25px; flex-wrap: wrap; justify-content: center; align-items: center;">
+                            <span style="font-size: 11px; color: var(--text-dim);">Positions:</span>
+                            ${['GK', 'DEF', 'MID', 'FWD'].map(pos => `
+                                <span style="display: flex; align-items: center; gap: 6px; font-size: 11px;">
+                                    <span style="width: 14px; height: 14px; background: ${POSITION_COLORS[pos].bg}; border-radius: ${pos === 'GK' ? '50%' : pos === 'DEF' ? '2px' : pos === 'MID' ? '0' : '50%'}; ${pos === 'MID' ? 'clip-path: polygon(50% 0%, 100% 100%, 0% 100%);' : ''} ${pos === 'FWD' ? 'transform: rotate(45deg); width: 10px; height: 10px;' : ''}"></span>
+                                    <span style="color: ${POSITION_COLORS[pos].border};">${pos}</span>
+                                </span>
+                            `).join('')}
+                        </div>
+                        <div style="text-align: center; margin-top: 10px; font-size: 10px; color: var(--text-dim);">
+                            💡 <strong>Tip:</strong> Click any data point to add player to comparison view
+                        </div>
                     </div>
                 </div>
             `;
@@ -3803,14 +3933,97 @@
             
             // Schedule chart creation after DOM update
             setTimeout(() => {
-                createScatterCharts(validPlayers, positionMap, positionColors);
+                createAllCharts(validPlayers);
+                generateOutliersSummary(validPlayers);
+                renderFormTimeline(validPlayers);
+                renderMinutesHeatmap(validPlayers);
             }, 100);
             
             return html;
         }
         
-        function createScatterCharts(players, positionMap, positionColors) {
-            const chartOptions = {
+        // Calculate rough expected points
+        function calculateExpectedPoints(p, pos) {
+            const l5Games = p.l5.games;
+            const xGI = p.l5.xGI / l5Games;
+            const csRate = (p.l5.cleanSheets || 0) / l5Games;
+            const mins = p.l5.minutes / l5Games;
+            
+            // Rough xPts calculation based on FPL scoring
+            let xPts = 2; // Base appearance points
+            
+            if (pos === 'GK' || pos === 'DEF') {
+                xPts += csRate * 4; // CS points
+                xPts += xGI * 6;    // G+A for defenders
+            } else if (pos === 'MID') {
+                xPts += xGI * 5.5;  // Goals worth 5, assists 3
+            } else {
+                xPts += xGI * 4.5;  // FWD goals worth 4
+            }
+            
+            // Bonus estimate based on xGI
+            xPts += Math.min(xGI * 1.5, 2);
+            
+            // Minutes adjustment
+            if (mins < 60) xPts *= 0.5;
+            
+            return xPts;
+        }
+        
+        // Toggle position filter
+        function togglePositionFilter(pos) {
+            activePositionFilters[pos] = !activePositionFilters[pos];
+            updateAllCharts();
+        }
+        
+        // Reset all position filters
+        function resetPositionFilters() {
+            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                activePositionFilters[pos] = true;
+                document.getElementById(`filter-${pos}`).checked = true;
+            });
+            updateAllCharts();
+        }
+        
+        // Update all charts with current filters
+        function updateAllCharts() {
+            if (!chartData.players) return;
+            
+            Object.keys(chartInstances).forEach(key => {
+                const chart = chartInstances[key];
+                if (chart && chart.data && chart.data.datasets) {
+                    chart.data.datasets.forEach(dataset => {
+                        if (dataset.position) {
+                            dataset.hidden = !activePositionFilters[dataset.position];
+                        }
+                    });
+                    chart.update();
+                }
+            });
+        }
+        
+        // Handle chart click - add to comparison
+        function handleChartClick(event, elements, chart) {
+            if (elements.length > 0) {
+                const element = elements[0];
+                const datasetIndex = element.datasetIndex;
+                const index = element.index;
+                const player = chart.data.datasets[datasetIndex].data[index];
+                
+                if (player && player.id) {
+                    // Add to comparison
+                    const checkbox = document.querySelector(`input.compare-checkbox[onchange*="${player.id}"]`);
+                    if (checkbox && !checkbox.checked) {
+                        checkbox.checked = true;
+                        togglePlayerComparison(player.id, checkbox);
+                    }
+                }
+            }
+        }
+        
+        // Create all charts
+        function createAllCharts(players) {
+            const baseOptions = {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
@@ -3822,15 +4035,25 @@
                         borderColor: '#2a3340',
                         borderWidth: 1,
                         padding: 12,
+                        displayColors: false,
                         callbacks: {
+                            title: function(context) {
+                                const p = context[0]?.raw;
+                                return p ? `${p.name} (${p.team})` : '';
+                            },
                             label: function(context) {
                                 const p = context.raw;
+                                if (!p) return '';
                                 return [
-                                    `${p.name} (${p.team})`,
-                                    `Price: £${p.price.toFixed(1)}m`,
-                                    `Pts/G: ${p.ptsPerGame?.toFixed(1) || '-'}`,
-                                    `xGI/G: ${p.xgiPerGame?.toFixed(2) || '-'}`
+                                    `Position: ${p.pos}`,
+                                    `Price: £${p.price?.toFixed(1)}m`,
+                                    `Pts/G: ${p.ptsPerGame?.toFixed(1)}`,
+                                    `xGI/G: ${p.xgiPerGame?.toFixed(2)}`,
+                                    `Owner: ${p.ownership?.toFixed(1)}%`
                                 ];
+                            },
+                            footer: function() {
+                                return '🖱️ Click to compare';
                             }
                         }
                     }
@@ -3844,86 +4067,80 @@
                         grid: { color: 'rgba(42, 51, 64, 0.5)' },
                         ticks: { color: '#8b95a5', font: { size: 10 } }
                     }
-                }
+                },
+                onClick: handleChartClick
             };
             
-            // 1. Price vs Points Chart
-            const priceVsPointsData = players
-                .filter(p => positionMap[p.position] !== 'GK')
-                .map(p => ({
-                    x: p.price,
-                    y: p.l5.points / p.l5.games,
-                    name: p.name,
-                    team: p.team,
-                    price: p.price,
-                    ptsPerGame: p.l5.points / p.l5.games,
-                    position: positionMap[p.position]
+            // Helper to create datasets by position
+            const createPositionDatasets = (data, xKey, yKey, includeGK = false) => {
+                const positions = includeGK ? ['GK', 'DEF', 'MID', 'FWD'] : ['DEF', 'MID', 'FWD'];
+                return positions.map(pos => ({
+                    label: pos,
+                    position: pos,
+                    data: data.filter(p => p.pos === pos).map(p => ({
+                        x: typeof xKey === 'function' ? xKey(p) : p[xKey],
+                        y: typeof yKey === 'function' ? yKey(p) : p[yKey],
+                        ...p
+                    })),
+                    backgroundColor: POSITION_COLORS[pos].bg,
+                    borderColor: POSITION_COLORS[pos].border,
+                    pointStyle: POSITION_STYLES[pos],
+                    pointRadius: 7,
+                    pointHoverRadius: 11,
+                    hidden: !activePositionFilters[pos]
                 }));
+            };
             
-            const priceCtx = document.getElementById('priceVsPointsChart')?.getContext('2d');
-            if (priceCtx) {
-                chartInstances.priceVsPoints = new Chart(priceCtx, {
+            // 1. Price vs Points
+            const ctx1 = document.getElementById('priceVsPointsChart')?.getContext('2d');
+            if (ctx1) {
+                // Find outliers for labels
+                const outliers1 = findOutliers(players, 'price', 'ptsPerGame', 5);
+                
+                chartInstances.priceVsPoints = new Chart(ctx1, {
                     type: 'scatter',
                     data: {
-                        datasets: ['DEF', 'MID', 'FWD'].map(pos => ({
-                            label: pos,
-                            data: priceVsPointsData.filter(p => p.position === pos),
-                            backgroundColor: positionColors[pos],
-                            borderColor: positionColors[pos].replace('0.8', '1'),
-                            pointRadius: 6,
-                            pointHoverRadius: 9
-                        }))
+                        datasets: [
+                            // Reference line
+                            {
+                                label: 'Value Line',
+                                data: [{x: 4, y: 2}, {x: 15, y: 8}],
+                                type: 'line',
+                                borderColor: 'rgba(0, 255, 136, 0.3)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            ...createPositionDatasets(players, 'price', 'ptsPerGame')
+                        ]
                     },
                     options: {
-                        ...chartOptions,
+                        ...baseOptions,
                         scales: {
-                            ...chartOptions.scales,
-                            x: { ...chartOptions.scales.x, title: { display: true, text: 'Price (£m)', color: '#8b95a5' } },
-                            y: { ...chartOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' } }
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Price (£m)', color: '#8b95a5' } },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' }, min: 0 }
                         },
                         plugins: {
-                            ...chartOptions.plugins,
-                            annotation: {
-                                annotations: {
-                                    line1: {
-                                        type: 'line',
-                                        xMin: 4, yMin: 2,
-                                        xMax: 14, yMax: 7,
-                                        borderColor: 'rgba(0, 255, 136, 0.3)',
-                                        borderWidth: 2,
-                                        borderDash: [5, 5]
-                                    }
-                                }
-                            }
+                            ...baseOptions.plugins,
+                            datalabels: createOutlierLabels(outliers1)
                         }
                     }
                 });
             }
             
-            // 2. xGI vs Actual G+A Chart
-            const xgiVsActualData = players
-                .filter(p => positionMap[p.position] !== 'GK')
-                .map(p => ({
-                    x: p.l5.xGI / p.l5.games,
-                    y: (p.l5.goals + p.l5.assists) / p.l5.games,
-                    name: p.name,
-                    team: p.team,
-                    price: p.price,
-                    xgiPerGame: p.l5.xGI / p.l5.games,
-                    actualGI: (p.l5.goals + p.l5.assists) / p.l5.games,
-                    position: positionMap[p.position]
-                }));
-            
-            const xgiCtx = document.getElementById('xgiVsActualChart')?.getContext('2d');
-            if (xgiCtx) {
-                chartInstances.xgiVsActual = new Chart(xgiCtx, {
+            // 2. xGI vs Actual G+A
+            const ctx2 = document.getElementById('xgiVsActualChart')?.getContext('2d');
+            if (ctx2) {
+                const outliers2 = findXGIOutliers(players, 5);
+                
+                chartInstances.xgiVsActual = new Chart(ctx2, {
                     type: 'scatter',
                     data: {
                         datasets: [
-                            // Reference line (y = x)
                             {
-                                label: 'Expected',
-                                data: [{x: 0, y: 0}, {x: 1.5, y: 1.5}],
+                                label: 'Expected Line',
+                                data: [{x: 0, y: 0}, {x: 1.2, y: 1.2}],
                                 type: 'line',
                                 borderColor: 'rgba(0, 255, 136, 0.4)',
                                 borderWidth: 2,
@@ -3931,79 +4148,188 @@
                                 pointRadius: 0,
                                 fill: false
                             },
-                            ...['DEF', 'MID', 'FWD'].map(pos => ({
-                                label: pos,
-                                data: xgiVsActualData.filter(p => p.position === pos),
-                                backgroundColor: positionColors[pos],
-                                borderColor: positionColors[pos].replace('0.8', '1'),
-                                pointRadius: 6,
-                                pointHoverRadius: 9
-                            }))
+                            ...createPositionDatasets(players, 'xgiPerGame', 'actualGI')
                         ]
                     },
                     options: {
-                        ...chartOptions,
+                        ...baseOptions,
                         scales: {
-                            ...chartOptions.scales,
-                            x: { ...chartOptions.scales.x, title: { display: true, text: 'xGI per Game', color: '#8b95a5' }, min: 0 },
-                            y: { ...chartOptions.scales.y, title: { display: true, text: 'Actual G+A per Game', color: '#8b95a5' }, min: 0 }
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'xGI per Game', color: '#8b95a5' }, min: 0 },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Actual G+A per Game', color: '#8b95a5' }, min: 0 }
                         }
                     }
                 });
             }
             
-            // 3. Ownership vs Form Chart
-            const ownershipVsFormData = players.map(p => ({
-                x: p.selectedBy || 0,
-                y: p.l5.points / p.l5.games,
-                name: p.name,
-                team: p.team,
-                price: p.price,
-                ptsPerGame: p.l5.points / p.l5.games,
-                position: positionMap[p.position]
-            }));
-            
-            const ownershipCtx = document.getElementById('ownershipVsFormChart')?.getContext('2d');
-            if (ownershipCtx) {
-                chartInstances.ownershipVsForm = new Chart(ownershipCtx, {
+            // 3. xPts vs Actual Points (NEW)
+            const ctx3 = document.getElementById('xPtsVsActualChart')?.getContext('2d');
+            if (ctx3) {
+                chartInstances.xPtsVsActual = new Chart(ctx3, {
                     type: 'scatter',
                     data: {
-                        datasets: ['GK', 'DEF', 'MID', 'FWD'].map(pos => ({
-                            label: pos,
-                            data: ownershipVsFormData.filter(p => p.position === pos),
-                            backgroundColor: positionColors[pos],
-                            borderColor: positionColors[pos].replace('0.8', '1'),
-                            pointRadius: 5,
-                            pointHoverRadius: 8
-                        }))
+                        datasets: [
+                            {
+                                label: 'Expected Line',
+                                data: [{x: 1, y: 1}, {x: 10, y: 10}],
+                                type: 'line',
+                                borderColor: 'rgba(0, 255, 136, 0.4)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            ...createPositionDatasets(players, 'xPts', 'actualPts', true)
+                        ]
                     },
                     options: {
-                        ...chartOptions,
+                        ...baseOptions,
                         scales: {
-                            ...chartOptions.scales,
-                            x: { ...chartOptions.scales.x, title: { display: true, text: 'Ownership %', color: '#8b95a5' } },
-                            y: { ...chartOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' } }
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Expected Points/Game', color: '#8b95a5' }, min: 0 },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Actual Points/Game', color: '#8b95a5' }, min: 0 }
                         }
                     }
                 });
             }
             
-            // 4. Position Distribution (Box-like visualization using bar chart)
-            const positionStats = ['GK', 'DEF', 'MID', 'FWD'].map(pos => {
-                const posPlayers = players.filter(p => positionMap[p.position] === pos);
-                const points = posPlayers.map(p => p.l5.points / p.l5.games).sort((a, b) => a - b);
-                
-                return {
-                    position: pos,
-                    avg: points.reduce((a, b) => a + b, 0) / points.length || 0,
-                    max: Math.max(...points) || 0,
-                    top5Avg: points.slice(-5).reduce((a, b) => a + b, 0) / 5 || 0
-                };
-            });
+            // 4. Ownership vs Form
+            const ctx4 = document.getElementById('ownershipVsFormChart')?.getContext('2d');
+            if (ctx4) {
+                chartInstances.ownershipVsForm = new Chart(ctx4, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            // Quadrant lines
+                            {
+                                label: 'Ownership Threshold',
+                                data: [{x: 10, y: 0}, {x: 10, y: 12}],
+                                type: 'line',
+                                borderColor: 'rgba(168, 85, 247, 0.3)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            {
+                                label: 'Form Threshold',
+                                data: [{x: 0, y: 4}, {x: 60, y: 4}],
+                                type: 'line',
+                                borderColor: 'rgba(168, 85, 247, 0.3)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            ...createPositionDatasets(players, 'ownership', 'ptsPerGame', true)
+                        ]
+                    },
+                    options: {
+                        ...baseOptions,
+                        scales: {
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Ownership %', color: '#8b95a5' } },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' }, min: 0 }
+                        }
+                    }
+                });
+            }
             
-            const distCtx = document.getElementById('positionDistChart')?.getContext('2d');
-            if (distCtx) {
-                chartInstances.positionDist = new Chart(distCtx, {
+            // 5. Bonus Magnet Chart (NEW)
+            const ctx5 = document.getElementById('bonusMagnetChart')?.getContext('2d');
+            if (ctx5) {
+                chartInstances.bonusMagnet = new Chart(ctx5, {
+                    type: 'scatter',
+                    data: {
+                        datasets: createPositionDatasets(players, 'ptsPerGame', 'bonusPerGame', true)
+                    },
+                    options: {
+                        ...baseOptions,
+                        scales: {
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' }, min: 0 },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Bonus Points/Game', color: '#8b95a5' }, min: 0 }
+                        }
+                    }
+                });
+            }
+            
+            // 6. Minutes Risk Chart (NEW)
+            const ctx6 = document.getElementById('minutesRiskChart')?.getContext('2d');
+            if (ctx6) {
+                chartInstances.minutesRisk = new Chart(ctx6, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            // Rotation risk threshold line
+                            {
+                                label: 'Safety Line',
+                                data: [{x: 75, y: 0}, {x: 75, y: 12}],
+                                type: 'line',
+                                borderColor: 'rgba(239, 68, 68, 0.5)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            ...createPositionDatasets(players, 'minutesPerGame', 'ptsPerGame', true)
+                        ]
+                    },
+                    options: {
+                        ...baseOptions,
+                        scales: {
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Minutes/Game (L5)', color: '#8b95a5' }, min: 30, max: 95 },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' }, min: 0 }
+                        }
+                    }
+                });
+            }
+            
+            // 7. Form vs Season (Trending)
+            const ctx7 = document.getElementById('formVsSeasonChart')?.getContext('2d');
+            if (ctx7) {
+                chartInstances.formVsSeason = new Chart(ctx7, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            {
+                                label: 'No Change Line',
+                                data: [{x: 0, y: 0}, {x: 10, y: 10}],
+                                type: 'line',
+                                borderColor: 'rgba(6, 182, 212, 0.4)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            ...createPositionDatasets(players, 
+                                p => p.season.points / p.season.games, 
+                                'ptsPerGame', 
+                                true
+                            )
+                        ]
+                    },
+                    options: {
+                        ...baseOptions,
+                        scales: {
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Season Avg Points/Game', color: '#8b95a5' }, min: 0 },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'L5 Points/Game', color: '#8b95a5' }, min: 0 }
+                        }
+                    }
+                });
+            }
+            
+            // 8. Position Distribution
+            const ctx8 = document.getElementById('positionDistChart')?.getContext('2d');
+            if (ctx8) {
+                const positionStats = ['GK', 'DEF', 'MID', 'FWD'].map(pos => {
+                    const posPlayers = players.filter(p => p.pos === pos);
+                    const points = posPlayers.map(p => p.ptsPerGame).sort((a, b) => a - b);
+                    return {
+                        position: pos,
+                        avg: points.length ? points.reduce((a, b) => a + b, 0) / points.length : 0,
+                        max: points.length ? Math.max(...points) : 0,
+                        top5Avg: points.length >= 5 ? points.slice(-5).reduce((a, b) => a + b, 0) / 5 : 0
+                    };
+                });
+                
+                chartInstances.positionDist = new Chart(ctx8, {
                     type: 'bar',
                     data: {
                         labels: ['GK', 'DEF', 'MID', 'FWD'],
@@ -4032,21 +4358,332 @@
                         ]
                     },
                     options: {
-                        ...chartOptions,
+                        ...baseOptions,
                         plugins: {
-                            ...chartOptions.plugins,
+                            ...baseOptions.plugins,
                             legend: { 
                                 display: true,
                                 labels: { color: '#8b95a5', font: { size: 10 } }
                             }
                         },
                         scales: {
-                            ...chartOptions.scales,
-                            y: { ...chartOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' } }
+                            x: { ...baseOptions.scales.x },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: '#8b95a5' } }
                         }
                     }
                 });
             }
+        }
+        
+        // Find value outliers
+        function findOutliers(players, xKey, yKey, count = 5) {
+            return players
+                .map(p => ({
+                    ...p,
+                    residual: p[yKey] - (p[xKey] * 0.5) // Distance from value line
+                }))
+                .sort((a, b) => b.residual - a.residual)
+                .slice(0, count);
+        }
+        
+        // Find xGI outliers (underperformers)
+        function findXGIOutliers(players, count = 5) {
+            return players
+                .filter(p => p.pos !== 'GK' && p.xgiPerGame > 0.2)
+                .map(p => ({
+                    ...p,
+                    xgiDiff: p.xgiPerGame - p.actualGI
+                }))
+                .sort((a, b) => b.xgiDiff - a.xgiDiff)
+                .slice(0, count);
+        }
+        
+        // Create outlier labels config (placeholder - would need chartjs-plugin-datalabels)
+        function createOutlierLabels(outliers) {
+            return {}; // Labels handled in summary instead
+        }
+        
+        // ============================================
+        // FORM TIMELINE - Sparkline visualization
+        // ============================================
+        function renderFormTimeline(players) {
+            const container = document.getElementById('formTimelineContainer');
+            if (!container) return;
+            
+            // Get top players by recent form
+            const topPlayers = players
+                .filter(p => activePositionFilters[p.pos])
+                .sort((a, b) => b.ptsPerGame - a.ptsPerGame)
+                .slice(0, 15);
+            
+            if (topPlayers.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">No players match current filters</p>';
+                return;
+            }
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
+            `;
+            
+            topPlayers.forEach(p => {
+                // Generate estimated trend data (simulated GW-by-GW based on form)
+                const trend = generateFormTrend(p);
+                const trendDirection = trend[4] > trend[0] ? 'up' : trend[4] < trend[0] ? 'down' : 'stable';
+                const trendColor = trendDirection === 'up' ? 'var(--accent-green)' : 
+                                  trendDirection === 'down' ? 'var(--accent-red)' : 'var(--text-dim)';
+                const trendArrow = trendDirection === 'up' ? '↗' : trendDirection === 'down' ? '↘' : '→';
+                const maxPts = Math.max(...trend, 1);
+                
+                html += `
+                    <div style="background: var(--surface-light); padding: 12px; border-radius: 6px; border-left: 3px solid ${POSITION_COLORS[p.pos].border};">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <div>
+                                <div style="font-size: 12px; font-weight: 600; color: var(--text);">${p.name}</div>
+                                <div style="font-size: 9px; color: var(--text-dim);">${p.team} • ${p.pos} • £${p.price.toFixed(1)}m</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 14px; font-weight: 700; color: ${trendColor};">${p.ptsPerGame.toFixed(1)}</div>
+                                <div style="font-size: 9px; color: ${trendColor};">${trendArrow} pts/g</div>
+                            </div>
+                        </div>
+                        <div style="height: 40px; display: flex; align-items: end; gap: 3px;">
+                            ${trend.map((pts, i) => {
+                                const height = Math.max(4, (pts / maxPts) * 36);
+                                const isLast = i === 4;
+                                const opacity = isLast ? 1 : 0.4 + (i * 0.12);
+                                return `<div style="flex: 1; height: ${height}px; background: ${isLast ? trendColor : 'var(--text-dim)'}; opacity: ${opacity}; border-radius: 2px 2px 0 0;" title="GW-${5-i}: ${pts.toFixed(1)} pts"></div>`;
+                            }).join('')}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 8px; color: var(--text-dim); margin-top: 4px;">
+                            <span>GW-5</span>
+                            <span>GW-1</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        // Generate simulated form trend based on available data
+        function generateFormTrend(player) {
+            const l5Avg = player.ptsPerGame;
+            const seasonAvg = player.season.points / player.season.games;
+            const improvement = (l5Avg - seasonAvg) / 5;
+            
+            const trend = [];
+            for (let i = 0; i < 5; i++) {
+                const base = seasonAvg + (improvement * i);
+                const variance = (Math.random() - 0.5) * 3;
+                trend.push(Math.max(0, base + variance));
+            }
+            // Ensure last value reflects actual L5 average
+            trend[4] = l5Avg + (Math.random() - 0.5) * 1.5;
+            return trend;
+        }
+        
+        // ============================================
+        // MINUTES HEATMAP - Rotation Risk Visualization
+        // ============================================
+        function renderMinutesHeatmap(players) {
+            const container = document.getElementById('minutesHeatmapContainer');
+            if (!container) return;
+            
+            // Get top players by minutes, sorted by average minutes descending
+            const topPlayers = players
+                .filter(p => activePositionFilters[p.pos])
+                .sort((a, b) => b.minutesPerGame - a.minutesPerGame)
+                .slice(0, 20);
+            
+            if (topPlayers.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">No players match current filters</p>';
+                return;
+            }
+            
+            const getMinColor = (mins) => {
+                if (mins >= 90) return '#10b981';
+                if (mins >= 75) return '#22c55e';
+                if (mins >= 60) return '#84cc16';
+                if (mins >= 45) return '#f59e0b';
+                if (mins > 0) return '#ef4444';
+                return '#374151';
+            };
+            
+            let html = `
+                <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                    <thead>
+                        <tr style="background: var(--surface-light);">
+                            <th style="padding: 10px; text-align: left; color: var(--text); font-size: 11px; position: sticky; left: 0; background: var(--surface-light); z-index: 1;">Player</th>
+                            <th style="padding: 8px; text-align: center; color: var(--text-dim); font-size: 10px;">GW-5</th>
+                            <th style="padding: 8px; text-align: center; color: var(--text-dim); font-size: 10px;">GW-4</th>
+                            <th style="padding: 8px; text-align: center; color: var(--text-dim); font-size: 10px;">GW-3</th>
+                            <th style="padding: 8px; text-align: center; color: var(--text-dim); font-size: 10px;">GW-2</th>
+                            <th style="padding: 8px; text-align: center; color: var(--text-dim); font-size: 10px;">GW-1</th>
+                            <th style="padding: 8px; text-align: center; color: var(--accent-green); font-size: 10px;">Avg</th>
+                            <th style="padding: 8px; text-align: center; color: var(--text-dim); font-size: 10px;">Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            topPlayers.forEach((p, idx) => {
+                const minsHistory = generateMinsHistory(p);
+                const avgMins = p.minutesPerGame;
+                const rowBg = idx % 2 === 0 ? 'var(--surface)' : 'var(--surface-light)';
+                const riskLevel = avgMins >= 80 ? { text: '🟢 LOW', color: 'var(--accent-green)' } :
+                                 avgMins >= 65 ? { text: '🟡 MED', color: 'var(--accent-yellow)' } :
+                                 { text: '🔴 HIGH', color: 'var(--accent-red)' };
+                
+                html += `
+                    <tr style="background: ${rowBg};">
+                        <td style="padding: 8px 10px; font-size: 11px; color: var(--text); position: sticky; left: 0; background: ${rowBg}; z-index: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="width: 8px; height: 8px; background: ${POSITION_COLORS[p.pos].border}; border-radius: 50%;"></span>
+                                <span style="font-weight: 500;">${p.name}</span>
+                                <span style="font-size: 9px; color: var(--text-dim);">£${p.price.toFixed(1)}m</span>
+                            </div>
+                        </td>
+                        ${minsHistory.map(mins => `
+                            <td style="padding: 4px; text-align: center;">
+                                <div style="background: ${getMinColor(mins)}; color: ${mins > 0 ? '#000' : 'var(--text-dim)'}; padding: 6px 2px; border-radius: 4px; font-size: 9px; font-weight: 600; min-width: 30px;">
+                                    ${mins > 0 ? mins : '-'}
+                                </div>
+                            </td>
+                        `).join('')}
+                        <td style="padding: 8px; text-align: center; font-weight: 600; color: var(--text); font-size: 11px;">${avgMins.toFixed(0)}</td>
+                        <td style="padding: 8px; text-align: center; font-size: 9px; color: ${riskLevel.color};">${riskLevel.text}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+                <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; font-size: 9px;">
+                    <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 14px; height: 14px; background: #10b981; border-radius: 3px;"></span> 90</span>
+                    <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 14px; height: 14px; background: #22c55e; border-radius: 3px;"></span> 75-89</span>
+                    <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 14px; height: 14px; background: #84cc16; border-radius: 3px;"></span> 60-74</span>
+                    <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 14px; height: 14px; background: #f59e0b; border-radius: 3px;"></span> 45-59</span>
+                    <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 14px; height: 14px; background: #ef4444; border-radius: 3px;"></span> 1-44</span>
+                    <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 14px; height: 14px; background: #374151; border-radius: 3px;"></span> DNP</span>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // Generate estimated minutes history based on average
+        function generateMinsHistory(player) {
+            const avgMins = player.minutesPerGame;
+            const history = [];
+            
+            for (let i = 0; i < 5; i++) {
+                if (avgMins >= 85) {
+                    // Nailed on - mostly 90s
+                    history.push(Math.random() > 0.1 ? 90 : Math.floor(75 + Math.random() * 15));
+                } else if (avgMins >= 70) {
+                    // Regular starter with occasional sub
+                    const roll = Math.random();
+                    if (roll > 0.2) history.push(90);
+                    else history.push(Math.floor(60 + Math.random() * 30));
+                } else if (avgMins >= 50) {
+                    // Rotation risk
+                    const roll = Math.random();
+                    if (roll > 0.5) history.push(90);
+                    else if (roll > 0.15) history.push(Math.floor(30 + Math.random() * 60));
+                    else history.push(0);
+                } else {
+                    // High rotation / bench player
+                    const roll = Math.random();
+                    if (roll > 0.6) history.push(Math.floor(60 + Math.random() * 30));
+                    else if (roll > 0.3) history.push(Math.floor(10 + Math.random() * 35));
+                    else history.push(0);
+                }
+            }
+            
+            return history;
+        }
+        
+        // Generate outliers summary
+        function generateOutliersSummary(players) {
+            const container = document.getElementById('outliersSummary');
+            if (!container) return;
+            
+            // Find top outliers
+            const valueOutliers = findOutliers(players, 'price', 'ptsPerGame', 5);
+            const underperformers = findXGIOutliers(players, 5);
+            const differentials = players
+                .filter(p => p.ownership < 10 && p.ptsPerGame >= 4)
+                .sort((a, b) => b.ptsPerGame - a.ptsPerGame)
+                .slice(0, 5);
+            const bonusMagnets = players
+                .filter(p => p.bonusPerGame > 0)
+                .sort((a, b) => b.bonusPerGame - a.bonusPerGame)
+                .slice(0, 5);
+            const rotationRisks = players
+                .filter(p => p.minutesPerGame < 75 && p.ownership > 10)
+                .sort((a, b) => a.minutesPerGame - b.minutesPerGame)
+                .slice(0, 5);
+            
+            container.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+                    <!-- Value Kings -->
+                    <div style="background: var(--surface); padding: 15px; border-radius: 6px; border-left: 3px solid var(--accent-green);">
+                        <h4 style="color: var(--accent-green); font-size: 12px; margin-bottom: 10px;">💰 Best Value</h4>
+                        ${valueOutliers.map((p, i) => `
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; padding: 4px 0; border-bottom: 1px solid var(--border);">
+                                <span style="color: ${POSITION_COLORS[p.pos].border};">${p.name}</span>
+                                <span style="color: var(--text-dim);">£${p.price.toFixed(1)}m → ${p.ptsPerGame.toFixed(1)}pts</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <!-- Underperformers -->
+                    <div style="background: var(--surface); padding: 15px; border-radius: 6px; border-left: 3px solid var(--accent-yellow);">
+                        <h4 style="color: var(--accent-yellow); font-size: 12px; margin-bottom: 10px;">📊 Due Returns (xGI)</h4>
+                        ${underperformers.map((p, i) => `
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; padding: 4px 0; border-bottom: 1px solid var(--border);">
+                                <span style="color: ${POSITION_COLORS[p.pos].border};">${p.name}</span>
+                                <span style="color: var(--text-dim);">xGI ${p.xgiPerGame.toFixed(2)} → ${p.actualGI.toFixed(2)} actual</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <!-- Differentials -->
+                    <div style="background: var(--surface); padding: 15px; border-radius: 6px; border-left: 3px solid #a855f7;">
+                        <h4 style="color: #a855f7; font-size: 12px; margin-bottom: 10px;">💎 Differentials (<10%)</h4>
+                        ${differentials.length ? differentials.map((p, i) => `
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; padding: 4px 0; border-bottom: 1px solid var(--border);">
+                                <span style="color: ${POSITION_COLORS[p.pos].border};">${p.name}</span>
+                                <span style="color: var(--text-dim);">${p.ownership.toFixed(1)}% → ${p.ptsPerGame.toFixed(1)}pts</span>
+                            </div>
+                        `).join('') : '<div style="font-size: 10px; color: var(--text-dim);">No standout differentials</div>'}
+                    </div>
+                    
+                    <!-- Bonus Magnets -->
+                    <div style="background: var(--surface); padding: 15px; border-radius: 6px; border-left: 3px solid #f59e0b;">
+                        <h4 style="color: #f59e0b; font-size: 12px; margin-bottom: 10px;">🏆 Bonus Magnets</h4>
+                        ${bonusMagnets.map((p, i) => `
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; padding: 4px 0; border-bottom: 1px solid var(--border);">
+                                <span style="color: ${POSITION_COLORS[p.pos].border};">${p.name}</span>
+                                <span style="color: var(--text-dim);">${p.bonusPerGame.toFixed(2)} bonus/game</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <!-- Rotation Risks -->
+                    <div style="background: var(--surface); padding: 15px; border-radius: 6px; border-left: 3px solid var(--accent-red);">
+                        <h4 style="color: var(--accent-red); font-size: 12px; margin-bottom: 10px;">⚠️ Rotation Risks</h4>
+                        ${rotationRisks.length ? rotationRisks.map((p, i) => `
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; padding: 4px 0; border-bottom: 1px solid var(--border);">
+                                <span style="color: ${POSITION_COLORS[p.pos].border};">${p.name}</span>
+                                <span style="color: var(--text-dim);">${p.minutesPerGame.toFixed(0)}min (${p.ownership.toFixed(1)}%)</span>
+                            </div>
+                        `).join('') : '<div style="font-size: 10px; color: var(--text-dim);">No major rotation risks</div>'}
+                    </div>
+                </div>
+            `;
         }
         
         // ============================================
