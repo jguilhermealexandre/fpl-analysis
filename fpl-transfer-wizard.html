@@ -1145,7 +1145,25 @@
             }
         }
         
-        // ===== ANALYZE TEAM =====
+        // ===== THRESHOLDS (matching My Team Analysis) =====
+        const THRESHOLDS = {
+            form: { critical: 1.5, poor: 3.0, good: 4.5, excellent: 6.0 },
+            minutes: { critical: 45, rotation: 60, secure: 75 },
+            xgi: {
+                4: { critical: 0.45, elite: 0.70 },  // Forwards
+                3: { critical: 0.40, elite: 0.60 },  // Midfielders
+                2: { critical: 0.15, elite: 0.25 }   // Defenders
+            }
+        };
+        
+        const PRICE_TIERS = {
+            1: { premium: 5.5, floor: 4.0 },
+            2: { premium: 6.0, floor: 4.0 },
+            3: { premium: 9.0, floor: 4.5 },
+            4: { premium: 9.0, floor: 4.5 }
+        };
+        
+        // ===== ANALYZE TEAM (matching My Team Analysis logic) =====
         function analyzeTeam() {
             if (myTeam.length !== 15) {
                 document.getElementById('step1Content').innerHTML = `
@@ -1159,88 +1177,159 @@
             }
             
             analyzedTeam = myTeam.map(p => {
-                let score = 0;
+                let sellRating = 0;
                 const issues = [];
                 
-                // Injury
-                if (p.status === 'i' || p.status === 's') {
-                    score += 50;
+                const isPremium = p.price >= PRICE_TIERS[p.pos]?.premium;
+                const isBudget = p.price <= PRICE_TIERS[p.pos]?.floor + 0.5;
+                const isBenchFodder = p.price <= PRICE_TIERS[p.pos]?.floor + 0.1;
+                
+                // ===== FACTOR 1: INJURY STATUS =====
+                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                    sellRating += 60;
                     issues.push({ text: '🔴 Unavailable', type: 'critical' });
                 } else if (p.status === 'd') {
-                    score += 30;
+                    sellRating += 30;
                     issues.push({ text: '🟡 Doubtful', type: 'warning' });
                 }
                 
                 if (p.chance !== null && p.chance < 50) {
-                    score += 25;
-                    issues.push({ text: `${p.chance}% chance`, type: 'critical' });
+                    sellRating += 25;
+                    issues.push({ text: `${p.chance}% Chance`, type: 'critical' });
                 }
                 
-                // Form
-                if (p.form < 2) {
-                    score += 35;
-                    issues.push({ text: 'Poor Form', type: 'critical' });
-                } else if (p.form < 3.5) {
-                    score += 20;
-                    issues.push({ text: 'Low Form', type: 'warning' });
-                } else if (p.form >= 6) {
-                    score -= 25;
-                    issues.push({ text: 'Hot Form', type: 'positive' });
-                } else if (p.form >= 4.5) {
-                    score -= 10;
-                    issues.push({ text: 'Good Form', type: 'positive' });
+                // ===== FACTOR 2: FORM =====
+                if (p.form < THRESHOLDS.form.critical) {
+                    sellRating += 35;
+                    issues.push({ text: `Very Poor Form (${p.form.toFixed(1)})`, type: 'critical' });
+                } else if (p.form < THRESHOLDS.form.poor) {
+                    sellRating += 20;
+                    issues.push({ text: `Below Avg Form (${p.form.toFixed(1)})`, type: 'warning' });
+                } else if (p.form >= THRESHOLDS.form.excellent) {
+                    sellRating -= 20;
+                    issues.push({ text: `Excellent Form (${p.form.toFixed(1)})`, type: 'positive' });
+                } else if (p.form >= THRESHOLDS.form.good) {
+                    sellRating -= 10;
+                    issues.push({ text: `Good Form (${p.form.toFixed(1)})`, type: 'positive' });
                 }
                 
-                // xGI
-                if (p.pos >= 3 && p.mins > 200) {
-                    const xgi90 = (p.xGI / p.mins) * 90;
-                    if (xgi90 < 0.25) {
-                        score += 25;
-                        issues.push({ text: 'Low xGI', type: 'warning' });
-                    } else if (xgi90 >= 0.5) {
-                        score -= 15;
-                        issues.push({ text: 'High xGI', type: 'positive' });
+                // ===== FACTOR 3: POSITION-SPECIFIC xGI =====
+                if (p.mins > 200) {
+                    // Calculate weighted xGI (xG counts 1.2x more than xA - more repeatable)
+                    const xGIPer90 = (p.xGI / p.mins) * 90;
+                    const weightedXGI = ((p.xG * 1.2) + p.xA) / p.mins * 90;
+                    
+                    if (p.pos === 4) { // Forwards
+                        const weightedCritical = 0.54; // Adjusted for 1.2x weight
+                        const weightedElite = 0.84;
+                        
+                        if (weightedXGI < weightedCritical) {
+                            sellRating += 30;
+                            issues.push({ text: `Low xGI (${xGIPer90.toFixed(2)}/90)`, type: 'critical' });
+                        } else if (weightedXGI >= weightedElite) {
+                            sellRating -= 15;
+                            issues.push({ text: `Elite xGI (${xGIPer90.toFixed(2)}/90)`, type: 'positive' });
+                        }
+                    } else if (p.pos === 3) { // Midfielders
+                        const weightedCritical = 0.48;
+                        const weightedElite = 0.72;
+                        
+                        if (weightedXGI < weightedCritical) {
+                            sellRating += 25;
+                            issues.push({ text: `Low xGI (${xGIPer90.toFixed(2)}/90)`, type: 'warning' });
+                        } else if (weightedXGI >= weightedElite) {
+                            sellRating -= 15;
+                            issues.push({ text: `High xGI (${xGIPer90.toFixed(2)}/90)`, type: 'positive' });
+                        }
+                    } else if (p.pos === 2) { // Defenders
+                        if (xGIPer90 < THRESHOLDS.xgi[2].critical) {
+                            sellRating += 10;
+                            issues.push({ text: `Minimal Attack (${xGIPer90.toFixed(2)}/90)`, type: 'info' });
+                        } else if (xGIPer90 >= THRESHOLDS.xgi[2].elite) {
+                            sellRating -= 10;
+                            issues.push({ text: `Attacking DEF (${xGIPer90.toFixed(2)}/90)`, type: 'positive' });
+                        }
                     }
                 }
                 
-                // Fixtures
-                if (p.avgFDR >= 4) {
-                    score += 30;
-                    issues.push({ text: 'Hard Fixtures', type: 'critical' });
-                } else if (p.avgFDR >= 3.5) {
-                    score += 15;
-                    issues.push({ text: 'Tough Fixtures', type: 'warning' });
-                } else if (p.avgFDR <= 2.5) {
-                    score -= 20;
-                    issues.push({ text: 'Easy Fixtures', type: 'positive' });
-                } else if (p.avgFDR <= 3) {
-                    score -= 10;
-                    issues.push({ text: 'Good Fixtures', type: 'positive' });
+                // ===== FACTOR 4: OWNERSHIP (Shield vs Sword) =====
+                if (p.own >= 30) {
+                    sellRating -= 25;
+                    issues.push({ text: '🛡️ Template (30%+)', type: 'info' });
+                } else if (p.own >= 15) {
+                    sellRating -= 10;
+                    issues.push({ text: '🛡️ Shield (15-29%)', type: 'info' });
+                } else if (p.own >= 5) {
+                    sellRating += 5;
+                    issues.push({ text: '⚔️ Differential', type: 'info' });
+                } else {
+                    sellRating += 10;
+                    issues.push({ text: '⚔️ Punt (<5%)', type: 'info' });
                 }
                 
-                // Ownership
-                if (p.own >= 25) {
-                    score -= 20;
-                    issues.push({ text: '🛡️ Template', type: 'info' });
-                } else if (p.own < 5) {
-                    score += 10;
-                    issues.push({ text: '⚔️ Diff', type: 'info' });
+                // ===== FACTOR 5: FIXTURES (Percentage-based) =====
+                const fdr = p.avgFDR;
+                if (fdr < 2.6) {
+                    // Easy fixtures - 30% discount on sell rating
+                    if (sellRating > 30) {
+                        const discount = Math.round(sellRating * 0.30);
+                        sellRating -= discount;
+                        issues.push({ text: `Easy Fixtures (${fdr.toFixed(1)})`, type: 'positive' });
+                    } else {
+                        sellRating -= 15;
+                        issues.push({ text: `Easy Fixtures (${fdr.toFixed(1)})`, type: 'positive' });
+                    }
+                } else if (fdr < 2.9) {
+                    // Favorable - 15% discount
+                    if (sellRating > 30) {
+                        const discount = Math.round(sellRating * 0.15);
+                        sellRating -= discount;
+                    }
+                    issues.push({ text: `Good Fixtures (${fdr.toFixed(1)})`, type: 'positive' });
+                } else if (fdr >= 3.4) {
+                    // Difficult fixtures - +20 penalty
+                    sellRating += 20;
+                    issues.push({ text: `Hard Fixtures (${fdr.toFixed(1)})`, type: 'critical' });
+                } else if (fdr >= 3.1) {
+                    // Challenging - +10 penalty
+                    sellRating += 10;
+                    issues.push({ text: `Tough Fixtures (${fdr.toFixed(1)})`, type: 'warning' });
                 }
                 
-                // Bench
+                // ===== FACTOR 6: PRICE TIER ADJUSTMENTS =====
+                if (isPremium) {
+                    // Premium patience - 15% reduction
+                    sellRating = Math.round(sellRating * 0.85);
+                    issues.push({ text: '💎 Premium', type: 'info' });
+                } else if (isBudget && !isBenchFodder) {
+                    // Budget harshness - 10% increase
+                    sellRating = Math.round(sellRating * 1.10);
+                }
+                
+                // ===== FACTOR 7: BENCH FODDER SUPPRESSION =====
+                if (isBenchFodder && p.status === 'a') {
+                    // Cap sell rating at 35 for healthy bench fodder
+                    if (sellRating > 35) {
+                        sellRating = 35;
+                        issues.push({ text: '🪑 Bench Fodder', type: 'info' });
+                    }
+                }
+                
+                // ===== FACTOR 8: BENCH POSITION =====
                 if (p.onBench) {
-                    score += 5;
                     issues.push({ text: 'Bench', type: 'info' });
                 }
                 
-                score = Math.max(0, Math.min(100, score));
+                // Clamp rating
+                sellRating = Math.max(0, Math.min(100, Math.round(sellRating)));
                 
+                // Determine priority
                 let priority, action;
-                if (score >= 60) { priority = 'urgent'; action = 'SELL'; }
-                else if (score >= 35) { priority = 'consider'; action = 'CONSIDER'; }
+                if (sellRating >= 60) { priority = 'urgent'; action = 'SELL'; }
+                else if (sellRating >= 35) { priority = 'consider'; action = 'CONSIDER'; }
                 else { priority = 'hold'; action = 'HOLD'; }
                 
-                return { ...p, sellScore: score, issues, priority, action };
+                return { ...p, sellScore: sellRating, issues, priority, action };
             });
             
             analyzedTeam.sort((a, b) => b.sellScore - a.sellScore);
