@@ -35,9 +35,6 @@
             background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
             border-bottom: 2px solid var(--accent-purple);
             padding: 20px 30px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
         }
         
         .header-content {
@@ -46,6 +43,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
         
         .header h1 {
@@ -55,12 +54,6 @@
             display: flex;
             align-items: center;
             gap: 12px;
-        }
-        
-        .header-actions {
-            display: flex;
-            gap: 15px;
-            align-items: center;
         }
         
         .home-link {
@@ -78,11 +71,131 @@
             color: var(--accent-blue);
         }
         
+        /* Team ID Section */
+        .team-id-section {
+            background: var(--surface);
+            padding: 25px 30px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .team-id-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .team-id-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .team-id-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .team-id-input {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+            width: 200px;
+            transition: all 0.2s;
+        }
+        
+        .team-id-input:focus {
+            outline: none;
+            border-color: var(--accent-green);
+        }
+        
+        .load-btn {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, var(--accent-green) 0%, #00cc70 100%);
+            color: var(--bg);
+            border: none;
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .load-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.4);
+        }
+        
+        .load-btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+        
+        .manager-card {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 15px 25px;
+            background: rgba(0, 255, 136, 0.08);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .manager-card.hidden { display: none; }
+        
+        .manager-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-green);
+        }
+        
+        .manager-stats {
+            display: flex;
+            gap: 25px;
+        }
+        
+        .manager-stat {
+            text-align: center;
+        }
+        
+        .manager-stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .manager-stat-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+        
+        .help-link {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        
+        .help-link a {
+            color: var(--accent-blue);
+        }
+        
         /* Progress Bar */
         .progress-container {
-            background: var(--surface);
+            background: var(--surface-light);
             padding: 20px 30px;
             border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
         
         .progress-inner {
@@ -116,10 +229,6 @@
             transition: all 0.2s;
         }
         
-        .progress-step:hover .progress-icon {
-            transform: scale(1.1);
-        }
-        
         .progress-icon {
             width: 44px;
             height: 44px;
@@ -146,17 +255,13 @@
             color: var(--accent-green);
         }
         
-        .progress-step.disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
+        .progress-step.disabled { opacity: 0.4; pointer-events: none; }
         
         .progress-label {
             font-size: 11px;
             font-weight: 500;
             color: var(--text-dim);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
         
         .progress-step.active .progress-label,
@@ -177,9 +282,7 @@
             animation: fadeIn 0.4s ease;
         }
         
-        .step-panel.active {
-            display: block;
-        }
+        .step-panel.active { display: block; }
         
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -232,14 +335,8 @@
             border: 2px solid var(--border);
         }
         
-        .btn-secondary:hover:not(:disabled) {
-            border-color: var(--accent-blue);
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .btn-secondary:hover:not(:disabled) { border-color: var(--accent-blue); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
         /* Status Bar */
         .status-bar {
@@ -253,17 +350,9 @@
             font-size: 12px;
         }
         
-        .status-bar.loading {
-            border-left: 4px solid var(--accent-yellow);
-        }
-        
-        .status-bar.success {
-            border-left: 4px solid var(--accent-green);
-        }
-        
-        .status-bar.error {
-            border-left: 4px solid var(--accent-red);
-        }
+        .status-bar.loading { border-left: 4px solid var(--accent-yellow); }
+        .status-bar.success { border-left: 4px solid var(--accent-green); }
+        .status-bar.error { border-left: 4px solid var(--accent-red); }
         
         .spinner {
             width: 18px;
@@ -274,14 +363,40 @@
             animation: spin 1s linear infinite;
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
         }
         
         /* Player Cards */
         .players-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 15px;
             margin-bottom: 25px;
         }
@@ -291,36 +406,31 @@
             border: 2px solid var(--border);
             border-radius: 10px;
             padding: 18px;
-            cursor: pointer;
             transition: all 0.2s ease;
         }
         
-        .player-card:hover {
+        .player-card.clickable {
+            cursor: pointer;
+        }
+        
+        .player-card.clickable:hover {
             border-color: var(--accent-blue);
             transform: translateY(-2px);
         }
         
         .player-card.sell-selected {
-            border-color: var(--accent-red);
+            border-color: var(--accent-red) !important;
             background: rgba(255, 71, 87, 0.1);
         }
         
-        .player-card.selected {
-            border-color: var(--accent-green);
+        .player-card.buy-selected {
+            border-color: var(--accent-green) !important;
             background: rgba(0, 255, 136, 0.1);
         }
         
-        .player-card.urgent {
-            border-color: var(--accent-red);
-        }
-        
-        .player-card.consider {
-            border-color: var(--accent-yellow);
-        }
-        
-        .player-card.hold {
-            border-color: var(--accent-green);
-        }
+        .player-card.urgent { border-left: 4px solid var(--accent-red); }
+        .player-card.consider { border-left: 4px solid var(--accent-yellow); }
+        .player-card.hold { border-left: 4px solid var(--accent-green); }
         
         .player-top {
             display: flex;
@@ -340,9 +450,7 @@
             color: var(--text-dim);
         }
         
-        .player-rating {
-            text-align: right;
-        }
+        .player-rating { text-align: right; }
         
         .rating-value {
             font-family: 'Space Mono', monospace;
@@ -388,10 +496,28 @@
         .issue-tag.positive { background: rgba(0, 255, 136, 0.2); color: var(--accent-green); }
         .issue-tag.info { background: rgba(0, 204, 255, 0.2); color: var(--accent-blue); }
         
-        /* Team Cards */
+        .fixture-badges {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .fixture-badge {
+            font-size: 9px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .fixture-badge.fdr-1, .fixture-badge.fdr-2 { background: rgba(0, 255, 136, 0.2); color: var(--accent-green); }
+        .fixture-badge.fdr-3 { background: rgba(255, 165, 2, 0.2); color: var(--accent-yellow); }
+        .fixture-badge.fdr-4, .fixture-badge.fdr-5 { background: rgba(255, 71, 87, 0.2); color: var(--accent-red); }
+        
+        /* Teams Grid */
         .teams-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 15px;
             margin-bottom: 25px;
         }
@@ -405,14 +531,7 @@
             transition: all 0.2s ease;
         }
         
-        .team-card:hover {
-            border-color: var(--accent-blue);
-        }
-        
-        .team-card.selected {
-            border-color: var(--accent-green);
-            background: rgba(0, 255, 136, 0.1);
-        }
+        .team-card:hover { border-color: var(--accent-blue); }
         
         .team-name {
             font-family: 'Space Mono', monospace;
@@ -426,6 +545,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
+            margin-bottom: 12px;
         }
         
         .team-stat {
@@ -447,192 +567,38 @@
             text-transform: uppercase;
         }
         
-        .team-fixtures {
-            display: flex;
-            gap: 5px;
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .fixture-badge {
-            font-size: 9px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
-        
-        .fixture-badge.fdr-1, .fixture-badge.fdr-2 { background: rgba(0, 255, 136, 0.2); color: var(--accent-green); }
-        .fixture-badge.fdr-3 { background: rgba(255, 165, 2, 0.2); color: var(--accent-yellow); }
-        .fixture-badge.fdr-4, .fixture-badge.fdr-5 { background: rgba(255, 71, 87, 0.2); color: var(--accent-red); }
-        
-        /* Replacement Cards */
-        .replacement-card {
+        /* Budget Display */
+        .budget-display {
             background: var(--surface);
-            border: 2px solid var(--border);
             border-radius: 10px;
             padding: 20px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .replacement-card:hover {
-            border-color: var(--accent-green);
-        }
-        
-        .replacement-card.selected {
-            border-color: var(--accent-green);
-            background: rgba(0, 255, 136, 0.1);
-        }
-        
-        .replacement-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-        }
-        
-        .replacement-name {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .replacement-meta {
-            font-size: 11px;
-            color: var(--text-dim);
-        }
-        
-        .replacement-price {
-            font-family: 'Space Mono', monospace;
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--accent-green);
-        }
-        
-        .replacement-stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            padding: 12px;
-            background: var(--bg);
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
-        
-        .rep-stat {
-            text-align: center;
-        }
-        
-        .rep-stat-value {
-            font-family: 'Space Mono', monospace;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--accent-green);
-        }
-        
-        .rep-stat-label {
-            font-size: 8px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-        }
-        
-        /* Summary Box */
-        .summary-box {
-            background: var(--surface);
-            border: 2px solid var(--accent-green);
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 25px;
-        }
-        
-        .summary-title {
-            font-family: 'Space Mono', monospace;
-            font-size: 18px;
-            color: var(--accent-green);
             margin-bottom: 20px;
-        }
-        
-        .transfer-row {
             display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 15px;
-            background: var(--bg);
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-        
-        .transfer-out, .transfer-in {
-            flex: 1;
-        }
-        
-        .transfer-out { text-align: right; }
-        
-        .transfer-arrow {
-            font-size: 24px;
-            color: var(--accent-green);
-        }
-        
-        .transfer-player-name {
-            font-weight: 600;
-            font-size: 15px;
-        }
-        
-        .transfer-player-team {
-            font-size: 11px;
-            color: var(--text-dim);
-        }
-        
-        .transfer-player-price {
-            font-family: 'DM Mono', monospace;
-            font-size: 13px;
-            margin-top: 4px;
-        }
-        
-        .transfer-player-price.out { color: var(--accent-red); }
-        .transfer-player-price.in { color: var(--accent-green); }
-        
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            justify-content: space-around;
+            flex-wrap: wrap;
             gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .stat-card {
-            background: var(--surface);
-            padding: 20px;
-            border-radius: 10px;
             text-align: center;
         }
         
-        .stat-value {
+        .budget-item { padding: 0 15px; }
+        
+        .budget-value {
             font-family: 'Space Mono', monospace;
-            font-size: 28px;
+            font-size: 22px;
             font-weight: 700;
-            margin-bottom: 5px;
         }
         
-        .stat-label {
-            font-size: 11px;
+        .budget-label {
+            font-size: 10px;
             color: var(--text-dim);
             text-transform: uppercase;
-        }
-        
-        /* Navigation */
-        .wizard-nav {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
+            margin-top: 4px;
         }
         
         /* Filter Bar */
         .filter-bar {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
             margin-bottom: 20px;
             padding: 15px;
@@ -667,6 +633,41 @@
             border-color: var(--accent-green);
         }
         
+        /* Summary Box */
+        .summary-box {
+            background: var(--surface);
+            border: 2px solid var(--accent-green);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        
+        .summary-title {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            color: var(--accent-green);
+            margin-bottom: 20px;
+        }
+        
+        .transfer-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 15px;
+            background: var(--bg);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .transfer-out, .transfer-in { flex: 1; }
+        .transfer-out { text-align: right; }
+        .transfer-arrow { font-size: 24px; color: var(--accent-green); }
+        .transfer-player-name { font-weight: 600; font-size: 15px; }
+        .transfer-player-team { font-size: 11px; color: var(--text-dim); }
+        .transfer-player-price { font-family: 'DM Mono', monospace; font-size: 13px; margin-top: 4px; }
+        .transfer-player-price.out { color: var(--accent-red); }
+        .transfer-player-price.in { color: var(--accent-green); }
+        
         /* Empty State */
         .empty-state {
             text-align: center;
@@ -674,43 +675,22 @@
             color: var(--text-dim);
         }
         
-        .empty-state-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-        }
+        .empty-state-icon { font-size: 64px; margin-bottom: 20px; }
+        .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 10px; }
         
-        .empty-state h3 {
-            font-size: 18px;
-            color: var(--text);
-            margin-bottom: 10px;
-        }
-        
-        /* Budget Display */
-        .budget-display {
-            background: var(--surface);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
+        /* Navigation */
+        .wizard-nav {
             display: flex;
-            justify-content: space-around;
-            text-align: center;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
         }
         
-        .budget-item {
-            padding: 0 20px;
-        }
-        
-        .budget-value {
-            font-family: 'Space Mono', monospace;
-            font-size: 24px;
-            font-weight: 700;
-        }
-        
-        .budget-label {
-            font-size: 10px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            margin-top: 4px;
+        /* Scrollable */
+        .scroll-container {
+            max-height: 600px;
+            overflow-y: auto;
         }
         
         /* Success Box */
@@ -723,67 +703,23 @@
             margin-bottom: 20px;
         }
         
-        .success-box h4 {
-            color: var(--accent-green);
-            margin-bottom: 8px;
-        }
-        
-        .success-box p {
-            font-size: 12px;
-            color: var(--text-dim);
-        }
-        
-        /* Scrollable container */
-        .scroll-container {
-            max-height: 500px;
-            overflow-y: auto;
-            padding-right: 10px;
-        }
-        
-        .scroll-container::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .scroll-container::-webkit-scrollbar-track {
-            background: var(--bg);
-        }
-        
-        .scroll-container::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 3px;
-        }
+        .success-box h4 { color: var(--accent-green); margin-bottom: 8px; }
+        .success-box p { font-size: 12px; color: var(--text-dim); }
         
         /* Responsive */
         @media (max-width: 768px) {
-            .header-content {
-                flex-direction: column;
-                gap: 15px;
-            }
-            
-            .wizard-progress::before {
-                display: none;
-            }
-            
-            .progress-label {
-                display: none;
-            }
-            
-            .players-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .transfer-row {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .transfer-out, .transfer-in {
-                text-align: center;
-            }
-            
-            .transfer-arrow {
-                transform: rotate(90deg);
-            }
+            .header-content { flex-direction: column; }
+            .team-id-row { flex-direction: column; align-items: stretch; }
+            .team-id-input { width: 100%; }
+            .help-link { margin-left: 0; margin-top: 10px; }
+            .manager-card { flex-direction: column; text-align: center; }
+            .manager-stats { justify-content: center; }
+            .wizard-progress::before { display: none; }
+            .progress-label { display: none; }
+            .players-grid { grid-template-columns: 1fr; }
+            .transfer-row { flex-direction: column; text-align: center; }
+            .transfer-out, .transfer-in { text-align: center; }
+            .transfer-arrow { transform: rotate(90deg); }
         }
     </style>
 </head>
@@ -792,33 +728,66 @@
     <header class="header">
         <div class="header-content">
             <h1>🧙‍♂️ Transfer Wizard</h1>
-            <div class="header-actions">
-                <a href="index.html" class="home-link">← Back to Tools</a>
-            </div>
+            <a href="index.html" class="home-link">← Back to Tools</a>
         </div>
     </header>
+    
+    <!-- Team ID Input -->
+    <div class="team-id-section">
+        <div class="team-id-inner">
+            <div class="team-id-row">
+                <span class="team-id-label">🔑 Your FPL Team ID:</span>
+                <input type="text" id="teamIdInput" class="team-id-input" placeholder="e.g. 1234567">
+                <button class="load-btn" id="loadBtn" onclick="loadTeamById()">Load My Team</button>
+                <span class="help-link">
+                    Find it at <a href="https://fantasy.premierleague.com" target="_blank">FPL</a> → Points → check URL for number
+                </span>
+            </div>
+            
+            <div class="manager-card hidden" id="managerCard">
+                <div>
+                    <div class="manager-name" id="managerName">-</div>
+                    <div style="font-size: 11px; color: var(--text-dim);" id="teamName">-</div>
+                </div>
+                <div class="manager-stats">
+                    <div class="manager-stat">
+                        <div class="manager-stat-value" id="overallRank">-</div>
+                        <div class="manager-stat-label">Overall Rank</div>
+                    </div>
+                    <div class="manager-stat">
+                        <div class="manager-stat-value" id="totalPoints">-</div>
+                        <div class="manager-stat-label">Total Points</div>
+                    </div>
+                    <div class="manager-stat">
+                        <div class="manager-stat-value" style="color: var(--accent-green);" id="bankValue">-</div>
+                        <div class="manager-stat-label">In The Bank</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <!-- Progress Bar -->
     <div class="progress-container">
         <div class="progress-inner">
             <div class="wizard-progress">
-                <div class="progress-step active" data-step="1" onclick="goToStep(1)">
+                <div class="progress-step active" onclick="goToStep(1)">
                     <div class="progress-icon">📊</div>
                     <span class="progress-label">Analyze</span>
                 </div>
-                <div class="progress-step disabled" data-step="2" onclick="goToStep(2)">
+                <div class="progress-step disabled" onclick="goToStep(2)">
                     <div class="progress-icon">🎯</div>
                     <span class="progress-label">Select</span>
                 </div>
-                <div class="progress-step disabled" data-step="3" onclick="goToStep(3)">
+                <div class="progress-step disabled" onclick="goToStep(3)">
                     <div class="progress-icon">📅</div>
                     <span class="progress-label">Fixtures</span>
                 </div>
-                <div class="progress-step disabled" data-step="4" onclick="goToStep(4)">
+                <div class="progress-step disabled" onclick="goToStep(4)">
                     <div class="progress-icon">👤</div>
                     <span class="progress-label">Replace</span>
                 </div>
-                <div class="progress-step disabled" data-step="5" onclick="goToStep(5)">
+                <div class="progress-step disabled" onclick="goToStep(5)">
                     <div class="progress-icon">✅</div>
                     <span class="progress-label">Review</span>
                 </div>
@@ -831,28 +800,25 @@
         <!-- Status Bar -->
         <div id="statusBar" class="status-bar loading">
             <div class="spinner"></div>
-            <span id="statusText">Loading FPL data...</span>
+            <span>Loading FPL data...</span>
         </div>
         
-        <!-- Step 1: Analyze Team -->
+        <!-- Step 1: Analyze -->
         <div class="step-panel active" id="panel-1">
             <div class="panel-header">
                 <h2>Step 1: Analyze Your Squad</h2>
-                <p>Your players are analyzed and sorted by sell priority. Red = urgent sell, Yellow = consider, Green = hold.</p>
+                <p>Enter your FPL Team ID above and click "Load My Team". Your 15 players will be analyzed and sorted by sell priority (red = urgent sell, yellow = consider, green = hold).</p>
             </div>
             
-            <div id="teamAnalysis">
+            <div id="step1Content">
                 <div class="empty-state">
                     <div class="empty-state-icon">⚽</div>
-                    <h3>No Team Found</h3>
-                    <p>Build your team in "My Team Analysis" first, then return here.</p>
-                    <button class="btn btn-primary" onclick="window.location.href='fpl-my-team-analysis.html'" style="margin-top: 20px;">
-                        Build My Team →
-                    </button>
+                    <h3>No Team Loaded</h3>
+                    <p>Enter your FPL Team ID above and click "Load My Team"</p>
                 </div>
             </div>
             
-            <div class="wizard-nav" id="nav-1" style="display: none;">
+            <div class="wizard-nav" id="nav1" style="display: none;">
                 <div></div>
                 <button class="btn btn-primary" onclick="goToStep(2)">Continue to Selection →</button>
             </div>
@@ -862,33 +828,33 @@
         <div class="step-panel" id="panel-2">
             <div class="panel-header">
                 <h2>Step 2: Select Players to Sell</h2>
-                <p>Click on players you want to transfer out. Your budget will update automatically.</p>
+                <p>Click on the players you want to transfer OUT. Your budget updates automatically.</p>
             </div>
             
-            <div class="budget-display" id="budgetDisplay">
+            <div class="budget-display">
                 <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-green);" id="itbValue">£0.0m</div>
+                    <div class="budget-value" style="color: var(--accent-green);" id="itbDisplay">£0.0m</div>
                     <div class="budget-label">In The Bank</div>
                 </div>
                 <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-yellow);" id="sellingValue">£0.0m</div>
+                    <div class="budget-value" style="color: var(--accent-yellow);" id="sellValueDisplay">£0.0m</div>
                     <div class="budget-label">Selling Value</div>
                 </div>
                 <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-green);" id="totalBudget">£0.0m</div>
-                    <div class="budget-label">Total Available</div>
+                    <div class="budget-value" style="color: var(--accent-green);" id="totalBudgetDisplay">£0.0m</div>
+                    <div class="budget-label">Total Budget</div>
                 </div>
                 <div class="budget-item">
-                    <div class="budget-value" id="transferCount">0</div>
+                    <div class="budget-value" id="sellCountDisplay">0</div>
                     <div class="budget-label">Transfers Out</div>
                 </div>
             </div>
             
-            <div id="sellSelection" class="players-grid"></div>
+            <div id="step2Content" class="players-grid"></div>
             
             <div class="wizard-nav">
                 <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
-                <button class="btn btn-primary" id="toFixturesBtn" onclick="goToStep(3)" disabled>View Fixture Swings →</button>
+                <button class="btn btn-primary" id="toStep3Btn" onclick="goToStep(3)" disabled>View Fixture Swings →</button>
             </div>
         </div>
         
@@ -896,10 +862,10 @@
         <div class="step-panel" id="panel-3">
             <div class="panel-header">
                 <h2>Step 3: Explore Fixture Opportunities</h2>
-                <p>Teams with favorable upcoming fixtures. Target replacements from these teams.</p>
+                <p>Teams ranked by easiest upcoming fixtures. Click a team to filter replacements from that team.</p>
             </div>
             
-            <div id="fixtureAnalysis" class="teams-grid"></div>
+            <div id="step3Content" class="teams-grid"></div>
             
             <div class="wizard-nav">
                 <button class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
@@ -911,44 +877,44 @@
         <div class="step-panel" id="panel-4">
             <div class="panel-header">
                 <h2>Step 4: Choose Replacements</h2>
-                <p id="replacementHeader">Select players to bring in. Filtered by position and budget.</p>
+                <p>Select players to bring IN. Filter by position, price, and team.</p>
             </div>
             
             <div class="filter-bar">
                 <div class="filter-group">
                     <span class="filter-label">Position:</span>
-                    <select id="positionFilter" class="filter-select" onchange="filterReplacements()">
-                        <option value="all">All Positions</option>
-                        <option value="1">Goalkeepers</option>
-                        <option value="2">Defenders</option>
-                        <option value="3">Midfielders</option>
-                        <option value="4">Forwards</option>
+                    <select id="posFilter" class="filter-select" onchange="renderReplacements()">
+                        <option value="all">All</option>
+                        <option value="1">GK</option>
+                        <option value="2">DEF</option>
+                        <option value="3">MID</option>
+                        <option value="4">FWD</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <span class="filter-label">Max Price:</span>
-                    <select id="priceFilter" class="filter-select" onchange="filterReplacements()">
-                        <option value="99">Any Price</option>
-                        <option value="5.0">Under £5.0m</option>
-                        <option value="6.0">Under £6.0m</option>
-                        <option value="7.0">Under £7.0m</option>
-                        <option value="8.0">Under £8.0m</option>
-                        <option value="10.0">Under £10.0m</option>
+                    <select id="priceFilterSelect" class="filter-select" onchange="renderReplacements()">
+                        <option value="99">Any</option>
+                        <option value="5.0">≤£5.0m</option>
+                        <option value="6.0">≤£6.0m</option>
+                        <option value="7.0">≤£7.0m</option>
+                        <option value="8.0">≤£8.0m</option>
+                        <option value="10.0">≤£10.0m</option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <span class="filter-label">Sort By:</span>
-                    <select id="sortFilter" class="filter-select" onchange="filterReplacements()">
-                        <option value="score">Recommendation Score</option>
+                    <span class="filter-label">Sort:</span>
+                    <select id="sortSelect" class="filter-select" onchange="renderReplacements()">
+                        <option value="score">Recommendation</option>
                         <option value="form">Form</option>
-                        <option value="xgi">xGI per 90</option>
-                        <option value="price">Price (Low to High)</option>
-                        <option value="fixtures">Fixtures (Easiest)</option>
+                        <option value="xgi">xGI/90</option>
+                        <option value="price">Price ↑</option>
+                        <option value="fdr">Fixtures</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <span class="filter-label">Team:</span>
-                    <select id="teamFilter" class="filter-select" onchange="filterReplacements()">
+                    <select id="teamFilterSelect" class="filter-select" onchange="renderReplacements()">
                         <option value="all">All Teams</option>
                     </select>
                 </div>
@@ -956,28 +922,28 @@
             
             <div class="budget-display">
                 <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-green);" id="availableBudget">£0.0m</div>
+                    <div class="budget-value" style="color: var(--accent-green);" id="availBudgetDisplay">£0.0m</div>
                     <div class="budget-label">Available</div>
                 </div>
                 <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-yellow);" id="spendingValue">£0.0m</div>
+                    <div class="budget-value" style="color: var(--accent-yellow);" id="spendingDisplay">£0.0m</div>
                     <div class="budget-label">Spending</div>
                 </div>
                 <div class="budget-item">
-                    <div class="budget-value" id="remainingBudget">£0.0m</div>
+                    <div class="budget-value" id="remainingDisplay">£0.0m</div>
                     <div class="budget-label">Remaining</div>
                 </div>
                 <div class="budget-item">
-                    <div class="budget-value" id="inCount">0</div>
+                    <div class="budget-value" id="buyCountDisplay">0</div>
                     <div class="budget-label">Transfers In</div>
                 </div>
             </div>
             
-            <div id="replacementOptions" class="scroll-container players-grid"></div>
+            <div id="step4Content" class="scroll-container players-grid"></div>
             
             <div class="wizard-nav">
                 <button class="btn btn-secondary" onclick="goToStep(3)">← Back</button>
-                <button class="btn btn-primary" id="toReviewBtn" onclick="goToStep(5)" disabled>Review Transfer Plan →</button>
+                <button class="btn btn-primary" id="toStep5Btn" onclick="goToStep(5)" disabled>Review Plan →</button>
             </div>
         </div>
         
@@ -988,842 +954,693 @@
                 <p>Confirm your transfers before heading to the official FPL site.</p>
             </div>
             
-            <div id="transferSummary"></div>
+            <div id="step5Content"></div>
             
             <div class="wizard-nav">
                 <button class="btn btn-secondary" onclick="goToStep(4)">← Back</button>
-                <button class="btn btn-primary" onclick="executeTransfers()">Save Plan & Go to FPL →</button>
+                <button class="btn btn-primary" onclick="executePlan()">Save & Go to FPL →</button>
             </div>
         </div>
     </main>
     
     <script>
-        // =====================================================
-        // STATE MANAGEMENT
-        // =====================================================
-        let currentStep = 1;
+        // ===== STATE =====
         let allPlayers = [];
-        let myTeam = [];
-        let analyzedTeam = [];
-        let playersToSell = [];
-        let playersToSellDetails = [];
-        let playersToSellIds = new Set();
-        let playersToBuy = [];
-        let playersToBuyIds = new Set();
+        let allPlayersById = {};
         let teams = {};
         let teamFixtures = {};
-        let teamAnalysisData = [];
-        let itb = 0.5; // Default in-the-bank
-        let freeTransfers = 1;
+        let currentGW = 1;
+        let myTeam = [];
+        let analyzedTeam = [];
+        let toSell = new Set();
+        let toSellPlayers = [];
+        let toBuy = [];
+        let toBuyIds = new Set();
+        let itb = 0;
+        let managerData = null;
         
-        const POSITION_NAMES = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-        const CORS_PROXY = 'https://corsproxy.io/?';
+        const POS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+        const PROXY = 'https://corsproxy.io/?';
         
-        // =====================================================
-        // INITIALIZATION
-        // =====================================================
+        // ===== INIT =====
         async function init() {
             try {
                 updateStatus('Loading FPL data...', 'loading');
                 
-                // Load bootstrap data
-                const bootstrapUrl = 'https://fantasy.premierleague.com/api/bootstrap-static/';
-                const bootstrapRes = await fetch(CORS_PROXY + encodeURIComponent(bootstrapUrl));
-                const bootstrapData = await bootstrapRes.json();
+                // Bootstrap data
+                const bootRes = await fetch(PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/'));
+                const bootData = await bootRes.json();
                 
-                // Build teams object
-                teams = {};
-                bootstrapData.teams.forEach(t => {
+                // Current GW
+                const currEvent = bootData.events.find(e => e.is_current);
+                currentGW = currEvent ? currEvent.id : 1;
+                
+                // Teams
+                bootData.teams.forEach(t => {
                     teams[t.id] = {
                         id: t.id,
                         name: t.name,
-                        short_name: t.short_name,
-                        strength: t.strength,
-                        strength_attack_home: t.strength_attack_home,
-                        strength_attack_away: t.strength_attack_away,
-                        strength_defence_home: t.strength_defence_home,
-                        strength_defence_away: t.strength_defence_away
+                        short: t.short_name,
+                        attackHome: t.strength_attack_home,
+                        attackAway: t.strength_attack_away,
+                        defHome: t.strength_defence_home,
+                        defAway: t.strength_defence_away
                     };
                 });
                 
-                // Load fixtures
-                const fixturesUrl = 'https://fantasy.premierleague.com/api/fixtures/';
-                const fixturesRes = await fetch(CORS_PROXY + encodeURIComponent(fixturesUrl));
-                const fixturesData = await fixturesRes.json();
+                // Fixtures
+                const fixRes = await fetch(PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/fixtures/'));
+                const fixData = await fixRes.json();
                 
-                // Organize fixtures by team
-                const upcomingFixtures = fixturesData
-                    .filter(f => !f.finished && f.event !== null)
-                    .sort((a, b) => a.event - b.event);
+                const upcoming = fixData.filter(f => !f.finished && f.event).sort((a,b) => a.event - b.event);
                 
-                teamFixtures = {};
-                Object.keys(teams).forEach(teamId => {
-                    const tid = parseInt(teamId);
-                    const teamFix = upcomingFixtures
-                        .filter(f => f.team_h === tid || f.team_a === tid)
-                        .slice(0, 5);
-                    
-                    teamFixtures[tid] = teamFix.map(f => ({
-                        event: f.event,
-                        opponent: f.team_h === tid ? f.team_a : f.team_h,
-                        opponentName: f.team_h === tid ? teams[f.team_a]?.short_name : teams[f.team_h]?.short_name,
-                        difficulty: f.team_h === tid ? f.team_h_difficulty : f.team_a_difficulty,
-                        isHome: f.team_h === tid
+                Object.keys(teams).forEach(tid => {
+                    const id = parseInt(tid);
+                    const fx = upcoming.filter(f => f.team_h === id || f.team_a === id).slice(0, 5);
+                    teamFixtures[id] = fx.map(f => ({
+                        opp: f.team_h === id ? teams[f.team_a]?.short : teams[f.team_h]?.short,
+                        fdr: f.team_h === id ? f.team_h_difficulty : f.team_a_difficulty,
+                        home: f.team_h === id
                     }));
                 });
                 
-                // Build all players
-                allPlayers = bootstrapData.elements
-                    .filter(p => p.minutes > 0)
-                    .map(p => {
-                        const playerFixtures = teamFixtures[p.team] || [];
-                        const avgFDR = playerFixtures.length > 0 
-                            ? playerFixtures.slice(0, 3).reduce((sum, f) => sum + f.difficulty, 0) / Math.min(3, playerFixtures.length)
-                            : 3;
-                        
-                        return {
-                            id: p.id,
-                            name: p.web_name,
-                            fullName: `${p.first_name} ${p.second_name}`,
-                            team: teams[p.team]?.short_name || 'UNK',
-                            teamId: p.team,
-                            teamName: teams[p.team]?.name || 'Unknown',
-                            position: p.element_type,
-                            positionName: POSITION_NAMES[p.element_type],
-                            price: p.now_cost / 10,
-                            form: parseFloat(p.form) || 0,
-                            ownership: parseFloat(p.selected_by_percent) || 0,
-                            minutes: p.minutes,
-                            totalPoints: p.total_points,
-                            pointsPerGame: parseFloat(p.points_per_game) || 0,
-                            status: p.status,
-                            news: p.news || '',
-                            chanceOfPlaying: p.chance_of_playing_next_round,
-                            expectedGoals: parseFloat(p.expected_goals) || 0,
-                            expectedAssists: parseFloat(p.expected_assists) || 0,
-                            expectedGI: parseFloat(p.expected_goal_involvements) || 0,
-                            goals: p.goals_scored,
-                            assists: p.assists,
-                            cleanSheets: p.clean_sheets,
-                            bonus: p.bonus,
-                            ictIndex: parseFloat(p.ict_index) || 0,
-                            fixtures: playerFixtures,
-                            avgFDR: avgFDR
-                        };
-                    });
-                
-                // Populate team filter
-                const teamSelect = document.getElementById('teamFilter');
-                Object.values(teams).sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
-                    const option = document.createElement('option');
-                    option.value = t.id;
-                    option.textContent = t.name;
-                    teamSelect.appendChild(option);
+                // Players
+                bootData.elements.forEach(p => {
+                    const fx = teamFixtures[p.team] || [];
+                    const avgFDR = fx.length ? fx.slice(0,3).reduce((s,f) => s + f.fdr, 0) / Math.min(3, fx.length) : 3;
+                    
+                    const player = {
+                        id: p.id,
+                        name: p.web_name,
+                        team: teams[p.team]?.short || '?',
+                        teamId: p.team,
+                        teamName: teams[p.team]?.name || '?',
+                        pos: p.element_type,
+                        posName: POS[p.element_type],
+                        price: p.now_cost / 10,
+                        form: parseFloat(p.form) || 0,
+                        own: parseFloat(p.selected_by_percent) || 0,
+                        mins: p.minutes,
+                        pts: p.total_points,
+                        status: p.status,
+                        news: p.news || '',
+                        chance: p.chance_of_playing_next_round,
+                        xG: parseFloat(p.expected_goals) || 0,
+                        xA: parseFloat(p.expected_assists) || 0,
+                        xGI: parseFloat(p.expected_goal_involvements) || 0,
+                        fixtures: fx,
+                        avgFDR
+                    };
+                    
+                    allPlayers.push(player);
+                    allPlayersById[p.id] = player;
                 });
                 
-                updateStatus(`Loaded ${allPlayers.length} players and ${Object.keys(teams).length} teams`, 'success');
+                // Team filter options
+                const teamSel = document.getElementById('teamFilterSelect');
+                Object.values(teams).sort((a,b) => a.name.localeCompare(b.name)).forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.name;
+                    teamSel.appendChild(opt);
+                });
                 
-                // Load saved team
-                loadSavedTeam();
+                updateStatus(`Loaded ${allPlayers.length} players • GW${currentGW}`, 'success');
                 
-                // Generate team analysis for fixture swing
-                generateTeamAnalysis();
+                // Check saved team ID
+                const savedId = localStorage.getItem('fpl_team_id');
+                if (savedId) {
+                    document.getElementById('teamIdInput').value = savedId;
+                    loadTeamById();
+                }
                 
-            } catch (error) {
-                console.error('Init error:', error);
+            } catch (err) {
+                console.error(err);
                 updateStatus('Error loading data. Please refresh.', 'error');
             }
         }
         
-        function loadSavedTeam() {
-            const saved = localStorage.getItem('fpl_my_team');
-            if (saved) {
-                myTeam = JSON.parse(saved);
-                if (myTeam.length === 15) {
-                    analyzeTeam();
-                }
+        // ===== LOAD TEAM BY ID =====
+        async function loadTeamById() {
+            const teamId = document.getElementById('teamIdInput').value.trim();
+            if (!teamId || isNaN(teamId)) {
+                alert('Please enter a valid FPL Team ID (numbers only)');
+                return;
+            }
+            
+            const btn = document.getElementById('loadBtn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            
+            try {
+                updateStatus(`Fetching team ${teamId}...`, 'loading');
+                
+                // Get manager info
+                const mgrRes = await fetch(PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${teamId}/`));
+                if (!mgrRes.ok) throw new Error('Team not found');
+                managerData = await mgrRes.json();
+                
+                // Get picks
+                const picksRes = await fetch(PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`));
+                if (!picksRes.ok) throw new Error('Could not load team picks');
+                const picksData = await picksRes.json();
+                
+                // Bank value
+                itb = (picksData.entry_history?.bank || 0) / 10;
+                
+                // Map picks to players
+                myTeam = picksData.picks.map(pick => {
+                    const p = allPlayersById[pick.element];
+                    return {
+                        ...p,
+                        isCaptain: pick.is_captain,
+                        isVice: pick.is_vice_captain,
+                        onBench: pick.position > 11
+                    };
+                });
+                
+                // Show manager card
+                document.getElementById('managerName').textContent = `${managerData.player_first_name} ${managerData.player_last_name}`;
+                document.getElementById('teamName').textContent = managerData.name;
+                document.getElementById('overallRank').textContent = managerData.summary_overall_rank?.toLocaleString() || '-';
+                document.getElementById('totalPoints').textContent = managerData.summary_overall_points || '-';
+                document.getElementById('bankValue').textContent = `£${itb.toFixed(1)}m`;
+                document.getElementById('managerCard').classList.remove('hidden');
+                
+                // Save for next time
+                localStorage.setItem('fpl_team_id', teamId);
+                
+                updateStatus(`Loaded ${managerData.name} • £${itb.toFixed(1)}m ITB`, 'success');
+                
+                // Analyze
+                analyzeTeam();
+                
+            } catch (err) {
+                console.error(err);
+                updateStatus(`Error: ${err.message}`, 'error');
+                document.getElementById('managerCard').classList.add('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Load My Team';
             }
         }
         
-        // =====================================================
-        // TEAM ANALYSIS (Step 1)
-        // =====================================================
+        // ===== ANALYZE TEAM =====
         function analyzeTeam() {
             if (myTeam.length !== 15) {
-                document.getElementById('teamAnalysis').innerHTML = `
+                document.getElementById('step1Content').innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">⚽</div>
-                        <h3>Incomplete Team</h3>
-                        <p>You have ${myTeam.length}/15 players. Build your complete team first.</p>
-                        <button class="btn btn-primary" onclick="window.location.href='fpl-my-team-analysis.html'" style="margin-top: 20px;">
-                            Build My Team →
-                        </button>
+                        <div class="empty-state-icon">❌</div>
+                        <h3>Team Error</h3>
+                        <p>Expected 15 players, got ${myTeam.length}</p>
                     </div>
                 `;
                 return;
             }
             
-            // Analyze each player
-            analyzedTeam = myTeam.map(savedPlayer => {
-                // Find full player data
-                const fullPlayer = allPlayers.find(p => p.id === savedPlayer.id) || savedPlayer;
+            analyzedTeam = myTeam.map(p => {
+                let score = 0;
+                const issues = [];
                 
-                // Calculate sell rating
-                const analysis = calculateSellRating(fullPlayer);
+                // Injury
+                if (p.status === 'i' || p.status === 's') {
+                    score += 50;
+                    issues.push({ text: '🔴 Unavailable', type: 'critical' });
+                } else if (p.status === 'd') {
+                    score += 30;
+                    issues.push({ text: '🟡 Doubtful', type: 'warning' });
+                }
                 
-                return {
-                    ...fullPlayer,
-                    ...analysis
-                };
+                if (p.chance !== null && p.chance < 50) {
+                    score += 25;
+                    issues.push({ text: `${p.chance}% chance`, type: 'critical' });
+                }
+                
+                // Form
+                if (p.form < 2) {
+                    score += 35;
+                    issues.push({ text: 'Poor Form', type: 'critical' });
+                } else if (p.form < 3.5) {
+                    score += 20;
+                    issues.push({ text: 'Low Form', type: 'warning' });
+                } else if (p.form >= 6) {
+                    score -= 25;
+                    issues.push({ text: 'Hot Form', type: 'positive' });
+                } else if (p.form >= 4.5) {
+                    score -= 10;
+                    issues.push({ text: 'Good Form', type: 'positive' });
+                }
+                
+                // xGI
+                if (p.pos >= 3 && p.mins > 200) {
+                    const xgi90 = (p.xGI / p.mins) * 90;
+                    if (xgi90 < 0.25) {
+                        score += 25;
+                        issues.push({ text: 'Low xGI', type: 'warning' });
+                    } else if (xgi90 >= 0.5) {
+                        score -= 15;
+                        issues.push({ text: 'High xGI', type: 'positive' });
+                    }
+                }
+                
+                // Fixtures
+                if (p.avgFDR >= 4) {
+                    score += 30;
+                    issues.push({ text: 'Hard Fixtures', type: 'critical' });
+                } else if (p.avgFDR >= 3.5) {
+                    score += 15;
+                    issues.push({ text: 'Tough Fixtures', type: 'warning' });
+                } else if (p.avgFDR <= 2.5) {
+                    score -= 20;
+                    issues.push({ text: 'Easy Fixtures', type: 'positive' });
+                } else if (p.avgFDR <= 3) {
+                    score -= 10;
+                    issues.push({ text: 'Good Fixtures', type: 'positive' });
+                }
+                
+                // Ownership
+                if (p.own >= 25) {
+                    score -= 20;
+                    issues.push({ text: '🛡️ Template', type: 'info' });
+                } else if (p.own < 5) {
+                    score += 10;
+                    issues.push({ text: '⚔️ Diff', type: 'info' });
+                }
+                
+                // Bench
+                if (p.onBench) {
+                    score += 5;
+                    issues.push({ text: 'Bench', type: 'info' });
+                }
+                
+                score = Math.max(0, Math.min(100, score));
+                
+                let priority, action;
+                if (score >= 60) { priority = 'urgent'; action = 'SELL'; }
+                else if (score >= 35) { priority = 'consider'; action = 'CONSIDER'; }
+                else { priority = 'hold'; action = 'HOLD'; }
+                
+                return { ...p, sellScore: score, issues, priority, action };
             });
             
-            // Sort by sell rating (highest = most urgent to sell)
-            analyzedTeam.sort((a, b) => b.sellRating - a.sellRating);
+            analyzedTeam.sort((a, b) => b.sellScore - a.sellScore);
             
-            renderAnalyzedTeam();
-            document.getElementById('nav-1').style.display = 'flex';
+            renderStep1();
+            document.getElementById('nav1').style.display = 'flex';
+            updateProgress(1);
         }
         
-        function calculateSellRating(player) {
-            let sellRating = 0;
-            const issues = [];
-            
-            // Factor 1: Injury/Availability
-            if (player.status === 'i' || player.status === 's') {
-                sellRating += 50;
-                issues.push({ text: '🔴 Injured/Suspended', type: 'critical' });
-            } else if (player.status === 'd') {
-                sellRating += 30;
-                issues.push({ text: '🟡 Doubtful', type: 'warning' });
-            }
-            
-            if (player.chanceOfPlaying !== null && player.chanceOfPlaying < 50) {
-                sellRating += 25;
-                issues.push({ text: `${player.chanceOfPlaying}% Chance`, type: 'critical' });
-            }
-            
-            // Factor 2: Form
-            if (player.form < 2.0) {
-                sellRating += 35;
-                issues.push({ text: 'Very Poor Form', type: 'critical' });
-            } else if (player.form < 3.5) {
-                sellRating += 20;
-                issues.push({ text: 'Below Avg Form', type: 'warning' });
-            } else if (player.form >= 6.0) {
-                sellRating -= 25;
-                issues.push({ text: 'Excellent Form', type: 'positive' });
-            } else if (player.form >= 4.5) {
-                sellRating -= 10;
-                issues.push({ text: 'Good Form', type: 'positive' });
-            }
-            
-            // Factor 3: xGI (for attackers)
-            if (player.position >= 3) {
-                const xGIPer90 = player.minutes > 0 ? (player.expectedGI / player.minutes) * 90 : 0;
-                if (xGIPer90 < 0.25) {
-                    sellRating += 25;
-                    issues.push({ text: 'Low xGI', type: 'warning' });
-                } else if (xGIPer90 >= 0.5) {
-                    sellRating -= 15;
-                    issues.push({ text: 'High xGI', type: 'positive' });
-                }
-            }
-            
-            // Factor 4: Fixtures
-            if (player.avgFDR >= 4.0) {
-                sellRating += 30;
-                issues.push({ text: 'Hard Fixtures', type: 'critical' });
-            } else if (player.avgFDR >= 3.5) {
-                sellRating += 15;
-                issues.push({ text: 'Tough Fixtures', type: 'warning' });
-            } else if (player.avgFDR <= 2.5) {
-                sellRating -= 20;
-                issues.push({ text: 'Easy Fixtures', type: 'positive' });
-            } else if (player.avgFDR <= 3.0) {
-                sellRating -= 10;
-                issues.push({ text: 'Good Fixtures', type: 'positive' });
-            }
-            
-            // Factor 5: Ownership protection
-            if (player.ownership >= 25) {
-                sellRating -= 20;
-                issues.push({ text: '🛡️ Template', type: 'info' });
-            } else if (player.ownership < 5) {
-                sellRating += 10;
-                issues.push({ text: '⚔️ Differential', type: 'info' });
-            }
-            
-            // Determine priority
-            let priority, action;
-            if (sellRating >= 60) {
-                priority = 'urgent';
-                action = 'Urgent Sell';
-            } else if (sellRating >= 35) {
-                priority = 'consider';
-                action = 'Consider Selling';
-            } else {
-                priority = 'hold';
-                action = 'Hold';
-            }
-            
-            return {
-                sellRating: Math.max(0, Math.min(100, sellRating)),
-                issues,
-                priority,
-                action
-            };
-        }
-        
-        function renderAnalyzedTeam() {
-            const container = document.getElementById('teamAnalysis');
-            
-            const urgentCount = analyzedTeam.filter(p => p.priority === 'urgent').length;
-            const considerCount = analyzedTeam.filter(p => p.priority === 'consider').length;
+        // ===== RENDER STEP 1 =====
+        function renderStep1() {
+            const urgent = analyzedTeam.filter(p => p.priority === 'urgent').length;
+            const consider = analyzedTeam.filter(p => p.priority === 'consider').length;
+            const hold = 15 - urgent - consider;
             
             let html = `
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-value" style="color: var(--accent-red);">${urgentCount}</div>
+                        <div class="stat-value" style="color: var(--accent-red);">${urgent}</div>
                         <div class="stat-label">Urgent Sells</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" style="color: var(--accent-yellow);">${considerCount}</div>
+                        <div class="stat-value" style="color: var(--accent-yellow);">${consider}</div>
                         <div class="stat-label">Consider</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" style="color: var(--accent-green);">${15 - urgentCount - considerCount}</div>
+                        <div class="stat-value" style="color: var(--accent-green);">${hold}</div>
                         <div class="stat-label">Strong Holds</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: var(--accent-blue);">£${itb.toFixed(1)}m</div>
+                        <div class="stat-label">In The Bank</div>
                     </div>
                 </div>
                 <div class="players-grid">
             `;
             
-            analyzedTeam.forEach(player => {
-                const fixturesHtml = player.fixtures?.slice(0, 3).map(f => `
-                    <span class="fixture-badge fdr-${f.difficulty}">${f.opponentName}(${f.isHome ? 'H' : 'A'})</span>
-                `).join('') || '';
+            analyzedTeam.forEach(p => {
+                const fxHtml = p.fixtures?.slice(0, 3).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('') || '';
+                const cap = p.isCaptain ? '(C) ' : p.isVice ? '(V) ' : '';
                 
                 html += `
-                    <div class="player-card ${player.priority}">
+                    <div class="player-card ${p.priority}">
                         <div class="player-top">
                             <div class="player-info">
-                                <h4>${player.name}</h4>
-                                <span class="player-meta">${player.team} • ${player.positionName} • £${player.price.toFixed(1)}m</span>
+                                <h4>${cap}${p.name}</h4>
+                                <span class="player-meta">${p.team} • ${p.posName} • £${p.price.toFixed(1)}m • ${p.own.toFixed(1)}%</span>
                             </div>
                             <div class="player-rating">
-                                <div class="rating-value ${player.priority}">${player.sellRating}</div>
-                                <span class="rating-label ${player.priority}">${player.action}</span>
+                                <div class="rating-value ${p.priority}">${p.sellScore}</div>
+                                <span class="rating-label ${p.priority}">${p.action}</span>
                             </div>
                         </div>
-                        <div class="player-issues">
-                            ${player.issues.map(i => `<span class="issue-tag ${i.type}">${i.text}</span>`).join('')}
-                        </div>
-                        <div class="team-fixtures" style="margin-top: 10px;">
-                            ${fixturesHtml}
-                        </div>
+                        <div class="player-issues">${p.issues.map(i => `<span class="issue-tag ${i.type}">${i.text}</span>`).join('')}</div>
+                        <div class="fixture-badges">${fxHtml}</div>
                     </div>
                 `;
             });
             
             html += '</div>';
-            container.innerHTML = html;
+            document.getElementById('step1Content').innerHTML = html;
         }
         
-        // =====================================================
-        // SELL SELECTION (Step 2)
-        // =====================================================
-        function renderSellSelection() {
-            const container = document.getElementById('sellSelection');
-            
+        // ===== RENDER STEP 2 =====
+        function renderStep2() {
             let html = '';
-            analyzedTeam.forEach(player => {
-                const isSelected = playersToSellIds.has(player.id);
+            
+            analyzedTeam.forEach(p => {
+                const selected = toSell.has(p.id);
+                const fxHtml = p.fixtures?.slice(0, 3).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('') || '';
                 
                 html += `
-                    <div class="player-card ${isSelected ? 'sell-selected' : ''} ${player.priority}" 
-                         onclick="toggleSell(${player.id})">
+                    <div class="player-card clickable ${p.priority} ${selected ? 'sell-selected' : ''}" onclick="toggleSell(${p.id})">
                         <div class="player-top">
                             <div class="player-info">
-                                <h4>${isSelected ? '✓ ' : ''}${player.name}</h4>
-                                <span class="player-meta">${player.team} • ${player.positionName} • £${player.price.toFixed(1)}m</span>
+                                <h4>${selected ? '✓ ' : ''}${p.name}</h4>
+                                <span class="player-meta">${p.team} • ${p.posName} • £${p.price.toFixed(1)}m</span>
                             </div>
                             <div class="player-rating">
-                                <div class="rating-value ${player.priority}">${player.sellRating}</div>
-                                <span class="rating-label ${player.priority}">${player.action}</span>
+                                <div class="rating-value ${p.priority}">${p.sellScore}</div>
+                                <span class="rating-label ${p.priority}">${p.action}</span>
                             </div>
                         </div>
-                        <div class="player-issues">
-                            ${player.issues.map(i => `<span class="issue-tag ${i.type}">${i.text}</span>`).join('')}
-                        </div>
+                        <div class="player-issues">${p.issues.map(i => `<span class="issue-tag ${i.type}">${i.text}</span>`).join('')}</div>
+                        <div class="fixture-badges">${fxHtml}</div>
                     </div>
                 `;
             });
             
-            container.innerHTML = html;
-            updateBudgetDisplay();
+            document.getElementById('step2Content').innerHTML = html;
+            updateBudgets();
         }
         
-        function toggleSell(playerId) {
-            if (playersToSellIds.has(playerId)) {
-                playersToSellIds.delete(playerId);
-            } else {
-                playersToSellIds.add(playerId);
-            }
+        function toggleSell(id) {
+            if (toSell.has(id)) toSell.delete(id);
+            else toSell.add(id);
             
-            // Update details array
-            playersToSellDetails = analyzedTeam.filter(p => playersToSellIds.has(p.id));
-            
-            renderSellSelection();
-            
-            // Enable/disable next button
-            document.getElementById('toFixturesBtn').disabled = playersToSellIds.size === 0;
+            toSellPlayers = analyzedTeam.filter(p => toSell.has(p.id));
+            renderStep2();
+            document.getElementById('toStep3Btn').disabled = toSell.size === 0;
         }
         
-        function updateBudgetDisplay() {
-            const sellingValue = playersToSellDetails.reduce((sum, p) => sum + p.price, 0);
-            const totalBudget = itb + sellingValue;
+        function updateBudgets() {
+            const sellVal = toSellPlayers.reduce((s, p) => s + p.price, 0);
+            const total = itb + sellVal;
+            const spending = toBuy.reduce((s, p) => s + p.price, 0);
             
-            document.getElementById('itbValue').textContent = `£${itb.toFixed(1)}m`;
-            document.getElementById('sellingValue').textContent = `£${sellingValue.toFixed(1)}m`;
-            document.getElementById('totalBudget').textContent = `£${totalBudget.toFixed(1)}m`;
-            document.getElementById('transferCount').textContent = playersToSellIds.size;
+            document.getElementById('itbDisplay').textContent = `£${itb.toFixed(1)}m`;
+            document.getElementById('sellValueDisplay').textContent = `£${sellVal.toFixed(1)}m`;
+            document.getElementById('totalBudgetDisplay').textContent = `£${total.toFixed(1)}m`;
+            document.getElementById('sellCountDisplay').textContent = toSell.size;
             
-            // Also update step 4 budget
-            const spendingValue = playersToBuy.reduce((sum, p) => sum + p.price, 0);
-            document.getElementById('availableBudget').textContent = `£${totalBudget.toFixed(1)}m`;
-            document.getElementById('spendingValue').textContent = `£${spendingValue.toFixed(1)}m`;
-            document.getElementById('remainingBudget').textContent = `£${(totalBudget - spendingValue).toFixed(1)}m`;
-            document.getElementById('inCount').textContent = playersToBuyIds.size;
+            document.getElementById('availBudgetDisplay').textContent = `£${total.toFixed(1)}m`;
+            document.getElementById('spendingDisplay').textContent = `£${spending.toFixed(1)}m`;
+            document.getElementById('remainingDisplay').textContent = `£${(total - spending).toFixed(1)}m`;
+            document.getElementById('buyCountDisplay').textContent = toBuy.length;
         }
         
-        // =====================================================
-        // FIXTURE ANALYSIS (Step 3)
-        // =====================================================
-        function generateTeamAnalysis() {
-            teamAnalysisData = Object.values(teams).map(team => {
-                const fixtures = teamFixtures[team.id] || [];
-                const avgFDR = fixtures.length > 0
-                    ? fixtures.slice(0, 5).reduce((sum, f) => sum + f.difficulty, 0) / Math.min(5, fixtures.length)
-                    : 3;
-                
-                // Calculate attack/defense ratings
-                const attackRating = Math.round((team.strength_attack_home + team.strength_attack_away) / 2 / 13);
-                const defenseRating = Math.round((team.strength_defence_home + team.strength_defence_away) / 2 / 13);
-                
-                return {
-                    ...team,
-                    fixtures: fixtures,
-                    avgFDR: avgFDR,
-                    attackRating: attackRating,
-                    defenseRating: defenseRating
-                };
-            });
-            
-            // Sort by average FDR (easiest first)
-            teamAnalysisData.sort((a, b) => a.avgFDR - b.avgFDR);
-        }
-        
-        function renderFixtureAnalysis() {
-            const container = document.getElementById('fixtureAnalysis');
-            
-            // Get positions being sold to suggest relevant teams
-            const positionsSold = new Set(playersToSellDetails.map(p => p.position));
+        // ===== RENDER STEP 3 =====
+        function renderStep3() {
+            const teamsData = Object.values(teams).map(t => {
+                const fx = teamFixtures[t.id] || [];
+                const avgFDR = fx.length ? fx.reduce((s, f) => s + f.fdr, 0) / fx.length : 3;
+                return { ...t, fixtures: fx, avgFDR };
+            }).sort((a, b) => a.avgFDR - b.avgFDR);
             
             let html = '';
-            teamAnalysisData.slice(0, 12).forEach(team => {
-                const fdrColor = team.avgFDR <= 2.5 ? 'var(--accent-green)' 
-                    : team.avgFDR <= 3.0 ? 'var(--accent-yellow)' 
-                    : 'var(--accent-red)';
-                
-                const fixturesHtml = team.fixtures.slice(0, 5).map(f => `
-                    <span class="fixture-badge fdr-${f.difficulty}">${f.opponentName}(${f.isHome ? 'H' : 'A'})</span>
-                `).join('');
+            teamsData.slice(0, 12).forEach(t => {
+                const color = t.avgFDR <= 2.5 ? 'var(--accent-green)' : t.avgFDR <= 3 ? 'var(--accent-yellow)' : 'var(--accent-red)';
+                const icon = t.avgFDR <= 2.5 ? '🟢' : t.avgFDR <= 3 ? '🟡' : '🔴';
+                const fxHtml = t.fixtures.slice(0, 5).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('');
                 
                 html += `
-                    <div class="team-card" onclick="selectTeamFilter(${team.id})">
-                        <div class="team-name">${team.avgFDR <= 2.5 ? '🟢' : team.avgFDR <= 3.0 ? '🟡' : '🔴'} ${team.name}</div>
+                    <div class="team-card" onclick="selectTeam(${t.id})">
+                        <div class="team-name">${icon} ${t.name}</div>
                         <div class="team-stats">
                             <div class="team-stat">
-                                <div class="team-stat-value" style="color: ${fdrColor};">${team.avgFDR.toFixed(1)}</div>
+                                <div class="team-stat-value" style="color: ${color};">${t.avgFDR.toFixed(1)}</div>
                                 <div class="team-stat-label">Avg FDR</div>
                             </div>
                             <div class="team-stat">
-                                <div class="team-stat-value">${team.attackRating}%</div>
+                                <div class="team-stat-value">${Math.round((t.attackHome + t.attackAway) / 26 * 100)}%</div>
                                 <div class="team-stat-label">Attack</div>
                             </div>
                         </div>
-                        <div class="team-fixtures">${fixturesHtml}</div>
+                        <div class="fixture-badges">${fxHtml}</div>
                     </div>
                 `;
             });
             
-            container.innerHTML = html;
+            document.getElementById('step3Content').innerHTML = html;
         }
         
-        function selectTeamFilter(teamId) {
-            document.getElementById('teamFilter').value = teamId;
+        function selectTeam(teamId) {
+            document.getElementById('teamFilterSelect').value = teamId;
             goToStep(4);
         }
         
-        // =====================================================
-        // REPLACEMENT OPTIONS (Step 4)
-        // =====================================================
-        function filterReplacements() {
-            const positionFilter = document.getElementById('positionFilter').value;
-            const priceFilter = parseFloat(document.getElementById('priceFilter').value);
-            const sortFilter = document.getElementById('sortFilter').value;
-            const teamFilter = document.getElementById('teamFilter').value;
+        // ===== RENDER STEP 4 =====
+        function renderReplacements() {
+            const posFilter = document.getElementById('posFilter').value;
+            const maxPrice = parseFloat(document.getElementById('priceFilterSelect').value);
+            const sortBy = document.getElementById('sortSelect').value;
+            const teamFilter = document.getElementById('teamFilterSelect').value;
             
-            // Calculate available budget
-            const sellingValue = playersToSellDetails.reduce((sum, p) => sum + p.price, 0);
-            const totalBudget = itb + sellingValue;
-            const spendingValue = playersToBuy.reduce((sum, p) => sum + p.price, 0);
-            const availableBudget = totalBudget - spendingValue;
+            const sellVal = toSellPlayers.reduce((s, p) => s + p.price, 0);
+            const totalBudget = itb + sellVal;
             
-            // Get positions being sold
-            const positionsSold = playersToSellDetails.map(p => p.position);
-            
-            // Filter players
             let filtered = allPlayers.filter(p => {
-                // Exclude players already in team (not being sold)
-                const inTeamNotSelling = myTeam.some(tp => tp.id === p.id) && !playersToSellIds.has(p.id);
-                if (inTeamNotSelling) return false;
-                
-                // Exclude already selected to buy
-                if (playersToBuyIds.has(p.id)) return false;
-                
-                // Position filter
-                if (positionFilter !== 'all' && p.position !== parseInt(positionFilter)) return false;
-                
-                // Price filter
-                if (p.price > priceFilter) return false;
-                
-                // Team filter
+                if (myTeam.some(mp => mp.id === p.id) && !toSell.has(p.id)) return false;
+                if (toBuyIds.has(p.id)) return false;
+                if (posFilter !== 'all' && p.pos !== parseInt(posFilter)) return false;
+                if (p.price > maxPrice) return false;
                 if (teamFilter !== 'all' && p.teamId !== parseInt(teamFilter)) return false;
-                
-                // Must be available
                 if (p.status === 'i' || p.status === 's') return false;
-                
-                // Minimum minutes
-                if (p.minutes < 200) return false;
-                
+                if (p.mins < 200) return false;
                 return true;
             });
             
-            // Calculate recommendation score for each player
             filtered.forEach(p => {
-                const xGIPer90 = p.minutes > 0 ? (p.expectedGI / p.minutes) * 90 : 0;
-                const valueScore = p.price > 0 ? p.totalPoints / p.price : 0;
-                
-                // Weighted score
-                p.recScore = (p.form * 2) + (xGIPer90 * 10) + (valueScore * 0.5) + ((5 - p.avgFDR) * 3);
-                
-                // Bonus for easy fixtures
+                const xgi90 = p.mins > 0 ? (p.xGI / p.mins) * 90 : 0;
+                const ppg = p.price > 0 ? p.pts / p.price : 0;
+                p.recScore = (p.form * 2) + (xgi90 * 10) + (ppg * 0.5) + ((5 - p.avgFDR) * 3);
                 if (p.avgFDR <= 2.5) p.recScore += 5;
             });
             
-            // Sort
-            switch (sortFilter) {
-                case 'form':
-                    filtered.sort((a, b) => b.form - a.form);
-                    break;
-                case 'xgi':
-                    filtered.sort((a, b) => {
-                        const aXGI = a.minutes > 0 ? (a.expectedGI / a.minutes) * 90 : 0;
-                        const bXGI = b.minutes > 0 ? (b.expectedGI / b.minutes) * 90 : 0;
-                        return bXGI - aXGI;
-                    });
-                    break;
-                case 'price':
-                    filtered.sort((a, b) => a.price - b.price);
-                    break;
-                case 'fixtures':
-                    filtered.sort((a, b) => a.avgFDR - b.avgFDR);
-                    break;
-                default: // score
-                    filtered.sort((a, b) => b.recScore - a.recScore);
-            }
-            
-            renderReplacements(filtered.slice(0, 50));
-        }
-        
-        function renderReplacements(players) {
-            const container = document.getElementById('replacementOptions');
-            
-            if (players.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="grid-column: 1 / -1;">
-                        <div class="empty-state-icon">🔍</div>
-                        <h3>No Players Found</h3>
-                        <p>Try adjusting your filters.</p>
-                    </div>
-                `;
-                return;
+            switch (sortBy) {
+                case 'form': filtered.sort((a, b) => b.form - a.form); break;
+                case 'xgi': filtered.sort((a, b) => {
+                    const aX = a.mins > 0 ? (a.xGI / a.mins) * 90 : 0;
+                    const bX = b.mins > 0 ? (b.xGI / b.mins) * 90 : 0;
+                    return bX - aX;
+                }); break;
+                case 'price': filtered.sort((a, b) => a.price - b.price); break;
+                case 'fdr': filtered.sort((a, b) => a.avgFDR - b.avgFDR); break;
+                default: filtered.sort((a, b) => b.recScore - a.recScore);
             }
             
             let html = '';
-            players.forEach(player => {
-                const xGIPer90 = player.minutes > 0 ? (player.expectedGI / player.minutes) * 90 : 0;
-                const valueScore = player.price > 0 ? player.totalPoints / player.price : 0;
-                const isSelected = playersToBuyIds.has(player.id);
-                
-                const fixturesHtml = player.fixtures?.slice(0, 3).map(f => `
-                    <span class="fixture-badge fdr-${f.difficulty}">${f.opponentName}(${f.isHome ? 'H' : 'A'})</span>
-                `).join('') || '';
+            filtered.slice(0, 50).forEach(p => {
+                const xgi90 = p.mins > 0 ? (p.xGI / p.mins) * 90 : 0;
+                const ppg = p.price > 0 ? p.pts / p.price : 0;
+                const fxHtml = p.fixtures?.slice(0, 3).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('') || '';
+                const fdrColor = p.avgFDR <= 2.5 ? 'var(--accent-green)' : p.avgFDR <= 3 ? 'var(--accent-yellow)' : 'var(--accent-red)';
                 
                 html += `
-                    <div class="replacement-card ${isSelected ? 'selected' : ''}" onclick="toggleBuy(${player.id})">
-                        <div class="replacement-header">
-                            <div>
-                                <div class="replacement-name">${isSelected ? '✓ ' : ''}${player.name}</div>
-                                <div class="replacement-meta">${player.teamName} • ${player.positionName}</div>
+                    <div class="player-card clickable" onclick="toggleBuy(${p.id})">
+                        <div class="player-top">
+                            <div class="player-info">
+                                <h4>${p.name}</h4>
+                                <span class="player-meta">${p.teamName} • ${p.posName} • ${p.own.toFixed(1)}%</span>
                             </div>
-                            <div class="replacement-price">£${player.price.toFixed(1)}m</div>
-                        </div>
-                        <div class="replacement-stats">
-                            <div class="rep-stat">
-                                <div class="rep-stat-value">${player.form.toFixed(1)}</div>
-                                <div class="rep-stat-label">Form</div>
-                            </div>
-                            <div class="rep-stat">
-                                <div class="rep-stat-value">${xGIPer90.toFixed(2)}</div>
-                                <div class="rep-stat-label">xGI/90</div>
-                            </div>
-                            <div class="rep-stat">
-                                <div class="rep-stat-value">${valueScore.toFixed(1)}</div>
-                                <div class="rep-stat-label">Pts/£m</div>
-                            </div>
-                            <div class="rep-stat">
-                                <div class="rep-stat-value" style="color: ${player.avgFDR <= 2.5 ? 'var(--accent-green)' : player.avgFDR <= 3.0 ? 'var(--accent-yellow)' : 'var(--accent-red)'};">${player.avgFDR.toFixed(1)}</div>
-                                <div class="rep-stat-label">FDR</div>
+                            <div style="text-align: right;">
+                                <div style="font-family: 'Space Mono'; font-size: 20px; font-weight: 700; color: var(--accent-green);">£${p.price.toFixed(1)}m</div>
                             </div>
                         </div>
-                        <div class="team-fixtures">${fixturesHtml}</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px; background: var(--bg); border-radius: 8px; margin: 10px 0;">
+                            <div style="text-align: center;">
+                                <div style="font-family: 'Space Mono'; font-size: 14px; font-weight: 600; color: var(--accent-green);">${p.form.toFixed(1)}</div>
+                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Form</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-family: 'Space Mono'; font-size: 14px; font-weight: 600; color: var(--accent-green);">${xgi90.toFixed(2)}</div>
+                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">xGI/90</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-family: 'Space Mono'; font-size: 14px; font-weight: 600;">${ppg.toFixed(1)}</div>
+                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Pts/£m</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-family: 'Space Mono'; font-size: 14px; font-weight: 600; color: ${fdrColor};">${p.avgFDR.toFixed(1)}</div>
+                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">FDR</div>
+                            </div>
+                        </div>
+                        <div class="fixture-badges">${fxHtml}</div>
                     </div>
                 `;
             });
             
-            container.innerHTML = html;
+            if (!html) html = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">🔍</div><h3>No Players Found</h3><p>Try adjusting filters</p></div>';
+            
+            document.getElementById('step4Content').innerHTML = html;
+            updateBudgets();
         }
         
-        function toggleBuy(playerId) {
-            const player = allPlayers.find(p => p.id === playerId);
+        function toggleBuy(id) {
+            const p = allPlayersById[id];
             
-            if (playersToBuyIds.has(playerId)) {
-                playersToBuyIds.delete(playerId);
-                playersToBuy = playersToBuy.filter(p => p.id !== playerId);
+            if (toBuyIds.has(id)) {
+                toBuyIds.delete(id);
+                toBuy = toBuy.filter(x => x.id !== id);
             } else {
-                // Check budget
-                const sellingValue = playersToSellDetails.reduce((sum, p) => sum + p.price, 0);
-                const totalBudget = itb + sellingValue;
-                const currentSpending = playersToBuy.reduce((sum, p) => sum + p.price, 0);
+                const sellVal = toSellPlayers.reduce((s, p) => s + p.price, 0);
+                const totalBudget = itb + sellVal;
+                const spending = toBuy.reduce((s, p) => s + p.price, 0);
                 
-                if (currentSpending + player.price > totalBudget) {
-                    alert('Not enough budget for this player!');
+                if (spending + p.price > totalBudget) {
+                    alert('Not enough budget!');
                     return;
                 }
                 
-                // Check max transfers
-                if (playersToBuyIds.size >= playersToSellIds.size) {
-                    alert(`You can only bring in ${playersToSellIds.size} player(s) to match your outgoing transfers.`);
+                if (toBuy.length >= toSell.size) {
+                    alert(`You can only bring in ${toSell.size} player(s)`);
                     return;
                 }
                 
-                playersToBuyIds.add(playerId);
-                playersToBuy.push(player);
+                toBuyIds.add(id);
+                toBuy.push(p);
             }
             
-            updateBudgetDisplay();
-            filterReplacements();
-            
-            // Enable review button if transfers match
-            document.getElementById('toReviewBtn').disabled = playersToBuyIds.size !== playersToSellIds.size;
+            updateBudgets();
+            renderReplacements();
+            document.getElementById('toStep5Btn').disabled = toBuy.length !== toSell.size;
         }
         
-        // =====================================================
-        // REVIEW (Step 5)
-        // =====================================================
-        function renderReview() {
-            const container = document.getElementById('transferSummary');
+        // ===== RENDER STEP 5 =====
+        function renderStep5() {
+            const sellVal = toSellPlayers.reduce((s, p) => s + p.price, 0);
+            const buyVal = toBuy.reduce((s, p) => s + p.price, 0);
+            const net = buyVal - sellVal;
             
-            const sellingValue = playersToSellDetails.reduce((sum, p) => sum + p.price, 0);
-            const buyingValue = playersToBuy.reduce((sum, p) => sum + p.price, 0);
-            const netSpend = buyingValue - sellingValue;
+            const avgSellFDR = toSellPlayers.reduce((s, p) => s + p.avgFDR, 0) / toSellPlayers.length;
+            const avgBuyFDR = toBuy.reduce((s, p) => s + p.avgFDR, 0) / toBuy.length;
+            const fdrDiff = avgSellFDR - avgBuyFDR;
             
-            // Calculate improvements
-            const avgSellFDR = playersToSellDetails.reduce((sum, p) => sum + p.avgFDR, 0) / playersToSellDetails.length;
-            const avgBuyFDR = playersToBuy.reduce((sum, p) => sum + p.avgFDR, 0) / playersToBuy.length;
-            const fdrImprovement = avgSellFDR - avgBuyFDR;
+            const avgSellForm = toSellPlayers.reduce((s, p) => s + p.form, 0) / toSellPlayers.length;
+            const avgBuyForm = toBuy.reduce((s, p) => s + p.form, 0) / toBuy.length;
+            const formDiff = avgBuyForm - avgSellForm;
             
-            const avgSellForm = playersToSellDetails.reduce((sum, p) => sum + p.form, 0) / playersToSellDetails.length;
-            const avgBuyForm = playersToBuy.reduce((sum, p) => sum + p.form, 0) / playersToBuy.length;
-            const formImprovement = avgBuyForm - avgSellForm;
+            let html = `<div class="summary-box"><div class="summary-title">📋 Transfer Summary</div>`;
             
-            let html = `
-                <div class="summary-box">
-                    <div class="summary-title">📋 Transfer Summary</div>
-            `;
-            
-            // Create transfer rows
-            for (let i = 0; i < playersToSellDetails.length; i++) {
-                const out = playersToSellDetails[i];
-                const inPlayer = playersToBuy[i];
-                
+            for (let i = 0; i < toSellPlayers.length; i++) {
+                const out = toSellPlayers[i];
+                const inp = toBuy[i];
                 html += `
                     <div class="transfer-row">
                         <div class="transfer-out">
                             <div class="transfer-player-name">${out.name}</div>
-                            <div class="transfer-player-team">${out.team} • ${out.positionName}</div>
+                            <div class="transfer-player-team">${out.team} • ${out.posName}</div>
                             <div class="transfer-player-price out">-£${out.price.toFixed(1)}m</div>
                         </div>
                         <div class="transfer-arrow">→</div>
                         <div class="transfer-in">
-                            <div class="transfer-player-name">${inPlayer.name}</div>
-                            <div class="transfer-player-team">${inPlayer.team} • ${inPlayer.positionName}</div>
-                            <div class="transfer-player-price in">+£${inPlayer.price.toFixed(1)}m</div>
+                            <div class="transfer-player-name">${inp.name}</div>
+                            <div class="transfer-player-team">${inp.team} • ${inp.posName}</div>
+                            <div class="transfer-player-price in">+£${inp.price.toFixed(1)}m</div>
                         </div>
                     </div>
                 `;
             }
-            
             html += '</div>';
             
-            // Stats
+            const hit = toSellPlayers.length > 1 ? (toSellPlayers.length - 1) * -4 : 0;
+            
             html += `
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-value" style="color: ${netSpend <= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">
-                            ${netSpend <= 0 ? '+' : '-'}£${Math.abs(netSpend).toFixed(1)}m
+                        <div class="stat-value" style="color: ${net <= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">
+                            ${net <= 0 ? '+' : '-'}£${Math.abs(net).toFixed(1)}m
                         </div>
-                        <div class="stat-label">${netSpend <= 0 ? 'Money Saved' : 'Net Spend'}</div>
+                        <div class="stat-label">${net <= 0 ? 'Saved' : 'Spent'}</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" style="color: ${fdrImprovement > 0 ? 'var(--accent-green)' : 'var(--accent-yellow)'};">
-                            ${fdrImprovement > 0 ? '+' : ''}${fdrImprovement.toFixed(1)}
+                        <div class="stat-value" style="color: ${fdrDiff > 0 ? 'var(--accent-green)' : 'var(--accent-yellow)'};">
+                            ${fdrDiff > 0 ? '+' : ''}${fdrDiff.toFixed(1)}
                         </div>
-                        <div class="stat-label">FDR Improvement</div>
+                        <div class="stat-label">FDR ↓</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" style="color: ${formImprovement > 0 ? 'var(--accent-green)' : 'var(--accent-yellow)'};">
-                            ${formImprovement > 0 ? '+' : ''}${formImprovement.toFixed(1)}
+                        <div class="stat-value" style="color: ${formDiff > 0 ? 'var(--accent-green)' : 'var(--accent-yellow)'};">
+                            ${formDiff > 0 ? '+' : ''}${formDiff.toFixed(1)}
                         </div>
-                        <div class="stat-label">Form Upgrade</div>
+                        <div class="stat-label">Form ↑</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value">${playersToSellDetails.length > freeTransfers ? (playersToSellDetails.length - freeTransfers) * -4 : 0}</div>
-                        <div class="stat-label">Point Hit</div>
+                        <div class="stat-value" style="color: ${hit < 0 ? 'var(--accent-red)' : 'var(--accent-green)'};">${hit}</div>
+                        <div class="stat-label">Hit</div>
                     </div>
                 </div>
             `;
             
-            // Success message
-            if (fdrImprovement > 0 && formImprovement >= 0 && netSpend <= 0) {
-                html += `
-                    <div class="success-box">
-                        <h4>✅ Smart Transfer Detected</h4>
-                        <p>You're improving fixtures, upgrading form, AND saving money. Execute with confidence!</p>
-                    </div>
-                `;
-            } else if (fdrImprovement > 0 || formImprovement > 0) {
-                html += `
-                    <div class="success-box" style="border-color: var(--accent-yellow); background: rgba(255, 165, 2, 0.1);">
-                        <h4 style="color: var(--accent-yellow);">⚡ Good Transfer</h4>
-                        <p>This transfer improves your squad. Consider the trade-offs.</p>
-                    </div>
-                `;
+            if (fdrDiff > 0 && formDiff >= 0 && net <= 0) {
+                html += `<div class="success-box"><h4>✅ Smart Transfer</h4><p>Better fixtures, form improvement, and saving money!</p></div>`;
+            } else if (fdrDiff > 0 || formDiff > 0) {
+                html += `<div class="success-box" style="border-color: var(--accent-yellow); background: rgba(255, 165, 2, 0.1);"><h4 style="color: var(--accent-yellow);">⚡ Good Move</h4><p>Solid improvements. Consider the trade-offs.</p></div>`;
             }
             
-            container.innerHTML = html;
+            document.getElementById('step5Content').innerHTML = html;
         }
         
-        function executeTransfers() {
-            // Save transfer plan to localStorage
-            const plan = {
+        function executePlan() {
+            localStorage.setItem('fpl_transfer_plan', JSON.stringify({
                 date: new Date().toISOString(),
-                out: playersToSellDetails.map(p => ({ id: p.id, name: p.name, team: p.team, price: p.price })),
-                in: playersToBuy.map(p => ({ id: p.id, name: p.name, team: p.team, price: p.price }))
-            };
-            
-            localStorage.setItem('fpl_transfer_plan', JSON.stringify(plan));
-            
-            // Open FPL transfers page
-            alert('Transfer plan saved! Opening FPL transfers page...');
+                out: toSellPlayers.map(p => ({ id: p.id, name: p.name })),
+                in: toBuy.map(p => ({ id: p.id, name: p.name }))
+            }));
+            alert('Plan saved! Opening FPL...');
             window.open('https://fantasy.premierleague.com/transfers', '_blank');
         }
         
-        // =====================================================
-        // NAVIGATION
-        // =====================================================
+        // ===== NAVIGATION =====
         function goToStep(step) {
-            // Validation
-            if (step === 2 && myTeam.length !== 15) {
-                alert('Please build your team first!');
-                return;
-            }
+            if (step >= 2 && myTeam.length !== 15) { alert('Load your team first!'); return; }
+            if (step >= 3 && toSell.size === 0) { alert('Select players to sell first!'); return; }
+            if (step === 5 && toBuy.length !== toSell.size) { alert('Select all replacements first!'); return; }
             
-            if (step === 3 && playersToSellIds.size === 0) {
-                alert('Please select at least one player to sell.');
-                return;
-            }
-            
-            if (step === 5 && playersToBuyIds.size !== playersToSellIds.size) {
-                alert('Please select replacements for all outgoing players.');
-                return;
-            }
-            
-            // Update panels
-            document.querySelectorAll('.step-panel').forEach(panel => {
-                panel.classList.remove('active');
-            });
+            document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
             document.getElementById(`panel-${step}`).classList.add('active');
             
-            // Update progress
-            document.querySelectorAll('.progress-step').forEach((el, index) => {
-                el.classList.remove('active', 'completed', 'disabled');
-                if (index + 1 < step) {
-                    el.classList.add('completed');
-                } else if (index + 1 === step) {
-                    el.classList.add('active');
-                } else if (index + 1 > step + 1) {
-                    el.classList.add('disabled');
-                }
-            });
+            updateProgress(step);
             
-            currentStep = step;
-            
-            // Step-specific rendering
-            if (step === 2) {
-                renderSellSelection();
-            } else if (step === 3) {
-                renderFixtureAnalysis();
-            } else if (step === 4) {
-                // Auto-set position filter based on what's being sold
-                if (playersToSellDetails.length === 1) {
-                    document.getElementById('positionFilter').value = playersToSellDetails[0].position;
-                }
-                filterReplacements();
-            } else if (step === 5) {
-                renderReview();
+            if (step === 2) renderStep2();
+            else if (step === 3) renderStep3();
+            else if (step === 4) {
+                if (toSellPlayers.length === 1) document.getElementById('posFilter').value = toSellPlayers[0].pos;
+                renderReplacements();
             }
+            else if (step === 5) renderStep5();
             
-            // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
-        function updateStatus(message, type = 'loading') {
-            const bar = document.getElementById('statusBar');
-            const text = document.getElementById('statusText');
-            
-            bar.className = `status-bar ${type}`;
-            
-            if (type === 'loading') {
-                bar.innerHTML = `<div class="spinner"></div><span>${message}</span>`;
-            } else {
-                bar.innerHTML = `<span>${type === 'success' ? '✓' : '⚠'} ${message}</span>`;
-            }
+        function updateProgress(current) {
+            document.querySelectorAll('.progress-step').forEach((el, i) => {
+                el.classList.remove('active', 'completed', 'disabled');
+                if (i + 1 < current) el.classList.add('completed');
+                else if (i + 1 === current) el.classList.add('active');
+                else if (i + 1 > current + 1) el.classList.add('disabled');
+            });
         }
         
-        // Initialize on load
+        function updateStatus(msg, type) {
+            const bar = document.getElementById('statusBar');
+            bar.className = `status-bar ${type}`;
+            bar.innerHTML = type === 'loading' ? `<div class="spinner"></div><span>${msg}</span>` : `<span>${type === 'success' ? '✓' : '⚠'} ${msg}</span>`;
+        }
+        
+        // Enter key to load
+        document.getElementById('teamIdInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadTeamById(); });
+        
         window.addEventListener('load', init);
     </script>
 </body>
