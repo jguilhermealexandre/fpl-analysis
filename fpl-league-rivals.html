@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPL League Rivals Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0a0e14;
+            --surface: #151920;
+            --surface-light: #1d242e;
+            --accent-green: #00ff88;
+            --accent-red: #ff4757;
+            --accent-yellow: #ffa502;
+            --accent-blue: #00ccff;
+            --accent-purple: #9b59b6;
+            --accent-orange: #ff6b35;
+            --text: #e0e5ed;
+            --text-dim: #8b95a5;
+            --border: #2a3340;
+        }
+        
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
+            border-bottom: 2px solid var(--accent-orange);
+            padding: 20px 30px;
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: 24px;
+            color: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .home-link {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 12px;
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .home-link:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+        
+        /* Input Section */
+        .input-section {
+            background: var(--surface);
+            padding: 30px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .input-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 20px;
+            align-items: end;
+        }
+        
+        @media (max-width: 768px) {
+            .input-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            background: var(--bg);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 14px 18px;
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+        }
+        
+        .input-group input::placeholder {
+            color: var(--text-dim);
+        }
+        
+        .input-help {
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-top: 6px;
+        }
+        
+        .load-btn {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, var(--accent-orange) 0%, #e55a2b 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        .load-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+        }
+        
+        .load-btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+        
+        /* League Info */
+        .league-info {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 107, 53, 0.1);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .league-info.show { display: block; }
+        
+        .league-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            color: var(--accent-orange);
+            margin-bottom: 10px;
+        }
+        
+        .league-meta {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        
+        .your-team-select {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .your-team-select label {
+            font-size: 12px;
+            color: var(--text);
+        }
+        
+        .your-team-select select {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            min-width: 250px;
+        }
+        
+        .your-team-select select:focus {
+            outline: none;
+            border-color: var(--accent-green);
+        }
+        
+        .analyze-btn {
+            padding: 10px 24px;
+            background: var(--accent-green);
+            color: var(--bg);
+            border: none;
+            border-radius: 6px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
+        }
+        
+        /* Main Content */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        
+        /* Status */
+        .status-bar {
+            padding: 12px 20px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+        }
+        
+        .status-bar.loading { border-left: 4px solid var(--accent-yellow); }
+        .status-bar.success { border-left: 4px solid var(--accent-green); }
+        .status-bar.error { border-left: 4px solid var(--accent-red); }
+        
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 900px) {
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        @media (max-width: 500px) {
+            .summary-grid { grid-template-columns: 1fr; }
+        }
+        
+        .summary-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            border: 2px solid var(--border);
+            transition: all 0.2s;
+        }
+        
+        .summary-card.danger {
+            border-color: var(--accent-red);
+            background: rgba(255, 71, 87, 0.05);
+        }
+        
+        .summary-card.opportunity {
+            border-color: var(--accent-green);
+            background: rgba(0, 255, 136, 0.05);
+        }
+        
+        .summary-card.info {
+            border-color: var(--accent-blue);
+            background: rgba(0, 204, 255, 0.05);
+        }
+        
+        .summary-card.warning {
+            border-color: var(--accent-yellow);
+            background: rgba(255, 165, 2, 0.05);
+        }
+        
+        .summary-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .summary-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .summary-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .section-header h2 {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-header .count {
+            background: var(--surface-light);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        
+        /* Player Cards */
+        .players-section {
+            margin-bottom: 40px;
+        }
+        
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 15px;
+        }
+        
+        .player-card {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+        
+        .player-card:hover {
+            border-color: var(--accent-blue);
+        }
+        
+        .player-card.danger {
+            border-left: 4px solid var(--accent-red);
+        }
+        
+        .player-card.opportunity {
+            border-left: 4px solid var(--accent-green);
+        }
+        
+        .player-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .player-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .player-meta {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        
+        .player-price {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            color: var(--accent-green);
+        }
+        
+        .ownership-bar-container {
+            margin-bottom: 12px;
+        }
+        
+        .ownership-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            margin-bottom: 6px;
+        }
+        
+        .ownership-bar {
+            height: 8px;
+            background: var(--bg);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .ownership-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        .ownership-bar-fill.high { background: var(--accent-red); }
+        .ownership-bar-fill.medium { background: var(--accent-yellow); }
+        .ownership-bar-fill.low { background: var(--accent-green); }
+        
+        .player-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        
+        .player-stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .player-stat-value {
+            color: var(--text);
+            font-weight: 500;
+        }
+        
+        .you-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: var(--accent-green);
+            color: var(--bg);
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-left: 8px;
+        }
+        
+        .missing-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: var(--accent-red);
+            color: white;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-left: 8px;
+        }
+        
+        /* Ownership Matrix */
+        .matrix-section {
+            margin-bottom: 40px;
+        }
+        
+        .matrix-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .matrix-filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .matrix-filter label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+        
+        .matrix-filter select {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+        }
+        
+        .matrix-container {
+            overflow-x: auto;
+            background: var(--surface);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        
+        .matrix-table th,
+        .matrix-table td {
+            padding: 12px 10px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .matrix-table th {
+            background: var(--surface-light);
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+        }
+        
+        .matrix-table th.player-col {
+            text-align: left;
+            min-width: 150px;
+        }
+        
+        .matrix-table th.rotate {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            height: 100px;
+            padding: 10px 5px;
+            font-size: 9px;
+            max-width: 40px;
+        }
+        
+        .matrix-table td.player-cell {
+            text-align: left;
+            font-weight: 500;
+        }
+        
+        .matrix-table td.player-cell .pos {
+            font-size: 9px;
+            color: var(--text-dim);
+            margin-left: 5px;
+        }
+        
+        .matrix-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .matrix-cell {
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .matrix-cell.owned {
+            background: var(--accent-green);
+            color: var(--bg);
+        }
+        
+        .matrix-cell.not-owned {
+            background: var(--surface-light);
+            color: var(--text-dim);
+        }
+        
+        .matrix-cell.you-owned {
+            background: var(--accent-blue);
+            color: var(--bg);
+            font-weight: 700;
+        }
+        
+        .matrix-cell.you-missing {
+            background: var(--accent-red);
+            color: white;
+        }
+        
+        .ownership-pct {
+            font-family: 'Space Mono', monospace;
+            font-weight: 600;
+        }
+        
+        .ownership-pct.high { color: var(--accent-red); }
+        .ownership-pct.medium { color: var(--accent-yellow); }
+        .ownership-pct.low { color: var(--accent-green); }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-dim);
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state h3 {
+            font-size: 20px;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+        
+        /* Action Box */
+        .action-box {
+            background: linear-gradient(135deg, rgba(255, 71, 87, 0.1) 0%, rgba(255, 107, 53, 0.1) 100%);
+            border: 2px solid var(--accent-red);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .action-box h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+            color: var(--accent-red);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .action-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 71, 87, 0.2);
+        }
+        
+        .action-item:last-child {
+            border-bottom: none;
+        }
+        
+        .action-priority {
+            width: 30px;
+            height: 30px;
+            background: var(--accent-red);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        
+        .action-text {
+            flex: 1;
+        }
+        
+        .action-text strong {
+            color: var(--text);
+        }
+        
+        .action-text span {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            color: var(--text);
+        }
+        
+        .tab.active {
+            color: var(--accent-orange);
+            border-bottom-color: var(--accent-orange);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .player-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .matrix-table th.rotate {
+                writing-mode: horizontal-tb;
+                transform: none;
+                height: auto;
+                font-size: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1>🏆 League Rivals Analysis</h1>
+            <a href="index.html" class="home-link">← Back to Tools</a>
+        </div>
+    </header>
+    
+    <!-- Input Section -->
+    <div class="input-section">
+        <div class="input-inner">
+            <div class="input-grid">
+                <div class="input-group">
+                    <label>League ID</label>
+                    <input type="text" id="leagueIdInput" placeholder="e.g. 12345">
+                    <div class="input-help">Find it in your league URL: /leagues/12345/standings</div>
+                </div>
+                <div class="input-group">
+                    <label>Your Team ID (Optional)</label>
+                    <input type="text" id="yourTeamIdInput" placeholder="Auto-detect or enter manually">
+                    <div class="input-help">Leave blank to select from league after loading</div>
+                </div>
+                <button class="load-btn" id="loadBtn" onclick="loadLeague()">Load League</button>
+            </div>
+            
+            <div class="league-info" id="leagueInfo">
+                <div class="league-name" id="leagueName">-</div>
+                <div class="league-meta" id="leagueMeta">-</div>
+                <div class="your-team-select">
+                    <label>Select Your Team:</label>
+                    <select id="yourTeamSelect">
+                        <option value="">-- Select your team --</option>
+                    </select>
+                    <button class="analyze-btn" id="analyzeBtn" onclick="analyzeRivals()">Analyze Rivals →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="statusBar" class="status-bar loading" style="display: none;">
+            <div class="spinner"></div>
+            <span id="statusText">Loading...</span>
+        </div>
+        
+        <div id="resultsContainer" style="display: none;">
+            <!-- Summary Cards -->
+            <div class="summary-grid" id="summaryGrid">
+                <div class="summary-card danger">
+                    <div class="summary-icon">🚨</div>
+                    <div class="summary-value" id="missingCount">0</div>
+                    <div class="summary-label">Missing Templates</div>
+                </div>
+                <div class="summary-card opportunity">
+                    <div class="summary-icon">⚔️</div>
+                    <div class="summary-value" id="diffCount">0</div>
+                    <div class="summary-label">Your Differentials</div>
+                </div>
+                <div class="summary-card info">
+                    <div class="summary-icon">📊</div>
+                    <div class="summary-value" id="similarityPct">0%</div>
+                    <div class="summary-label">Template Match</div>
+                </div>
+                <div class="summary-card warning">
+                    <div class="summary-icon">🎯</div>
+                    <div class="summary-value" id="uniqueCount">0</div>
+                    <div class="summary-label">Only You Own</div>
+                </div>
+            </div>
+            
+            <!-- Action Required Box -->
+            <div class="action-box" id="actionBox" style="display: none;">
+                <h3>🚨 Priority Transfers</h3>
+                <div id="actionItems"></div>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('insights')">Key Insights</button>
+                <button class="tab" onclick="showTab('matrix')">Ownership Matrix</button>
+                <button class="tab" onclick="showTab('rivals')">Rival Comparison</button>
+            </div>
+            
+            <!-- Tab: Insights -->
+            <div class="tab-content active" id="tab-insights">
+                <!-- Missing Templates -->
+                <div class="players-section" id="missingSection">
+                    <div class="section-header">
+                        <h2 style="color: var(--accent-red);">🚨 Missing Templates</h2>
+                        <span class="count" id="missingCountLabel">0 players</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 20px;">
+                        Players that 50%+ of your rivals own that you DON'T have. High risk if they haul.
+                    </p>
+                    <div class="player-grid" id="missingGrid"></div>
+                </div>
+                
+                <!-- Your Differentials -->
+                <div class="players-section" id="diffSection">
+                    <div class="section-header">
+                        <h2 style="color: var(--accent-green);">⚔️ Your Differentials</h2>
+                        <span class="count" id="diffCountLabel">0 players</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 20px;">
+                        Players YOU own that less than 30% of rivals have. Your edge if they haul.
+                    </p>
+                    <div class="player-grid" id="diffGrid"></div>
+                </div>
+            </div>
+            
+            <!-- Tab: Matrix -->
+            <div class="tab-content" id="tab-matrix">
+                <div class="matrix-section">
+                    <div class="section-header">
+                        <h2>📊 Full Ownership Matrix</h2>
+                    </div>
+                    
+                    <div class="matrix-controls">
+                        <div class="matrix-filter">
+                            <label>Position:</label>
+                            <select id="matrixPosFilter" onchange="renderMatrix()">
+                                <option value="all">All</option>
+                                <option value="1">Goalkeepers</option>
+                                <option value="2">Defenders</option>
+                                <option value="3">Midfielders</option>
+                                <option value="4">Forwards</option>
+                            </select>
+                        </div>
+                        <div class="matrix-filter">
+                            <label>Show:</label>
+                            <select id="matrixShowFilter" onchange="renderMatrix()">
+                                <option value="all">All Players</option>
+                                <option value="owned">Any Rival Owns</option>
+                                <option value="popular">50%+ Ownership</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="matrix-container">
+                        <table class="matrix-table" id="matrixTable">
+                            <thead id="matrixHead"></thead>
+                            <tbody id="matrixBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab: Rivals -->
+            <div class="tab-content" id="tab-rivals">
+                <div class="section-header">
+                    <h2>👥 Head-to-Head Comparison</h2>
+                </div>
+                
+                <div class="matrix-controls">
+                    <div class="matrix-filter">
+                        <label>Compare with:</label>
+                        <select id="rivalSelect" onchange="renderRivalComparison()">
+                            <option value="">-- Select a rival --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="rivalComparison"></div>
+            </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+            <div class="empty-state-icon">🏆</div>
+            <h3>Compare Your Team vs League Rivals</h3>
+            <p>Enter your league ID above to analyze ownership patterns,<br>find missing templates, and discover your differentials.</p>
+        </div>
+    </main>
+    
+    <script>
+        // ===== STATE =====
+        let allPlayers = [];
+        let allPlayersById = {};
+        let teams = {};
+        let leagueData = null;
+        let managers = [];
+        let managerPicks = {};
+        let myTeamId = null;
+        let myPicks = new Set();
+        let currentGW = 1;
+        
+        const PROXY = 'https://corsproxy.io/?';
+        const POS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+        const MAX_MANAGERS = 15;
+        
+        // ===== INIT =====
+        async function init() {
+            try {
+                // Load bootstrap
+                const res = await fetch(PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/'));
+                const data = await res.json();
+                
+                // Current GW
+                const curr = data.events.find(e => e.is_current);
+                currentGW = curr ? curr.id : 1;
+                
+                // Teams
+                data.teams.forEach(t => {
+                    teams[t.id] = { id: t.id, name: t.name, short: t.short_name };
+                });
+                
+                // Players
+                data.elements.forEach(p => {
+                    const player = {
+                        id: p.id,
+                        name: p.web_name,
+                        team: teams[p.team]?.short || '?',
+                        teamName: teams[p.team]?.name || '?',
+                        pos: p.element_type,
+                        posName: POS[p.element_type],
+                        price: p.now_cost / 10,
+                        form: parseFloat(p.form) || 0,
+                        pts: p.total_points,
+                        own: parseFloat(p.selected_by_percent) || 0
+                    };
+                    allPlayers.push(player);
+                    allPlayersById[p.id] = player;
+                });
+                
+                // Check saved IDs
+                const savedLeague = localStorage.getItem('fpl_league_id');
+                const savedTeam = localStorage.getItem('fpl_team_id');
+                if (savedLeague) document.getElementById('leagueIdInput').value = savedLeague;
+                if (savedTeam) document.getElementById('yourTeamIdInput').value = savedTeam;
+                
+            } catch (err) {
+                console.error('Init error:', err);
+            }
+        }
+        
+        // ===== LOAD LEAGUE =====
+        async function loadLeague() {
+            const leagueId = document.getElementById('leagueIdInput').value.trim();
+            if (!leagueId) {
+                alert('Please enter a League ID');
+                return;
+            }
+            
+            const btn = document.getElementById('loadBtn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            showStatus('Fetching league data...', 'loading');
+            
+            try {
+                // Fetch league standings
+                const url = `https://fantasy.premierleague.com/api/leagues-classic/${leagueId}/standings/`;
+                const res = await fetch(PROXY + encodeURIComponent(url));
+                
+                if (!res.ok) throw new Error('League not found');
+                
+                leagueData = await res.json();
+                
+                // Get managers (limit to MAX_MANAGERS)
+                managers = leagueData.standings.results.slice(0, MAX_MANAGERS);
+                
+                if (managers.length === 0) {
+                    throw new Error('No managers found in league');
+                }
+                
+                // Display league info
+                document.getElementById('leagueName').textContent = leagueData.league.name;
+                document.getElementById('leagueMeta').textContent = `${managers.length} managers • Created ${new Date(leagueData.league.created).toLocaleDateString()}`;
+                
+                // Populate team selector
+                const select = document.getElementById('yourTeamSelect');
+                select.innerHTML = '<option value="">-- Select your team --</option>';
+                
+                managers.forEach((m, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = m.entry;
+                    opt.textContent = `${i + 1}. ${m.player_name} (${m.entry_name}) - ${m.total} pts`;
+                    select.appendChild(opt);
+                });
+                
+                // Check if user's team ID matches anyone in league
+                const userTeamId = document.getElementById('yourTeamIdInput').value.trim();
+                if (userTeamId) {
+                    const match = managers.find(m => m.entry.toString() === userTeamId);
+                    if (match) {
+                        select.value = userTeamId;
+                    }
+                }
+                
+                document.getElementById('leagueInfo').classList.add('show');
+                localStorage.setItem('fpl_league_id', leagueId);
+                
+                showStatus(`Loaded ${managers.length} managers from "${leagueData.league.name}"`, 'success');
+                
+            } catch (err) {
+                console.error('Load league error:', err);
+                showStatus(`Error: ${err.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Load League';
+            }
+        }
+        
+        // ===== ANALYZE RIVALS =====
+        async function analyzeRivals() {
+            myTeamId = document.getElementById('yourTeamSelect').value;
+            
+            if (!myTeamId) {
+                alert('Please select your team from the dropdown');
+                return;
+            }
+            
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+            showStatus('Fetching all manager teams...', 'loading');
+            
+            try {
+                // Fetch picks for all managers
+                managerPicks = {};
+                let loaded = 0;
+                
+                for (const manager of managers) {
+                    try {
+                        const url = `https://fantasy.premierleague.com/api/entry/${manager.entry}/event/${currentGW}/picks/`;
+                        const res = await fetch(PROXY + encodeURIComponent(url));
+                        
+                        if (res.ok) {
+                            const data = await res.json();
+                            managerPicks[manager.entry] = {
+                                manager: manager,
+                                picks: data.picks.map(p => p.element)
+                            };
+                            loaded++;
+                            showStatus(`Loading teams... ${loaded}/${managers.length}`, 'loading');
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to load picks for ${manager.entry}`);
+                    }
+                    
+                    // Small delay to avoid rate limiting
+                    await new Promise(r => setTimeout(r, 100));
+                }
+                
+                // Set my picks
+                myPicks = new Set(managerPicks[myTeamId]?.picks || []);
+                
+                localStorage.setItem('fpl_team_id', myTeamId);
+                
+                // Analyze and display results
+                displayResults();
+                
+                showStatus(`Analyzed ${loaded} teams. Found insights!`, 'success');
+                
+            } catch (err) {
+                console.error('Analyze error:', err);
+                showStatus(`Error: ${err.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analyze Rivals →';
+            }
+        }
+        
+        // ===== DISPLAY RESULTS =====
+        function displayResults() {
+            // Calculate ownership across all rivals (excluding yourself)
+            const rivalIds = Object.keys(managerPicks).filter(id => id !== myTeamId);
+            const ownershipCount = {};
+            
+            rivalIds.forEach(id => {
+                managerPicks[id].picks.forEach(playerId => {
+                    ownershipCount[playerId] = (ownershipCount[playerId] || 0) + 1;
+                });
+            });
+            
+            const totalRivals = rivalIds.length;
+            
+            // Calculate ownership percentages
+            const playerOwnership = Object.entries(ownershipCount).map(([playerId, count]) => ({
+                player: allPlayersById[parseInt(playerId)],
+                count,
+                pct: Math.round((count / totalRivals) * 100),
+                youOwn: myPicks.has(parseInt(playerId))
+            })).filter(p => p.player);
+            
+            // Missing templates: 50%+ rivals own, you don't
+            const missingTemplates = playerOwnership
+                .filter(p => p.pct >= 50 && !p.youOwn)
+                .sort((a, b) => b.pct - a.pct);
+            
+            // Your differentials: you own, <30% rivals own
+            const yourDifferentials = playerOwnership
+                .filter(p => p.youOwn && p.pct < 30)
+                .sort((a, b) => a.pct - b.pct);
+            
+            // Only you own: you own, 0 rivals own
+            const onlyYouOwn = [...myPicks]
+                .filter(id => !ownershipCount[id])
+                .map(id => allPlayersById[id])
+                .filter(p => p);
+            
+            // Template match: how many of your players are owned by 50%+ rivals
+            const yourTemplates = playerOwnership.filter(p => p.youOwn && p.pct >= 50).length;
+            const totalTemplates = playerOwnership.filter(p => p.pct >= 50).length;
+            const templateMatch = totalTemplates > 0 ? Math.round((yourTemplates / totalTemplates) * 100) : 100;
+            
+            // Update summary cards
+            document.getElementById('missingCount').textContent = missingTemplates.length;
+            document.getElementById('missingCount').style.color = missingTemplates.length > 2 ? 'var(--accent-red)' : 'var(--accent-yellow)';
+            
+            document.getElementById('diffCount').textContent = yourDifferentials.length;
+            document.getElementById('diffCount').style.color = 'var(--accent-green)';
+            
+            document.getElementById('similarityPct').textContent = templateMatch + '%';
+            document.getElementById('similarityPct').style.color = templateMatch >= 80 ? 'var(--accent-green)' : templateMatch >= 50 ? 'var(--accent-yellow)' : 'var(--accent-red)';
+            
+            document.getElementById('uniqueCount').textContent = onlyYouOwn.length;
+            
+            // Action box
+            if (missingTemplates.length > 0) {
+                document.getElementById('actionBox').style.display = 'block';
+                document.getElementById('actionItems').innerHTML = missingTemplates.slice(0, 3).map((p, i) => `
+                    <div class="action-item">
+                        <div class="action-priority">${i + 1}</div>
+                        <div class="action-text">
+                            <strong>Get ${p.player.name}</strong> (${p.player.team} ${p.player.posName})<br>
+                            <span>${p.pct}% of rivals own • £${p.player.price.toFixed(1)}m • ${p.player.form} form</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('actionBox').style.display = 'none';
+            }
+            
+            // Missing templates grid
+            document.getElementById('missingCountLabel').textContent = `${missingTemplates.length} players`;
+            document.getElementById('missingGrid').innerHTML = missingTemplates.length > 0 
+                ? missingTemplates.map(p => renderPlayerCard(p, 'danger')).join('')
+                : '<p style="color: var(--text-dim); grid-column: 1/-1;">✓ You have all template players! No gaps.</p>';
+            
+            // Differentials grid
+            document.getElementById('diffCountLabel').textContent = `${yourDifferentials.length} players`;
+            document.getElementById('diffGrid').innerHTML = yourDifferentials.length > 0
+                ? yourDifferentials.map(p => renderPlayerCard(p, 'opportunity')).join('')
+                : '<p style="color: var(--text-dim); grid-column: 1/-1;">No major differentials. Consider taking some risks!</p>';
+            
+            // Populate rival selector
+            const rivalSelect = document.getElementById('rivalSelect');
+            rivalSelect.innerHTML = '<option value="">-- Select a rival --</option>';
+            rivalIds.forEach(id => {
+                const m = managerPicks[id].manager;
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = `${m.player_name} (${m.entry_name})`;
+                rivalSelect.appendChild(opt);
+            });
+            
+            // Store data for matrix
+            window.playerOwnership = playerOwnership;
+            window.rivalIds = rivalIds;
+            
+            // Show results
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('resultsContainer').style.display = 'block';
+            
+            renderMatrix();
+        }
+        
+        function renderPlayerCard(p, type) {
+            const barClass = p.pct >= 70 ? 'high' : p.pct >= 40 ? 'medium' : 'low';
+            
+            return `
+                <div class="player-card ${type}">
+                    <div class="player-top">
+                        <div>
+                            <div class="player-name">
+                                ${p.player.name}
+                                ${p.youOwn ? '<span class="you-badge">You Own</span>' : '<span class="missing-badge">Missing</span>'}
+                            </div>
+                            <div class="player-meta">${p.player.teamName} • ${p.player.posName}</div>
+                        </div>
+                        <div class="player-price">£${p.player.price.toFixed(1)}m</div>
+                    </div>
+                    <div class="ownership-bar-container">
+                        <div class="ownership-bar-label">
+                            <span>League Ownership</span>
+                            <span class="ownership-pct ${barClass}">${p.pct}%</span>
+                        </div>
+                        <div class="ownership-bar">
+                            <div class="ownership-bar-fill ${barClass}" style="width: ${p.pct}%;"></div>
+                        </div>
+                    </div>
+                    <div class="player-stats">
+                        <div class="player-stat">Form: <span class="player-stat-value">${p.player.form}</span></div>
+                        <div class="player-stat">Pts: <span class="player-stat-value">${p.player.pts}</span></div>
+                        <div class="player-stat">Global: <span class="player-stat-value">${p.player.own}%</span></div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ===== MATRIX =====
+        function renderMatrix() {
+            if (!window.playerOwnership) return;
+            
+            const posFilter = document.getElementById('matrixPosFilter').value;
+            const showFilter = document.getElementById('matrixShowFilter').value;
+            
+            let players = window.playerOwnership;
+            
+            // Position filter
+            if (posFilter !== 'all') {
+                players = players.filter(p => p.player.pos === parseInt(posFilter));
+            }
+            
+            // Show filter
+            if (showFilter === 'owned') {
+                players = players.filter(p => p.count > 0 || p.youOwn);
+            } else if (showFilter === 'popular') {
+                players = players.filter(p => p.pct >= 50 || p.youOwn);
+            }
+            
+            // Sort by ownership
+            players.sort((a, b) => b.pct - a.pct);
+            
+            // Limit to top 50 for performance
+            players = players.slice(0, 50);
+            
+            // Build header
+            const rivals = window.rivalIds.map(id => managerPicks[id].manager);
+            
+            let headHtml = '<tr><th class="player-col">Player</th><th>You</th><th>%</th>';
+            rivals.forEach(r => {
+                const shortName = r.player_name.split(' ').map(n => n[0]).join('');
+                headHtml += `<th class="rotate" title="${r.player_name}">${shortName}</th>`;
+            });
+            headHtml += '</tr>';
+            document.getElementById('matrixHead').innerHTML = headHtml;
+            
+            // Build body
+            let bodyHtml = '';
+            players.forEach(p => {
+                const pctClass = p.pct >= 70 ? 'high' : p.pct >= 40 ? 'medium' : 'low';
+                
+                bodyHtml += '<tr>';
+                bodyHtml += `<td class="player-cell">${p.player.name} <span class="pos">${p.player.posName}</span></td>`;
+                bodyHtml += `<td><span class="matrix-cell ${p.youOwn ? 'you-owned' : 'you-missing'}">${p.youOwn ? '✓' : '✗'}</span></td>`;
+                bodyHtml += `<td><span class="ownership-pct ${pctClass}">${p.pct}%</span></td>`;
+                
+                rivals.forEach(r => {
+                    const hasPlayer = managerPicks[r.entry].picks.includes(p.player.id);
+                    bodyHtml += `<td><span class="matrix-cell ${hasPlayer ? 'owned' : 'not-owned'}">${hasPlayer ? '✓' : ''}</span></td>`;
+                });
+                
+                bodyHtml += '</tr>';
+            });
+            
+            document.getElementById('matrixBody').innerHTML = bodyHtml;
+        }
+        
+        // ===== RIVAL COMPARISON =====
+        function renderRivalComparison() {
+            const rivalId = document.getElementById('rivalSelect').value;
+            const container = document.getElementById('rivalComparison');
+            
+            if (!rivalId) {
+                container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 40px;">Select a rival to compare head-to-head</p>';
+                return;
+            }
+            
+            const rivalPicks = new Set(managerPicks[rivalId].picks);
+            const rivalManager = managerPicks[rivalId].manager;
+            
+            // Find differences
+            const onlyYou = [...myPicks].filter(id => !rivalPicks.has(id)).map(id => allPlayersById[id]).filter(p => p);
+            const onlyRival = [...rivalPicks].filter(id => !myPicks.has(id)).map(id => allPlayersById[id]).filter(p => p);
+            const shared = [...myPicks].filter(id => rivalPicks.has(id)).map(id => allPlayersById[id]).filter(p => p);
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <div class="summary-card opportunity" style="padding: 20px;">
+                        <div style="font-size: 24px; margin-bottom: 5px;">⚔️ ${onlyYou.length}</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Only You Own</div>
+                    </div>
+                    <div class="summary-card info" style="padding: 20px;">
+                        <div style="font-size: 24px; margin-bottom: 5px;">🤝 ${shared.length}</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Shared Players</div>
+                    </div>
+                    <div class="summary-card danger" style="padding: 20px;">
+                        <div style="font-size: 24px; margin-bottom: 5px;">👀 ${onlyRival.length}</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Only ${rivalManager.player_name.split(' ')[0]} Owns</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px;">
+                    <div>
+                        <h4 style="color: var(--accent-green); margin-bottom: 15px;">⚔️ Your Differentials vs ${rivalManager.player_name.split(' ')[0]}</h4>
+                        ${onlyYou.map(p => `
+                            <div style="display: flex; justify-content: space-between; padding: 10px; background: var(--surface); border-radius: 6px; margin-bottom: 8px;">
+                                <span>${p.name} <span style="color: var(--text-dim); font-size: 11px;">${p.posName}</span></span>
+                                <span style="color: var(--accent-green);">£${p.price.toFixed(1)}m</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div>
+                        <h4 style="color: var(--accent-red); margin-bottom: 15px;">👀 ${rivalManager.player_name.split(' ')[0]}'s Differentials</h4>
+                        ${onlyRival.map(p => `
+                            <div style="display: flex; justify-content: space-between; padding: 10px; background: var(--surface); border-radius: 6px; margin-bottom: 8px;">
+                                <span>${p.name} <span style="color: var(--text-dim); font-size: 11px;">${p.posName}</span></span>
+                                <span style="color: var(--accent-yellow);">£${p.price.toFixed(1)}m</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // ===== TABS =====
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            if (tabName === 'matrix') renderMatrix();
+        }
+        
+        // ===== HELPERS =====
+        function showStatus(msg, type) {
+            const bar = document.getElementById('statusBar');
+            bar.style.display = 'flex';
+            bar.className = `status-bar ${type}`;
+            bar.innerHTML = type === 'loading' 
+                ? `<div class="spinner"></div><span>${msg}</span>`
+                : `<span>${type === 'success' ? '✓' : '⚠'} ${msg}</span>`;
+        }
+        
+        // Enter key handlers
+        document.getElementById('leagueIdInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadLeague(); });
+        
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
