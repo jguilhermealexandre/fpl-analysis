@@ -1185,7 +1185,7 @@
         <div class="header">
             <h1>⚽ My Team Analysis</h1>
             <p>Research-backed sell/hold recommendations using xGI, fixtures, injuries, and position-specific thresholds</p>
-            <span class="badge">🔬 Research-Backed v4.4 - Position-Specific</span>
+            <span class="badge">🔬 Research-Backed v4.5 - Separated Attack/Defense FDR</span>
         </div>
 
         <!-- Team ID Input Section -->
@@ -1417,14 +1417,16 @@
                                     <li>Each insight provides specific numbers, context, and actionable reasoning</li>
                                 </ul>
 
-                                <p><strong>3. Fixture-Aware Analysis (FDR Integration):</strong></p>
+                                <p><strong>3. Position-Aware Fixture Analysis (v4.5 - NEW!):</strong></p>
                                 <ul>
-                                    <li>Shows next 3 fixtures with individual FDR ratings (1-5 scale)</li>
-                                    <li>Calculates average FDR: <2.5 = green run, >3.5 = brutal run</li>
-                                    <li><strong>Easy fixtures (FDR < 2.5):</strong> 20% rating discount - worth holding through poor form</li>
-                                    <li><strong>Tough fixtures (FDR > 3.5):</strong> +15 points penalty - sell before fixture swing</li>
-                                    <li>Example: Player with 3 blanks but facing Luton (H, FDR 2) and Sheffield (A, FDR 2) gets fixture discount</li>
-                                    <li>Home/away indicated: SHU(H, 2) = Sheffield at home, FDR 2</li>
+                                    <li><strong>Separated Attack/Defense FDR:</strong> Now analyzes opponent attack AND defense separately</li>
+                                    <li><strong>For Defenders/GKs:</strong> 70% weight on opponent ATTACK strength (what threatens clean sheets)</li>
+                                    <li><strong>For Midfielders/Forwards:</strong> 70% weight on opponent DEFENSE weakness (what enables goals)</li>
+                                    <li><strong>Position FDR:</strong> Custom difficulty rating based on what matters for YOUR position</li>
+                                    <li><strong>Example:</strong> Wolves may have FDR 3, but weak defense (2.2) + strong attack (3.8) = great for attackers, bad for defenders</li>
+                                    <li>Uses team strength data from FPL API: strength_attack_home, strength_defence_away, etc.</li>
+                                    <li>Home advantage: -0.3 FDR adjustment (clean sheets 15% more likely at home)</li>
+                                    <li>🛡️ Defenders see "Opp Attack" rating | ⚡ Attackers see "Opp Defense" rating</li>
                                 </ul>
 
                                 <p><strong>4. Bench Fodder Detection:</strong></p>
@@ -1839,6 +1841,106 @@
             4: { form: 0.65, fixture: 0.35, label: 'FWD: Form dominates (goal-scoring form)' }
         };
 
+        // POSITION-AWARE FIXTURE DIFFICULTY CALCULATION
+        // Research finding: "For attackers: Opposition defense 70%, attack 30%. 
+        // For defenders: Opposition attack 70%, defense 30%."
+        // This separates fixture analysis based on what actually matters for each position.
+        function calculatePositionAwareFDR(fixture, playerPosition) {
+            if (!fixture.opponentId || !teams[fixture.opponentId]) {
+                // Fallback to standard FDR if opponent data unavailable
+                return { 
+                    positionFDR: fixture.difficulty, 
+                    attackFDR: fixture.difficulty,
+                    defenseFDR: fixture.difficulty,
+                    breakdown: null 
+                };
+            }
+            
+            const opponent = teams[fixture.opponentId];
+            const isHome = fixture.isHome;
+            
+            // Get opponent's relevant strength ratings
+            // When playing away, we face their HOME attack/defense
+            // When playing at home, we face their AWAY attack/defense
+            const oppAttack = isHome ? opponent.strength_attack_away : opponent.strength_attack_home;
+            const oppDefense = isHome ? opponent.strength_defence_away : opponent.strength_defence_home;
+            
+            // Typical strength values range from ~1000-1400
+            // Convert to FDR-like scale (1-5) for consistency
+            // 1000 = FDR 1 (easiest), 1400 = FDR 5 (hardest)
+            const attackFDR = Math.max(1, Math.min(5, 1 + (oppAttack - 1000) / 100));
+            const defenseFDR = Math.max(1, Math.min(5, 1 + (oppDefense - 1000) / 100));
+            
+            // Home advantage adjustment (~15% better chance of clean sheet at home)
+            const homeBoost = isHome ? -0.3 : 0.3;
+            
+            let positionFDR;
+            let breakdown;
+            
+            if (playerPosition <= 2) {
+                // GK/DEF: Care more about opponent's ATTACK (70% attack, 30% defense)
+                // Higher opponent attack = harder fixture for defenders
+                positionFDR = (attackFDR * 0.70) + (defenseFDR * 0.30) + homeBoost;
+                breakdown = {
+                    type: 'defensive',
+                    oppAttack: oppAttack,
+                    oppDefense: oppDefense,
+                    attackFDR: attackFDR.toFixed(2),
+                    defenseFDR: defenseFDR.toFixed(2),
+                    weights: '70% opp attack, 30% opp defense',
+                    homeBoost: homeBoost
+                };
+            } else {
+                // MID/FWD: Care more about opponent's DEFENSE weakness (70% defense, 30% attack)
+                // Lower opponent defense = easier fixture for attackers
+                positionFDR = (defenseFDR * 0.70) + (attackFDR * 0.30) + homeBoost;
+                breakdown = {
+                    type: 'attacking',
+                    oppAttack: oppAttack,
+                    oppDefense: oppDefense,
+                    attackFDR: attackFDR.toFixed(2),
+                    defenseFDR: defenseFDR.toFixed(2),
+                    weights: '70% opp defense, 30% opp attack',
+                    homeBoost: homeBoost
+                };
+            }
+            
+            // Clamp to 1-5 range
+            positionFDR = Math.max(1, Math.min(5, positionFDR));
+            
+            return {
+                positionFDR: positionFDR,
+                attackFDR: attackFDR,
+                defenseFDR: defenseFDR,
+                standardFDR: fixture.difficulty,
+                breakdown: breakdown
+            };
+        }
+        
+        // Calculate average position-aware FDR for multiple fixtures
+        function calculateAvgPositionFDR(fixtures, playerPosition) {
+            if (!fixtures || fixtures.length === 0) {
+                return { avgPositionFDR: 3.0, avgAttackFDR: 3.0, avgDefenseFDR: 3.0, fixtureDetails: [] };
+            }
+            
+            const details = fixtures.map(f => ({
+                ...f,
+                ...calculatePositionAwareFDR(f, playerPosition)
+            }));
+            
+            const avgPositionFDR = details.reduce((sum, d) => sum + d.positionFDR, 0) / details.length;
+            const avgAttackFDR = details.reduce((sum, d) => sum + d.attackFDR, 0) / details.length;
+            const avgDefenseFDR = details.reduce((sum, d) => sum + d.defenseFDR, 0) / details.length;
+            
+            return {
+                avgPositionFDR: avgPositionFDR,
+                avgAttackFDR: avgAttackFDR,
+                avgDefenseFDR: avgDefenseFDR,
+                avgStandardFDR: details.reduce((sum, d) => sum + d.standardFDR, 0) / details.length,
+                fixtureDetails: details
+            };
+        }
+
         // Normalize text for accent-insensitive search
         function normalizeText(text) {
             return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -2099,11 +2201,21 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                         .filter(f => f.team_h === tid || f.team_a === tid)
                         .slice(0, 3);
                     
-                    teamFixtures[tid] = teamFix.map(f => ({
-                        opponent: f.team_h === tid ? teams[f.team_a]?.short_name : teams[f.team_h]?.short_name,
-                        difficulty: f.team_h === tid ? f.team_h_difficulty : f.team_a_difficulty,
-                        isHome: f.team_h === tid
-                    }));
+                    teamFixtures[tid] = teamFix.map(f => {
+                        const isHome = f.team_h === tid;
+                        const opponentId = isHome ? f.team_a : f.team_h;
+                        
+                        return {
+                            opponent: isHome ? teams[f.team_a]?.short_name : teams[f.team_h]?.short_name,
+                            opponentId: opponentId,  // NEW: Store opponent ID for strength lookups
+                            difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
+                            isHome: isHome,
+                            // NEW: Store raw fixture data for position-aware calculations
+                            team_h: f.team_h,
+                            team_a: f.team_a,
+                            event: f.event
+                        };
+                    });
                 });
                 
                 console.log('✅ Loaded fixtures for FDR calculation');
@@ -2246,12 +2358,17 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
             }
             
             // === FIXTURE COMPONENT ===
-            // Based on upcoming fixture difficulty
+            // Based on upcoming fixture difficulty - NOW POSITION-AWARE!
             fixtureComponent = 5.0; // Default neutral (0-10 scale)
             
             if (player.fixtures && player.fixtures.length > 0) {
                 const next3Fixtures = player.fixtures.slice(0, 3);
-                const avgFDR = next3Fixtures.reduce((sum, f) => sum + f.difficulty, 0) / next3Fixtures.length;
+                
+                // Calculate POSITION-AWARE FDR
+                // Attackers care about opponent defense, Defenders care about opponent attack
+                const fdrData = calculateAvgPositionFDR(next3Fixtures, player.position);
+                const avgFDR = fdrData.avgPositionFDR; // Use position-aware FDR
+                const standardFDR = fdrData.avgStandardFDR; // Keep standard for reference
                 
                 // Convert FDR (1-5 scale) to fixture score (0-10 scale)
                 // FDR 1 = easiest = score 10
@@ -2259,9 +2376,13 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 // Linear mapping: score = 10 - (FDR - 1) * 2.5
                 fixtureComponent = Math.max(0, Math.min(10, 10 - (avgFDR - 1) * 2.5));
                 
-                // Store for display
-                player.avgFDR = avgFDR;
+                // Store for display - both standard and position-aware
+                player.avgFDR = standardFDR; // Standard FDR for backwards compatibility
+                player.positionFDR = avgFDR; // NEW: Position-aware FDR
+                player.attackFDR = fdrData.avgAttackFDR; // Opponent attack strength
+                player.defenseFDR = fdrData.avgDefenseFDR; // Opponent defense strength
                 player.fixtureScore = fixtureComponent;
+                player.fdrData = fdrData; // Full breakdown for insights
             }
             
             // === COMBINE WITH POSITION WEIGHTS ===
@@ -2340,10 +2461,10 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
             if (players.length > 0) {
                 html += `
                     <div style="background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; padding: 12px; margin-bottom: 15px; border-radius: 8px; font-size: 11px; color: var(--text-dim);">
-                        <div style="font-weight: 700; color: var(--text); margin-bottom: 6px;">📊 Research-Backed Scoring (Position-Specific):</div>
+                        <div style="font-weight: 700; color: var(--text); margin-bottom: 6px;">📊 Research-Backed Scoring (Position-Specific + Separated FDR):</div>
                         <div style="line-height: 1.6;">
-                            • <strong>GK/DEF:</strong> Fixtures 60-65%, Form 35-40% (clean sheets depend on opponent)<br>
-                            • <strong>MID/FWD:</strong> Form 60-65%, Fixtures 35-40% (attacking returns depend on player form)<br>
+                            • <strong>GK/DEF:</strong> Fixtures 60-65% (opponent ATTACK strength), Form 35-40%<br>
+                            • <strong>MID/FWD:</strong> Form 60-65%, Fixtures 35-40% (opponent DEFENSE weakness)<br>
                             • <strong>★ 70+:</strong> Excellent pick • <strong>50-69:</strong> Good option • <strong><50:</strong> Avoid
                         </div>
                     </div>
@@ -3166,7 +3287,13 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             
             if (player.fixtures && player.fixtures.length > 0) {
                 const upcoming = player.fixtures;
-                const avgFDR = upcoming.reduce((sum, f) => sum + f.difficulty, 0) / upcoming.length;
+                
+                // Calculate POSITION-AWARE FDR using separated attack/defense ratings
+                const fdrData = calculateAvgPositionFDR(upcoming, player.position);
+                const positionFDR = fdrData.avgPositionFDR; // What matters for THIS position
+                const standardFDR = fdrData.avgStandardFDR; // Standard FDR for reference
+                const attackFDR = fdrData.avgAttackFDR;     // Opponent attack strength
+                const defenseFDR = fdrData.avgDefenseFDR;   // Opponent defense strength
                 
                 // Debug teams object
                 console.log('🔍 Teams object check:', {
@@ -3177,109 +3304,109 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                     playerTeam: player.team
                 });
                 
-                // Look up opponent names from teams object
+                // Look up opponent names from teams object with position-aware FDR
                 metrics.nextFixtures = upcoming.map(f => {
-                    // Determine opponent ID based on home/away
-                    const opponentId = f.is_home ? f.team_a : f.team_h;
-                    // Look up team name - more defensive
+                    const opponentId = f.opponentId || (f.is_home ? f.team_a : f.team_h);
                     const opponentName = (teams[opponentId] && teams[opponentId].short_name) || 
                                         teams[opponentId]?.short_name || 
                                         'UNK';
                     
-                    // Debug if opponent is UNK
-                    if (opponentName === 'UNK') {
-                        console.warn(`⚠️ No opponent name for ID ${opponentId}, teams[${opponentId}]:`, teams[opponentId]);
-                    }
+                    // Calculate position-aware FDR for this specific fixture
+                    const fixFDR = calculatePositionAwareFDR(f, player.position);
                     
-                    return `${opponentName}(${f.is_home ? 'H' : 'A'}, ${f.difficulty})`;
+                    return `${opponentName}(${f.isHome || f.is_home ? 'H' : 'A'}, ${fixFDR.positionFDR.toFixed(1)})`;
                 }).join(', ');
                 
-                metrics.avgFDR = avgFDR.toFixed(1);
+                // Store metrics - both standard and separated
+                metrics.avgFDR = standardFDR.toFixed(1);
+                metrics.positionFDR = positionFDR.toFixed(1);
+                metrics.attackFDR = attackFDR.toFixed(1);
+                metrics.defenseFDR = defenseFDR.toFixed(1);
                 
-                console.log(`✅ ${player.name} FDR: ${avgFDR}, Fixtures: ${metrics.nextFixtures}`);
+                console.log(`✅ ${player.name} Position-Aware FDR: ${positionFDR.toFixed(2)}, Standard: ${standardFDR.toFixed(2)}, Attack: ${attackFDR.toFixed(2)}, Defense: ${defenseFDR.toFixed(2)}`);
                     
-                    // POSITION-SPECIFIC fixture adjustments
-                    // Research: Fixtures matter MORE for GK/DEF (60-65%), LESS for MID/FWD (35-40%)
-                    const baseFixtureImpact = userSettings.fixtureWeight;
-                    const posWeights = POSITION_WEIGHTS[player.position];
-                    
-                    // Scale fixture impact by position weight (defenders get bigger swings)
-                    // GK/DEF: fixtureWeight = 0.60-0.65, so multiplier = 1.2-1.3x
-                    // MID/FWD: fixtureWeight = 0.35-0.40, so multiplier = 0.7-0.8x
-                    const positionMultiplier = posWeights.fixture / 0.50; // Normalize to 1.0 at 50%
-                    
-                    // Ensure avgFDR is a number for comparisons
-                    const fdrNum = parseFloat(avgFDR);
-                    
-                    if (fdrNum < 2.6) {
-                        // Easy fixtures - significant discount (bigger for defenders)
-                        if (sellRating > 30) {
-                            const fixtureDiscount = sellRating * (0.30 * baseFixtureImpact * positionMultiplier);
-                            sellRating -= fixtureDiscount;
-                            issues.push({ text: `Easy Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'positive', points: -Math.round(fixtureDiscount) });
-                        }
-                        
-                        const positionContext = player.position <= 2 
-                            ? 'For defenders/GKs, easy fixtures are CRUCIAL - clean sheet probability jumps significantly against weaker attacks.'
-                            : 'For attackers, easy fixtures help but form matters more - a confident striker scores against anyone.';
-                        
-                        detailedInsights.push({
-                            type: 'positive',
-                            title: 'Easy Fixture Run Coming',
-                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very favorable. ${positionContext} Research shows fixture impact is ${(posWeights.fixture * 100).toFixed(0)}% of the equation for ${POSITION_CONFIG[player.position].name}s.`
-                        });
-                    } else if (fdrNum >= 2.6 && fdrNum < 2.9) {
-                        // Favorable fixtures - moderate discount
-                        if (sellRating > 30) {
-                            const fixtureDiscount = sellRating * (0.15 * baseFixtureImpact * positionMultiplier);
-                            sellRating -= fixtureDiscount;
-                            issues.push({ text: `Favorable Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'positive', points: -Math.round(fixtureDiscount) });
-                        }
-                        
-                        detailedInsights.push({
-                            type: 'positive',
-                            title: 'Favorable Fixtures Ahead',
-                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - good matchups. ${player.position <= 2 ? 'Clean sheet potential is solid.' : 'Attacking returns likely if form holds.'} Fixture weight for ${POSITION_CONFIG[player.position].name}s: ${(posWeights.fixture * 100).toFixed(0)}%.`
-                        });
-                    } else if (fdrNum >= 2.9 && fdrNum < 3.1) {
-                        // Neutral fixtures (2.9 to 3.1)
-                        detailedInsights.push({
-                            type: 'info',
-                            title: 'Neutral Fixture Difficulty',
-                            text: `Next 3 games (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - balanced mix. For ${POSITION_CONFIG[player.position].name}s, ${player.position <= 2 ? 'clean sheets possible but not guaranteed' : 'form and underlying stats matter more than opponents here'}.`
-                        });
-                    } else if (fdrNum >= 3.1 && fdrNum < 3.4) {
-                        // Challenging fixtures - slight penalty (bigger for defenders)
-                        const fixturePenalty = 10 * baseFixtureImpact * positionMultiplier;
-                        sellRating += fixturePenalty;
-                        issues.push({ text: `Challenging Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: Math.round(fixturePenalty) });
-                        
-                        const positionContext = player.position <= 2
-                            ? 'Defenders face strong attacks - clean sheet probability drops significantly. Consider alternatives with easier runs.'
-                            : 'Tough fixtures, but elite attackers can still produce. Form matters more than fixtures for forwards.';
-                        
-                        detailedInsights.push({
-                            type: 'warning',
-                            title: 'Challenging Fixtures Coming',
-                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)}. ${positionContext} Fixture impact: ${(posWeights.fixture * 100).toFixed(0)}% for this position.`
-                        });
-                    } else {
-                        // Difficult fixtures (3.4+) - big penalty for defenders
-                        const fixturePenalty = 20 * baseFixtureImpact * positionMultiplier;
-                        sellRating += fixturePenalty;
-                        issues.push({ text: `Difficult Fixtures (FDR ${avgFDR.toFixed(1)})`, type: 'warning', points: Math.round(fixturePenalty) });
-                        
-                        const positionContext = player.position <= 2
-                            ? '🚨 CRITICAL for defenders: Facing elite attacks means near-zero clean sheet odds. Research shows FDR 4-5 fixtures = ~15% CS rate. Strong sell signal.'
-                            : 'Tough fixtures ahead, but premium attackers (Haaland, Salah) can still deliver. Form > fixtures for elite forwards.';
-                        
-                        detailedInsights.push({
-                            type: player.position <= 2 ? 'critical' : 'warning',
-                            title: 'Difficult Fixture Run Ahead',
-                            text: `Next 3 opponents (${metrics.nextFixtures}) have average FDR of ${avgFDR.toFixed(1)} - very tough. ${positionContext}`
-                        });
+                // POSITION-SPECIFIC fixture adjustments using SEPARATED attack/defense
+                const baseFixtureImpact = userSettings.fixtureWeight;
+                const posWeights = POSITION_WEIGHTS[player.position];
+                const positionMultiplier = posWeights.fixture / 0.50;
+                
+                // Use position-aware FDR for thresholds
+                const fdrNum = positionFDR;
+                
+                // Create position-specific context for insights
+                const isDefensive = player.position <= 2;
+                const relevantFDR = isDefensive ? attackFDR : defenseFDR;
+                const relevantLabel = isDefensive ? 'opponent attack' : 'opponent defense';
+                
+                if (fdrNum < 2.6) {
+                    // Easy fixtures
+                    if (sellRating > 30) {
+                        const fixtureDiscount = sellRating * (0.30 * baseFixtureImpact * positionMultiplier);
+                        sellRating -= fixtureDiscount;
+                        issues.push({ text: `Easy Fixtures (${isDefensive ? '🛡️' : '⚡'} ${positionFDR.toFixed(1)})`, type: 'positive', points: -Math.round(fixtureDiscount) });
                     }
+                    
+                    const positionContext = isDefensive 
+                        ? `Facing weak attacks (avg attack rating: ${attackFDR.toFixed(1)}). Clean sheet probability is HIGH - opponents struggle to create chances.`
+                        : `Facing weak defenses (avg defense rating: ${defenseFDR.toFixed(1)}). Attackers thrive against leaky backlines.`;
+                    
+                    detailedInsights.push({
+                        type: 'positive',
+                        title: `Easy Fixtures for ${POSITION_CONFIG[player.position].name}s`,
+                        text: `Next 3: ${metrics.nextFixtures}. Position-aware FDR: ${positionFDR.toFixed(1)} (Standard: ${standardFDR.toFixed(1)}). ${positionContext} This analysis weights ${relevantLabel} at 70%.`
+                    });
+                } else if (fdrNum >= 2.6 && fdrNum < 2.9) {
+                    // Favorable fixtures
+                    if (sellRating > 30) {
+                        const fixtureDiscount = sellRating * (0.15 * baseFixtureImpact * positionMultiplier);
+                        sellRating -= fixtureDiscount;
+                        issues.push({ text: `Favorable (${isDefensive ? '🛡️' : '⚡'} ${positionFDR.toFixed(1)})`, type: 'positive', points: -Math.round(fixtureDiscount) });
+                    }
+                    
+                    detailedInsights.push({
+                        type: 'positive',
+                        title: 'Favorable Fixtures Ahead',
+                        text: `Next 3: ${metrics.nextFixtures}. Position-aware FDR: ${positionFDR.toFixed(1)}. ${isDefensive ? `Opponent attacks (${attackFDR.toFixed(1)}) are below average - clean sheets likely.` : `Opponent defenses (${defenseFDR.toFixed(1)}) are exploitable - returns expected.`}`
+                    });
+                } else if (fdrNum >= 2.9 && fdrNum < 3.1) {
+                    // Neutral fixtures
+                    detailedInsights.push({
+                        type: 'info',
+                        title: 'Neutral Fixture Difficulty',
+                        text: `Next 3: ${metrics.nextFixtures}. Position-aware FDR: ${positionFDR.toFixed(1)} - balanced. ${isDefensive ? `Opponent attacks (${attackFDR.toFixed(1)}) are mid-table level.` : `Opponent defenses (${defenseFDR.toFixed(1)}) are average.`} Performance depends on form.`
+                    });
+                } else if (fdrNum >= 3.1 && fdrNum < 3.4) {
+                    // Challenging fixtures
+                    const fixturePenalty = 10 * baseFixtureImpact * positionMultiplier;
+                    sellRating += fixturePenalty;
+                    issues.push({ text: `Challenging (${isDefensive ? '🛡️' : '⚡'} ${positionFDR.toFixed(1)})`, type: 'warning', points: Math.round(fixturePenalty) });
+                    
+                    const positionContext = isDefensive
+                        ? `Facing strong attacks (${attackFDR.toFixed(1)}) - clean sheet probability drops to ~25-30%.`
+                        : `Facing solid defenses (${defenseFDR.toFixed(1)}) - harder to break down, but elite attackers still produce.`;
+                    
+                    detailedInsights.push({
+                        type: 'warning',
+                        title: 'Challenging Fixtures Coming',
+                        text: `Next 3: ${metrics.nextFixtures}. Position-aware FDR: ${positionFDR.toFixed(1)}. ${positionContext}`
+                    });
+                } else {
+                    // Difficult fixtures (3.4+)
+                    const fixturePenalty = 20 * baseFixtureImpact * positionMultiplier;
+                    sellRating += fixturePenalty;
+                    issues.push({ text: `Difficult (${isDefensive ? '🛡️' : '⚡'} ${positionFDR.toFixed(1)})`, type: 'warning', points: Math.round(fixturePenalty) });
+                    
+                    const positionContext = isDefensive
+                        ? `🚨 CRITICAL: Facing elite attacks (${attackFDR.toFixed(1)}) - clean sheet probability drops to ~10-15%. Research shows this is a strong SELL signal for defenders.`
+                        : `Tough defenses ahead (${defenseFDR.toFixed(1)}), but elite attackers can overcome. Form > fixtures for premium forwards.`;
+                    
+                    detailedInsights.push({
+                        type: isDefensive ? 'critical' : 'warning',
+                        title: 'Difficult Fixture Run Ahead',
+                        text: `Next 3: ${metrics.nextFixtures}. Position-aware FDR: ${positionFDR.toFixed(1)} (Standard: ${standardFDR.toFixed(1)}). ${positionContext}`
+                    });
                 }
+            }
             
             // PRICE TIER ADJUSTMENTS - Applied AFTER fixtures
             if (isBenchFodder) {
@@ -3818,18 +3945,40 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                 `;
             }
             
-            // Row 5: Fixtures
-            if (metrics.avgFDR) {
-                const fdrValue = parseFloat(metrics.avgFDR);
-                const fdrClass = fdrValue < 2.6 ? 'good' :      // Easy
-                                fdrValue < 2.9 ? 'good' :        // Favorable (still good)
-                                fdrValue < 3.1 ? 'warning' :     // Neutral
-                                fdrValue < 3.4 ? 'warning' :     // Challenging (warning)
-                                'bad';                            // Difficult
+            // Row 5: Fixtures - NOW WITH POSITION-AWARE AND SEPARATED RATINGS
+            if (metrics.positionFDR || metrics.avgFDR) {
+                const isDefensive = player.position <= 2;
+                const positionFDR = parseFloat(metrics.positionFDR || metrics.avgFDR);
+                const standardFDR = parseFloat(metrics.avgFDR);
+                const attackFDR = parseFloat(metrics.attackFDR || metrics.avgFDR);
+                const defenseFDR = parseFloat(metrics.defenseFDR || metrics.avgFDR);
+                
+                // Color based on position-aware FDR
+                const fdrClass = positionFDR < 2.6 ? 'good' :
+                                positionFDR < 2.9 ? 'good' :
+                                positionFDR < 3.1 ? 'warning' :
+                                positionFDR < 3.4 ? 'warning' :
+                                'bad';
+                
+                // Show position-aware FDR with icon
                 metricsHtml += `
                     <div class="metric-item">
-                        <div class="metric-label">Next 3 FDR</div>
-                        <div class="metric-value ${fdrClass}">${metrics.avgFDR}</div>
+                        <div class="metric-label">${isDefensive ? '🛡️' : '⚡'} Position FDR</div>
+                        <div class="metric-value ${fdrClass}">${positionFDR.toFixed(1)}</div>
+                    </div>
+                `;
+                
+                // Show separated attack/defense ratings
+                const attackClass = attackFDR < 2.6 ? 'good' : attackFDR > 3.4 ? 'bad' : 'warning';
+                const defenseClass = defenseFDR < 2.6 ? 'good' : defenseFDR > 3.4 ? 'bad' : 'warning';
+                
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Opp ${isDefensive ? '⚔️ Attack' : '🛡️ Defense'}</div>
+                        <div class="metric-value ${isDefensive ? attackClass : defenseClass}" style="font-size: 12px;">
+                            ${isDefensive ? attackFDR.toFixed(1) : defenseFDR.toFixed(1)}
+                            <span style="font-size: 9px; opacity: 0.7;">(70% weight)</span>
+                        </div>
                     </div>
                 `;
             }
