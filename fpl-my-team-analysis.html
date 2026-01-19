@@ -859,6 +859,173 @@
             margin-bottom: 30px;
         }
 
+        /* Team ID Input Section */
+        .team-id-section {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 2px solid var(--border);
+        }
+
+        .team-id-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .team-id-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-green);
+        }
+
+        .team-id-input {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 16px;
+            width: 180px;
+            transition: all 0.2s;
+        }
+
+        .team-id-input:focus {
+            outline: none;
+            border-color: var(--accent-green);
+        }
+
+        .team-id-input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .load-team-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--accent-green) 0%, #00d46a 100%);
+            color: var(--bg);
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .load-team-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 135, 0.4);
+        }
+
+        .load-team-btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .help-link {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .help-link a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .help-link a:hover {
+            text-decoration: underline;
+        }
+
+        .manager-card {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            padding: 15px 20px;
+            background: rgba(0, 255, 135, 0.08);
+            border: 1px solid rgba(0, 255, 135, 0.3);
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .manager-card.hidden { display: none; }
+
+        .manager-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-green);
+        }
+
+        .manager-team-name {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .manager-stats {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .manager-stat {
+            text-align: center;
+        }
+
+        .manager-stat-value {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .manager-stat-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .or-divider span {
+            padding: 0 15px;
+        }
+
+        @media (max-width: 768px) {
+            .team-id-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .team-id-input {
+                width: 100%;
+            }
+            
+            .manager-card {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .manager-stats {
+                justify-content: center;
+            }
+        }
+
         .guide-header {
             padding: 20px 30px;
             cursor: pointer;
@@ -1019,6 +1186,43 @@
             <h1>⚽ My Team Analysis</h1>
             <p>Research-backed sell/hold recommendations using xGI, fixtures, injuries, and position-specific thresholds</p>
             <span class="badge">🔬 Research-Backed v4.3</span>
+        </div>
+
+        <!-- Team ID Input Section -->
+        <div class="team-id-section">
+            <div class="team-id-row">
+                <span class="team-id-label">🔑 Your FPL Team ID:</span>
+                <input type="text" id="teamIdInput" class="team-id-input" placeholder="e.g. 1234567">
+                <button class="load-team-btn" id="loadTeamBtn" onclick="loadTeamById()">Load My Team</button>
+                <span class="help-link">
+                    Find it at <a href="https://fantasy.premierleague.com" target="_blank">FPL</a> → Points → check URL for number
+                </span>
+            </div>
+            
+            <div class="manager-card hidden" id="managerCard">
+                <div>
+                    <div class="manager-name" id="managerName">-</div>
+                    <div class="manager-team-name" id="teamName">-</div>
+                </div>
+                <div class="manager-stats">
+                    <div class="manager-stat">
+                        <div class="manager-stat-value" id="overallRank">-</div>
+                        <div class="manager-stat-label">Overall Rank</div>
+                    </div>
+                    <div class="manager-stat">
+                        <div class="manager-stat-value" id="totalPoints">-</div>
+                        <div class="manager-stat-label">Total Points</div>
+                    </div>
+                    <div class="manager-stat">
+                        <div class="manager-stat-value" style="color: var(--accent-green);" id="bankValue">-</div>
+                        <div class="manager-stat-label">In The Bank</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="or-divider">
+                <span>OR build your team manually below</span>
+            </div>
         </div>
 
         <!-- Quick Settings Presets -->
@@ -1447,6 +1651,7 @@
     <script>
         let allPlayers = [];
         let allPlayersDetailed = {}; // Store detailed stats by player ID
+        let allPlayersById = {}; // Quick lookup by ID
         let selectedPlayers = [];
         let currentSlot = null;
         let currentPosition = null;
@@ -1454,6 +1659,113 @@
         let teams = {}; // Team data for context
         let fixtures = []; // Fixture data for FDR
         let teamFixtures = {}; // Fixtures organized by team
+        let currentGW = 1; // Current gameweek
+        let managerData = null; // Manager info from FPL API
+        
+        const CORS_PROXY = 'https://corsproxy.io/?';
+
+        // ===== LOAD TEAM BY ID =====
+        async function loadTeamById() {
+            const teamId = document.getElementById('teamIdInput').value.trim();
+            if (!teamId || isNaN(teamId)) {
+                alert('Please enter a valid FPL Team ID (numbers only)');
+                return;
+            }
+            
+            const btn = document.getElementById('loadTeamBtn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            
+            try {
+                updateStatus('Loading FPL data...', 'loading');
+                
+                // Load players first if not already loaded
+                if (allPlayers.length === 0) {
+                    await loadPlayers();
+                }
+                
+                // Build allPlayersById for quick lookup
+                allPlayersById = {};
+                allPlayers.forEach(p => {
+                    allPlayersById[p.id] = p;
+                });
+                
+                // Get bootstrap data to find current gameweek
+                const bootRes = await fetch(CORS_PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/'));
+                const bootData = await bootRes.json();
+                const currEvent = bootData.events.find(e => e.is_current);
+                currentGW = currEvent ? currEvent.id : 1;
+                
+                updateStatus(`Fetching team ${teamId} for GW${currentGW}...`, 'loading');
+                
+                // Get manager info
+                const mgrRes = await fetch(CORS_PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${teamId}/`));
+                if (!mgrRes.ok) throw new Error('Team not found. Please check your Team ID.');
+                managerData = await mgrRes.json();
+                
+                // Get picks for current gameweek
+                const picksRes = await fetch(CORS_PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`));
+                if (!picksRes.ok) throw new Error('Could not load team picks. Try a different gameweek.');
+                const picksData = await picksRes.json();
+                
+                // Bank value
+                const itb = (picksData.entry_history?.bank || 0) / 10;
+                
+                // Map picks to our player format
+                selectedPlayers = picksData.picks.map(pick => {
+                    const player = allPlayersById[pick.element];
+                    if (!player) {
+                        console.warn(`Player ${pick.element} not found in allPlayers`);
+                        return null;
+                    }
+                    return {
+                        ...player,
+                        isCaptain: pick.is_captain,
+                        isVice: pick.is_vice_captain,
+                        onBench: pick.position > 11
+                    };
+                }).filter(p => p !== null);
+                
+                if (selectedPlayers.length !== 15) {
+                    throw new Error(`Expected 15 players but got ${selectedPlayers.length}. Some players may not be in the database.`);
+                }
+                
+                // Show manager card
+                document.getElementById('managerName').textContent = `${managerData.player_first_name} ${managerData.player_last_name}`;
+                document.getElementById('teamName').textContent = managerData.name;
+                document.getElementById('overallRank').textContent = managerData.summary_overall_rank?.toLocaleString() || '-';
+                document.getElementById('totalPoints').textContent = managerData.summary_overall_points || '-';
+                document.getElementById('bankValue').textContent = `£${itb.toFixed(1)}m`;
+                document.getElementById('managerCard').classList.remove('hidden');
+                
+                // Save team ID for next time
+                localStorage.setItem('fpl_team_id', teamId);
+                
+                // Save team to localStorage (for persistence)
+                localStorage.setItem('fpl_my_team', JSON.stringify(selectedPlayers));
+                
+                updateStatus(`✓ Loaded ${managerData.name} • GW${currentGW} • £${itb.toFixed(1)}m ITB`, 'success');
+                
+                // Auto-analyze
+                analyzeTeam();
+                
+            } catch (err) {
+                console.error('Error loading team:', err);
+                updateStatus(`Error: ${err.message}`, 'error');
+                document.getElementById('managerCard').classList.add('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Load My Team';
+            }
+        }
+        
+        // Check for saved team ID on load
+        function checkSavedTeamId() {
+            const savedId = localStorage.getItem('fpl_team_id');
+            if (savedId) {
+                document.getElementById('teamIdInput').value = savedId;
+            }
+        }
 
         // CUSTOMIZABLE SETTINGS - User can adjust these
         let userSettings = {
@@ -3690,7 +4002,22 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             if (savedSettings) {
                 userSettings = JSON.parse(savedSettings);
             }
+            
+            // Check for saved team ID and populate input
+            checkSavedTeamId();
+            
+            // Load saved team
             loadSavedTeam();
+        });
+        
+        // Enter key to load team
+        document.addEventListener('DOMContentLoaded', () => {
+            const teamIdInput = document.getElementById('teamIdInput');
+            if (teamIdInput) {
+                teamIdInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') loadTeamById();
+                });
+            }
         });
     </script>
 </body>
