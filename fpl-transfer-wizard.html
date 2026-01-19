@@ -772,22 +772,18 @@
         <div class="progress-inner">
             <div class="wizard-progress">
                 <div class="progress-step active" onclick="goToStep(1)">
-                    <div class="progress-icon">📊</div>
-                    <span class="progress-label">Analyze</span>
-                </div>
-                <div class="progress-step disabled" onclick="goToStep(2)">
                     <div class="progress-icon">🎯</div>
                     <span class="progress-label">Select</span>
                 </div>
-                <div class="progress-step disabled" onclick="goToStep(3)">
+                <div class="progress-step disabled" onclick="goToStep(2)">
                     <div class="progress-icon">📅</div>
                     <span class="progress-label">Fixtures</span>
                 </div>
-                <div class="progress-step disabled" onclick="goToStep(4)">
+                <div class="progress-step disabled" onclick="goToStep(3)">
                     <div class="progress-icon">👤</div>
                     <span class="progress-label">Replace</span>
                 </div>
-                <div class="progress-step disabled" onclick="goToStep(5)">
+                <div class="progress-step disabled" onclick="goToStep(4)">
                     <div class="progress-icon">✅</div>
                     <span class="progress-label">Review</span>
                 </div>
@@ -803,35 +799,14 @@
             <span>Loading FPL data...</span>
         </div>
         
-        <!-- Step 1: Analyze -->
+        <!-- Step 1: Analyze & Select Players to Sell -->
         <div class="step-panel active" id="panel-1">
             <div class="panel-header">
-                <h2>Step 1: Analyze Your Squad</h2>
-                <p>Enter your FPL Team ID above and click "Load My Team". Your 15 players will be analyzed and sorted by sell priority (red = urgent sell, yellow = consider, green = hold).</p>
+                <h2>Step 1: Analyze & Select Players to Sell</h2>
+                <p>Enter your FPL Team ID above. Your 15 players are analyzed and sorted by sell priority (red = urgent sell, yellow = consider, green = hold). Click to select players you want to transfer OUT.</p>
             </div>
             
-            <div id="step1Content">
-                <div class="empty-state">
-                    <div class="empty-state-icon">⚽</div>
-                    <h3>No Team Loaded</h3>
-                    <p>Enter your FPL Team ID above and click "Load My Team"</p>
-                </div>
-            </div>
-            
-            <div class="wizard-nav" id="nav1" style="display: none;">
-                <div></div>
-                <button class="btn btn-primary" onclick="goToStep(2)">Continue to Selection →</button>
-            </div>
-        </div>
-        
-        <!-- Step 2: Select Players to Sell -->
-        <div class="step-panel" id="panel-2">
-            <div class="panel-header">
-                <h2>Step 2: Select Players to Sell</h2>
-                <p>Click on the players you want to transfer OUT. Your budget updates automatically.</p>
-            </div>
-            
-            <div class="budget-display">
+            <div class="budget-display" id="budgetDisplay" style="display: none;">
                 <div class="budget-item">
                     <div class="budget-value" style="color: var(--accent-green);" id="itbDisplay">£0.0m</div>
                     <div class="budget-label">In The Bank</div>
@@ -850,33 +825,47 @@
                 </div>
             </div>
             
-            <div id="step2Content" class="players-grid"></div>
+            <div id="step1Content">
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚽</div>
+                    <h3>No Team Loaded</h3>
+                    <p>Enter your FPL Team ID above and click "Load My Team"</p>
+                </div>
+            </div>
+            
+            <div class="wizard-nav" id="nav1" style="display: none;">
+                <div></div>
+                <button class="btn btn-primary" id="toStep2Btn" onclick="goToStep(2)" disabled>View Fixture Swings →</button>
+            </div>
+        </div>
+        
+        <!-- Step 2: Fixture Analysis -->
+        <div class="step-panel" id="panel-2">
+            <div class="panel-header">
+                <h2>Step 2: Explore Fixture Opportunities</h2>
+                <p>Teams ranked by easiest upcoming fixtures. Click teams to filter replacements (multi-select enabled). Click again to deselect.</p>
+            </div>
+            
+            <div id="selectedTeamsDisplay" class="budget-display" style="display: none;">
+                <div class="budget-item" style="flex: 1; text-align: left;">
+                    <div class="budget-label">Selected Teams</div>
+                    <div id="selectedTeamsList" style="color: var(--accent-blue); font-size: 14px; margin-top: 5px;"></div>
+                </div>
+                <button class="btn btn-secondary" onclick="clearSelectedTeams()" style="padding: 8px 16px; font-size: 11px;">Clear All</button>
+            </div>
+            
+            <div id="step2Content" class="teams-grid"></div>
             
             <div class="wizard-nav">
                 <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
-                <button class="btn btn-primary" id="toStep3Btn" onclick="goToStep(3)" disabled>View Fixture Swings →</button>
+                <button class="btn btn-primary" onclick="goToStep(3)">Find Replacements →</button>
             </div>
         </div>
         
-        <!-- Step 3: Fixture Analysis -->
+        <!-- Step 3: Find Replacements -->
         <div class="step-panel" id="panel-3">
             <div class="panel-header">
-                <h2>Step 3: Explore Fixture Opportunities</h2>
-                <p>Teams ranked by easiest upcoming fixtures. Click a team to filter replacements from that team.</p>
-            </div>
-            
-            <div id="step3Content" class="teams-grid"></div>
-            
-            <div class="wizard-nav">
-                <button class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
-                <button class="btn btn-primary" onclick="goToStep(4)">Find Replacements →</button>
-            </div>
-        </div>
-        
-        <!-- Step 4: Find Replacements -->
-        <div class="step-panel" id="panel-4">
-            <div class="panel-header">
-                <h2>Step 4: Choose Replacements</h2>
+                <h2>Step 3: Choose Replacements</h2>
                 <p>Select players to bring IN. Filter by position, price, and team.</p>
             </div>
             
@@ -916,6 +905,7 @@
                     <span class="filter-label">Team:</span>
                     <select id="teamFilterSelect" class="filter-select" onchange="renderReplacements()">
                         <option value="all">All Teams</option>
+                        <option value="selected">Selected Teams Only</option>
                     </select>
                 </div>
             </div>
@@ -939,25 +929,25 @@
                 </div>
             </div>
             
-            <div id="step4Content" class="scroll-container players-grid"></div>
+            <div id="step3Content" class="scroll-container players-grid"></div>
             
             <div class="wizard-nav">
-                <button class="btn btn-secondary" onclick="goToStep(3)">← Back</button>
-                <button class="btn btn-primary" id="toStep5Btn" onclick="goToStep(5)" disabled>Review Plan →</button>
+                <button class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
+                <button class="btn btn-primary" id="toStep4Btn" onclick="goToStep(4)" disabled>Review Plan →</button>
             </div>
         </div>
         
-        <!-- Step 5: Review -->
-        <div class="step-panel" id="panel-5">
+        <!-- Step 4: Review -->
+        <div class="step-panel" id="panel-4">
             <div class="panel-header">
-                <h2>Step 5: Review Your Transfer Plan</h2>
+                <h2>Step 4: Review Your Transfer Plan</h2>
                 <p>Confirm your transfers before heading to the official FPL site.</p>
             </div>
             
-            <div id="step5Content"></div>
+            <div id="step4Content"></div>
             
             <div class="wizard-nav">
-                <button class="btn btn-secondary" onclick="goToStep(4)">← Back</button>
+                <button class="btn btn-secondary" onclick="goToStep(3)">← Back</button>
                 <button class="btn btn-primary" onclick="executePlan()">Save & Go to FPL →</button>
             </div>
         </div>
@@ -978,6 +968,7 @@
         let toBuyIds = new Set();
         let itb = 0;
         let managerData = null;
+        let selectedTeams = new Set(); // For multi-team selection in fixtures
         
         const POS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
         const PROXY = 'https://corsproxy.io/?';
@@ -1056,14 +1047,8 @@
                     allPlayersById[p.id] = player;
                 });
                 
-                // Team filter options
-                const teamSel = document.getElementById('teamFilterSelect');
-                Object.values(teams).sort((a,b) => a.name.localeCompare(b.name)).forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    opt.textContent = t.name;
-                    teamSel.appendChild(opt);
-                });
+                // Team filter options - now using multi-select from fixtures step
+                // Individual teams will be filtered via the "selected" option
                 
                 updateStatus(`Loaded ${allPlayers.length} players • GW${currentGW}`, 'success');
                 
@@ -1339,7 +1324,7 @@
             updateProgress(1);
         }
         
-        // ===== RENDER STEP 1 =====
+        // ===== RENDER STEP 1 (Combined Analyze + Select) =====
         function renderStep1() {
             const urgent = analyzedTeam.filter(p => p.priority === 'urgent').length;
             const consider = analyzedTeam.filter(p => p.priority === 'consider').length;
@@ -1368,14 +1353,15 @@
             `;
             
             analyzedTeam.forEach(p => {
+                const selected = toSell.has(p.id);
                 const fxHtml = p.fixtures?.slice(0, 3).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('') || '';
                 const cap = p.isCaptain ? '(C) ' : p.isVice ? '(V) ' : '';
                 
                 html += `
-                    <div class="player-card ${p.priority}">
+                    <div class="player-card clickable ${p.priority} ${selected ? 'sell-selected' : ''}" onclick="toggleSell(${p.id})">
                         <div class="player-top">
                             <div class="player-info">
-                                <h4>${cap}${p.name}</h4>
+                                <h4>${selected ? '✓ ' : ''}${cap}${p.name}</h4>
                                 <span class="player-meta">${p.team} • ${p.posName} • £${p.price.toFixed(1)}m • ${p.own.toFixed(1)}%</span>
                             </div>
                             <div class="player-rating">
@@ -1391,35 +1377,7 @@
             
             html += '</div>';
             document.getElementById('step1Content').innerHTML = html;
-        }
-        
-        // ===== RENDER STEP 2 =====
-        function renderStep2() {
-            let html = '';
-            
-            analyzedTeam.forEach(p => {
-                const selected = toSell.has(p.id);
-                const fxHtml = p.fixtures?.slice(0, 3).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('') || '';
-                
-                html += `
-                    <div class="player-card clickable ${p.priority} ${selected ? 'sell-selected' : ''}" onclick="toggleSell(${p.id})">
-                        <div class="player-top">
-                            <div class="player-info">
-                                <h4>${selected ? '✓ ' : ''}${p.name}</h4>
-                                <span class="player-meta">${p.team} • ${p.posName} • £${p.price.toFixed(1)}m</span>
-                            </div>
-                            <div class="player-rating">
-                                <div class="rating-value ${p.priority}">${p.sellScore}</div>
-                                <span class="rating-label ${p.priority}">${p.action}</span>
-                            </div>
-                        </div>
-                        <div class="player-issues">${p.issues.map(i => `<span class="issue-tag ${i.type}">${i.text}</span>`).join('')}</div>
-                        <div class="fixture-badges">${fxHtml}</div>
-                    </div>
-                `;
-            });
-            
-            document.getElementById('step2Content').innerHTML = html;
+            document.getElementById('budgetDisplay').style.display = 'flex';
             updateBudgets();
         }
         
@@ -1428,8 +1386,8 @@
             else toSell.add(id);
             
             toSellPlayers = analyzedTeam.filter(p => toSell.has(p.id));
-            renderStep2();
-            document.getElementById('toStep3Btn').disabled = toSell.size === 0;
+            renderStep1();
+            document.getElementById('toStep2Btn').disabled = toSell.size === 0;
         }
         
         function updateBudgets() {
@@ -1448,8 +1406,8 @@
             document.getElementById('buyCountDisplay').textContent = toBuy.length;
         }
         
-        // ===== RENDER STEP 3 =====
-        function renderStep3() {
+        // ===== RENDER STEP 2 (Fixtures with Multi-Select) =====
+        function renderStep2() {
             const teamsData = Object.values(teams).map(t => {
                 const fx = teamFixtures[t.id] || [];
                 const avgFDR = fx.length ? fx.reduce((s, f) => s + f.fdr, 0) / fx.length : 3;
@@ -1458,13 +1416,14 @@
             
             let html = '';
             teamsData.slice(0, 12).forEach(t => {
+                const isSelected = selectedTeams.has(t.id);
                 const color = t.avgFDR <= 2.5 ? 'var(--accent-green)' : t.avgFDR <= 3 ? 'var(--accent-yellow)' : 'var(--accent-red)';
                 const icon = t.avgFDR <= 2.5 ? '🟢' : t.avgFDR <= 3 ? '🟡' : '🔴';
                 const fxHtml = t.fixtures.slice(0, 5).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('');
                 
                 html += `
-                    <div class="team-card" onclick="selectTeam(${t.id})">
-                        <div class="team-name">${icon} ${t.name}</div>
+                    <div class="team-card ${isSelected ? 'buy-selected' : ''}" onclick="toggleTeamSelection(${t.id})" style="${isSelected ? 'border-color: var(--accent-green); background: rgba(0, 255, 136, 0.1);' : ''}">
+                        <div class="team-name">${icon} ${isSelected ? '✓ ' : ''}${t.name}</div>
                         <div class="team-stats">
                             <div class="team-stat">
                                 <div class="team-stat-value" style="color: ${color};">${t.avgFDR.toFixed(1)}</div>
@@ -1480,15 +1439,38 @@
                 `;
             });
             
-            document.getElementById('step3Content').innerHTML = html;
+            document.getElementById('step2Content').innerHTML = html;
+            updateSelectedTeamsDisplay();
         }
         
-        function selectTeam(teamId) {
-            document.getElementById('teamFilterSelect').value = teamId;
-            goToStep(4);
+        function toggleTeamSelection(teamId) {
+            if (selectedTeams.has(teamId)) {
+                selectedTeams.delete(teamId);
+            } else {
+                selectedTeams.add(teamId);
+            }
+            renderStep2();
         }
         
-        // ===== RENDER STEP 4 =====
+        function clearSelectedTeams() {
+            selectedTeams.clear();
+            renderStep2();
+        }
+        
+        function updateSelectedTeamsDisplay() {
+            const display = document.getElementById('selectedTeamsDisplay');
+            const list = document.getElementById('selectedTeamsList');
+            
+            if (selectedTeams.size > 0) {
+                display.style.display = 'flex';
+                const teamNames = Array.from(selectedTeams).map(id => teams[id]?.name || '?').join(', ');
+                list.textContent = teamNames;
+            } else {
+                display.style.display = 'none';
+            }
+        }
+        
+        // ===== RENDER STEP 3 (Replacements) =====
         function renderReplacements() {
             const posFilter = document.getElementById('posFilter').value;
             const maxPrice = parseFloat(document.getElementById('priceFilterSelect').value);
@@ -1503,7 +1485,12 @@
                 if (toBuyIds.has(p.id)) return false;
                 if (posFilter !== 'all' && p.pos !== parseInt(posFilter)) return false;
                 if (p.price > maxPrice) return false;
-                if (teamFilter !== 'all' && p.teamId !== parseInt(teamFilter)) return false;
+                // Handle team filter - either "all", "selected" (multi-select), or a specific team ID
+                if (teamFilter === 'selected') {
+                    if (selectedTeams.size > 0 && !selectedTeams.has(p.teamId)) return false;
+                } else if (teamFilter !== 'all') {
+                    if (p.teamId !== parseInt(teamFilter)) return false;
+                }
                 if (p.status === 'i' || p.status === 's') return false;
                 if (p.mins < 200) return false;
                 return true;
@@ -1571,7 +1558,7 @@
             
             if (!html) html = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">🔍</div><h3>No Players Found</h3><p>Try adjusting filters</p></div>';
             
-            document.getElementById('step4Content').innerHTML = html;
+            document.getElementById('step3Content').innerHTML = html;
             updateBudgets();
         }
         
@@ -1602,11 +1589,11 @@
             
             updateBudgets();
             renderReplacements();
-            document.getElementById('toStep5Btn').disabled = toBuy.length !== toSell.size;
+            document.getElementById('toStep4Btn').disabled = toBuy.length !== toSell.size;
         }
         
-        // ===== RENDER STEP 5 =====
-        function renderStep5() {
+        // ===== RENDER STEP 4 (Review) =====
+        function renderStep4() {
             const sellVal = toSellPlayers.reduce((s, p) => s + p.price, 0);
             const buyVal = toBuy.reduce((s, p) => s + p.price, 0);
             const net = buyVal - sellVal;
@@ -1677,7 +1664,7 @@
                 html += `<div class="success-box" style="border-color: var(--accent-yellow); background: rgba(255, 165, 2, 0.1);"><h4 style="color: var(--accent-yellow);">⚡ Good Move</h4><p>Solid improvements. Consider the trade-offs.</p></div>`;
             }
             
-            document.getElementById('step5Content').innerHTML = html;
+            document.getElementById('step4Content').innerHTML = html;
         }
         
         function executePlan() {
@@ -1693,21 +1680,25 @@
         // ===== NAVIGATION =====
         function goToStep(step) {
             if (step >= 2 && myTeam.length !== 15) { alert('Load your team first!'); return; }
-            if (step >= 3 && toSell.size === 0) { alert('Select players to sell first!'); return; }
-            if (step === 5 && toBuy.length !== toSell.size) { alert('Select all replacements first!'); return; }
+            if (step >= 2 && toSell.size === 0) { alert('Select players to sell first!'); return; }
+            if (step === 4 && toBuy.length !== toSell.size) { alert('Select all replacements first!'); return; }
             
             document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
             document.getElementById(`panel-${step}`).classList.add('active');
             
             updateProgress(step);
             
-            if (step === 2) renderStep2();
-            else if (step === 3) renderStep3();
-            else if (step === 4) {
+            if (step === 1) renderStep1();
+            else if (step === 2) renderStep2();
+            else if (step === 3) {
+                // If teams were selected in fixtures step, default to "selected" filter
+                if (selectedTeams.size > 0) {
+                    document.getElementById('teamFilterSelect').value = 'selected';
+                }
                 if (toSellPlayers.length === 1) document.getElementById('posFilter').value = toSellPlayers[0].pos;
                 renderReplacements();
             }
-            else if (step === 5) renderStep5();
+            else if (step === 4) renderStep4();
             
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
