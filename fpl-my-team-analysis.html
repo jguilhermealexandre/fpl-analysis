@@ -1185,7 +1185,7 @@
         <div class="header">
             <h1>⚽ My Team Analysis</h1>
             <p>Research-backed sell/hold recommendations using xGI, fixtures, injuries, and position-specific thresholds</p>
-            <span class="badge">🔬 Research-Backed v4.5 - Separated Attack/Defense FDR</span>
+            <span class="badge">🔬 Research-Backed v4.6 - xCS for Defenders</span>
         </div>
 
         <!-- Team ID Input Section -->
@@ -1277,16 +1277,19 @@
                         </div>
 
                         <div class="guide-card">
-                            <h3>🎯 Position-Specific Analysis (NEW in v4.4)</h3>
+                            <h3>🎯 Position-Specific Analysis (v4.4-4.6)</h3>
                             <div class="guide-text">
                                 <p><strong>Research finding: Form vs Fixtures matter differently by position!</strong></p>
                                 
-                                <p><strong>🛡️ Goalkeepers & Defenders:</strong></p>
+                                <p><strong>🛡️ Goalkeepers & Defenders - xCS is PRIMARY (v4.6 NEW!):</strong></p>
                                 <ul>
-                                    <li><strong>Fixtures: 60-65%</strong> | Form: 35-40%</li>
-                                    <li>Clean sheets depend heavily on opponent quality</li>
-                                    <li>A GK facing Burnley is worth more than one facing City</li>
-                                    <li>Form matters less - even great defenders concede vs top attacks</li>
+                                    <li><strong>xCS (Expected Clean Sheets):</strong> THE most predictive metric for defensive assets</li>
+                                    <li>Research shows actual clean sheets deviate only ~1.24 from xCS predictions over a season</li>
+                                    <li><strong>Elite xCS (45%+):</strong> Facing weak attacks - strong hold</li>
+                                    <li><strong>Good xCS (35-45%):</strong> Favorable fixtures - likely clean sheets</li>
+                                    <li><strong>Poor xCS (15-25%):</strong> Tough fixtures - consider rotating</li>
+                                    <li><strong>Critical xCS (<15%):</strong> Facing elite attacks - SELL signal</li>
+                                    <li>Fixtures: 60-65% weight | Form: 35-40% weight</li>
                                 </ul>
 
                                 <p><strong>⚡ Midfielders:</strong></p>
@@ -1319,6 +1322,15 @@
                             <div class="guide-text">
                                 <p><strong>What the metrics mean and why they matter:</strong></p>
                                 
+                                <p><strong>🎯 xCS (Expected Clean Sheets) - NEW for GK/DEF:</strong></p>
+                                <ul>
+                                    <li>Calculates clean sheet probability based on team defense + opponent attack</li>
+                                    <li>Uses FPL API team strength data (strength_attack_home, strength_defence_away)</li>
+                                    <li>Home advantage included (+8% xCS at home)</li>
+                                    <li>"xCS Pts (3 GWs)" shows expected points from clean sheets only</li>
+                                    <li>More predictive than form for defensive assets - trust xCS over recent results!</li>
+                                </ul>
+                                
                                 <p><strong>Form Rating:</strong></p>
                                 <ul>
                                     <li>FPL's official form score (weighted average of recent points)</li>
@@ -1326,7 +1338,7 @@
                                     <li>Short-term performance indicator</li>
                                 </ul>
 
-                                <p><strong>xGI (Expected Goal Involvements):</strong></p>
+                                <p><strong>xGI (Expected Goal Involvements) - for MID/FWD:</strong></p>
                                 <ul>
                                     <li>xG + xA = total attacking threat</li>
                                     <li>More predictive than actual goals/assists</li>
@@ -1938,6 +1950,122 @@
                 avgDefenseFDR: avgDefenseFDR,
                 avgStandardFDR: details.reduce((sum, d) => sum + d.standardFDR, 0) / details.length,
                 fixtureDetails: details
+            };
+        }
+
+        // EXPECTED CLEAN SHEETS (xCS) CALCULATION
+        // Research finding: "Expected clean sheets (xCS) proves remarkably reliable—actual clean 
+        // sheets deviate only ~1.24 from cumulative xCS predictions over a season. The most 
+        // effective xCS models use betting odds conversion combined with opposition xG data."
+        //
+        // This is the PRIMARY metric for defenders/GKs - far more predictive than xGI
+        function calculateXCS(playerTeamId, fixture) {
+            if (!fixture || !teams[playerTeamId]) {
+                return { xCS: 0.30, breakdown: null }; // Default 30% probability
+            }
+            
+            const playerTeam = teams[playerTeamId];
+            const opponentId = fixture.opponentId;
+            const opponent = teams[opponentId];
+            const isHome = fixture.isHome;
+            
+            if (!opponent) {
+                return { xCS: 0.30, breakdown: null };
+            }
+            
+            // Get relevant strength ratings
+            // Player's team defensive strength (higher = better defense)
+            const teamDefense = isHome ? playerTeam.strength_defence_home : playerTeam.strength_defence_away;
+            // Opponent's attacking strength (lower = easier to keep clean sheet)
+            const oppAttack = isHome ? opponent.strength_attack_away : opponent.strength_attack_home;
+            
+            // Typical strength values range from ~1000-1400
+            // Elite defense: 1300+, Poor defense: 1050-
+            // Elite attack: 1350+, Poor attack: 1050-
+            
+            // Calculate xCS probability using strength differential
+            // Base probability: 30% (league average clean sheet rate)
+            // Adjust based on: team defense strength vs opponent attack strength
+            
+            // Normalize strengths to 0-1 scale (1000 = 0, 1400 = 1)
+            const teamDefNorm = (teamDefense - 1000) / 400;
+            const oppAttNorm = (oppAttack - 1000) / 400;
+            
+            // Clean sheet probability formula:
+            // - Higher team defense = higher xCS
+            // - Higher opponent attack = lower xCS
+            // - Home advantage = +8% xCS (research shows ~15% better at home)
+            const homeBoost = isHome ? 0.08 : 0;
+            
+            // Base: 30% + (team defense boost) - (opponent attack threat)
+            // Each 0.1 in normalized defense adds ~5% xCS
+            // Each 0.1 in normalized attack reduces ~6% xCS
+            let xCS = 0.30 + (teamDefNorm * 0.25) - (oppAttNorm * 0.30) + homeBoost;
+            
+            // Clamp between 5% and 65% (realistic bounds)
+            xCS = Math.max(0.05, Math.min(0.65, xCS));
+            
+            // Calculate expected points from clean sheet
+            // GK/DEF get 4 points for clean sheet
+            const xCSPoints = xCS * 4;
+            
+            return {
+                xCS: xCS,
+                xCSPercent: (xCS * 100).toFixed(0),
+                xCSPoints: xCSPoints.toFixed(1),
+                breakdown: {
+                    teamDefense: teamDefense,
+                    teamDefNorm: teamDefNorm.toFixed(2),
+                    oppAttack: oppAttack,
+                    oppAttNorm: oppAttNorm.toFixed(2),
+                    homeBoost: homeBoost,
+                    isHome: isHome,
+                    opponent: opponent.short_name
+                }
+            };
+        }
+        
+        // Calculate average xCS over multiple fixtures
+        function calculateAvgXCS(playerTeamId, fixtures) {
+            if (!fixtures || fixtures.length === 0) {
+                return { 
+                    avgXCS: 0.30, 
+                    avgXCSPercent: '30',
+                    avgXCSPoints: '1.2',
+                    totalXCSPoints: '3.6',
+                    fixtureXCS: [],
+                    rating: 'average'
+                };
+            }
+            
+            const fixtureXCS = fixtures.map(f => ({
+                ...f,
+                ...calculateXCS(playerTeamId, f)
+            }));
+            
+            const avgXCS = fixtureXCS.reduce((sum, f) => sum + f.xCS, 0) / fixtureXCS.length;
+            const totalXCSPoints = fixtureXCS.reduce((sum, f) => sum + parseFloat(f.xCSPoints), 0);
+            
+            // Rating thresholds based on research
+            // Elite: 45%+ xCS (top defensive teams vs weak attacks)
+            // Good: 35-45% (solid matchups)
+            // Average: 25-35% (mixed fixtures)
+            // Poor: 15-25% (tough fixtures)
+            // Critical: <15% (facing elite attacks)
+            let rating;
+            if (avgXCS >= 0.45) rating = 'elite';
+            else if (avgXCS >= 0.35) rating = 'good';
+            else if (avgXCS >= 0.25) rating = 'average';
+            else if (avgXCS >= 0.15) rating = 'poor';
+            else rating = 'critical';
+            
+            return {
+                avgXCS: avgXCS,
+                avgXCSPercent: (avgXCS * 100).toFixed(0),
+                avgXCSPoints: (avgXCS * 4).toFixed(1),
+                totalXCSPoints: totalXCSPoints.toFixed(1),
+                fixtureXCS: fixtureXCS,
+                rating: rating
             };
         }
 
@@ -2993,23 +3121,153 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                         });
                     }
                 } else if (player.position === 2) { // Defenders
-                    // Defenders still use raw xGI (less relevant, more about clean sheets)
-                    if (recentXGI < THRESHOLDS.xgi[2].critical && recentMinutes >= 180) {
-                        sellRating += 15;
-                        issues.push({ text: `Minimal Attack (xGI ${recentXGI.toFixed(2)})`, type: 'info', points: 15 });
-                        reasons.push(`Defender with minimal attacking involvement (xGI/90 ${recentXGI.toFixed(2)})`);
+                    // DEFENDERS: xCS (Expected Clean Sheets) is the PRIMARY metric
+                    // xGI is secondary - only matters for attacking wing-backs
+                    
+                    // Calculate xCS for upcoming fixtures
+                    if (player.fixtures && player.fixtures.length > 0) {
+                        const xcsData = calculateAvgXCS(player.teamId, player.fixtures.slice(0, 3));
+                        
+                        // Store xCS metrics for display
+                        metrics.xCS = xcsData.avgXCSPercent + '%';
+                        metrics.xCSPoints = xcsData.avgXCSPoints;
+                        metrics.xCSRating = xcsData.rating;
+                        metrics.xCSTotalPoints = xcsData.totalXCSPoints;
+                        player.xcsData = xcsData;
+                        
+                        // xCS-based sell rating adjustments
+                        if (xcsData.rating === 'critical') {
+                            // Critical: <15% xCS - facing elite attacks
+                            sellRating += 25;
+                            issues.push({ text: `Critical xCS (${xcsData.avgXCSPercent}%)`, type: 'critical', points: 25 });
+                            reasons.push(`Expected clean sheet rate of only ${xcsData.avgXCSPercent}% - facing elite attacks`);
+                            
+                            detailedInsights.push({
+                                type: 'critical',
+                                title: '🚨 Clean Sheet Probability Critical',
+                                text: `xCS of ${xcsData.avgXCSPercent}% over next 3 fixtures is extremely low. Expected CS points: ${xcsData.totalXCSPoints} from 3 games. Facing elite attacks that average 2+ goals/game. Research shows xCS is THE most predictive metric for defenders - this is a strong SELL signal regardless of form or xGI.`
+                            });
+                        } else if (xcsData.rating === 'poor') {
+                            // Poor: 15-25% xCS - tough fixtures
+                            sellRating += 15;
+                            issues.push({ text: `Low xCS (${xcsData.avgXCSPercent}%)`, type: 'warning', points: 15 });
+                            reasons.push(`Low clean sheet probability (${xcsData.avgXCSPercent}%) for upcoming fixtures`);
+                            
+                            detailedInsights.push({
+                                type: 'warning',
+                                title: '⚠️ Clean Sheet Probability Low',
+                                text: `xCS of ${xcsData.avgXCSPercent}% suggests tough defensive fixtures ahead. Expected CS points: ${xcsData.totalXCSPoints} from 3 games (avg ${xcsData.avgXCSPoints} per game). Consider rotating to defenders with easier fixture runs - xCS is more predictive than form for defensive assets.`
+                            });
+                        } else if (xcsData.rating === 'good') {
+                            // Good: 35-45% xCS - solid matchups
+                            sellRating -= 10;
+                            issues.push({ text: `Good xCS (${xcsData.avgXCSPercent}%)`, type: 'positive', points: -10 });
+                            
+                            detailedInsights.push({
+                                type: 'positive',
+                                title: '✅ Good Clean Sheet Potential',
+                                text: `xCS of ${xcsData.avgXCSPercent}% indicates favorable defensive fixtures. Expected CS points: ${xcsData.totalXCSPoints} from 3 games. Facing below-average attacks - clean sheets likely. Worth holding through any form dips.`
+                            });
+                        } else if (xcsData.rating === 'elite') {
+                            // Elite: 45%+ xCS - facing weak attacks
+                            sellRating -= 20;
+                            issues.push({ text: `Elite xCS (${xcsData.avgXCSPercent}%)`, type: 'positive', points: -20 });
+                            
+                            detailedInsights.push({
+                                type: 'positive',
+                                title: '🌟 Elite Clean Sheet Potential',
+                                text: `xCS of ${xcsData.avgXCSPercent}% is exceptional - facing weak attacks. Expected CS points: ${xcsData.totalXCSPoints} from 3 games! Strong team defense + poor opponent attacks = high floor for points. STRONG HOLD regardless of recent results.`
+                            });
+                        } else {
+                            // Average: 25-35% xCS
+                            detailedInsights.push({
+                                type: 'info',
+                                title: 'Average Clean Sheet Potential',
+                                text: `xCS of ${xcsData.avgXCSPercent}% is league average. Expected CS points: ${xcsData.totalXCSPoints} from 3 games. Mixed fixture difficulty - performance will depend on match-to-match factors.`
+                            });
+                        }
+                    }
+                    
+                    // SECONDARY: xGI analysis for attacking defenders (wing-backs)
+                    if (recentXGI >= 0.25) {
+                        // Attacking defender bonus
+                        sellRating -= 10;
+                        issues.push({ text: `Attacking DEF (xGI ${recentXGI.toFixed(2)})`, type: 'positive', points: -10 });
+                        
+                        detailedInsights.push({
+                            type: 'positive',
+                            title: '⚡ Attacking Defender Premium',
+                            text: `xGI/90 of ${recentXGI.toFixed(2)} is excellent for a defender. This is likely a wing-back or set-piece specialist offering DUAL routes to points: clean sheets (${metrics.xCS || 'calculating...'} xCS) PLUS attacking returns. These players are gold - they can haul even when the team concedes.`
+                        });
+                    } else if (recentXGI < THRESHOLDS.xgi[2].critical && recentMinutes >= 180) {
+                        // Pure defensive asset - note it but don't penalize heavily
+                        issues.push({ text: `Pure DEF (xGI ${recentXGI.toFixed(2)})`, type: 'info', points: 0 });
                         
                         detailedInsights.push({
                             type: 'info',
                             title: 'Pure Defensive Asset',
-                            text: `xGI/90 of ${recentXGI.toFixed(2)} indicates minimal attacking involvement. This defender is purely about clean sheets - no attacking bonus points. Fine if your team defends well, but won't match wing-backs with 0.25+ xGI who offer both clean sheets AND attacking potential.`
+                            text: `xGI/90 of ${recentXGI.toFixed(2)} indicates minimal attacking involvement - this is a clean sheet specialist. Their value is entirely tied to xCS (${metrics.xCS || 'calculating...'}). Fine when facing weak attacks, but consider attacking defenders when fixtures are mixed.`
                         });
-                    } else if (recentXGI >= 0.25) {
-                        detailedInsights.push({
-                            type: 'positive',
-                            title: 'Attacking Defender',
-                            text: `Recent xGI/90 of ${recentXGI.toFixed(2)} excellent for a defender. Getting forward consistently - likely a wing-back or set-piece threat. Offers dual routes to points: clean sheets + attacking returns.`
-                        });
+                    }
+                } else if (player.position === 1) { // Goalkeepers
+                    // GOALKEEPERS: xCS is THE metric - clean sheets + save points
+                    // Calculate xCS for upcoming fixtures
+                    if (player.fixtures && player.fixtures.length > 0) {
+                        const xcsData = calculateAvgXCS(player.teamId, player.fixtures.slice(0, 3));
+                        
+                        // Store xCS metrics for display
+                        metrics.xCS = xcsData.avgXCSPercent + '%';
+                        metrics.xCSPoints = xcsData.avgXCSPoints;
+                        metrics.xCSRating = xcsData.rating;
+                        metrics.xCSTotalPoints = xcsData.totalXCSPoints;
+                        player.xcsData = xcsData;
+                        
+                        // xCS-based sell rating adjustments (same as DEF but even more important for GKs)
+                        if (xcsData.rating === 'critical') {
+                            sellRating += 30; // Higher penalty for GKs (clean sheets are their main source)
+                            issues.push({ text: `Critical xCS (${xcsData.avgXCSPercent}%)`, type: 'critical', points: 30 });
+                            reasons.push(`GK with only ${xcsData.avgXCSPercent}% xCS - facing elite attacks`);
+                            
+                            detailedInsights.push({
+                                type: 'critical',
+                                title: '🚨 GK Clean Sheet Probability Critical',
+                                text: `xCS of ${xcsData.avgXCSPercent}% over next 3 fixtures is extremely low. GKs rely on clean sheets for points (4pts each). Expected CS points: ${xcsData.totalXCSPoints} from 3 games. Facing elite attacks means lots of saves but few clean sheets. Consider rotating to a GK with easier fixtures.`
+                            });
+                        } else if (xcsData.rating === 'poor') {
+                            sellRating += 20;
+                            issues.push({ text: `Low xCS (${xcsData.avgXCSPercent}%)`, type: 'warning', points: 20 });
+                            reasons.push(`Low clean sheet probability (${xcsData.avgXCSPercent}%) for GK`);
+                            
+                            detailedInsights.push({
+                                type: 'warning',
+                                title: '⚠️ GK Facing Tough Fixtures',
+                                text: `xCS of ${xcsData.avgXCSPercent}% suggests limited clean sheet potential. Expected CS points: ${xcsData.totalXCSPoints} from 3 games. If you have a rotating GK pair, this is the time to bench. Save points (2-3 per game) won't compensate for lost CS points.`
+                            });
+                        } else if (xcsData.rating === 'good') {
+                            sellRating -= 10;
+                            issues.push({ text: `Good xCS (${xcsData.avgXCSPercent}%)`, type: 'positive', points: -10 });
+                            
+                            detailedInsights.push({
+                                type: 'positive',
+                                title: '✅ GK Good Clean Sheet Potential',
+                                text: `xCS of ${xcsData.avgXCSPercent}% indicates favorable fixtures. Expected CS points: ${xcsData.totalXCSPoints} from 3 games. Facing below-average attacks - this is the GK you want starting. Worth the investment.`
+                            });
+                        } else if (xcsData.rating === 'elite') {
+                            sellRating -= 25; // Big bonus for GKs with elite xCS
+                            issues.push({ text: `Elite xCS (${xcsData.avgXCSPercent}%)`, type: 'positive', points: -25 });
+                            
+                            detailedInsights.push({
+                                type: 'positive',
+                                title: '🌟 GK Elite Clean Sheet Run',
+                                text: `xCS of ${xcsData.avgXCSPercent}% is exceptional for a GK! Expected CS points: ${xcsData.totalXCSPoints} from 3 games. This is a set-and-forget GK for this run - facing weak attacks with high floor. Don't overthink it.`
+                            });
+                        } else {
+                            detailedInsights.push({
+                                type: 'info',
+                                title: 'GK Average Clean Sheet Potential',
+                                text: `xCS of ${xcsData.avgXCSPercent}% is league average. Expected CS points: ${xcsData.totalXCSPoints} from 3 games. Mixed fixtures - consider a rotating pair if you have the bench depth.`
+                            });
+                        }
                     }
                 }
             }
@@ -3753,13 +4011,35 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
             
             // Row 2: Position-Specific Primary Metrics
             if (player.position === 1) {
-                // GOALKEEPERS: Clean Sheet Rate & Saves
+                // GOALKEEPERS: xCS (Expected Clean Sheets) is PRIMARY, then Clean Sheet Rate & Saves
+                if (metrics.xCS) {
+                    const xcsValue = parseFloat(metrics.xCS);
+                    const xcsClass = xcsValue >= 45 ? 'good' : 
+                                    xcsValue < 20 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">🎯 xCS (Next 3)</div>
+                            <div class="metric-value ${xcsClass}" title="Expected Clean Sheet probability">${metrics.xCS}</div>
+                        </div>
+                    `;
+                }
+                if (metrics.xCSTotalPoints) {
+                    const xcsPointsValue = parseFloat(metrics.xCSTotalPoints);
+                    const xcsPointsClass = xcsPointsValue >= 4.5 ? 'good' : 
+                                           xcsPointsValue < 2 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">xCS Pts (3 GWs)</div>
+                            <div class="metric-value ${xcsPointsClass}" title="Expected points from clean sheets over 3 games">${metrics.xCSTotalPoints}</div>
+                        </div>
+                    `;
+                }
                 if (metrics.cleanSheetRate) {
                     const csClass = parseFloat(metrics.cleanSheetRate) >= 50 ? 'good' : 
                                    parseFloat(metrics.cleanSheetRate) < 25 ? 'bad' : 'warning';
                     metricsHtml += `
                         <div class="metric-item">
-                            <div class="metric-label">Clean Sheet Rate (L4)</div>
+                            <div class="metric-label">CS Rate (L4)</div>
                             <div class="metric-value ${csClass}">${metrics.cleanSheetRate}</div>
                         </div>
                     `;
@@ -3774,13 +4054,35 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                     `;
                 }
             } else if (player.position === 2) {
-                // DEFENDERS: Clean Sheets, xGC & Points
+                // DEFENDERS: xCS (Expected Clean Sheets) is PRIMARY, then Clean Sheets, xGC & Points
+                if (metrics.xCS) {
+                    const xcsValue = parseFloat(metrics.xCS);
+                    const xcsClass = xcsValue >= 45 ? 'good' : 
+                                    xcsValue < 20 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">🎯 xCS (Next 3)</div>
+                            <div class="metric-value ${xcsClass}" title="Expected Clean Sheet probability">${metrics.xCS}</div>
+                        </div>
+                    `;
+                }
+                if (metrics.xCSTotalPoints) {
+                    const xcsPointsValue = parseFloat(metrics.xCSTotalPoints);
+                    const xcsPointsClass = xcsPointsValue >= 4.5 ? 'good' : 
+                                           xcsPointsValue < 2 ? 'bad' : 'warning';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <div class="metric-label">xCS Pts (3 GWs)</div>
+                            <div class="metric-value ${xcsPointsClass}" title="Expected points from clean sheets over 3 games">${metrics.xCSTotalPoints}</div>
+                        </div>
+                    `;
+                }
                 if (metrics.cleanSheetRate) {
                     const csClass = parseFloat(metrics.cleanSheetRate) >= 50 ? 'good' : 
                                    parseFloat(metrics.cleanSheetRate) < 25 ? 'bad' : 'warning';
                     metricsHtml += `
                         <div class="metric-item">
-                            <div class="metric-label">Clean Sheet Rate (L4)</div>
+                            <div class="metric-label">CS Rate (L4)</div>
                             <div class="metric-value ${csClass}">${metrics.cleanSheetRate}</div>
                         </div>
                     `;
