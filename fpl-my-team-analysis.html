@@ -1185,7 +1185,7 @@
         <div class="header">
             <h1>⚽ My Team Analysis</h1>
             <p>Research-backed sell/hold recommendations using xGI, fixtures, injuries, and position-specific thresholds</p>
-            <span class="badge">🔬 Research-Backed v4.6 - xCS for Defenders</span>
+            <span class="badge">🔬 Research-Backed v4.7 - Multi-Horizon Analysis</span>
         </div>
 
         <!-- Team ID Input Section -->
@@ -1441,7 +1441,19 @@
                                     <li>🛡️ Defenders see "Opp Attack" rating | ⚡ Attackers see "Opp Defense" rating</li>
                                 </ul>
 
-                                <p><strong>4. Bench Fodder Detection:</strong></p>
+                                <p><strong>4. Multi-Horizon Trend Analysis (v4.7 - NEW!):</strong></p>
+                                <ul>
+                                    <li><strong>Why multiple windows?</strong> Single 4-game sample misses emerging trends. Research shows 5-10% better predictions using multiple horizons.</li>
+                                    <li><strong>Windows analyzed:</strong> L3 (last 3), L5 (last 5), L10 (last 10), Season</li>
+                                    <li><strong>🔥 HOT trend:</strong> L3 > L5 > L10 (accelerating form) → -15 sell rating</li>
+                                    <li><strong>📈 Improving:</strong> L3 significantly above season average → -10 sell rating</li>
+                                    <li><strong>📉 Declining:</strong> L3 significantly below season average → +10 sell rating</li>
+                                    <li><strong>❄️ COLD trend:</strong> L3 < L5 < L10 (decelerating form) → +20 sell rating</li>
+                                    <li>Also tracks: minutes trends, BPS trends (27+ = reliable bonus earner), clean sheet rate trends</li>
+                                    <li><strong>Attackers:</strong> See "Multi-Horizon xGI Trend" showing L3 → L5 → L10 weighted xGI</li>
+                                </ul>
+
+                                <p><strong>5. Bench Fodder Detection:</strong></p>
                                 <ul>
                                     <li>Identifies floor-price players (GK/DEF £4.0m, MID/FWD £4.5m)</li>
                                     <li>Suppresses warnings for bench enablers who aren't playing</li>
@@ -2066,6 +2078,218 @@
                 totalXCSPoints: totalXCSPoints.toFixed(1),
                 fixtureXCS: fixtureXCS,
                 rating: rating
+            };
+        }
+
+        // MULTI-HORIZON ANALYSIS
+        // Research finding: "Using multiple time windows (1, 3, 5, 10 games) simultaneously 
+        // catches trends 5-10% better than single-horizon analysis. Short windows catch 
+        // emerging form, long windows provide stability."
+        
+        const HORIZON_WINDOWS = [1, 3, 5, 10]; // Game windows to analyze
+        
+        function calculateHorizonMetrics(history, window) {
+            if (!history || history.length === 0) return null;
+            
+            const games = history.slice(-window);
+            if (games.length === 0) return null;
+            
+            let xG = 0, xA = 0, xGI = 0, minutes = 0, points = 0, cleanSheets = 0;
+            let bps = 0, threat = 0, creativity = 0, influence = 0;
+            
+            games.forEach(g => {
+                xG += parseFloat(g.expected_goals || 0);
+                xA += parseFloat(g.expected_assists || 0);
+                xGI += parseFloat(g.expected_goal_involvements || 0);
+                minutes += g.minutes || 0;
+                points += g.total_points || 0;
+                cleanSheets += g.clean_sheets || 0;
+                bps += g.bps || 0;
+                threat += parseFloat(g.threat || 0);
+                creativity += parseFloat(g.creativity || 0);
+                influence += parseFloat(g.influence || 0);
+            });
+            
+            const gamesPlayed = games.filter(g => g.minutes > 0).length;
+            
+            return {
+                window: window,
+                gamesInWindow: games.length,
+                gamesPlayed: gamesPlayed,
+                minutes: minutes,
+                points: points,
+                xG: xG,
+                xA: xA,
+                xGI: xGI,
+                cleanSheets: cleanSheets,
+                bps: bps,
+                threat: threat,
+                creativity: creativity,
+                influence: influence,
+                // Per 90 metrics
+                xGIPer90: minutes > 0 ? (xGI / minutes) * 90 : 0,
+                xGPer90: minutes > 0 ? (xG / minutes) * 90 : 0,
+                xAPer90: minutes > 0 ? (xA / minutes) * 90 : 0,
+                pointsPer90: minutes > 0 ? (points / minutes) * 90 : 0,
+                // Per game metrics
+                avgMinutes: gamesPlayed > 0 ? minutes / gamesPlayed : 0,
+                avgPoints: gamesPlayed > 0 ? points / gamesPlayed : 0,
+                avgBPS: gamesPlayed > 0 ? bps / gamesPlayed : 0,
+                csRate: gamesPlayed > 0 ? (cleanSheets / gamesPlayed) * 100 : 0,
+                // Weighted xGI (xG weighted 1.2x)
+                weightedXGI: minutes > 0 ? ((xG / minutes) * 90 * 1.2) + ((xA / minutes) * 90) : 0
+            };
+        }
+        
+        function analyzeMultiHorizon(history, position) {
+            if (!history || history.length === 0) {
+                return { horizons: {}, trend: 'unknown', trendStrength: 0, insights: [] };
+            }
+            
+            const horizons = {};
+            const insights = [];
+            
+            // Calculate metrics for each horizon
+            HORIZON_WINDOWS.forEach(window => {
+                horizons[window] = calculateHorizonMetrics(history, window);
+            });
+            
+            // Also calculate full season
+            horizons.season = calculateHorizonMetrics(history, history.length);
+            
+            // TREND DETECTION
+            // Compare short-term (L3) vs medium-term (L5) vs long-term (L10/season)
+            let trend = 'stable';
+            let trendStrength = 0;
+            
+            const h3 = horizons[3];
+            const h5 = horizons[5];
+            const h10 = horizons[10];
+            const season = horizons.season;
+            
+            if (h3 && h5 && season) {
+                // Use appropriate metric based on position
+                const isDefensive = position <= 2;
+                
+                if (isDefensive) {
+                    // For GK/DEF: Compare clean sheet rates and minutes
+                    const shortCS = h3.csRate;
+                    const medCS = h5.csRate;
+                    const longCS = season.csRate;
+                    
+                    if (shortCS > longCS * 1.3 && h3.avgMinutes >= 60) {
+                        trend = 'improving';
+                        trendStrength = ((shortCS / longCS) - 1) * 100;
+                        insights.push({
+                            type: 'positive',
+                            title: '📈 Clean Sheet Rate Trending Up',
+                            text: `L3 CS rate (${shortCS.toFixed(0)}%) is higher than season average (${longCS.toFixed(0)}%). Team defense is clicking - good sign for upcoming fixtures.`
+                        });
+                    } else if (shortCS < longCS * 0.7 && h3.avgMinutes >= 60) {
+                        trend = 'declining';
+                        trendStrength = (1 - (shortCS / longCS)) * 100;
+                        insights.push({
+                            type: 'warning',
+                            title: '📉 Clean Sheet Rate Declining',
+                            text: `L3 CS rate (${shortCS.toFixed(0)}%) has dropped below season average (${longCS.toFixed(0)}%). Team defense may be struggling - monitor closely.`
+                        });
+                    }
+                } else {
+                    // For MID/FWD: Compare xGI trends across horizons
+                    const shortXGI = h3.weightedXGI;
+                    const medXGI = h5 ? h5.weightedXGI : shortXGI;
+                    const longXGI = h10 ? h10.weightedXGI : season.weightedXGI;
+                    const seasonXGI = season.weightedXGI;
+                    
+                    // Improving: Short > Medium > Long (accelerating form)
+                    if (shortXGI > medXGI * 1.15 && medXGI > longXGI * 1.1 && h3.minutes >= 180) {
+                        trend = 'hot';
+                        trendStrength = ((shortXGI / seasonXGI) - 1) * 100;
+                        insights.push({
+                            type: 'positive',
+                            title: '🔥 Form Accelerating',
+                            text: `Multi-horizon analysis shows accelerating form: L3 xGI (${shortXGI.toFixed(2)}) > L5 (${medXGI.toFixed(2)}) > L10 (${longXGI.toFixed(2)}). Player is getting MORE involved in attacks each week - strong hold signal.`
+                        });
+                    }
+                    // Strong improvement: Short significantly better than season
+                    else if (shortXGI > seasonXGI * 1.25 && h3.minutes >= 180) {
+                        trend = 'improving';
+                        trendStrength = ((shortXGI / seasonXGI) - 1) * 100;
+                        insights.push({
+                            type: 'positive',
+                            title: '📈 Form Improving',
+                            text: `L3 weighted xGI (${shortXGI.toFixed(2)}) is ${trendStrength.toFixed(0)}% above season average (${seasonXGI.toFixed(2)}). Recent underlying stats suggest returns are coming.`
+                        });
+                    }
+                    // Declining: Short < Medium < Long (decelerating form)
+                    else if (shortXGI < medXGI * 0.85 && medXGI < longXGI * 0.9 && h3.minutes >= 180) {
+                        trend = 'cold';
+                        trendStrength = (1 - (shortXGI / seasonXGI)) * 100;
+                        insights.push({
+                            type: 'critical',
+                            title: '❄️ Form Collapsing',
+                            text: `Multi-horizon analysis shows collapsing form: L3 xGI (${shortXGI.toFixed(2)}) < L5 (${medXGI.toFixed(2)}) < L10 (${longXGI.toFixed(2)}). Player is getting LESS involved each week - strong sell signal.`
+                        });
+                    }
+                    // Significant decline: Short much worse than season
+                    else if (shortXGI < seasonXGI * 0.7 && h3.minutes >= 180) {
+                        trend = 'declining';
+                        trendStrength = (1 - (shortXGI / seasonXGI)) * 100;
+                        insights.push({
+                            type: 'warning',
+                            title: '📉 Form Declining',
+                            text: `L3 weighted xGI (${shortXGI.toFixed(2)}) is ${trendStrength.toFixed(0)}% below season average (${seasonXGI.toFixed(2)}). Underlying stats suggest genuine decline, not just bad luck.`
+                        });
+                    }
+                }
+                
+                // MINUTES TREND (all positions)
+                if (h3 && h5 && season) {
+                    const shortMins = h3.avgMinutes;
+                    const medMins = h5.avgMinutes;
+                    const seasonMins = season.avgMinutes;
+                    
+                    if (shortMins < medMins * 0.8 && medMins < seasonMins * 0.9 && seasonMins >= 60) {
+                        insights.push({
+                            type: 'critical',
+                            title: '⚠️ Minutes Trending Down Across All Horizons',
+                            text: `L3 avg (${shortMins.toFixed(0)}m) < L5 (${medMins.toFixed(0)}m) < Season (${seasonMins.toFixed(0)}m). Clear pattern of decreasing playing time - rotation or loss of place emerging.`
+                        });
+                    } else if (shortMins > medMins * 1.2 && shortMins > 75 && medMins < 70) {
+                        insights.push({
+                            type: 'positive',
+                            title: '📈 Minutes Trending Up',
+                            text: `L3 avg (${shortMins.toFixed(0)}m) shows increased playing time vs L5 (${medMins.toFixed(0)}m). Player may be cementing starting spot or returning from injury.`
+                        });
+                    }
+                }
+                
+                // BPS TREND (bonus point potential)
+                if (h3 && season && h3.gamesPlayed >= 2) {
+                    const shortBPS = h3.avgBPS;
+                    const seasonBPS = season.avgBPS;
+                    
+                    if (shortBPS >= 27 && seasonBPS >= 25) {
+                        insights.push({
+                            type: 'positive',
+                            title: '⭐ Reliable Bonus Earner',
+                            text: `Averaging ${shortBPS.toFixed(0)} BPS over last 3 games (season: ${seasonBPS.toFixed(0)}). Research shows 27+ BPS = consistent bonus points. This player offers reliable floor.`
+                        });
+                    } else if (shortBPS < 15 && seasonBPS >= 20) {
+                        insights.push({
+                            type: 'warning',
+                            title: '📉 Bonus Points Drying Up',
+                            text: `L3 BPS (${shortBPS.toFixed(0)}) has dropped significantly from season average (${seasonBPS.toFixed(0)}). Less involved in play - fewer bonus points coming.`
+                        });
+                    }
+                }
+            }
+            
+            return {
+                horizons: horizons,
+                trend: trend,
+                trendStrength: trendStrength,
+                insights: insights
             };
         }
 
@@ -2908,6 +3132,47 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
             if (player.history && player.history.length > 0) {
                 seasonGames = player.history;
                 recentGames = player.history.slice(-4);
+                
+                // MULTI-HORIZON ANALYSIS - Analyze trends across 1, 3, 5, 10 game windows
+                const multiHorizon = analyzeMultiHorizon(player.history, player.position);
+                player.multiHorizon = multiHorizon;
+                metrics.trend = multiHorizon.trend;
+                metrics.trendStrength = multiHorizon.trendStrength.toFixed(0);
+                
+                // Store horizon data for display
+                if (multiHorizon.horizons[3]) {
+                    metrics.L3xGI = multiHorizon.horizons[3].weightedXGI.toFixed(2);
+                    metrics.L3pts = multiHorizon.horizons[3].avgPoints.toFixed(1);
+                    metrics.L3mins = multiHorizon.horizons[3].avgMinutes.toFixed(0);
+                }
+                if (multiHorizon.horizons[5]) {
+                    metrics.L5xGI = multiHorizon.horizons[5].weightedXGI.toFixed(2);
+                    metrics.L5pts = multiHorizon.horizons[5].avgPoints.toFixed(1);
+                }
+                if (multiHorizon.horizons[10]) {
+                    metrics.L10xGI = multiHorizon.horizons[10].weightedXGI.toFixed(2);
+                    metrics.L10pts = multiHorizon.horizons[10].avgPoints.toFixed(1);
+                }
+                
+                // Add multi-horizon insights
+                multiHorizon.insights.forEach(insight => {
+                    detailedInsights.push(insight);
+                });
+                
+                // Apply trend-based sell rating adjustments
+                if (multiHorizon.trend === 'hot') {
+                    sellRating -= 15;
+                    issues.push({ text: '🔥 Hot Trend', type: 'positive', points: -15 });
+                } else if (multiHorizon.trend === 'improving') {
+                    sellRating -= 10;
+                    issues.push({ text: '📈 Improving', type: 'positive', points: -10 });
+                } else if (multiHorizon.trend === 'declining') {
+                    sellRating += 10;
+                    issues.push({ text: '📉 Declining', type: 'warning', points: 10 });
+                } else if (multiHorizon.trend === 'cold') {
+                    sellRating += 20;
+                    issues.push({ text: '❄️ Cold Trend', type: 'critical', points: 20 });
+                }
                 
                 // Calculate season averages
                 seasonGames.forEach(g => {
@@ -3998,6 +4263,27 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                     </div>
                 `;
             }
+            
+            // Multi-Horizon Trend Indicator (NEW)
+            if (metrics.trend && metrics.trend !== 'stable' && metrics.trend !== 'unknown') {
+                const trendConfig = {
+                    'hot': { icon: '🔥', label: 'HOT', color: 'var(--accent-green)', bg: 'rgba(34, 197, 94, 0.15)' },
+                    'improving': { icon: '📈', label: 'UP', color: 'var(--accent-green)', bg: 'rgba(34, 197, 94, 0.1)' },
+                    'declining': { icon: '📉', label: 'DOWN', color: 'var(--accent-yellow)', bg: 'rgba(234, 179, 8, 0.1)' },
+                    'cold': { icon: '❄️', label: 'COLD', color: 'var(--accent-red)', bg: 'rgba(239, 68, 68, 0.15)' }
+                };
+                const tc = trendConfig[metrics.trend] || { icon: '➖', label: 'STABLE', color: 'var(--text-dim)', bg: 'transparent' };
+                
+                metricsHtml += `
+                    <div class="metric-item">
+                        <div class="metric-label">Multi-Horizon Trend</div>
+                        <div class="metric-value" style="background: ${tc.bg}; color: ${tc.color}; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
+                            ${tc.icon} ${tc.label} ${metrics.trendStrength ? `(${metrics.trendStrength}%)` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
             if (metrics.avgPoints) {
                 const ptsClass = parseFloat(metrics.avgPoints) >= 5 ? 'good' : 
                                  parseFloat(metrics.avgPoints) < 3 ? 'bad' : 'warning';
@@ -4135,6 +4421,38 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                         <div class="metric-item">
                             <div class="metric-label">Weighted xGI/90 ⚖️</div>
                             <div class="metric-value ${weightedClass}" title="xG weighted 1.2x (more reliable than xA)">${metrics.weightedRecentXGI}</div>
+                        </div>
+                    `;
+                }
+                
+                // MULTI-HORIZON xGI COMPARISON (NEW)
+                if (metrics.L3xGI && metrics.L5xGI) {
+                    const l3 = parseFloat(metrics.L3xGI);
+                    const l5 = parseFloat(metrics.L5xGI);
+                    const l10 = metrics.L10xGI ? parseFloat(metrics.L10xGI) : null;
+                    
+                    // Determine trend direction with arrows
+                    let trendArrow = '➖';
+                    let trendColor = 'var(--text-dim)';
+                    if (l3 > l5 * 1.15) {
+                        trendArrow = '📈';
+                        trendColor = 'var(--accent-green)';
+                    } else if (l3 < l5 * 0.85) {
+                        trendArrow = '📉';
+                        trendColor = 'var(--accent-red)';
+                    }
+                    
+                    // Build comparison string
+                    let comparisonStr = `L3: ${metrics.L3xGI}`;
+                    if (metrics.L5xGI) comparisonStr += ` → L5: ${metrics.L5xGI}`;
+                    if (metrics.L10xGI) comparisonStr += ` → L10: ${metrics.L10xGI}`;
+                    
+                    metricsHtml += `
+                        <div class="metric-item" style="grid-column: span 2;">
+                            <div class="metric-label">${trendArrow} Multi-Horizon xGI Trend</div>
+                            <div class="metric-value" style="font-size: 11px; color: ${trendColor};">
+                                ${comparisonStr}
+                            </div>
                         </div>
                     `;
                 }
