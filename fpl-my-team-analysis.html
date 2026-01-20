@@ -1216,12 +1216,6 @@
             }
         }
 
-        .guide-section {
-            background: var(--surface);
-            border-bottom: 2px solid var(--border);
-            margin-bottom: 30px;
-        }
-
         /* Team ID Input Section */
         .team-id-section {
             background: var(--surface);
@@ -1389,116 +1383,6 @@
             }
         }
 
-        .guide-header {
-            padding: 20px 30px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s ease;
-        }
-
-        .guide-header:hover {
-            background: var(--surface-hover);
-        }
-
-        .guide-title {
-            font-size: 16px;
-            color: var(--accent-green);
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .guide-subtitle {
-            font-size: 12px;
-            color: var(--text-dim);
-        }
-
-        .guide-toggle {
-            font-size: 24px;
-            color: var(--accent-green);
-            transition: transform 0.3s ease;
-        }
-
-        .guide-toggle.open {
-            transform: rotate(180deg);
-        }
-
-        .guide-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease;
-        }
-
-        .guide-content.open {
-            max-height: 3000px;
-        }
-
-        .guide-inner {
-            padding: 30px;
-            border-top: 1px solid var(--border);
-        }
-
-        .guide-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 25px;
-            margin-bottom: 20px;
-        }
-
-        .guide-card {
-            background: var(--bg);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
-        .guide-card h3 {
-            font-size: 14px;
-            color: var(--accent-green);
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
-
-        .guide-text {
-            font-size: 13px;
-            line-height: 1.8;
-            color: var(--text);
-        }
-
-        .guide-text p {
-            margin-bottom: 15px;
-        }
-
-        .guide-text ul {
-            margin-left: 20px;
-            margin-bottom: 15px;
-        }
-
-        .guide-text li {
-            margin-bottom: 8px;
-            color: var(--text-dim);
-        }
-
-        .guide-text strong {
-            color: var(--accent-green);
-        }
-
-        .guide-example {
-            background: var(--surface);
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 3px solid var(--accent-green);
-            margin: 15px 0;
-            font-family: monospace;
-            font-size: 12px;
-        }
-
-        @media (max-width: 1024px) {
-            .guide-grid {
-                grid-template-columns: 1fr;
-            }
-        }
 
         @media (max-width: 768px) {
             .back-button {
@@ -1584,303 +1468,42 @@
             </div>
             
             <div class="or-divider">
-                <span>OR build your team manually below</span>
+                <span>OR build your team manually</span>
+            </div>
+            
+            <!-- Manual Build & Actions -->
+            <div class="controls" style="margin-top: var(--space-4); justify-content: center;">
+                <button class="btn" onclick="openTeamSelector()">
+                    🔧 Build My Team
+                </button>
+                <button class="btn btn-secondary" onclick="analyzeTeam()">
+                    📊 Analyze Team
+                </button>
+                <button class="btn btn-danger" onclick="clearTeam()">
+                    🗑️ Clear Team
+                </button>
+            </div>
+            
+            <!-- Quick Settings Presets -->
+            <div class="quick-settings" style="margin-top: var(--space-4);">
+                <span class="quick-settings-label">Analysis Style:</span>
+                <button class="preset-btn" onclick="applyPreset('aggressive')" title="Sell after 3 blanks, high fixture weight, lower thresholds">
+                    🔥 Aggressive
+                </button>
+                <button class="preset-btn active" onclick="applyPreset('balanced')" title="Default balanced settings">
+                    ⚖️ Balanced
+                </button>
+                <button class="preset-btn" onclick="applyPreset('patient')" title="Hold through 5 blanks, more patience with premiums">
+                    🧘 Patient
+                </button>
+                <button class="preset-btn" onclick="openSettings()" title="Customize individual thresholds">
+                    ⚙️ Custom
+                </button>
             </div>
         </div>
 
-        <!-- Quick Settings Presets -->
-        <div class="quick-settings">
-            <span class="quick-settings-label">Analysis Style:</span>
-            <button class="preset-btn" onclick="applyPreset('aggressive')" title="Sell after 3 blanks, high fixture weight, lower thresholds">
-                🔥 Aggressive
-            </button>
-            <button class="preset-btn active" onclick="applyPreset('balanced')" title="Default balanced settings">
-                ⚖️ Balanced
-            </button>
-            <button class="preset-btn" onclick="applyPreset('patient')" title="Hold through 5 blanks, more patience with premiums">
-                🧘 Patient
-            </button>
-            <button class="preset-btn" onclick="openSettings()" title="Customize individual thresholds">
-                ⚙️ Custom Settings
-            </button>
-        </div>
-
-        <div class="guide-section">
-            <div class="guide-header" onclick="toggleGuide()">
-                <div>
-                    <div class="guide-title">🔬 How Research-Backed Analysis Works</div>
-                    <div class="guide-subtitle">Click to learn about the methodology from top 10k managers</div>
-                </div>
-                <span class="guide-toggle" id="guideToggle">▼</span>
-            </div>
-            <div class="guide-content" id="guideContent">
-                <div class="guide-inner">
-                    <div class="guide-grid">
-                        <div class="guide-card">
-                            <h3>📊 Rating System (0-100 Points)</h3>
-                            <div class="guide-text">
-                                <p><strong>Based on research from top 50 FPL managers (2024-25 season)</strong></p>
-                                
-                                <p><strong>Rating Thresholds:</strong></p>
-                                <ul>
-                                    <li><strong>60-100: 🚨 SELL URGENT</strong> - Critical issues requiring immediate transfer (red flag injuries, 4+ blanks, severe rotation)</li>
-                                    <li><strong>40-59: ⚠️ CONSIDER SELLING</strong> - Multiple concerns that warrant close monitoring (yellow flags, declining form, rotation risk)</li>
-                                    <li><strong>0-39: ✅ HOLD</strong> - Strong performer with solid underlying stats and no major concerns</li>
-                                </ul>
-
-                                <p><strong>What Drives the Rating:</strong></p>
-                                <ul>
-                                    <li><strong>Injuries (Most Critical):</strong> Red flags +60pts, Yellow flags +30pts, multipliers applied</li>
-                                    <li><strong>Form Rating:</strong> Critical (<1.5) +35pts, Poor (<3.0) +20pts, Excellent (6.0+) -20pts</li>
-                                    <li><strong>xGI (Expected Goal Involvements):</strong> Position-specific thresholds - forwards need 0.45+, mids 0.40+</li>
-                                    <li><strong>Minutes Security:</strong> 60-minute rule - below 60 mins average triggers rotation warnings</li>
-                                    <li><strong>Blank Streaks:</strong> 4 consecutive blanks +30pts, 3 blanks +15pts (research-validated threshold)</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="guide-card">
-                            <h3>🎯 Position-Specific Analysis (v4.4-4.6)</h3>
-                            <div class="guide-text">
-                                <p><strong>Research finding: Form vs Fixtures matter differently by position!</strong></p>
-                                
-                                <p><strong>🛡️ Goalkeepers & Defenders - xCS is PRIMARY (v4.6 NEW!):</strong></p>
-                                <ul>
-                                    <li><strong>xCS (Expected Clean Sheets):</strong> THE most predictive metric for defensive assets</li>
-                                    <li>Research shows actual clean sheets deviate only ~1.24 from xCS predictions over a season</li>
-                                    <li><strong>Elite xCS (45%+):</strong> Facing weak attacks - strong hold</li>
-                                    <li><strong>Good xCS (35-45%):</strong> Favorable fixtures - likely clean sheets</li>
-                                    <li><strong>Poor xCS (15-25%):</strong> Tough fixtures - consider rotating</li>
-                                    <li><strong>Critical xCS (<15%):</strong> Facing elite attacks - SELL signal</li>
-                                    <li>Fixtures: 60-65% weight | Form: 35-40% weight</li>
-                                </ul>
-
-                                <p><strong>⚡ Midfielders:</strong></p>
-                                <ul>
-                                    <li><strong>Form: 60%</strong> | Fixtures: 40%</li>
-                                    <li>Attacking returns depend on player form and team chemistry</li>
-                                    <li>Good mids score against anyone when in form</li>
-                                    <li>xGI and recent returns are key indicators</li>
-                                </ul>
-
-                                <p><strong>🎯 Forwards:</strong></p>
-                                <ul>
-                                    <li><strong>Form: 65%</strong> | Fixtures: 35%</li>
-                                    <li>Strikers in form score regardless of opponent</li>
-                                    <li>Haaland/Salah can haul against any defense</li>
-                                    <li>xGI per 90 is the key metric</li>
-                                </ul>
-
-                                <p><strong>Premium vs Budget Logic:</strong></p>
-                                <ul>
-                                    <li>Premium players (£8m+): Get 15% more patience (multiplier 0.85)</li>
-                                    <li>Budget players (<£5.5m): Get 10% less patience (multiplier 1.1)</li>
-                                    <li>Matches research: elite managers gave premiums 3-4 blank tolerance</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="guide-card">
-                            <h3>🔍 Key Metrics Explained</h3>
-                            <div class="guide-text">
-                                <p><strong>What the metrics mean and why they matter:</strong></p>
-                                
-                                <p><strong>🎯 xCS (Expected Clean Sheets) - NEW for GK/DEF:</strong></p>
-                                <ul>
-                                    <li>Calculates clean sheet probability based on team defense + opponent attack</li>
-                                    <li>Uses FPL API team strength data (strength_attack_home, strength_defence_away)</li>
-                                    <li>Home advantage included (+8% xCS at home)</li>
-                                    <li>"xCS Pts (3 GWs)" shows expected points from clean sheets only</li>
-                                    <li>More predictive than form for defensive assets - trust xCS over recent results!</li>
-                                </ul>
-                                
-                                <p><strong>Form Rating:</strong></p>
-                                <ul>
-                                    <li>FPL's official form score (weighted average of recent points)</li>
-                                    <li>6.0+ = Excellent (strong hold), 4.5+ = Good, 3.0- = Poor, 1.5- = Critical</li>
-                                    <li>Short-term performance indicator</li>
-                                </ul>
-
-                                <p><strong>xGI (Expected Goal Involvements) - for MID/FWD:</strong></p>
-                                <ul>
-                                    <li>xG + xA = total attacking threat</li>
-                                    <li>More predictive than actual goals/assists</li>
-                                    <li>High xGI with low returns = player is DUE for hauls</li>
-                                    <li>71% accuracy predicting returns over 4-gameweek samples</li>
-                                </ul>
-
-                                <p><strong>Average Minutes (Last 4):</strong></p>
-                                <ul>
-                                    <li>75+ mins = Nailed starter (bonus: -10 points)</li>
-                                    <li>60-75 mins = Rotation risk emerging (+20 points)</li>
-                                    <li>Below 60 = Severe rotation concerns (+35 points)</li>
-                                    <li>60-minute threshold critical for clean sheet points</li>
-                                </ul>
-
-                                <p><strong>Ownership %:</strong></p>
-                                <ul>
-                                    <li>Below 2%: High template opportunity cost (+10 points)</li>
-                                    <li>Above 40%: Less differential value (+5 points)</li>
-                                    <li>Effective ownership = your ownership vs top 10k average</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="guide-card">
-                            <h3>💡 How Top Managers Use This</h3>
-                            <div class="guide-text">
-                                <p><strong>Evidence-based decision patterns from top 50 analysis:</strong></p>
-                                
-                                <p><strong>The 4-Blank Rule:</strong></p>
-                                <ul>
-                                    <li>Elite managers wait until 4 consecutive blanks before selling</li>
-                                    <li>BUT only if xGI remains strong (1.0+ xG = definite hold)</li>
-                                    <li>Cole Palmer's GW29 mass exodus was a classic knee-jerk error</li>
-                                    <li>Trust underlying stats over recent results</li>
-                                </ul>
-
-                                <p><strong>Injury Response:</strong></p>
-                                <ul>
-                                    <li>Red flags (confirmed injured): Immediate sell 95%+ of the time</li>
-                                    <li>Yellow flags (doubtful): Assess bench strength and return fixtures</li>
-                                    <li>1-2 week injuries: Hold with bench cover</li>
-                                    <li>4+ week injuries: Sell immediately regardless of player quality</li>
-                                </ul>
-
-                                <p><strong>Price Change Strategy:</strong></p>
-                                <ul>
-                                    <li>58% of elite managers IGNORED price rises when transferring</li>
-                                    <li>43% held players despite impending price falls</li>
-                                    <li>Points projection > team value optimization</li>
-                                    <li>Only act on price drops if replacement already identified</li>
-                                </ul>
-
-                                <p><strong>Common Mistakes to Avoid:</strong></p>
-                                <ul>
-                                    <li>❌ Selling after 1-2 blanks when xGI strong</li>
-                                    <li>❌ Panic selling high-ownership players (differential trap)</li>
-                                    <li>❌ Over-rotating budget enablers who aren't playing</li>
-                                    <li>❌ Selling premiums during tough fixture runs (they're fixture-proof)</li>
-                                    <li>✅ Trust the rating system - it's backed by top 10k data</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="guide-card">
-                            <h3>🎯 Advanced Features (v4.0 - NEW!)</h3>
-                            <div class="guide-text">
-                                <p><strong>Complete data overhaul - now using real per-game data from element-summary API:</strong></p>
-                                
-                                <p><strong>1. Real xGI Data (Per-Game, Not Season Totals):</strong></p>
-                                <ul>
-                                    <li>Fetches `/api/element-summary/{id}/` for EVERY player in your team</li>
-                                    <li>Gets complete game-by-game history (last 4-38 gameweeks)</li>
-                                    <li><strong>Recent xGI/90 (L4):</strong> Calculated from actual per-game xG + xA over last 4 games</li>
-                                    <li><strong>Season xGI/90:</strong> Long-term baseline for comparison</li>
-                                    <li><strong>xG/90 & xA/90 breakdown:</strong> Shows shooting threat vs creativity split</li>
-                                    <li>71% → 85% accuracy for predicting imminent returns (vs old season total method)</li>
-                                </ul>
-
-                                <p><strong>2. Detailed Player-Specific Insights (3-5 per player):</strong></p>
-                                <ul>
-                                    <li><strong>xGI Trend Analysis:</strong> "Recent xGI 45% lower than season avg - genuine decline, not bad luck"</li>
-                                    <li><strong>Minutes Trend Detection:</strong> "90→82→65→58 - rotation victim, manager phasing them out"</li>
-                                    <li><strong>Shot Volume Context:</strong> "180 threat score despite 8 points - due a haul"</li>
-                                    <li><strong>Blank Streak Analysis:</strong> "4 blanks but xGI 0.65 suggests bad luck, not decline"</li>
-                                    <li><strong>Form Breakdown:</strong> "Premium forwards need 0.60+ xGI, only at 0.28 - fundamental issue"</li>
-                                    <li><strong>Injury Context:</strong> "Yellow flag = no price protection, red flag = immediate sell"</li>
-                                    <li>Each insight provides specific numbers, context, and actionable reasoning</li>
-                                </ul>
-
-                                <p><strong>3. Position-Aware Fixture Analysis (v4.5 - NEW!):</strong></p>
-                                <ul>
-                                    <li><strong>Separated Attack/Defense FDR:</strong> Now analyzes opponent attack AND defense separately</li>
-                                    <li><strong>For Defenders/GKs:</strong> 70% weight on opponent ATTACK strength (what threatens clean sheets)</li>
-                                    <li><strong>For Midfielders/Forwards:</strong> 70% weight on opponent DEFENSE weakness (what enables goals)</li>
-                                    <li><strong>Position FDR:</strong> Custom difficulty rating based on what matters for YOUR position</li>
-                                    <li><strong>Example:</strong> Wolves may have FDR 3, but weak defense (2.2) + strong attack (3.8) = great for attackers, bad for defenders</li>
-                                    <li>Uses team strength data from FPL API: strength_attack_home, strength_defence_away, etc.</li>
-                                    <li>Home advantage: -0.3 FDR adjustment (clean sheets 15% more likely at home)</li>
-                                    <li>🛡️ Defenders see "Opp Attack" rating | ⚡ Attackers see "Opp Defense" rating</li>
-                                </ul>
-
-                                <p><strong>4. Multi-Horizon Trend Analysis (v4.7 - NEW!):</strong></p>
-                                <ul>
-                                    <li><strong>Why multiple windows?</strong> Single 4-game sample misses emerging trends. Research shows 5-10% better predictions using multiple horizons.</li>
-                                    <li><strong>Windows analyzed:</strong> L3 (last 3), L5 (last 5), L10 (last 10), Season</li>
-                                    <li><strong>🔥 HOT trend:</strong> L3 > L5 > L10 (accelerating form) → -15 sell rating</li>
-                                    <li><strong>📈 Improving:</strong> L3 significantly above season average → -10 sell rating</li>
-                                    <li><strong>📉 Declining:</strong> L3 significantly below season average → +10 sell rating</li>
-                                    <li><strong>❄️ COLD trend:</strong> L3 < L5 < L10 (decelerating form) → +20 sell rating</li>
-                                    <li>Also tracks: minutes trends, BPS trends (27+ = reliable bonus earner), clean sheet rate trends</li>
-                                    <li><strong>Attackers:</strong> See "Multi-Horizon xGI Trend" showing L3 → L5 → L10 weighted xGI</li>
-                                </ul>
-
-                                <p><strong>5. Bench Fodder Detection:</strong></p>
-                                <ul>
-                                    <li>Identifies floor-price players (GK/DEF £4.0m, MID/FWD £4.5m)</li>
-                                    <li>Suppresses warnings for bench enablers who aren't playing</li>
-                                    <li>Rating capped at 35 (HOLD range) for non-injured bench fodder</li>
-                                    <li><strong>Exception:</strong> Injuries still flagged (bench depth matters)</li>
-                                    <li>Shows original rating: "Original: 92 → Suppressed to 35"</li>
-                                </ul>
-
-                                <p><strong>Data Quality Improvements:</strong></p>
-                                <ul>
-                                    <li><strong>Before v4.0:</strong> Season totals, no per-game history, generic analysis</li>
-                                    <li><strong>After v4.0:</strong> Per-game xGI from last 4 GWs, trend detection, context-specific insights</li>
-                                    <li>Loads 2-3 seconds longer (15 API calls) but worth it for real data accuracy</li>
-                                    <li>Catches rotation victims 3 gameweeks earlier with minutes trend analysis</li>
-                                    <li>All metrics color-coded: green (good) / yellow (warning) / red (bad)</li>
-                                </ul>
-
-                                <p><strong>Example Analysis Output:</strong></p>
-                                <ul>
-                                    <li>"Recent xGI/90 (0.28) has dropped 45% from season average (0.52). This suggests a genuine decline..."</li>
-                                    <li>"Minutes trending down: 90 → 82 → 65 → 58. Clear rotation risk emerging..."</li>
-                                    <li>"Next 3 opponents (LIV(A, 5), ARS(H, 4), CHE(A, 4)) avg FDR 4.3 - brutal run ahead..."</li>
-                                    <li>Each player gets 3-5 detailed insights with specific numbers and context</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="guide-example">
-                        <strong>📈 Example: How a Rating is Calculated</strong><br><br>
-                        
-                        <strong>Player: Premium Midfielder (£9.5m)</strong><br>
-                        - Red flag injury: +60 points<br>
-                        - Form 1.2 (critical): +35 points<br>
-                        - xGI 0.28 (below 0.40 threshold): +25 points<br>
-                        - Avg minutes 58 (rotation risk): +20 points<br>
-                        - 3 recent blanks: +15 points<br>
-                        <br>
-                        <strong>Subtotal: 155 points</strong><br>
-                        Premium adjustment (0.85x): 155 × 0.85 = 132<br>
-                        Injury multiplier (1/0.3): 132 × 3.33 = 439<br>
-                        <strong>Final (capped): 100 → 🚨 SELL URGENT</strong><br>
-                        <br>
-                        <em>The combination of injury + poor form + rotation makes this an emergency sell regardless of price or ownership.</em>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="controls">
-            <button class="btn" onclick="openTeamSelector()">
-                🔧 Build My Team
-            </button>
-            <button class="btn btn-secondary" onclick="analyzeTeam()">
-                📊 Analyze Team
-            </button>
-            <button class="btn btn-secondary" onclick="openSettings()">
-                ⚙️ Settings
-            </button>
-            <button class="btn btn-danger" onclick="clearTeam()">
-                🗑️ Clear Team
-            </button>
-            <div class="status" id="status">Click "Build My Team" to begin</div>
-        </div>
+        <!-- Status Message -->
+        <div class="status" id="status" style="margin: var(--space-4) 0; text-align: center;">Enter your Team ID above or click "Build My Team" to begin</div>
 
         <div id="teamDisplay"></div>
     </div>
@@ -5085,32 +4708,52 @@ player.fixtures content: ${JSON.stringify(player.fixtures, null, 2)}
                     </div>
                     
                     ${insightsHtml ? `
-                        <div class="detailed-insights">
-                            <strong style="display: block; margin-bottom: 12px; font-size: 14px;">📊 Detailed Analysis:</strong>
+                        <div class="detailed-insights-toggle" onclick="togglePlayerInsights('insights-${player.id}')" style="
+                            display: flex;
+                            align-items: center;
+                            gap: var(--space-2);
+                            padding: var(--space-2) var(--space-3);
+                            margin-top: var(--space-3);
+                            background: var(--surface-1);
+                            border-radius: var(--radius-md);
+                            cursor: pointer;
+                            font-size: var(--text-sm);
+                            color: var(--text-secondary);
+                            transition: all var(--transition-fast);
+                        " onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface-1)'">
+                            <span id="insights-${player.id}-icon" style="transition: transform var(--transition-fast);">▶</span>
+                            <span>📊 View Detailed Analysis (${detailedInsights.length} insights)</span>
+                        </div>
+                        <div id="insights-${player.id}" class="detailed-insights" style="display: none; margin-top: var(--space-3);">
                             ${insightsHtml}
                         </div>
                     ` : `
                         <div class="recommendation">
-                            <strong>📊 Research-Based Analysis:</strong><br>
-                            ${reasons.length > 0 ? reasons.join('. ') + '.' : 'Strong performer with no major concerns. Underlying stats support continued ownership.'}
+                            <strong>📊 Analysis:</strong>
+                            ${reasons.length > 0 ? reasons.join('. ') + '.' : 'Strong performer with no major concerns.'}
                         </div>
                     `}
                 </div>
             `;
+        }
+        
+        function togglePlayerInsights(insightsId) {
+            const insights = document.getElementById(insightsId);
+            const icon = document.getElementById(insightsId + '-icon');
+            
+            if (insights.style.display === 'none') {
+                insights.style.display = 'block';
+                icon.style.transform = 'rotate(90deg)';
+            } else {
+                insights.style.display = 'none';
+                icon.style.transform = 'rotate(0deg)';
+            }
         }
 
         function updateStatus(message, type = 'info') {
             const status = document.getElementById('status');
             status.textContent = message;
             status.className = 'status ' + type;
-        }
-
-        function toggleGuide() {
-            const content = document.getElementById('guideContent');
-            const toggle = document.getElementById('guideToggle');
-            
-            content.classList.toggle('open');
-            toggle.classList.toggle('open');
         }
 
         function openSettings() {
