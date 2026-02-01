@@ -880,8 +880,44 @@
     </div>
 
     <script>
-        const CORS_PROXY = 'https://corsproxy.io/?';
+        // Multiple CORS proxies for fallback
+        const CORS_PROXIES = [
+            { name: 'allorigins', format: (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
+            { name: 'corsproxy.io', format: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}` },
+            { name: 'cors-anywhere-alt', format: (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}` }
+        ];
+        
+        let currentProxyIndex = 0;
         let allTeamsData = [];
+        
+        // Try fetching with fallback proxies
+        async function fetchWithProxy(url) {
+            let lastError;
+            
+            for (let i = 0; i < CORS_PROXIES.length; i++) {
+                const proxyIndex = (currentProxyIndex + i) % CORS_PROXIES.length;
+                const proxy = CORS_PROXIES[proxyIndex];
+                const proxyUrl = proxy.format(url);
+                
+                try {
+                    console.log(`Trying ${proxy.name}...`);
+                    const response = await fetch(proxyUrl);
+                    
+                    if (response.ok) {
+                        // Remember which proxy worked for next time
+                        currentProxyIndex = proxyIndex;
+                        return response;
+                    }
+                    
+                    lastError = new Error(`${proxy.name} returned ${response.status}`);
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`${proxy.name} failed:`, error.message);
+                }
+            }
+            
+            throw lastError || new Error('All CORS proxies failed');
+        }
 
         // Toggle guide section
         function toggleGuide() {
@@ -924,14 +960,12 @@
                 showLoading(true);
                 updateStatus('Fetching FPL data...', 'loading');
 
-                // Fetch bootstrap data
-                const bootstrapResponse = await fetch(CORS_PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/'));
-                if (!bootstrapResponse.ok) throw new Error('Failed to fetch bootstrap data');
+                // Fetch bootstrap data using proxy fallback
+                const bootstrapResponse = await fetchWithProxy('https://fantasy.premierleague.com/api/bootstrap-static/');
                 const bootstrapData = await bootstrapResponse.json();
 
-                // Fetch fixtures
-                const fixturesResponse = await fetch(CORS_PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/fixtures/'));
-                if (!fixturesResponse.ok) throw new Error('Failed to fetch fixtures');
+                // Fetch fixtures using proxy fallback
+                const fixturesResponse = await fetchWithProxy('https://fantasy.premierleague.com/api/fixtures/');
                 const fixturesData = await fixturesResponse.json();
 
                 updateStatus('Analyzing teams...', 'loading');
