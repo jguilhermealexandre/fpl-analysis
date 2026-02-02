@@ -880,44 +880,13 @@
     </div>
 
     <script>
-        // Multiple CORS proxies for fallback
-        const CORS_PROXIES = [
-            { name: 'allorigins', format: (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
-            { name: 'corsproxy.io', format: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}` },
-            { name: 'cors-anywhere-alt', format: (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}` }
-        ];
+        // Load data from your own GitHub-hosted JSON (no CORS issues!)
+        // IMPORTANT: Update this URL to your actual GitHub Pages or raw GitHub URL
+        const DATA_URL = 'data/teams-data.json'; // Relative path if hosted together
+        // Or use: 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/data/teams-data.json'
+        // Or use: 'https://YOUR_USERNAME.github.io/YOUR_REPO/data/teams-data.json'
         
-        let currentProxyIndex = 0;
         let allTeamsData = [];
-        
-        // Try fetching with fallback proxies
-        async function fetchWithProxy(url) {
-            let lastError;
-            
-            for (let i = 0; i < CORS_PROXIES.length; i++) {
-                const proxyIndex = (currentProxyIndex + i) % CORS_PROXIES.length;
-                const proxy = CORS_PROXIES[proxyIndex];
-                const proxyUrl = proxy.format(url);
-                
-                try {
-                    console.log(`Trying ${proxy.name}...`);
-                    const response = await fetch(proxyUrl);
-                    
-                    if (response.ok) {
-                        // Remember which proxy worked for next time
-                        currentProxyIndex = proxyIndex;
-                        return response;
-                    }
-                    
-                    lastError = new Error(`${proxy.name} returned ${response.status}`);
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`${proxy.name} failed:`, error.message);
-                }
-            }
-            
-            throw lastError || new Error('All CORS proxies failed');
-        }
 
         // Toggle guide section
         function toggleGuide() {
@@ -960,13 +929,22 @@
                 showLoading(true);
                 updateStatus('Fetching FPL data...', 'loading');
 
-                // Fetch bootstrap data using proxy fallback
-                const bootstrapResponse = await fetchWithProxy('https://fantasy.premierleague.com/api/bootstrap-static/');
-                const bootstrapData = await bootstrapResponse.json();
-
-                // Fetch fixtures using proxy fallback
-                const fixturesResponse = await fetchWithProxy('https://fantasy.premierleague.com/api/fixtures/');
-                const fixturesData = await fixturesResponse.json();
+                // Fetch from your own hosted JSON file (no CORS issues!)
+                const response = await fetch(DATA_URL);
+                if (!response.ok) throw new Error('Failed to fetch data. Make sure teams-data.json exists.');
+                const data = await response.json();
+                
+                // Extract bootstrap and fixtures data from combined JSON
+                const bootstrapData = {
+                    teams: data.teams,
+                    events: data.events
+                };
+                const fixturesData = data.fixtures;
+                
+                // Show last updated time
+                const lastUpdated = data.metadata?.lastUpdated 
+                    ? new Date(data.metadata.lastUpdated).toLocaleString() 
+                    : 'Unknown';
 
                 updateStatus('Analyzing teams...', 'loading');
                 
@@ -987,7 +965,7 @@
                 renderBestForDefenders(teamsAnalysis);
                 renderFixtureSwings(teamsAnalysis);
 
-                updateStatus(`✓ GW${currentGW} | Loaded ${teamsAnalysis.length} teams`, 'success');
+                updateStatus(`✓ GW${currentGW} | ${teamsAnalysis.length} teams | Updated: ${lastUpdated}`, 'success');
                 showLoading(false);
 
             } catch (error) {
