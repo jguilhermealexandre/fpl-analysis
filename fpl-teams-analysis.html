@@ -880,11 +880,9 @@
     </div>
 
     <script>
-        // Load data from your own GitHub-hosted JSON (no CORS issues!)
-        // IMPORTANT: Update this URL to your actual GitHub Pages or raw GitHub URL
-        const DATA_URL = 'data/teams-data.json'; // Relative path if hosted together
-        // Or use: 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/data/teams-data.json'
-        // Or use: 'https://YOUR_USERNAME.github.io/YOUR_REPO/data/teams-data.json'
+        // Load data from your own GitHub-hosted JSON files (no CORS issues!)
+        const BOOTSTRAP_URL = 'data/bootstrap-static.json';
+        const FIXTURES_URL = 'data/fixtures.json';
         
         let allTeamsData = [];
 
@@ -929,22 +927,17 @@
                 showLoading(true);
                 updateStatus('Fetching FPL data...', 'loading');
 
-                // Fetch from your own hosted JSON file (no CORS issues!)
-                const response = await fetch(DATA_URL);
-                if (!response.ok) throw new Error('Failed to fetch data. Make sure teams-data.json exists.');
-                const data = await response.json();
+                // Fetch from your own hosted JSON files (no CORS issues!)
+                const [bootstrapResponse, fixturesResponse] = await Promise.all([
+                    fetch(BOOTSTRAP_URL),
+                    fetch(FIXTURES_URL)
+                ]);
                 
-                // Extract bootstrap and fixtures data from combined JSON
-                const bootstrapData = {
-                    teams: data.teams,
-                    events: data.events
-                };
-                const fixturesData = data.fixtures;
+                if (!bootstrapResponse.ok) throw new Error('Failed to fetch bootstrap-static.json');
+                if (!fixturesResponse.ok) throw new Error('Failed to fetch fixtures.json');
                 
-                // Show last updated time
-                const lastUpdated = data.metadata?.lastUpdated 
-                    ? new Date(data.metadata.lastUpdated).toLocaleString() 
-                    : 'Unknown';
+                const bootstrapData = await bootstrapResponse.json();
+                const fixturesData = await fixturesResponse.json();
 
                 updateStatus('Analyzing teams...', 'loading');
                 
@@ -965,7 +958,7 @@
                 renderBestForDefenders(teamsAnalysis);
                 renderFixtureSwings(teamsAnalysis);
 
-                updateStatus(`✓ GW${currentGW} | ${teamsAnalysis.length} teams | Updated: ${lastUpdated}`, 'success');
+                updateStatus(`✓ GW${currentGW} | ${teamsAnalysis.length} teams loaded`, 'success');
                 showLoading(false);
 
             } catch (error) {
