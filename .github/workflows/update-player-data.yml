@@ -26,7 +26,11 @@ jobs:
           
           # Fetch bootstrap-static (has all basic player info)
           echo "Fetching bootstrap data..."
-          curl -s "https://fantasy.premierleague.com/api/bootstrap-static/" > data/bootstrap-temp.json
+          curl -s "https://fantasy.premierleague.com/api/bootstrap-static/" > data/bootstrap-static.json
+          
+          # Fetch fixtures data
+          echo "Fetching fixtures data..."
+          curl -s "https://fantasy.premierleague.com/api/fixtures/" > data/fixtures.json
           
           # Extract player IDs
           echo "Processing player data..."
@@ -34,7 +38,7 @@ jobs:
           const fs = require('fs');
           
           // Read bootstrap data
-          const bootstrap = JSON.parse(fs.readFileSync('data/bootstrap-temp.json', 'utf8'));
+          const bootstrap = JSON.parse(fs.readFileSync('data/bootstrap-static.json', 'utf8'));
           
           // Filter active players (those with minutes played)
           const activePlayers = bootstrap.elements.filter(p => p.minutes > 0);
@@ -115,10 +119,10 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add data/players-data.json
+          git add data/players-data.json data/bootstrap-static.json data/fixtures.json
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update player data - $(date +'%Y-%m-%d %H:%M UTC')"
+            git commit -m "Update FPL data - $(date +'%Y-%m-%d %H:%M UTC')"
             git push
           fi
