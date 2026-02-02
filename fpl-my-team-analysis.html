@@ -1704,7 +1704,30 @@
         let currentGW = 1; // Current gameweek
         let managerData = null; // Manager info from FPL API
         
-        const CORS_PROXY = 'https://corsproxy.io/?';
+        // CORS proxies for user-specific API calls (manager info, picks)
+        // Static data (bootstrap, fixtures, players) loads from local JSON files
+        const CORS_PROXIES = [
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+        ];
+        
+        async function fetchWithProxy(url) {
+            for (const proxyFn of CORS_PROXIES) {
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 10000);
+                    
+                    const response = await fetch(proxyFn(url), { signal: controller.signal });
+                    clearTimeout(timeout);
+                    
+                    if (response.ok) return response;
+                } catch (e) {
+                    console.warn('Proxy failed, trying next...', e.message);
+                }
+            }
+            throw new Error('All proxies failed. FPL API may be unavailable.');
+        }
 
         // ===== LOAD TEAM BY ID =====
         async function loadTeamById() {
@@ -1732,21 +1755,22 @@
                     allPlayersById[p.id] = p;
                 });
                 
-                // Get bootstrap data to find current gameweek
-                const bootRes = await fetch(CORS_PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/'));
+                // Get bootstrap data from local file to find current gameweek
+                const bootRes = await fetch('data/bootstrap-static.json');
+                if (!bootRes.ok) throw new Error('Failed to load bootstrap-static.json');
                 const bootData = await bootRes.json();
                 const currEvent = bootData.events.find(e => e.is_current);
                 currentGW = currEvent ? currEvent.id : 1;
                 
                 updateStatus(`Fetching team ${teamId} for GW${currentGW}...`, 'loading');
                 
-                // Get manager info
-                const mgrRes = await fetch(CORS_PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${teamId}/`));
+                // Get manager info (user-specific, needs API via proxy)
+                const mgrRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`);
                 if (!mgrRes.ok) throw new Error('Team not found. Please check your Team ID.');
                 managerData = await mgrRes.json();
                 
-                // Get picks for current gameweek
-                const picksRes = await fetch(CORS_PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`));
+                // Get picks for current gameweek (user-specific, needs API via proxy)
+                const picksRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`);
                 if (!picksRes.ok) throw new Error('Could not load team picks. Try a different gameweek.');
                 const picksData = await picksRes.json();
                 
@@ -2357,17 +2381,15 @@
 
         async function loadPlayers() {
             try {
-                // Try loading from static file first
-                let response = await fetch('/data/players-data.json');
+                // Try loading from static file first (no leading slash for relative path)
+                let response = await fetch('data/players-data.json');
                 let data;
                 
                 if (!response.ok) {
                     // Fallback to API with CORS proxy
                     console.log('📡 Static file not found, fetching from FPL API with CORS proxy...');
-                    const bootstrapUrl = 'https://fantasy.premierleague.com/api/bootstrap-static/';
-                    const corsProxy = 'https://corsproxy.io/?';
                     
-                    response = await fetch(corsProxy + encodeURIComponent(bootstrapUrl));
+                    response = await fetchWithProxy('https://fantasy.premierleague.com/api/bootstrap-static/');
                     data = await response.json();
                     
                     console.log('✅ Loaded from FPL API');
@@ -2544,11 +2566,9 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 console.log('Teams object exists:', !!teams);
                 console.log('Teams count:', Object.keys(teams).length);
                 
-                // Use CORS proxy to bypass browser restrictions
-                const fixturesUrl = 'https://fantasy.premierleague.com/api/fixtures/';
-                const corsProxy = 'https://corsproxy.io/?';
-                
-                const response = await fetch(corsProxy + encodeURIComponent(fixturesUrl));
+                // Load from local JSON file (generated by GitHub Actions)
+                const response = await fetch('data/fixtures.json');
+                if (!response.ok) throw new Error('Failed to load fixtures.json');
                 fixtures = await response.json();
                 console.log('Fetched fixtures:', fixtures.length);
                 
@@ -3081,11 +3101,19 @@ teamFixtures object keys: ${Object.keys(teamFixtures).length}
                 const detailedPlayers = await Promise.all(
                     selectedPlayers.map(async (player) => {
                         try {
-                            // Use CORS proxy to bypass browser restrictions
-                            const elementUrl = `https://fantasy.premierleague.com/api/element-summary/${player.id}/`;
-                            const corsProxy = 'https://corsproxy.io/?';
+                            // First check if we already have history from static data
+                            const existingPlayer = allPlayersDetailed[player.id];
+                            if (existingPlayer && existingPlayer.history && existingPlayer.history.length > 0) {
+                                return {
+                                    ...player,
+                                    history: existingPlayer.history,
+                                    fixtures: existingPlayer.fixtures || player.fixtures || []
+                                };
+                            }
                             
-                            const response = await fetch(corsProxy + encodeURIComponent(elementUrl));
+                            // Fallback: fetch from API via proxy
+                            const elementUrl = `https://fantasy.premierleague.com/api/element-summary/${player.id}/`;
+                            const response = await fetchWithProxy(elementUrl);
                             const data = await response.json();
                             
                             // Combine player data with detailed history
