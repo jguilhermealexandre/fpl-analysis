@@ -1051,27 +1051,27 @@
             const grid = document.getElementById('teams-grid');
             const contentArea = document.getElementById('content-area');
 
+            // Reset content area to just the grid
+            contentArea.innerHTML = '<div class="teams-grid" id="teams-grid"></div>';
+            const newGrid = document.getElementById('teams-grid');
+
             switch (currentView) {
                 case 'overview':
                     const overviewSorted = [...allTeamsData].sort((a, b) => b.formScore - a.formScore);
-                    grid.innerHTML = overviewSorted.map((team, i) => createTeamCard(team, i + 1, 'form')).join('');
-                    grid.style.display = 'grid';
+                    newGrid.innerHTML = overviewSorted.map((team, i) => createTeamCard(team, i + 1, 'form')).join('');
                     break;
 
                 case 'attack':
                     const attackSorted = [...allTeamsData].sort((a, b) => b.attackRating - a.attackRating);
-                    grid.innerHTML = attackSorted.map((team, i) => createTeamCard(team, i + 1, 'attack')).join('');
-                    grid.style.display = 'grid';
+                    newGrid.innerHTML = attackSorted.map((team, i) => createTeamCard(team, i + 1, 'attack')).join('');
                     break;
 
                 case 'defense':
                     const defenseSorted = [...allTeamsData].sort((a, b) => b.defenseRating - a.defenseRating);
-                    grid.innerHTML = defenseSorted.map((team, i) => createTeamCard(team, i + 1, 'defense')).join('');
-                    grid.style.display = 'grid';
+                    newGrid.innerHTML = defenseSorted.map((team, i) => createTeamCard(team, i + 1, 'defense')).join('');
                     break;
 
                 case 'swings':
-                    grid.style.display = 'none';
                     renderFixtureSwings(contentArea);
                     break;
             }
@@ -1220,7 +1220,6 @@
                         }).join('')}
                     </div>
                 </div>
-                <div id="teams-grid" class="teams-grid" style="display: none;"></div>
             `;
 
             container.innerHTML = html;
