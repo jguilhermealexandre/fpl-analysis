@@ -199,31 +199,370 @@
         }
         .rec-meta { font-size: 11px; color: var(--text-muted); }
 
-        /* TABLES */
+        /* TABLES - Elegant Design */
         .table-section {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
         }
-        .table-header {
-            padding: 16px;
+
+        /* Table Toolbar */
+        .table-toolbar {
+            padding: 20px;
+            background: var(--surface-1);
             border-bottom: 1px solid var(--border-default);
+        }
+        .table-toolbar-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .table-title-section {
+            display: flex;
+            align-items: center;
             gap: 12px;
         }
-        .table-title { font-weight: 600; font-size: 15px; }
-        .table-filters {
+        .table-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .table-icon.gk { background: rgba(251, 191, 36, 0.15); }
+        .table-icon.def { background: rgba(52, 211, 153, 0.15); }
+        .table-icon.mid { background: rgba(96, 165, 250, 0.15); }
+        .table-icon.fwd { background: rgba(248, 113, 113, 0.15); }
+        .table-title { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600; }
+        .table-count { font-size: 13px; color: var(--text-muted); }
+
+        .table-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .action-btn {
+            padding: 8px 14px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 150ms;
+        }
+        .action-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+        .action-btn.active { background: rgba(74, 222, 128, 0.15); color: var(--color-success); border-color: rgba(74, 222, 128, 0.3); }
+
+        /* Search & Filters Row */
+        .table-controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+            max-width: 300px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px 10px 38px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 13px;
+            transition: all 150ms;
+        }
+        .search-box input:focus { outline: none; border-color: var(--color-info); background: var(--surface-3); }
+        .search-box input::placeholder { color: var(--text-muted); }
+        .search-box .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Filter Pills */
+        .filter-pills {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
         }
-        .filter-chip {
-            padding: 6px 12px;
+        .filter-pill {
+            padding: 8px 14px;
             background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 150ms;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .filter-pill:hover { background: var(--surface-3); color: var(--text-primary); }
+        .filter-pill.active { background: rgba(74, 222, 128, 0.12); color: var(--color-success); border-color: rgba(74, 222, 128, 0.25); }
+        .filter-pill .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Column Selector Dropdown */
+        .column-selector {
+            position: relative;
+        }
+        .column-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 220px;
+            z-index: 50;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            display: none;
+        }
+        .column-dropdown.show { display: block; }
+        .column-dropdown-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-default);
+        }
+        .column-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+        .column-option:hover { background: var(--surface-3); }
+        .column-option input { accent-color: var(--color-success); }
+        .column-option label { cursor: pointer; font-size: 13px; flex: 1; }
+        .column-option .col-desc { font-size: 10px; color: var(--text-muted); }
+
+        /* Advanced Filters Panel */
+        .filters-panel {
+            background: var(--surface-2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            display: none;
+        }
+        .filters-panel.show { display: block; }
+        .filter-group {
+            margin-bottom: 16px;
+        }
+        .filter-group:last-child { margin-bottom: 0; }
+        .filter-group-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        .filter-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-option {
+            padding: 6px 12px;
+            background: var(--surface-3);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+        .filter-option:hover { color: var(--text-primary); border-color: var(--border-default); }
+        .filter-option.active { background: rgba(74, 222, 128, 0.12); color: var(--color-success); border-color: rgba(74, 222, 128, 0.25); }
+        .filter-range {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-range input {
+            width: 80px;
+            padding: 6px 10px;
+            background: var(--surface-3);
+            border: 1px solid var(--border-default);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 12px;
+        }
+        .filter-range input:focus { outline: none; border-color: var(--color-info); }
+        .filter-range span { color: var(--text-muted); font-size: 12px; }
+
+        /* Table Styles */
+        .table-container { overflow-x: auto; }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table thead {
+            background: var(--surface-2);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .data-table th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            transition: all 150ms;
+            border-bottom: 1px solid var(--border-default);
+        }
+        .data-table th:hover { color: var(--text-primary); background: var(--surface-3); }
+        .data-table th.sorted { color: var(--color-success); }
+        .data-table th .sort-icon { margin-left: 6px; font-size: 10px; opacity: 0.5; }
+        .data-table th.sorted .sort-icon { opacity: 1; }
+
+        .data-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 13px;
+            transition: all 150ms;
+        }
+        .data-table tbody tr { transition: all 150ms; }
+        .data-table tbody tr:hover { background: var(--surface-2); }
+        .data-table tbody tr:hover td { border-bottom-color: transparent; }
+
+        /* Player Cell */
+        .player-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .player-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--surface-3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .player-info { }
+        .player-name { font-weight: 600; font-size: 13px; }
+        .player-team { font-size: 11px; color: var(--text-muted); }
+
+        /* Stat Cells */
+        .stat-cell {
+            font-variant-numeric: tabular-nums;
+        }
+        .stat-cell.good { color: var(--color-success); font-weight: 600; }
+        .stat-cell.warning { color: var(--color-warning); }
+        .stat-cell.bad { color: var(--color-error); }
+
+        /* FDR Badge */
+        .fdr-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .fdr-1 { background: var(--fdr-1); color: #000; }
+        .fdr-2 { background: var(--fdr-2); color: #000; }
+        .fdr-3 { background: var(--fdr-3); color: #000; }
+        .fdr-4 { background: var(--fdr-4); color: #000; }
+        .fdr-5 { background: var(--fdr-5); color: #fff; }
+
+        /* Form Dots */
+        .form-dots {
+            display: flex;
+            gap: 3px;
+        }
+        .form-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .form-dot.high { background: var(--color-success); }
+        .form-dot.mid { background: var(--color-warning); }
+        .form-dot.low { background: var(--color-error); }
+
+        /* Ownership Bar */
+        .ownership-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ownership-track {
+            width: 50px;
+            height: 4px;
+            background: var(--surface-3);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .ownership-fill {
+            height: 100%;
+            background: var(--color-info);
+            border-radius: 2px;
+        }
+        .ownership-value {
+            font-size: 12px;
+            color: var(--text-secondary);
+            min-width: 40px;
+        }
+
+        /* Table Footer */
+        .table-footer {
+            padding: 16px 20px;
+            background: var(--surface-2);
+            border-top: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .table-info { font-size: 12px; color: var(--text-muted); }
+        .table-pagination {
+            display: flex;
+            gap: 4px;
+        }
+        .page-btn {
+            padding: 6px 12px;
+            background: var(--surface-3);
             border: 1px solid var(--border-default);
             border-radius: 6px;
             color: var(--text-secondary);
@@ -231,78 +570,8 @@
             cursor: pointer;
             transition: all 150ms;
         }
-        .filter-chip:hover { background: var(--surface-3); color: var(--text-primary); }
-        .filter-chip.active { background: rgba(74, 222, 128, 0.15); color: var(--color-success); border-color: var(--color-success); }
-        .filter-select {
-            padding: 6px 12px;
-            background: var(--surface-2);
-            border: 1px solid var(--border-default);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-size: 12px;
-            cursor: pointer;
-        }
-        .search-input {
-            padding: 6px 12px;
-            background: var(--surface-2);
-            border: 1px solid var(--border-default);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-size: 12px;
-            width: 160px;
-        }
-        .search-input::placeholder { color: var(--text-muted); }
-        .search-input:focus { outline: none; border-color: var(--color-info); }
-
-        .table-container { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead { background: var(--surface-2); }
-        th {
-            padding: 12px 16px;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-        th:hover { color: var(--text-primary); }
-        td {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border-subtle);
-            white-space: nowrap;
-        }
-        tr:hover td { background: var(--surface-2); }
-        .player-cell { display: flex; align-items: center; gap: 10px; }
-        .player-cell img { width: 24px; height: 24px; border-radius: 4px; }
-        .player-cell .name { font-weight: 500; }
-        .pos-badge {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 700;
-        }
-        .pos-badge.gk { background: rgba(252, 211, 77, 0.2); color: #FCD34D; }
-        .pos-badge.def { background: rgba(52, 211, 153, 0.2); color: #34D399; }
-        .pos-badge.mid { background: rgba(96, 165, 250, 0.2); color: #60A5FA; }
-        .pos-badge.fwd { background: rgba(248, 113, 113, 0.2); color: #F87171; }
-        .stat-good { color: var(--color-success); }
-        .stat-bad { color: var(--color-error); }
-        .fdr-badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 700;
-            color: #000;
-        }
-        .fdr-1 { background: var(--fdr-1); }
-        .fdr-2 { background: var(--fdr-2); }
-        .fdr-3 { background: var(--fdr-3); }
-        .fdr-4 { background: var(--fdr-4); }
-        .fdr-5 { background: var(--fdr-5); }
+        .page-btn:hover { background: var(--surface-1); color: var(--text-primary); }
+        .page-btn.active { background: var(--color-success); color: #000; border-color: var(--color-success); }
 
         /* CHARTS */
         .charts-section { }
@@ -712,104 +981,458 @@
         // ============================================
         // TABLES
         // ============================================
+        // ============================================
+        // TABLES - Advanced Implementation
+        // ============================================
+        let tableData = {};
+        let tableState = {
+            GK: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
+            DEF: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
+            MID: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
+            FWD: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 }
+        };
+        const ROWS_PER_PAGE = 25;
+
+        // Column definitions with metadata
+        const COLUMN_DEFS = {
+            player: { label: 'Player', key: 'name', sortable: true, always: true },
+            team: { label: 'Team', key: 'team', sortable: true, always: true },
+            price: { label: 'Price', key: 'price', sortable: true, format: v => `£${v.toFixed(1)}m` },
+            form: { label: 'Form', key: 'form', sortable: true, format: v => v.toFixed(1), highlight: v => v >= 6 ? 'good' : v >= 4 ? '' : 'bad' },
+            pts: { label: 'Pts (L5)', key: 'l5.points', sortable: true },
+            ptsG: { label: 'Pts/G', key: 'ptsPerGame', sortable: true, format: v => v.toFixed(1), highlight: v => v >= 5 ? 'good' : v >= 3 ? '' : 'bad' },
+            xGI: { label: 'xGI/G', key: 'xgiPerGame', sortable: true, format: v => v.toFixed(2), highlight: v => v >= 0.5 ? 'good' : v >= 0.25 ? '' : 'bad' },
+            goals: { label: 'G', key: 'l5.goals', sortable: true },
+            assists: { label: 'A', key: 'l5.assists', sortable: true },
+            cs: { label: 'CS', key: 'l5.cleanSheets', sortable: true },
+            saves: { label: 'Saves', key: 'l5.saves', sortable: true },
+            gc: { label: 'GC', key: 'l5.goalsConceded', sortable: true },
+            bonus: { label: 'Bonus', key: 'l5.bonus', sortable: true },
+            mins: { label: 'Mins/G', key: 'minsPerGame', sortable: true, format: v => v.toFixed(0), highlight: v => v >= 80 ? 'good' : v >= 60 ? '' : 'bad' },
+            fdr: { label: 'FDR', key: 'fdr', sortable: true, type: 'fdr' },
+            own: { label: 'Own%', key: 'selectedBy', sortable: true, type: 'ownership' },
+            ict: { label: 'ICT', key: 'ict', sortable: true, format: v => v.toFixed(1) },
+            value: { label: 'Value', key: 'valueScore', sortable: true, format: v => v.toFixed(2), highlight: v => v >= 1 ? 'good' : '' },
+            xG: { label: 'xG/G', key: 'xgPerGame', sortable: true, format: v => v.toFixed(2) },
+            xA: { label: 'xA/G', key: 'xaPerGame', sortable: true, format: v => v.toFixed(2) },
+            seasonPts: { label: 'Season Pts', key: 'season.points', sortable: true },
+            seasonPtsG: { label: 'Season Pts/G', key: 'seasonPtsPerGame', sortable: true, format: v => v.toFixed(1) }
+        };
+
+        // Default columns per position
+        const DEFAULT_COLS = {
+            GK: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'cs', 'saves', 'mins', 'fdr', 'own'],
+            DEF: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'cs', 'xGI', 'mins', 'fdr', 'own'],
+            MID: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'xGI', 'goals', 'assists', 'fdr', 'own'],
+            FWD: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'xGI', 'goals', 'assists', 'fdr', 'own']
+        };
+
+        // Available columns per position
+        const AVAILABLE_COLS = {
+            GK: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'cs', 'saves', 'gc', 'bonus', 'mins', 'fdr', 'own', 'seasonPts', 'seasonPtsG', 'value'],
+            DEF: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'cs', 'xGI', 'goals', 'assists', 'gc', 'bonus', 'mins', 'fdr', 'own', 'xG', 'xA', 'seasonPts', 'seasonPtsG', 'value'],
+            MID: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'xGI', 'goals', 'assists', 'bonus', 'mins', 'fdr', 'own', 'xG', 'xA', 'ict', 'seasonPts', 'seasonPtsG', 'value'],
+            FWD: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'xGI', 'goals', 'assists', 'bonus', 'mins', 'fdr', 'own', 'xG', 'xA', 'ict', 'seasonPts', 'seasonPtsG', 'value']
+        };
+
         function createTable(position, analyses) {
             const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
+            const posNames = { GK: 'Goalkeepers', DEF: 'Defenders', MID: 'Midfielders', FWD: 'Forwards' };
+            const posIcons = { GK: '🧤', DEF: '🛡️', MID: '⚡', FWD: '🎯' };
+            
+            // Initialize state
+            if (!tableState[position].visibleCols.length) {
+                tableState[position].visibleCols = [...DEFAULT_COLS[position]];
+            }
+
+            // Process players with computed fields
             const players = analyses
                 .filter(a => a.position === posMap[position] && a.l5?.games >= 1)
-                .sort((a, b) => (b.l5?.points || 0) - (a.l5?.points || 0))
-                .slice(0, 50);
+                .map(p => {
+                    const l5Games = p.l5?.games || 1;
+                    const seasonGames = p.season?.games || 1;
+                    return {
+                        ...p,
+                        ptsPerGame: (p.l5?.points || 0) / l5Games,
+                        xgiPerGame: (p.l5?.xGI || 0) / l5Games,
+                        xgPerGame: (p.l5?.xG || 0) / l5Games,
+                        xaPerGame: (p.l5?.xA || 0) / l5Games,
+                        minsPerGame: (p.l5?.minutes || 0) / l5Games,
+                        seasonPtsPerGame: (p.season?.points || 0) / seasonGames,
+                        fdr: p.fixtures?.avgFDR3 || 3,
+                        valueScore: ((p.l5?.points || 0) / l5Games) / p.price,
+                        ict: p.l5?.ict || 0
+                    };
+                });
 
-            const cols = position === 'GK' 
-                ? ['Player', 'Team', 'Price', 'Form', 'Pts', 'Pts/G', 'CS', 'Saves', 'FDR', 'Own%']
-                : position === 'DEF'
-                ? ['Player', 'Team', 'Price', 'Form', 'Pts', 'Pts/G', 'CS', 'xGI', 'FDR', 'Own%']
-                : ['Player', 'Team', 'Price', 'Form', 'Pts', 'Pts/G', 'xGI', 'G', 'A', 'FDR', 'Own%'];
+            tableData[position] = players;
 
             return `
-                <div class="table-section">
-                    <div class="table-header">
-                        <div class="table-title">${position === 'GK' ? 'Goalkeepers' : position === 'DEF' ? 'Defenders' : position === 'MID' ? 'Midfielders' : 'Forwards'}</div>
-                        <div class="table-filters">
-                            <input type="text" class="search-input" placeholder="Search..." oninput="filterTable('${position}', this.value)">
-                            <select class="filter-select" onchange="sortTable('${position}', this.value)">
-                                <option value="pts">Sort: Points</option>
-                                <option value="form">Sort: Form</option>
-                                <option value="xgi">Sort: xGI</option>
-                                <option value="price">Sort: Price</option>
-                            </select>
+                <div class="table-section" id="tableSection-${position}">
+                    <div class="table-toolbar">
+                        <div class="table-toolbar-top">
+                            <div class="table-title-section">
+                                <div class="table-icon ${position.toLowerCase()}">${posIcons[position]}</div>
+                                <div>
+                                    <div class="table-title">${posNames[position]}</div>
+                                    <div class="table-count"><span id="rowCount-${position}">${players.length}</span> players</div>
+                                </div>
+                            </div>
+                            <div class="table-actions">
+                                <button class="action-btn" onclick="toggleFilters('${position}')" id="filterBtn-${position}">
+                                    <span>⚙️</span> Filters
+                                </button>
+                                <div class="column-selector">
+                                    <button class="action-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}">
+                                        <span>📊</span> Columns
+                                    </button>
+                                    <div class="column-dropdown" id="colDropdown-${position}">
+                                        <div class="column-dropdown-title">Show/Hide Columns</div>
+                                        ${AVAILABLE_COLS[position].map(col => {
+                                            const def = COLUMN_DEFS[col];
+                                            const checked = tableState[position].visibleCols.includes(col);
+                                            const disabled = def.always ? 'disabled' : '';
+                                            return `
+                                                <div class="column-option">
+                                                    <input type="checkbox" id="col-${position}-${col}" ${checked ? 'checked' : ''} ${disabled}
+                                                        onchange="toggleColumn('${position}', '${col}')">
+                                                    <label for="col-${position}-${col}">${def.label}</label>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-controls">
+                            <div class="search-box">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" placeholder="Search players..." id="search-${position}" 
+                                    oninput="handleSearch('${position}', this.value)">
+                            </div>
+                            <div class="filter-pills">
+                                <button class="filter-pill ${tableState[position].filters.form === 'hot' ? 'active' : ''}" 
+                                    onclick="quickFilter('${position}', 'form', 'hot')">
+                                    <span class="dot"></span> Hot Form
+                                </button>
+                                <button class="filter-pill ${tableState[position].filters.fixtures === 'easy' ? 'active' : ''}" 
+                                    onclick="quickFilter('${position}', 'fixtures', 'easy')">
+                                    <span class="dot"></span> Easy Fixtures
+                                </button>
+                                <button class="filter-pill ${tableState[position].filters.value === 'high' ? 'active' : ''}" 
+                                    onclick="quickFilter('${position}', 'value', 'high')">
+                                    <span class="dot"></span> High Value
+                                </button>
+                                <button class="filter-pill ${tableState[position].filters.nailed === true ? 'active' : ''}" 
+                                    onclick="quickFilter('${position}', 'nailed', true)">
+                                    <span class="dot"></span> Nailed On
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="filters-panel" id="filtersPanel-${position}">
+                            <div class="filter-group">
+                                <div class="filter-group-label">Price Range</div>
+                                <div class="filter-range">
+                                    <input type="number" placeholder="Min" step="0.5" id="priceMin-${position}" 
+                                        onchange="applyRangeFilter('${position}', 'price')">
+                                    <span>to</span>
+                                    <input type="number" placeholder="Max" step="0.5" id="priceMax-${position}"
+                                        onchange="applyRangeFilter('${position}', 'price')">
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <div class="filter-group-label">Ownership</div>
+                                <div class="filter-options">
+                                    <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'low')">< 5% (Diff)</button>
+                                    <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'mid')">5-15%</button>
+                                    <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'high')">15-30%</button>
+                                    <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'template')"> 30%+</button>
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <div class="filter-group-label">Minutes (Last 5)</div>
+                                <div class="filter-options">
+                                    <button class="filter-option" onclick="setFilter('${position}', 'minutes', '90')">90 mins avg</button>
+                                    <button class="filter-option" onclick="setFilter('${position}', 'minutes', '75')">75+ mins</button>
+                                    <button class="filter-option" onclick="setFilter('${position}', 'minutes', '60')">60+ mins</button>
+                                </div>
+                            </div>
+                            <div style="margin-top: 12px;">
+                                <button class="action-btn" onclick="clearFilters('${position}')">Clear All Filters</button>
+                            </div>
                         </div>
                     </div>
+                    
                     <div class="table-container">
-                        <table id="table-${position}">
-                            <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-                            <tbody>
-                                ${players.map(p => renderTableRow(p, position)).join('')}
+                        <table class="data-table" id="table-${position}">
+                            <thead>
+                                <tr id="tableHead-${position}">
+                                    ${renderTableHeader(position)}
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody-${position}">
+                                ${renderTableBody(position)}
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <div class="table-footer">
+                        <div class="table-info">
+                            Showing <span id="showingCount-${position}">${Math.min(ROWS_PER_PAGE, players.length)}</span> of ${players.length}
+                        </div>
+                        <div class="table-pagination" id="pagination-${position}">
+                            ${renderPagination(position, players.length)}
+                        </div>
                     </div>
                 </div>
             `;
         }
 
-        function renderTableRow(p, pos) {
-            const l5 = p.l5 || {};
-            const games = l5.games || 1;
-            const ptsG = (l5.points / games).toFixed(1);
-            const xGI = ((l5.xGI || 0) / games).toFixed(2);
-            const fdr = p.fixtures?.avgFDR3 || 3;
-            const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
-
-            const cells = pos === 'GK' ? [
-                `<td><div class="player-cell"><span class="name">${p.name}</span></div></td>`,
-                `<td>${p.team}</td>`,
-                `<td>£${p.price.toFixed(1)}m</td>`,
-                `<td class="${p.form >= 5 ? 'stat-good' : ''}">${p.form.toFixed(1)}</td>`,
-                `<td>${l5.points || 0}</td>`,
-                `<td class="${parseFloat(ptsG) >= 4 ? 'stat-good' : ''}">${ptsG}</td>`,
-                `<td>${l5.cleanSheets || 0}</td>`,
-                `<td>${l5.saves || 0}</td>`,
-                `<td><span class="fdr-badge ${fdrClass}">${fdr.toFixed(1)}</span></td>`,
-                `<td>${p.selectedBy.toFixed(1)}%</td>`
-            ] : pos === 'DEF' ? [
-                `<td><div class="player-cell"><span class="name">${p.name}</span></div></td>`,
-                `<td>${p.team}</td>`,
-                `<td>£${p.price.toFixed(1)}m</td>`,
-                `<td class="${p.form >= 5 ? 'stat-good' : ''}">${p.form.toFixed(1)}</td>`,
-                `<td>${l5.points || 0}</td>`,
-                `<td class="${parseFloat(ptsG) >= 4 ? 'stat-good' : ''}">${ptsG}</td>`,
-                `<td>${l5.cleanSheets || 0}</td>`,
-                `<td class="${parseFloat(xGI) >= 0.3 ? 'stat-good' : ''}">${xGI}</td>`,
-                `<td><span class="fdr-badge ${fdrClass}">${fdr.toFixed(1)}</span></td>`,
-                `<td>${p.selectedBy.toFixed(1)}%</td>`
-            ] : [
-                `<td><div class="player-cell"><span class="name">${p.name}</span></div></td>`,
-                `<td>${p.team}</td>`,
-                `<td>£${p.price.toFixed(1)}m</td>`,
-                `<td class="${p.form >= 5 ? 'stat-good' : ''}">${p.form.toFixed(1)}</td>`,
-                `<td>${l5.points || 0}</td>`,
-                `<td class="${parseFloat(ptsG) >= 5 ? 'stat-good' : ''}">${ptsG}</td>`,
-                `<td class="${parseFloat(xGI) >= 0.5 ? 'stat-good' : ''}">${xGI}</td>`,
-                `<td>${l5.goals || 0}</td>`,
-                `<td>${l5.assists || 0}</td>`,
-                `<td><span class="fdr-badge ${fdrClass}">${fdr.toFixed(1)}</span></td>`,
-                `<td>${p.selectedBy.toFixed(1)}%</td>`
-            ];
-
-            return `<tr data-name="${p.name.toLowerCase()}">${cells.join('')}</tr>`;
+        function renderTableHeader(position) {
+            const state = tableState[position];
+            return state.visibleCols.map(colKey => {
+                const col = COLUMN_DEFS[colKey];
+                const isSorted = state.sort === colKey;
+                const sortIcon = isSorted ? (state.sortDir === 'asc' ? '↑' : '↓') : '↕';
+                return `<th class="${isSorted ? 'sorted' : ''}" onclick="sortTable('${position}', '${colKey}')">
+                    ${col.label}<span class="sort-icon">${sortIcon}</span>
+                </th>`;
+            }).join('');
         }
 
-        function filterTable(pos, query) {
-            const rows = document.querySelectorAll(`#table-${pos} tbody tr`);
-            const q = query.toLowerCase();
-            rows.forEach(row => {
-                row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+        function renderTableBody(position) {
+            const state = tableState[position];
+            let players = [...(tableData[position] || [])];
+            
+            // Apply search
+            if (state.search) {
+                const q = state.search.toLowerCase();
+                players = players.filter(p => p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q));
+            }
+            
+            // Apply filters
+            if (state.filters.form === 'hot') players = players.filter(p => p.form >= 5);
+            if (state.filters.fixtures === 'easy') players = players.filter(p => p.fdr <= 2.5);
+            if (state.filters.value === 'high') players = players.filter(p => p.valueScore >= 0.8);
+            if (state.filters.nailed) players = players.filter(p => p.minsPerGame >= 75);
+            if (state.filters.ownership === 'low') players = players.filter(p => p.selectedBy < 5);
+            if (state.filters.ownership === 'mid') players = players.filter(p => p.selectedBy >= 5 && p.selectedBy < 15);
+            if (state.filters.ownership === 'high') players = players.filter(p => p.selectedBy >= 15 && p.selectedBy < 30);
+            if (state.filters.ownership === 'template') players = players.filter(p => p.selectedBy >= 30);
+            if (state.filters.minutes === '90') players = players.filter(p => p.minsPerGame >= 85);
+            if (state.filters.minutes === '75') players = players.filter(p => p.minsPerGame >= 75);
+            if (state.filters.minutes === '60') players = players.filter(p => p.minsPerGame >= 60);
+            if (state.filters.priceMin) players = players.filter(p => p.price >= state.filters.priceMin);
+            if (state.filters.priceMax) players = players.filter(p => p.price <= state.filters.priceMax);
+            
+            // Sort
+            const sortCol = COLUMN_DEFS[state.sort];
+            if (sortCol) {
+                players.sort((a, b) => {
+                    const aVal = getNestedValue(a, sortCol.key);
+                    const bVal = getNestedValue(b, sortCol.key);
+                    return state.sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+                });
+            }
+            
+            // Update count
+            setTimeout(() => {
+                const countEl = document.getElementById(`rowCount-${position}`);
+                if (countEl) countEl.textContent = players.length;
+                const showingEl = document.getElementById(`showingCount-${position}`);
+                if (showingEl) showingEl.textContent = Math.min(ROWS_PER_PAGE * state.page, players.length);
+            }, 0);
+            
+            // Paginate
+            const start = (state.page - 1) * ROWS_PER_PAGE;
+            const paginated = players.slice(start, start + ROWS_PER_PAGE);
+            
+            return paginated.map(p => renderPlayerRow(p, position)).join('');
+        }
+
+        function renderPlayerRow(p, position) {
+            const state = tableState[position];
+            return `<tr>${state.visibleCols.map(colKey => renderCell(p, colKey)).join('')}</tr>`;
+        }
+
+        function renderCell(p, colKey) {
+            const col = COLUMN_DEFS[colKey];
+            let value = getNestedValue(p, col.key);
+            
+            if (colKey === 'player') {
+                const initials = p.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+                return `<td>
+                    <div class="player-cell">
+                        <div class="player-avatar">${initials}</div>
+                        <div class="player-info">
+                            <div class="player-name">${p.name}</div>
+                            <div class="player-team">${p.team}</div>
+                        </div>
+                    </div>
+                </td>`;
+            }
+            
+            if (colKey === 'team') {
+                return `<td>${p.team}</td>`;
+            }
+            
+            if (col.type === 'fdr') {
+                const fdrClass = value <= 2 ? 'fdr-1' : value <= 2.5 ? 'fdr-2' : value <= 3.5 ? 'fdr-3' : value <= 4 ? 'fdr-4' : 'fdr-5';
+                return `<td><span class="fdr-badge ${fdrClass}">${value.toFixed(1)}</span></td>`;
+            }
+            
+            if (col.type === 'ownership') {
+                const pct = Math.min(100, value);
+                return `<td>
+                    <div class="ownership-bar">
+                        <div class="ownership-track"><div class="ownership-fill" style="width: ${pct}%"></div></div>
+                        <span class="ownership-value">${value.toFixed(1)}%</span>
+                    </div>
+                </td>`;
+            }
+            
+            const formatted = col.format ? col.format(value) : value;
+            const highlight = col.highlight ? col.highlight(value) : '';
+            return `<td class="stat-cell ${highlight}">${formatted}</td>`;
+        }
+
+        function renderPagination(position, total) {
+            const pages = Math.ceil(total / ROWS_PER_PAGE);
+            if (pages <= 1) return '';
+            
+            const state = tableState[position];
+            let html = '';
+            for (let i = 1; i <= Math.min(pages, 5); i++) {
+                html += `<button class="page-btn ${state.page === i ? 'active' : ''}" onclick="goToPage('${position}', ${i})">${i}</button>`;
+            }
+            return html;
+        }
+
+        function getNestedValue(obj, path) {
+            return path.split('.').reduce((o, k) => o?.[k], obj) || 0;
+        }
+
+        // Table interactions
+        function sortTable(position, colKey) {
+            const state = tableState[position];
+            if (state.sort === colKey) {
+                state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.sort = colKey;
+                state.sortDir = 'desc';
+            }
+            refreshTable(position);
+        }
+
+        function handleSearch(position, query) {
+            tableState[position].search = query;
+            tableState[position].page = 1;
+            refreshTable(position);
+        }
+
+        function quickFilter(position, type, value) {
+            const state = tableState[position];
+            if (state.filters[type] === value) {
+                delete state.filters[type];
+            } else {
+                state.filters[type] = value;
+            }
+            state.page = 1;
+            refreshTable(position);
+            updateFilterButtons(position);
+        }
+
+        function setFilter(position, type, value) {
+            const state = tableState[position];
+            if (state.filters[type] === value) {
+                delete state.filters[type];
+            } else {
+                state.filters[type] = value;
+            }
+            state.page = 1;
+            refreshTable(position);
+        }
+
+        function applyRangeFilter(position, type) {
+            const min = parseFloat(document.getElementById(`${type}Min-${position}`)?.value);
+            const max = parseFloat(document.getElementById(`${type}Max-${position}`)?.value);
+            const state = tableState[position];
+            if (!isNaN(min)) state.filters[`${type}Min`] = min;
+            else delete state.filters[`${type}Min`];
+            if (!isNaN(max)) state.filters[`${type}Max`] = max;
+            else delete state.filters[`${type}Max`];
+            state.page = 1;
+            refreshTable(position);
+        }
+
+        function clearFilters(position) {
+            tableState[position].filters = {};
+            tableState[position].search = '';
+            tableState[position].page = 1;
+            const searchInput = document.getElementById(`search-${position}`);
+            if (searchInput) searchInput.value = '';
+            refreshTable(position);
+            updateFilterButtons(position);
+        }
+
+        function toggleColumn(position, colKey) {
+            const state = tableState[position];
+            const idx = state.visibleCols.indexOf(colKey);
+            if (idx > -1) {
+                state.visibleCols.splice(idx, 1);
+            } else {
+                state.visibleCols.push(colKey);
+            }
+            refreshTable(position);
+        }
+
+        function toggleFilters(position) {
+            const panel = document.getElementById(`filtersPanel-${position}`);
+            const btn = document.getElementById(`filterBtn-${position}`);
+            panel?.classList.toggle('show');
+            btn?.classList.toggle('active');
+        }
+
+        function toggleColumnDropdown(position) {
+            const dropdown = document.getElementById(`colDropdown-${position}`);
+            dropdown?.classList.toggle('show');
+        }
+
+        function goToPage(position, page) {
+            tableState[position].page = page;
+            refreshTable(position);
+        }
+
+        function refreshTable(position) {
+            const head = document.getElementById(`tableHead-${position}`);
+            const body = document.getElementById(`tableBody-${position}`);
+            const pagination = document.getElementById(`pagination-${position}`);
+            if (head) head.innerHTML = renderTableHeader(position);
+            if (body) body.innerHTML = renderTableBody(position);
+            if (pagination) pagination.innerHTML = renderPagination(position, tableData[position]?.length || 0);
+            updateFilterButtons(position);
+        }
+
+        function updateFilterButtons(position) {
+            const state = tableState[position];
+            document.querySelectorAll(`#tableSection-${position} .filter-pill`).forEach(btn => {
+                const text = btn.textContent.trim();
+                let isActive = false;
+                if (text.includes('Hot Form')) isActive = state.filters.form === 'hot';
+                if (text.includes('Easy Fixtures')) isActive = state.filters.fixtures === 'easy';
+                if (text.includes('High Value')) isActive = state.filters.value === 'high';
+                if (text.includes('Nailed On')) isActive = state.filters.nailed === true;
+                btn.classList.toggle('active', isActive);
             });
         }
 
-        function sortTable(pos, by) {
-            // Simple re-render on sort change would go here
-            console.log(`Sort ${pos} by ${by}`);
-        }
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.column-selector')) {
+                document.querySelectorAll('.column-dropdown').forEach(d => d.classList.remove('show'));
+            }
+        });
 
         // ============================================
         // CHARTS - Full implementation
