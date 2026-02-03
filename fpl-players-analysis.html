@@ -2331,7 +2331,11 @@
                 filterInputs.forEach((input, idx) => {
                     const filterValue = input.value.trim();
                     if (filterValue) {
-                        const cell = row.cells[idx];
+                        // Offset by 1 because row.cells[0] is the checkbox column
+                        // but filter inputs start after the empty checkbox header
+                        const cell = row.cells[idx + 1];
+                        if (!cell) return; // Safety check
+                        
                         const cellValue = cell.dataset.value || cell.textContent;
                         const cellText = cellValue.toLowerCase();
                         const filterText = filterValue.toLowerCase();
