@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FPL Teams Analysis - Fixtures & Form</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <title>Teams | FPL Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -13,42 +13,613 @@
         }
 
         :root {
-            --bg-dark: #0a0e14;
-            --bg-darker: #050810;
-            --surface: #151920;
-            --surface-light: #1d242e;
-            --accent-green: #00ff88;
-            --accent-red: #ff3366;
-            --accent-yellow: #ffcc00;
-            --accent-blue: #00ccff;
-            --text: #e0e5ed;
-            --text-dim: #8b95a5;
-            --border: #2a3340;
+            /* Surfaces - GitHub inspired */
+            --surface-bg: #0A0E14;
+            --surface-0: #0D1117;
+            --surface-1: #161B22;
+            --surface-2: #1C2128;
+            --surface-3: #21262D;
+            --surface-4: #30363D;
+            
+            /* Text hierarchy */
+            --text-primary: rgba(255, 255, 255, 0.87);
+            --text-secondary: rgba(255, 255, 255, 0.60);
+            --text-muted: rgba(255, 255, 255, 0.45);
+            
+            /* Borders */
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-default: rgba(255, 255, 255, 0.10);
+            --border-emphasis: rgba(255, 255, 255, 0.16);
+            
+            /* Semantic */
+            --color-success: #4ADE80;
+            --color-error: #F87171;
+            --color-warning: #FBBF24;
+            --color-info: #60A5FA;
+            
+            /* FDR Scale */
+            --fdr-1: #4ADE80;
+            --fdr-2: #86EFAC;
+            --fdr-3: #A3A3A3;
+            --fdr-4: #FB923C;
+            --fdr-5: #EF4444;
+            
+            /* Position colors */
+            --position-gk: #FCD34D;
+            --position-def: #34D399;
+            --position-mid: #60A5FA;
+            --position-fwd: #F87171;
+            
+            /* Spacing */
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            
+            /* Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
         }
 
         body {
-            background: var(--bg-dark);
-            color: var(--text);
-            font-family: 'DM Mono', monospace;
-            font-size: 11px;
-            line-height: 1.4;
-            overflow-x: hidden;
+            background: var(--surface-bg);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            min-height: 100vh;
         }
 
-        .loading-overlay {
-            position: fixed;
+        /* ===== TOP NAVIGATION ===== */
+        .top-nav {
+            background: var(--surface-0);
+            border-bottom: 1px solid var(--border-default);
+            position: sticky;
             top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(10, 14, 20, 0.95);
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 var(--space-6);
+            display: flex;
+            align-items: center;
+            height: 56px;
+            gap: var(--space-8);
+        }
+
+        .nav-logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .nav-logo span {
+            color: var(--color-success);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: var(--space-1);
+        }
+
+        .nav-link {
+            padding: var(--space-2) var(--space-4);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: var(--radius-md);
+            transition: all 150ms ease-out;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--surface-2);
+        }
+
+        .nav-link.active {
+            color: var(--color-success);
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        .nav-link .icon {
+            font-size: 16px;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--space-6);
+        }
+
+        /* ===== PAGE HEADER ===== */
+        .page-header {
+            margin-bottom: var(--space-6);
+        }
+
+        .page-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .gw-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-1) var(--space-3);
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-info);
+            margin-left: var(--space-3);
+        }
+
+        /* ===== FILTER TABS ===== */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: var(--space-1);
+            background: var(--surface-1);
+            padding: var(--space-1);
+            border-radius: var(--radius-md);
+        }
+
+        .filter-tab {
+            padding: var(--space-2) var(--space-4);
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 150ms ease-out;
+        }
+
+        .filter-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .filter-tab.active {
+            background: var(--surface-3);
+            color: var(--text-primary);
+        }
+
+        .search-box {
+            margin-left: auto;
+            position: relative;
+        }
+
+        .search-input {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--space-2) var(--space-4);
+            padding-left: 36px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 13px;
+            width: 200px;
+            transition: all 200ms ease-out;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--color-info);
+            width: 260px;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* ===== TEAMS GRID ===== */
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-4);
+        }
+
+        @media (max-width: 1200px) {
+            .teams-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 900px) {
+            .teams-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 600px) {
+            .teams-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ===== TEAM CARD ===== */
+        .team-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+            transition: all 200ms ease-out;
+            cursor: pointer;
+        }
+
+        .team-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-emphasis);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Card Header */
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-4);
+        }
+
+        .team-badge {
+            width: 40px;
+            height: 40px;
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
+            overflow: hidden;
+        }
+
+        .team-badge img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .team-info {
+            flex: 1;
+        }
+
+        .team-name {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .team-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .rank-badge {
+            width: 28px;
+            height: 28px;
+            background: var(--surface-3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .rank-badge.top-3 {
+            background: linear-gradient(135deg, var(--color-success), #22c55e);
+            color: #000;
+        }
+
+        /* Primary Metric */
+        .primary-metric {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-3);
+            background: var(--surface-0);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-4);
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .metric-value.success { color: var(--color-success); }
+        .metric-value.warning { color: var(--color-warning); }
+        .metric-value.error { color: var(--color-error); }
+        .metric-value.info { color: var(--color-info); }
+
+        /* Circular Gauge */
+        .gauge-container {
+            position: relative;
+            width: 56px;
+            height: 56px;
+        }
+
+        .gauge-svg {
+            transform: rotate(-90deg);
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: var(--surface-3);
+            stroke-width: 6;
+        }
+
+        .gauge-fill {
+            fill: none;
+            stroke-width: 6;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 500ms ease-out;
+        }
+
+        .gauge-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        /* FDR Strip */
+        .fdr-strip {
+            display: flex;
+            gap: 3px;
+            margin-bottom: var(--space-3);
+        }
+
+        .fdr-badge {
+            flex: 1;
+            padding: var(--space-2) var(--space-1);
+            border-radius: var(--radius-sm);
+            text-align: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: #000;
+        }
+
+        .fdr-badge .opp { font-weight: 700; }
+        .fdr-badge .venue { 
+            font-size: 8px; 
+            opacity: 0.8;
+            display: block;
+        }
+
+        .fdr-1 { background: var(--fdr-1); }
+        .fdr-2 { background: var(--fdr-2); }
+        .fdr-3 { background: var(--fdr-3); }
+        .fdr-4 { background: var(--fdr-4); }
+        .fdr-5 { background: var(--fdr-5); }
+
+        /* Form Dots */
+        .form-dots {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .form-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .form-dot.win { background: var(--color-success); }
+        .form-dot.draw { background: var(--color-warning); }
+        .form-dot.loss { background: var(--color-error); }
+
+        /* Sparkline */
+        .sparkline-container {
+            height: 32px;
+            position: relative;
+        }
+
+        .sparkline {
+            width: 100%;
+            height: 100%;
+        }
+
+        .sparkline-line {
+            fill: none;
+            stroke: var(--color-info);
+            stroke-width: 2;
+        }
+
+        .sparkline-area {
+            fill: url(#sparkGradient);
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-2);
+            margin-top: var(--space-3);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: var(--space-2);
+            background: var(--surface-0);
+            border-radius: var(--radius-sm);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Trend Indicator */
+        .trend {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+        }
+
+        .trend.improving {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--color-success);
+        }
+
+        .trend.worsening {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--color-error);
+        }
+
+        .trend.stable {
+            background: rgba(163, 163, 163, 0.15);
+            color: var(--text-secondary);
+        }
+
+        /* ===== FIXTURE SWINGS SECTION ===== */
+        .swing-section {
+            margin-top: var(--space-8);
+        }
+
+        .swing-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-4);
+        }
+
+        .swing-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .swing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .swing-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+            border-left: 3px solid var(--color-success);
+        }
+
+        .swing-card.buy-now { border-left-color: var(--color-success); }
+        .swing-card.buy-soon { border-left-color: var(--color-info); }
+        .swing-card.hold { border-left-color: var(--color-warning); }
+
+        .swing-team {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-3);
+        }
+
+        .swing-timing {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: var(--space-1) var(--space-2);
+            border-radius: var(--radius-sm);
+        }
+
+        .swing-timing.buy-now {
+            background: rgba(74, 222, 128, 0.2);
+            color: var(--color-success);
+        }
+
+        .swing-timing.buy-soon {
+            background: rgba(96, 165, 250, 0.2);
+            color: var(--color-info);
+        }
+
+        .swing-signals {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+        }
+
+        .signal-tag {
+            font-size: 10px;
+            padding: var(--space-1) var(--space-2);
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+        }
+
+        /* ===== LOADING STATE ===== */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 14, 20, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s ease;
+            transition: opacity 300ms ease-out;
         }
 
         .loading-overlay.show {
@@ -61,13 +632,13 @@
         }
 
         .loader-spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid var(--border);
-            border-top-color: var(--accent-green);
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--surface-3);
+            border-top-color: var(--color-success);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto var(--space-4);
         }
 
         @keyframes spin {
@@ -75,1045 +646,302 @@
         }
 
         .loader-text {
-            color: var(--accent-green);
-            font-size: 12px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        .header {
-            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--surface) 100%);
-            border-bottom: 2px solid var(--accent-blue);
-            padding: 20px 30px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            box-shadow: 0 4px 20px rgba(0, 204, 255, 0.1);
-        }
-
-        .header h1 {
-            font-family: 'Space Mono', monospace;
-            font-size: 28px;
-            color: var(--accent-blue);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
-            text-shadow: 0 0 20px rgba(0, 204, 255, 0.3);
-        }
-
-        .header p {
-            color: var(--text-dim);
-            font-size: 11px;
-            letter-spacing: 1px;
-        }
-
-        .guide-section {
-            background: var(--surface);
-            border-bottom: 2px solid var(--border);
-        }
-
-        .guide-header {
-            padding: 20px 30px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s ease;
-            border-bottom: 1px solid transparent;
-        }
-
-        .guide-header:hover {
-            background: var(--surface-light);
-            border-bottom-color: var(--accent-blue);
-        }
-
-        .guide-title {
-            font-size: 14px;
-            color: var(--accent-blue);
-            font-weight: 500;
-            display: block;
-            margin-bottom: 3px;
-        }
-
-        .guide-subtitle {
-            font-size: 9px;
-            color: var(--text-dim);
-            display: block;
-        }
-
-        .guide-toggle {
-            font-size: 20px;
-            color: var(--accent-blue);
-            transition: transform 0.3s ease;
-        }
-
-        .guide-toggle.open {
-            transform: rotate(180deg);
-        }
-
-        .guide-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease;
-        }
-
-        .guide-content.open {
-            max-height: 10000px;
-        }
-
-        .guide-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-            padding: 30px;
-        }
-
-        .guide-card {
-            background: var(--bg-darker);
-            border: 1px solid var(--border);
-            padding: 20px;
-            border-left: 3px solid var(--accent-blue);
-        }
-
-        .guide-card h3 {
-            color: var(--accent-blue);
+            color: var(--text-secondary);
             font-size: 13px;
-            margin-bottom: 15px;
-            font-family: 'Space Mono', monospace;
         }
 
-        .guide-text {
-            font-size: 10px;
-            line-height: 1.6;
-            color: var(--text);
+        /* ===== SKELETON LOADING ===== */
+        .skeleton {
+            background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite ease-in-out;
+            border-radius: var(--radius-sm);
         }
 
-        .guide-text p {
-            margin-bottom: 12px;
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
-        .guide-text strong {
-            color: var(--accent-green);
-            font-weight: 500;
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .nav-container {
+                padding: 0 var(--space-4);
+                gap: var(--space-4);
+            }
+
+            .nav-link span:not(.icon) {
+                display: none;
+            }
+
+            .nav-link {
+                padding: var(--space-2);
+            }
+
+            .page-title {
+                font-size: 22px;
+            }
+
+            .filter-bar {
+                flex-wrap: wrap;
+            }
+
+            .search-box {
+                width: 100%;
+                margin-left: 0;
+                margin-top: var(--space-3);
+            }
+
+            .search-input {
+                width: 100%;
+            }
+
+            .search-input:focus {
+                width: 100%;
+            }
         }
 
-        .guide-text ul {
-            margin: 10px 0 10px 20px;
-            list-style-type: none;
-        }
-
-        .guide-text ul li {
-            margin-bottom: 8px;
+        /* Tooltip */
+        [data-tooltip] {
             position: relative;
-            padding-left: 15px;
         }
 
-        .guide-text ul li::before {
-            content: "▸";
-            position: absolute;
-            left: 0;
-            color: var(--accent-blue);
-        }
-
-
-        .controls {
-            background: var(--surface);
-            padding: 15px 30px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, var(--accent-blue) 0%, #0099cc 100%);
-            color: var(--bg-dark);
-            border: none;
-            padding: 10px 20px;
-            font-family: 'DM Mono', monospace;
-            font-weight: 500;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 204, 255, 0.4);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .status {
-            color: var(--text-dim);
-            font-size: 10px;
-            padding: 8px 15px;
-            background: var(--surface-light);
-            border-radius: 3px;
-            border-left: 3px solid var(--accent-blue);
-        }
-
-        .status.loading {
-            border-left-color: var(--accent-yellow);
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .status.success {
-            border-left-color: var(--accent-green);
-        }
-
-        .status.error {
-            border-left-color: var(--accent-red);
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .tabs {
-            display: flex;
-            gap: 0;
-            background: var(--surface);
-            padding: 0 30px;
-            border-bottom: 2px solid var(--border);
-            overflow-x: auto;
-        }
-
-        .tab {
-            padding: 12px 24px;
-            background: transparent;
-            border: none;
-            color: var(--text-dim);
-            font-family: 'DM Mono', monospace;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border-bottom: 3px solid transparent;
-        }
-
-        .tab:hover {
-            color: var(--text);
-            background: var(--surface-light);
-        }
-
-        .tab.active {
-            color: var(--accent-blue);
-            border-bottom-color: var(--accent-blue);
-            background: var(--surface-light);
-        }
-
-        .content {
-            padding: 30px;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .teams-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .team-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 20px;
-            transition: all 0.2s ease;
-        }
-
-        .team-card:hover {
-            background: var(--surface-light);
-            border-color: var(--accent-blue);
-        }
-
-        .team-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .team-name {
-            font-family: 'Space Mono', monospace;
-            font-size: 16px;
-            color: var(--accent-blue);
-            font-weight: 700;
-        }
-
-        .team-badge {
-            display: flex;
-            gap: 10px;
-        }
-
-        .badge {
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 3px;
-            font-weight: 500;
-            position: relative;
-            cursor: help;
-        }
-
-        .badge.excellent {
-            background: rgba(0, 255, 136, 0.2);
-            color: var(--accent-green);
-        }
-
-        .badge.good {
-            background: rgba(255, 204, 0, 0.2);
-            color: var(--accent-yellow);
-        }
-
-        .badge.poor {
-            background: rgba(255, 51, 102, 0.2);
-            color: var(--accent-red);
-        }
-
-        .badge-tooltip {
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
             position: absolute;
             bottom: 100%;
             left: 50%;
-            transform: translateX(-50%) translateY(-5px);
-            background: var(--bg-darker);
-            color: var(--text);
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 10px;
-            white-space: nowrap;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            z-index: 1000;
-            border: 1px solid var(--accent-blue);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        }
-
-        .badge:hover .badge-tooltip {
-            opacity: 1;
-        }
-
-        .badge-tooltip::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            left: 50%;
             transform: translateX(-50%);
-            border: 5px solid transparent;
-            border-top-color: var(--accent-blue);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .stat {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            position: relative;
-            cursor: help;
-        }
-
-        .stat-label {
-            font-size: 9px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-value {
-            font-size: 14px;
-            color: var(--text);
-            font-weight: 500;
-        }
-
-        .stat-tooltip {
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%) translateY(-5px);
-            background: var(--bg-darker);
-            color: var(--text);
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 10px;
+            background: var(--surface-4);
+            color: var(--text-primary);
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-sm);
+            font-size: 11px;
             white-space: nowrap;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            z-index: 1000;
-            border: 1px solid var(--accent-blue);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            margin-bottom: var(--space-2);
         }
 
-        .stat:hover .stat-tooltip {
-            opacity: 1;
-        }
-
-        .stat-tooltip::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            border: 5px solid transparent;
-            border-top-color: var(--accent-blue);
-        }
-
-        .fixtures-section {
-            margin-top: 15px;
-        }
-
-        .fixtures-title {
-            font-size: 9px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
-        }
-
-        .fixtures-row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .fixture-badge {
-            font-size: 9px;
-            padding: 5px 10px;
-            background: var(--surface-light);
-            border-radius: 3px;
-            border-left: 3px solid var(--border);
-        }
-
-        .fixture-badge.fdr-1, .fixture-badge.fdr-2 {
-            background: rgba(0, 255, 136, 0.15);
-            border-left-color: var(--accent-green);
-            color: var(--text);
-        }
-
-        .fixture-badge.fdr-3 {
-            background: rgba(255, 204, 0, 0.15);
-            border-left-color: var(--accent-yellow);
-            color: var(--text);
-        }
-
-        .fixture-badge.fdr-4, .fixture-badge.fdr-5 {
-            background: rgba(255, 51, 102, 0.15);
-            border-left-color: var(--accent-red);
-            color: var(--text);
-        }
-
-        .fixture-badge.result-w {
-            background: rgba(0, 255, 136, 0.15);
-            border-left-color: var(--accent-green);
-        }
-
-        .fixture-badge.result-d {
-            background: rgba(255, 204, 0, 0.15);
-            border-left-color: var(--accent-yellow);
-        }
-
-        .fixture-badge.result-l {
-            background: rgba(255, 51, 102, 0.15);
-            border-left-color: var(--accent-red);
-        }
-
-        .tip {
-            margin-top: 12px;
-            padding: 10px;
-            background: var(--bg-darker);
-            border-left: 3px solid var(--accent-blue);
-            font-size: 10px;
-            color: var(--text-dim);
-        }
-
-        .tip strong {
-            color: var(--accent-blue);
-        }
-
-        .no-data {
+        /* Empty State */
+        .empty-state {
             text-align: center;
-            padding: 60px;
-            color: var(--text-dim);
-            font-size: 12px;
+            padding: var(--space-8);
+            color: var(--text-muted);
         }
 
-        .legend {
-            display: flex;
-            gap: 20px;
-            padding: 15px 30px;
-            background: var(--surface);
-            border-top: 1px solid var(--border);
-            font-size: 9px;
-            flex-wrap: wrap;
+        /* Progress Bar */
+        .progress-bar {
+            height: 6px;
+            background: var(--surface-3);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: var(--space-2);
         }
 
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .legend-box {
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
-        }
-
-        .back-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(21, 25, 32, 0.95);
-            border: 2px solid var(--border);
-            color: var(--text);
-            padding: 10px 20px;
-            font-family: 'DM Mono', monospace;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .back-button:hover {
-            border-color: var(--accent-blue);
-            color: var(--accent-blue);
-            transform: translateX(-3px);
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 300ms ease-out;
         }
     </style>
 </head>
 <body>
-    <a href="index.html" class="back-button">
-        <span>←</span> Back to Home
-    </a>
-
+    <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loader">
             <div class="loader-spinner"></div>
-            <div class="loader-text">Analyzing Teams...</div>
+            <div class="loader-text">Loading teams data...</div>
         </div>
     </div>
 
-    <div class="header">
-        <h1>🏆 FPL Teams Analysis <span id="currentGW" style="font-size: 16px; color: var(--accent-green); margin-left: 10px;"></span></h1>
-        <p>Advanced xG-Based Analysis | 2025/26 Season Rules | Optimal Window Detection</p>
-        <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
-            <span style="font-size: 9px; padding: 4px 8px; background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 204, 255, 0.2) 100%); border-radius: 3px; color: var(--accent-green);">📊 xG/xGA Metrics</span>
-            <span style="font-size: 9px; padding: 4px 8px; background: rgba(0, 204, 255, 0.2); border-radius: 3px; color: var(--accent-blue);">⚔️🛡️ Split Attack/Defense FDR</span>
-            <span style="font-size: 9px; padding: 4px 8px; background: rgba(255, 204, 0, 0.2); border-radius: 3px; color: var(--accent-yellow);">🆕 2025/26 CBIT Scoring</span>
-            <span style="font-size: 9px; padding: 4px 8px; background: rgba(255, 51, 102, 0.2); border-radius: 3px; color: var(--accent-red);">🎯 Optimal Windows</span>
-        </div>
-    </div>
-
-    <div class="guide-section" id="guideSection">
-        <div class="guide-header" onclick="toggleGuide()">
-            <div>
-                <span class="guide-title">📚 How to Use This Analysis & Make Smart FPL Decisions</span>
-                <span class="guide-subtitle">Click to expand comprehensive guide</span>
-            </div>
-            <span class="guide-toggle" id="guideToggle">▼</span>
-        </div>
-        <div class="guide-content" id="guideContent">
-            <div class="guide-grid">
-                <div class="guide-card" style="border-left-color: var(--accent-green);">
-                    <h3>📊 Understanding xG Metrics (NEW)</h3>
-                    <div class="guide-text">
-                        <p><strong>Why xG Matters:</strong> Goals scored can be lucky (deflections, goalkeeper errors). xG (Expected Goals) measures the QUALITY of chances created, giving you a more stable predictor of future performance.</p>
-                        
-                        <p><strong>Key xG Metrics Explained:</strong></p>
-                        <ul>
-                            <li><strong>xG/Game:</strong> Average expected goals per match. 1.5+ is excellent, 1.0-1.5 is good, under 1.0 is poor.</li>
-                            <li><strong>xGA/Game:</strong> Expected goals AGAINST. Lower is better for defenders. Under 1.0 = elite defense, 1.0-1.5 = good.</li>
-                            <li><strong>xG Differential (xG±):</strong> xG minus xGA. Positive = creating more than conceding. Elite teams are +0.5 or higher.</li>
-                            <li><strong>Goals vs xG:</strong> Actual goals minus xG. Positive = overperforming (regression likely). Negative = due for goals!</li>
-                        </ul>
-                        
-                        <p><strong>Regression Strategy:</strong> Teams with Goals vs xG below -0.3 are "due" - they're creating chances but not finishing. These are BUY candidates. Teams above +0.3 may regress - be cautious.</p>
-                    </div>
-                </div>
-
-                <div class="guide-card" style="border-left-color: var(--accent-yellow);">
-                    <h3>🆕 2025/26 FPL Rule Changes</h3>
-                    <div class="guide-text">
-                        <p><strong>Major Scoring Updates:</strong> The 2025/26 season introduces new ways to earn points that change player selection!</p>
-                        
-                        <p><strong>CBIT Points (Defenders):</strong></p>
-                        <ul>
-                            <li><strong>What:</strong> 2 points for reaching 10 combined Clearances, Blocks, Interceptions, and Tackles</li>
-                            <li><strong>Impact:</strong> Defenders facing more attacking teams get MORE defensive action opportunities</li>
-                            <li><strong>Strategy:</strong> A defender facing a high-xG opponent might earn CBIT points even without a clean sheet</li>
-                        </ul>
-                        
-                        <p><strong>Ball Recoveries (Midfielders/Forwards):</strong></p>
-                        <ul>
-                            <li><strong>What:</strong> 2 points for 12 defensive actions including ball recoveries</li>
-                            <li><strong>Impact:</strong> High-pressing players from teams that win the ball back quickly benefit</li>
-                        </ul>
-                        
-                        <p><strong>Our Analysis:</strong> The CBIT Potential metric shows which teams' defenders are likely to rack up these new points. High CBIT + Clean Sheet potential = elite defensive picks.</p>
-                    </div>
-                </div>
-
-                <div class="guide-card" style="border-left-color: var(--accent-blue);">
-                    <h3>⚔️🛡️ Split FDR: Attack vs Defense</h3>
-                    <div class="guide-text">
-                        <p><strong>The Problem with Single FDR:</strong> A team can have a weak attack but strong defense (or vice versa). One FDR number misses this nuance.</p>
-                        
-                        <p><strong>Our Solution - Split FDR:</strong></p>
-                        <ul>
-                            <li><strong>Attack FDR (⚔️):</strong> How hard to SCORE against this opponent. Based on their defensive strength. Low = easier to score = good for your attackers.</li>
-                            <li><strong>Defense FDR (🛡️):</strong> How hard to keep a CLEAN SHEET against this opponent. Based on their attacking strength. Low = easier CS = good for your defenders.</li>
-                        </ul>
-                        
-                        <p><strong>How to Use It:</strong></p>
-                        <ul>
-                            <li>Picking attackers? Focus on Attack FDR (⚔️). A fixture showing ⚔️2 🛡️4 is GREAT for attackers but bad for defenders.</li>
-                            <li>Picking defenders? Focus on Defense FDR (🛡️). A fixture showing ⚔️4 🛡️2 is GREAT for defenders but bad for attackers.</li>
-                            <li>Best fixtures show both low: ⚔️2 🛡️2 = target players from this team across all positions!</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="guide-card">
-                    <h3>🛡️ Selecting Defenders & Goalkeepers</h3>
-                    <div class="guide-text">
-                        <p><strong>The Golden Rule:</strong> 80% of defensive FPL points come from clean sheets. A £4.5m defender from a top team with easy fixtures will outscore a £7.0m attacking wingback with tough fixtures.</p>
-                        
-                        <p><strong>What to look for:</strong></p>
-                        <ul>
-                            <li><strong>Clean Sheet Probability:</strong> Target teams with 40%+ probability. This metric combines defensive form (goals conceded) with upcoming fixture difficulty.</li>
-                            <li><strong>Defender Rating:</strong> 65+ is excellent. This weighs clean sheet % heavily (the most important factor) plus fixture difficulty.</li>
-                            <li><strong>Goals Conceded/Game:</strong> Under 1.0 is elite, under 1.5 is good. Lower = more clean sheets = more points.</li>
-                            <li><strong>Home Fixtures:</strong> Teams keep 15% more clean sheets at home. A team with 3+ home games in next 5 is gold for defenders.</li>
-                        </ul>
-                        
-                        <p><strong>Strategy Example:</strong> Liverpool conceding 0.6 goals/game with 3 home fixtures and 55% CS probability? Stack their defense. Ignore expensive attacking defenders from teams with poor defensive records and tough fixtures.</p>
-                    </div>
-                </div>
-
-                <div class="guide-card">
-                    <h3>⚔️ Selecting Attackers (Midfielders & Forwards)</h3>
-                    <div class="guide-text">
-                        <p><strong>The Key Insight:</strong> Fixtures matter less for attackers (35-40% points variance) than defenders (50-60%), but they still matter! Premium attackers can return against anyone, but budget options NEED good fixtures.</p>
-                        
-                        <p><strong>What to look for:</strong></p>
-                        <ul>
-                            <li><strong>Attacker Rating:</strong> 65+ means the team is scoring goals AND has weak opponents coming up. Perfect for picking their midfielders/forwards.</li>
-                            <li><strong>Goals Scored/Game:</strong> 2.0+ is excellent attacking form. These teams create chances.</li>
-                            <li><strong>Avg FDR (Fixture Difficulty):</strong> Under 3.0 is good. Under 2.5 is excellent. This means they're facing defensively weak teams.</li>
-                            <li><strong>Home Fixtures:</strong> Teams score 0.4-0.6 more goals per game at home. Attackers from teams with 3+ home games are boosted.</li>
-                        </ul>
-                        
-                        <p><strong>Strategy Example:</strong> Man City scoring 2.5 goals/game with FDR of 2.3 and 4 home fixtures? Their attackers become captain candidates. Avoid attackers from low-scoring teams (under 1.2 goals/game) facing tough fixtures (FDR 4+).</p>
-                    </div>
-                </div>
-
-                <div class="guide-card">
-                    <h3>📅 Understanding Fixture Swings (The Secret Weapon)</h3>
-                    <div class="guide-text">
-                        <p><strong>What Elite FPL Managers Do:</strong> They don't react to last week's haul. They plan 2-3 gameweeks ahead, buying players BEFORE their easy fixture run starts.</p>
-                        
-                        <p><strong>Why This Works:</strong></p>
-                        <ul>
-                            <li>Player prices rise when everyone sees the good fixtures</li>
-                            <li>Template ownership increases, reducing your differential advantage</li>
-                            <li>By the time fixtures turn green, it's too late - you've missed value gains</li>
-                        </ul>
-                        
-                        <p><strong>How to Use Fixture Trend:</strong></p>
-                        <ul>
-                            <li><strong>"Getting Easier":</strong> Buy NOW if the team has good form. You're 2 weeks early = perfect timing.</li>
-                            <li><strong>"Stable":</strong> Safe hold. No urgency to buy or sell based on fixtures alone.</li>
-                            <li><strong>"Getting Harder":</strong> Plan your exit strategy. Don't wait until GW1 of the tough run.</li>
-                        </ul>
-                        
-                        <p><strong>Pro Tip:</strong> The Fixture Swings tab shows "Prime Targets" - teams with easy fixtures getting even easier. These are your highest priority transfers. The edge comes from acting while they're still "yellow" on other tools.</p>
-                    </div>
-                </div>
-
-                <div class="guide-card">
-                    <h3>🏠 Home vs Away: Why It Matters</h3>
-                    <div class="guide-text">
-                        <p><strong>The Data:</strong> Home teams score 0.4-0.6 more goals per game AND keep clean sheets 15% more often. This is huge!</p>
-                        
-                        <p><strong>How to Use Home/Away Split:</strong></p>
-                        <ul>
-                            <li><strong>3+ Home Fixtures:</strong> Major boost for both attackers AND defenders from that team</li>
-                            <li><strong>3+ Away Fixtures:</strong> Still okay for premium attackers, but avoid budget defenders unless team has elite defense</li>
-                            <li><strong>Balanced (2H/3A or 3H/2A):</strong> Neutral - rely on other metrics</li>
-                        </ul>
-                        
-                        <p><strong>Real Example:</strong> Brighton at home vs Brighton away are two different teams. If they have 4 home games coming up, their defenders become much more attractive (even if overall FDR is medium).</p>
-                    </div>
-                </div>
-
-                <div class="guide-card">
-                    <h3>📊 How to Read the Metrics</h3>
-                    <div class="guide-text">
-                        <p><strong>Form Score (0-100):</strong> Composite metric combining goals scored, goals conceded, wins, clean sheets, and upcoming fixtures. 70+ is excellent form, 50-69 is good, under 50 needs monitoring.</p>
-                        
-                        <p><strong>FDR - Fixture Difficulty Rating (1-5):</strong></p>
-                        <ul>
-                            <li><strong>1-2 (Green):</strong> Easy fixtures - prime time to own assets from this team</li>
-                            <li><strong>3 (Yellow):</strong> Medium - okay for premiums, avoid budget options</li>
-                            <li><strong>4-5 (Red):</strong> Tough fixtures - only keep proven premium assets, sell budget picks</li>
-                        </ul>
-                        
-                        <p><strong>Clean Sheet Probability:</strong> Our algorithm combines: defensive record (60% weight), fixture difficulty (30%), and home advantage (10%). 50%+ is excellent, 30-50% is good, under 30% means avoid defenders.</p>
-                        
-                        <p><strong>Attack Rating & Defense Rating (0-100):</strong> Position-specific scores. 65+ = target, 45-65 = monitor, under 45 = avoid. These tell you specifically whether to pick attackers OR defenders from a team.</p>
-                    </div>
-                </div>
-
-                <div class="guide-card">
-                    <h3>⚡ Common Mistakes to Avoid</h3>
-                    <div class="guide-text">
-                        <ul>
-                            <li><strong>❌ Buying after the haul:</strong> By the time a player scores 15 points, their price has risen and fixtures might be turning. Look ahead, not behind.</li>
-                            <li><strong>❌ Ignoring fixture swings:</strong> "My defender got a clean sheet last week" - great! But if they face City, Liverpool, Arsenal next, sell them.</li>
-                            <li><strong>❌ Picking expensive defenders from bad defensive teams:</strong> A £6.5m attacking fullback from a team conceding 2 goals/game won't get clean sheets. That's where the points come from!</li>
-                            <li><strong>❌ Keeping budget attackers through red fixtures:</strong> Premium attackers (Salah, Haaland) can score against anyone. Budget attackers (under £7m) NEED green fixtures to deliver.</li>
-                            <li><strong>❌ Not checking home/away split:</strong> "Easy fixtures" means different things for home vs away games. 4 away games to "weak" teams is still risky.</li>
-                            <li><strong>✅ What to do instead:</strong> Use the tabs! "Best for Defenders" for defensive picks, "Best for Attackers" for attacking picks, "Fixture Swings" for planning 3 weeks ahead.</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="guide-card">
-                    <h3>🎯 Putting It All Together: A Decision Framework</h3>
-                    <div class="guide-text">
-                        <p><strong>Every Week, Ask These Questions:</strong></p>
-                        
-                        <p><strong>1. For Defenders/GKs I'm considering:</strong></p>
-                        <ul>
-                            <li>Is their Clean Sheet Probability above 40%?</li>
-                            <li>Are they conceding under 1.5 goals/game?</li>
-                            <li>Do they have 2+ home fixtures in next 5?</li>
-                            <li>Is their Defender Rating 55+?</li>
-                        </ul>
-                        <p>If YES to 3+, they're a strong pick. If NO to 3+, avoid.</p>
-                        
-                        <p><strong>2. For Attackers I'm considering:</strong></p>
-                        <ul>
-                            <li>Is their team scoring 1.5+ goals/game?</li>
-                            <li>Is their Attacker Rating 50+?</li>
-                            <li>Is their FDR under 3.5?</li>
-                            <li>If they're budget (under £7m), is FDR under 3.0?</li>
-                        </ul>
-                        <p>Premiums can pass with 2/4. Budget options need 3/4.</p>
-                        
-                        <p><strong>3. For Planning Ahead:</strong></p>
-                        <ul>
-                            <li>Check "Fixture Swings" tab weekly</li>
-                            <li>Buy players from "Getting Easier" teams NOW</li>
-                            <li>Sell players from "Getting Harder" teams NEXT week (before the tough run starts)</li>
-                            <li>This 2-week lookahead is what separates top 100k from top 1M managers</li>
-                        </ul>
-                    </div>
-                </div>
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span>⚡</span> FPL Analysis
+            </a>
+            <div class="nav-links">
+                <a href="fpl-transfer-wizard.html" class="nav-link">
+                    <span class="icon">🧙</span>
+                    <span>Wizard</span>
+                </a>
+                <a href="fpl-my-team-analysis.html" class="nav-link">
+                    <span class="icon">⚽</span>
+                    <span>My Team</span>
+                </a>
+                <a href="fpl-players-analysis.html" class="nav-link">
+                    <span class="icon">👤</span>
+                    <span>Players</span>
+                </a>
+                <a href="fpl-teams-analysis.html" class="nav-link active">
+                    <span class="icon">📊</span>
+                    <span>Teams</span>
+                </a>
+                <a href="fpl-league-rivals.html" class="nav-link">
+                    <span class="icon">🏆</span>
+                    <span>Rivals</span>
+                </a>
             </div>
         </div>
-    </div>
+    </nav>
 
-    <div class="controls">
-        <button class="btn" onclick="loadTeamData()">
-            🔄 Refresh Data
-        </button>
-        <div class="status" id="status">
-            Loading teams data...
-        </div>
-    </div>
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Page Header -->
+        <header class="page-header">
+            <h1 class="page-title">
+                Teams Analysis
+                <span class="gw-badge" id="currentGW">Loading...</span>
+            </h1>
+            <p class="page-subtitle">Fixture difficulty, form trends, and attack/defense ratings for all 20 Premier League teams</p>
+        </header>
 
-    <div class="tabs">
-        <button class="tab active" data-view="overview">📊 Overview</button>
-        <button class="tab" data-view="attackers">⚔️ Best for Attackers</button>
-        <button class="tab" data-view="defenders">🛡️ Best for Defenders</button>
-        <button class="tab" data-view="fixtures">📅 Fixture Swings</button>
-    </div>
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-view="overview">All Teams</button>
+                <button class="filter-tab" data-view="attack">Best for Attack</button>
+                <button class="filter-tab" data-view="defense">Best for Defense</button>
+                <button class="filter-tab" data-view="swings">Fixture Swings</button>
+            </div>
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" placeholder="Search teams..." id="searchInput">
+            </div>
+        </div>
 
-    <div class="content">
-        <div class="tab-content active" id="overview-content">
-            <div class="no-data">Loading teams data...</div>
+        <!-- Content Area -->
+        <div id="content-area">
+            <div class="teams-grid" id="teams-grid">
+                <!-- Teams will be rendered here -->
+            </div>
         </div>
-        <div class="tab-content" id="attackers-content"></div>
-        <div class="tab-content" id="defenders-content"></div>
-        <div class="tab-content" id="fixtures-content"></div>
-    </div>
+    </main>
 
-    <div class="legend">
-        <div class="legend-item">
-            <div class="legend-box" style="background: rgba(0, 255, 136, 0.3);"></div>
-            <span>Easy Fixtures (FDR 1-2) / Excellent Form (70+)</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-box" style="background: rgba(255, 204, 0, 0.3);"></div>
-            <span>Medium Fixtures (FDR 3) / Good Form (50-69)</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-box" style="background: rgba(255, 51, 102, 0.3);"></div>
-            <span>Hard Fixtures (FDR 4-5) / Poor Form (<50)</span>
-        </div>
-    </div>
+    <!-- SVG Definitions for Sparklines -->
+    <svg width="0" height="0">
+        <defs>
+            <linearGradient id="sparkGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:rgba(96, 165, 250, 0.3)" />
+                <stop offset="100%" style="stop-color:rgba(96, 165, 250, 0)" />
+            </linearGradient>
+            <linearGradient id="gaugeGradientGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#4ADE80" />
+                <stop offset="100%" style="stop-color:#22c55e" />
+            </linearGradient>
+        </defs>
+    </svg>
 
     <script>
-        // Load data from your own GitHub-hosted JSON files (no CORS issues!)
+        // Data URLs
         const BOOTSTRAP_URL = 'data/bootstrap-static.json';
         const FIXTURES_URL = 'data/fixtures.json';
         
         let allTeamsData = [];
+        let currentView = 'overview';
 
-        // Toggle guide section
-        function toggleGuide() {
-            const content = document.getElementById('guideContent');
-            const toggle = document.getElementById('guideToggle');
-            
-            content.classList.toggle('open');
-            toggle.classList.toggle('open');
-        }
-
-        // Tab switching
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                
-                tab.classList.add('active');
-                const view = tab.dataset.view;
-                document.getElementById(`${view}-content`).classList.add('active');
-            });
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', () => {
+            initFilters();
+            initSearch();
+            loadTeamData();
         });
 
+        function initFilters() {
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentView = tab.dataset.view;
+                    renderCurrentView();
+                });
+            });
+        }
+
+        function initSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                filterTeams(query);
+            });
+        }
+
+        function filterTeams(query) {
+            const cards = document.querySelectorAll('.team-card');
+            cards.forEach(card => {
+                const teamName = card.dataset.team.toLowerCase();
+                card.style.display = teamName.includes(query) ? '' : 'none';
+            });
+        }
+
         function showLoading(show) {
-            const overlay = document.getElementById('loadingOverlay');
-            if (show) {
-                overlay.classList.add('show');
-            } else {
-                overlay.classList.remove('show');
-            }
+            document.getElementById('loadingOverlay').classList.toggle('show', show);
         }
 
-        function updateStatus(message, type = 'info') {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = 'status ' + type;
-        }
-
+        // ===== DATA LOADING =====
         async function loadTeamData() {
             try {
                 showLoading(true);
-                updateStatus('Fetching FPL data...', 'loading');
 
-                // Fetch from your own hosted JSON files (no CORS issues!)
-                const [bootstrapResponse, fixturesResponse] = await Promise.all([
+                const [bootstrapRes, fixturesRes] = await Promise.all([
                     fetch(BOOTSTRAP_URL),
                     fetch(FIXTURES_URL)
                 ]);
-                
-                if (!bootstrapResponse.ok) throw new Error('Failed to fetch bootstrap-static.json');
-                if (!fixturesResponse.ok) throw new Error('Failed to fetch fixtures.json');
-                
-                const bootstrapData = await bootstrapResponse.json();
-                const fixturesData = await fixturesResponse.json();
 
-                updateStatus('Analyzing teams...', 'loading');
-                
-                // Get current gameweek
+                if (!bootstrapRes.ok || !fixturesRes.ok) {
+                    throw new Error('Failed to load data');
+                }
+
+                const bootstrapData = await bootstrapRes.json();
+                const fixturesData = await fixturesRes.json();
+
                 const currentGW = bootstrapData.events.find(e => e.is_current)?.id || 
                                   bootstrapData.events.find(e => e.is_next)?.id || 1;
                 document.getElementById('currentGW').textContent = `GW${currentGW}`;
 
-                // Analyze all teams
-                const teams = bootstrapData.teams;
-                const teamsAnalysis = teams.map(team => analyzeTeam(team, teams, fixturesData));
+                allTeamsData = bootstrapData.teams.map(team => 
+                    analyzeTeam(team, bootstrapData.teams, fixturesData)
+                );
 
-                allTeamsData = teamsAnalysis;
-
-                // Render all views
-                renderOverview(teamsAnalysis);
-                renderBestForAttackers(teamsAnalysis);
-                renderBestForDefenders(teamsAnalysis);
-                renderFixtureSwings(teamsAnalysis);
-
-                updateStatus(`✓ GW${currentGW} | ${teamsAnalysis.length} teams loaded`, 'success');
+                renderCurrentView();
                 showLoading(false);
 
             } catch (error) {
                 console.error('Error:', error);
-                updateStatus(`✗ Error: ${error.message}`, 'error');
                 showLoading(false);
             }
         }
 
-        // Big Six team IDs (these are consistent in the FPL API)
+        // ===== TEAM ANALYSIS =====
         const BIG_SIX_NAMES = ['Arsenal', 'Chelsea', 'Liverpool', 'Man City', 'Man Utd', 'Spurs'];
-
-        // =====================================================
-        // ADVANCED ANALYTICS ENGINE - 2025/26 SEASON UPDATED
-        // =====================================================
-        
-        // Calculate xG approximation from team strength (FPL API doesn't provide raw xG)
-        // Uses team attack strength vs opponent defense strength
-        function calculateXGApprox(attackStrength, oppDefenseStrength, isHome) {
-            // Normalize strengths (typically range 900-1400 in FPL API)
-            const normAttack = (attackStrength - 900) / 500; // 0 to 1
-            const normOppDef = (oppDefenseStrength - 900) / 500;
-            
-            // Base xG calculation: higher attack + lower opp defense = more xG
-            let xG = 0.8 + (normAttack * 1.2) - (normOppDef * 0.6);
-            
-            // Home advantage: ~0.3 xG boost
-            if (isHome) xG += 0.3;
-            
-            return Math.max(0.3, Math.min(3.5, xG));
-        }
-        
-        // Calculate xGA approximation
-        function calculateXGAApprox(defenseStrength, oppAttackStrength, isHome) {
-            const normDefense = (defenseStrength - 900) / 500;
-            const normOppAttack = (oppAttackStrength - 900) / 500;
-            
-            // Base xGA: lower defense strength + higher opp attack = more xGA
-            let xGA = 1.2 - (normDefense * 0.8) + (normOppAttack * 0.9);
-            
-            // Home advantage: ~0.25 xGA reduction
-            if (isHome) xGA -= 0.25;
-            
-            return Math.max(0.2, Math.min(3.0, xGA));
-        }
-        
-        // Calculate CBIT potential (2025/26 rule: 2pts for 10 clearances/blocks/interceptions/tackles)
-        // Teams that face more shots/attacks generate more CBIT opportunities
-        function calculateCBITPotential(oppAttackStrength, defenseStrength, isHome) {
-            const normOppAttack = (oppAttackStrength - 900) / 500;
-            const normDefense = (defenseStrength - 900) / 500;
-            
-            // More opponent attacks = more defensive actions needed
-            // Better defense = more successful actions
-            let cbitScore = 30 + (normOppAttack * 40) + (normDefense * 30);
-            
-            // Away games typically have more defensive work
-            if (!isHome) cbitScore += 10;
-            
-            return Math.min(100, Math.max(0, cbitScore));
-        }
-        
-        // Calculate Ball Recovery potential (2025/26: 2pts for 12 defensive actions for mids/fwds)
-        function calculateBallRecoveryPotential(teamPressing, oppPossession) {
-            // Teams that press high and face possession-heavy opponents get more recoveries
-            return Math.min(100, Math.max(0, 40 + (teamPressing * 30) + (oppPossession * 30)));
-        }
-        
-        // Recency-weighted form calculation
-        // GW n-1 gets weight 5, GW n-2 gets 4, etc.
-        function calculateRecencyWeightedForm(pastFixtures, metric) {
-            if (pastFixtures.length === 0) return 0;
-            
-            let weightedSum = 0;
-            let totalWeight = 0;
-            
-            pastFixtures.forEach((fixture, index) => {
-                const weight = index + 1; // More recent = higher weight (assuming sorted oldest first)
-                weightedSum += fixture[metric] * weight;
-                totalWeight += weight;
-            });
-            
-            return totalWeight > 0 ? weightedSum / totalWeight : 0;
-        }
-        
-        // Find optimal fixture window (best consecutive GW stretch)
-        function findOptimalWindow(futureFixtures, windowSize = 3) {
-            if (futureFixtures.length < windowSize) return null;
-            
-            let bestWindow = null;
-            let bestScore = Infinity;
-            
-            for (let i = 0; i <= futureFixtures.length - windowSize; i++) {
-                const window = futureFixtures.slice(i, i + windowSize);
-                const avgFdr = window.reduce((sum, f) => sum + f.fdr, 0) / windowSize;
-                const homeCount = window.filter(f => f.homeAway === 'H').length;
-                const score = avgFdr - (homeCount * 0.3); // Lower is better
-                
-                if (score < bestScore) {
-                    bestScore = score;
-                    bestWindow = {
-                        startGW: window[0].gw,
-                        endGW: window[window.length - 1].gw,
-                        avgFdr: avgFdr.toFixed(2),
-                        homeCount,
-                        fixtures: window
-                    };
-                }
-            }
-            
-            return bestWindow;
-        }
 
         function analyzeTeam(team, allTeams, fixtures) {
             const teamId = team.id;
 
-            // Get all finished fixtures for this team (for rolling window analysis)
-            const allPastFixtures = fixtures
+            // Past fixtures
+            const pastFixtures = fixtures
                 .filter(f => f.finished && (f.team_h === teamId || f.team_a === teamId))
-                .sort((a, b) => a.event - b.event);
-            
-            // Past 5 fixtures (primary form window)
-            const pastFixtures = allPastFixtures.slice(-5);
+                .sort((a, b) => a.event - b.event)
+                .slice(-5);
 
-            // Future fixtures (up to 10 for window analysis)
-            const allFutureFixtures = fixtures
+            // Future fixtures
+            const futureFixtures = fixtures
                 .filter(f => !f.finished && (f.team_h === teamId || f.team_a === teamId))
-                .sort((a, b) => a.event - b.event);
-            
-            const futureFixtures = allFutureFixtures.slice(0, 5);
-            const extendedFuture = allFutureFixtures.slice(0, 10);
+                .sort((a, b) => a.event - b.event)
+                .slice(0, 5);
 
-            // ========== PAST STATS WITH RECENCY WEIGHTING ==========
+            // Calculate past stats
             let wins = 0, draws = 0, losses = 0;
-            let goalsScored = 0, goalsConceded = 0, cleanSheets = 0;
-            const pastDetails = [];
-            
-            // Track per-game stats for recency weighting
-            const gameStats = [];
+            let goalsScored = 0, goalsConceded = 0;
+            const pastResults = [];
+            const xGHistory = [];
 
-            pastFixtures.forEach((f, idx) => {
+            pastFixtures.forEach(f => {
                 const isHome = f.team_h === teamId;
                 const teamScore = isHome ? f.team_h_score : f.team_a_score;
                 const oppScore = isHome ? f.team_a_score : f.team_h_score;
                 const oppId = isHome ? f.team_a : f.team_h;
                 const opponent = allTeams.find(t => t.id === oppId);
-                
-                // Calculate xG/xGA for this match
-                const teamAttack = isHome ? team.strength_attack_home : team.strength_attack_away;
-                const teamDefense = isHome ? team.strength_defence_home : team.strength_defence_away;
-                const oppAttack = isHome ? opponent.strength_attack_away : opponent.strength_attack_home;
-                const oppDefense = isHome ? opponent.strength_defence_away : opponent.strength_defence_home;
-                
-                const matchXG = calculateXGApprox(teamAttack, oppDefense, isHome);
-                const matchXGA = calculateXGAApprox(teamDefense, oppAttack, isHome);
 
                 goalsScored += teamScore || 0;
                 goalsConceded += oppScore || 0;
@@ -1122,779 +950,280 @@
                 else if (teamScore === oppScore) draws++;
                 else losses++;
 
-                const isCleanSheet = oppScore === 0;
-                if (isCleanSheet) cleanSheets++;
-                
-                // Store per-game stats for recency weighting
-                gameStats.push({
-                    goals: teamScore || 0,
-                    conceded: oppScore || 0,
-                    xG: matchXG,
-                    xGA: matchXGA,
-                    cleanSheet: isCleanSheet ? 1 : 0,
-                    points: teamScore > oppScore ? 3 : (teamScore === oppScore ? 1 : 0),
-                    oppStrength: (oppAttack + oppDefense) / 2
+                pastResults.push({
+                    result: teamScore > oppScore ? 'W' : teamScore === oppScore ? 'D' : 'L',
+                    opponent: opponent?.short_name || '?',
+                    score: `${teamScore}-${oppScore}`,
+                    isHome
                 });
 
-                pastDetails.push({
-                    gw: f.event,
-                    opponent: opponent.short_name,
-                    homeAway: isHome ? 'H' : 'A',
-                    result: teamScore > oppScore ? 'W' : (teamScore === oppScore ? 'D' : 'L'),
-                    score: `${teamScore}-${oppScore}`,
-                    xG: matchXG.toFixed(2),
-                    xGA: matchXGA.toFixed(2),
-                    xGDiff: (matchXG - matchXGA).toFixed(2)
-                });
+                // Approximate xG
+                const teamAttack = isHome ? team.strength_attack_home : team.strength_attack_away;
+                const oppDefense = isHome ? opponent?.strength_defence_away : opponent?.strength_defence_home;
+                const xG = 0.8 + ((teamAttack - 900) / 500) * 1.2 - ((oppDefense - 900) / 500) * 0.6 + (isHome ? 0.3 : 0);
+                xGHistory.push(Math.max(0.3, Math.min(3.5, xG)));
             });
 
-            // ========== CALCULATE xG METRICS ==========
-            const gamesPlayed = pastFixtures.length;
-            
-            // Recency-weighted xG (more recent games count more)
-            const recencyWeightedXG = calculateRecencyWeightedForm(gameStats, 'xG');
-            const recencyWeightedXGA = calculateRecencyWeightedForm(gameStats, 'xGA');
-            const recencyWeightedGoals = calculateRecencyWeightedForm(gameStats, 'goals');
-            
-            // Standard averages
-            const avgGoalsScored = gamesPlayed > 0 ? (goalsScored / gamesPlayed).toFixed(2) : '0.00';
-            const avgGoalsConceded = gamesPlayed > 0 ? (goalsConceded / gamesPlayed).toFixed(2) : '0.00';
-            const avgXG = gamesPlayed > 0 ? (gameStats.reduce((s, g) => s + g.xG, 0) / gamesPlayed).toFixed(2) : '0.00';
-            const avgXGA = gamesPlayed > 0 ? (gameStats.reduce((s, g) => s + g.xGA, 0) / gamesPlayed).toFixed(2) : '0.00';
-            
-            // xG differential (positive = creating more than conceding)
-            const xGDiff = (parseFloat(avgXG) - parseFloat(avgXGA)).toFixed(2);
-            
-            // Over/underperformance (goals vs xG)
-            const goalVsXG = (parseFloat(avgGoalsScored) - parseFloat(avgXG)).toFixed(2);
-            const concededVsXGA = (parseFloat(avgGoalsConceded) - parseFloat(avgXGA)).toFixed(2);
-            
-            const cleanSheetPct = gamesPlayed > 0 ? ((cleanSheets / gamesPlayed) * 100).toFixed(0) : '0';
-            const winPct = gamesPlayed > 0 ? ((wins / gamesPlayed) * 100).toFixed(0) : '0';
-
-            // ========== ADVANCED FIXTURE ANALYSIS ==========
+            // Future fixtures analysis
             const futureDetails = [];
             let totalFdr = 0;
-            let totalAttackFdr = 0;  // FDR for attackers (based on opp defense)
-            let totalDefenseFdr = 0; // FDR for defenders (based on opp attack)
-            let totalCBIT = 0;
-            let totalBallRecovery = 0;
-            let projectedXG = 0;
-            let projectedXGA = 0;
 
             futureFixtures.forEach(f => {
                 const isHome = f.team_h === teamId;
                 const oppId = isHome ? f.team_a : f.team_h;
                 const opponent = allTeams.find(t => t.id === oppId);
                 const fdr = isHome ? f.team_h_difficulty : f.team_a_difficulty;
-                
-                // Get opponent strengths
-                const oppAttack = isHome ? opponent.strength_attack_away : opponent.strength_attack_home;
-                const oppDefense = isHome ? opponent.strength_defence_away : opponent.strength_defence_home;
-                const teamAttack = isHome ? team.strength_attack_home : team.strength_attack_away;
-                const teamDefense = isHome ? team.strength_defence_home : team.strength_defence_away;
-                
-                // Calculate split FDRs
-                // Attack FDR: How hard to score (based on opponent defense)
-                const attackFdr = Math.round(1 + ((oppDefense - 900) / 125)); // 1-5 scale
-                // Defense FDR: How hard to keep clean sheet (based on opponent attack)
-                const defenseFdr = Math.round(1 + ((oppAttack - 900) / 125));
-                
+
                 totalFdr += fdr || 3;
-                totalAttackFdr += Math.min(5, Math.max(1, attackFdr));
-                totalDefenseFdr += Math.min(5, Math.max(1, defenseFdr));
-                
-                // Project xG/xGA for this fixture
-                const fixtureXG = calculateXGApprox(teamAttack, oppDefense, isHome);
-                const fixtureXGA = calculateXGAApprox(teamDefense, oppAttack, isHome);
-                projectedXG += fixtureXG;
-                projectedXGA += fixtureXGA;
-                
-                // 2025/26 Rules: CBIT and Ball Recovery potential
-                const cbit = calculateCBITPotential(oppAttack, teamDefense, isHome);
-                const ballRecovery = calculateBallRecoveryPotential(0.5, (oppDefense - 900) / 500);
-                totalCBIT += cbit;
-                totalBallRecovery += ballRecovery;
 
                 futureDetails.push({
                     gw: f.event,
-                    opponent: opponent.short_name,
-                    homeAway: isHome ? 'H' : 'A',
-                    fdr: fdr || 3,
-                    attackFdr: Math.min(5, Math.max(1, attackFdr)),
-                    defenseFdr: Math.min(5, Math.max(1, defenseFdr)),
-                    projXG: fixtureXG.toFixed(2),
-                    projXGA: fixtureXGA.toFixed(2),
-                    cbitPotential: cbit.toFixed(0),
-                    oppAttackStrength: oppAttack,
-                    oppDefenseStrength: oppDefense
+                    opponent: opponent?.short_name || '?',
+                    isHome,
+                    fdr: fdr || 3
                 });
             });
 
-            const fixtureCount = futureFixtures.length || 1;
-            const avgFdr = (totalFdr / fixtureCount).toFixed(2);
-            const avgAttackFdr = (totalAttackFdr / fixtureCount).toFixed(2);
-            const avgDefenseFdr = (totalDefenseFdr / fixtureCount).toFixed(2);
-            const avgProjectedXG = (projectedXG / fixtureCount).toFixed(2);
-            const avgProjectedXGA = (projectedXGA / fixtureCount).toFixed(2);
-            const avgCBIT = (totalCBIT / fixtureCount).toFixed(0);
-            const avgBallRecovery = (totalBallRecovery / fixtureCount).toFixed(0);
+            const avgFdr = futureDetails.length > 0 ? totalFdr / futureDetails.length : 3;
+            const homeFixtures = futureDetails.filter(f => f.isHome).length;
 
-            // Home/away split
-            const homeFixtures = futureDetails.filter(f => f.homeAway === 'H').length;
-            const awayFixtures = futureDetails.filter(f => f.homeAway === 'A').length;
-            
-            // ========== IMPROVED CLEAN SHEET PROBABILITY ==========
-            // Factor in: team's xGA, opponent's actual xG potential, home advantage
-            const baseCSProb = Math.max(0, 60 - (parseFloat(avgXGA) * 25)); // Lower xGA = higher base prob
-            const fixtureBonus = ((5 - parseFloat(avgDefenseFdr)) / 4) * 25; // Easier fixtures = bonus
-            const homeBonus = homeFixtures * 4; // Home games boost CS
-            
-            // Opponent xG penalty (if facing high-xG teams)
-            const avgOppXGPotential = futureDetails.reduce((sum, f) => {
-                return sum + calculateXGApprox(f.oppAttackStrength, team.strength_defence_home, f.homeAway === 'H');
-            }, 0) / fixtureCount;
-            const oppXGPenalty = Math.max(0, (avgOppXGPotential - 1.2) * 15);
-            
-            const cleanSheetProb = Math.min(85, Math.max(5, Math.round(baseCSProb + fixtureBonus + homeBonus - oppXGPenalty)));
-            
-            // ========== 2025/26 UPDATED ATTACK RATING ==========
-            // Factors: xG, projected xG, attack FDR, home fixtures
-            const xGScore = Math.min(40, parseFloat(avgXG) * 20); // Max 40 pts from current xG
-            const projectedXGScore = Math.min(30, parseFloat(avgProjectedXG) * 15); // Max 30 pts from projected
-            const attackFdrBonus = ((5 - parseFloat(avgAttackFdr)) / 4) * 20; // Max 20 pts
-            const attackHomeBonus = homeFixtures * 2; // Home games boost
-            
-            const attackRating = Math.round(Math.min(100, Math.max(0, xGScore + projectedXGScore + attackFdrBonus + attackHomeBonus)));
-            
-            // ========== 2025/26 UPDATED DEFENSE RATING ==========
-            // Now includes CBIT potential (new scoring rule)
-            const xGAScore = Math.min(30, (3 - parseFloat(avgXGA)) * 15); // Lower xGA = higher score
-            const csScore = parseFloat(cleanSheetPct) * 0.25; // Historical CS rate
-            const csProbScore = cleanSheetProb * 0.2; // Projected CS probability
-            const cbitBonus = parseFloat(avgCBIT) * 0.15; // 2025/26 CBIT potential
-            const defenseFdrBonus = ((5 - parseFloat(avgDefenseFdr)) / 4) * 15;
-            
-            const defenseRating = Math.round(Math.min(100, Math.max(0, xGAScore + csScore + csProbScore + cbitBonus + defenseFdrBonus)));
-            
-            // ========== IMPROVED FIXTURE SWING DETECTION ==========
-            // Find optimal windows and detect turning points
-            const optimalWindow3 = findOptimalWindow(futureDetails, 3);
-            const optimalWindow5 = findOptimalWindow(futureDetails, 5);
-            
-            // Calculate fixture trend with better granularity
-            let fixtureSwing = 'Stable';
-            let swingDetails = null;
-            
-            if (futureDetails.length >= 5) {
-                const first2Avg = (futureDetails[0].fdr + futureDetails[1].fdr) / 2;
-                const middle2Avg = (futureDetails[2].fdr + (futureDetails[3]?.fdr || futureDetails[2].fdr)) / 2;
-                const last2Avg = futureDetails.length >= 5 ? (futureDetails[3].fdr + futureDetails[4].fdr) / 2 : middle2Avg;
-                
-                const earlyTrend = middle2Avg - first2Avg;
-                const lateTrend = last2Avg - middle2Avg;
-                
-                if (earlyTrend < -0.5 && lateTrend < -0.5) {
-                    fixtureSwing = 'Improving Throughout';
-                } else if (earlyTrend > 0.5 && lateTrend > 0.5) {
-                    fixtureSwing = 'Worsening Throughout';
-                } else if (earlyTrend < -0.5) {
-                    fixtureSwing = 'Getting Easier Soon';
-                } else if (earlyTrend > 0.5) {
-                    fixtureSwing = 'Getting Harder Soon';
-                } else if (lateTrend < -0.5) {
-                    fixtureSwing = 'Gets Easier Later';
-                } else if (lateTrend > 0.5) {
-                    fixtureSwing = 'Gets Harder Later';
-                }
-                
-                swingDetails = {
-                    first2Avg: first2Avg.toFixed(2),
-                    middle2Avg: middle2Avg.toFixed(2),
-                    last2Avg: last2Avg.toFixed(2),
-                    trend: fixtureSwing
-                };
-            }
-
-            // ========== NORMALIZED FORM SCORE (0-100) ==========
-            // Components with proper normalization and recency weighting
-            const formComponents = {
-                // Attacking form (40% weight) - recency weighted
-                xGPerformance: Math.min(25, recencyWeightedXG * 12.5), // Max 25 pts
-                goalConversion: Math.min(15, parseFloat(goalVsXG) > 0 ? 15 : 7.5 + (parseFloat(goalVsXG) * 5)), // Overperforming xG
-                
-                // Results (30% weight) - recency weighted
-                winRate: parseFloat(winPct) * 0.2, // Max 20 pts
-                pointsPerGame: Math.min(10, (gameStats.reduce((s, g) => s + g.points, 0) / Math.max(1, gamesPlayed)) * 3.33),
-                
-                // Defensive form (20% weight)
-                defensiveRecord: Math.min(20, (3 - parseFloat(avgXGA)) * 10),
-                
-                // Fixture outlook (10% weight)
-                fixtureQuality: ((5 - parseFloat(avgFdr)) / 4) * 10
-            };
+            // Form score
+            const gamesPlayed = pastFixtures.length || 1;
+            const avgXG = xGHistory.reduce((a, b) => a + b, 0) / gamesPlayed;
+            const avgXGA = goalsConceded / gamesPlayed;
             
             const formScore = Math.round(Math.min(100, Math.max(0,
-                formComponents.xGPerformance +
-                formComponents.goalConversion +
-                formComponents.winRate +
-                formComponents.pointsPerGame +
-                formComponents.defensiveRecord +
-                formComponents.fixtureQuality
+                (wins * 15) + (draws * 5) + 
+                (avgXG * 15) + 
+                ((3 - avgXGA) * 10) +
+                ((5 - avgFdr) / 4) * 20
             )));
-            
-            // ========== BIG SIX FIXTURE COUNTER ==========
-            const bigSixCount = futureDetails.filter(f => 
-                BIG_SIX_NAMES.some(name => 
-                    f.opponent.toLowerCase().includes(name.toLowerCase().substring(0, 3))
-                )
-            ).length;
-            
-            // Team badge URL (FPL official badges)
-            const badgeUrl = `https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png`;
+
+            // Attack rating
+            const attackRating = Math.round(Math.min(100, Math.max(0,
+                avgXG * 25 +
+                ((5 - avgFdr) / 4) * 30 +
+                homeFixtures * 5 +
+                (goalsScored / gamesPlayed) * 10
+            )));
+
+            // Defense rating
+            const defenseRating = Math.round(Math.min(100, Math.max(0,
+                (3 - avgXGA) * 20 +
+                ((5 - avgFdr) / 4) * 30 +
+                homeFixtures * 5 +
+                ((gamesPlayed - goalsConceded) / gamesPlayed) * 20
+            )));
+
+            // Fixture swing
+            let fixtureSwing = 'stable';
+            if (futureDetails.length >= 4) {
+                const first2 = (futureDetails[0].fdr + futureDetails[1].fdr) / 2;
+                const last2 = (futureDetails[futureDetails.length - 2].fdr + futureDetails[futureDetails.length - 1].fdr) / 2;
+                if (last2 < first2 - 0.5) fixtureSwing = 'improving';
+                else if (last2 > first2 + 0.5) fixtureSwing = 'worsening';
+            }
 
             return {
-                teamId,
-                teamName: team.name,
+                id: teamId,
+                name: team.name,
                 shortName: team.short_name,
-                teamCode: team.code,
-                badgeUrl,
-                
-                // Basic stats
-                gamesPlayed,
-                wins, draws, losses,
-                goalsScored, goalsConceded, cleanSheets,
-                avgGoalsScored, avgGoalsConceded,
-                cleanSheetPct, winPct,
-                
-                // xG Metrics (NEW)
-                avgXG, avgXGA, xGDiff,
-                goalVsXG, concededVsXGA,
-                avgProjectedXG, avgProjectedXGA,
-                
-                // Split FDR (NEW)
-                avgFdr, avgAttackFdr, avgDefenseFdr,
-                totalFdr,
-                
-                // 2025/26 Metrics (NEW)
-                avgCBIT, avgBallRecovery,
-                
-                // Fixture analysis
-                homeFixtures, awayFixtures,
-                fixtureSwing, swingDetails,
-                optimalWindow3, optimalWindow5,
-                bigSixCount, // NEW: Big Six fixture counter
-                
-                // Ratings (IMPROVED)
-                cleanSheetProb,
+                badgeUrl: `https://resources.premierleague.com/premierleague/badges/t${teamId}.png`,
+                formScore,
                 attackRating,
                 defenseRating,
-                formScore,
-                formComponents, // Expose components for transparency
-                
-                // Team strengths
-                attackH: team.strength_attack_home,
-                attackA: team.strength_attack_away,
-                defenseH: team.strength_defence_home,
-                defenseA: team.strength_defence_away,
-                
-                // Details
-                pastFixtures: pastDetails,
-                futureFixtures: futureDetails
+                avgFdr: avgFdr.toFixed(1),
+                avgXG: avgXG.toFixed(2),
+                avgXGA: avgXGA.toFixed(2),
+                wins, draws, losses,
+                homeFixtures,
+                awayFixtures: futureDetails.length - homeFixtures,
+                pastResults,
+                futureFixtures: futureDetails,
+                xGHistory,
+                fixtureSwing
             };
         }
 
-        function renderOverview(teams) {
-            const sorted = [...teams].sort((a, b) => b.formScore - a.formScore);
-            
-            const html = `
-                <div class="teams-grid">
-                    ${sorted.map(team => createTeamCard(team, 'overview')).join('')}
-                </div>
-            `;
-            
-            document.getElementById('overview-content').innerHTML = html;
+        // ===== RENDERING =====
+        function renderCurrentView() {
+            const grid = document.getElementById('teams-grid');
+            const contentArea = document.getElementById('content-area');
+
+            switch (currentView) {
+                case 'overview':
+                    const overviewSorted = [...allTeamsData].sort((a, b) => b.formScore - a.formScore);
+                    grid.innerHTML = overviewSorted.map((team, i) => createTeamCard(team, i + 1, 'form')).join('');
+                    grid.style.display = 'grid';
+                    break;
+
+                case 'attack':
+                    const attackSorted = [...allTeamsData].sort((a, b) => b.attackRating - a.attackRating);
+                    grid.innerHTML = attackSorted.map((team, i) => createTeamCard(team, i + 1, 'attack')).join('');
+                    grid.style.display = 'grid';
+                    break;
+
+                case 'defense':
+                    const defenseSorted = [...allTeamsData].sort((a, b) => b.defenseRating - a.defenseRating);
+                    grid.innerHTML = defenseSorted.map((team, i) => createTeamCard(team, i + 1, 'defense')).join('');
+                    grid.style.display = 'grid';
+                    break;
+
+                case 'swings':
+                    grid.style.display = 'none';
+                    renderFixtureSwings(contentArea);
+                    break;
+            }
         }
 
-        function renderBestForAttackers(teams) {
-            const sorted = [...teams].sort((a, b) => b.attackRating - a.attackRating).slice(0, 10);
+        function createTeamCard(team, rank, mode = 'form') {
+            const primaryValue = mode === 'form' ? team.formScore : 
+                                 mode === 'attack' ? team.attackRating : team.defenseRating;
+            const primaryLabel = mode === 'form' ? 'Form Score' : 
+                                 mode === 'attack' ? 'Attack Rating' : 'Defense Rating';
             
-            const html = `
-                <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
-                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">⚔️ Best Teams for FPL Attackers (xG-Based Analysis)</h3>
-                    <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
-                        Ranked by <strong style="color: var(--accent-green);">Attack Rating</strong> using:
-                        <strong>xG/game</strong> (chance creation quality), <strong>Projected xG</strong> (upcoming fixture potential), 
-                        <strong>Attack FDR</strong> (opponent defense strength), and home fixtures.
-                    </p>
-                    <p style="font-size: 10px; color: var(--accent-yellow); margin-top: 8px;">
-                        ⚠️ <strong>Regression Warning:</strong> Teams with Goals vs xG > +0.3 are overperforming and likely to regress!
-                    </p>
-                </div>
-                <div class="teams-grid">
-                    ${sorted.map((team, i) => {
-                        const xGWarning = parseFloat(team.goalVsXG) > 0.3 ? '⚠️ Overperforming xG - regression likely! ' : '';
-                        const xGBoost = parseFloat(team.goalVsXG) < -0.2 ? '📈 Underperforming xG - due for goals! ' : '';
-                        const tip = `${xGWarning}${xGBoost}xG: ${team.avgXG}/game | Projected: ${team.avgProjectedXG} | Attack FDR: ${team.avgAttackFdr}${team.homeFixtures > 2 ? ` | ${team.homeFixtures} home games` : ''}`;
-                        return createTeamCard(team, 'attackers', i + 1, tip);
-                    }).join('')}
-                </div>
-            `;
-            
-            document.getElementById('attackers-content').innerHTML = html;
-        }
+            const valueClass = primaryValue >= 65 ? 'success' : primaryValue >= 45 ? 'warning' : 'error';
 
-        function renderBestForDefenders(teams) {
-            const sorted = [...teams].sort((a, b) => b.defenseRating - a.defenseRating).slice(0, 10);
-            
-            const html = `
-                <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
-                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">🛡️ Best Teams for FPL Defenders & GKs (2025/26 Updated)</h3>
-                    <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
-                        <strong style="color: var(--accent-green);">Defense Rating</strong> now includes:
-                        <strong>xGA</strong> (shot quality allowed), <strong>CS Probability</strong> (opponent xG-based),
-                        <strong>Defense FDR</strong> (opponent attack strength), and <strong style="color: var(--accent-blue);">CBIT Potential</strong> (new 2025/26 points).
-                    </p>
-                    <p style="font-size: 10px; color: var(--accent-blue); margin-top: 8px;">
-                        🆕 <strong>2025/26 Rule:</strong> Defenders earn 2pts for 10 clearances/blocks/interceptions/tackles. High CBIT = more opportunities!
-                    </p>
+            // Create FDR strip
+            const fdrStrip = team.futureFixtures.map(f => `
+                <div class="fdr-badge fdr-${f.fdr}">
+                    <span class="opp">${f.opponent}</span>
+                    <span class="venue">${f.isHome ? 'H' : 'A'}</span>
                 </div>
-                <div class="teams-grid">
-                    ${sorted.map((team, i) => {
-                        const cbitBonus = parseFloat(team.avgCBIT) >= 55 ? `🛡️ High CBIT potential (${team.avgCBIT}%)! ` : '';
-                        const xGAWarning = parseFloat(team.concededVsXGA) < -0.3 ? '⚠️ Lucky CS - allowing high xGA! ' : '';
-                        const tip = `${cbitBonus}${xGAWarning}CS Prob: ${team.cleanSheetProb}% | xGA: ${team.avgXGA}/game | Defense FDR: ${team.avgDefenseFdr}${team.homeFixtures > 2 ? ` | ${team.homeFixtures} home games` : ''}`;
-                        return createTeamCard(team, 'defenders', i + 1, tip);
-                    }).join('')}
-                </div>
-            `;
-            
-            document.getElementById('defenders-content').innerHTML = html;
-        }
+            `).join('');
 
+            // Create form dots
+            const formDots = team.pastResults.map(r => `
+                <div class="form-dot ${r.result.toLowerCase() === 'w' ? 'win' : r.result.toLowerCase() === 'd' ? 'draw' : 'loss'}" 
+                     data-tooltip="${r.opponent} ${r.score}"></div>
+            `).join('');
 
-        function renderFixtureSwings(teams) {
-            // IMPROVED LOGIC: xG-based swing detection with optimal window identification
-            const swingOpportunities = [];
-            
-            teams.forEach(team => {
-                let swingScore = 0;
-                const signals = [];
-                
-                // 1. Fixture Quality Score (35 points max) - now using split FDR
-                const avgAttackFdr = parseFloat(team.avgAttackFdr);
-                const avgDefenseFdr = parseFloat(team.avgDefenseFdr);
-                const avgFdr = parseFloat(team.avgFdr);
-                
-                if (avgFdr <= 2.5) {
-                    swingScore += 35;
-                    signals.push(`🟢 Easy fixtures (FDR ${avgFdr})`);
-                } else if (avgFdr <= 3.0) {
-                    swingScore += 22;
-                    signals.push(`🟡 Good fixtures (FDR ${avgFdr})`);
-                } else if (avgFdr <= 3.5) {
-                    swingScore += 12;
-                    signals.push(`🟠 Moderate fixtures (FDR ${avgFdr})`);
-                }
-                
-                // 2. Fixture Swing Direction (30 points max) - improved granularity
-                const swingType = team.fixtureSwing;
-                if (swingType === 'Improving Throughout' || swingType === 'Getting Easier Soon') {
-                    swingScore += 30;
-                    signals.push(`📈 ${swingType}`);
-                } else if (swingType === 'Gets Easier Later') {
-                    swingScore += 20;
-                    signals.push(`📈 ${swingType}`);
-                } else if (swingType === 'Stable' && avgFdr <= 2.8) {
-                    swingScore += 12;
-                    signals.push(`➡️ Stable & favorable`);
-                } else if (swingType.includes('Harder')) {
-                    signals.push(`📉 ${swingType}`);
-                }
-                
-                // 3. xG Performance (15 points max) - NEW
-                const xGDiff = parseFloat(team.xGDiff);
-                const projectedXG = parseFloat(team.avgProjectedXG);
-                if (xGDiff >= 0.5 && projectedXG >= 1.5) {
-                    swingScore += 15;
-                    signals.push(`⚡ Elite xG profile (${team.avgXG}/game)`);
-                } else if (xGDiff >= 0.2 && projectedXG >= 1.3) {
-                    swingScore += 10;
-                    signals.push(`📊 Strong xG (${team.avgXG}/game)`);
-                } else if (projectedXG >= 1.4) {
-                    swingScore += 7;
-                    signals.push(`📈 High projected xG (${team.avgProjectedXG})`);
-                }
-                
-                // 4. Underperformance bonus (10 points max) - regression candidates
-                const goalVsXG = parseFloat(team.goalVsXG);
-                if (goalVsXG < -0.3) {
-                    swingScore += 10;
-                    signals.push(`🎯 Due for goals (${team.goalVsXG} vs xG)`);
-                } else if (goalVsXG < -0.15) {
-                    swingScore += 5;
-                    signals.push(`📈 Slightly underperforming xG`);
-                }
-                
-                // 5. Home Fixtures (10 points max)
-                const homeCount = team.homeFixtures;
-                if (homeCount >= 4) {
-                    swingScore += 10;
-                    signals.push(`🏠 ${homeCount}/5 at home`);
-                } else if (homeCount >= 3) {
-                    swingScore += 6;
-                    signals.push(`🏠 ${homeCount}/5 at home`);
-                }
-                
-                // Calculate timing and priority based on new logic
-                let timing = '';
-                let priority = '';
-                
-                const isImproving = swingType.includes('Easier') || swingType.includes('Improving');
-                const hasGoodFixtures = avgFdr <= 3.0;
-                const hasOptimalWindow = team.optimalWindow3 && parseFloat(team.optimalWindow3.avgFdr) <= 2.5;
-                
-                if (isImproving && hasGoodFixtures) {
-                    timing = 'BUY NOW';
-                    priority = '🔥 IMMEDIATE';
-                } else if (isImproving || hasOptimalWindow) {
-                    timing = 'BUY SOON';
-                    priority = '⏰ NEXT 1-2 GW';
-                } else if (hasGoodFixtures) {
-                    timing = 'GOOD NOW';
-                    priority = '✅ CURRENT';
-                } else {
-                    timing = 'MONITOR';
-                    priority = '👀 WATCH';
-                }
-                
-                // Only include teams with swing score >= 45
-                if (swingScore >= 45) {
-                    swingOpportunities.push({
-                        team,
-                        swingScore,
-                        signals,
-                        timing,
-                        priority,
-                        optimalWindow: team.optimalWindow3
-                    });
-                }
-            });
-            
-            // Sort by swing score
-            swingOpportunities.sort((a, b) => b.swingScore - a.swingScore);
-            
-            // Group by priority
-            const buyNow = swingOpportunities.filter(s => s.timing === 'BUY NOW').slice(0, 6);
-            const buySoon = swingOpportunities.filter(s => s.timing === 'BUY SOON').slice(0, 6);
-            const goodNow = swingOpportunities.filter(s => s.timing === 'GOOD NOW').slice(0, 6);
-            
-            const html = `
-                <div style="margin-bottom: 20px; padding: 15px; background: var(--surface); border-left: 3px solid var(--accent-green);">
-                    <h3 style="color: var(--accent-green); margin-bottom: 8px; font-size: 13px;">📅 Fixture Swing Strategy (xG-Enhanced)</h3>
-                    <p style="font-size: 10px; color: var(--text-dim); line-height: 1.5;">
-                        <strong>Elite FPL managers buy 2-3 weeks early.</strong> Analysis now includes:
-                        <strong>xG trends</strong>, <strong>optimal windows</strong>, and <strong>regression candidates</strong> (teams due goals).
-                    </p>
-                    <p style="font-size: 10px; color: var(--accent-blue); margin-top: 8px;">
-                        💡 Teams underperforming their xG are prime buy candidates - they're creating chances but not finishing!
-                    </p>
-                </div>
-                
-                ${buyNow.length > 0 ? `
-                    <h3 style="color: var(--accent-red); margin: 20px 0 15px 0; font-size: 14px;">🔥 BUY NOW - Immediate Action</h3>
-                    <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
-                        Fixtures improving RIGHT NOW + strong xG profile. Act before prices rise!
-                    </p>
-                    <div class="teams-grid">
-                        ${buyNow.map(s => createFixtureSwingCard(s, true)).join('')}
-                    </div>
-                ` : ''}
-                
-                ${buySoon.length > 0 ? `
-                    <h3 style="color: var(--accent-yellow); margin: 30px 0 15px 0; font-size: 14px;">⏰ BUY SOON - Plan Transfer</h3>
-                    <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
-                        Optimal window approaching in 1-2 GWs. Plan transfer now, execute strategically.
-                    </p>
-                    <div class="teams-grid">
-                        ${buySoon.map(s => createFixtureSwingCard(s, false)).join('')}
-                    </div>
-                ` : ''}
-                
-                ${goodNow.length > 0 ? `
-                    <h3 style="color: var(--accent-blue); margin: 30px 0 15px 0; font-size: 14px;">✅ GOOD NOW - Current Quality</h3>
-                    <p style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">
-                        Already in a favorable run. Safe holds, captain candidates.
-                    </p>
-                    <div class="teams-grid">
-                        ${goodNow.map(s => createFixtureSwingCard(s, false)).join('')}
-                    </div>
-                ` : ''}
-                
-                ${buyNow.length === 0 && buySoon.length === 0 && goodNow.length === 0 ? 
-                    '<div class="no-data">No significant fixture opportunities right now. Check back after next gameweek.</div>' : ''}
-            `;
-            
-            document.getElementById('fixtures-content').innerHTML = html;
-        }
-        
-        function createFixtureSwingCard(swingData, isUrgent) {
-            const { team, swingScore, signals, priority, optimalWindow } = swingData;
-            
-            const formClass = team.formScore >= 70 ? 'excellent' : (team.formScore >= 50 ? 'good' : 'poor');
-            const fdrClass = team.avgFdr <= 2.5 ? 'excellent' : (team.avgFdr <= 3.5 ? 'good' : 'poor');
-            const xGClass = parseFloat(team.xGDiff) >= 0.3 ? 'excellent' : (parseFloat(team.xGDiff) >= 0 ? 'good' : 'poor');
-            
-            // Build fixture list with split FDR
-            const fixturesList = team.futureFixtures.map(f => {
-                const diffColor = f.fdr <= 2 ? '🟢' : f.fdr === 3 ? '🟡' : '🔴';
-                return `<div style="font-size: 10px; color: var(--text); margin-bottom: 3px;">
-                    GW${f.gw}: ${f.opponent.toUpperCase()} (${f.homeAway}) ${diffColor}
-                    <span style="font-size: 8px; opacity: 0.7;">⚔️${f.attackFdr} 🛡️${f.defenseFdr}</span>
-                </div>`;
-            }).join('');
-            
-            return `
-                <div class="team-card" style="${isUrgent ? 'border: 2px solid var(--accent-red);' : ''}">
-                    <div class="team-header">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="${team.badgeUrl}" alt="${team.shortName}" style="width: 28px; height: 28px; object-fit: contain;" onerror="this.style.display='none'">
-                            <span class="team-name">${team.teamName}</span>
-                        </div>
-                        <div class="team-badge">
-                            <span class="badge ${xGClass}">
-                                xG±: ${team.xGDiff}
-                                <span class="badge-tooltip">xG Differential (positive = good)</span>
-                            </span>
-                            <span class="badge ${fdrClass}">
-                                FDR: ${team.avgFdr}
-                                <span class="badge-tooltip">Average Fixture Difficulty (next 5)</span>
-                            </span>
-                            <span class="badge ${team.bigSixCount === 0 ? 'excellent' : team.bigSixCount <= 2 ? 'good' : 'poor'}">
-                                Big 6: ${team.bigSixCount}
-                                <span class="badge-tooltip">Fixtures vs Arsenal, Chelsea, Liverpool, Man City, Man Utd, Spurs</span>
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <!-- xG Quick Stats -->
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; padding: 10px; background: var(--bg-darker); border-radius: 4px;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 8px; color: var(--text-dim);">xG/Game</div>
-                            <div style="font-size: 12px; font-weight: 600; color: ${parseFloat(team.avgXG) >= 1.5 ? 'var(--accent-green)' : 'var(--text)'};">${team.avgXG}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 8px; color: var(--text-dim);">Goals vs xG</div>
-                            <div style="font-size: 12px; font-weight: 600; color: ${parseFloat(team.goalVsXG) < -0.2 ? 'var(--accent-blue)' : parseFloat(team.goalVsXG) > 0.2 ? 'var(--accent-yellow)' : 'var(--text)'};">
-                                ${parseFloat(team.goalVsXG) > 0 ? '+' : ''}${team.goalVsXG}
-                            </div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 8px; color: var(--text-dim);">Proj. xG</div>
-                            <div style="font-size: 12px; font-weight: 600; color: var(--text);">${team.avgProjectedXG}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 8px; color: var(--text-dim);">Home Games</div>
-                            <div style="font-size: 12px; font-weight: 600; color: ${team.homeFixtures >= 3 ? 'var(--accent-green)' : 'var(--text)'};">${team.homeFixtures}/5</div>
-                        </div>
-                    </div>
-                    
-                    ${optimalWindow ? `
-                    <div style="margin: 10px 0; padding: 8px; background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 204, 255, 0.15) 100%); border-radius: 4px; border-left: 3px solid var(--accent-green);">
-                        <div style="font-size: 9px; color: var(--accent-green); font-weight: 600;">🎯 OPTIMAL WINDOW: GW${optimalWindow.startGW}-${optimalWindow.endGW}</div>
-                        <div style="font-size: 9px; color: var(--text-dim);">FDR: ${optimalWindow.avgFdr} | ${optimalWindow.homeCount} home games</div>
-                    </div>
-                    ` : ''}
-                    
-                    <div style="margin: 12px 0; padding: 10px; background: ${isUrgent ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%)' : 'var(--bg-darker)'}; border-radius: 4px;">
-                        <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Swing Signals:</div>
-                        ${signals.map(s => `<div style="font-size: 10px; color: var(--text); margin-bottom: 4px;">• ${s}</div>`).join('')}
-                    </div>
-                    
-                    <div style="margin-bottom: 12px;">
-                        <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Next 5 Fixtures (⚔️Attack FDR 🛡️Defense FDR):</div>
-                        ${fixturesList}
-                    </div>
-                    
-                    <div style="padding: 8px; background: linear-gradient(135deg, var(--accent-blue) 0%, #6366f1 100%); border-radius: 4px; text-align: center;">
-                        <span style="font-size: 10px; color: white; font-weight: 600;">
-                            ${priority} | Swing Score: ${swingScore}/100
-                        </span>
-                    </div>
-                </div>
-            `;
-        }
+            // Trend badge
+            const trendClass = team.fixtureSwing === 'improving' ? 'improving' : 
+                               team.fixtureSwing === 'worsening' ? 'worsening' : 'stable';
+            const trendText = team.fixtureSwing === 'improving' ? '↑ Easier' : 
+                              team.fixtureSwing === 'worsening' ? '↓ Harder' : '→ Stable';
 
-        function createTeamCard(team, view, rank = null, customTip = null) {
-            const formClass = team.formScore >= 70 ? 'excellent' : (team.formScore >= 50 ? 'good' : 'poor');
-            const fdrClass = team.avgFdr <= 2.5 ? 'excellent' : (team.avgFdr <= 3.5 ? 'good' : 'poor');
-            
-            // xG performance indicators
-            const xGClass = parseFloat(team.xGDiff) >= 0.3 ? 'excellent' : (parseFloat(team.xGDiff) >= 0 ? 'good' : 'poor');
-            const overperforming = parseFloat(team.goalVsXG) > 0.2;
-            const underperforming = parseFloat(team.goalVsXG) < -0.2;
-
-            const tip = customTip || (() => {
-                if (view === 'overview') {
-                    let tipText = `Form: ${team.formScore} | xG Diff: ${team.xGDiff}`;
-                    if (overperforming) tipText += ' | ⚠️ Overperforming xG (regression risk)';
-                    if (underperforming) tipText += ' | 📈 Underperforming xG (due goals)';
-                    return tipText;
-                }
-                return '';
-            })();
-            
-            // Determine fixture trend color and arrow
-            const getTrendInfo = (swing) => {
-                if (swing.includes('Improving Throughout')) return { color: 'var(--accent-green)', arrow: '⬆️⬆️', label: swing };
-                if (swing.includes('Easier Soon') || swing.includes('Getting Easier')) return { color: 'var(--accent-green)', arrow: '⬆️', label: swing };
-                if (swing.includes('Easier Later')) return { color: '#4ade80', arrow: '↗️', label: swing };
-                if (swing.includes('Worsening Throughout')) return { color: 'var(--accent-red)', arrow: '⬇️⬇️', label: swing };
-                if (swing.includes('Harder Soon') || swing.includes('Getting Harder')) return { color: 'var(--accent-red)', arrow: '⬇️', label: swing };
-                if (swing.includes('Harder Later')) return { color: '#f87171', arrow: '↘️', label: swing };
-                return { color: 'var(--text-dim)', arrow: '➡️', label: swing };
-            };
-            
-            const trendInfo = getTrendInfo(team.fixtureSwing);
-            
-            // Big Six badge styling
-            const bigSixClass = team.bigSixCount === 0 ? 'excellent' : (team.bigSixCount <= 2 ? 'good' : 'poor');
+            // Gauge calculation
+            const circumference = 2 * Math.PI * 22;
+            const offset = circumference - (primaryValue / 100) * circumference;
+            const gaugeColor = primaryValue >= 65 ? '#4ADE80' : primaryValue >= 45 ? '#FBBF24' : '#F87171';
 
             return `
-                <div class="team-card">
-                    <div class="team-header">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="${team.badgeUrl}" alt="${team.shortName}" style="width: 32px; height: 32px; object-fit: contain;" onerror="this.style.display='none'">
-                            <span class="team-name">${rank ? `#${rank} ` : ''}${team.teamName}</span>
-                        </div>
+                <div class="team-card" data-team="${team.name}">
+                    <div class="card-header">
                         <div class="team-badge">
-                            <span class="badge ${formClass}">
-                                Form: ${team.formScore}
-                                <span class="badge-tooltip">Normalized 0-100 score with recency weighting (recent games count more)</span>
-                            </span>
-                            <span class="badge ${xGClass}">
-                                xG±: ${team.xGDiff}
-                                <span class="badge-tooltip">Expected Goals Differential (xG - xGA). Positive = creating more than conceding</span>
-                            </span>
-                            <span class="badge ${fdrClass}">
-                                FDR: ${team.avgFdr}
-                                <span class="badge-tooltip">Fixture Difficulty Rating: 1 (easiest) to 5 (hardest) for next 5 games</span>
-                            </span>
+                            <img src="${team.badgeUrl}" alt="${team.shortName}" onerror="this.style.display='none'">
                         </div>
+                        <div class="team-info">
+                            <div class="team-name">${team.name}</div>
+                            <div class="team-meta">${team.homeFixtures}H ${team.awayFixtures}A next 5</div>
+                        </div>
+                        <div class="rank-badge ${rank <= 3 ? 'top-3' : ''}">${rank}</div>
                     </div>
-                    
-                    <!-- xG METRICS SECTION (NEW) -->
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, rgba(0, 204, 255, 0.05) 0%, rgba(0, 255, 136, 0.05) 100%); border-radius: 4px; border: 1px solid var(--border);">
-                        <div style="text-align: center;">
-                            <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;">xG/Game</div>
-                            <div style="font-size: 14px; font-weight: 600; color: ${parseFloat(team.avgXG) >= 1.5 ? 'var(--accent-green)' : parseFloat(team.avgXG) >= 1.0 ? 'var(--accent-yellow)' : 'var(--text)'};">${team.avgXG}</div>
-                            <div style="font-size: 8px; color: var(--text-dim);">Actual: ${team.avgGoalsScored}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;">xGA/Game</div>
-                            <div style="font-size: 14px; font-weight: 600; color: ${parseFloat(team.avgXGA) <= 1.0 ? 'var(--accent-green)' : parseFloat(team.avgXGA) <= 1.5 ? 'var(--accent-yellow)' : 'var(--accent-red)'};">${team.avgXGA}</div>
-                            <div style="font-size: 8px; color: var(--text-dim);">Actual: ${team.avgGoalsConceded}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;">Goals vs xG</div>
-                            <div style="font-size: 14px; font-weight: 600; color: ${parseFloat(team.goalVsXG) > 0.2 ? 'var(--accent-yellow)' : parseFloat(team.goalVsXG) < -0.2 ? 'var(--accent-blue)' : 'var(--text)'};">
-                                ${parseFloat(team.goalVsXG) > 0 ? '+' : ''}${team.goalVsXG}
+
+                    <div class="primary-metric">
+                        <div>
+                            <div class="metric-label">${primaryLabel}</div>
+                            <div class="form-dots" style="margin-top: 4px;">
+                                ${formDots}
                             </div>
-                            <div style="font-size: 8px; color: var(--text-dim);">${parseFloat(team.goalVsXG) > 0.2 ? '⚠️ Overperform' : parseFloat(team.goalVsXG) < -0.2 ? '📈 Due goals' : 'On track'}</div>
                         </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;">Proj. xG</div>
-                            <div style="font-size: 14px; font-weight: 600; color: ${parseFloat(team.avgProjectedXG) >= 1.5 ? 'var(--accent-green)' : 'var(--text)'};">${team.avgProjectedXG}</div>
-                            <div style="font-size: 8px; color: var(--text-dim);">Next 5 avg</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stats-grid">
-                        <div class="stat">
-                            <span class="stat-label">Last 5: W-D-L</span>
-                            <span class="stat-value">${team.wins}-${team.draws}-${team.losses}</span>
-                            <span class="stat-tooltip">Wins-Draws-Losses in last 5 Premier League matches</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">CS Probability</span>
-                            <span class="stat-value" style="color: ${team.cleanSheetProb >= 50 ? 'var(--accent-green)' : team.cleanSheetProb >= 30 ? 'var(--accent-yellow)' : 'var(--accent-red)'};">${team.cleanSheetProb}%</span>
-                            <span class="stat-tooltip">Predicted CS chance based on xGA, opponent xG, and home advantage</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Attack Rating</span>
-                            <span class="stat-value" style="color: ${team.attackRating >= 65 ? 'var(--accent-green)' : team.attackRating >= 45 ? 'var(--accent-yellow)' : 'var(--text)'};">${team.attackRating}/100</span>
-                            <span class="stat-tooltip">Based on xG, projected xG, attack FDR (${team.avgAttackFdr}), and home fixtures</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Defense Rating</span>
-                            <span class="stat-value" style="color: ${team.defenseRating >= 65 ? 'var(--accent-green)' : team.defenseRating >= 45 ? 'var(--accent-yellow)' : 'var(--text)'};">${team.defenseRating}/100</span>
-                            <span class="stat-tooltip">Based on xGA, CS prob, defense FDR (${team.avgDefenseFdr}), and CBIT potential</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">vs Big Six</span>
-                            <span class="stat-value" style="color: ${team.bigSixCount === 0 ? 'var(--accent-green)' : team.bigSixCount <= 2 ? 'var(--accent-yellow)' : 'var(--accent-red)'};">${team.bigSixCount}/5</span>
-                            <span class="stat-tooltip">Number of fixtures against Arsenal, Chelsea, Liverpool, Man City, Man Utd, Spurs in next 5</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">CBIT Potential</span>
-                            <span class="stat-value" style="color: ${parseFloat(team.avgCBIT) >= 60 ? 'var(--accent-green)' : parseFloat(team.avgCBIT) >= 40 ? 'var(--accent-yellow)' : 'var(--text)'};">${team.avgCBIT}%</span>
-                            <span class="stat-tooltip">2025/26 Rule: Clearances/Blocks/Interceptions/Tackles potential (2pts for 10)</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Next 5 (H/A)</span>
-                            <span class="stat-value">${team.homeFixtures}H / ${team.awayFixtures}A</span>
-                            <span class="stat-tooltip">Home games boost xG by ~0.3 and reduce xGA by ~0.25</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Fixture Trend</span>
-                            <span class="stat-value" style="color: ${trendInfo.color}; font-size: 11px;">${trendInfo.arrow} ${trendInfo.label}</span>
-                            <span class="stat-tooltip">Detailed fixture trajectory analysis with direction indicator</span>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" width="56" height="56" viewBox="0 0 56 56">
+                                <circle class="gauge-bg" cx="28" cy="28" r="22"/>
+                                <circle class="gauge-fill" cx="28" cy="28" r="22" 
+                                    stroke="${gaugeColor}"
+                                    stroke-dasharray="${circumference}" 
+                                    stroke-dashoffset="${offset}"/>
+                            </svg>
+                            <span class="gauge-text metric-value ${valueClass}">${primaryValue}</span>
                         </div>
                     </div>
-                    
-                    <!-- OPTIMAL WINDOW (NEW) -->
-                    ${team.optimalWindow3 ? `
-                    <div style="margin: 12px 0; padding: 10px; background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 204, 255, 0.1) 100%); border-radius: 4px; border-left: 3px solid var(--accent-green);">
-                        <div style="font-size: 9px; color: var(--accent-green); text-transform: uppercase; margin-bottom: 4px;">🎯 Optimal 3-GW Window</div>
-                        <div style="font-size: 11px; color: var(--text);">
-                            <strong>GW${team.optimalWindow3.startGW}-${team.optimalWindow3.endGW}</strong> 
-                            (FDR: ${team.optimalWindow3.avgFdr}, ${team.optimalWindow3.homeCount}H)
+
+                    <div class="fdr-strip">
+                        ${fdrStrip}
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="trend ${trendClass}">${trendText}</span>
+                        <span style="font-size: 11px; color: var(--text-muted);">FDR ${team.avgFdr}</span>
+                    </div>
+
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-label">xG/G</div>
+                            <div class="stat-value" style="color: ${parseFloat(team.avgXG) >= 1.5 ? 'var(--color-success)' : 'var(--text-primary)'}">
+                                ${team.avgXG}
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">xGA/G</div>
+                            <div class="stat-value" style="color: ${parseFloat(team.avgXGA) <= 1.2 ? 'var(--color-success)' : 'var(--text-primary)'}">
+                                ${team.avgXGA}
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">W-D-L</div>
+                            <div class="stat-value">${team.wins}-${team.draws}-${team.losses}</div>
                         </div>
                     </div>
-                    ` : ''}
-                    
-                    <div class="fixtures-section">
-                        <div class="fixtures-title">Last 5 Results (with xG):</div>
-                        <div class="fixtures-row">
-                            ${team.pastFixtures.map(f => `
-                                <div class="fixture-badge result-${f.result.toLowerCase()}" style="position: relative;">
-                                    ${f.opponent} (${f.homeAway}) ${f.score}
-                                    <div style="font-size: 8px; opacity: 0.7;">xG: ${f.xG} | xGA: ${f.xGA}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    <div class="fixtures-section">
-                        <div class="fixtures-title">Next 5 Fixtures (Split FDR):</div>
-                        <div class="fixtures-row">
-                            ${team.futureFixtures.map(f => `
-                                <div class="fixture-badge fdr-${f.fdr}">
-                                    GW${f.gw}: ${f.opponent} (${f.homeAway})
-                                    <div style="font-size: 8px; opacity: 0.8;">⚔️${f.attackFdr} 🛡️${f.defenseFdr}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ${tip ? `<div class="tip"><strong>💡 FPL Tip:</strong> ${tip}</div>` : ''}
                 </div>
             `;
         }
-        
-        // Auto-load teams data when page loads
-        window.addEventListener('load', () => {
-            console.log('Auto-loading teams data...');
-            loadTeamData();
-        });
+
+        function renderFixtureSwings(container) {
+            // Find teams with good swing opportunities
+            const swingTeams = allTeamsData
+                .filter(t => t.fixtureSwing === 'improving' || parseFloat(t.avgFdr) <= 2.8)
+                .sort((a, b) => parseFloat(a.avgFdr) - parseFloat(b.avgFdr))
+                .slice(0, 8);
+
+            const html = `
+                <div class="swing-section">
+                    <div class="swing-header">
+                        <h2 class="swing-title">Teams with Favorable Fixture Swings</h2>
+                    </div>
+                    <div class="swing-grid">
+                        ${swingTeams.map(team => {
+                            const timing = team.fixtureSwing === 'improving' ? 'buy-now' : 'buy-soon';
+                            const timingText = team.fixtureSwing === 'improving' ? 'Buy Now' : 'Good Fixtures';
+                            
+                            return `
+                                <div class="swing-card ${timing}">
+                                    <div class="swing-team">
+                                        <div class="team-badge">
+                                            <img src="${team.badgeUrl}" alt="${team.shortName}" style="width: 28px; height: 28px;">
+                                        </div>
+                                        <div>
+                                            <div class="team-name">${team.name}</div>
+                                            <div style="font-size: 11px; color: var(--text-muted);">FDR ${team.avgFdr}</div>
+                                        </div>
+                                        <span class="swing-timing ${timing}">${timingText}</span>
+                                    </div>
+                                    <div class="fdr-strip">
+                                        ${team.futureFixtures.map(f => `
+                                            <div class="fdr-badge fdr-${f.fdr}">
+                                                <span class="opp">${f.opponent}</span>
+                                                <span class="venue">${f.isHome ? 'H' : 'A'}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    <div class="swing-signals">
+                                        ${parseFloat(team.avgFdr) <= 2.5 ? '<span class="signal-tag">🟢 Easy run</span>' : ''}
+                                        ${team.homeFixtures >= 3 ? `<span class="signal-tag">🏠 ${team.homeFixtures} home</span>` : ''}
+                                        ${parseFloat(team.avgXG) >= 1.5 ? '<span class="signal-tag">⚡ High xG</span>' : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+                <div id="teams-grid" class="teams-grid" style="display: none;"></div>
+            `;
+
+            container.innerHTML = html;
+        }
     </script>
 </body>
 </html>
