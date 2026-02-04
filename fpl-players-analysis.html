@@ -949,6 +949,26 @@
             cursor: pointer;
         }
         .reset-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+        
+        /* Chart Categories */
+        .chart-category {
+            margin-bottom: 32px;
+        }
+        .chart-category-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-default);
+        }
+        .chart-category-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+        
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -2066,19 +2086,49 @@
                     const pos = positionMap[p.position];
                     const l5Games = p.l5.games;
                     const seasonGames = p.season.games;
+                    
+                    // Basic stats
+                    const ptsPerGame = p.l5.points / l5Games;
+                    const xgiPerGame = p.l5.xGI / l5Games;
+                    const xgPerGame = (p.l5.xG || 0) / l5Games;
+                    const xaPerGame = (p.l5.xA || 0) / l5Games;
+                    const xgcPerGame = (p.l5.xGC || 0) / l5Games;
+                    const csPerGame = (p.l5.cleanSheets || 0) / l5Games;
+                    const gcPerGame = (p.l5.goalsConceded || 0) / l5Games;
+                    const savesPerGame = (p.l5.saves || 0) / l5Games;
+                    
+                    // Reliability & Explosiveness
+                    const gamesWithReturn = p.season.goals + p.season.assists + p.season.cleanSheets + p.season.bonus;
+                    const reliabilityPct = Math.min(100, (gamesWithReturn / seasonGames) * 100);
+                    const doubleDigitGames = Math.round(seasonGames * (ptsPerGame > 6 ? 0.3 : ptsPerGame > 4 ? 0.15 : 0.05));
+                    const explosivenessPct = (doubleDigitGames / seasonGames) * 100;
+                    
                     return {
                         ...p,
                         pos,
-                        ptsPerGame: p.l5.points / l5Games,
-                        xgiPerGame: p.l5.xGI / l5Games,
+                        ptsPerGame,
+                        xgiPerGame,
+                        xgPerGame,
+                        xaPerGame,
+                        xgcPerGame,
+                        csPerGame,
+                        gcPerGame,
+                        savesPerGame,
                         actualGI: (p.l5.goals + p.l5.assists) / l5Games,
                         minutesPerGame: p.l5.minutes / l5Games,
                         bonusPerGame: (p.l5.bonus || 0) / l5Games,
                         ownership: p.selectedBy || 0,
-                        valueScore: (p.l5.points / l5Games) / p.price,
+                        valueScore: ptsPerGame / p.price,
                         xPts: calculateExpectedPoints(p, pos),
-                        actualPts: p.l5.points / l5Games,
-                        seasonPtsPerGame: p.season.points / seasonGames
+                        actualPts: ptsPerGame,
+                        seasonPtsPerGame: p.season.points / seasonGames,
+                        reliabilityPct,
+                        explosivenessPct,
+                        // Estimated touches in box (based on xGI)
+                        touchesInBox: Math.round(xgiPerGame * 15 + (pos === 'FWD' ? 5 : pos === 'MID' ? 3 : pos === 'DEF' ? 2 : 0)),
+                        // For GK chart
+                        totalSaves: p.l5.saves || 0,
+                        totalxGC: p.l5.xGC || 0
                     };
                 });
             
@@ -2101,47 +2151,108 @@
                         </div>
                     </div>
                     
-                    <div class="charts-grid">
-                        <div class="chart-card">
-                            <div class="chart-title" style="color: var(--color-success);">💰 Price vs Points/Game</div>
-                            <div class="chart-subtitle">Above line = Great value | Below = Overpriced</div>
-                            <div class="chart-container"><canvas id="priceVsPointsChart"></canvas></div>
+                    <!-- Original Value & Form Charts -->
+                    <div class="chart-category">
+                        <h3 class="chart-category-title">💰 Value & Form Analysis</h3>
+                        <div class="charts-grid">
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: var(--color-success);">💰 Price vs Points/Game</div>
+                                <div class="chart-subtitle">Above line = Great value | Below = Overpriced</div>
+                                <div class="chart-container"><canvas id="priceVsPointsChart"></canvas></div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: var(--color-warning);">🎯 xGI vs Actual G+A</div>
+                                <div class="chart-subtitle">Below line = Due returns | Above = May regress</div>
+                                <div class="chart-container"><canvas id="xgiVsActualChart"></canvas></div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: #10b981;">📈 Expected vs Actual Points</div>
+                                <div class="chart-subtitle">Find lucky/unlucky players based on underlying stats</div>
+                                <div class="chart-container"><canvas id="xPtsVsActualChart"></canvas></div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: #06b6d4;">📊 L5 Form vs Season Average</div>
+                                <div class="chart-subtitle">Above line = Improving | Below = Declining</div>
+                                <div class="chart-container"><canvas id="formVsSeasonChart"></canvas></div>
+                            </div>
                         </div>
-                        
-                        <div class="chart-card">
-                            <div class="chart-title" style="color: var(--color-warning);">🎯 xGI vs Actual G+A</div>
-                            <div class="chart-subtitle">Below line = Due returns | Above = May regress</div>
-                            <div class="chart-container"><canvas id="xgiVsActualChart"></canvas></div>
+                    </div>
+                    
+                    <!-- Defensive Analysis -->
+                    <div class="chart-category">
+                        <h3 class="chart-category-title">🛡️ Defensive Analysis</h3>
+                        <p class="chart-category-desc">Find clean sheet hunters and attacking defenders</p>
+                        <div class="charts-grid">
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: #34d399;">🧱 xGC vs Clean Sheets</div>
+                                <div class="chart-subtitle">Bottom-Left = Elite | Top-Right = Overperforming (sell)</div>
+                                <div class="chart-container"><canvas id="xgcVsCSChart"></canvas></div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: #60a5fa;">⚔️ Attacking Defenders (xGI)</div>
+                                <div class="chart-subtitle">Top-Right = Wingback gold (TAA, Porro types)</div>
+                                <div class="chart-container"><canvas id="defAttackingChart"></canvas></div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: #fbbf24;">🧤 GK: Saves vs xGC</div>
+                                <div class="chart-subtitle">Top-Right = Save point magnets (busy keepers)</div>
+                                <div class="chart-container"><canvas id="gkSavesChart"></canvas></div>
+                            </div>
                         </div>
-                        
-                        <div class="chart-card">
-                            <div class="chart-title" style="color: #10b981;">📈 Expected vs Actual Points</div>
-                            <div class="chart-subtitle">Find lucky/unlucky players based on underlying stats</div>
-                            <div class="chart-container"><canvas id="xPtsVsActualChart"></canvas></div>
+                    </div>
+                    
+                    <!-- Captaincy & Ceiling -->
+                    <div class="chart-category">
+                        <h3 class="chart-category-title">👑 Captaincy & Ceiling</h3>
+                        <p class="chart-category-desc">Find explosive haul potential for captain picks</p>
+                        <div class="charts-grid">
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: #f59e0b;">🎯 Reliability vs Explosiveness</div>
+                                <div class="chart-subtitle">Top-Right = PERMACAPTAINS | Top-Left = Ceiling plays</div>
+                                <div class="chart-container"><canvas id="reliabilityChart"></canvas></div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: #f59e0b;">🏆 Bonus Magnets</div>
+                                <div class="chart-subtitle">Players who consistently earn bonus points</div>
+                                <div class="chart-container"><canvas id="bonusMagnetChart"></canvas></div>
+                            </div>
                         </div>
-                        
-                        <div class="chart-card">
-                            <div class="chart-title" style="color: #a855f7;">💎 Ownership vs Form</div>
-                            <div class="chart-subtitle">Top-left = DIFFERENTIALS (low owned, high form)</div>
-                            <div class="chart-container"><canvas id="ownershipVsFormChart"></canvas></div>
+                    </div>
+                    
+                    <!-- Differentials & Meta -->
+                    <div class="chart-category">
+                        <h3 class="chart-category-title">💎 Differentials & Meta</h3>
+                        <p class="chart-category-desc">Beat the crowd with smart differential picks</p>
+                        <div class="charts-grid">
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: #a855f7;">💎 Ownership vs Form</div>
+                                <div class="chart-subtitle">Top-Left = DIFFERENTIALS | Bottom-Right = Template</div>
+                                <div class="chart-container"><canvas id="ownershipVsFormChart"></canvas></div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: #ec4899;">📈 Value vs Ownership</div>
+                                <div class="chart-subtitle">Top-Left = Hidden gems | Bottom-Right = Overhyped</div>
+                                <div class="chart-container"><canvas id="valueVsOwnershipChart"></canvas></div>
+                            </div>
                         </div>
-                        
-                        <div class="chart-card">
-                            <div class="chart-title" style="color: #f59e0b;">🏆 Bonus Magnets</div>
-                            <div class="chart-subtitle">Players who consistently earn bonus points</div>
-                            <div class="chart-container"><canvas id="bonusMagnetChart"></canvas></div>
-                        </div>
-                        
-                        <div class="chart-card">
-                            <div class="chart-title" style="color: #06b6d4;">📊 L5 Form vs Season Average</div>
-                            <div class="chart-subtitle">Above line = Improving | Below = Declining</div>
-                            <div class="chart-container"><canvas id="formVsSeasonChart"></canvas></div>
-                        </div>
-                        
-                        <div class="chart-card">
-                            <div class="chart-title" style="color: var(--color-success);">📈 Points by Position</div>
-                            <div class="chart-subtitle">Where should you invest your budget?</div>
-                            <div class="chart-container"><canvas id="positionDistChart"></canvas></div>
+                    </div>
+                    
+                    <!-- Position Distribution -->
+                    <div class="chart-category">
+                        <h3 class="chart-category-title">📊 Position Analysis</h3>
+                        <div class="charts-grid">
+                            <div class="chart-card">
+                                <div class="chart-title" style="color: var(--color-success);">📈 Points by Position</div>
+                                <div class="chart-subtitle">Where should you invest your budget?</div>
+                                <div class="chart-container"><canvas id="positionDistChart"></canvas></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2298,10 +2409,228 @@
                 });
             }
             
-            // 4. Ownership vs Form
-            const ctx4 = document.getElementById('ownershipVsFormChart')?.getContext('2d');
+            // 4. Form vs Season
+            const ctx4 = document.getElementById('formVsSeasonChart')?.getContext('2d');
             if (ctx4) {
-                chartInstances.ownershipVsForm = new Chart(ctx4, {
+                chartInstances.formVsSeason = new Chart(ctx4, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            { label: 'No Change', data: [{x: 0, y: 0}, {x: 10, y: 10}], type: 'line', borderColor: 'rgba(6, 182, 212, 0.4)', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false },
+                            ...createPositionDatasets(players, 'seasonPtsPerGame', 'ptsPerGame', true)
+                        ]
+                    },
+                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Season Avg Pts/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'L5 Pts/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
+                });
+            }
+            
+            // ============================================
+            // DEFENSIVE ANALYSIS CHARTS
+            // ============================================
+            
+            // 5. xGC vs Clean Sheets (DEF + GK only)
+            const ctx5 = document.getElementById('xgcVsCSChart')?.getContext('2d');
+            if (ctx5) {
+                const defGkPlayers = players.filter(p => p.pos === 'GK' || p.pos === 'DEF');
+                chartInstances.xgcVsCS = new Chart(ctx5, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            { label: 'Trend', data: [{x: 0, y: 1}, {x: 2, y: 0}], type: 'line', borderColor: 'rgba(52, 211, 153, 0.3)', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false },
+                            ...['GK', 'DEF'].map(pos => ({
+                                label: pos,
+                                position: pos,
+                                data: defGkPlayers.filter(p => p.pos === pos).map(p => ({
+                                    x: p.xgcPerGame,
+                                    y: p.csPerGame,
+                                    ...p
+                                })),
+                                backgroundColor: POSITION_COLORS[pos].bg,
+                                borderColor: POSITION_COLORS[pos].border,
+                                pointStyle: POSITION_STYLES[pos],
+                                pointRadius: 6,
+                                pointHoverRadius: 10,
+                                hidden: !activePositionFilters[pos]
+                            }))
+                        ]
+                    },
+                    options: { 
+                        ...baseOptions, 
+                        scales: { 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'xGC per Game', color: 'rgba(255,255,255,0.6)' }, min: 0 }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'CS per Game', color: 'rgba(255,255,255,0.6)' }, min: 0, max: 1 } 
+                        },
+                        plugins: {
+                            ...baseOptions.plugins,
+                            tooltip: {
+                                ...baseOptions.plugins.tooltip,
+                                callbacks: {
+                                    title: ctx => ctx[0]?.raw ? `${ctx[0].raw.name} (${ctx[0].raw.team})` : '',
+                                    label: ctx => {
+                                        const p = ctx.raw;
+                                        if (!p) return '';
+                                        return [
+                                            `xGC/G: ${p.xgcPerGame?.toFixed(2)}`,
+                                            `CS/G: ${p.csPerGame?.toFixed(2)}`,
+                                            `GC/G: ${p.gcPerGame?.toFixed(2)}`,
+                                            `Price: £${p.price?.toFixed(1)}m`
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 6. Attacking Defenders (DEF only - xGI based)
+            const ctx6 = document.getElementById('defAttackingChart')?.getContext('2d');
+            if (ctx6) {
+                const defPlayers = players.filter(p => p.pos === 'DEF');
+                chartInstances.defAttacking = new Chart(ctx6, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'DEF',
+                            position: 'DEF',
+                            data: defPlayers.map(p => ({
+                                x: p.touchesInBox,
+                                y: p.xgiPerGame,
+                                ...p
+                            })),
+                            backgroundColor: POSITION_COLORS['DEF'].bg,
+                            borderColor: POSITION_COLORS['DEF'].border,
+                            pointStyle: 'rect',
+                            pointRadius: 7,
+                            pointHoverRadius: 11
+                        }]
+                    },
+                    options: { 
+                        ...baseOptions, 
+                        scales: { 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Est. Touches in Box', color: 'rgba(255,255,255,0.6)' }, min: 0 }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'xGI per Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } 
+                        },
+                        plugins: {
+                            ...baseOptions.plugins,
+                            tooltip: {
+                                ...baseOptions.plugins.tooltip,
+                                callbacks: {
+                                    title: ctx => ctx[0]?.raw ? `${ctx[0].raw.name} (${ctx[0].raw.team})` : '',
+                                    label: ctx => {
+                                        const p = ctx.raw;
+                                        if (!p) return '';
+                                        return [
+                                            `xGI/G: ${p.xgiPerGame?.toFixed(2)}`,
+                                            `xG/G: ${p.xgPerGame?.toFixed(2)}`,
+                                            `xA/G: ${p.xaPerGame?.toFixed(2)}`,
+                                            `CS/G: ${p.csPerGame?.toFixed(2)}`,
+                                            `Price: £${p.price?.toFixed(1)}m`
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // 7. GK Saves vs xGC
+            const ctx7 = document.getElementById('gkSavesChart')?.getContext('2d');
+            if (ctx7) {
+                const gkPlayers = players.filter(p => p.pos === 'GK');
+                chartInstances.gkSaves = new Chart(ctx7, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'GK',
+                            position: 'GK',
+                            data: gkPlayers.map(p => ({
+                                x: p.totalxGC,
+                                y: p.totalSaves,
+                                ...p
+                            })),
+                            backgroundColor: POSITION_COLORS['GK'].bg,
+                            borderColor: POSITION_COLORS['GK'].border,
+                            pointStyle: 'circle',
+                            pointRadius: 8,
+                            pointHoverRadius: 12
+                        }]
+                    },
+                    options: { 
+                        ...baseOptions, 
+                        scales: { 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Total xGC (L5)', color: 'rgba(255,255,255,0.6)' }, min: 0 }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Total Saves (L5)', color: 'rgba(255,255,255,0.6)' }, min: 0 } 
+                        },
+                        plugins: {
+                            ...baseOptions.plugins,
+                            tooltip: {
+                                ...baseOptions.plugins.tooltip,
+                                callbacks: {
+                                    title: ctx => ctx[0]?.raw ? `${ctx[0].raw.name} (${ctx[0].raw.team})` : '',
+                                    label: ctx => {
+                                        const p = ctx.raw;
+                                        if (!p) return '';
+                                        return [
+                                            `Saves: ${p.totalSaves}`,
+                                            `xGC: ${p.totalxGC?.toFixed(1)}`,
+                                            `CS: ${p.l5?.cleanSheets || 0}`,
+                                            `Saves/G: ${p.savesPerGame?.toFixed(1)}`,
+                                            `Price: £${p.price?.toFixed(1)}m`
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // ============================================
+            // CAPTAINCY & CEILING CHARTS
+            // ============================================
+            
+            // 8. Reliability vs Explosiveness
+            const ctx8 = document.getElementById('reliabilityChart')?.getContext('2d');
+            if (ctx8) {
+                chartInstances.reliability = new Chart(ctx8, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            { label: 'Quadrant', data: [{x: 50, y: 0}, {x: 50, y: 50}], type: 'line', borderColor: 'rgba(245, 158, 11, 0.3)', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false },
+                            { label: 'Quadrant2', data: [{x: 0, y: 15}, {x: 100, y: 15}], type: 'line', borderColor: 'rgba(245, 158, 11, 0.3)', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false },
+                            ...createPositionDatasets(players, 'reliabilityPct', 'explosivenessPct', true)
+                        ]
+                    },
+                    options: { 
+                        ...baseOptions, 
+                        scales: { 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: '% Games with Return (Reliability)', color: 'rgba(255,255,255,0.6)' }, min: 0, max: 100 }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: '% Games with 10+ pts (Explosiveness)', color: 'rgba(255,255,255,0.6)' }, min: 0 } 
+                        }
+                    }
+                });
+            }
+            
+            // 9. Bonus Magnets (existing)
+            const ctx9 = document.getElementById('bonusMagnetChart')?.getContext('2d');
+            if (ctx9) {
+                chartInstances.bonusMagnet = new Chart(ctx9, {
+                    type: 'scatter',
+                    data: { datasets: createPositionDatasets(players, 'ptsPerGame', 'bonusPerGame', true) },
+                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Points/Game (L5)', color: 'rgba(255,255,255,0.6)' }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Bonus Points/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
+                });
+            }
+            
+            // ============================================
+            // DIFFERENTIALS & META CHARTS
+            // ============================================
+            
+            // 10. Ownership vs Form (existing)
+            const ctx10 = document.getElementById('ownershipVsFormChart')?.getContext('2d');
+            if (ctx10) {
+                chartInstances.ownershipVsForm = new Chart(ctx10, {
                     type: 'scatter',
                     data: {
                         datasets: [
@@ -2314,34 +2643,53 @@
                 });
             }
             
-            // 5. Bonus Magnets
-            const ctx5 = document.getElementById('bonusMagnetChart')?.getContext('2d');
-            if (ctx5) {
-                chartInstances.bonusMagnet = new Chart(ctx5, {
-                    type: 'scatter',
-                    data: { datasets: createPositionDatasets(players, 'ptsPerGame', 'bonusPerGame', true) },
-                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Points/Game (L5)', color: 'rgba(255,255,255,0.6)' }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Bonus Points/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
-                });
-            }
-            
-            // 6. Form vs Season
-            const ctx6 = document.getElementById('formVsSeasonChart')?.getContext('2d');
-            if (ctx6) {
-                chartInstances.formVsSeason = new Chart(ctx6, {
+            // 11. Value vs Ownership
+            const ctx11 = document.getElementById('valueVsOwnershipChart')?.getContext('2d');
+            if (ctx11) {
+                chartInstances.valueVsOwnership = new Chart(ctx11, {
                     type: 'scatter',
                     data: {
                         datasets: [
-                            { label: 'No Change', data: [{x: 0, y: 0}, {x: 10, y: 10}], type: 'line', borderColor: 'rgba(6, 182, 212, 0.4)', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false },
-                            ...createPositionDatasets(players, 'seasonPtsPerGame', 'ptsPerGame', true)
+                            { label: 'Ownership Line', data: [{x: 0, y: 0.5}, {x: 60, y: 0.5}], type: 'line', borderColor: 'rgba(236, 72, 153, 0.3)', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false },
+                            ...createPositionDatasets(players, 'ownership', 'valueScore', true)
                         ]
                     },
-                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Season Avg Pts/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'L5 Pts/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
+                    options: { 
+                        ...baseOptions, 
+                        scales: { 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Ownership %', color: 'rgba(255,255,255,0.6)' } }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Value (Pts/G ÷ Price)', color: 'rgba(255,255,255,0.6)' }, min: 0 } 
+                        },
+                        plugins: {
+                            ...baseOptions.plugins,
+                            tooltip: {
+                                ...baseOptions.plugins.tooltip,
+                                callbacks: {
+                                    title: ctx => ctx[0]?.raw ? `${ctx[0].raw.name} (${ctx[0].raw.team})` : '',
+                                    label: ctx => {
+                                        const p = ctx.raw;
+                                        if (!p) return '';
+                                        return [
+                                            `Value: ${p.valueScore?.toFixed(2)}`,
+                                            `Ownership: ${p.ownership?.toFixed(1)}%`,
+                                            `Pts/G: ${p.ptsPerGame?.toFixed(1)}`,
+                                            `Price: £${p.price?.toFixed(1)}m`
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
                 });
             }
             
-            // 7. Position Distribution
-            const ctx7 = document.getElementById('positionDistChart')?.getContext('2d');
-            if (ctx7) {
+            // ============================================
+            // POSITION DISTRIBUTION
+            // ============================================
+            
+            // 12. Position Distribution (existing)
+            const ctx12 = document.getElementById('positionDistChart')?.getContext('2d');
+            if (ctx12) {
                 const posStats = ['GK', 'DEF', 'MID', 'FWD'].map(pos => {
                     const pp = players.filter(p => p.pos === pos);
                     const pts = pp.map(p => p.ptsPerGame).sort((a, b) => a - b);
@@ -2352,7 +2700,7 @@
                     };
                 });
                 
-                chartInstances.positionDist = new Chart(ctx7, {
+                chartInstances.positionDist = new Chart(ctx12, {
                     type: 'bar',
                     data: {
                         labels: ['GK', 'DEF', 'MID', 'FWD'],
