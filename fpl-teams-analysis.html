@@ -743,6 +743,362 @@
             border-radius: 3px;
             transition: width 300ms ease-out;
         }
+
+        /* ===== FULL SEASON CALENDAR ===== */
+        .calendar-section {
+            padding: var(--space-4);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--space-6);
+            flex-wrap: wrap;
+            gap: var(--space-4);
+        }
+
+        .calendar-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: var(--space-2);
+        }
+
+        .calendar-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .calendar-legend {
+            display: flex;
+            gap: var(--space-4);
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .legend-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: var(--radius-sm);
+        }
+
+        .calendar-controls {
+            display: flex;
+            gap: var(--space-3);
+            margin-bottom: var(--space-4);
+        }
+
+        .calendar-control-btn {
+            padding: var(--space-2) var(--space-4);
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+
+        .calendar-control-btn:hover {
+            background: var(--surface-3);
+            color: var(--text-primary);
+        }
+
+        .calendar-control-btn.active {
+            background: var(--color-info);
+            color: var(--surface-0);
+            border-color: var(--color-info);
+        }
+
+        .calendar-container {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .calendar-scroll {
+            overflow-x: auto;
+            padding-bottom: var(--space-2);
+        }
+
+        .calendar-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+
+        .calendar-table th {
+            background: var(--surface-2);
+            padding: var(--space-2) var(--space-1);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-default);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .calendar-table th.gw-header {
+            min-width: 36px;
+            text-align: center;
+        }
+
+        .calendar-table th.gw-current {
+            background: rgba(96, 165, 250, 0.2);
+            color: var(--color-info);
+        }
+
+        .calendar-table th.team-header {
+            min-width: 140px;
+            text-align: left;
+            padding-left: var(--space-3);
+            position: sticky;
+            left: 0;
+            background: var(--surface-2);
+            z-index: 20;
+        }
+
+        .calendar-table td {
+            padding: var(--space-1);
+            text-align: center;
+            border-bottom: 1px solid var(--border-subtle);
+            transition: all 150ms;
+        }
+
+        .calendar-table tr:hover td {
+            background: var(--surface-2);
+        }
+
+        .calendar-table td.team-cell {
+            position: sticky;
+            left: 0;
+            background: var(--surface-1);
+            z-index: 5;
+            text-align: left;
+            padding-left: var(--space-3);
+        }
+
+        .calendar-table tr:hover td.team-cell {
+            background: var(--surface-2);
+        }
+
+        .calendar-team {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .calendar-team-badge {
+            width: 20px;
+            height: 20px;
+        }
+
+        .calendar-team-name {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .calendar-team-fdr {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-left: auto;
+            padding-right: var(--space-2);
+        }
+
+        .fixture-cell {
+            width: 32px;
+            height: 28px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 600;
+            margin: 0 auto;
+            cursor: pointer;
+            transition: all 150ms;
+            position: relative;
+        }
+
+        .fixture-cell:hover {
+            transform: scale(1.15);
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .fixture-cell .opp {
+            line-height: 1.1;
+        }
+
+        .fixture-cell .venue {
+            font-size: 7px;
+            opacity: 0.8;
+        }
+
+        .fixture-cell.fdr-1 { background: var(--fdr-1); color: #000; }
+        .fixture-cell.fdr-2 { background: var(--fdr-2); color: #000; }
+        .fixture-cell.fdr-3 { background: var(--fdr-3); color: #000; }
+        .fixture-cell.fdr-4 { background: var(--fdr-4); color: #000; }
+        .fixture-cell.fdr-5 { background: var(--fdr-5); color: #fff; }
+
+        .fixture-cell.blank {
+            background: var(--surface-3);
+            color: var(--text-muted);
+        }
+
+        .fixture-cell.past {
+            opacity: 0.4;
+        }
+
+        /* Easy run highlight */
+        .fixture-cell.easy-run-start {
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+            box-shadow: inset 2px 0 0 var(--color-success);
+        }
+
+        .fixture-cell.easy-run-end {
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+            box-shadow: inset -2px 0 0 var(--color-success);
+        }
+
+        .fixture-cell.easy-run-middle {
+            box-shadow: inset 0 2px 0 var(--color-success), inset 0 -2px 0 var(--color-success);
+        }
+
+        /* Analysis Section */
+        .calendar-analysis {
+            margin-top: var(--space-6);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .analysis-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+        }
+
+        .analysis-card-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            margin-bottom: var(--space-3);
+        }
+
+        .analysis-card-icon {
+            font-size: 20px;
+        }
+
+        .analysis-card-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .analysis-team-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .analysis-team-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-2) var(--space-3);
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+        }
+
+        .analysis-team-badge {
+            width: 24px;
+            height: 24px;
+        }
+
+        .analysis-team-info {
+            flex: 1;
+        }
+
+        .analysis-team-name {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .analysis-team-detail {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .analysis-team-stat {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .analysis-team-stat.good { color: var(--color-success); }
+        .analysis-team-stat.warning { color: var(--color-warning); }
+        .analysis-team-stat.bad { color: var(--color-error); }
+
+        .gw-range-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: var(--surface-3);
+            border-radius: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Swing Indicator in Calendar */
+        .swing-indicator {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 1px solid var(--surface-1);
+        }
+
+        .swing-indicator.improving { background: var(--color-success); }
+        .swing-indicator.worsening { background: var(--color-error); }
+
+        /* Double Gameweek indicator */
+        .dgw-indicator {
+            position: absolute;
+            bottom: -1px;
+            right: -1px;
+            font-size: 7px;
+            background: var(--color-info);
+            color: #000;
+            border-radius: 2px;
+            padding: 0 2px;
+            font-weight: 700;
+        }
+
+        /* Blank Gameweek */
+        .bgw-cell {
+            background: var(--surface-3) !important;
+            color: var(--text-muted) !important;
+        }
+
+        .bgw-cell::after {
+            content: '-';
+        }
     </style>
 </head>
 <body>
@@ -803,6 +1159,7 @@
                 <button class="filter-tab" data-view="attack">Best for Attack</button>
                 <button class="filter-tab" data-view="defense">Best for Defense</button>
                 <button class="filter-tab" data-view="swings">Fixture Swings</button>
+                <button class="filter-tab" data-view="calendar">📅 Full Calendar</button>
             </div>
             <div class="search-box">
                 <span class="search-icon">🔍</span>
@@ -839,6 +1196,8 @@
         
         let allTeamsData = [];
         let currentView = 'overview';
+        let currentGW = 1;
+        window.rawFixturesData = [];
 
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', () => {
@@ -894,8 +1253,11 @@
 
                 const bootstrapData = await bootstrapRes.json();
                 const fixturesData = await fixturesRes.json();
+                
+                // Store fixtures globally for calendar view
+                window.rawFixturesData = fixturesData;
 
-                const currentGW = bootstrapData.events.find(e => e.is_current)?.id || 
+                currentGW = bootstrapData.events.find(e => e.is_current)?.id || 
                                   bootstrapData.events.find(e => e.is_next)?.id || 1;
                 document.getElementById('currentGW').textContent = `GW${currentGW}`;
 
@@ -1074,6 +1436,10 @@
                 case 'swings':
                     renderFixtureSwings(contentArea);
                     break;
+
+                case 'calendar':
+                    renderFullCalendar(contentArea);
+                    break;
             }
         }
 
@@ -1223,6 +1589,487 @@
             `;
 
             container.innerHTML = html;
+        }
+
+        // ===== FULL SEASON CALENDAR =====
+        let fullSeasonFixtures = [];
+        let calendarViewMode = 'all'; // 'all', 'remaining', 'next10'
+
+        function renderFullCalendar(container) {
+            // Build full season fixture map for all teams
+            const teamFixtureMap = buildFullSeasonMap();
+            
+            // Find easy runs for analysis
+            const easyRuns = findEasyRuns(teamFixtureMap);
+            const fixtureSwingTeams = findFixtureSwings(teamFixtureMap);
+            
+            // Determine GW range based on view mode
+            const allGWs = Object.keys(teamFixtureMap[allTeamsData[0]?.id] || {}).map(Number).sort((a, b) => a - b);
+            const minGW = Math.min(...allGWs);
+            const maxGW = Math.max(...allGWs);
+            
+            let displayGWs = allGWs;
+            if (calendarViewMode === 'remaining') {
+                displayGWs = allGWs.filter(gw => gw >= currentGW);
+            } else if (calendarViewMode === 'next10') {
+                displayGWs = allGWs.filter(gw => gw >= currentGW).slice(0, 10);
+            }
+
+            const html = `
+                <div class="calendar-section">
+                    <div class="calendar-header">
+                        <div>
+                            <h2 class="calendar-title">📅 Full Season Fixture Calendar</h2>
+                            <p class="calendar-subtitle">Scroll horizontally to see all gameweeks. Green patches indicate easy fixture runs.</p>
+                        </div>
+                        <div class="calendar-legend">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background: var(--fdr-1);"></div>
+                                <span>Very Easy (1-2)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background: var(--fdr-2);"></div>
+                                <span>Easy (2)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background: var(--fdr-3);"></div>
+                                <span>Medium (3)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background: var(--fdr-4);"></div>
+                                <span>Hard (4)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background: var(--fdr-5);"></div>
+                                <span>Very Hard (5)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="calendar-controls">
+                        <button class="calendar-control-btn ${calendarViewMode === 'all' ? 'active' : ''}" onclick="setCalendarView('all')">All Season</button>
+                        <button class="calendar-control-btn ${calendarViewMode === 'remaining' ? 'active' : ''}" onclick="setCalendarView('remaining')">Remaining</button>
+                        <button class="calendar-control-btn ${calendarViewMode === 'next10' ? 'active' : ''}" onclick="setCalendarView('next10')">Next 10 GWs</button>
+                    </div>
+
+                    <div class="calendar-container">
+                        <div class="calendar-scroll">
+                            <table class="calendar-table">
+                                <thead>
+                                    <tr>
+                                        <th class="team-header">Team</th>
+                                        ${displayGWs.map(gw => `
+                                            <th class="gw-header ${gw === currentGW ? 'gw-current' : ''}">${gw}</th>
+                                        `).join('')}
+                                        <th class="gw-header" style="background: var(--surface-3);">Avg</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${renderCalendarRows(teamFixtureMap, displayGWs, easyRuns)}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="calendar-analysis">
+                        ${renderEasyRunsAnalysis(easyRuns)}
+                        ${renderFixtureSwingAnalysis(fixtureSwingTeams)}
+                        ${renderUpcomingGoldMines(teamFixtureMap, displayGWs)}
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function setCalendarView(mode) {
+            calendarViewMode = mode;
+            renderCurrentView();
+        }
+
+        function buildFullSeasonMap() {
+            const fixtureMap = {};
+            
+            // Initialize map for all teams
+            allTeamsData.forEach(team => {
+                fixtureMap[team.id] = {};
+            });
+
+            // Fill with fixtures from the raw data
+            if (window.rawFixturesData) {
+                window.rawFixturesData.forEach(f => {
+                    if (!f.event) return; // Skip fixtures without a gameweek
+                    
+                    const homeTeam = allTeamsData.find(t => t.id === f.team_h);
+                    const awayTeam = allTeamsData.find(t => t.id === f.team_a);
+                    
+                    if (homeTeam && fixtureMap[f.team_h]) {
+                        fixtureMap[f.team_h][f.event] = fixtureMap[f.team_h][f.event] || [];
+                        fixtureMap[f.team_h][f.event].push({
+                            opponent: awayTeam?.shortName || '???',
+                            opponentId: f.team_a,
+                            isHome: true,
+                            fdr: f.team_h_difficulty || 3,
+                            finished: f.finished,
+                            gw: f.event
+                        });
+                    }
+                    
+                    if (awayTeam && fixtureMap[f.team_a]) {
+                        fixtureMap[f.team_a][f.event] = fixtureMap[f.team_a][f.event] || [];
+                        fixtureMap[f.team_a][f.event].push({
+                            opponent: homeTeam?.shortName || '???',
+                            opponentId: f.team_h,
+                            isHome: false,
+                            fdr: f.team_a_difficulty || 3,
+                            finished: f.finished,
+                            gw: f.event
+                        });
+                    }
+                });
+            }
+
+            return fixtureMap;
+        }
+
+        function renderCalendarRows(fixtureMap, displayGWs, easyRuns) {
+            // Sort teams by average FDR (best fixtures first)
+            const sortedTeams = [...allTeamsData].sort((a, b) => {
+                const avgA = calculateAvgFDR(fixtureMap[a.id], displayGWs);
+                const avgB = calculateAvgFDR(fixtureMap[b.id], displayGWs);
+                return avgA - avgB;
+            });
+
+            return sortedTeams.map(team => {
+                const teamEasyRuns = easyRuns.filter(r => r.teamId === team.id);
+                const avgFdr = calculateAvgFDR(fixtureMap[team.id], displayGWs);
+                const avgClass = avgFdr <= 2.5 ? 'good' : avgFdr <= 3.2 ? 'warning' : 'bad';
+
+                return `
+                    <tr>
+                        <td class="team-cell">
+                            <div class="calendar-team">
+                                <img src="${team.badgeUrl}" alt="${team.shortName}" class="calendar-team-badge" onerror="this.style.display='none'">
+                                <span class="calendar-team-name">${team.shortName}</span>
+                                <span class="calendar-team-fdr ${avgClass}">${avgFdr.toFixed(1)}</span>
+                            </div>
+                        </td>
+                        ${displayGWs.map(gw => renderFixtureCell(fixtureMap[team.id][gw], gw, teamEasyRuns)).join('')}
+                        <td>
+                            <span class="analysis-team-stat ${avgClass}">${avgFdr.toFixed(1)}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderFixtureCell(fixtures, gw, easyRuns) {
+            if (!fixtures || fixtures.length === 0) {
+                return `<td><div class="fixture-cell bgw-cell"></div></td>`;
+            }
+
+            // Check if this GW is part of an easy run
+            let runClass = '';
+            for (const run of easyRuns) {
+                if (gw >= run.startGW && gw <= run.endGW) {
+                    if (gw === run.startGW) runClass = 'easy-run-start';
+                    else if (gw === run.endGW) runClass = 'easy-run-end';
+                    else runClass = 'easy-run-middle';
+                    break;
+                }
+            }
+
+            // Handle double gameweeks
+            if (fixtures.length > 1) {
+                return `<td>
+                    <div class="fixture-cell fdr-${Math.round(fixtures[0].fdr)} ${fixtures[0].finished ? 'past' : ''} ${runClass}" 
+                         title="GW${gw}: ${fixtures.map(f => `${f.opponent} (${f.isHome ? 'H' : 'A'})`).join(' & ')}">
+                        <span class="opp">${fixtures[0].opponent}</span>
+                        <span class="venue">${fixtures[0].isHome ? 'H' : 'A'}</span>
+                        <span class="dgw-indicator">DGW</span>
+                    </div>
+                </td>`;
+            }
+
+            const f = fixtures[0];
+            return `<td>
+                <div class="fixture-cell fdr-${Math.round(f.fdr)} ${f.finished ? 'past' : ''} ${runClass}" 
+                     title="GW${gw}: ${f.opponent} (${f.isHome ? 'H' : 'A'}) - FDR ${f.fdr}">
+                    <span class="opp">${f.opponent}</span>
+                    <span class="venue">${f.isHome ? 'H' : 'A'}</span>
+                </div>
+            </td>`;
+        }
+
+        function calculateAvgFDR(teamFixtures, displayGWs) {
+            if (!teamFixtures) return 3;
+            
+            let total = 0;
+            let count = 0;
+            
+            displayGWs.forEach(gw => {
+                const fixtures = teamFixtures[gw];
+                if (fixtures && fixtures.length > 0) {
+                    fixtures.forEach(f => {
+                        if (!f.finished) {
+                            total += f.fdr;
+                            count++;
+                        }
+                    });
+                }
+            });
+            
+            return count > 0 ? total / count : 3;
+        }
+
+        function findEasyRuns(fixtureMap) {
+            const easyRuns = [];
+            const minRunLength = 3; // Minimum 3 consecutive easy fixtures
+            const maxFDR = 2.5; // FDR threshold for "easy"
+
+            allTeamsData.forEach(team => {
+                const teamFixtures = fixtureMap[team.id];
+                if (!teamFixtures) return;
+
+                const gws = Object.keys(teamFixtures).map(Number).sort((a, b) => a - b);
+                let runStart = null;
+                let runLength = 0;
+
+                gws.forEach((gw, idx) => {
+                    const fixtures = teamFixtures[gw];
+                    if (!fixtures || fixtures.length === 0) {
+                        // End of run
+                        if (runLength >= minRunLength) {
+                            easyRuns.push({
+                                teamId: team.id,
+                                teamName: team.name,
+                                teamShort: team.shortName,
+                                badgeUrl: team.badgeUrl,
+                                startGW: runStart,
+                                endGW: gws[idx - 1],
+                                length: runLength
+                            });
+                        }
+                        runStart = null;
+                        runLength = 0;
+                        return;
+                    }
+
+                    const avgFdr = fixtures.reduce((sum, f) => sum + f.fdr, 0) / fixtures.length;
+                    const isEasy = avgFdr <= maxFDR && !fixtures[0].finished;
+
+                    if (isEasy) {
+                        if (runStart === null) {
+                            runStart = gw;
+                        }
+                        runLength++;
+                    } else {
+                        if (runLength >= minRunLength) {
+                            easyRuns.push({
+                                teamId: team.id,
+                                teamName: team.name,
+                                teamShort: team.shortName,
+                                badgeUrl: team.badgeUrl,
+                                startGW: runStart,
+                                endGW: gws[idx - 1],
+                                length: runLength
+                            });
+                        }
+                        runStart = null;
+                        runLength = 0;
+                    }
+                });
+
+                // Check for run at end
+                if (runLength >= minRunLength) {
+                    easyRuns.push({
+                        teamId: team.id,
+                        teamName: team.name,
+                        teamShort: team.shortName,
+                        badgeUrl: team.badgeUrl,
+                        startGW: runStart,
+                        endGW: gws[gws.length - 1],
+                        length: runLength
+                    });
+                }
+            });
+
+            return easyRuns.sort((a, b) => b.length - a.length);
+        }
+
+        function findFixtureSwings(fixtureMap) {
+            const swings = [];
+
+            allTeamsData.forEach(team => {
+                const teamFixtures = fixtureMap[team.id];
+                if (!teamFixtures) return;
+
+                // Compare next 3 GWs vs GWs 4-6
+                const futureGWs = Object.keys(teamFixtures)
+                    .map(Number)
+                    .filter(gw => gw >= currentGW)
+                    .sort((a, b) => a - b)
+                    .slice(0, 6);
+
+                if (futureGWs.length < 6) return;
+
+                const first3 = futureGWs.slice(0, 3);
+                const next3 = futureGWs.slice(3, 6);
+
+                const avgFirst = first3.reduce((sum, gw) => {
+                    const f = teamFixtures[gw];
+                    return sum + (f && f[0] ? f[0].fdr : 3);
+                }, 0) / 3;
+
+                const avgNext = next3.reduce((sum, gw) => {
+                    const f = teamFixtures[gw];
+                    return sum + (f && f[0] ? f[0].fdr : 3);
+                }, 0) / 3;
+
+                const swing = avgFirst - avgNext;
+
+                if (Math.abs(swing) > 0.5) {
+                    swings.push({
+                        teamId: team.id,
+                        teamName: team.name,
+                        teamShort: team.shortName,
+                        badgeUrl: team.badgeUrl,
+                        swing: swing,
+                        direction: swing > 0 ? 'improving' : 'worsening',
+                        currentFdr: avgFirst.toFixed(1),
+                        futureFdr: avgNext.toFixed(1),
+                        swingGW: futureGWs[3]
+                    });
+                }
+            });
+
+            return swings.sort((a, b) => b.swing - a.swing);
+        }
+
+        function renderEasyRunsAnalysis(easyRuns) {
+            const topRuns = easyRuns.filter(r => r.startGW >= currentGW).slice(0, 5);
+            
+            if (topRuns.length === 0) {
+                return `
+                    <div class="analysis-card">
+                        <div class="analysis-card-header">
+                            <span class="analysis-card-icon">🟢</span>
+                            <span class="analysis-card-title">Best Easy Fixture Runs</span>
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 12px;">No significant easy runs found in remaining fixtures.</p>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="analysis-card">
+                    <div class="analysis-card-header">
+                        <span class="analysis-card-icon">🟢</span>
+                        <span class="analysis-card-title">Best Easy Fixture Runs</span>
+                    </div>
+                    <div class="analysis-team-list">
+                        ${topRuns.map(run => `
+                            <div class="analysis-team-item">
+                                <img src="${run.badgeUrl}" alt="${run.teamShort}" class="analysis-team-badge" onerror="this.style.display='none'">
+                                <div class="analysis-team-info">
+                                    <div class="analysis-team-name">${run.teamName}</div>
+                                    <div class="analysis-team-detail">
+                                        <span class="gw-range-badge">GW${run.startGW} → GW${run.endGW}</span>
+                                    </div>
+                                </div>
+                                <span class="analysis-team-stat good">${run.length} GWs</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFixtureSwingAnalysis(swings) {
+            const improving = swings.filter(s => s.direction === 'improving').slice(0, 4);
+            const worsening = swings.filter(s => s.direction === 'worsening').slice(0, 4);
+
+            return `
+                <div class="analysis-card">
+                    <div class="analysis-card-header">
+                        <span class="analysis-card-icon">📈</span>
+                        <span class="analysis-card-title">Fixture Swings</span>
+                    </div>
+                    <div style="margin-bottom: var(--space-3);">
+                        <div style="font-size: 11px; color: var(--color-success); margin-bottom: var(--space-2); font-weight: 600;">↑ Getting Easier</div>
+                        <div class="analysis-team-list">
+                            ${improving.length > 0 ? improving.map(s => `
+                                <div class="analysis-team-item">
+                                    <img src="${s.badgeUrl}" alt="${s.teamShort}" class="analysis-team-badge" onerror="this.style.display='none'">
+                                    <div class="analysis-team-info">
+                                        <div class="analysis-team-name">${s.teamShort}</div>
+                                        <div class="analysis-team-detail">From GW${s.swingGW}</div>
+                                    </div>
+                                    <span class="analysis-team-stat good">${s.currentFdr} → ${s.futureFdr}</span>
+                                </div>
+                            `).join('') : '<div style="font-size: 11px; color: var(--text-muted);">None found</div>'}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; color: var(--color-error); margin-bottom: var(--space-2); font-weight: 600;">↓ Getting Harder</div>
+                        <div class="analysis-team-list">
+                            ${worsening.length > 0 ? worsening.slice(0, 3).map(s => `
+                                <div class="analysis-team-item">
+                                    <img src="${s.badgeUrl}" alt="${s.teamShort}" class="analysis-team-badge" onerror="this.style.display='none'">
+                                    <div class="analysis-team-info">
+                                        <div class="analysis-team-name">${s.teamShort}</div>
+                                        <div class="analysis-team-detail">From GW${s.swingGW}</div>
+                                    </div>
+                                    <span class="analysis-team-stat bad">${s.currentFdr} → ${s.futureFdr}</span>
+                                </div>
+                            `).join('') : '<div style="font-size: 11px; color: var(--text-muted);">None found</div>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderUpcomingGoldMines(fixtureMap, displayGWs) {
+            // Find teams with best upcoming 5 GWs
+            const upcoming5 = displayGWs.filter(gw => gw >= currentGW).slice(0, 5);
+            
+            const rankings = allTeamsData.map(team => {
+                const avgFdr = calculateAvgFDR(fixtureMap[team.id], upcoming5);
+                const homeCount = upcoming5.reduce((count, gw) => {
+                    const f = fixtureMap[team.id][gw];
+                    return count + (f && f[0] && f[0].isHome ? 1 : 0);
+                }, 0);
+                
+                return {
+                    ...team,
+                    avgFdr,
+                    homeCount
+                };
+            }).sort((a, b) => a.avgFdr - b.avgFdr);
+
+            const top5 = rankings.slice(0, 5);
+
+            return `
+                <div class="analysis-card">
+                    <div class="analysis-card-header">
+                        <span class="analysis-card-icon">⭐</span>
+                        <span class="analysis-card-title">Best Next 5 GWs</span>
+                    </div>
+                    <div class="analysis-team-list">
+                        ${top5.map((team, i) => `
+                            <div class="analysis-team-item">
+                                <span style="font-size: 12px; font-weight: 700; color: ${i < 3 ? 'var(--color-warning)' : 'var(--text-muted)'}; width: 20px;">${i + 1}</span>
+                                <img src="${team.badgeUrl}" alt="${team.shortName}" class="analysis-team-badge" onerror="this.style.display='none'">
+                                <div class="analysis-team-info">
+                                    <div class="analysis-team-name">${team.name}</div>
+                                    <div class="analysis-team-detail">${team.homeCount} home games</div>
+                                </div>
+                                <span class="analysis-team-stat good">${team.avgFdr.toFixed(1)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
         }
     </script>
 </body>
