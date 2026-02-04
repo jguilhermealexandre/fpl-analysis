@@ -298,14 +298,15 @@
 
         /* Table Toolbar */
         .table-toolbar {
-            padding: 20px;
+            padding: 20px 24px;
             background: var(--surface-1);
-            border-bottom: 1px solid var(--border-default);
         }
         .table-toolbar-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-default);
             margin-bottom: 16px;
         }
         .table-title-section {
@@ -314,41 +315,118 @@
             gap: 12px;
         }
         .table-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 22px;
         }
         .table-icon.gk { background: rgba(251, 191, 36, 0.15); }
         .table-icon.def { background: rgba(52, 211, 153, 0.15); }
         .table-icon.mid { background: rgba(96, 165, 250, 0.15); }
         .table-icon.fwd { background: rgba(248, 113, 113, 0.15); }
-        .table-title { font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600; }
-        .table-count { font-size: 13px; color: var(--text-muted); }
+        .table-title { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600; }
+        .table-count { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
 
         .table-actions {
             display: flex;
             gap: 8px;
         }
         .action-btn {
-            padding: 8px 14px;
+            padding: 10px 16px;
             background: var(--surface-2);
             border: 1px solid var(--border-default);
             border-radius: 8px;
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             transition: all 150ms;
         }
         .action-btn:hover { background: var(--surface-3); color: var(--text-primary); }
         .action-btn.active { background: rgba(74, 222, 128, 0.15); color: var(--color-success); border-color: rgba(74, 222, 128, 0.3); }
+
+        /* Table Controls - Search and Quick Filters */
+        .table-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            position: relative;
+            flex-shrink: 0;
+        }
+        .search-box input {
+            width: 240px;
+            padding: 10px 14px 10px 40px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 13px;
+            transition: all 150ms;
+        }
+        .search-box input:focus { 
+            outline: none; 
+            border-color: var(--color-info); 
+            background: var(--surface-3);
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+        .search-box input::placeholder { color: var(--text-muted); }
+        .search-box .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        /* Quick Filter Pills */
+        .filter-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-pill {
+            padding: 8px 14px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 150ms;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .filter-pill:hover { 
+            background: var(--surface-3); 
+            color: var(--text-primary);
+            border-color: var(--border-default);
+        }
+        .filter-pill.active { 
+            background: rgba(74, 222, 128, 0.12); 
+            color: var(--color-success); 
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+        .filter-pill .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
 
         /* Column Selector Dropdown */
         .column-selector {
@@ -398,74 +476,70 @@
         .filters-panel {
             background: var(--surface-2);
             border-radius: 12px;
-            padding: 16px;
+            padding: 20px;
             margin-top: 16px;
             display: none;
         }
         .filters-panel.show { display: block; }
-
-        /* Compact Filters Row */
-        .filters-row {
-            display: flex;
-            gap: 16px;
-            align-items: flex-start;
-            flex-wrap: wrap;
+        .filter-group {
+            margin-bottom: 16px;
         }
-        .filter-section {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .filter-label {
-            font-size: 10px;
+        .filter-group:last-child { margin-bottom: 0; }
+        .filter-group-label {
+            font-size: 11px;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            margin-bottom: 10px;
         }
-        .search-box {
-            position: relative;
+        .filter-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
-        .search-box input {
-            width: 200px;
-            padding: 8px 12px 8px 32px;
-            background: var(--surface-2);
-            border: 1px solid var(--border-default);
+        .filter-option {
+            padding: 8px 14px;
+            background: var(--surface-3);
+            border: 1px solid transparent;
             border-radius: 8px;
-            color: var(--text-primary);
+            color: var(--text-secondary);
             font-size: 12px;
+            cursor: pointer;
             transition: all 150ms;
         }
-        .search-box input:focus { outline: none; border-color: var(--color-info); background: var(--surface-3); }
-        .search-box input::placeholder { color: var(--text-muted); }
-        .search-box .search-icon {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 12px;
+        .filter-option:hover { 
+            color: var(--text-primary); 
+            border-color: var(--border-default);
         }
-
-        /* Compact Filter Inputs */
-        .filter-input {
-            padding: 8px 12px;
-            background: var(--surface-2);
-            border: 1px solid var(--border-default);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 12px;
-            width: 90px;
+        .filter-option.active { 
+            background: rgba(74, 222, 128, 0.12); 
+            color: var(--color-success); 
+            border-color: rgba(74, 222, 128, 0.3);
         }
-        .filter-input:focus { outline: none; border-color: var(--color-info); }
-        .filter-input::placeholder { color: var(--text-muted); }
-
         .filter-range {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 10px;
         }
-        .filter-range span { color: var(--text-muted); font-size: 11px; }
+        .filter-range input {
+            width: 100px;
+            padding: 8px 12px;
+            background: var(--surface-3);
+            border: 1px solid var(--border-default);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+        .filter-range input:focus { 
+            outline: none; 
+            border-color: var(--color-info);
+        }
+        .filter-range input::placeholder { color: var(--text-muted); }
+        .filter-range span { 
+            color: var(--text-muted); 
+            font-size: 12px;
+        }
 
         /* Position Checkboxes */
         .position-filters {
@@ -540,26 +614,6 @@
         .team-chip:hover { background: var(--surface-1); }
         .team-chip.active { background: rgba(74, 222, 128, 0.15); color: var(--color-success); }
 
-        /* Quick Filter Pills */
-        .quick-filters {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-        .filter-pill {
-            padding: 6px 12px;
-            background: var(--surface-2);
-            border: 1px solid var(--border-default);
-            border-radius: 20px;
-            color: var(--text-secondary);
-            font-size: 11px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 150ms;
-        }
-        .filter-pill:hover { background: var(--surface-3); color: var(--text-primary); }
-        .filter-pill.active { background: rgba(74, 222, 128, 0.12); color: var(--color-success); border-color: rgba(74, 222, 128, 0.25); }
-
         /* Stat Mode Toggle */
         .stat-mode {
             display: flex;
@@ -611,7 +665,10 @@
         }
 
         /* Table Styles */
-        .table-container { overflow-x: auto; }
+        .table-container { 
+            overflow-x: auto;
+            border-top: 1px solid var(--border-default);
+        }
         .data-table {
             width: 100%;
             border-collapse: collapse;
@@ -619,7 +676,7 @@
         
         /* Column Group Headers */
         .data-table thead tr.group-header th {
-            padding: 8px 12px;
+            padding: 10px 14px;
             background: var(--surface-3);
             color: var(--text-muted);
             font-size: 10px;
@@ -637,43 +694,38 @@
         .data-table thead tr.group-header th.group-fpl { background: rgba(251, 191, 36, 0.1); color: #FCD34D; }
         .data-table thead tr.group-header th.group-defend { background: rgba(96, 165, 250, 0.1); color: #60A5FA; }
 
-        .data-table thead tr.column-header th {
-            padding: 10px 12px;
+        .data-table thead th {
+            padding: 14px 16px;
             text-align: left;
             font-weight: 600;
-            color: var(--text-muted);
-            font-size: 10px;
+            color: var(--text-secondary);
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.4px;
             white-space: nowrap;
             cursor: pointer;
             user-select: none;
             transition: all 150ms;
-            border-bottom: 1px solid var(--border-default);
             background: var(--surface-2);
+            border-bottom: 2px solid var(--border-default);
         }
-        .data-table thead tr.column-header th:hover { color: var(--text-primary); background: var(--surface-3); }
-        .data-table thead tr.column-header th.sorted { color: var(--color-success); }
-        .data-table thead tr.column-header th .sort-icon { margin-left: 4px; font-size: 9px; opacity: 0.5; }
-        .data-table thead tr.column-header th.sorted .sort-icon { opacity: 1; }
-        .data-table thead tr.column-header th .col-help {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
+        .data-table thead th:hover { 
+            color: var(--text-primary); 
             background: var(--surface-3);
-            border-radius: 50%;
-            font-size: 9px;
-            text-align: center;
-            line-height: 14px;
-            margin-left: 4px;
-            cursor: help;
         }
+        .data-table thead th.sorted { color: var(--color-success); }
+        .data-table thead th .sort-icon { 
+            margin-left: 6px; 
+            font-size: 10px; 
+            opacity: 0.4;
+        }
+        .data-table thead th.sorted .sort-icon { opacity: 1; }
 
         .data-table td {
-            padding: 12px;
+            padding: 14px 16px;
             border-bottom: 1px solid var(--border-subtle);
-            font-size: 12px;
-            transition: all 150ms;
+            font-size: 13px;
+            vertical-align: middle;
         }
         .data-table tbody tr { transition: all 150ms; }
         .data-table tbody tr:hover { background: var(--surface-2); }
