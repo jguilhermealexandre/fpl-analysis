@@ -980,10 +980,173 @@
             border: 1px solid var(--border-default);
             border-radius: 12px;
             padding: 16px;
+            cursor: pointer;
+            position: relative;
+            transition: all 200ms ease;
+        }
+        .chart-card:hover {
+            border-color: var(--color-info);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        .chart-expand-hint {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+            opacity: 0;
+            transition: opacity 200ms;
+            background: var(--surface-2);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .chart-card:hover .chart-expand-hint {
+            opacity: 1;
         }
         .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
         .chart-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
         .chart-container { height: 300px; position: relative; }
+
+        /* Chart Modal */
+        .chart-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .chart-modal.show {
+            display: flex;
+        }
+        .chart-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+        }
+        .chart-modal-container {
+            position: relative;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: 20px;
+            width: 95vw;
+            max-width: 1400px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+        }
+        .chart-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-default);
+            background: var(--surface-2);
+        }
+        .chart-modal-title h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+        }
+        .chart-modal-title p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: 0;
+        }
+        .chart-modal-close {
+            background: var(--surface-3);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 150ms;
+        }
+        .chart-modal-close:hover {
+            background: var(--color-danger);
+            color: white;
+        }
+        .chart-modal-body {
+            padding: 24px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chart-modal-canvas-container {
+            flex: 1;
+            min-height: 500px;
+            position: relative;
+        }
+        .chart-modal-legend {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-subtle);
+            margin-top: 16px;
+        }
+        .chart-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .chart-legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        .chart-modal-players {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-subtle);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .chart-modal-players-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+        .chart-players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+        }
+        .chart-player-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--surface-2);
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        .chart-player-pos {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+        .chart-player-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        .chart-player-stat {
+            color: var(--text-muted);
+        }
 
         /* COMPARE FUNCTIONALITY */
         .compare-cell {
@@ -1334,6 +1497,49 @@
             </div>
             <div class="compare-modal-body" id="compareModalContent">
                 <!-- Content generated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Expand Modal -->
+    <div class="chart-modal" id="chartModal">
+        <div class="chart-modal-backdrop" onclick="closeChartModal()"></div>
+        <div class="chart-modal-container">
+            <div class="chart-modal-header">
+                <div class="chart-modal-title">
+                    <h2 id="chartModalTitle">Chart Title</h2>
+                    <p id="chartModalSubtitle">Chart subtitle</p>
+                </div>
+                <button class="chart-modal-close" onclick="closeChartModal()">×</button>
+            </div>
+            <div class="chart-modal-body">
+                <div class="chart-modal-canvas-container">
+                    <canvas id="expandedChart"></canvas>
+                </div>
+                <div class="chart-modal-legend" id="chartModalLegend">
+                    <div class="chart-legend-item">
+                        <div class="chart-legend-dot" style="background: #fbbf24;"></div>
+                        <span>GK</span>
+                    </div>
+                    <div class="chart-legend-item">
+                        <div class="chart-legend-dot" style="background: #34d399;"></div>
+                        <span>DEF</span>
+                    </div>
+                    <div class="chart-legend-item">
+                        <div class="chart-legend-dot" style="background: #60a5fa;"></div>
+                        <span>MID</span>
+                    </div>
+                    <div class="chart-legend-item">
+                        <div class="chart-legend-dot" style="background: #f87171;"></div>
+                        <span>FWD</span>
+                    </div>
+                </div>
+                <div class="chart-modal-players" id="chartModalPlayers">
+                    <div class="chart-modal-players-title">Notable Players</div>
+                    <div class="chart-players-grid" id="chartPlayersGrid">
+                        <!-- Generated by JS -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -2579,6 +2785,241 @@
             document.getElementById('compareModal')?.classList.remove('show');
         }
 
+        // ============================================
+        // CHART EXPAND MODAL
+        // ============================================
+        let expandedChartInstance = null;
+        
+        function expandChart(chartKey, title, subtitle) {
+            const modal = document.getElementById('chartModal');
+            const titleEl = document.getElementById('chartModalTitle');
+            const subtitleEl = document.getElementById('chartModalSubtitle');
+            const canvas = document.getElementById('expandedChart');
+            const playersGrid = document.getElementById('chartPlayersGrid');
+            
+            if (!modal || !canvas) return;
+            
+            titleEl.textContent = title;
+            subtitleEl.textContent = subtitle;
+            
+            // Destroy previous instance if exists
+            if (expandedChartInstance) {
+                expandedChartInstance.destroy();
+                expandedChartInstance = null;
+            }
+            
+            // Get the original chart instance
+            const originalChart = chartInstances[chartKey];
+            if (!originalChart) return;
+            
+            // Clone the chart configuration
+            const config = {
+                type: originalChart.config.type,
+                data: JSON.parse(JSON.stringify(originalChart.config.data)),
+                options: {
+                    ...JSON.parse(JSON.stringify(originalChart.config.options)),
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(13, 17, 23, 0.95)',
+                            titleColor: '#4ade80',
+                            bodyColor: 'rgba(255,255,255,0.87)',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            padding: 16,
+                            displayColors: true,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                title: ctx => {
+                                    const raw = ctx[0]?.raw;
+                                    if (raw?.name) return `${raw.name} (${raw.team})`;
+                                    return '';
+                                },
+                                label: ctx => {
+                                    const p = ctx.raw;
+                                    if (!p || !p.name) return '';
+                                    return [
+                                        `Position: ${p.pos}`,
+                                        `Price: £${p.price?.toFixed(1)}m`,
+                                        `Pts/G: ${p.ptsPerGame?.toFixed(1)}`,
+                                        `xGI/G: ${p.xgiPerGame?.toFixed(2)}`,
+                                        `Ownership: ${p.ownership?.toFixed(1)}%`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.08)' },
+                            ticks: { color: 'rgba(255,255,255,0.7)', font: { size: 12 } },
+                            title: originalChart.config.options?.scales?.x?.title || { display: false }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.08)' },
+                            ticks: { color: 'rgba(255,255,255,0.7)', font: { size: 12 } },
+                            title: originalChart.config.options?.scales?.y?.title || { display: false }
+                        }
+                    }
+                }
+            };
+            
+            // Make points larger in expanded view
+            if (config.data.datasets) {
+                config.data.datasets.forEach(ds => {
+                    if (ds.pointRadius) ds.pointRadius = 8;
+                    if (ds.pointHoverRadius) ds.pointHoverRadius = 12;
+                });
+            }
+            
+            // Show modal first so canvas has dimensions
+            modal.classList.add('show');
+            
+            // Create expanded chart
+            setTimeout(() => {
+                const ctx = canvas.getContext('2d');
+                expandedChartInstance = new Chart(ctx, config);
+                
+                // Populate notable players list
+                populateChartPlayers(chartKey, playersGrid);
+            }, 50);
+        }
+        
+        function populateChartPlayers(chartKey, container) {
+            const players = chartData.players || [];
+            if (!players.length) {
+                container.innerHTML = '<div style="color: var(--text-muted);">No player data available</div>';
+                return;
+            }
+            
+            // Get top performers based on chart type
+            let sortedPlayers = [];
+            let statLabel = 'Pts/G';
+            
+            switch(chartKey) {
+                case 'priceVsPoints':
+                    sortedPlayers = [...players].sort((a, b) => b.valueScore - a.valueScore).slice(0, 12);
+                    statLabel = 'Value';
+                    break;
+                case 'xgiVsActual':
+                    sortedPlayers = [...players].sort((a, b) => (b.actualGI - b.xgiPerGame) - (a.actualGI - a.xgiPerGame)).slice(0, 12);
+                    statLabel = 'Over xGI';
+                    break;
+                case 'xPtsVsActual':
+                    sortedPlayers = [...players].sort((a, b) => (b.actualPts - b.xPts) - (a.actualPts - a.xPts)).slice(0, 12);
+                    statLabel = 'Over xPts';
+                    break;
+                case 'ownershipVsForm':
+                    sortedPlayers = [...players].filter(p => p.ownership < 10).sort((a, b) => b.ptsPerGame - a.ptsPerGame).slice(0, 12);
+                    statLabel = 'Differentials';
+                    break;
+                case 'bonusMagnet':
+                    sortedPlayers = [...players].sort((a, b) => b.bonusPerGame - a.bonusPerGame).slice(0, 12);
+                    statLabel = 'Bonus/G';
+                    break;
+                case 'formVsSeason':
+                    sortedPlayers = [...players].sort((a, b) => (b.ptsPerGame - b.seasonPtsPerGame) - (a.ptsPerGame - a.seasonPtsPerGame)).slice(0, 12);
+                    statLabel = 'Form Δ';
+                    break;
+                case 'xgcVsCS':
+                    sortedPlayers = [...players].filter(p => p.pos === 'GK' || p.pos === 'DEF').sort((a, b) => b.csPerGame - a.csPerGame).slice(0, 12);
+                    statLabel = 'CS/G';
+                    break;
+                case 'defAttacking':
+                    sortedPlayers = [...players].filter(p => p.pos === 'DEF').sort((a, b) => b.xgiPerGame - a.xgiPerGame).slice(0, 12);
+                    statLabel = 'xGI/G';
+                    break;
+                case 'gkSaves':
+                    sortedPlayers = [...players].filter(p => p.pos === 'GK').sort((a, b) => b.savesPerGame - a.savesPerGame).slice(0, 12);
+                    statLabel = 'Saves/G';
+                    break;
+                case 'reliability':
+                    sortedPlayers = [...players].sort((a, b) => (b.reliabilityPct + b.explosivenessPct) - (a.reliabilityPct + a.explosivenessPct)).slice(0, 12);
+                    statLabel = 'Score';
+                    break;
+                case 'valueVsOwnership':
+                    sortedPlayers = [...players].filter(p => p.ownership < 15).sort((a, b) => b.valueScore - a.valueScore).slice(0, 12);
+                    statLabel = 'Value';
+                    break;
+                default:
+                    sortedPlayers = [...players].sort((a, b) => b.ptsPerGame - a.ptsPerGame).slice(0, 12);
+            }
+            
+            const posColors = {
+                'GK': '#fbbf24',
+                'DEF': '#34d399',
+                'MID': '#60a5fa',
+                'FWD': '#f87171'
+            };
+            
+            container.innerHTML = sortedPlayers.map(p => {
+                let statValue = '';
+                switch(chartKey) {
+                    case 'priceVsPoints':
+                    case 'valueVsOwnership':
+                        statValue = p.valueScore.toFixed(2);
+                        break;
+                    case 'xgiVsActual':
+                        statValue = (p.actualGI - p.xgiPerGame).toFixed(2);
+                        break;
+                    case 'xPtsVsActual':
+                        statValue = (p.actualPts - p.xPts).toFixed(1);
+                        break;
+                    case 'bonusMagnet':
+                        statValue = p.bonusPerGame.toFixed(1);
+                        break;
+                    case 'formVsSeason':
+                        statValue = (p.ptsPerGame - p.seasonPtsPerGame).toFixed(1);
+                        break;
+                    case 'xgcVsCS':
+                        statValue = p.csPerGame.toFixed(2);
+                        break;
+                    case 'defAttacking':
+                    case 'ownershipVsForm':
+                        statValue = p.xgiPerGame.toFixed(2);
+                        break;
+                    case 'gkSaves':
+                        statValue = p.savesPerGame?.toFixed(1) || '-';
+                        break;
+                    case 'reliability':
+                        statValue = (p.reliabilityPct + p.explosivenessPct).toFixed(0);
+                        break;
+                    default:
+                        statValue = p.ptsPerGame.toFixed(1);
+                }
+                
+                return `
+                    <div class="chart-player-item">
+                        <div class="chart-player-pos" style="background: ${posColors[p.pos]}"></div>
+                        <span class="chart-player-name">${p.name}</span>
+                        <span class="chart-player-stat">${statValue}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function closeChartModal() {
+            const modal = document.getElementById('chartModal');
+            modal?.classList.remove('show');
+            
+            // Destroy chart instance when closing
+            if (expandedChartInstance) {
+                expandedChartInstance.destroy();
+                expandedChartInstance = null;
+            }
+        }
+        
+        // Close modals with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeChartModal();
+                closeCompareModal();
+            }
+        });
+
         // Close dropdowns when clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.column-selector')) {
@@ -2680,25 +3121,29 @@
                     <div class="chart-category">
                         <h3 class="chart-category-title">💰 Value & Form Analysis</h3>
                         <div class="charts-grid">
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('priceVsPoints', '💰 Price vs Points/Game', 'Above line = Great value | Below = Overpriced')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: var(--color-success);">💰 Price vs Points/Game</div>
                                 <div class="chart-subtitle">Above line = Great value | Below = Overpriced</div>
                                 <div class="chart-container"><canvas id="priceVsPointsChart"></canvas></div>
                             </div>
                             
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('xgiVsActual', '🎯 xGI vs Actual G+A', 'Below line = Due returns | Above = May regress')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: var(--color-warning);">🎯 xGI vs Actual G+A</div>
                                 <div class="chart-subtitle">Below line = Due returns | Above = May regress</div>
                                 <div class="chart-container"><canvas id="xgiVsActualChart"></canvas></div>
                             </div>
                             
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('xPtsVsActual', '📈 Expected vs Actual Points', 'Find lucky/unlucky players based on underlying stats')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: #10b981;">📈 Expected vs Actual Points</div>
                                 <div class="chart-subtitle">Find lucky/unlucky players based on underlying stats</div>
                                 <div class="chart-container"><canvas id="xPtsVsActualChart"></canvas></div>
                             </div>
                             
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('formVsSeason', '📊 L5 Form vs Season Average', 'Above line = Improving | Below = Declining')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: #06b6d4;">📊 L5 Form vs Season Average</div>
                                 <div class="chart-subtitle">Above line = Improving | Below = Declining</div>
                                 <div class="chart-container"><canvas id="formVsSeasonChart"></canvas></div>
@@ -2711,19 +3156,22 @@
                         <h3 class="chart-category-title">🛡️ Defensive Analysis</h3>
                         <p class="chart-category-desc">Find clean sheet hunters and attacking defenders</p>
                         <div class="charts-grid">
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('xgcVsCS', '🧱 xGC vs Clean Sheets', 'Bottom-Left = Elite | Top-Right = Overperforming (sell)')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: #34d399;">🧱 xGC vs Clean Sheets</div>
                                 <div class="chart-subtitle">Bottom-Left = Elite | Top-Right = Overperforming (sell)</div>
                                 <div class="chart-container"><canvas id="xgcVsCSChart"></canvas></div>
                             </div>
                             
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('defAttacking', '⚔️ Attacking Defenders (xGI)', 'Top-Right = Wingback gold (TAA, Porro types)')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: #60a5fa;">⚔️ Attacking Defenders (xGI)</div>
                                 <div class="chart-subtitle">Top-Right = Wingback gold (TAA, Porro types)</div>
                                 <div class="chart-container"><canvas id="defAttackingChart"></canvas></div>
                             </div>
                             
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('gkSaves', '🧤 GK: Saves vs xGC', 'Top-Right = Save point magnets (busy keepers)')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: #fbbf24;">🧤 GK: Saves vs xGC</div>
                                 <div class="chart-subtitle">Top-Right = Save point magnets (busy keepers)</div>
                                 <div class="chart-container"><canvas id="gkSavesChart"></canvas></div>
@@ -2736,13 +3184,15 @@
                         <h3 class="chart-category-title">👑 Captaincy & Ceiling</h3>
                         <p class="chart-category-desc">Find explosive haul potential for captain picks</p>
                         <div class="charts-grid">
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('reliability', '🎯 Reliability vs Explosiveness', 'Top-Right = PERMACAPTAINS | Top-Left = Ceiling plays')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: #f59e0b;">🎯 Reliability vs Explosiveness</div>
                                 <div class="chart-subtitle">Top-Right = PERMACAPTAINS | Top-Left = Ceiling plays</div>
                                 <div class="chart-container"><canvas id="reliabilityChart"></canvas></div>
                             </div>
                             
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('bonusMagnet', '🏆 Bonus Magnets', 'Players who consistently earn bonus points')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: #f59e0b;">🏆 Bonus Magnets</div>
                                 <div class="chart-subtitle">Players who consistently earn bonus points</div>
                                 <div class="chart-container"><canvas id="bonusMagnetChart"></canvas></div>
@@ -2755,13 +3205,15 @@
                         <h3 class="chart-category-title">💎 Differentials & Meta</h3>
                         <p class="chart-category-desc">Beat the crowd with smart differential picks</p>
                         <div class="charts-grid">
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('ownershipVsForm', '💎 Ownership vs Form', 'Top-Left = DIFFERENTIALS | Bottom-Right = Template')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: #a855f7;">💎 Ownership vs Form</div>
                                 <div class="chart-subtitle">Top-Left = DIFFERENTIALS | Bottom-Right = Template</div>
                                 <div class="chart-container"><canvas id="ownershipVsFormChart"></canvas></div>
                             </div>
                             
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('valueVsOwnership', '📈 Value vs Ownership', 'Top-Left = Hidden gems | Bottom-Right = Overhyped')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: #ec4899;">📈 Value vs Ownership</div>
                                 <div class="chart-subtitle">Top-Left = Hidden gems | Bottom-Right = Overhyped</div>
                                 <div class="chart-container"><canvas id="valueVsOwnershipChart"></canvas></div>
@@ -2773,7 +3225,8 @@
                     <div class="chart-category">
                         <h3 class="chart-category-title">📊 Position Analysis</h3>
                         <div class="charts-grid">
-                            <div class="chart-card">
+                            <div class="chart-card" onclick="expandChart('positionDist', '📈 Points by Position', 'Where should you invest your budget?')">
+                                <div class="chart-expand-hint">🔍 Click to expand</div>
                                 <div class="chart-title" style="color: var(--color-success);">📈 Points by Position</div>
                                 <div class="chart-subtitle">Where should you invest your budget?</div>
                                 <div class="chart-container"><canvas id="positionDistChart"></canvas></div>
