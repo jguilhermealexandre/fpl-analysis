@@ -458,6 +458,34 @@
             padding-bottom: 8px;
             border-bottom: 1px solid var(--border-default);
         }
+        .column-dropdown-actions {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-default);
+        }
+        .col-action-btn {
+            flex: 1;
+            padding: 6px 8px;
+            background: var(--surface-3);
+            border: 1px solid var(--border-default);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+        .col-action-btn:hover {
+            background: var(--surface-1);
+            color: var(--text-primary);
+            border-color: var(--color-info);
+        }
+        .column-options-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
         .column-option {
             display: flex;
             align-items: center;
@@ -1613,19 +1641,26 @@
                                     </button>
                                     <div class="column-dropdown" id="colDropdown-${position}">
                                         <div class="column-dropdown-title">Show/Hide Columns</div>
-                                        ${AVAILABLE_COLS[position].map(col => {
-                                            const def = COLUMN_DEFS[col];
-                                            if (!def) return '';
-                                            const checked = tableState[position].visibleCols.includes(col);
-                                            const disabled = def.always ? 'disabled' : '';
-                                            return `
-                                                <div class="column-option">
-                                                    <input type="checkbox" id="col-${position}-${col}" ${checked ? 'checked' : ''} ${disabled}
-                                                        onchange="toggleColumn('${position}', '${col}')">
-                                                    <label for="col-${position}-${col}">${def.label}</label>
-                                                </div>
-                                            `;
-                                        }).join('')}
+                                        <div class="column-dropdown-actions">
+                                            <button onclick="selectAllColumns('${position}')" class="col-action-btn">Select All</button>
+                                            <button onclick="deselectAllColumns('${position}')" class="col-action-btn">Deselect All</button>
+                                            <button onclick="resetColumns('${position}')" class="col-action-btn">Reset</button>
+                                        </div>
+                                        <div class="column-options-list">
+                                            ${AVAILABLE_COLS[position].map(col => {
+                                                const def = COLUMN_DEFS[col];
+                                                if (!def) return '';
+                                                const checked = tableState[position].visibleCols.includes(col);
+                                                const disabled = def.always ? 'disabled' : '';
+                                                return `
+                                                    <div class="column-option">
+                                                        <input type="checkbox" id="col-${position}-${col}" ${checked ? 'checked' : ''} ${disabled}
+                                                            onchange="toggleColumn('${position}', '${col}')">
+                                                        <label for="col-${position}-${col}">${def.label}${def.always ? ' *' : ''}</label>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1922,6 +1957,40 @@
             } else {
                 state.visibleCols.push(colKey);
             }
+            refreshTable(position);
+        }
+
+        function selectAllColumns(position) {
+            const state = tableState[position];
+            state.visibleCols = [...AVAILABLE_COLS[position]];
+            // Update checkboxes
+            AVAILABLE_COLS[position].forEach(col => {
+                const checkbox = document.getElementById(`col-${position}-${col}`);
+                if (checkbox) checkbox.checked = true;
+            });
+            refreshTable(position);
+        }
+
+        function deselectAllColumns(position) {
+            const state = tableState[position];
+            // Keep only the always-visible columns (like player)
+            state.visibleCols = AVAILABLE_COLS[position].filter(col => COLUMN_DEFS[col]?.always);
+            // Update checkboxes
+            AVAILABLE_COLS[position].forEach(col => {
+                const checkbox = document.getElementById(`col-${position}-${col}`);
+                if (checkbox && !COLUMN_DEFS[col]?.always) checkbox.checked = false;
+            });
+            refreshTable(position);
+        }
+
+        function resetColumns(position) {
+            const state = tableState[position];
+            state.visibleCols = [...DEFAULT_COLS[position]];
+            // Update checkboxes
+            AVAILABLE_COLS[position].forEach(col => {
+                const checkbox = document.getElementById(`col-${position}-${col}`);
+                if (checkbox) checkbox.checked = DEFAULT_COLS[position].includes(col);
+            });
             refreshTable(position);
         }
 
