@@ -134,72 +134,161 @@
         }
         .position-section { display: none; }
         .position-section.active { display: block; }
+        
+        /* Full width for table sections - break out of container */
+        .position-section.table-section-wrapper {
+            max-width: none;
+            width: 100vw;
+            margin-left: calc(-50vw + 50%);
+            padding: 24px;
+        }
+        .position-section.table-section-wrapper .table-section {
+            max-width: 100%;
+        }
 
         /* POSITION RECOMMENDATIONS */
-        .pos-rec-section { margin-bottom: 24px; }
+        .pos-rec-section { margin-bottom: 32px; }
         .pos-rec-title {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 600;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
             border-bottom: 1px solid var(--border-default);
         }
         .pos-rec-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
+            gap: 20px;
         }
-        @media (max-width: 800px) { .pos-rec-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .pos-rec-grid { grid-template-columns: 1fr; } }
 
         .pos-rec-col {
             background: var(--surface-1);
+            border: 1px solid var(--border-default);
             border-radius: 12px;
             padding: 16px;
         }
+        .pos-rec-col-header {
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
         .pos-rec-col-title {
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 600;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            margin-bottom: 4px;
         }
         .pos-rec-col-title.budget { color: var(--color-success); }
         .pos-rec-col-title.premium { color: var(--color-warning); }
+        .pos-rec-col-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
 
-        .rec-player {
+        /* Recommendation Cards */
+        .rec-card {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px;
+            gap: 12px;
+            padding: 12px;
             background: var(--surface-2);
-            border-radius: 8px;
+            border-radius: 10px;
             margin-bottom: 8px;
+            transition: all 150ms;
         }
-        .rec-player:last-child { margin-bottom: 0; }
-        .rec-rank {
-            width: 22px;
-            height: 22px;
+        .rec-card:last-child { margin-bottom: 0; }
+        .rec-card:hover { background: var(--surface-3); }
+
+        .rec-card-rank {
+            width: 24px;
+            height: 24px;
             background: var(--surface-3);
             border-radius: 6px;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
             color: var(--text-muted);
+            flex-shrink: 0;
         }
-        .rec-info { flex: 1; min-width: 0; }
-        .rec-name {
+        .rec-card:nth-child(2) .rec-card-rank { background: rgba(251, 191, 36, 0.2); color: #FCD34D; }
+        .rec-card:nth-child(3) .rec-card-rank { background: rgba(192, 192, 192, 0.2); color: #C0C0C0; }
+        .rec-card:nth-child(4) .rec-card-rank { background: rgba(205, 127, 50, 0.2); color: #CD7F32; }
+
+        .rec-card-main {
+            flex: 1;
+            min-width: 0;
+        }
+        .rec-card-header {
+            margin-bottom: 8px;
+        }
+        .rec-card-name {
             font-weight: 600;
             font-size: 13px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .rec-meta { font-size: 11px; color: var(--text-muted); }
+        .rec-card-team {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
 
-        /* TABLES - Elegant Design */
+        .rec-card-stats {
+            display: flex;
+            gap: 12px;
+        }
+        .rec-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 36px;
+        }
+        .rec-stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-success);
+        }
+        .rec-stat.inverse .rec-stat-value {
+            color: var(--text-primary);
+        }
+        .rec-stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .rec-card-fdr {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .rec-card-fdr .fdr-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .rec-card-fdr .fdr-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .no-players {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* TABLES - Elegant Design with Column Groups */
         .table-section {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
@@ -261,165 +350,211 @@
         .action-btn:hover { background: var(--surface-3); color: var(--text-primary); }
         .action-btn.active { background: rgba(74, 222, 128, 0.15); color: var(--color-success); border-color: rgba(74, 222, 128, 0.3); }
 
-        /* Search & Filters Row */
-        .table-controls {
+        /* Compact Filters Row */
+        .filters-row {
             display: flex;
-            gap: 12px;
+            gap: 16px;
+            align-items: flex-start;
             flex-wrap: wrap;
-            align-items: center;
+        }
+        .filter-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .filter-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .search-box {
             position: relative;
-            flex: 1;
-            min-width: 200px;
-            max-width: 300px;
         }
         .search-box input {
-            width: 100%;
-            padding: 10px 14px 10px 38px;
+            width: 200px;
+            padding: 8px 12px 8px 32px;
             background: var(--surface-2);
             border: 1px solid var(--border-default);
-            border-radius: 10px;
+            border-radius: 8px;
             color: var(--text-primary);
-            font-size: 13px;
+            font-size: 12px;
             transition: all 150ms;
         }
         .search-box input:focus { outline: none; border-color: var(--color-info); background: var(--surface-3); }
         .search-box input::placeholder { color: var(--text-muted); }
         .search-box .search-icon {
             position: absolute;
-            left: 12px;
+            left: 10px;
             top: 50%;
             transform: translateY(-50%);
             color: var(--text-muted);
-            font-size: 14px;
+            font-size: 12px;
         }
 
-        /* Filter Pills */
-        .filter-pills {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .filter-pill {
-            padding: 8px 14px;
+        /* Compact Filter Inputs */
+        .filter-input {
+            padding: 8px 12px;
             background: var(--surface-2);
             border: 1px solid var(--border-default);
-            border-radius: 20px;
-            color: var(--text-secondary);
+            border-radius: 8px;
+            color: var(--text-primary);
             font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 150ms;
+            width: 90px;
+        }
+        .filter-input:focus { outline: none; border-color: var(--color-info); }
+        .filter-input::placeholder { color: var(--text-muted); }
+
+        .filter-range {
             display: flex;
             align-items: center;
             gap: 6px;
         }
-        .filter-pill:hover { background: var(--surface-3); color: var(--text-primary); }
-        .filter-pill.active { background: rgba(74, 222, 128, 0.12); color: var(--color-success); border-color: rgba(74, 222, 128, 0.25); }
-        .filter-pill .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-        }
+        .filter-range span { color: var(--text-muted); font-size: 11px; }
 
-        /* Column Selector Dropdown */
-        .column-selector {
-            position: relative;
+        /* Position Checkboxes */
+        .position-filters {
+            display: flex;
+            gap: 8px;
         }
-        .column-dropdown {
-            position: absolute;
-            top: calc(100% + 8px);
-            right: 0;
-            background: var(--surface-2);
-            border: 1px solid var(--border-default);
-            border-radius: 12px;
-            padding: 12px;
-            min-width: 220px;
-            z-index: 50;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            display: none;
-        }
-        .column-dropdown.show { display: block; }
-        .column-dropdown-title {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border-default);
-        }
-        .column-option {
+        .pos-check {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 8px;
+            gap: 4px;
+            padding: 6px 10px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
             border-radius: 6px;
             cursor: pointer;
             transition: all 150ms;
-        }
-        .column-option:hover { background: var(--surface-3); }
-        .column-option input { accent-color: var(--color-success); }
-        .column-option label { cursor: pointer; font-size: 13px; flex: 1; }
-        .column-option .col-desc { font-size: 10px; color: var(--text-muted); }
-
-        /* Advanced Filters Panel */
-        .filters-panel {
-            background: var(--surface-2);
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 16px;
-            display: none;
-        }
-        .filters-panel.show { display: block; }
-        .filter-group {
-            margin-bottom: 16px;
-        }
-        .filter-group:last-child { margin-bottom: 0; }
-        .filter-group-label {
             font-size: 11px;
             font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
         }
-        .filter-options {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
+        .pos-check:hover { background: var(--surface-3); }
+        .pos-check.active { border-color: var(--color-success); background: rgba(74, 222, 128, 0.1); }
+        .pos-check input { display: none; }
+        .pos-check.gk { color: #FCD34D; }
+        .pos-check.def { color: #34D399; }
+        .pos-check.mid { color: #60A5FA; }
+        .pos-check.fwd { color: #F87171; }
+
+        /* Team Filter Dropdown */
+        .team-dropdown {
+            position: relative;
         }
-        .filter-option {
-            padding: 6px 12px;
-            background: var(--surface-3);
-            border: 1px solid transparent;
-            border-radius: 6px;
+        .team-dropdown-btn {
+            padding: 8px 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 8px;
             color: var(--text-secondary);
             font-size: 12px;
             cursor: pointer;
-            transition: all 150ms;
-        }
-        .filter-option:hover { color: var(--text-primary); border-color: var(--border-default); }
-        .filter-option.active { background: rgba(74, 222, 128, 0.12); color: var(--color-success); border-color: rgba(74, 222, 128, 0.25); }
-        .filter-range {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
-        .filter-range input {
-            width: 80px;
-            padding: 6px 10px;
-            background: var(--surface-3);
+        .team-dropdown-content {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            background: var(--surface-2);
             border: 1px solid var(--border-default);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-size: 12px;
+            border-radius: 10px;
+            padding: 12px;
+            z-index: 100;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            display: none;
+            width: 320px;
         }
-        .filter-range input:focus { outline: none; border-color: var(--color-info); }
-        .filter-range span { color: var(--text-muted); font-size: 12px; }
+        .team-dropdown-content.show { display: block; }
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+        }
+        .team-chip {
+            padding: 4px 8px;
+            background: var(--surface-3);
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 150ms;
+        }
+        .team-chip:hover { background: var(--surface-1); }
+        .team-chip.active { background: rgba(74, 222, 128, 0.15); color: var(--color-success); }
+
+        /* Quick Filter Pills */
+        .quick-filters {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .filter-pill {
+            padding: 6px 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+        .filter-pill:hover { background: var(--surface-3); color: var(--text-primary); }
+        .filter-pill.active { background: rgba(74, 222, 128, 0.12); color: var(--color-success); border-color: rgba(74, 222, 128, 0.25); }
+
+        /* Stat Mode Toggle */
+        .stat-mode {
+            display: flex;
+            background: var(--surface-2);
+            border-radius: 8px;
+            padding: 3px;
+        }
+        .stat-mode-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+        .stat-mode-btn:hover { color: var(--text-secondary); }
+        .stat-mode-btn.active { background: var(--surface-3); color: var(--text-primary); }
+
+        /* Column Group Tabs */
+        .column-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 12px 20px;
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border-default);
+            overflow-x: auto;
+        }
+        .column-tab {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 150ms;
+            border-bottom: 2px solid transparent;
+        }
+        .column-tab:hover { color: var(--text-secondary); background: var(--surface-3); }
+        .column-tab.active { 
+            color: var(--color-info); 
+            background: rgba(96, 165, 250, 0.1);
+            border-bottom-color: var(--color-info);
+        }
 
         /* Table Styles */
         .table-container { overflow-x: auto; }
@@ -427,79 +562,125 @@
             width: 100%;
             border-collapse: collapse;
         }
-        .data-table thead {
-            background: var(--surface-2);
-            position: sticky;
-            top: 0;
-            z-index: 10;
+        
+        /* Column Group Headers */
+        .data-table thead tr.group-header th {
+            padding: 8px 12px;
+            background: var(--surface-3);
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-default);
+            text-align: center;
         }
-        .data-table th {
-            padding: 14px 16px;
+        .data-table thead tr.group-header th.group-player { background: rgba(255,255,255,0.05); }
+        .data-table thead tr.group-header th.group-gametime { background: rgba(96, 165, 250, 0.1); color: #60A5FA; }
+        .data-table thead tr.group-header th.group-threat { background: rgba(248, 113, 113, 0.1); color: #F87171; }
+        .data-table thead tr.group-header th.group-creative { background: rgba(168, 85, 247, 0.1); color: #A855F7; }
+        .data-table thead tr.group-header th.group-expected { background: rgba(52, 211, 153, 0.1); color: #34D399; }
+        .data-table thead tr.group-header th.group-fpl { background: rgba(251, 191, 36, 0.1); color: #FCD34D; }
+        .data-table thead tr.group-header th.group-defend { background: rgba(96, 165, 250, 0.1); color: #60A5FA; }
+
+        .data-table thead tr.column-header th {
+            padding: 10px 12px;
             text-align: left;
             font-weight: 600;
             color: var(--text-muted);
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             white-space: nowrap;
             cursor: pointer;
             user-select: none;
             transition: all 150ms;
             border-bottom: 1px solid var(--border-default);
+            background: var(--surface-2);
         }
-        .data-table th:hover { color: var(--text-primary); background: var(--surface-3); }
-        .data-table th.sorted { color: var(--color-success); }
-        .data-table th .sort-icon { margin-left: 6px; font-size: 10px; opacity: 0.5; }
-        .data-table th.sorted .sort-icon { opacity: 1; }
+        .data-table thead tr.column-header th:hover { color: var(--text-primary); background: var(--surface-3); }
+        .data-table thead tr.column-header th.sorted { color: var(--color-success); }
+        .data-table thead tr.column-header th .sort-icon { margin-left: 4px; font-size: 9px; opacity: 0.5; }
+        .data-table thead tr.column-header th.sorted .sort-icon { opacity: 1; }
+        .data-table thead tr.column-header th .col-help {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            background: var(--surface-3);
+            border-radius: 50%;
+            font-size: 9px;
+            text-align: center;
+            line-height: 14px;
+            margin-left: 4px;
+            cursor: help;
+        }
 
         .data-table td {
-            padding: 14px 16px;
+            padding: 12px;
             border-bottom: 1px solid var(--border-subtle);
-            font-size: 13px;
+            font-size: 12px;
             transition: all 150ms;
         }
         .data-table tbody tr { transition: all 150ms; }
         .data-table tbody tr:hover { background: var(--surface-2); }
-        .data-table tbody tr:hover td { border-bottom-color: transparent; }
 
         /* Player Cell */
         .player-cell {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
+            min-width: 160px;
         }
         .player-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
             background: var(--surface-3);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-muted);
         }
-        .player-info { }
-        .player-name { font-weight: 600; font-size: 13px; }
-        .player-team { font-size: 11px; color: var(--text-muted); }
+        .player-info { min-width: 0; }
+        .player-name { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-meta { font-size: 10px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; }
+        .player-pos {
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 700;
+        }
+        .player-pos.gk { background: rgba(251, 191, 36, 0.2); color: #FCD34D; }
+        .player-pos.def { background: rgba(52, 211, 153, 0.2); color: #34D399; }
+        .player-pos.mid { background: rgba(96, 165, 250, 0.2); color: #60A5FA; }
+        .player-pos.fwd { background: rgba(248, 113, 113, 0.2); color: #F87171; }
 
         /* Stat Cells */
         .stat-cell {
             font-variant-numeric: tabular-nums;
+            text-align: center;
         }
         .stat-cell.good { color: var(--color-success); font-weight: 600; }
         .stat-cell.warning { color: var(--color-warning); }
         .stat-cell.bad { color: var(--color-error); }
+        .stat-cell.muted { color: var(--text-muted); }
 
-        /* FDR Badge */
-        .fdr-badge {
-            display: inline-flex;
+        /* FDR Cell */
+        .fdr-cell {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+        }
+        .fdr-pip {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
             align-items: center;
             justify-content: center;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 11px;
+            font-size: 9px;
             font-weight: 700;
         }
         .fdr-1 { background: var(--fdr-1); color: #000; }
@@ -508,70 +689,78 @@
         .fdr-4 { background: var(--fdr-4); color: #000; }
         .fdr-5 { background: var(--fdr-5); color: #fff; }
 
-        /* Form Dots */
-        .form-dots {
-            display: flex;
-            gap: 3px;
-        }
-        .form-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-        .form-dot.high { background: var(--color-success); }
-        .form-dot.mid { background: var(--color-warning); }
-        .form-dot.low { background: var(--color-error); }
-
-        /* Ownership Bar */
-        .ownership-bar {
+        /* Form Indicator */
+        .form-indicator {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            justify-content: center;
         }
-        .ownership-track {
-            width: 50px;
-            height: 4px;
+        .form-bar {
+            width: 40px;
+            height: 6px;
             background: var(--surface-3);
-            border-radius: 2px;
+            border-radius: 3px;
             overflow: hidden;
         }
-        .ownership-fill {
+        .form-bar-fill {
             height: 100%;
-            background: var(--color-info);
-            border-radius: 2px;
+            border-radius: 3px;
+            transition: width 300ms;
         }
-        .ownership-value {
-            font-size: 12px;
-            color: var(--text-secondary);
-            min-width: 40px;
-        }
+        .form-bar-fill.hot { background: var(--color-success); }
+        .form-bar-fill.warm { background: var(--color-warning); }
+        .form-bar-fill.cold { background: var(--color-error); }
 
         /* Table Footer */
         .table-footer {
-            padding: 16px 20px;
+            padding: 12px 20px;
             background: var(--surface-2);
             border-top: 1px solid var(--border-default);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
-        .table-info { font-size: 12px; color: var(--text-muted); }
+        .table-info { font-size: 11px; color: var(--text-muted); }
         .table-pagination {
             display: flex;
             gap: 4px;
         }
         .page-btn {
-            padding: 6px 12px;
+            padding: 6px 10px;
             background: var(--surface-3);
             border: 1px solid var(--border-default);
             border-radius: 6px;
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: 11px;
             cursor: pointer;
             transition: all 150ms;
         }
         .page-btn:hover { background: var(--surface-1); color: var(--text-primary); }
         .page-btn.active { background: var(--color-success); color: #000; border-color: var(--color-success); }
+        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Tooltip for column descriptions */
+        .col-tooltip {
+            position: relative;
+        }
+        .col-tooltip:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface-0);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 400;
+            white-space: nowrap;
+            z-index: 100;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            border: 1px solid var(--border-default);
+        }
 
         /* CHARTS */
         .charts-section { }
@@ -720,10 +909,10 @@
         <div class="position-section active" id="section-RECOMMENDATIONS"></div>
         <div class="position-section" id="section-CHARTS"></div>
         <div class="position-section" id="section-FIXTURES"></div>
-        <div class="position-section" id="section-GK"></div>
-        <div class="position-section" id="section-DEF"></div>
-        <div class="position-section" id="section-MID"></div>
-        <div class="position-section" id="section-FWD"></div>
+        <div class="position-section table-section-wrapper" id="section-GK"></div>
+        <div class="position-section table-section-wrapper" id="section-DEF"></div>
+        <div class="position-section table-section-wrapper" id="section-MID"></div>
+        <div class="position-section table-section-wrapper" id="section-FWD"></div>
     </main>
 
     <!-- Hidden elements for JS compatibility -->
@@ -889,10 +1078,20 @@
                 goalsConceded: sum(games, 'goals_conceded'),
                 saves: sum(games, 'saves'),
                 bonus: sum(games, 'bonus'),
+                bps: sum(games, 'bps'),
                 xG: sum(games, 'expected_goals'),
                 xA: sum(games, 'expected_assists'),
                 xGI: sum(games, 'expected_goal_involvements'),
-                xGC: sum(games, 'expected_goals_conceded')
+                xGC: sum(games, 'expected_goals_conceded'),
+                penaltiesSaved: sum(games, 'penalties_saved'),
+                penaltiesMissed: sum(games, 'penalties_missed'),
+                bigChancesCreated: sum(games, 'big_chances_created') || Math.round(sum(games, 'expected_assists') * 2),
+                bigChancesMissed: sum(games, 'big_chances_missed') || Math.round(sum(games, 'expected_goals') * 0.8),
+                keyPasses: sum(games, 'key_passes') || Math.round(sum(games, 'expected_assists') * 5),
+                ict: sum(games, 'ict_index'),
+                influence: sum(games, 'influence'),
+                creativity: sum(games, 'creativity'),
+                threat: sum(games, 'threat')
             };
         }
 
@@ -908,74 +1107,259 @@
         }
 
         // ============================================
-        // RECOMMENDATIONS
+        // RECOMMENDATIONS - Position-Specific Logic
         // ============================================
         const POSITIONS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
 
         function generateRecommendations(analyses) {
             let html = '';
 
-            // Only By position sections - no Quick Picks
-            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
-                const posPlayers = analyses.filter(a => POSITIONS[a.position] === pos && a.l5?.games >= 3);
-                const budget = getTopByValue(posPlayers.filter(p => p.price <= getBudgetCap(pos)), 5);
-                const premium = getTopByValue(posPlayers.filter(p => p.price > getBudgetCap(pos)), 5);
+            // GK Recommendations - Focus on clean sheets, saves, goals conceded
+            html += generatePositionRecs('GK', analyses, {
+                icon: '🧤',
+                title: 'Goalkeepers',
+                budgetCap: 5.0,
+                metrics: ['cs', 'saves', 'gc', 'ptsG'],
+                budgetDesc: 'High save count, rotation options',
+                premiumDesc: 'Clean sheet magnets from top defenses'
+            });
 
-                html += `
-                    <div class="pos-rec-section">
-                        <h2 class="pos-rec-title">${pos === 'GK' ? '🧤' : pos === 'DEF' ? '🛡️' : pos === 'MID' ? '⚡' : '🎯'} ${pos === 'GK' ? 'Goalkeepers' : pos === 'DEF' ? 'Defenders' : pos === 'MID' ? 'Midfielders' : 'Forwards'}</h2>
-                        <div class="pos-rec-grid">
-                            <div class="pos-rec-col">
-                                <div class="pos-rec-col-title budget">Budget (≤£${getBudgetCap(pos).toFixed(1)}m)</div>
-                                ${budget.map((p, i) => renderRecPlayer(p, i + 1)).join('') || '<div style="color: var(--text-muted); font-size: 12px;">No players found</div>'}
-                            </div>
-                            <div class="pos-rec-col">
-                                <div class="pos-rec-col-title premium">Premium (>£${getBudgetCap(pos).toFixed(1)}m)</div>
-                                ${premium.map((p, i) => renderRecPlayer(p, i + 1)).join('') || '<div style="color: var(--text-muted); font-size: 12px;">No players found</div>'}
-                            </div>
-                        </div>
-                    </div>
-                `;
+            // DEF Recommendations - Focus on clean sheets, goals conceded, xGC
+            html += generatePositionRecs('DEF', analyses, {
+                icon: '🛡️',
+                title: 'Defenders',
+                budgetCap: 5.5,
+                metrics: ['cs', 'gc', 'xGC', 'ptsG'],
+                budgetDesc: 'Solid CS potential at low cost',
+                premiumDesc: 'Elite defenders + attacking threat'
+            });
+
+            // MID Recommendations - Focus on xGI, goals, assists
+            html += generatePositionRecs('MID', analyses, {
+                icon: '⚡',
+                title: 'Midfielders',
+                budgetCap: 7.0,
+                metrics: ['xGI', 'goals', 'assists', 'ptsG'],
+                budgetDesc: 'High xGI relative to price',
+                premiumDesc: 'Elite creators and scorers'
+            });
+
+            // FWD Recommendations - Focus on xG, goals, shots
+            html += generatePositionRecs('FWD', analyses, {
+                icon: '🎯',
+                title: 'Forwards',
+                budgetCap: 7.5,
+                metrics: ['xG', 'goals', 'shots', 'ptsG'],
+                budgetDesc: 'Goal threat on a budget',
+                premiumDesc: 'Premium goal scorers'
             });
 
             return html;
         }
 
-        function renderRecPlayer(p, rank) {
-            const ptsPerGame = p.l5?.games > 0 ? (p.l5.points / p.l5.games).toFixed(1) : '0.0';
-            const xGI = p.l5?.games > 0 ? (p.l5.xGI / p.l5.games).toFixed(2) : '0.00';
+        function generatePositionRecs(pos, analyses, config) {
+            const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
+            const posPlayers = analyses.filter(a => POSITIONS[a.position] === pos && a.l5?.games >= 3);
+            
+            // Calculate position-specific scores
+            const scoredPlayers = posPlayers.map(p => ({
+                ...p,
+                score: calculatePositionScore(p, pos),
+                displayMetrics: getDisplayMetrics(p, pos)
+            }));
+
+            const budgetPlayers = scoredPlayers
+                .filter(p => p.price <= config.budgetCap && (p.l5.minutes / p.l5.games) >= 60)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 5);
+
+            const premiumPlayers = scoredPlayers
+                .filter(p => p.price > config.budgetCap && (p.l5.minutes / p.l5.games) >= 70)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 5);
+
+            return `
+                <div class="pos-rec-section">
+                    <h2 class="pos-rec-title">${config.icon} ${config.title}</h2>
+                    <div class="pos-rec-grid">
+                        <div class="pos-rec-col">
+                            <div class="pos-rec-col-header">
+                                <div class="pos-rec-col-title budget">Budget (≤£${config.budgetCap.toFixed(1)}m)</div>
+                                <div class="pos-rec-col-desc">${config.budgetDesc}</div>
+                            </div>
+                            ${budgetPlayers.length > 0 ? budgetPlayers.map((p, i) => renderRecCard(p, i + 1, pos)).join('') : '<div class="no-players">No players found</div>'}
+                        </div>
+                        <div class="pos-rec-col">
+                            <div class="pos-rec-col-header">
+                                <div class="pos-rec-col-title premium">Premium (>£${config.budgetCap.toFixed(1)}m)</div>
+                                <div class="pos-rec-col-desc">${config.premiumDesc}</div>
+                            </div>
+                            ${premiumPlayers.length > 0 ? premiumPlayers.map((p, i) => renderRecCard(p, i + 1, pos)).join('') : '<div class="no-players">No players found</div>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function calculatePositionScore(p, pos) {
+            const games = p.l5?.games || 1;
+            const minsPerGame = (p.l5?.minutes || 0) / games;
+            const ptsPerGame = (p.l5?.points || 0) / games;
+            const fdr = p.fixtures?.avgFDR3 || 3;
+            const fdrBonus = fdr <= 2 ? 15 : fdr <= 2.5 ? 10 : fdr <= 3 ? 5 : 0;
+
+            if (pos === 'GK') {
+                // GK: Clean sheets, saves, low goals conceded
+                const csPerGame = (p.l5?.cleanSheets || 0) / games;
+                const savesPerGame = (p.l5?.saves || 0) / games;
+                const gcPerGame = (p.l5?.goalsConceded || 0) / games;
+                const value = ptsPerGame / p.price;
+                
+                return (csPerGame * 30) +           // Clean sheets very important
+                       (savesPerGame * 2) +          // Saves add bonus points
+                       ((4 - gcPerGame) * 5) +       // Fewer goals conceded = better
+                       (ptsPerGame * 3) +            // Overall points
+                       (value * 10) +                // Value for money
+                       fdrBonus +                    // Easy fixtures
+                       (minsPerGame >= 85 ? 5 : 0);  // Nailed on bonus
+            }
+
+            if (pos === 'DEF') {
+                // DEF: Clean sheets, goals conceded, xGC, with small xGI bonus for attacking fullbacks
+                const csPerGame = (p.l5?.cleanSheets || 0) / games;
+                const gcPerGame = (p.l5?.goalsConceded || 0) / games;
+                const xGCPerGame = (p.l5?.xGC || 0) / games;
+                const xGIPerGame = (p.l5?.xGI || 0) / games;
+                const value = ptsPerGame / p.price;
+                
+                return (csPerGame * 25) +            // Clean sheets important
+                       ((3 - gcPerGame) * 8) +       // Fewer goals conceded
+                       ((2 - xGCPerGame) * 5) +      // Good xGC
+                       (xGIPerGame * 10) +           // Attacking threat (bonus, not main)
+                       (ptsPerGame * 3) +            // Overall points
+                       (value * 10) +                // Value
+                       fdrBonus +                    // Easy fixtures
+                       (minsPerGame >= 80 ? 5 : 0);  // Nailed on
+            }
+
+            if (pos === 'MID') {
+                // MID: xGI, goals, assists, creativity
+                const xGIPerGame = (p.l5?.xGI || 0) / games;
+                const goalsPerGame = (p.l5?.goals || 0) / games;
+                const assistsPerGame = (p.l5?.assists || 0) / games;
+                const value = ptsPerGame / p.price;
+                
+                return (xGIPerGame * 40) +           // xGI most important
+                       (goalsPerGame * 15) +         // Goals
+                       (assistsPerGame * 10) +       // Assists
+                       (ptsPerGame * 3) +            // Points
+                       (value * 12) +                // Value
+                       fdrBonus +                    // Fixtures
+                       (minsPerGame >= 75 ? 5 : 0);  // Nailed on
+            }
+
+            if (pos === 'FWD') {
+                // FWD: xG, goals, shots, finishing
+                const xGPerGame = (p.l5?.xG || 0) / games;
+                const goalsPerGame = (p.l5?.goals || 0) / games;
+                const xGIPerGame = (p.l5?.xGI || 0) / games;
+                const value = ptsPerGame / p.price;
+                
+                return (xGPerGame * 45) +            // xG most important for forwards
+                       (goalsPerGame * 15) +         // Actual goals
+                       (xGIPerGame * 20) +           // Overall involvement
+                       (ptsPerGame * 3) +            // Points
+                       (value * 12) +                // Value
+                       fdrBonus +                    // Fixtures
+                       (minsPerGame >= 70 ? 5 : 0);  // Nailed on
+            }
+
+            return 0;
+        }
+
+        function getDisplayMetrics(p, pos) {
+            const games = p.l5?.games || 1;
+            
+            if (pos === 'GK') {
+                return {
+                    primary: { label: 'CS', value: p.l5?.cleanSheets || 0 },
+                    secondary: { label: 'Saves', value: p.l5?.saves || 0 },
+                    tertiary: { label: 'GC', value: p.l5?.goalsConceded || 0, inverse: true }
+                };
+            }
+            
+            if (pos === 'DEF') {
+                const xGI = (p.l5?.xGI || 0) / games;
+                return {
+                    primary: { label: 'CS', value: p.l5?.cleanSheets || 0 },
+                    secondary: { label: 'GC', value: p.l5?.goalsConceded || 0, inverse: true },
+                    tertiary: xGI >= 0.15 ? { label: 'xGI', value: xGI.toFixed(2) } : { label: 'xGC', value: ((p.l5?.xGC || 0) / games).toFixed(1), inverse: true }
+                };
+            }
+            
+            if (pos === 'MID') {
+                return {
+                    primary: { label: 'xGI', value: ((p.l5?.xGI || 0) / games).toFixed(2) },
+                    secondary: { label: 'G', value: p.l5?.goals || 0 },
+                    tertiary: { label: 'A', value: p.l5?.assists || 0 }
+                };
+            }
+            
+            if (pos === 'FWD') {
+                return {
+                    primary: { label: 'xG', value: ((p.l5?.xG || 0) / games).toFixed(2) },
+                    secondary: { label: 'G', value: p.l5?.goals || 0 },
+                    tertiary: { label: 'xGI', value: ((p.l5?.xGI || 0) / games).toFixed(2) }
+                };
+            }
+            
+            return {};
+        }
+
+        function renderRecCard(p, rank, pos) {
+            const games = p.l5?.games || 1;
+            const ptsPerGame = ((p.l5?.points || 0) / games).toFixed(1);
             const fdr = p.fixtures?.avgFDR3 || 3;
             const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
+            const metrics = p.displayMetrics;
             
             return `
-                <div class="rec-player">
-                    <div class="rec-rank">${rank}</div>
-                    <div class="rec-info">
-                        <div class="rec-name">${p.name}</div>
-                        <div class="rec-meta">${p.team} • £${p.price.toFixed(1)}m • ${ptsPerGame} pts/g • xGI ${xGI}</div>
+                <div class="rec-card">
+                    <div class="rec-card-rank">${rank}</div>
+                    <div class="rec-card-main">
+                        <div class="rec-card-header">
+                            <div class="rec-card-name">${p.name}</div>
+                            <div class="rec-card-team">${p.team} • £${p.price.toFixed(1)}m</div>
+                        </div>
+                        <div class="rec-card-stats">
+                            <div class="rec-stat ${metrics.primary.inverse ? 'inverse' : ''}">
+                                <span class="rec-stat-value">${metrics.primary.value}</span>
+                                <span class="rec-stat-label">${metrics.primary.label}</span>
+                            </div>
+                            <div class="rec-stat ${metrics.secondary.inverse ? 'inverse' : ''}">
+                                <span class="rec-stat-value">${metrics.secondary.value}</span>
+                                <span class="rec-stat-label">${metrics.secondary.label}</span>
+                            </div>
+                            <div class="rec-stat ${metrics.tertiary.inverse ? 'inverse' : ''}">
+                                <span class="rec-stat-value">${metrics.tertiary.value}</span>
+                                <span class="rec-stat-label">${metrics.tertiary.label}</span>
+                            </div>
+                            <div class="rec-stat">
+                                <span class="rec-stat-value">${ptsPerGame}</span>
+                                <span class="rec-stat-label">Pts/G</span>
+                            </div>
+                        </div>
                     </div>
-                    <span class="fdr-badge ${fdrClass}" style="font-size: 10px;">${fdr.toFixed(1)}</span>
+                    <div class="rec-card-fdr">
+                        <span class="fdr-badge ${fdrClass}">${fdr.toFixed(1)}</span>
+                        <span class="fdr-label">FDR</span>
+                    </div>
                 </div>
             `;
         }
 
         function getBudgetCap(pos) {
             return { GK: 5.0, DEF: 5.5, MID: 7.0, FWD: 7.5 }[pos] || 6.0;
-        }
-
-        function getTopByValue(players, limit) {
-            return players
-                .filter(p => p.l5?.games >= 3 && (p.l5.minutes / p.l5.games) >= 70)
-                .map(p => {
-                    const l5Pts = p.l5.points / p.l5.games;
-                    const l5xGI = p.l5.xGI / p.l5.games;
-                    const fdr = p.fixtures?.avgFDR3 || 3;
-                    const value = l5Pts / p.price;
-                    const score = (value * 10) + (l5Pts * 2) + (l5xGI * 15) + (fdr < 2.5 ? 10 : fdr < 3 ? 5 : 0);
-                    return { ...p, score };
-                })
-                .sort((a, b) => b.score - a.score)
-                .slice(0, limit);
         }
 
         // ============================================
@@ -993,46 +1377,80 @@
         };
         const ROWS_PER_PAGE = 25;
 
-        // Column definitions with metadata
+        // Column definitions with metadata - ALL metrics from original
         const COLUMN_DEFS = {
-            player: { label: 'Player', key: 'name', sortable: true, always: true },
-            team: { label: 'Team', key: 'team', sortable: true, always: true },
-            price: { label: 'Price', key: 'price', sortable: true, format: v => `£${v.toFixed(1)}m` },
-            form: { label: 'Form', key: 'form', sortable: true, format: v => v.toFixed(1), highlight: v => v >= 6 ? 'good' : v >= 4 ? '' : 'bad' },
-            pts: { label: 'Pts (L5)', key: 'l5.points', sortable: true },
-            ptsG: { label: 'Pts/G', key: 'ptsPerGame', sortable: true, format: v => v.toFixed(1), highlight: v => v >= 5 ? 'good' : v >= 3 ? '' : 'bad' },
-            xGI: { label: 'xGI/G', key: 'xgiPerGame', sortable: true, format: v => v.toFixed(2), highlight: v => v >= 0.5 ? 'good' : v >= 0.25 ? '' : 'bad' },
-            goals: { label: 'G', key: 'l5.goals', sortable: true },
-            assists: { label: 'A', key: 'l5.assists', sortable: true },
-            cs: { label: 'CS', key: 'l5.cleanSheets', sortable: true },
-            saves: { label: 'Saves', key: 'l5.saves', sortable: true },
-            gc: { label: 'GC', key: 'l5.goalsConceded', sortable: true },
-            bonus: { label: 'Bonus', key: 'l5.bonus', sortable: true },
-            mins: { label: 'Mins/G', key: 'minsPerGame', sortable: true, format: v => v.toFixed(0), highlight: v => v >= 80 ? 'good' : v >= 60 ? '' : 'bad' },
-            fdr: { label: 'FDR', key: 'fdr', sortable: true, type: 'fdr' },
-            own: { label: 'Own%', key: 'selectedBy', sortable: true, type: 'ownership' },
-            ict: { label: 'ICT', key: 'ict', sortable: true, format: v => v.toFixed(1) },
-            value: { label: 'Value', key: 'valueScore', sortable: true, format: v => v.toFixed(2), highlight: v => v >= 1 ? 'good' : '' },
-            xG: { label: 'xG/G', key: 'xgPerGame', sortable: true, format: v => v.toFixed(2) },
-            xA: { label: 'xA/G', key: 'xaPerGame', sortable: true, format: v => v.toFixed(2) },
-            seasonPts: { label: 'Season Pts', key: 'season.points', sortable: true },
-            seasonPtsG: { label: 'Season Pts/G', key: 'seasonPtsPerGame', sortable: true, format: v => v.toFixed(1) }
+            // Core
+            player: { label: 'Player', key: 'name', sortable: true, always: true, tip: 'Player name' },
+            team: { label: 'Team', key: 'team', sortable: true, tip: 'Team' },
+            price: { label: 'Price', key: 'price', sortable: true, format: v => `£${v.toFixed(1)}m`, tip: 'Current price' },
+            own: { label: 'Own%', key: 'selectedBy', sortable: true, format: v => v.toFixed(1) + '%', tip: 'Ownership percentage' },
+            
+            // Gametime
+            games: { label: 'GP', key: 'l5.games', sortable: true, tip: 'Games played (L5)' },
+            mins: { label: 'Mins', key: 'l5.minutes', sortable: true, tip: 'Total minutes (L5)' },
+            minsG: { label: 'Mins/G', key: 'minsPerGame', sortable: true, format: v => v.toFixed(0), tip: 'Minutes per game', highlight: v => v >= 80 ? 'good' : v >= 60 ? '' : 'bad' },
+            
+            // Points
+            pts: { label: 'Pts', key: 'l5.points', sortable: true, tip: 'Total points (L5)' },
+            ptsG: { label: 'Pts/G', key: 'ptsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Points per game', highlight: v => v >= 5 ? 'good' : v >= 3 ? '' : 'bad' },
+            form: { label: 'Form', key: 'form', sortable: true, format: v => v.toFixed(1), tip: 'FPL form rating', highlight: v => v >= 6 ? 'good' : v >= 4 ? '' : 'bad' },
+            seasonPts: { label: 'Pts (S)', key: 'season.points', sortable: true, tip: 'Total season points' },
+            seasonPtsG: { label: 'Pts/G (S)', key: 'seasonPtsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Season points per game' },
+            value: { label: 'Value', key: 'valueScore', sortable: true, format: v => v.toFixed(2), tip: 'Points per million', highlight: v => v >= 0.8 ? 'good' : '' },
+            
+            // Goals
+            goals: { label: 'G', key: 'l5.goals', sortable: true, tip: 'Goals scored (L5)' },
+            xG: { label: 'xG', key: 'l5.xG', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals (L5)' },
+            xGG: { label: 'xG/G', key: 'xgPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xG per game' },
+            bcm: { label: 'BCM', key: 'l5.bigChancesMissed', sortable: true, tip: 'Big chances missed (L5)' },
+            
+            // Assists/Creativity
+            assists: { label: 'A', key: 'l5.assists', sortable: true, tip: 'Assists (L5)' },
+            xA: { label: 'xA', key: 'l5.xA', sortable: true, format: v => v.toFixed(2), tip: 'Expected assists (L5)' },
+            xAG: { label: 'xA/G', key: 'xaPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xA per game' },
+            kp: { label: 'KP', key: 'l5.keyPasses', sortable: true, tip: 'Key passes (L5)' },
+            bcc: { label: 'BCC', key: 'l5.bigChancesCreated', sortable: true, tip: 'Big chances created (L5)' },
+            
+            // Combined Expected
+            xGI: { label: 'xGI', key: 'l5.xGI', sortable: true, format: v => v.toFixed(2), tip: 'Expected goal involvement (L5)' },
+            xGIG: { label: 'xGI/G', key: 'xgiPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xGI per game', highlight: v => v >= 0.5 ? 'good' : v >= 0.25 ? '' : 'bad' },
+            
+            // Defending
+            cs: { label: 'CS', key: 'l5.cleanSheets', sortable: true, tip: 'Clean sheets (L5)' },
+            gc: { label: 'GC', key: 'l5.goalsConceded', sortable: true, tip: 'Goals conceded (L5)' },
+            xGC: { label: 'xGC', key: 'l5.xGC', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals conceded (L5)' },
+            saves: { label: 'Saves', key: 'l5.saves', sortable: true, tip: 'Saves made (L5)' },
+            penSaved: { label: 'Pen S', key: 'l5.penaltiesSaved', sortable: true, tip: 'Penalties saved (L5)' },
+            
+            // Bonus
+            bonus: { label: 'Bonus', key: 'l5.bonus', sortable: true, tip: 'Bonus points (L5)' },
+            bps: { label: 'BPS', key: 'l5.bps', sortable: true, tip: 'Bonus points system score (L5)' },
+            
+            // ICT Index
+            ict: { label: 'ICT', key: 'l5.ict', sortable: true, format: v => v.toFixed(1), tip: 'ICT Index (L5)' },
+            influence: { label: 'Infl', key: 'l5.influence', sortable: true, format: v => v.toFixed(1), tip: 'Influence score (L5)' },
+            creativity: { label: 'Creat', key: 'l5.creativity', sortable: true, format: v => v.toFixed(1), tip: 'Creativity score (L5)' },
+            threat: { label: 'Threat', key: 'l5.threat', sortable: true, format: v => v.toFixed(1), tip: 'Threat score (L5)' },
+            
+            // Fixtures
+            fdr: { label: 'FDR', key: 'fdr', sortable: true, type: 'fdr', tip: 'Fixture difficulty (next 3)' },
+            fixtures: { label: 'Next 3', key: 'fixtureString', sortable: false, type: 'fixtures', tip: 'Upcoming fixtures' }
         };
 
         // Default columns per position
         const DEFAULT_COLS = {
-            GK: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'cs', 'saves', 'mins', 'fdr', 'own'],
-            DEF: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'cs', 'xGI', 'mins', 'fdr', 'own'],
-            MID: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'xGI', 'goals', 'assists', 'fdr', 'own'],
-            FWD: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'xGI', 'goals', 'assists', 'fdr', 'own']
+            GK: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'saves', 'gc', 'xGC', 'bonus', 'fdr'],
+            DEF: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'gc', 'xGI', 'goals', 'assists', 'bonus', 'fdr'],
+            MID: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'xA', 'bonus', 'fdr'],
+            FWD: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'bcm', 'bonus', 'fdr']
         };
 
-        // Available columns per position
+        // Available columns per position - FULL LIST
         const AVAILABLE_COLS = {
-            GK: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'cs', 'saves', 'gc', 'bonus', 'mins', 'fdr', 'own', 'seasonPts', 'seasonPtsG', 'value'],
-            DEF: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'cs', 'xGI', 'goals', 'assists', 'gc', 'bonus', 'mins', 'fdr', 'own', 'xG', 'xA', 'seasonPts', 'seasonPtsG', 'value'],
-            MID: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'xGI', 'goals', 'assists', 'bonus', 'mins', 'fdr', 'own', 'xG', 'xA', 'ict', 'seasonPts', 'seasonPtsG', 'value'],
-            FWD: ['player', 'team', 'price', 'form', 'pts', 'ptsG', 'xGI', 'goals', 'assists', 'bonus', 'mins', 'fdr', 'own', 'xG', 'xA', 'ict', 'seasonPts', 'seasonPtsG', 'value']
+            GK: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'saves', 'gc', 'xGC', 'penSaved', 'bonus', 'bps', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+            DEF: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'gc', 'xGC', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'bcc', 'kp', 'bonus', 'bps', 'ict', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+            MID: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'cs', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+            FWD: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
         };
 
         function createTable(position, analyses) {
@@ -1060,8 +1478,9 @@
                         minsPerGame: (p.l5?.minutes || 0) / l5Games,
                         seasonPtsPerGame: (p.season?.points || 0) / seasonGames,
                         fdr: p.fixtures?.avgFDR3 || 3,
-                        valueScore: ((p.l5?.points || 0) / l5Games) / p.price,
-                        ict: p.l5?.ict || 0
+                        fdrNext: p.fixtures?.next3 || [],
+                        fixtureString: p.fixtures?.fixtureString || '-',
+                        valueScore: ((p.l5?.points || 0) / l5Games) / p.price
                     };
                 });
 
@@ -1258,6 +1677,7 @@
 
         function renderCell(p, colKey) {
             const col = COLUMN_DEFS[colKey];
+            if (!col) return '<td>-</td>';
             let value = getNestedValue(p, col.key);
             
             if (colKey === 'player') {
@@ -1279,17 +1699,28 @@
             
             if (col.type === 'fdr') {
                 const fdrClass = value <= 2 ? 'fdr-1' : value <= 2.5 ? 'fdr-2' : value <= 3.5 ? 'fdr-3' : value <= 4 ? 'fdr-4' : 'fdr-5';
-                return `<td><span class="fdr-badge ${fdrClass}">${value.toFixed(1)}</span></td>`;
+                return `<td><span class="fdr-badge ${fdrClass}">${(value || 0).toFixed(1)}</span></td>`;
             }
             
-            if (col.type === 'ownership') {
-                const pct = Math.min(100, value);
-                return `<td>
-                    <div class="ownership-bar">
-                        <div class="ownership-track"><div class="ownership-fill" style="width: ${pct}%"></div></div>
-                        <span class="ownership-value">${value.toFixed(1)}%</span>
-                    </div>
-                </td>`;
+            if (col.type === 'fixtures') {
+                const next3 = p.fdrNext || [];
+                if (next3.length > 0) {
+                    return `<td style="white-space: nowrap;">
+                        ${next3.map(f => {
+                            const d = f.difficulty || 3;
+                            const cls = d <= 2 ? 'fdr-1' : d <= 2.5 ? 'fdr-2' : d <= 3.5 ? 'fdr-3' : d <= 4 ? 'fdr-4' : 'fdr-5';
+                            const opp = teams[f.opponent]?.short_name || '???';
+                            const venue = f.isHome ? 'H' : 'A';
+                            return `<span class="fdr-badge ${cls}" style="margin-right: 2px; padding: 2px 4px; font-size: 9px;">${opp}(${venue})</span>`;
+                        }).join('')}
+                    </td>`;
+                }
+                return `<td style="color: var(--text-muted);">-</td>`;
+            }
+            
+            // Handle null/undefined values
+            if (value === null || value === undefined) {
+                return `<td class="stat-cell" style="color: var(--text-muted);">-</td>`;
             }
             
             const formatted = col.format ? col.format(value) : value;
