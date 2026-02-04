@@ -350,6 +350,60 @@
         .action-btn:hover { background: var(--surface-3); color: var(--text-primary); }
         .action-btn.active { background: rgba(74, 222, 128, 0.15); color: var(--color-success); border-color: rgba(74, 222, 128, 0.3); }
 
+        /* Column Selector Dropdown */
+        .column-selector {
+            position: relative;
+        }
+        .column-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            display: none;
+        }
+        .column-dropdown.show { display: block; }
+        .column-dropdown-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-default);
+        }
+        .column-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 150ms;
+            font-size: 12px;
+        }
+        .column-option:hover { background: var(--surface-3); }
+        .column-option input { accent-color: var(--color-success); }
+        .column-option label { cursor: pointer; flex: 1; }
+
+        /* Filters Panel */
+        .filters-panel {
+            background: var(--surface-2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            display: none;
+        }
+        .filters-panel.show { display: block; }
+
         /* Compact Filters Row */
         .filters-row {
             display: flex;
@@ -1509,6 +1563,7 @@
                                         <div class="column-dropdown-title">Show/Hide Columns</div>
                                         ${AVAILABLE_COLS[position].map(col => {
                                             const def = COLUMN_DEFS[col];
+                                            if (!def) return '';
                                             const checked = tableState[position].visibleCols.includes(col);
                                             const disabled = def.always ? 'disabled' : '';
                                             return `
