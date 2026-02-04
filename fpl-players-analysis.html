@@ -985,6 +985,288 @@
         .chart-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
         .chart-container { height: 300px; position: relative; }
 
+        /* COMPARE FUNCTIONALITY */
+        .compare-cell {
+            width: 40px;
+            text-align: center;
+            padding: 8px !important;
+        }
+        .compare-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--color-success);
+        }
+        .compare-checkbox:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .selected-row {
+            background: rgba(74, 222, 128, 0.08) !important;
+        }
+        .selected-row:hover {
+            background: rgba(74, 222, 128, 0.12) !important;
+        }
+
+        /* Compare Bar */
+        .compare-bar {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: 16px;
+            padding: 12px 20px;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transition: bottom 300ms ease;
+        }
+        .compare-bar.show {
+            bottom: 24px;
+        }
+        .compare-bar-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .compare-bar-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .compare-bar-icon {
+            font-size: 20px;
+        }
+        .compare-bar-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .compare-bar-text strong {
+            color: var(--color-success);
+        }
+        .compare-players-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            max-width: 400px;
+        }
+        .compare-player-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: var(--surface-2);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+        .compare-player-chip button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0;
+        }
+        .compare-player-chip button:hover {
+            color: var(--color-danger);
+        }
+        .compare-bar-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .compare-btn {
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+        .compare-btn.clear {
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+        }
+        .compare-btn.clear:hover {
+            background: var(--surface-3);
+            color: var(--text-primary);
+        }
+        .compare-btn.primary {
+            background: var(--color-success);
+            border: none;
+            color: var(--surface-0);
+        }
+        .compare-btn.primary:hover {
+            background: #22c55e;
+            transform: translateY(-1px);
+        }
+
+        /* Compare Modal */
+        .compare-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .compare-modal.show {
+            display: flex;
+        }
+        .compare-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+        .compare-modal-container {
+            position: relative;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: 20px;
+            max-width: 90vw;
+            max-height: 85vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
+        }
+        .compare-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-default);
+            background: var(--surface-2);
+        }
+        .compare-modal-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+        .compare-modal-close {
+            background: var(--surface-3);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 150ms;
+        }
+        .compare-modal-close:hover {
+            background: var(--color-danger);
+            color: white;
+        }
+        .compare-modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            min-width: 600px;
+        }
+
+        /* Compare Content */
+        .compare-header-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-default);
+        }
+        .compare-stat-label {
+            width: 140px;
+            flex-shrink: 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+        }
+        .compare-player-header {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+        }
+        .compare-player-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--surface-3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            margin: 0 auto 8px;
+            color: var(--text-muted);
+        }
+        .compare-player-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        .compare-player-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .compare-group {
+            margin-bottom: 20px;
+        }
+        .compare-group-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-info);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .compare-row {
+            display: flex;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .compare-row:last-child {
+            border-bottom: none;
+        }
+        .compare-stat-value {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .compare-stat-value.best {
+            color: var(--color-success);
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .compare-bar-content {
+                flex-wrap: wrap;
+            }
+            .compare-players-list {
+                max-width: 100%;
+            }
+            .compare-modal-body {
+                min-width: auto;
+                padding: 16px;
+            }
+            .compare-stat-label {
+                width: 100px;
+            }
+            .compare-stat-value {
+                min-width: 80px;
+            }
+        }
+
         /* LOADING */
         .loading-overlay {
             position: fixed;
@@ -1024,6 +1306,35 @@
         <div style="text-align: center;">
             <div class="loader-spinner"></div>
             <div style="margin-top: 16px; color: var(--text-secondary);">Loading players...</div>
+        </div>
+    </div>
+
+    <!-- Compare Bar -->
+    <div class="compare-bar" id="compareBar">
+        <div class="compare-bar-content">
+            <div class="compare-bar-info">
+                <span class="compare-bar-icon">⚖️</span>
+                <span class="compare-bar-text">Compare <strong id="compareCount">0</strong> players</span>
+            </div>
+            <div class="compare-players-list" id="comparePlayersList"></div>
+            <div class="compare-bar-actions">
+                <button class="compare-btn clear" onclick="clearCompare()">Clear</button>
+                <button class="compare-btn primary" onclick="showCompareModal()">Compare Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compare Modal -->
+    <div class="compare-modal" id="compareModal">
+        <div class="compare-modal-backdrop" onclick="closeCompareModal()"></div>
+        <div class="compare-modal-container">
+            <div class="compare-modal-header">
+                <h2>⚖️ Player Comparison</h2>
+                <button class="compare-modal-close" onclick="closeCompareModal()">×</button>
+            </div>
+            <div class="compare-modal-body" id="compareModalContent">
+                <!-- Content generated by JS -->
+            </div>
         </div>
     </div>
 
@@ -1530,6 +1841,10 @@
             FWD: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 }
         };
         const ROWS_PER_PAGE = 25;
+        
+        // Compare functionality
+        let compareList = [];
+        const MAX_COMPARE = 5;
 
         // Column definitions with metadata - ALL metrics from original
         const COLUMN_DEFS = {
@@ -1772,14 +2087,17 @@
 
         function renderTableHeader(position) {
             const state = tableState[position];
-            return state.visibleCols.map(colKey => {
+            const compareHeader = `<th class="compare-header" style="width: 40px; text-align: center;">⚖️</th>`;
+            const cols = state.visibleCols.map(colKey => {
                 const col = COLUMN_DEFS[colKey];
+                if (!col) return '';
                 const isSorted = state.sort === colKey;
                 const sortIcon = isSorted ? (state.sortDir === 'asc' ? '↑' : '↓') : '↕';
                 return `<th class="${isSorted ? 'sorted' : ''}" onclick="sortTable('${position}', '${colKey}')">
                     ${col.label}<span class="sort-icon">${sortIcon}</span>
                 </th>`;
             }).join('');
+            return compareHeader + cols;
         }
 
         function renderTableBody(position) {
@@ -1834,7 +2152,14 @@
 
         function renderPlayerRow(p, position) {
             const state = tableState[position];
-            return `<tr>${state.visibleCols.map(colKey => renderCell(p, colKey)).join('')}</tr>`;
+            const isSelected = compareList.some(cp => cp.id === p.id);
+            const checkboxCell = `<td class="compare-cell">
+                <input type="checkbox" class="compare-checkbox" 
+                    ${isSelected ? 'checked' : ''} 
+                    ${!isSelected && compareList.length >= 5 ? 'disabled' : ''}
+                    onchange="toggleComparePlayer(${p.id}, '${position}')">
+            </td>`;
+            return `<tr class="${isSelected ? 'selected-row' : ''}">${checkboxCell}${state.visibleCols.map(colKey => renderCell(p, colKey)).join('')}</tr>`;
         }
 
         function renderCell(p, colKey) {
@@ -2052,6 +2377,206 @@
                 if (text.includes('Nailed On')) isActive = state.filters.nailed === true;
                 btn.classList.toggle('active', isActive);
             });
+        }
+
+        // ============================================
+        // COMPARE FUNCTIONALITY
+        // ============================================
+        function toggleComparePlayer(playerId, position) {
+            const players = tableData[position] || [];
+            const player = players.find(p => p.id === playerId);
+            if (!player) return;
+            
+            const idx = compareList.findIndex(p => p.id === playerId);
+            if (idx > -1) {
+                compareList.splice(idx, 1);
+            } else if (compareList.length < MAX_COMPARE) {
+                compareList.push(player);
+            }
+            
+            updateCompareBar();
+            // Refresh all tables to update checkboxes
+            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                const body = document.getElementById(`tableBody-${pos}`);
+                if (body) body.innerHTML = renderTableBody(pos);
+            });
+        }
+        
+        function removeFromCompare(playerId) {
+            compareList = compareList.filter(p => p.id !== playerId);
+            updateCompareBar();
+            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                const body = document.getElementById(`tableBody-${pos}`);
+                if (body) body.innerHTML = renderTableBody(pos);
+            });
+        }
+        
+        function clearCompare() {
+            compareList = [];
+            updateCompareBar();
+            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                const body = document.getElementById(`tableBody-${pos}`);
+                if (body) body.innerHTML = renderTableBody(pos);
+            });
+        }
+        
+        function updateCompareBar() {
+            const bar = document.getElementById('compareBar');
+            const count = document.getElementById('compareCount');
+            const list = document.getElementById('comparePlayersList');
+            
+            if (!bar) return;
+            
+            if (compareList.length > 0) {
+                bar.classList.add('show');
+                count.textContent = compareList.length;
+                list.innerHTML = compareList.map(p => `
+                    <div class="compare-player-chip">
+                        <span>${p.name}</span>
+                        <button onclick="removeFromCompare(${p.id})">×</button>
+                    </div>
+                `).join('');
+            } else {
+                bar.classList.remove('show');
+            }
+        }
+        
+        function showCompareModal() {
+            if (compareList.length < 2) {
+                alert('Please select at least 2 players to compare');
+                return;
+            }
+            
+            const modal = document.getElementById('compareModal');
+            const content = document.getElementById('compareModalContent');
+            
+            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            
+            // Determine which stats to show based on positions
+            const hasGK = compareList.some(p => posMap[p.position] === 'GK');
+            const hasDEF = compareList.some(p => posMap[p.position] === 'DEF' || posMap[p.position] === 'GK');
+            const hasAttacker = compareList.some(p => posMap[p.position] === 'MID' || posMap[p.position] === 'FWD');
+            
+            // Build comparison stats based on positions
+            let statGroups = [
+                { 
+                    name: 'Overview', 
+                    stats: [
+                        { key: 'price', label: 'Price', format: v => `£${v.toFixed(1)}m` },
+                        { key: 'selectedBy', label: 'Ownership', format: v => `${v.toFixed(1)}%` },
+                        { key: 'form', label: 'Form', format: v => v.toFixed(1) },
+                        { key: 'totalPoints', label: 'Total Pts' }
+                    ]
+                },
+                {
+                    name: 'Recent Form (L5)',
+                    stats: [
+                        { key: 'l5.points', label: 'Points' },
+                        { key: 'l5.games', label: 'Games' },
+                        { key: 'minsPerGame', label: 'Mins/G', format: v => v.toFixed(0) },
+                        { key: 'ptsPerGame', label: 'Pts/G', format: v => v.toFixed(1) }
+                    ]
+                }
+            ];
+            
+            if (hasAttacker) {
+                statGroups.push({
+                    name: 'Attacking',
+                    stats: [
+                        { key: 'l5.goals', label: 'Goals' },
+                        { key: 'l5.assists', label: 'Assists' },
+                        { key: 'l5.xGI', label: 'xGI', format: v => v.toFixed(2) },
+                        { key: 'xgiPerGame', label: 'xGI/G', format: v => v.toFixed(2) }
+                    ]
+                });
+            }
+            
+            if (hasDEF) {
+                statGroups.push({
+                    name: 'Defensive',
+                    stats: [
+                        { key: 'l5.cleanSheets', label: 'Clean Sheets' },
+                        { key: 'l5.goalsConceded', label: 'Goals Conceded' },
+                        { key: 'l5.xGC', label: 'xGC', format: v => v?.toFixed(2) || '-' }
+                    ]
+                });
+            }
+            
+            if (hasGK) {
+                statGroups.push({
+                    name: 'Goalkeeping',
+                    stats: [
+                        { key: 'l5.saves', label: 'Saves' }
+                    ]
+                });
+            }
+            
+            statGroups.push({
+                name: 'Bonus & Value',
+                stats: [
+                    { key: 'l5.bonus', label: 'Bonus' },
+                    { key: 'valueScore', label: 'Value', format: v => v.toFixed(2) },
+                    { key: 'fdr', label: 'FDR (Next 3)', format: v => v.toFixed(1) }
+                ]
+            });
+            
+            // Get nested value helper
+            const getValue = (obj, path) => {
+                return path.split('.').reduce((o, k) => (o || {})[k], obj);
+            };
+            
+            // Find best value for highlighting
+            const findBest = (stat, isLowerBetter = false) => {
+                const values = compareList.map(p => {
+                    const v = getValue(p, stat.key);
+                    return typeof v === 'number' ? v : null;
+                });
+                if (values.every(v => v === null)) return -1;
+                return isLowerBetter 
+                    ? values.indexOf(Math.min(...values.filter(v => v !== null)))
+                    : values.indexOf(Math.max(...values.filter(v => v !== null)));
+            };
+            
+            const lowerIsBetter = ['l5.goalsConceded', 'l5.xGC', 'fdr', 'price'];
+            
+            content.innerHTML = `
+                <div class="compare-header-row">
+                    <div class="compare-stat-label"></div>
+                    ${compareList.map(p => `
+                        <div class="compare-player-header">
+                            <div class="compare-player-avatar">${p.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
+                            <div class="compare-player-name">${p.name}</div>
+                            <div class="compare-player-meta">${p.team} • ${posMap[p.position]}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                ${statGroups.map(group => `
+                    <div class="compare-group">
+                        <div class="compare-group-title">${group.name}</div>
+                        ${group.stats.map(stat => {
+                            const bestIdx = findBest(stat, lowerIsBetter.includes(stat.key));
+                            return `
+                                <div class="compare-row">
+                                    <div class="compare-stat-label">${stat.label}</div>
+                                    ${compareList.map((p, idx) => {
+                                        const val = getValue(p, stat.key);
+                                        const formatted = stat.format ? stat.format(val) : (val ?? '-');
+                                        const isBest = idx === bestIdx && compareList.length > 1;
+                                        return `<div class="compare-stat-value ${isBest ? 'best' : ''}">${formatted}</div>`;
+                                    }).join('')}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `).join('')}
+            `;
+            
+            modal.classList.add('show');
+        }
+        
+        function closeCompareModal() {
+            document.getElementById('compareModal')?.classList.remove('show');
         }
 
         // Close dropdowns when clicking outside
