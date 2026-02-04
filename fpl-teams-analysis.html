@@ -328,6 +328,10 @@
         .team-meta {
             font-size: 11px;
             color: var(--text-muted);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 2px;
         }
 
         .rank-badge {
@@ -745,6 +749,160 @@
         .bully-tag.consistent { 
             background: var(--surface-2); 
             color: var(--text-muted);
+        }
+
+        /* Venue Tag */
+        .venue-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            background: var(--surface-2);
+            color: var(--text-muted);
+        }
+
+        .venue-tag.home-fortress {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--color-success);
+        }
+
+        .venue-tag.road-warrior {
+            background: rgba(96, 165, 250, 0.15);
+            color: var(--color-info);
+        }
+
+        /* Venue Analysis Section */
+        .venue-analysis {
+            background: var(--surface-0);
+            border-radius: var(--radius-md);
+            padding: var(--space-3);
+            margin-bottom: var(--space-3);
+        }
+
+        .venue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-3);
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .weighted-label {
+            font-size: 10px;
+            padding: 3px 8px;
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+            cursor: help;
+        }
+
+        .venue-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .venue-bar-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .venue-bar-label {
+            width: 50px;
+            font-size: 10px;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        .venue-bar-container {
+            flex: 1;
+            height: 18px;
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .venue-bar {
+            height: 100%;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 6px;
+            transition: width 500ms ease-out;
+            min-width: 30px;
+        }
+
+        .venue-bar.home {
+            background: linear-gradient(90deg, rgba(74, 222, 128, 0.3), rgba(74, 222, 128, 0.6));
+        }
+
+        .venue-bar.away {
+            background: linear-gradient(90deg, rgba(96, 165, 250, 0.3), rgba(96, 165, 250, 0.6));
+        }
+
+        .venue-bar.defense.home {
+            background: linear-gradient(90deg, rgba(52, 211, 153, 0.3), rgba(52, 211, 153, 0.6));
+        }
+
+        .venue-bar.defense.away {
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.6));
+        }
+
+        .venue-bar-value {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .venue-bar-marker {
+            width: 16px;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .venue-insight {
+            margin-top: var(--space-2);
+            padding-top: var(--space-2);
+            border-top: 1px solid var(--border-subtle);
+            text-align: center;
+        }
+
+        .insight-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            background: var(--surface-2);
+            color: var(--text-secondary);
+        }
+
+        .insight-tag.home {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--color-success);
+        }
+
+        .insight-tag.away {
+            background: rgba(96, 165, 250, 0.15);
+            color: var(--color-info);
+        }
+
+        .insight-tag.balanced {
+            background: var(--surface-2);
+            color: var(--text-muted);
+        }
+
+        /* Power splits higher indicator */
+        .power-splits span.higher {
+            background: rgba(74, 222, 128, 0.2);
+            color: var(--color-success);
         }
 
         /* Card Footer */
@@ -1755,6 +1913,38 @@
                 else if (last2 > first2 + 0.5) fixtureSwing = 'worsening';
             }
 
+            // ===== VENUE DEPENDENCY ANALYSIS =====
+            // Calculate how different home vs away performance is
+            const attackHomeDiff = attackPowerHome - attackPowerAway;
+            const defenseHomeDiff = defensePowerHome - defensePowerAway;
+            const avgHomeDiff = (attackHomeDiff + defenseHomeDiff) / 2;
+            
+            let venueLabel = 'balanced';
+            let venueEmoji = '⚖️';
+            if (avgHomeDiff > 15) {
+                venueLabel = 'home-fortress';
+                venueEmoji = '🏠';
+            } else if (avgHomeDiff < -10) {
+                venueLabel = 'road-warrior';
+                venueEmoji = '🛣️';
+            }
+            
+            // Calculate WEIGHTED power based on upcoming fixture venues
+            // If playing 4H 1A, weight home power more heavily
+            const homeWeight = homeFixtureCount / 5;
+            const awayWeight = awayFixtureCount / 5;
+            
+            const weightedAttack = Math.round(
+                (attackPowerHome * homeWeight) + (attackPowerAway * awayWeight)
+            );
+            const weightedDefense = Math.round(
+                (defensePowerHome * homeWeight) + (defensePowerAway * awayWeight)
+            );
+            
+            // "Relevant" rating - what matters for the NEXT 5 fixtures
+            const relevantAttack = weightedAttack;
+            const relevantDefense = weightedDefense;
+
             return {
                 id: teamId,
                 code: team.code,
@@ -1769,6 +1959,18 @@
                 attackPowerAway,
                 defensePowerHome,
                 defensePowerAway,
+                
+                // Weighted metrics (based on upcoming fixtures)
+                weightedAttack,
+                weightedDefense,
+                relevantAttack,
+                relevantDefense,
+                
+                // Venue dependency
+                venueLabel,
+                venueEmoji,
+                attackHomeDiff,
+                defenseHomeDiff,
                 
                 // Fixture opportunity (SEPARATE)
                 fixtureScore,
@@ -1883,6 +2085,10 @@
             const bullyText = team.bullyLabel === 'bully' ? 'Flat-Track Bully' : 
                               team.bullyLabel === 'giant-killer' ? 'Giant Killer' : 'Consistent';
 
+            // Venue label
+            const venueText = team.venueLabel === 'home-fortress' ? 'Home Fortress' : 
+                              team.venueLabel === 'road-warrior' ? 'Road Warrior' : 'Venue Balanced';
+
             // xG performance indicator
             const xgEmoji = team.xgPerformance === 'overperforming' ? '📈' : 
                             team.xgPerformance === 'underperforming' ? '📉' : '➡️';
@@ -1902,10 +2108,11 @@
                 return `<div class="spark-bar xg" style="height: ${height}px;"></div>`;
             }).join('');
 
-            // Gauge calculation
-            const circumference = 2 * Math.PI * 22;
-            const offset = circumference - (primaryValue / 100) * circumference;
-            const gaugeColor = primaryValue >= 65 ? '#4ADE80' : primaryValue >= 45 ? '#FBBF24' : '#F87171';
+            // Home/Away bar widths (for visual comparison)
+            const attackHomeWidth = Math.min(100, team.attackPowerHome);
+            const attackAwayWidth = Math.min(100, team.attackPowerAway);
+            const defenseHomeWidth = Math.min(100, team.defensePowerHome);
+            const defenseAwayWidth = Math.min(100, team.defensePowerAway);
 
             return `
                 <div class="team-card" data-team="${team.name}">
@@ -1917,6 +2124,7 @@
                             <div class="team-name">${team.name}</div>
                             <div class="team-meta">
                                 <span class="bully-tag ${team.bullyLabel}">${bullyEmoji} ${bullyText}</span>
+                                <span class="venue-tag ${team.venueLabel}">${team.venueEmoji} ${venueText}</span>
                             </div>
                         </div>
                         <div class="rank-badge ${rank <= 3 ? 'top-3' : ''}">${rank}</div>
@@ -1930,8 +2138,8 @@
                             </div>
                             <div class="power-value ${team.attackPower >= 60 ? 'good' : team.attackPower >= 40 ? '' : 'bad'}">${team.attackPower}</div>
                             <div class="power-splits">
-                                <span title="Home Attack">H: ${team.attackPowerHome}</span>
-                                <span title="Away Attack">A: ${team.attackPowerAway}</span>
+                                <span title="Home Attack" class="${team.attackPowerHome > team.attackPowerAway ? 'higher' : ''}">H: ${team.attackPowerHome}</span>
+                                <span title="Away Attack" class="${team.attackPowerAway > team.attackPowerHome ? 'higher' : ''}">A: ${team.attackPowerAway}</span>
                             </div>
                         </div>
                         <div class="power-metric defense">
@@ -1941,8 +2149,8 @@
                             </div>
                             <div class="power-value ${team.defensePower >= 60 ? 'good' : team.defensePower >= 40 ? '' : 'bad'}">${team.defensePower}</div>
                             <div class="power-splits">
-                                <span title="Home Defense">H: ${team.defensePowerHome}</span>
-                                <span title="Away Defense">A: ${team.defensePowerAway}</span>
+                                <span title="Home Defense" class="${team.defensePowerHome > team.defensePowerAway ? 'higher' : ''}">H: ${team.defensePowerHome}</span>
+                                <span title="Away Defense" class="${team.defensePowerAway > team.defensePowerHome ? 'higher' : ''}">A: ${team.defensePowerAway}</span>
                             </div>
                         </div>
                         <div class="power-metric fixture">
@@ -1954,6 +2162,61 @@
                             <div class="power-splits">
                                 <span>${team.homeFixtures}H ${team.awayFixtures}A</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="venue-analysis">
+                        <div class="venue-header">
+                            <span>Home vs Away Performance</span>
+                            <span class="weighted-label" title="Weighted by upcoming ${team.homeFixtures}H ${team.awayFixtures}A fixtures">
+                                Weighted: ⚔️${team.weightedAttack} 🛡️${team.weightedDefense}
+                            </span>
+                        </div>
+                        <div class="venue-bars">
+                            <div class="venue-bar-row">
+                                <span class="venue-bar-label">Attack</span>
+                                <div class="venue-bar-container">
+                                    <div class="venue-bar home" style="width: ${attackHomeWidth}%;" title="Home: ${team.attackPowerHome}">
+                                        <span class="venue-bar-value">${team.attackPowerHome}</span>
+                                    </div>
+                                </div>
+                                <span class="venue-bar-marker">H</span>
+                            </div>
+                            <div class="venue-bar-row">
+                                <span class="venue-bar-label"></span>
+                                <div class="venue-bar-container">
+                                    <div class="venue-bar away" style="width: ${attackAwayWidth}%;" title="Away: ${team.attackPowerAway}">
+                                        <span class="venue-bar-value">${team.attackPowerAway}</span>
+                                    </div>
+                                </div>
+                                <span class="venue-bar-marker">A</span>
+                            </div>
+                            <div class="venue-bar-row" style="margin-top: 8px;">
+                                <span class="venue-bar-label">Defense</span>
+                                <div class="venue-bar-container">
+                                    <div class="venue-bar home defense" style="width: ${defenseHomeWidth}%;" title="Home: ${team.defensePowerHome}">
+                                        <span class="venue-bar-value">${team.defensePowerHome}</span>
+                                    </div>
+                                </div>
+                                <span class="venue-bar-marker">H</span>
+                            </div>
+                            <div class="venue-bar-row">
+                                <span class="venue-bar-label"></span>
+                                <div class="venue-bar-container">
+                                    <div class="venue-bar away defense" style="width: ${defenseAwayWidth}%;" title="Away: ${team.defensePowerAway}">
+                                        <span class="venue-bar-value">${team.defensePowerAway}</span>
+                                    </div>
+                                </div>
+                                <span class="venue-bar-marker">A</span>
+                            </div>
+                        </div>
+                        <div class="venue-insight">
+                            ${team.venueLabel === 'home-fortress' ? 
+                                `<span class="insight-tag home">🏠 +${team.attackHomeDiff} attack, +${team.defenseHomeDiff} defense at home</span>` :
+                              team.venueLabel === 'road-warrior' ?
+                                `<span class="insight-tag away">🛣️ Better on the road by ${Math.abs(team.attackHomeDiff + team.defenseHomeDiff) / 2} avg</span>` :
+                                `<span class="insight-tag balanced">⚖️ Consistent home and away</span>`
+                            }
                         </div>
                     </div>
 
