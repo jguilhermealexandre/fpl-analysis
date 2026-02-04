@@ -1197,17 +1197,30 @@
 
         .calendar-controls {
             display: flex;
-            gap: var(--space-3);
+            gap: var(--space-4);
             margin-bottom: var(--space-4);
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .control-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
         }
 
         .calendar-control-btn {
-            padding: var(--space-2) var(--space-4);
+            padding: var(--space-2) var(--space-3);
             background: var(--surface-2);
             border: 1px solid var(--border-default);
             border-radius: var(--radius-md);
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: 11px;
             cursor: pointer;
             transition: all 150ms;
         }
@@ -1221,6 +1234,20 @@
             background: var(--color-info);
             color: var(--surface-0);
             border-color: var(--color-info);
+        }
+
+        /* Color classes for different modes */
+        .fixture-cell.color-1 { background: var(--fdr-1); color: #000; }
+        .fixture-cell.color-2 { background: var(--fdr-2); color: #000; }
+        .fixture-cell.color-3 { background: var(--fdr-3); color: #000; }
+        .fixture-cell.color-4 { background: var(--fdr-4); color: #000; }
+        .fixture-cell.color-5 { background: var(--fdr-5); color: #fff; }
+
+        /* CS value in fixture cell */
+        .cs-value {
+            font-size: 8px;
+            font-weight: 700;
+            line-height: 1;
         }
 
         .calendar-container {
@@ -2317,6 +2344,7 @@
         // ===== FULL SEASON CALENDAR =====
         let fullSeasonFixtures = [];
         let calendarViewMode = 'all'; // 'all', 'remaining', 'next10'
+        let calendarColorMode = 'fdr'; // 'fdr', 'attack', 'defense', 'cs'
 
         function renderFullCalendar(container) {
             // Build full season fixture map for all teams
@@ -2338,41 +2366,40 @@
                 displayGWs = allGWs.filter(gw => gw >= currentGW).slice(0, 10);
             }
 
+            // Color mode descriptions
+            const colorModeDesc = {
+                fdr: 'FDR difficulty rating',
+                attack: 'Opponent defense weakness (green = leaky defense, good for attackers)',
+                defense: 'Opponent attack threat (green = weak attack, good for defenders)',
+                cs: 'Clean sheet probability (green = high CS chance)'
+            };
+
             const html = `
                 <div class="calendar-section">
                     <div class="calendar-header">
                         <div>
                             <h2 class="calendar-title">📅 Full Season Fixture Calendar</h2>
-                            <p class="calendar-subtitle">Scroll horizontally to see all gameweeks. Green patches indicate easy fixture runs.</p>
+                            <p class="calendar-subtitle">${colorModeDesc[calendarColorMode]}</p>
                         </div>
-                        <div class="calendar-legend">
-                            <div class="legend-item">
-                                <div class="legend-dot" style="background: var(--fdr-1);"></div>
-                                <span>Very Easy (1-2)</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-dot" style="background: var(--fdr-2);"></div>
-                                <span>Easy (2)</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-dot" style="background: var(--fdr-3);"></div>
-                                <span>Medium (3)</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-dot" style="background: var(--fdr-4);"></div>
-                                <span>Hard (4)</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-dot" style="background: var(--fdr-5);"></div>
-                                <span>Very Hard (5)</span>
-                            </div>
+                        <div class="calendar-legend" id="calendarLegend">
+                            ${getCalendarLegend()}
                         </div>
                     </div>
 
                     <div class="calendar-controls">
-                        <button class="calendar-control-btn ${calendarViewMode === 'all' ? 'active' : ''}" onclick="setCalendarView('all')">All Season</button>
-                        <button class="calendar-control-btn ${calendarViewMode === 'remaining' ? 'active' : ''}" onclick="setCalendarView('remaining')">Remaining</button>
-                        <button class="calendar-control-btn ${calendarViewMode === 'next10' ? 'active' : ''}" onclick="setCalendarView('next10')">Next 10 GWs</button>
+                        <div class="control-group">
+                            <span class="control-label">View:</span>
+                            <button class="calendar-control-btn ${calendarViewMode === 'all' ? 'active' : ''}" onclick="setCalendarView('all')">All Season</button>
+                            <button class="calendar-control-btn ${calendarViewMode === 'remaining' ? 'active' : ''}" onclick="setCalendarView('remaining')">Remaining</button>
+                            <button class="calendar-control-btn ${calendarViewMode === 'next10' ? 'active' : ''}" onclick="setCalendarView('next10')">Next 10 GWs</button>
+                        </div>
+                        <div class="control-group">
+                            <span class="control-label">Color by:</span>
+                            <button class="calendar-control-btn ${calendarColorMode === 'fdr' ? 'active' : ''}" onclick="setCalendarColor('fdr')">FDR</button>
+                            <button class="calendar-control-btn ${calendarColorMode === 'attack' ? 'active' : ''}" onclick="setCalendarColor('attack')">🎯 Attackers</button>
+                            <button class="calendar-control-btn ${calendarColorMode === 'defense' ? 'active' : ''}" onclick="setCalendarColor('defense')">🛡️ Defenders</button>
+                            <button class="calendar-control-btn ${calendarColorMode === 'cs' ? 'active' : ''}" onclick="setCalendarColor('cs')">🧤 CS %</button>
+                        </div>
                     </div>
 
                     <div class="calendar-container">
@@ -2405,8 +2432,49 @@
             container.innerHTML = html;
         }
 
+        function getCalendarLegend() {
+            if (calendarColorMode === 'fdr') {
+                return `
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-1);"></div><span>Very Easy (1-2)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-2);"></div><span>Easy (2)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-3);"></div><span>Medium (3)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-4);"></div><span>Hard (4)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-5);"></div><span>Very Hard (5)</span></div>
+                `;
+            } else if (calendarColorMode === 'attack') {
+                return `
+                    <div class="legend-item"><div class="legend-dot" style="background: #4ADE80;"></div><span>Leaky Def (Great)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #86EFAC;"></div><span>Weak Def</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #A3A3A3;"></div><span>Average</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #FB923C;"></div><span>Strong Def</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #EF4444;"></div><span>Elite Def (Avoid)</span></div>
+                `;
+            } else if (calendarColorMode === 'defense') {
+                return `
+                    <div class="legend-item"><div class="legend-dot" style="background: #4ADE80;"></div><span>Weak Att (Safe)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #86EFAC;"></div><span>Below Avg</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #A3A3A3;"></div><span>Average</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #FB923C;"></div><span>Strong Att</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #EF4444;"></div><span>Elite Att (Danger)</span></div>
+                `;
+            } else { // cs
+                return `
+                    <div class="legend-item"><div class="legend-dot" style="background: #4ADE80;"></div><span>50%+ CS</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #86EFAC;"></div><span>40-50%</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #A3A3A3;"></div><span>30-40%</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #FB923C;"></div><span>20-30%</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #EF4444;"></div><span>&lt;20%</span></div>
+                `;
+            }
+        }
+
         function setCalendarView(mode) {
             calendarViewMode = mode;
+            renderCurrentView();
+        }
+
+        function setCalendarColor(mode) {
+            calendarColorMode = mode;
             renderCurrentView();
         }
 
@@ -2428,31 +2496,63 @@
                     
                     if (homeTeam && fixtureMap[f.team_h]) {
                         fixtureMap[f.team_h][f.event] = fixtureMap[f.team_h][f.event] || [];
+                        
+                        // Calculate CS probability and attack/defense ratings for home team
+                        const csChance = calculateCSChance(homeTeam, awayTeam, true);
+                        
                         fixtureMap[f.team_h][f.event].push({
                             opponent: awayTeam?.shortName || '???',
                             opponentId: f.team_a,
                             isHome: true,
                             fdr: f.team_h_difficulty || 3,
                             finished: f.finished,
-                            gw: f.event
+                            gw: f.event,
+                            csChance,
+                            oppDefensePower: awayTeam?.defensePower || 50,
+                            oppAttackPower: awayTeam?.attackPower || 50
                         });
                     }
                     
                     if (awayTeam && fixtureMap[f.team_a]) {
                         fixtureMap[f.team_a][f.event] = fixtureMap[f.team_a][f.event] || [];
+                        
+                        // Calculate CS probability and attack/defense ratings for away team
+                        const csChance = calculateCSChance(awayTeam, homeTeam, false);
+                        
                         fixtureMap[f.team_a][f.event].push({
                             opponent: homeTeam?.shortName || '???',
                             opponentId: f.team_h,
                             isHome: false,
                             fdr: f.team_a_difficulty || 3,
                             finished: f.finished,
-                            gw: f.event
+                            gw: f.event,
+                            csChance,
+                            oppDefensePower: homeTeam?.defensePower || 50,
+                            oppAttackPower: homeTeam?.attackPower || 50
                         });
                     }
                 });
             }
 
             return fixtureMap;
+        }
+
+        function calculateCSChance(team, opponent, isHome) {
+            if (!team || !opponent) return 30;
+            
+            // Get relevant defense/attack powers based on venue
+            const teamDef = isHome ? (team.defensePowerHome || team.defensePower) : (team.defensePowerAway || team.defensePower);
+            const oppAtt = isHome ? (opponent.attackPowerAway || opponent.attackPower) : (opponent.attackPowerHome || opponent.attackPower);
+            
+            // Base CS probability (home teams ~35%, away ~25%)
+            const baseCS = isHome ? 35 : 25;
+            
+            // Adjust based on team defense vs opponent attack
+            const defenseBonus = (teamDef - 50) * 0.3;
+            const attackPenalty = (oppAtt - 50) * 0.25;
+            
+            const csChance = Math.round(Math.min(65, Math.max(8, baseCS + defenseBonus - attackPenalty)));
+            return csChance;
         }
 
         function renderCalendarRows(fixtureMap, displayGWs, easyRuns) {
@@ -2477,7 +2577,7 @@
                                 <span class="calendar-team-fdr ${avgClass}">${avgFdr.toFixed(1)}</span>
                             </div>
                         </td>
-                        ${displayGWs.map(gw => renderFixtureCell(fixtureMap[team.id][gw], gw, teamEasyRuns)).join('')}
+                        ${displayGWs.map(gw => renderFixtureCell(fixtureMap[team.id][gw], gw, teamEasyRuns, team)).join('')}
                         <td>
                             <span class="analysis-team-stat ${avgClass}">${avgFdr.toFixed(1)}</span>
                         </td>
@@ -2486,7 +2586,50 @@
             }).join('');
         }
 
-        function renderFixtureCell(fixtures, gw, easyRuns) {
+        function getColorClass(fixture, team) {
+            if (!fixture) return 'bgw-cell';
+            
+            if (calendarColorMode === 'fdr') {
+                return `fdr-${Math.round(fixture.fdr)}`;
+            } else if (calendarColorMode === 'attack') {
+                // Green = weak opponent defense (good for attackers)
+                const oppDef = fixture.oppDefensePower || 50;
+                if (oppDef <= 35) return 'color-1'; // Very weak defense
+                if (oppDef <= 45) return 'color-2';
+                if (oppDef <= 55) return 'color-3';
+                if (oppDef <= 65) return 'color-4';
+                return 'color-5'; // Elite defense
+            } else if (calendarColorMode === 'defense') {
+                // Green = weak opponent attack (safe for defenders)
+                const oppAtt = fixture.oppAttackPower || 50;
+                if (oppAtt <= 35) return 'color-1'; // Very weak attack
+                if (oppAtt <= 45) return 'color-2';
+                if (oppAtt <= 55) return 'color-3';
+                if (oppAtt <= 65) return 'color-4';
+                return 'color-5'; // Elite attack
+            } else { // cs
+                const cs = fixture.csChance || 30;
+                if (cs >= 50) return 'color-1';
+                if (cs >= 40) return 'color-2';
+                if (cs >= 30) return 'color-3';
+                if (cs >= 20) return 'color-4';
+                return 'color-5';
+            }
+        }
+
+        function getFixtureTooltip(fixture, gw) {
+            if (!fixture) return '';
+            
+            const base = `GW${gw}: ${fixture.opponent} (${fixture.isHome ? 'H' : 'A'})`;
+            const fdr = `FDR: ${fixture.fdr}`;
+            const cs = `CS: ${fixture.csChance || '?'}%`;
+            const oppDef = `Opp Def: ${fixture.oppDefensePower || '?'}`;
+            const oppAtt = `Opp Att: ${fixture.oppAttackPower || '?'}`;
+            
+            return `${base}\n${fdr} | ${cs}\n${oppDef} | ${oppAtt}`;
+        }
+
+        function renderFixtureCell(fixtures, gw, easyRuns, team) {
             if (!fixtures || fixtures.length === 0) {
                 return `<td><div class="fixture-cell bgw-cell"></div></td>`;
             }
@@ -2502,25 +2645,29 @@
                 }
             }
 
+            const f = fixtures[0];
+            const colorClass = getColorClass(f, team);
+            const tooltip = getFixtureTooltip(f, gw);
+            
+            // Show CS% in cell if in CS mode
+            const cellContent = calendarColorMode === 'cs' ? 
+                `<span class="cs-value">${f.csChance || '?'}%</span>` :
+                `<span class="opp">${f.opponent}</span><span class="venue">${f.isHome ? 'H' : 'A'}</span>`;
+
             // Handle double gameweeks
             if (fixtures.length > 1) {
                 return `<td>
-                    <div class="fixture-cell fdr-${Math.round(fixtures[0].fdr)} ${fixtures[0].finished ? 'past' : ''} ${runClass}" 
-                         title="GW${gw}: ${fixtures.map(f => `${f.opponent} (${f.isHome ? 'H' : 'A'})`).join(' & ')}">
-                        <span class="opp">${fixtures[0].opponent}</span>
-                        <span class="venue">${fixtures[0].isHome ? 'H' : 'A'}</span>
+                    <div class="fixture-cell ${colorClass} ${f.finished ? 'past' : ''} ${runClass}" 
+                         title="${fixtures.map(fix => getFixtureTooltip(fix, gw)).join('\n---\n')}">
+                        ${cellContent}
                         <span class="dgw-indicator">DGW</span>
                     </div>
                 </td>`;
             }
 
-            const f = fixtures[0];
             return `<td>
-                <div class="fixture-cell fdr-${Math.round(f.fdr)} ${f.finished ? 'past' : ''} ${runClass}" 
-                     title="GW${gw}: ${f.opponent} (${f.isHome ? 'H' : 'A'}) - FDR ${f.fdr}">
-                    <span class="opp">${f.opponent}</span>
-                    <span class="venue">${f.isHome ? 'H' : 'A'}</span>
-                </div>
+                <div class="fixture-cell ${colorClass} ${f.finished ? 'past' : ''} ${runClass}" 
+                     title="${tooltip}">${cellContent}</div>
             </td>`;
         }
 
