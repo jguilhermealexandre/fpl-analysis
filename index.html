@@ -13,32 +13,47 @@
         }
 
         :root {
+            /* Surfaces - GitHub inspired */
             --surface-bg: #0A0E14;
             --surface-0: #0D1117;
             --surface-1: #161B22;
             --surface-2: #1C2128;
             --surface-3: #21262D;
+            --surface-4: #30363D;
             
+            /* Text hierarchy */
             --text-primary: rgba(255, 255, 255, 0.87);
             --text-secondary: rgba(255, 255, 255, 0.60);
             --text-muted: rgba(255, 255, 255, 0.45);
             
+            /* Borders */
             --border-subtle: rgba(255, 255, 255, 0.06);
             --border-default: rgba(255, 255, 255, 0.10);
+            --border-emphasis: rgba(255, 255, 255, 0.16);
             
+            /* Semantic */
             --color-success: #4ADE80;
+            --color-error: #F87171;
+            --color-warning: #FBBF24;
+            --color-info: #60A5FA;
+            
+            /* Tool colors */
             --color-wizard: #A78BFA;
             --color-myteam: #F87171;
             --color-players: #4ADE80;
             --color-teams: #60A5FA;
             --color-rivals: #FB923C;
             
+            /* Spacing */
+            --space-1: 0.25rem;
             --space-2: 0.5rem;
             --space-3: 0.75rem;
             --space-4: 1rem;
-            --space-5: 1.25rem;
             --space-6: 1.5rem;
+            --space-8: 2rem;
             
+            /* Radius */
+            --radius-sm: 4px;
             --radius-md: 8px;
             --radius-lg: 12px;
         }
@@ -52,10 +67,13 @@
             min-height: 100vh;
         }
 
-        /* ===== NAV ===== */
+        /* ===== TOP NAVIGATION ===== */
         .top-nav {
             background: var(--surface-0);
             border-bottom: 1px solid var(--border-default);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .nav-container {
@@ -65,7 +83,7 @@
             display: flex;
             align-items: center;
             height: 56px;
-            gap: 2rem;
+            gap: var(--space-8);
         }
 
         .nav-logo {
@@ -74,11 +92,19 @@
             font-weight: 700;
             color: var(--text-primary);
             text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
         }
 
-        .nav-logo span { color: var(--color-success); }
+        .nav-logo span {
+            color: var(--color-success);
+        }
 
-        .nav-links { display: flex; gap: 4px; }
+        .nav-links {
+            display: flex;
+            gap: var(--space-1);
+        }
 
         .nav-link {
             padding: var(--space-2) var(--space-4);
@@ -98,152 +124,287 @@
             background: var(--surface-2);
         }
 
-        @media (max-width: 900px) {
-            .nav-links { display: none; }
+        .nav-link .icon {
+            font-size: 16px;
         }
 
-        /* ===== MAIN ===== */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+        }
+
+        /* ===== MAIN CONTENT ===== */
         .main-content {
             max-width: 1400px;
             margin: 0 auto;
-            padding: var(--space-5) var(--space-6);
+            padding: var(--space-6);
         }
 
-        /* ===== HERO ===== */
+        /* ===== HERO SECTION ===== */
         .hero {
             text-align: center;
-            margin-bottom: var(--space-5);
+            padding: var(--space-6) 0;
+            margin-bottom: var(--space-6);
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(74, 222, 128, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
         }
 
         .hero-title {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 36px;
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-3);
+            letter-spacing: -1px;
+        }
+
+        .hero-title .highlight {
+            color: var(--color-success);
+        }
+
+        .hero-subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 36px;
+            }
+            .hero-subtitle {
+                font-size: 14px;
+            }
+        }
+
+        /* ===== FEATURED WIZARD ===== */
+        .featured-section {
+            margin-bottom: var(--space-6);
+        }
+
+        .section-label {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: var(--space-4);
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        .wizard-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            cursor: pointer;
+            transition: all 200ms ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wizard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 0% 0%, rgba(167, 139, 250, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 100% 100%, rgba(74, 222, 128, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .wizard-card:hover {
+            border-color: var(--color-wizard);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .wizard-content {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: var(--space-6);
+            align-items: center;
+        }
+
+        @media (max-width: 900px) {
+            .wizard-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+
+        .wizard-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--color-wizard), var(--color-success));
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        @media (max-width: 900px) {
+            .wizard-icon {
+                margin: 0 auto;
+            }
+        }
+
+        .wizard-info {
+            flex: 1;
+        }
+
+        .wizard-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-1) var(--space-3);
+            background: rgba(167, 139, 250, 0.15);
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            border-radius: var(--radius-sm);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--color-wizard);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: var(--space-3);
+        }
+
+        .wizard-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
             font-weight: 700;
             color: var(--text-primary);
             margin-bottom: var(--space-2);
         }
 
-        .hero-title .highlight { color: var(--color-success); }
-
-        .hero-subtitle {
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        @media (max-width: 768px) {
-            .hero-title { font-size: 28px; }
-        }
-
-        /* ===== WIZARD CARD ===== */
-        .wizard-card {
-            background: linear-gradient(135deg, var(--surface-1) 0%, rgba(167, 139, 250, 0.05) 100%);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-            padding: var(--space-5) var(--space-6);
-            margin-bottom: var(--space-4);
-            cursor: pointer;
-            transition: all 200ms ease-out;
-            display: flex;
-            align-items: center;
-            gap: var(--space-6);
-        }
-
-        .wizard-card:hover {
-            border-color: var(--color-wizard);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-        }
-
-        .wizard-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, var(--color-wizard), var(--color-success));
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            flex-shrink: 0;
-        }
-
-        .wizard-info { flex: 1; }
-
-        .wizard-tag {
-            display: inline-flex;
-            padding: 2px 8px;
-            background: rgba(167, 139, 250, 0.15);
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--color-wizard);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: var(--space-2);
-        }
-
-        .wizard-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 22px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-
-        .wizard-card:hover .wizard-title { color: var(--color-wizard); }
-
         .wizard-desc {
-            font-size: 13px;
-            color: var(--text-muted);
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 500px;
         }
 
-        .wizard-arrow {
-            font-size: 24px;
-            color: var(--text-muted);
-            transition: transform 200ms ease-out;
-        }
-
-        .wizard-card:hover .wizard-arrow {
-            transform: translateX(4px);
-            color: var(--color-wizard);
-        }
-
-        @media (max-width: 600px) {
-            .wizard-card {
-                flex-direction: column;
-                text-align: center;
+        @media (max-width: 900px) {
+            .wizard-desc {
+                margin: 0 auto;
             }
-            .wizard-arrow { display: none; }
+        }
+
+        .wizard-cta {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .btn-primary {
+            padding: var(--space-3) var(--space-6);
+            background: var(--color-success);
+            color: var(--surface-bg);
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms ease-out;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3);
         }
 
         /* ===== TOOLS GRID ===== */
+        .tools-section {
+            margin-bottom: var(--space-8);
+        }
+
         .tools-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: var(--space-4);
         }
 
-        @media (max-width: 1000px) {
-            .tools-grid { grid-template-columns: repeat(2, 1fr); }
+        @media (max-width: 1100px) {
+            .tools-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
-        @media (max-width: 500px) {
-            .tools-grid { grid-template-columns: 1fr; }
+        @media (max-width: 600px) {
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
-        /* ===== TOOL CARDS ===== */
         .tool-card {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
             border-radius: var(--radius-lg);
-            padding: var(--space-5);
+            padding: var(--space-6);
             cursor: pointer;
             transition: all 200ms ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--tool-color);
+            opacity: 0;
+            transition: opacity 200ms ease-out;
         }
 
         .tool-card:hover {
             border-color: var(--tool-color);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .tool-card:hover::before {
+            opacity: 1;
         }
 
         .tool-card.myteam { --tool-color: var(--color-myteam); }
@@ -252,34 +413,38 @@
         .tool-card.rivals { --tool-color: var(--color-rivals); }
 
         .tool-icon {
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             background: var(--surface-2);
             border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
-            margin-bottom: var(--space-3);
+            font-size: 24px;
+            margin-bottom: var(--space-4);
             transition: all 200ms ease-out;
         }
 
         .tool-card:hover .tool-icon {
             background: var(--tool-color);
+            transform: scale(1.05);
         }
 
         .tool-title {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 17px;
+            font-size: 18px;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 4px;
+            margin-bottom: var(--space-2);
+            transition: color 200ms ease-out;
         }
 
-        .tool-card:hover .tool-title { color: var(--tool-color); }
+        .tool-card:hover .tool-title {
+            color: var(--tool-color);
+        }
 
         .tool-desc {
-            font-size: 12px;
+            font-size: 13px;
             color: var(--text-muted);
             line-height: 1.5;
         }
@@ -298,7 +463,7 @@
             z-index: 100;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 768px) {
             .mobile-nav {
                 display: flex;
                 justify-content: space-around;
@@ -317,77 +482,143 @@
             color: var(--text-muted);
             text-decoration: none;
             font-size: 10px;
+            transition: color 150ms ease-out;
         }
 
-        .mobile-nav-item:hover { color: var(--color-success); }
-        .mobile-nav-item .icon { font-size: 20px; }
+        .mobile-nav-item:hover {
+            color: var(--color-success);
+        }
+
+        .mobile-nav-item .icon {
+            font-size: 20px;
+        }
     </style>
 </head>
 <body>
+    <!-- Top Navigation -->
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="index.html" class="nav-logo">⚡ FPL<span>Tools</span></a>
+            <a href="index.html" class="nav-logo">
+                ⚡ FPL<span>Tools</span>
+            </a>
             <div class="nav-links">
-                <a href="fpl-transfer-wizard.html" class="nav-link"><span class="icon">🧙‍♂️</span> Wizard</a>
-                <a href="fpl-my-team-analysis.html" class="nav-link"><span class="icon">⚽</span> My Team</a>
-                <a href="fpl-players-analysis.html" class="nav-link"><span class="icon">👤</span> Players</a>
-                <a href="fpl-teams-analysis.html" class="nav-link"><span class="icon">📊</span> Teams</a>
-                <a href="fpl-league-rivals.html" class="nav-link"><span class="icon">🏆</span> Rivals</a>
+                <a href="fpl-transfer-wizard.html" class="nav-link">
+                    <span class="icon">🧙‍♂️</span> Wizard
+                </a>
+                <a href="fpl-my-team-analysis.html" class="nav-link">
+                    <span class="icon">⚽</span> My Team
+                </a>
+                <a href="fpl-players-analysis.html" class="nav-link">
+                    <span class="icon">👤</span> Players
+                </a>
+                <a href="fpl-teams-analysis.html" class="nav-link">
+                    <span class="icon">📊</span> Teams
+                </a>
+                <a href="fpl-league-rivals.html" class="nav-link">
+                    <span class="icon">🏆</span> Rivals
+                </a>
             </div>
         </div>
     </nav>
 
+    <!-- Main Content -->
     <main class="main-content">
+        <!-- Hero Section -->
         <section class="hero">
-            <h1 class="hero-title">Make <span class="highlight">Smarter</span> FPL Decisions</h1>
-            <p class="hero-subtitle">Team ratings, player stats, fixture analysis, and transfer recommendations.</p>
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    Make <span class="highlight">Smarter</span> FPL Decisions
+                </h1>
+                <p class="hero-subtitle">
+                    Team ratings, player stats, fixture analysis, and transfer recommendations.
+                </p>
+            </div>
         </section>
 
         <!-- Featured Wizard -->
-        <div class="wizard-card" onclick="window.location.href='fpl-transfer-wizard.html'">
-            <div class="wizard-icon">🧙‍♂️</div>
-            <div class="wizard-info">
-                <div class="wizard-tag">✨ Guided Experience</div>
-                <h2 class="wizard-title">Transfer Wizard</h2>
-                <p class="wizard-desc">Step-by-step workflow to analyze your squad, identify problems, and find perfect replacements.</p>
+        <section class="featured-section">
+            <div class="section-label">Featured Tool</div>
+            <div class="wizard-card" onclick="window.location.href='fpl-transfer-wizard.html'">
+                <div class="wizard-content">
+                    <div class="wizard-icon">🧙‍♂️</div>
+                    <div class="wizard-info">
+                        <div class="wizard-tag">✨ Guided Experience</div>
+                        <h2 class="wizard-title">Transfer Wizard</h2>
+                        <p class="wizard-desc">
+                            Step-by-step workflow to analyze your squad, identify problem areas, and find the perfect replacements.
+                        </p>
+                    </div>
+                    <div class="wizard-cta">
+                        <button class="btn-primary">
+                            Start Wizard
+                            <span>→</span>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="wizard-arrow">→</div>
-        </div>
+        </section>
 
-        <!-- 4 Tools Grid -->
-        <div class="tools-grid">
-            <div class="tool-card myteam" onclick="window.location.href='fpl-my-team-analysis.html'">
-                <div class="tool-icon">⚽</div>
-                <h3 class="tool-title">My Team</h3>
-                <p class="tool-desc">Analyze your 15 players with sell/hold ratings, injury flags, and fixture outlook.</p>
-            </div>
+        <!-- Individual Tools -->
+        <section class="tools-section">
+            <div class="section-label">Individual Tools</div>
+            <div class="tools-grid">
+                <div class="tool-card myteam" onclick="window.location.href='fpl-my-team-analysis.html'">
+                    <div class="tool-icon">⚽</div>
+                    <h3 class="tool-title">My Team</h3>
+                    <p class="tool-desc">
+                        Analyze your 15 players with sell/hold ratings, injury flags, and fixture outlook.
+                    </p>
+                </div>
 
-            <div class="tool-card players" onclick="window.location.href='fpl-players-analysis.html'">
-                <div class="tool-icon">👤</div>
-                <h3 class="tool-title">Players</h3>
-                <p class="tool-desc">Live stats, xG/xA metrics, form trends, and side-by-side comparisons.</p>
-            </div>
+                <div class="tool-card players" onclick="window.location.href='fpl-players-analysis.html'">
+                    <div class="tool-icon">👤</div>
+                    <h3 class="tool-title">Players</h3>
+                    <p class="tool-desc">
+                        Live stats, xG/xA metrics, form trends, and side-by-side comparisons.
+                    </p>
+                </div>
 
-            <div class="tool-card teams" onclick="window.location.href='fpl-teams-analysis.html'">
-                <div class="tool-icon">📊</div>
-                <h3 class="tool-title">Teams</h3>
-                <p class="tool-desc">Fixture difficulty, clean sheet odds, attack/defense ratings, and form.</p>
-            </div>
+                <div class="tool-card teams" onclick="window.location.href='fpl-teams-analysis.html'">
+                    <div class="tool-icon">📊</div>
+                    <h3 class="tool-title">Teams</h3>
+                    <p class="tool-desc">
+                        Fixture difficulty, clean sheet odds, attack/defense ratings, and form.
+                    </p>
+                </div>
 
-            <div class="tool-card rivals" onclick="window.location.href='fpl-league-rivals.html'">
-                <div class="tool-icon">🏆</div>
-                <h3 class="tool-title">Rivals</h3>
-                <p class="tool-desc">Compare against mini-league rivals, find differentials, spot ownership gaps.</p>
+                <div class="tool-card rivals" onclick="window.location.href='fpl-league-rivals.html'">
+                    <div class="tool-icon">🏆</div>
+                    <h3 class="tool-title">Rivals</h3>
+                    <p class="tool-desc">
+                        Compare against mini-league rivals, find differentials, and spot ownership gaps.
+                    </p>
+                </div>
             </div>
-        </div>
+        </section>
     </main>
 
+    <!-- Mobile Navigation -->
     <nav class="mobile-nav">
-        <a href="fpl-transfer-wizard.html" class="mobile-nav-item"><span class="icon">🧙‍♂️</span>Wizard</a>
-        <a href="fpl-my-team-analysis.html" class="mobile-nav-item"><span class="icon">⚽</span>My Team</a>
-        <a href="fpl-players-analysis.html" class="mobile-nav-item"><span class="icon">👤</span>Players</a>
-        <a href="fpl-teams-analysis.html" class="mobile-nav-item"><span class="icon">📊</span>Teams</a>
-        <a href="fpl-league-rivals.html" class="mobile-nav-item"><span class="icon">🏆</span>Rivals</a>
+        <a href="fpl-transfer-wizard.html" class="mobile-nav-item">
+            <span class="icon">🧙‍♂️</span>
+            Wizard
+        </a>
+        <a href="fpl-my-team-analysis.html" class="mobile-nav-item">
+            <span class="icon">⚽</span>
+            My Team
+        </a>
+        <a href="fpl-players-analysis.html" class="mobile-nav-item">
+            <span class="icon">👤</span>
+            Players
+        </a>
+        <a href="fpl-teams-analysis.html" class="mobile-nav-item">
+            <span class="icon">📊</span>
+            Teams
+        </a>
+        <a href="fpl-league-rivals.html" class="mobile-nav-item">
+            <span class="icon">🏆</span>
+            Rivals
+        </a>
     </nav>
 </body>
 </html>
