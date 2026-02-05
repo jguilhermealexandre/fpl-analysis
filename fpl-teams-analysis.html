@@ -1411,6 +1411,23 @@
             box-shadow: inset 0 2px 0 var(--color-success), inset 0 -2px 0 var(--color-success);
         }
 
+        /* BTTS marker in calendar */
+        .fixture-cell.btts {
+            box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.5);
+        }
+
+        .btts-marker {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            font-size: 8px;
+            line-height: 1;
+        }
+
+        .fixture-cell {
+            position: relative;
+        }
+
         /* Analysis Section */
         .calendar-analysis {
             margin-top: var(--space-6);
@@ -2500,6 +2517,13 @@
                         // Calculate CS probability and attack/defense ratings for home team
                         const csChance = calculateCSChance(homeTeam, awayTeam, true);
                         
+                        // BTTS likelihood - both teams likely to score
+                        const homeAtt = homeTeam?.attackPower || 50;
+                        const awayAtt = awayTeam?.attackPower || 50;
+                        const homeDef = homeTeam?.defensePower || 50;
+                        const awayDef = awayTeam?.defensePower || 50;
+                        const bttsLikely = (homeAtt > 50 && awayAtt > 50 && homeDef < 60 && awayDef < 60);
+                        
                         fixtureMap[f.team_h][f.event].push({
                             opponent: awayTeam?.shortName || '???',
                             opponentId: f.team_a,
@@ -2509,7 +2533,8 @@
                             gw: f.event,
                             csChance,
                             oppDefensePower: awayTeam?.defensePower || 50,
-                            oppAttackPower: awayTeam?.attackPower || 50
+                            oppAttackPower: awayTeam?.attackPower || 50,
+                            bttsLikely
                         });
                     }
                     
@@ -2518,6 +2543,13 @@
                         
                         // Calculate CS probability and attack/defense ratings for away team
                         const csChance = calculateCSChance(awayTeam, homeTeam, false);
+                        
+                        // BTTS likelihood - both teams likely to score
+                        const homeAtt = homeTeam?.attackPower || 50;
+                        const awayAtt = awayTeam?.attackPower || 50;
+                        const homeDef = homeTeam?.defensePower || 50;
+                        const awayDef = awayTeam?.defensePower || 50;
+                        const bttsLikely = (homeAtt > 50 && awayAtt > 50 && homeDef < 60 && awayDef < 60);
                         
                         fixtureMap[f.team_a][f.event].push({
                             opponent: homeTeam?.shortName || '???',
@@ -2528,7 +2560,8 @@
                             gw: f.event,
                             csChance,
                             oppDefensePower: homeTeam?.defensePower || 50,
-                            oppAttackPower: homeTeam?.attackPower || 50
+                            oppAttackPower: homeTeam?.attackPower || 50,
+                            bttsLikely
                         });
                     }
                 });
@@ -2625,8 +2658,9 @@
             const cs = `CS: ${fixture.csChance || '?'}%`;
             const oppDef = `Opp Def: ${fixture.oppDefensePower || '?'}`;
             const oppAtt = `Opp Att: ${fixture.oppAttackPower || '?'}`;
+            const btts = fixture.bttsLikely ? '🔥 BTTS Likely' : '';
             
-            return `${base}\n${fdr} | ${cs}\n${oppDef} | ${oppAtt}`;
+            return `${base}\n${fdr} | ${cs}${btts ? '\n' + btts : ''}\n${oppDef} | ${oppAtt}`;
         }
 
         function renderFixtureCell(fixtures, gw, easyRuns, team) {
@@ -2649,15 +2683,18 @@
             const colorClass = getColorClass(f, team);
             const tooltip = getFixtureTooltip(f, gw);
             
+            // BTTS indicator
+            const bttsIndicator = f.bttsLikely && !f.finished ? '<span class="btts-marker">🔥</span>' : '';
+            
             // Show CS% in cell if in CS mode
             const cellContent = calendarColorMode === 'cs' ? 
-                `<span class="cs-value">${f.csChance || '?'}%</span>` :
-                `<span class="opp">${f.opponent}</span><span class="venue">${f.isHome ? 'H' : 'A'}</span>`;
+                `<span class="cs-value">${f.csChance || '?'}%</span>${bttsIndicator}` :
+                `<span class="opp">${f.opponent}</span><span class="venue">${f.isHome ? 'H' : 'A'}</span>${bttsIndicator}`;
 
             // Handle double gameweeks
             if (fixtures.length > 1) {
                 return `<td>
-                    <div class="fixture-cell ${colorClass} ${f.finished ? 'past' : ''} ${runClass}" 
+                    <div class="fixture-cell ${colorClass} ${f.finished ? 'past' : ''} ${runClass} ${f.bttsLikely ? 'btts' : ''}" 
                          title="${fixtures.map(fix => getFixtureTooltip(fix, gw)).join('\n---\n')}">
                         ${cellContent}
                         <span class="dgw-indicator">DGW</span>
@@ -2666,7 +2703,7 @@
             }
 
             return `<td>
-                <div class="fixture-cell ${colorClass} ${f.finished ? 'past' : ''} ${runClass}" 
+                <div class="fixture-cell ${colorClass} ${f.finished ? 'past' : ''} ${runClass} ${f.bttsLikely ? 'btts' : ''}" 
                      title="${tooltip}">${cellContent}</div>
             </td>`;
         }
