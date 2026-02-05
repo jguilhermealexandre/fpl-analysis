@@ -988,15 +988,23 @@
         let myPicks = new Set();
         let currentGW = 1;
         
-        const PROXY = 'https://corsproxy.io/?';
+        // ===== CONFIGURATION =====
+        // Local pre-fetched data (updated daily via GitHub Actions)
+        const BOOTSTRAP_URL = 'data/bootstrap-static.json';
+        
+        // Cloudflare Worker URL for dynamic API calls (league data, manager picks)
+        // SETUP: Deploy fpl-proxy-worker.js to Cloudflare Workers and paste your URL here
+        const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
+        
         const POS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
         const MAX_MANAGERS = 15;
         
         // ===== INIT =====
         async function init() {
             try {
-                // Load bootstrap
-                const res = await fetch(PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/'));
+                // Load bootstrap from local pre-fetched data (no CORS needed!)
+                const res = await fetch(BOOTSTRAP_URL);
+                if (!res.ok) throw new Error('Failed to load bootstrap data');
                 const data = await res.json();
                 
                 // Store players
@@ -1022,8 +1030,11 @@
                 // Current GW
                 currentGW = data.events.find(e => e.is_current)?.id || 1;
                 
+                console.log(`Loaded ${allPlayers.length} players, current GW: ${currentGW}`);
+                
             } catch (err) {
                 console.error('Init error:', err);
+                showStatus('Failed to load player data. Please refresh the page.', 'error');
             }
         }
         
@@ -1041,8 +1052,8 @@
             showStatus('Fetching league data...', 'loading');
             
             try {
-                // Fetch league standings
-                const res = await fetch(PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/leagues-classic/${leagueId}/standings/`));
+                // Fetch league standings via Cloudflare Worker
+                const res = await fetch(`${WORKER_URL}/api/leagues-classic/${leagueId}/standings/`);
                 if (!res.ok) throw new Error('League not found');
                 
                 leagueData = await res.json();
@@ -1099,7 +1110,7 @@
                 
                 for (const m of managers) {
                     try {
-                        const res = await fetch(PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${m.entry}/event/${currentGW}/picks/`));
+                        const res = await fetch(`${WORKER_URL}/api/entry/${m.entry}/event/${currentGW}/picks/`);
                         if (res.ok) {
                             const data = await res.json();
                             managerPicks[m.entry] = {
