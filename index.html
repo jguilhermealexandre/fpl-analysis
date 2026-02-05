@@ -13,7 +13,6 @@
         }
 
         :root {
-            /* Surfaces - GitHub inspired */
             --surface-bg: #0A0E14;
             --surface-0: #0D1117;
             --surface-1: #161B22;
@@ -21,36 +20,25 @@
             --surface-3: #21262D;
             --surface-4: #30363D;
             
-            /* Text hierarchy */
             --text-primary: rgba(255, 255, 255, 0.87);
             --text-secondary: rgba(255, 255, 255, 0.60);
             --text-muted: rgba(255, 255, 255, 0.45);
             
-            /* Borders */
             --border-subtle: rgba(255, 255, 255, 0.06);
             --border-default: rgba(255, 255, 255, 0.10);
             --border-emphasis: rgba(255, 255, 255, 0.16);
             
-            /* Semantic */
             --color-success: #4ADE80;
             --color-error: #F87171;
             --color-warning: #FBBF24;
             --color-info: #60A5FA;
             
-            /* Position colors */
-            --position-gk: #FCD34D;
-            --position-def: #34D399;
-            --position-mid: #60A5FA;
-            --position-fwd: #F87171;
-            
-            /* Tool colors */
             --color-wizard: #A78BFA;
             --color-myteam: #F87171;
             --color-players: #4ADE80;
             --color-teams: #60A5FA;
             --color-rivals: #FB923C;
             
-            /* Spacing */
             --space-1: 0.25rem;
             --space-2: 0.5rem;
             --space-3: 0.75rem;
@@ -58,7 +46,6 @@
             --space-6: 1.5rem;
             --space-8: 2rem;
             
-            /* Radius */
             --radius-sm: 4px;
             --radius-md: 8px;
             --radius-lg: 12px;
@@ -70,16 +57,14 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 14px;
             line-height: 1.5;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
         }
 
         /* ===== TOP NAVIGATION ===== */
         .top-nav {
             background: var(--surface-0);
             border-bottom: 1px solid var(--border-default);
-            position: sticky;
-            top: 0;
-            z-index: 100;
         }
 
         .nav-container {
@@ -130,87 +115,36 @@
             background: var(--surface-2);
         }
 
-        .nav-link.active {
-            color: var(--color-success);
-            background: rgba(74, 222, 128, 0.1);
-        }
-
         .nav-link .icon {
             font-size: 16px;
         }
 
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
+        @media (max-width: 900px) {
+            .nav-links { display: none; }
         }
 
-        /* ===== MAIN CONTENT ===== */
+        /* ===== MAIN LAYOUT ===== */
         .main-content {
             max-width: 1400px;
             margin: 0 auto;
             padding: var(--space-6);
+            height: calc(100vh - 56px);
+            display: flex;
+            flex-direction: column;
         }
 
-        /* ===== HERO SECTION ===== */
+        /* ===== HERO ===== */
         .hero {
             text-align: center;
-            padding: var(--space-8) 0;
-            margin-bottom: var(--space-8);
-            position: relative;
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(74, 222, 128, 0.08) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .hero-content {
-            position: relative;
-            z-index: 1;
-        }
-
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--space-2);
-            padding: var(--space-2) var(--space-4);
-            background: var(--surface-1);
-            border: 1px solid var(--border-default);
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            margin-bottom: var(--space-6);
-        }
-
-        .hero-badge .dot {
-            width: 8px;
-            height: 8px;
-            background: var(--color-success);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            padding: var(--space-4) 0 var(--space-6);
         }
 
         .hero-title {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 56px;
+            font-size: 42px;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: var(--space-4);
+            margin-bottom: var(--space-2);
             letter-spacing: -1px;
         }
 
@@ -219,242 +153,53 @@
         }
 
         .hero-subtitle {
-            font-size: 18px;
-            color: var(--text-secondary);
-            max-width: 600px;
-            margin: 0 auto var(--space-8);
-            line-height: 1.6;
+            font-size: 14px;
+            color: var(--text-muted);
+            max-width: 500px;
+            margin: 0 auto;
         }
 
         @media (max-width: 768px) {
-            .hero-title {
-                font-size: 36px;
-            }
-            .hero-subtitle {
-                font-size: 15px;
-            }
-        }
-
-        /* ===== FEATURED WIZARD ===== */
-        .featured-section {
-            margin-bottom: var(--space-8);
-        }
-
-        .section-label {
-            display: flex;
-            align-items: center;
-            gap: var(--space-3);
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: var(--space-4);
-        }
-
-        .section-label::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border-subtle);
-        }
-
-        .wizard-card {
-            background: var(--surface-1);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-            padding: var(--space-8);
-            cursor: pointer;
-            transition: all 200ms ease-out;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .wizard-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 0% 0%, rgba(167, 139, 250, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 100% 100%, rgba(74, 222, 128, 0.05) 0%, transparent 50%);
-            pointer-events: none;
-        }
-
-        .wizard-card:hover {
-            border-color: var(--color-wizard);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .wizard-content {
-            position: relative;
-            z-index: 1;
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            gap: var(--space-8);
-            align-items: center;
-        }
-
-        @media (max-width: 900px) {
-            .wizard-content {
-                grid-template-columns: 1fr;
-                text-align: center;
-            }
-        }
-
-        .wizard-icon {
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(135deg, var(--color-wizard), var(--color-success));
-            border-radius: var(--radius-lg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-        }
-
-        @media (max-width: 900px) {
-            .wizard-icon {
-                margin: 0 auto;
-            }
-        }
-
-        .wizard-info {
-            flex: 1;
-        }
-
-        .wizard-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--space-2);
-            padding: var(--space-1) var(--space-3);
-            background: rgba(167, 139, 250, 0.15);
-            border: 1px solid rgba(167, 139, 250, 0.3);
-            border-radius: var(--radius-sm);
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--color-wizard);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: var(--space-3);
-        }
-
-        .wizard-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-2);
-        }
-
-        .wizard-desc {
-            color: var(--text-secondary);
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: var(--space-4);
-            max-width: 500px;
-        }
-
-        @media (max-width: 900px) {
-            .wizard-desc {
-                margin: 0 auto var(--space-4);
-            }
-        }
-
-        .wizard-steps {
-            display: flex;
-            gap: var(--space-2);
-            flex-wrap: wrap;
-        }
-
-        @media (max-width: 900px) {
-            .wizard-steps {
-                justify-content: center;
-            }
-        }
-
-        .wizard-step {
-            display: flex;
-            align-items: center;
-            gap: var(--space-2);
-            padding: var(--space-2) var(--space-3);
-            background: var(--surface-2);
-            border-radius: var(--radius-sm);
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        .wizard-step .num {
-            width: 18px;
-            height: 18px;
-            background: var(--color-success);
-            color: var(--surface-bg);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: 700;
-        }
-
-        .wizard-cta {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: var(--space-2);
-        }
-
-        .btn-primary {
-            padding: var(--space-4) var(--space-8);
-            background: var(--color-success);
-            color: var(--surface-bg);
-            border: none;
-            border-radius: var(--radius-md);
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 150ms ease-out;
-            display: flex;
-            align-items: center;
-            gap: var(--space-2);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3);
-        }
-
-        .btn-hint {
-            font-size: 11px;
-            color: var(--text-muted);
+            .hero-title { font-size: 28px; }
+            .hero { padding: var(--space-3) 0 var(--space-4); }
         }
 
         /* ===== TOOLS GRID ===== */
-        .tools-section {
-            margin-bottom: var(--space-8);
-        }
-
         .tools-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: var(--space-4);
+            flex: 1;
+            min-height: 0;
         }
 
         @media (max-width: 1100px) {
+            .tools-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
             .tools-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 500px) {
             .tools-grid {
                 grid-template-columns: 1fr;
+                overflow-y: auto;
+            }
+            body {
+                height: auto;
+                overflow: auto;
+            }
+            .main-content {
+                height: auto;
             }
         }
 
+        /* ===== TOOL CARDS ===== */
         .tool-card {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
@@ -464,6 +209,8 @@
             transition: all 200ms ease-out;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .tool-card::before {
@@ -481,34 +228,60 @@
         .tool-card:hover {
             border-color: var(--tool-color);
             transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
         }
 
         .tool-card:hover::before {
             opacity: 1;
         }
 
+        .tool-card.wizard { --tool-color: var(--color-wizard); }
         .tool-card.myteam { --tool-color: var(--color-myteam); }
         .tool-card.players { --tool-color: var(--color-players); }
         .tool-card.teams { --tool-color: var(--color-teams); }
         .tool-card.rivals { --tool-color: var(--color-rivals); }
 
+        /* Wizard featured styling */
+        .tool-card.wizard {
+            background: linear-gradient(135deg, var(--surface-1) 0%, rgba(167, 139, 250, 0.05) 100%);
+        }
+
         .tool-icon {
-            width: 56px;
-            height: 56px;
+            width: 48px;
+            height: 48px;
             background: var(--surface-2);
             border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
-            margin-bottom: var(--space-4);
+            font-size: 24px;
+            margin-bottom: var(--space-3);
             transition: all 200ms ease-out;
         }
 
         .tool-card:hover .tool-icon {
             background: var(--tool-color);
             transform: scale(1.05);
+        }
+
+        .tool-card.wizard .tool-icon {
+            background: linear-gradient(135deg, var(--color-wizard), var(--color-success));
+        }
+
+        .tool-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: 2px var(--space-2);
+            background: rgba(167, 139, 250, 0.15);
+            border-radius: var(--radius-sm);
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--color-wizard);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--space-2);
+            width: fit-content;
         }
 
         .tool-title {
@@ -525,93 +298,27 @@
         }
 
         .tool-desc {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-muted);
             line-height: 1.5;
-            margin-bottom: var(--space-4);
+            margin-bottom: var(--space-3);
+            flex: 1;
         }
 
         .tool-features {
             display: flex;
             flex-wrap: wrap;
-            gap: var(--space-2);
+            gap: var(--space-1);
         }
 
         .tool-feature {
-            padding: var(--space-1) var(--space-2);
+            padding: 2px var(--space-2);
             background: var(--surface-2);
             border-radius: var(--radius-sm);
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-        }
-
-        /* ===== STATS BAR ===== */
-        .stats-bar {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: var(--space-4);
-            padding: var(--space-6);
-            background: var(--surface-1);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-            margin-bottom: var(--space-8);
-        }
-
-        @media (max-width: 768px) {
-            .stats-bar {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-value {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--color-success);
-            margin-bottom: var(--space-1);
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* ===== FOOTER ===== */
-        .footer {
-            text-align: center;
-            padding: var(--space-8) 0;
-            border-top: 1px solid var(--border-subtle);
-        }
-
-        .footer-text {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-bottom: var(--space-2);
-        }
-
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: var(--space-4);
-        }
-
-        .footer-link {
-            font-size: 12px;
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: color 150ms ease-out;
-        }
-
-        .footer-link:hover {
-            color: var(--color-success);
         }
 
         /* ===== MOBILE NAV ===== */
@@ -628,13 +335,10 @@
             z-index: 100;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .mobile-nav {
                 display: flex;
                 justify-content: space-around;
-            }
-            .main-content {
-                padding-bottom: 80px;
             }
         }
 
@@ -642,21 +346,20 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: var(--space-1);
-            padding: var(--space-2);
+            gap: 2px;
+            padding: var(--space-1);
             color: var(--text-muted);
             text-decoration: none;
-            font-size: 10px;
+            font-size: 9px;
             transition: color 150ms ease-out;
         }
 
-        .mobile-nav-item:hover,
-        .mobile-nav-item.active {
+        .mobile-nav-item:hover {
             color: var(--color-success);
         }
 
         .mobile-nav-item .icon {
-            font-size: 20px;
+            font-size: 18px;
         }
     </style>
 </head>
@@ -689,145 +392,84 @@
 
     <!-- Main Content -->
     <main class="main-content">
-        <!-- Hero Section -->
+        <!-- Hero -->
         <section class="hero">
-            <div class="hero-content">
-                <div class="hero-badge">
-                    <span class="dot"></span>
-                    Data updated daily
-                </div>
-                <h1 class="hero-title">
-                    Make <span class="highlight">Smarter</span> FPL Decisions
-                </h1>
-                <p class="hero-subtitle">
-                    Comprehensive Fantasy Premier League analysis tools: team ratings, player stats, 
-                    fixture difficulty, and guided transfer recommendations — all in one place.
-                </p>
-            </div>
+            <h1 class="hero-title">
+                Make <span class="highlight">Smarter</span> FPL Decisions
+            </h1>
+            <p class="hero-subtitle">
+                Team ratings, player stats, fixture analysis, and guided transfer recommendations.
+            </p>
         </section>
 
-        <!-- Stats Bar -->
-        <div class="stats-bar">
-            <div class="stat-item">
-                <div class="stat-value">800+</div>
-                <div class="stat-label">Players Tracked</div>
+        <!-- Tools Grid - All 5 tools in one row -->
+        <div class="tools-grid">
+            <!-- Wizard -->
+            <div class="tool-card wizard" onclick="window.location.href='fpl-transfer-wizard.html'">
+                <div class="tool-icon">🧙‍♂️</div>
+                <div class="tool-tag">✨ Guided</div>
+                <h3 class="tool-title">Transfer Wizard</h3>
+                <p class="tool-desc">
+                    Step-by-step workflow guiding you through the entire transfer decision process.
+                </p>
+                <div class="tool-features">
+                    <span class="tool-feature">5-Step Flow</span>
+                    <span class="tool-feature">Smart Picks</span>
+                </div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value">20</div>
-                <div class="stat-label">Teams Analyzed</div>
+
+            <!-- My Team -->
+            <div class="tool-card myteam" onclick="window.location.href='fpl-my-team-analysis.html'">
+                <div class="tool-icon">⚽</div>
+                <h3 class="tool-title">My Team</h3>
+                <p class="tool-desc">
+                    Analyze your 15 players with sell/hold ratings, injury flags, and fixture outlook.
+                </p>
+                <div class="tool-features">
+                    <span class="tool-feature">Sell Ratings</span>
+                    <span class="tool-feature">Form</span>
+                </div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value">38</div>
-                <div class="stat-label">Gameweeks</div>
+
+            <!-- Players -->
+            <div class="tool-card players" onclick="window.location.href='fpl-players-analysis.html'">
+                <div class="tool-icon">👤</div>
+                <h3 class="tool-title">Players</h3>
+                <p class="tool-desc">
+                    Live stats, xG/xA metrics, form trends, and side-by-side comparisons.
+                </p>
+                <div class="tool-features">
+                    <span class="tool-feature">xG Stats</span>
+                    <span class="tool-feature">Compare</span>
+                </div>
             </div>
-            <div class="stat-item">
-                <div class="stat-value">∞</div>
-                <div class="stat-label">Free Forever</div>
+
+            <!-- Teams -->
+            <div class="tool-card teams" onclick="window.location.href='fpl-teams-analysis.html'">
+                <div class="tool-icon">📊</div>
+                <h3 class="tool-title">Teams</h3>
+                <p class="tool-desc">
+                    Fixture difficulty, clean sheet odds, attack/defense ratings, and form streaks.
+                </p>
+                <div class="tool-features">
+                    <span class="tool-feature">FDR</span>
+                    <span class="tool-feature">xCS</span>
+                </div>
+            </div>
+
+            <!-- Rivals -->
+            <div class="tool-card rivals" onclick="window.location.href='fpl-league-rivals.html'">
+                <div class="tool-icon">🏆</div>
+                <h3 class="tool-title">Rivals</h3>
+                <p class="tool-desc">
+                    Compare against mini-league rivals, find differentials, spot ownership gaps.
+                </p>
+                <div class="tool-features">
+                    <span class="tool-feature">Ownership</span>
+                    <span class="tool-feature">H2H</span>
+                </div>
             </div>
         </div>
-
-        <!-- Featured Wizard -->
-        <section class="featured-section">
-            <div class="section-label">Featured Tool</div>
-            <div class="wizard-card" onclick="window.location.href='fpl-transfer-wizard.html'">
-                <div class="wizard-content">
-                    <div class="wizard-icon">🧙‍♂️</div>
-                    <div class="wizard-info">
-                        <div class="wizard-tag">✨ Guided Experience</div>
-                        <h2 class="wizard-title">Transfer Wizard</h2>
-                        <p class="wizard-desc">
-                            A step-by-step workflow that guides you through the entire transfer decision process. 
-                            Analyze your squad, identify problem areas, and find the perfect replacements.
-                        </p>
-                        <div class="wizard-steps">
-                            <span class="wizard-step"><span class="num">1</span> Analyze Squad</span>
-                            <span class="wizard-step"><span class="num">2</span> Select Sells</span>
-                            <span class="wizard-step"><span class="num">3</span> View Fixtures</span>
-                            <span class="wizard-step"><span class="num">4</span> Find Replacements</span>
-                            <span class="wizard-step"><span class="num">5</span> Review Plan</span>
-                        </div>
-                    </div>
-                    <div class="wizard-cta">
-                        <button class="btn-primary">
-                            Start Wizard
-                            <span>→</span>
-                        </button>
-                        <span class="btn-hint">~5 min workflow</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Individual Tools -->
-        <section class="tools-section">
-            <div class="section-label">Individual Tools</div>
-            <div class="tools-grid">
-                <div class="tool-card myteam" onclick="window.location.href='fpl-my-team-analysis.html'">
-                    <div class="tool-icon">⚽</div>
-                    <h3 class="tool-title">My Team</h3>
-                    <p class="tool-desc">
-                        Analyze your 15 players with intelligent sell/hold ratings. Identifies problem assets 
-                        with injury, form, and fixture analysis.
-                    </p>
-                    <div class="tool-features">
-                        <span class="tool-feature">Sell Ratings</span>
-                        <span class="tool-feature">Form Analysis</span>
-                        <span class="tool-feature">Injury Flags</span>
-                    </div>
-                </div>
-
-                <div class="tool-card players" onclick="window.location.href='fpl-players-analysis.html'">
-                    <div class="tool-icon">👤</div>
-                    <h3 class="tool-title">Players</h3>
-                    <p class="tool-desc">
-                        Live player stats, xG/xA metrics, form trends, value analysis, and side-by-side 
-                        player comparisons.
-                    </p>
-                    <div class="tool-features">
-                        <span class="tool-feature">xG Stats</span>
-                        <span class="tool-feature">Form Trends</span>
-                        <span class="tool-feature">Comparisons</span>
-                    </div>
-                </div>
-
-                <div class="tool-card teams" onclick="window.location.href='fpl-teams-analysis.html'">
-                    <div class="tool-icon">📊</div>
-                    <h3 class="tool-title">Teams</h3>
-                    <p class="tool-desc">
-                        Team form, fixture difficulty, clean sheet probability, attack/defense ratings, 
-                        and fixture swing opportunities.
-                    </p>
-                    <div class="tool-features">
-                        <span class="tool-feature">FDR Ratings</span>
-                        <span class="tool-feature">Form Streaks</span>
-                        <span class="tool-feature">xCS Data</span>
-                    </div>
-                </div>
-
-                <div class="tool-card rivals" onclick="window.location.href='fpl-league-rivals.html'">
-                    <div class="tool-icon">🏆</div>
-                    <h3 class="tool-title">Rivals</h3>
-                    <p class="tool-desc">
-                        Compare your team against mini-league rivals. Find missing templates, discover 
-                        your differentials, and spot ownership gaps.
-                    </p>
-                    <div class="tool-features">
-                        <span class="tool-feature">Ownership Matrix</span>
-                        <span class="tool-feature">Differentials</span>
-                        <span class="tool-feature">Head-to-Head</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <p class="footer-text">Built for FPL managers who want data-driven decisions</p>
-            <div class="footer-links">
-                <a href="https://fantasy.premierleague.com" target="_blank" class="footer-link">Official FPL</a>
-                <a href="https://github.com" target="_blank" class="footer-link">GitHub</a>
-            </div>
-        </footer>
     </main>
 
     <!-- Mobile Navigation -->
