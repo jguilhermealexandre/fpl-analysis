@@ -4347,5 +4347,793 @@
         // ============================================
         document.addEventListener('DOMContentLoaded', loadData);
     </script>
+
+    <!-- FPL AI Assistant Widget -->
+    <div id="fpl-ai-widget" class="ai-widget">
+        <div class="ai-header" onclick="toggleAIChat()">
+            <div class="ai-title">
+                <span class="ai-icon">🤖</span> FPL Assistant
+            </div>
+            <button class="ai-toggle-btn">▲</button>
+        </div>
+        <div class="ai-body">
+            <div class="ai-messages" id="ai-messages">
+                <div class="ai-msg bot">
+                    Hello! I have access to data on all <strong><span id="ai-player-count">0</span> players</strong>. Ask me anything!
+                    <div class="ai-suggestions">
+                        <button onclick="askAI('Who are the best budget midfielders?')">💰 Best budget mids</button>
+                        <button onclick="askAI('Compare Salah and Palmer')">⚖️ Salah vs Palmer</button>
+                        <button onclick="askAI('Who has the easiest fixtures?')">📅 Easiest fixtures</button>
+                        <button onclick="askAI('Best differentials under 10% owned')">🎯 Differentials</button>
+                    </div>
+                </div>
+            </div>
+            <div class="ai-input-area">
+                <input type="text" id="ai-input" placeholder="Ask about players, stats, or comparisons..." onkeypress="handleAIEnter(event)">
+                <button class="ai-send" onclick="submitAIQuery()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .ai-widget {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 380px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: 16px;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            height: 54px;
+        }
+        
+        .ai-widget.expanded {
+            height: 520px;
+        }
+
+        .ai-header {
+            padding: 14px 20px;
+            background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+            border-bottom: 1px solid var(--border-default);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .ai-title { 
+            font-weight: 700; 
+            font-family: 'Space Grotesk', sans-serif; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px;
+            font-size: 14px;
+        }
+        .ai-icon { font-size: 20px; }
+        
+        .ai-toggle-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .ai-widget.expanded .ai-toggle-btn {
+            transform: rotate(180deg);
+        }
+        
+        .ai-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface-0);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            overflow: hidden;
+        }
+
+        .ai-widget.expanded .ai-body { 
+            opacity: 1; 
+            pointer-events: all; 
+        }
+
+        .ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .ai-msg {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            max-width: 90%;
+            line-height: 1.6;
+        }
+
+        .ai-msg.bot {
+            background: var(--surface-2);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .ai-msg.user {
+            background: linear-gradient(135deg, var(--color-success), #22c55e);
+            color: #000;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            font-weight: 500;
+        }
+
+        .ai-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .ai-suggestions button {
+            background: var(--surface-3);
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ai-suggestions button:hover { 
+            background: var(--surface-1); 
+            color: var(--color-success); 
+            border-color: var(--color-success); 
+        }
+
+        .ai-input-area {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-default);
+            background: var(--surface-2);
+            display: flex;
+            gap: 10px;
+        }
+
+        .ai-input-area input {
+            flex: 1;
+            background: var(--surface-0);
+            border: 1px solid var(--border-default);
+            border-radius: 24px;
+            padding: 10px 18px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .ai-input-area input::placeholder {
+            color: var(--text-muted);
+        }
+        .ai-input-area input:focus { 
+            outline: none; 
+            border-color: var(--color-success);
+            box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.1);
+        }
+
+        .ai-send {
+            background: var(--color-success);
+            color: #000;
+            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        .ai-send:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3);
+        }
+
+        .ai-player-card {
+            background: var(--surface-3);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+
+        .ai-player-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .ai-stat-box {
+            background: var(--surface-1);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .ai-stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .ai-stat-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--color-success);
+        }
+
+        .ai-player-list {
+            margin-top: 10px;
+        }
+
+        .ai-player-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: var(--surface-3);
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .ai-player-rank {
+            font-weight: 700;
+            color: var(--color-warning);
+            width: 20px;
+        }
+
+        .ai-player-info {
+            flex: 1;
+        }
+
+        .ai-player-name {
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .ai-player-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .ai-player-stat {
+            text-align: right;
+        }
+
+        .ai-player-stat-value {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--color-success);
+        }
+
+        .ai-player-stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        .ai-view-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 8px;
+            background: var(--surface-3);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .ai-view-btn:hover {
+            background: var(--color-success);
+            color: #000;
+            border-color: var(--color-success);
+        }
+        
+        @media (max-width: 480px) {
+            .ai-widget {
+                width: calc(100% - 32px);
+                right: 16px;
+                bottom: 16px;
+            }
+        }
+    </style>
+
+    <script>
+        // ============================================
+        // FPL AI ASSISTANT
+        // ============================================
+        
+        // Initialize player count after data loads
+        const aiInitInterval = setInterval(() => {
+            if (allAnalyses && allAnalyses.length > 0) {
+                const countEl = document.getElementById('ai-player-count');
+                if (countEl) countEl.textContent = allAnalyses.length;
+                clearInterval(aiInitInterval);
+            }
+        }, 500);
+
+        function toggleAIChat() {
+            document.getElementById('fpl-ai-widget').classList.toggle('expanded');
+        }
+
+        function handleAIEnter(e) {
+            if (e.key === 'Enter') submitAIQuery();
+        }
+
+        function askAI(question) {
+            document.getElementById('ai-input').value = question;
+            submitAIQuery();
+        }
+
+        function submitAIQuery() {
+            const input = document.getElementById('ai-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            addAIMessage(text, 'user');
+            input.value = '';
+
+            // Simulate thinking delay
+            setTimeout(() => {
+                const response = processAIQuery(text);
+                addAIMessage(response, 'bot');
+            }, 300);
+        }
+
+        function addAIMessage(html, type) {
+            const container = document.getElementById('ai-messages');
+            const div = document.createElement('div');
+            div.className = `ai-msg ${type}`;
+            div.innerHTML = html;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // ============================================
+        // AI QUERY PROCESSING ENGINE
+        // ============================================
+        function processAIQuery(query) {
+            if (!allAnalyses || allAnalyses.length === 0) {
+                return "Still loading player data... Please try again in a moment.";
+            }
+
+            const q = query.toLowerCase();
+
+            // --- Intent: Compare Players ---
+            if (q.includes('compare') || q.includes(' vs ') || q.includes(' or ')) {
+                const players = findPlayersInQuery(q);
+                if (players.length >= 2) {
+                    return generateComparisonResponse(players.slice(0, 2));
+                }
+                return "I need two player names to compare. Try 'Compare Salah and Palmer' or 'Haaland vs Watkins'.";
+            }
+
+            // --- Intent: Best/Top Players ---
+            if (q.includes('best') || q.includes('top') || q.includes('recommend')) {
+                return generateBestPlayersResponse(q);
+            }
+
+            // --- Intent: Differentials ---
+            if (q.includes('differential') || q.includes('hidden gem') || q.includes('under owned')) {
+                return generateDifferentialsResponse(q);
+            }
+
+            // --- Intent: Fixtures ---
+            if (q.includes('fixture') || q.includes('schedule') || q.includes('easiest') || q.includes('hardest')) {
+                return generateFixtureResponse(q);
+            }
+
+            // --- Intent: Value Picks ---
+            if (q.includes('value') || q.includes('cheap') || q.includes('budget') || q.includes('bargain')) {
+                return generateValueResponse(q);
+            }
+
+            // --- Intent: Form/Hot Players ---
+            if (q.includes('form') || q.includes('hot') || q.includes('scoring') || q.includes('returning')) {
+                return generateFormResponse(q);
+            }
+
+            // --- Intent: Specific Player Info ---
+            const players = findPlayersInQuery(q);
+            if (players.length === 1) {
+                return generatePlayerResponse(players[0]);
+            }
+
+            // --- Intent: Captain Picks ---
+            if (q.includes('captain') || q.includes('armband')) {
+                return generateCaptainResponse();
+            }
+
+            // Default fallback
+            return `I'm not sure about that. Try asking:
+                <div class="ai-suggestions" style="margin-top: 10px;">
+                    <button onclick="askAI('Best budget forwards')">💰 Budget picks</button>
+                    <button onclick="askAI('Who should I captain?')">©️ Captain</button>
+                    <button onclick="askAI('Stats for Salah')">📊 Player stats</button>
+                </div>`;
+        }
+
+        // ============================================
+        // PLAYER FINDER (Fuzzy Search)
+        // ============================================
+        function findPlayersInQuery(query) {
+            if (!allAnalyses) return [];
+            const found = [];
+            const q = query.toLowerCase();
+
+            // Sort by name length descending to match longer names first
+            const sorted = [...allAnalyses].sort((a, b) => b.name.length - a.name.length);
+
+            sorted.forEach(p => {
+                const fullName = p.name.toLowerCase();
+                const nameParts = fullName.split(' ');
+                const lastName = nameParts[nameParts.length - 1];
+                const firstName = nameParts[0];
+
+                // Check for matches
+                if (q.includes(fullName) || 
+                    (lastName.length > 3 && q.includes(lastName)) ||
+                    (firstName.length > 3 && q.includes(firstName))) {
+                    if (!found.some(f => f.id === p.id)) {
+                        found.push(p);
+                    }
+                }
+            });
+
+            return found.slice(0, 4);
+        }
+
+        function getPosString(pos) {
+            return { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[pos] || 'MID';
+        }
+
+        // ============================================
+        // RESPONSE GENERATORS
+        // ============================================
+        function generatePlayerResponse(p) {
+            const g = p.l5?.games || 1;
+            const ptsPerGame = (p.l5?.points / g).toFixed(1);
+            const xGI = (p.l5?.xGI / g).toFixed(2);
+            const posStr = getPosString(p.position);
+
+            return `
+                <strong>${p.name}</strong> <span style="color: var(--text-muted)">(${p.team} - ${posStr})</span>
+                <div class="ai-player-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 18px; font-weight: 700;">£${p.price}m</span>
+                        <span style="font-size: 11px; color: var(--text-muted);">${p.selectedBy?.toFixed(1) || 0}% owned</span>
+                    </div>
+                    <div class="ai-player-stats">
+                        <div class="ai-stat-box">
+                            <div class="ai-stat-label">Pts/G (L5)</div>
+                            <div class="ai-stat-value">${ptsPerGame}</div>
+                        </div>
+                        <div class="ai-stat-box">
+                            <div class="ai-stat-label">xGI/G</div>
+                            <div class="ai-stat-value">${xGI}</div>
+                        </div>
+                        <div class="ai-stat-box">
+                            <div class="ai-stat-label">Goals (L5)</div>
+                            <div class="ai-stat-value">${p.l5?.goals || 0}</div>
+                        </div>
+                        <div class="ai-stat-box">
+                            <div class="ai-stat-label">Assists (L5)</div>
+                            <div class="ai-stat-value">${p.l5?.assists || 0}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 11px; color: var(--text-muted);">
+                        Next 3: <strong>${p.fixtures?.fixtureString || 'N/A'}</strong>
+                    </div>
+                </div>
+                <button class="ai-view-btn" onclick="openPlayerModal(${p.id}, '${posStr}')">View Full Profile</button>
+            `;
+        }
+
+        function generateComparisonResponse(players) {
+            const [p1, p2] = players;
+            const g1 = p1.l5?.games || 1;
+            const g2 = p2.l5?.games || 1;
+
+            const stats = [
+                { label: 'Price', v1: `£${p1.price}m`, v2: `£${p2.price}m`, better: p1.price < p2.price ? 1 : 2 },
+                { label: 'Pts/G (L5)', v1: (p1.l5?.points/g1).toFixed(1), v2: (p2.l5?.points/g2).toFixed(1), better: (p1.l5?.points/g1) > (p2.l5?.points/g2) ? 1 : 2 },
+                { label: 'xGI/G', v1: (p1.l5?.xGI/g1).toFixed(2), v2: (p2.l5?.xGI/g2).toFixed(2), better: (p1.l5?.xGI/g1) > (p2.l5?.xGI/g2) ? 1 : 2 },
+                { label: 'Goals (L5)', v1: p1.l5?.goals || 0, v2: p2.l5?.goals || 0, better: (p1.l5?.goals || 0) > (p2.l5?.goals || 0) ? 1 : 2 },
+                { label: 'Assists (L5)', v1: p1.l5?.assists || 0, v2: p2.l5?.assists || 0, better: (p1.l5?.assists || 0) > (p2.l5?.assists || 0) ? 1 : 2 },
+                { label: 'Avg FDR', v1: p1.fixtures?.avgFDR5?.toFixed(1) || 'N/A', v2: p2.fixtures?.avgFDR5?.toFixed(1) || 'N/A', better: (p1.fixtures?.avgFDR5 || 5) < (p2.fixtures?.avgFDR5 || 5) ? 1 : 2 },
+            ];
+
+            const p1Wins = stats.filter(s => s.better === 1).length;
+            const p2Wins = stats.filter(s => s.better === 2).length;
+            const winner = p1Wins > p2Wins ? p1 : p2;
+
+            return `
+                <strong>${p1.name} vs ${p2.name}</strong>
+                <table style="width: 100%; margin-top: 10px; font-size: 11px; border-collapse: collapse;">
+                    <tr style="background: var(--surface-3);">
+                        <th style="padding: 6px; text-align: left;">Stat</th>
+                        <th style="padding: 6px; text-align: center;">${p1.name.split(' ').pop()}</th>
+                        <th style="padding: 6px; text-align: center;">${p2.name.split(' ').pop()}</th>
+                    </tr>
+                    ${stats.map(s => `
+                        <tr>
+                            <td style="padding: 6px; color: var(--text-muted);">${s.label}</td>
+                            <td style="padding: 6px; text-align: center; ${s.better === 1 ? 'color: var(--color-success); font-weight: 700;' : ''}">${s.v1}</td>
+                            <td style="padding: 6px; text-align: center; ${s.better === 2 ? 'color: var(--color-success); font-weight: 700;' : ''}">${s.v2}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+                <div style="margin-top: 10px; padding: 8px; background: var(--surface-3); border-radius: 6px; font-size: 12px;">
+                    <strong style="color: var(--color-success);">Edge: ${winner.name}</strong> (${Math.max(p1Wins, p2Wins)}/${stats.length} categories)
+                </div>
+            `;
+        }
+
+        function generateBestPlayersResponse(q) {
+            let pos = null;
+            if (q.includes('goalkeeper') || q.includes(' gk')) pos = 1;
+            else if (q.includes('defender') || q.includes(' def')) pos = 2;
+            else if (q.includes('midfielder') || q.includes(' mid')) pos = 3;
+            else if (q.includes('forward') || q.includes('striker') || q.includes(' fwd')) pos = 4;
+
+            let maxPrice = 20;
+            if (q.includes('budget') || q.includes('cheap')) maxPrice = pos === 1 ? 5.0 : pos === 2 ? 5.5 : pos === 3 ? 7.0 : 7.5;
+            const priceMatch = q.match(/under (\d+(\.\d+)?)/);
+            if (priceMatch) maxPrice = parseFloat(priceMatch[1]);
+
+            let candidates = allAnalyses.filter(p => 
+                (pos === null || p.position === pos) &&
+                p.price <= maxPrice &&
+                (p.l5?.games || 0) >= 3
+            );
+
+            // Sort by points per game
+            candidates.sort((a, b) => {
+                const aG = a.l5?.games || 1;
+                const bG = b.l5?.games || 1;
+                return (b.l5?.points / bG) - (a.l5?.points / aG);
+            });
+
+            const top3 = candidates.slice(0, 3);
+            if (top3.length === 0) return "No players found matching that criteria.";
+
+            const posName = pos ? getPosString(pos) + 's' : 'players';
+            const priceText = maxPrice < 20 ? ` under £${maxPrice}m` : '';
+
+            return `
+                <strong>Best ${posName}${priceText}</strong> (by Pts/G)
+                <div class="ai-player-list">
+                    ${top3.map((p, i) => {
+                        const g = p.l5?.games || 1;
+                        return `
+                            <div class="ai-player-row">
+                                <span class="ai-player-rank">${i + 1}</span>
+                                <div class="ai-player-info">
+                                    <div class="ai-player-name">${p.name}</div>
+                                    <div class="ai-player-meta">£${p.price}m · ${p.team}</div>
+                                </div>
+                                <div class="ai-player-stat">
+                                    <div class="ai-player-stat-value">${(p.l5?.points / g).toFixed(1)}</div>
+                                    <div class="ai-player-stat-label">Pts/G</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function generateDifferentialsResponse(q) {
+            let maxOwnership = 10;
+            const ownMatch = q.match(/under (\d+)%?/);
+            if (ownMatch) maxOwnership = parseFloat(ownMatch[1]);
+
+            const candidates = allAnalyses.filter(p => 
+                (p.selectedBy || 0) <= maxOwnership &&
+                (p.l5?.games || 0) >= 3 &&
+                (p.l5?.points || 0) >= 15
+            ).sort((a, b) => {
+                const aG = a.l5?.games || 1;
+                const bG = b.l5?.games || 1;
+                return (b.l5?.points / bG) - (a.l5?.points / aG);
+            });
+
+            const top3 = candidates.slice(0, 3);
+            if (top3.length === 0) return "No differentials found with good form.";
+
+            return `
+                <strong>🎯 Top Differentials</strong> (under ${maxOwnership}% owned)
+                <div class="ai-player-list">
+                    ${top3.map((p, i) => {
+                        const g = p.l5?.games || 1;
+                        return `
+                            <div class="ai-player-row">
+                                <span class="ai-player-rank">${i + 1}</span>
+                                <div class="ai-player-info">
+                                    <div class="ai-player-name">${p.name}</div>
+                                    <div class="ai-player-meta">£${p.price}m · ${(p.selectedBy || 0).toFixed(1)}% owned</div>
+                                </div>
+                                <div class="ai-player-stat">
+                                    <div class="ai-player-stat-value">${(p.l5?.points / g).toFixed(1)}</div>
+                                    <div class="ai-player-stat-label">Pts/G</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function generateFixtureResponse(q) {
+            const isHard = q.includes('hard') || q.includes('worst') || q.includes('avoid');
+            
+            // Group by team and get fixture data
+            const teamData = {};
+            allAnalyses.forEach(p => {
+                if (p.teamId && p.fixtures && !teamData[p.teamId]) {
+                    teamData[p.teamId] = {
+                        name: p.team,
+                        avgFDR: p.fixtures.avgFDR5 || 3,
+                        fixtures: p.fixtures.fixtureString || 'N/A'
+                    };
+                }
+            });
+
+            const sorted = Object.values(teamData).sort((a, b) => 
+                isHard ? b.avgFDR - a.avgFDR : a.avgFDR - b.avgFDR
+            ).slice(0, 5);
+
+            const title = isHard ? '⚠️ Hardest Fixtures (Next 5)' : '🟢 Easiest Fixtures (Next 5)';
+
+            return `
+                <strong>${title}</strong>
+                <div style="margin-top: 10px;">
+                    ${sorted.map((t, i) => `
+                        <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--surface-3); border-radius: 6px; margin-bottom: 4px;">
+                            <span><strong>${i + 1}.</strong> ${t.name}</span>
+                            <span style="color: ${t.avgFDR <= 2.5 ? 'var(--color-success)' : t.avgFDR >= 3.5 ? 'var(--color-error)' : 'var(--text-muted)'}">
+                                FDR ${t.avgFDR.toFixed(1)}
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function generateValueResponse(q) {
+            let pos = null;
+            if (q.includes('goalkeeper') || q.includes(' gk')) pos = 1;
+            else if (q.includes('defender') || q.includes(' def')) pos = 2;
+            else if (q.includes('midfielder') || q.includes(' mid')) pos = 3;
+            else if (q.includes('forward') || q.includes('striker') || q.includes(' fwd')) pos = 4;
+
+            const candidates = allAnalyses.filter(p => 
+                (pos === null || p.position === pos) &&
+                (p.l5?.games || 0) >= 3
+            ).map(p => {
+                const g = p.l5?.games || 1;
+                const ptsPerGame = p.l5?.points / g;
+                return { ...p, valueScore: ptsPerGame / p.price };
+            }).sort((a, b) => b.valueScore - a.valueScore);
+
+            const top3 = candidates.slice(0, 3);
+            const posName = pos ? getPosString(pos) + 's' : 'players';
+
+            return `
+                <strong>💎 Best Value ${posName}</strong> (Pts/G per £1m)
+                <div class="ai-player-list">
+                    ${top3.map((p, i) => {
+                        const g = p.l5?.games || 1;
+                        return `
+                            <div class="ai-player-row">
+                                <span class="ai-player-rank">${i + 1}</span>
+                                <div class="ai-player-info">
+                                    <div class="ai-player-name">${p.name}</div>
+                                    <div class="ai-player-meta">£${p.price}m · ${(p.l5?.points / g).toFixed(1)} Pts/G</div>
+                                </div>
+                                <div class="ai-player-stat">
+                                    <div class="ai-player-stat-value">${p.valueScore.toFixed(2)}</div>
+                                    <div class="ai-player-stat-label">Value</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function generateFormResponse(q) {
+            const candidates = allAnalyses.filter(p => 
+                (p.l5?.games || 0) >= 3
+            ).sort((a, b) => (b.form || 0) - (a.form || 0));
+
+            const top3 = candidates.slice(0, 3);
+
+            return `
+                <strong>🔥 Hottest Form Right Now</strong>
+                <div class="ai-player-list">
+                    ${top3.map((p, i) => {
+                        const g = p.l5?.games || 1;
+                        return `
+                            <div class="ai-player-row">
+                                <span class="ai-player-rank">${i + 1}</span>
+                                <div class="ai-player-info">
+                                    <div class="ai-player-name">${p.name}</div>
+                                    <div class="ai-player-meta">£${p.price}m · ${p.team}</div>
+                                </div>
+                                <div class="ai-player-stat">
+                                    <div class="ai-player-stat-value">${p.form?.toFixed(1) || 0}</div>
+                                    <div class="ai-player-stat-label">Form</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function generateCaptainResponse() {
+            // Find players with best combo of form + easy fixtures
+            const candidates = allAnalyses.filter(p => 
+                (p.l5?.games || 0) >= 3 &&
+                p.fixtures?.avgFDR3
+            ).map(p => {
+                const g = p.l5?.games || 1;
+                const ptsPerGame = p.l5?.points / g;
+                const fdrBonus = (5 - p.fixtures.avgFDR3) / 2; // Lower FDR = higher bonus
+                return { ...p, captainScore: ptsPerGame + fdrBonus };
+            }).sort((a, b) => b.captainScore - a.captainScore);
+
+            const top3 = candidates.slice(0, 3);
+
+            return `
+                <strong>©️ Captain Picks This Week</strong>
+                <div class="ai-player-list">
+                    ${top3.map((p, i) => {
+                        const g = p.l5?.games || 1;
+                        return `
+                            <div class="ai-player-row">
+                                <span class="ai-player-rank">${i + 1}</span>
+                                <div class="ai-player-info">
+                                    <div class="ai-player-name">${p.name}</div>
+                                    <div class="ai-player-meta">${p.fixtures?.fixtureString?.split(',')[0] || 'N/A'} · ${(p.l5?.points / g).toFixed(1)} Pts/G</div>
+                                </div>
+                                <div class="ai-player-stat">
+                                    <div class="ai-player-stat-value" style="color: var(--color-warning);">${p.captainScore.toFixed(1)}</div>
+                                    <div class="ai-player-stat-label">Score</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div style="margin-top: 8px; font-size: 10px; color: var(--text-muted);">
+                    Score = Pts/G + Fixture Bonus
+                </div>
+            `;
+        }
+    </script>
 </body>
 </html>
