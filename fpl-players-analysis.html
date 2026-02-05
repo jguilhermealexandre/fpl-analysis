@@ -4362,7 +4362,7 @@
                     Hello! I have access to data on all <strong><span id="ai-player-count">0</span> players</strong>. Ask me anything!
                     <div class="ai-suggestions">
                         <button onclick="askAI('Who are the best budget midfielders?')">💰 Best budget mids</button>
-                        <button onclick="askAI('Compare Salah and Palmer')">⚖️ Salah vs Palmer</button>
+                        <button id="ai-compare-suggestion" onclick="askAI('Compare Salah and Palmer')">⚖️ Compare players</button>
                         <button onclick="askAI('Who has the easiest fixtures?')">📅 Easiest fixtures</button>
                         <button onclick="askAI('Best differentials under 10% owned')">🎯 Differentials</button>
                     </div>
@@ -4666,11 +4666,27 @@
         // FPL AI ASSISTANT
         // ============================================
         
-        // Initialize player count after data loads
+        // Initialize player count and update suggestions after data loads
         const aiInitInterval = setInterval(() => {
             if (allAnalyses && allAnalyses.length > 0) {
                 const countEl = document.getElementById('ai-player-count');
                 if (countEl) countEl.textContent = allAnalyses.length;
+                
+                // Update comparison suggestion with real player names
+                const topPlayers = allAnalyses
+                    .filter(p => p.selectedBy > 15 && p.l5?.games >= 3)
+                    .sort((a, b) => b.selectedBy - a.selectedBy);
+                
+                if (topPlayers.length >= 2) {
+                    const p1 = topPlayers[0].name;
+                    const p2 = topPlayers[1].name;
+                    const compareBtn = document.getElementById('ai-compare-suggestion');
+                    if (compareBtn) {
+                        compareBtn.textContent = `⚖️ ${p1} vs ${p2}`;
+                        compareBtn.onclick = () => askAI(`Compare ${p1} and ${p2}`);
+                    }
+                }
+                
                 clearInterval(aiInitInterval);
             }
         }, 500);
@@ -4722,13 +4738,36 @@
 
             const q = query.toLowerCase();
 
+            // --- Intent: Debug/Help - Show sample players ---
+            if (q.includes('debug') || q.includes('help') || q.includes('list players')) {
+                const samples = allAnalyses.slice(0, 10).map(p => p.name);
+                return `
+                    <strong>Sample player names in database:</strong>
+                    <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+                        ${samples.join(', ')}...
+                    </div>
+                    <div style="margin-top: 10px; font-size: 11px;">
+                        Try: "Stats for ${samples[0]}" or "Compare ${samples[1]} and ${samples[2]}"
+                    </div>
+                `;
+            }
+
             // --- Intent: Compare Players ---
             if (q.includes('compare') || q.includes(' vs ') || q.includes(' or ')) {
                 const players = findPlayersInQuery(q);
                 if (players.length >= 2) {
                     return generateComparisonResponse(players.slice(0, 2));
                 }
-                return "I need two player names to compare. Try 'Compare Salah and Palmer' or 'Haaland vs Watkins'.";
+                if (players.length === 1) {
+                    return `I found <strong>${players[0].name}</strong>, but I need a second player to compare. Try adding another name.`;
+                }
+                // Show some popular player names as hints
+                const popularPlayers = allAnalyses
+                    .filter(p => p.selectedBy > 15)
+                    .sort((a, b) => b.selectedBy - a.selectedBy)
+                    .slice(0, 4)
+                    .map(p => p.name);
+                return `I couldn't find those players. Try using names like: <strong>${popularPlayers.join(', ')}</strong>`;
             }
 
             // --- Intent: Best/Top Players ---
@@ -4767,12 +4806,47 @@
                 return generateCaptainResponse();
             }
 
-            // Default fallback
+            // --- Intent: Search for player ---
+            if (q.startsWith('search ') || q.startsWith('find ')) {
+                const searchTerm = q.replace(/^(search|find)\s+/, '').trim();
+                const matches = allAnalyses.filter(p => 
+                    p.name.toLowerCase().includes(searchTerm) ||
+                    (p.fullName && p.fullName.toLowerCase().includes(searchTerm))
+                ).slice(0, 5);
+                
+                if (matches.length === 0) {
+                    return `No players found matching "${searchTerm}". Try a shorter search term.`;
+                }
+                
+                return `
+                    <strong>Players matching "${searchTerm}":</strong>
+                    <div class="ai-player-list">
+                        ${matches.map(p => `
+                            <div class="ai-player-row" style="cursor: pointer;" onclick="askAI('Stats for ${p.name}')">
+                                <div class="ai-player-info">
+                                    <div class="ai-player-name">${p.name}</div>
+                                    <div class="ai-player-meta">£${p.price}m · ${p.team}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div style="margin-top: 8px; font-size: 10px; color: var(--text-muted);">Click a player to see their stats</div>
+                `;
+            }
+
+            // Default fallback - use actual popular players from database
+            const topPlayers = allAnalyses
+                .filter(p => p.selectedBy > 10)
+                .sort((a, b) => b.selectedBy - a.selectedBy)
+                .slice(0, 3);
+            const playerHint = topPlayers.length > 0 ? topPlayers[0].name : 'Haaland';
+            
             return `I'm not sure about that. Try asking:
                 <div class="ai-suggestions" style="margin-top: 10px;">
                     <button onclick="askAI('Best budget forwards')">💰 Budget picks</button>
                     <button onclick="askAI('Who should I captain?')">©️ Captain</button>
-                    <button onclick="askAI('Stats for Salah')">📊 Player stats</button>
+                    <button onclick="askAI('Stats for ${playerHint}')">📊 Player stats</button>
+                    <button onclick="askAI('search sal')">🔍 Search players</button>
                 </div>`;
         }
 
@@ -4780,29 +4854,52 @@
         // PLAYER FINDER (Fuzzy Search)
         // ============================================
         function findPlayersInQuery(query) {
-            if (!allAnalyses) return [];
+            if (!allAnalyses || allAnalyses.length === 0) {
+                console.log('No analyses data available');
+                return [];
+            }
+            
             const found = [];
-            const q = query.toLowerCase();
+            const q = query.toLowerCase().trim();
+            
+            // Extract meaningful words from query (remove common words)
+            const stopWords = ['compare', 'vs', 'versus', 'and', 'or', 'the', 'to', 'with', 'for', 'stats', 'how', 'is', 'doing', 'who', 'what', 'best', 'top', 'should', 'i', 'my', 'a', 'an', 'about', 'tell', 'me', 'show'];
+            const queryWords = q.split(/[\s,]+/).filter(w => w.length > 2 && !stopWords.includes(w));
+            
+            console.log('Query words:', queryWords);
 
-            // Sort by name length descending to match longer names first
-            const sorted = [...allAnalyses].sort((a, b) => b.name.length - a.name.length);
-
-            sorted.forEach(p => {
-                const fullName = p.name.toLowerCase();
-                const nameParts = fullName.split(' ');
-                const lastName = nameParts[nameParts.length - 1];
-                const firstName = nameParts[0];
-
-                // Check for matches
-                if (q.includes(fullName) || 
-                    (lastName.length > 3 && q.includes(lastName)) ||
-                    (firstName.length > 3 && q.includes(firstName))) {
-                    if (!found.some(f => f.id === p.id)) {
+            allAnalyses.forEach(p => {
+                if (found.some(f => f.id === p.id)) return; // Skip if already found
+                
+                // Get all name variations and clean them
+                const names = [p.name, p.fullName].filter(Boolean);
+                
+                for (const rawName of names) {
+                    const playerName = rawName.toLowerCase().trim();
+                    const nameParts = playerName.split(/[\s.-]+/).filter(part => part.length > 1);
+                    
+                    // Method 1: Full name match in query
+                    if (q.includes(playerName)) {
                         found.push(p);
+                        return;
+                    }
+                    
+                    // Method 2: Any query word matches any name part
+                    for (const queryWord of queryWords) {
+                        for (const namePart of nameParts) {
+                            // Exact match or one contains the other (for partial matches)
+                            if (namePart === queryWord || 
+                                (namePart.length > 3 && queryWord.includes(namePart)) ||
+                                (queryWord.length > 3 && namePart.includes(queryWord))) {
+                                found.push(p);
+                                return;
+                            }
+                        }
                     }
                 }
             });
 
+            console.log('Found players:', found.map(p => p.name));
             return found.slice(0, 4);
         }
 
