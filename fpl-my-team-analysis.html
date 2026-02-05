@@ -1790,29 +1790,31 @@
         let currentGW = 1; // Current gameweek
         let managerData = null; // Manager info from FPL API
         
-        // CORS proxies for user-specific API calls (manager info, picks)
-        // Static data (bootstrap, fixtures, players) loads from local JSON files
-        const CORS_PROXIES = [
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
-        ];
+        // Cloudflare Worker proxy for user-specific API calls (manager info, picks)
+        // SETUP: Deploy fpl-proxy-worker.js to Cloudflare Workers and paste your URL here
+        const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
         
         async function fetchWithProxy(url) {
-            for (const proxyFn of CORS_PROXIES) {
-                try {
-                    const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 10000);
-                    
-                    const response = await fetch(proxyFn(url), { signal: controller.signal });
-                    clearTimeout(timeout);
-                    
-                    if (response.ok) return response;
-                } catch (e) {
-                    console.warn('Proxy failed, trying next...', e.message);
+            // Extract the API path from the full FPL URL
+            // e.g., "https://fantasy.premierleague.com/api/entry/123/" -> "api/entry/123/"
+            const apiPath = url.replace('https://fantasy.premierleague.com/', '');
+            const proxyUrl = `${WORKER_URL}/${apiPath}`;
+            
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 15000);
+                
+                const response = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeout);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+                return response;
+            } catch (e) {
+                console.error('Cloudflare Worker proxy failed:', e.message);
+                throw new Error('Failed to fetch from FPL API. Please try again.');
             }
-            throw new Error('All proxies failed. FPL API may be unavailable.');
         }
 
         // ===== LOAD TEAM BY ID =====
