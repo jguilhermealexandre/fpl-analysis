@@ -2553,6 +2553,18 @@
         }
 
         function renderFixtureSwings(container) {
+            // Build fixture map for analysis
+            const teamFixtureMap = buildFullSeasonMap();
+            const easyRuns = findEasyRuns(teamFixtureMap);
+            const fixtureSwingTeams = findFixtureSwings(teamFixtureMap);
+            
+            // Get display GWs for upcoming gold mines
+            const allGWs = new Set();
+            Object.values(teamFixtureMap).forEach(team => {
+                Object.keys(team).forEach(gw => allGWs.add(parseInt(gw)));
+            });
+            const displayGWs = Array.from(allGWs).sort((a, b) => a - b).filter(gw => gw >= currentGW);
+
             // Find teams with good swing opportunities
             const swingTeams = allTeamsData
                 .filter(t => t.fixtureSwing === 'improving' || parseFloat(t.avgFdr) <= 2.8)
@@ -2597,6 +2609,12 @@
                                 </div>
                             `;
                         }).join('')}
+                    </div>
+                    
+                    <div class="calendar-analysis">
+                        ${renderEasyRunsAnalysis(easyRuns)}
+                        ${renderFixtureSwingAnalysis(fixtureSwingTeams)}
+                        ${renderUpcomingGoldMines(teamFixtureMap, displayGWs)}
                     </div>
                 </div>
             `;
@@ -2682,12 +2700,6 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-
-                    <div class="calendar-analysis">
-                        ${renderEasyRunsAnalysis(easyRuns)}
-                        ${renderFixtureSwingAnalysis(fixtureSwingTeams)}
-                        ${renderUpcomingGoldMines(teamFixtureMap, displayGWs)}
                     </div>
                 </div>
             `;
@@ -3108,8 +3120,8 @@
                                 <tr class="col-groups">
                                     <th class="team-col"></th>
                                     <th colspan="5" class="overall-group">OVERALL</th>
-                                    <th colspan="4" class="attack-group section-divider">⚔️ ATTACK</th>
-                                    <th colspan="4" class="defense-group section-divider">🛡️ DEFENSE</th>
+                                    <th colspan="3" class="attack-group section-divider">⚔️ ATTACK</th>
+                                    <th colspan="3" class="defense-group section-divider">🛡️ DEFENSE</th>
                                 </tr>
                                 <tr>
                                     <th class="team-col">Team</th>
@@ -3121,11 +3133,9 @@
                                     <th data-col="gf" class="section-divider" title="Goals For">GF</th>
                                     <th data-col="gpg" title="Goals per Game">G/G</th>
                                     <th data-col="fts" title="Failed to Score">FTS</th>
-                                    <th data-col="att" title="Attack Rating">ATT</th>
                                     <th data-col="ga" class="section-divider" title="Goals Against">GA</th>
                                     <th data-col="gapg" title="Goals Against per Game">GA/G</th>
                                     <th data-col="cs" title="Clean Sheets">CS</th>
-                                    <th data-col="def" title="Defense Rating">DEF</th>
                                 </tr>
                             </thead>
                             <tbody id="statsBody">
@@ -3240,11 +3250,9 @@
                         <td class="section-divider"><strong>${team.gf}</strong></td>
                         <td class="stats-value ${gpgClass}">${team.gpg.toFixed(2)}</td>
                         <td class="stats-value ${ftsClass}">${team.fts} <span class="stats-mini">(${team.ftsPct.toFixed(0)}%)</span></td>
-                        <td>${team.att.toFixed(0)}</td>
                         <td class="section-divider"><strong>${team.ga}</strong></td>
                         <td class="stats-value ${gapgClass}">${team.gapg.toFixed(2)}</td>
                         <td class="stats-value ${csClass}">${team.cs} <span class="stats-mini">(${team.csPct.toFixed(0)}%)</span></td>
-                        <td>${team.def.toFixed(0)}</td>
                     </tr>
                 `;
             }).join('');
