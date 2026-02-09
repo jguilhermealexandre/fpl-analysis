@@ -7,9 +7,134 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css">
     <style>
-        /* ===== PAGE-SPECIFIC STYLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --surface-bg: #0A0E14;
+            --surface-0: #0D1117;
+            --surface-1: #161B22;
+            --surface-2: #1C2128;
+            --surface-3: #21262D;
+            --surface-4: #30363D;
+            
+            --text-primary: rgba(255, 255, 255, 0.92);
+            --text-secondary: rgba(255, 255, 255, 0.65);
+            --text-muted: rgba(255, 255, 255, 0.45);
+            
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-default: rgba(255, 255, 255, 0.10);
+            --border-emphasis: rgba(255, 255, 255, 0.16);
+            
+            --color-success: #4ADE80;
+            --color-error: #F87171;
+            --color-warning: #FBBF24;
+            --color-info: #60A5FA;
+            
+            --verdict-sell: #EF4444;
+            --verdict-sell-bg: rgba(239, 68, 68, 0.12);
+            --verdict-monitor: #F59E0B;
+            --verdict-monitor-bg: rgba(245, 158, 11, 0.12);
+            --verdict-hold: #22C55E;
+            --verdict-hold-bg: rgba(34, 197, 94, 0.12);
+            
+            --fdr-1: #4ADE80;
+            --fdr-2: #86EFAC;
+            --fdr-3: #9CA3AF;
+            --fdr-4: #FB923C;
+            --fdr-5: #EF4444;
+            
+            --font-display: 'Space Grotesk', system-ui, sans-serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--surface-bg);
+            color: var(--text-primary);
+            line-height: 1.5;
+            font-size: 14px;
+            min-height: 100vh;
+        }
+
+        /* ===== TOP NAVIGATION ===== */
+        .top-nav {
+            background: var(--surface-0);
+            border-bottom: 1px solid var(--border-default);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            height: 48px;
+            gap: 32px;
+        }
+
+        .nav-logo {
+            font-family: var(--font-display);
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .nav-logo span { color: var(--color-success); }
+
+        .nav-links {
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            transition: all 0.15s;
+        }
+
+        .nav-link:hover { 
+            color: var(--text-primary); 
+            background: var(--surface-1);
+        }
+        
+        .nav-link.active {
+            color: var(--color-success);
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        .nav-link .icon { font-size: 14px; }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 24px 100px;
+        }
 
         /* ===== HEADER ROW ===== */
         .header-row {
@@ -46,7 +171,36 @@
 
         .team-id-input:focus {
             outline: none;
-            border-color: var(--color-primary);
+            border-color: var(--color-success);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: var(--color-success);
+            color: var(--surface-bg);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-secondary {
+            background: var(--surface-2);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-3);
         }
 
         .manager-info {
@@ -63,7 +217,7 @@
 
         .manager-name {
             font-weight: 600;
-            color: var(--color-primary);
+            color: var(--color-success);
         }
 
         .manager-stat {
@@ -132,9 +286,13 @@
             gap: 16px;
         }
 
-        .priority-icon { font-size: 24px; }
+        .priority-icon {
+            font-size: 24px;
+        }
 
-        .priority-content { flex: 1; }
+        .priority-content {
+            flex: 1;
+        }
 
         .priority-label {
             font-size: 11px;
@@ -163,7 +321,9 @@
         }
 
         /* ===== VERDICT SECTIONS ===== */
-        .verdict-section { margin-bottom: 16px; }
+        .verdict-section {
+            margin-bottom: 16px;
+        }
 
         .verdict-header {
             display: flex;
@@ -174,7 +334,9 @@
             user-select: none;
         }
 
-        .verdict-header:hover .verdict-title { opacity: 0.8; }
+        .verdict-header:hover .verdict-title {
+            opacity: 0.8;
+        }
 
         .verdict-badge {
             padding: 4px 10px;
@@ -185,9 +347,20 @@
             letter-spacing: 0.5px;
         }
 
-        .verdict-badge.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
-        .verdict-badge.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
-        .verdict-badge.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
+        .verdict-badge.sell {
+            background: var(--verdict-sell-bg);
+            color: var(--verdict-sell);
+        }
+
+        .verdict-badge.monitor {
+            background: var(--verdict-monitor-bg);
+            color: var(--verdict-monitor);
+        }
+
+        .verdict-badge.hold {
+            background: var(--verdict-hold-bg);
+            color: var(--verdict-hold);
+        }
 
         .verdict-title {
             font-size: 14px;
@@ -207,7 +380,9 @@
             transition: transform 0.2s;
         }
 
-        .verdict-toggle.open { transform: rotate(180deg); }
+        .verdict-toggle.open {
+            transform: rotate(180deg);
+        }
 
         /* ===== PLAYER GRID ===== */
         .players-grid {
@@ -216,7 +391,7 @@
             gap: 12px;
         }
 
-        /* ===== PLAYER CARD ===== */
+        /* ===== COMPACT PLAYER CARD ===== */
         .player-card {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
@@ -231,9 +406,17 @@
             transform: translateY(-1px);
         }
 
-        .player-card.sell { border-left: 3px solid var(--verdict-sell); }
-        .player-card.monitor { border-left: 3px solid var(--verdict-monitor); }
-        .player-card.hold { border-left: 3px solid var(--verdict-hold); }
+        .player-card.sell {
+            border-left: 3px solid var(--verdict-sell);
+        }
+
+        .player-card.monitor {
+            border-left: 3px solid var(--verdict-monitor);
+        }
+
+        .player-card.hold {
+            border-left: 3px solid var(--verdict-hold);
+        }
 
         .card-top {
             display: flex;
@@ -243,7 +426,10 @@
             margin-bottom: 10px;
         }
 
-        .player-info { flex: 1; min-width: 0; }
+        .player-info {
+            flex: 1;
+            min-width: 0;
+        }
 
         .player-name {
             font-size: 14px;
@@ -284,10 +470,22 @@
             white-space: nowrap;
         }
 
-        .verdict-chip.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
-        .verdict-chip.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
-        .verdict-chip.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
+        .verdict-chip.sell {
+            background: var(--verdict-sell-bg);
+            color: var(--verdict-sell);
+        }
 
+        .verdict-chip.monitor {
+            background: var(--verdict-monitor-bg);
+            color: var(--verdict-monitor);
+        }
+
+        .verdict-chip.hold {
+            background: var(--verdict-hold-bg);
+            color: var(--verdict-hold);
+        }
+
+        /* Verdict reason - the key insight */
         .verdict-reason {
             font-size: 13px;
             color: var(--text-secondary);
@@ -295,8 +493,11 @@
             line-height: 1.4;
         }
 
-        /* Key metrics */
-        .key-metrics { display: flex; gap: 8px; }
+        /* Key metrics - only 3 */
+        .key-metrics {
+            display: flex;
+            gap: 8px;
+        }
 
         .metric-box {
             flex: 1;
@@ -325,7 +526,10 @@
         .metric-value.bad { color: var(--color-error); }
         .metric-value.neutral { color: var(--text-primary); }
 
-        .metric-trend { font-size: 10px; margin-left: 2px; }
+        .metric-trend {
+            font-size: 10px;
+            margin-left: 2px;
+        }
 
         /* Fixture strip */
         .fixture-strip {
@@ -345,14 +549,22 @@
             font-weight: 600;
         }
 
-        .fixture-chip.fdr-1 { background: rgba(52, 211, 153, 0.2); color: var(--fdr-1); }
+        .fixture-chip.fdr-1 { background: rgba(74, 222, 128, 0.2); color: var(--fdr-1); }
         .fixture-chip.fdr-2 { background: rgba(134, 239, 172, 0.2); color: var(--fdr-2); }
         .fixture-chip.fdr-3 { background: rgba(156, 163, 175, 0.15); color: var(--fdr-3); }
         .fixture-chip.fdr-4 { background: rgba(251, 146, 60, 0.2); color: var(--fdr-4); }
         .fixture-chip.fdr-5 { background: rgba(239, 68, 68, 0.2); color: var(--fdr-5); }
 
-        .fixture-team { display: block; font-size: 11px; }
-        .fixture-venue { display: block; font-size: 9px; opacity: 0.7; }
+        .fixture-team {
+            display: block;
+            font-size: 11px;
+        }
+
+        .fixture-venue {
+            display: block;
+            font-size: 9px;
+            opacity: 0.7;
+        }
 
         /* Card actions */
         .card-actions {
@@ -388,7 +600,9 @@
             color: white;
         }
 
-        .card-btn.primary:hover { filter: brightness(1.1); }
+        .card-btn.primary:hover {
+            filter: brightness(1.1);
+        }
 
         /* ===== HOLD SECTION COMPACT ===== */
         .hold-grid {
@@ -408,10 +622,19 @@
             border-radius: var(--radius-sm);
         }
 
-        .hold-card-mini .player-name { font-size: 13px; margin: 0; }
-        .hold-card-mini .player-meta { font-size: 11px; }
+        .hold-card-mini .player-name {
+            font-size: 13px;
+            margin: 0;
+        }
 
-        .hold-mini-stat { margin-left: auto; text-align: right; }
+        .hold-card-mini .player-meta {
+            font-size: 11px;
+        }
+
+        .hold-mini-stat {
+            margin-left: auto;
+            text-align: right;
+        }
 
         .hold-mini-stat .value {
             font-family: var(--font-mono);
@@ -426,20 +649,26 @@
             text-transform: uppercase;
         }
 
-        /* ===== DETAIL PANEL ===== */
+        /* ===== DETAIL PANEL (Slide-out) ===== */
         .detail-overlay {
             display: none;
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background: rgba(0, 0, 0, 0.6);
             z-index: 200;
         }
 
-        .detail-overlay.show { display: block; }
+        .detail-overlay.show {
+            display: block;
+        }
 
         .detail-panel {
             position: fixed;
-            top: 0; right: 0;
+            top: 0;
+            right: 0;
             width: 100%;
             max-width: 420px;
             height: 100%;
@@ -451,7 +680,9 @@
             transition: transform 0.3s ease;
         }
 
-        .detail-overlay.show .detail-panel { transform: translateX(0); }
+        .detail-overlay.show .detail-panel {
+            transform: translateX(0);
+        }
 
         .detail-header {
             position: sticky;
@@ -473,11 +704,17 @@
             padding: 4px;
         }
 
-        .detail-close:hover { color: var(--text-primary); }
+        .detail-close:hover {
+            color: var(--text-primary);
+        }
 
-        .detail-body { padding: 20px; }
+        .detail-body {
+            padding: 20px;
+        }
 
-        .detail-section { margin-bottom: 24px; }
+        .detail-section {
+            margin-bottom: 24px;
+        }
 
         .detail-section-title {
             font-size: 12px;
@@ -495,9 +732,17 @@
             margin-bottom: 8px;
         }
 
-        .insight-item.positive { border-left: 3px solid var(--color-success); }
-        .insight-item.warning { border-left: 3px solid var(--color-warning); }
-        .insight-item.critical { border-left: 3px solid var(--color-error); }
+        .insight-item.positive {
+            border-left: 3px solid var(--color-success);
+        }
+
+        .insight-item.warning {
+            border-left: 3px solid var(--color-warning);
+        }
+
+        .insight-item.critical {
+            border-left: 3px solid var(--color-error);
+        }
 
         .insight-title {
             font-size: 13px;
@@ -530,7 +775,8 @@
         }
 
         .replacement-rank {
-            width: 24px; height: 24px;
+            width: 24px;
+            height: 24px;
             background: var(--surface-3);
             border-radius: 50%;
             display: flex;
@@ -540,10 +786,23 @@
             font-weight: 700;
         }
 
-        .replacement-info { flex: 1; }
-        .replacement-name { font-size: 13px; font-weight: 600; }
-        .replacement-meta { font-size: 11px; color: var(--text-muted); }
-        .replacement-stats { text-align: right; }
+        .replacement-info {
+            flex: 1;
+        }
+
+        .replacement-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .replacement-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .replacement-stats {
+            text-align: right;
+        }
 
         .replacement-primary {
             font-family: var(--font-mono);
@@ -558,15 +817,107 @@
         }
 
         /* ===== EMPTY STATE ===== */
-        .empty-state { text-align: center; padding: 60px 20px; }
-        .empty-icon { font-size: 48px; margin-bottom: 16px; }
-        .empty-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-        .empty-text { font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
 
         /* ===== LOADING ===== */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 20, 0.9);
+            z-index: 300;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--surface-3);
+            border-top-color: var(--color-success);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         .loading-text {
             font-size: 14px;
             color: var(--text-secondary);
+        }
+
+        /* ===== MOBILE NAV ===== */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--surface-0);
+            border-top: 1px solid var(--border-default);
+            padding: 8px 0;
+            z-index: 100;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-nav {
+                display: flex;
+                justify-content: space-around;
+            }
+
+            .main-content {
+                padding-bottom: 80px;
+            }
+        }
+
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 4px 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 10px;
+        }
+
+        .mobile-nav-item.active {
+            color: var(--color-success);
+        }
+
+        .mobile-nav-item .icon {
+            font-size: 20px;
         }
 
         /* ===== STATUS ===== */
@@ -578,9 +929,17 @@
             border-radius: var(--radius-sm);
         }
 
-        .status.loading { color: var(--color-info); }
-        .status.success { color: var(--color-success); }
-        .status.error { color: var(--color-error); }
+        .status.loading {
+            color: var(--color-info);
+        }
+
+        .status.success {
+            color: var(--color-success);
+        }
+
+        .status.error {
+            color: var(--color-error);
+        }
 
         /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
@@ -589,7 +948,9 @@
                 align-items: stretch;
             }
 
-            .team-input-row { flex-wrap: wrap; }
+            .team-input-row {
+                flex-wrap: wrap;
+            }
 
             .manager-info {
                 flex-wrap: wrap;
@@ -597,8 +958,13 @@
                 text-align: center;
             }
 
-            .players-grid { grid-template-columns: 1fr; }
-            .hold-grid { grid-template-columns: 1fr; }
+            .players-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hold-grid {
+                grid-template-columns: 1fr;
+            }
 
             .health-header {
                 flex-direction: column;
@@ -610,44 +976,32 @@
                 text-align: center;
             }
 
-            .detail-panel { max-width: 100%; }
+            .detail-panel {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to content</a>
-
     <!-- Top Navigation -->
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="index.html" class="nav-logo">
-                <span aria-hidden="true">⚡</span> FPL<span>Tools</span>
-            </a>
+            <a href="index.html" class="nav-logo">⚡ FPL<span>Tools</span></a>
             <div class="nav-links">
-                <a href="fpl-transfer-wizard.html" class="nav-link">
-                    <span class="icon" aria-hidden="true">🧙‍♂️</span> Wizard
-                </a>
-                <a href="fpl-my-team-analysis.html" class="nav-link active" aria-current="page">
-                    <span class="icon" aria-hidden="true">⚽</span> My Team
-                </a>
-                <a href="fpl-players-analysis.html" class="nav-link">
-                    <span class="icon" aria-hidden="true">👤</span> Players
-                </a>
-                <a href="fpl-teams-analysis.html" class="nav-link">
-                    <span class="icon" aria-hidden="true">📊</span> Teams
-                </a>
-                <a href="fpl-league-rivals.html" class="nav-link">
-                    <span class="icon" aria-hidden="true">🏆</span> Rivals
-                </a>
+                <a href="fpl-transfer-wizard.html" class="nav-link"><span class="icon">🧙‍♂️</span> Wizard</a>
+                <a href="fpl-my-team-analysis.html" class="nav-link active"><span class="icon">⚽</span> My Team</a>
+                <a href="fpl-players-analysis.html" class="nav-link"><span class="icon">👤</span> Players</a>
+                <a href="fpl-teams-analysis.html" class="nav-link"><span class="icon">📊</span> Teams</a>
+                <a href="fpl-league-rivals.html" class="nav-link"><span class="icon">🏆</span> Rivals</a>
             </div>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="main-content" id="main-content">
+    <main class="main-content">
         <!-- Header Row -->
         <div class="header-row">
-            <h1 class="page-title"><span aria-hidden="true">⚽</span> My Team Analysis</h1>
+            <h1 class="page-title">⚽ My Team Analysis</h1>
             
             <div class="team-input-row">
                 <input type="text" id="teamIdInput" class="team-id-input" placeholder="Team ID">
@@ -720,12 +1074,12 @@
     </div>
 
     <!-- Mobile Navigation -->
-    <nav class="mobile-nav" aria-label="Mobile navigation">
-        <a href="fpl-transfer-wizard.html" class="mobile-nav-item"><span aria-hidden="true">🧙‍♂️</span>Wizard</a>
-        <a href="fpl-my-team-analysis.html" class="mobile-nav-item active" aria-current="page"><span aria-hidden="true">⚽</span>My Team</a>
-        <a href="fpl-players-analysis.html" class="mobile-nav-item"><span aria-hidden="true">👤</span>Players</a>
-        <a href="fpl-teams-analysis.html" class="mobile-nav-item"><span aria-hidden="true">📊</span>Teams</a>
-        <a href="fpl-league-rivals.html" class="mobile-nav-item"><span aria-hidden="true">🏆</span>Rivals</a>
+    <nav class="mobile-nav">
+        <a href="fpl-transfer-wizard.html" class="mobile-nav-item"><span class="icon">🧙‍♂️</span>Wizard</a>
+        <a href="fpl-my-team-analysis.html" class="mobile-nav-item active"><span class="icon">⚽</span>My Team</a>
+        <a href="fpl-players-analysis.html" class="mobile-nav-item"><span class="icon">👤</span>Players</a>
+        <a href="fpl-teams-analysis.html" class="mobile-nav-item"><span class="icon">📊</span>Teams</a>
+        <a href="fpl-league-rivals.html" class="mobile-nav-item"><span class="icon">🏆</span>Rivals</a>
     </nav>
 
     <script>
