@@ -2647,6 +2647,12 @@
             const improvingSwings = fixtureSwingTeams.filter(s => s.direction === 'improving');
             const worseningSwings = fixtureSwingTeams.filter(s => s.direction === 'worsening');
 
+            const tierColors = {
+                premium: { bg: 'rgba(74, 222, 128, 0.15)', color: 'var(--color-success)', label: 'PREMIUM' },
+                great: { bg: 'rgba(96, 165, 250, 0.15)', color: 'var(--color-info)', label: 'GREAT' },
+                good: { bg: 'rgba(251, 191, 36, 0.12)', color: 'var(--color-warning)', label: 'GOOD' }
+            };
+
             const html = `
                 <div class="swing-section">
                     <div class="swings-layout">
@@ -2654,15 +2660,15 @@
                         <div class="swings-panel">
                             <div class="swings-panel-header">
                                 <span class="swings-panel-icon">🟢</span>
-                                <span class="swings-panel-title">Best Easy Fixture Runs</span>
-                                <span class="swings-panel-count">${futureRuns.length} runs</span>
+                                <span class="swings-panel-title">Best Targetable Fixture Patches</span>
+                                <span class="swings-panel-count">${futureRuns.length} found</span>
                             </div>
                             <div class="swings-panel-body">
                                 ${futureRuns.length === 0 ? 
-                                    '<div style="padding: var(--space-4); text-align: center; color: var(--text-muted); font-size: 12px;">No significant easy runs found in remaining fixtures.</div>' :
+                                    '<div style="padding: var(--space-4); text-align: center; color: var(--text-muted); font-size: 12px;">No targetable patches found in remaining fixtures.</div>' :
                                     futureRuns.map((run, i) => {
-                                        const team = allTeamsData.find(t => t.id === run.teamId);
-                                        const fdrClass = run.avgFdr <= 2.0 ? 'good' : run.avgFdr <= 2.5 ? 'warn' : 'info';
+                                        const tier = tierColors[run.tier] || tierColors.good;
+                                        const fdrClass = run.avgFdr <= 2.2 ? 'good' : run.avgFdr <= 2.7 ? 'info' : 'warn';
                                         return `
                                             <div class="swings-run-item" onclick="openEasyRunModal(${i})">
                                                 <span class="swings-run-rank" style="color: ${i < 3 ? 'var(--color-warning)' : 'var(--text-muted)'}">${i + 1}</span>
@@ -2673,14 +2679,15 @@
                                                         <span>GW${run.startGW}–${run.endGW}</span>
                                                         <span>•</span>
                                                         <span>${run.homeCount}H ${run.length - run.homeCount}A</span>
+                                                        <span style="font-size: 8px; padding: 1px 4px; border-radius: 3px; background: ${tier.bg}; color: ${tier.color}; font-weight: 700;">${tier.label}</span>
                                                     </div>
                                                 </div>
                                                 <div class="swings-run-mini-fdr">
-                                                    ${run.fixtures.slice(0, 6).map(f => `
+                                                    ${run.fixtures.slice(0, 7).map(f => `
                                                         <div class="swings-mini-dot fdr-${Math.round(f.fdr)}">${f.opponent.slice(0,1)}</div>
                                                     `).join('')}
                                                 </div>
-                                                <span class="swings-run-stat ${fdrClass}">${run.length}<span style="font-size:10px;font-weight:400;color:var(--text-muted)"> GWs</span></span>
+                                                <span class="swings-run-stat" style="color: ${tier.color}">${run.avgFdr}<span style="font-size:10px;font-weight:400;color:var(--text-muted)"> avg</span></span>
                                                 <span class="swings-run-arrow">›</span>
                                             </div>
                                         `;
@@ -3399,71 +3406,108 @@
         }
 
         function findEasyRuns(fixtureMap) {
-            const easyRuns = [];
-            const minRunLength = 3;
-            const maxFDR = 2.5;
+            const allRuns = [];
+            const MIN_WINDOW = 3;
+            const MAX_WINDOW = 8;
 
             allTeamsData.forEach(team => {
                 const teamFixtures = fixtureMap[team.id];
                 if (!teamFixtures) return;
 
-                const gws = Object.keys(teamFixtures).map(Number).sort((a, b) => a - b);
-                let runStart = null;
-                let runLength = 0;
-                let runFixtures = [];
+                // Get all remaining GWs with fixtures
+                const futureGWs = Object.keys(teamFixtures)
+                    .map(Number)
+                    .filter(gw => {
+                        const fx = teamFixtures[gw];
+                        return gw >= currentGW && fx && fx.length > 0 && !fx[0].finished;
+                    })
+                    .sort((a, b) => a - b);
 
-                const pushRun = (endGW) => {
-                    if (runLength >= minRunLength) {
-                        const homeCount = runFixtures.filter(f => f.isHome).length;
-                        const avgFdr = runFixtures.reduce((s, f) => s + f.fdr, 0) / runFixtures.length;
-                        easyRuns.push({
+                if (futureGWs.length < MIN_WINDOW) return;
+
+                // Sliding window: scan every window of size MIN_WINDOW to MAX_WINDOW
+                for (let winSize = MIN_WINDOW; winSize <= Math.min(MAX_WINDOW, futureGWs.length); winSize++) {
+                    for (let start = 0; start <= futureGWs.length - winSize; start++) {
+                        const windowGWs = futureGWs.slice(start, start + winSize);
+                        const windowFixtures = windowGWs.map(gw => {
+                            const fx = teamFixtures[gw];
+                            return fx && fx[0] ? { ...fx[0], gw } : null;
+                        }).filter(Boolean);
+
+                        if (windowFixtures.length < MIN_WINDOW) continue;
+
+                        const avgFdr = windowFixtures.reduce((s, f) => s + f.fdr, 0) / windowFixtures.length;
+
+                        // Only include windows with avg FDR ≤ 3.0 (generous)
+                        if (avgFdr > 3.0) continue;
+
+                        // Count how many fixtures are genuinely easy (FDR ≤ 2)
+                        const easyCount = windowFixtures.filter(f => f.fdr <= 2).length;
+                        // Skip if none are actually easy
+                        if (easyCount === 0) continue;
+
+                        const homeCount = windowFixtures.filter(f => f.isHome).length;
+                        const hardCount = windowFixtures.filter(f => f.fdr >= 4).length;
+
+                        // Composite score: lower is better
+                        // Rewards: low avg FDR, longer runs, more home games, fewer hard games
+                        const score = avgFdr - (windowFixtures.length * 0.08) - (homeCount * 0.05) + (hardCount * 0.15);
+
+                        allRuns.push({
                             teamId: team.id,
                             teamName: team.name,
                             teamShort: team.shortName,
                             badgeUrl: team.badgeUrl,
-                            startGW: runStart,
-                            endGW: endGW,
-                            length: runLength,
-                            fixtures: [...runFixtures],
+                            startGW: windowGWs[0],
+                            endGW: windowGWs[windowGWs.length - 1],
+                            length: windowFixtures.length,
+                            fixtures: windowFixtures,
                             homeCount,
                             avgFdr: parseFloat(avgFdr.toFixed(2)),
+                            easyCount,
+                            hardCount,
+                            score,
                             attackPower: team.attackPower,
                             defensePower: team.defensePower,
                             formRating: team.formRating
                         });
                     }
-                };
-
-                gws.forEach((gw, idx) => {
-                    const fixtures = teamFixtures[gw];
-                    if (!fixtures || fixtures.length === 0) {
-                        pushRun(gws[idx - 1]);
-                        runStart = null;
-                        runLength = 0;
-                        runFixtures = [];
-                        return;
-                    }
-
-                    const avgFdr = fixtures.reduce((sum, f) => sum + f.fdr, 0) / fixtures.length;
-                    const isEasy = avgFdr <= maxFDR && !fixtures[0].finished;
-
-                    if (isEasy) {
-                        if (runStart === null) runStart = gw;
-                        runLength++;
-                        runFixtures.push({ ...fixtures[0], gw });
-                    } else {
-                        pushRun(gws[idx - 1]);
-                        runStart = null;
-                        runLength = 0;
-                        runFixtures = [];
-                    }
-                });
-
-                // Check for run at end
-                pushRun(gws[gws.length - 1]);
+                }
             });
 
-            return easyRuns.sort((a, b) => b.length - a.length || a.avgFdr - b.avgFdr);
+            // Deduplicate: for each team, keep the best non-overlapping runs
+            // Sort by score first (lower = better)
+            allRuns.sort((a, b) => a.score - b.score);
+
+            const bestRuns = [];
+            const usedSlots = {}; // teamId -> Set of GWs already claimed
+
+            allRuns.forEach(run => {
+                const key = run.teamId;
+                if (!usedSlots[key]) usedSlots[key] = new Set();
+
+                // Check how much this run overlaps with already-picked runs for this team
+                const runGWs = run.fixtures.map(f => f.gw);
+                const overlapCount = runGWs.filter(gw => usedSlots[key].has(gw)).length;
+
+                // Allow if less than half overlaps
+                if (overlapCount <= runGWs.length * 0.4) {
+                    bestRuns.push(run);
+                    runGWs.forEach(gw => usedSlots[key].add(gw));
+                }
+            });
+
+            // Final sort: by score (best patches first)
+            bestRuns.sort((a, b) => a.score - b.score);
+
+            // Assign tier labels
+            bestRuns.forEach(run => {
+                if (run.avgFdr <= 2.0) run.tier = 'premium';
+                else if (run.avgFdr <= 2.5) run.tier = 'great';
+                else run.tier = 'good';
+            });
+
+            return bestRuns;
         }
 
         function findFixtureSwings(fixtureMap) {
@@ -3629,13 +3673,22 @@
             if (!run) return;
 
             const team = allTeamsData.find(t => t.id === run.teamId);
-            const avgFdrClass = run.avgFdr <= 2.0 ? 'good' : run.avgFdr <= 2.5 ? 'warn' : 'info';
+            const tierMap = {
+                premium: { bg: 'rgba(74, 222, 128, 0.15)', color: 'var(--color-success)', label: '🔥 PREMIUM RUN' },
+                great: { bg: 'rgba(96, 165, 250, 0.15)', color: 'var(--color-info)', label: '✅ GREAT RUN' },
+                good: { bg: 'rgba(251, 191, 36, 0.12)', color: 'var(--color-warning)', label: '👍 GOOD PATCH' }
+            };
+            const tier = tierMap[run.tier] || tierMap.good;
+            const avgFdrClass = run.avgFdr <= 2.2 ? 'good' : run.avgFdr <= 2.7 ? 'info' : 'warn';
 
             const header = `
                 <img src="${run.badgeUrl}" alt="${run.teamShort}" class="modal-header-badge" onerror="this.style.display='none'">
                 <div class="modal-header-info">
                     <div class="modal-title">${run.teamName}</div>
-                    <div class="modal-subtitle">Easy fixture run · GW${run.startGW} → GW${run.endGW}</div>
+                    <div class="modal-subtitle" style="display:flex;align-items:center;gap:8px;">
+                        <span>GW${run.startGW} → GW${run.endGW}</span>
+                        <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: ${tier.bg}; color: ${tier.color}; font-weight: 700;">${tier.label}</span>
+                    </div>
                 </div>
                 <button class="modal-close" onclick="closeModal()">✕</button>
             `;
@@ -3661,6 +3714,23 @@
                     </div>
                     <div class="modal-stat-grid">
                         <div class="modal-stat">
+                            <div class="modal-stat-label">Easy GWs</div>
+                            <div class="modal-stat-value good">${run.easyCount}</div>
+                            <div class="modal-stat-sub">FDR ≤ 2</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Hard GWs</div>
+                            <div class="modal-stat-value ${run.hardCount === 0 ? 'good' : 'bad'}">${run.hardCount}</div>
+                            <div class="modal-stat-sub">FDR ≥ 4</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Form</div>
+                            <div class="modal-stat-value ${run.formRating >= 60 ? 'good' : run.formRating < 40 ? 'bad' : 'warn'}">${run.formRating}</div>
+                            <div class="modal-stat-sub">rating</div>
+                        </div>
+                    </div>
+                    <div class="modal-stat-grid">
+                        <div class="modal-stat">
                             <div class="modal-stat-label">Attack</div>
                             <div class="modal-stat-value ${run.attackPower >= 60 ? 'good' : run.attackPower < 40 ? 'bad' : ''}">${run.attackPower}</div>
                             <div class="modal-stat-sub">power</div>
@@ -3671,9 +3741,9 @@
                             <div class="modal-stat-sub">power</div>
                         </div>
                         <div class="modal-stat">
-                            <div class="modal-stat-label">Form</div>
-                            <div class="modal-stat-value ${run.formRating >= 60 ? 'good' : run.formRating < 40 ? 'bad' : 'warn'}">${run.formRating}</div>
-                            <div class="modal-stat-sub">rating</div>
+                            <div class="modal-stat-label">Home %</div>
+                            <div class="modal-stat-value info">${Math.round((run.homeCount / run.length) * 100)}%</div>
+                            <div class="modal-stat-sub">advantage</div>
                         </div>
                     </div>
                 </div>
@@ -3698,15 +3768,29 @@
                 </div>
 
                 <div class="modal-section">
+                    <div class="modal-section-title">FDR Distribution</div>
+                    <div style="display: flex; gap: 3px; margin-bottom: var(--space-3);">
+                        ${run.fixtures.map(f => `
+                            <div style="flex: 1; height: ${24 + f.fdr * 8}px; border-radius: var(--radius-sm); background: ${getFdrColor(f.fdr)}; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px;">
+                                <span style="font-size: 8px; font-weight: 700; color: ${getFdrTextColor(f.fdr)}">${f.opponent}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="modal-section">
                     <div class="modal-section-title">FPL Insight</div>
                     <div style="background: var(--surface-0); border-radius: var(--radius-md); padding: var(--space-3); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
-                        ${run.avgFdr <= 2.0 ? '🔥 <strong style="color: var(--color-success)">Premium run.</strong> This is one of the easiest stretches remaining. ' : 
-                          run.avgFdr <= 2.3 ? '✅ <strong style="color: var(--color-success)">Strong run.</strong> Very favourable fixtures ahead. ' : 
-                          '👍 <strong style="color: var(--color-info)">Decent run.</strong> Fixtures are below-average difficulty. '}
-                        ${run.homeCount >= Math.ceil(run.length * 0.6) ? 'Heavy home schedule adds extra value for attackers. ' : ''}
-                        ${run.attackPower >= 60 ? `${run.teamName} have strong attacking output — target their forwards/mids. ` : ''}
-                        ${run.defensePower >= 60 ? `Solid defensive record too — their defenders are worth considering. ` : ''}
-                        ${run.length >= 5 ? `At ${run.length} gameweeks, this run is long enough to plan transfers around. ` : ''}
+                        ${run.tier === 'premium' ? '🔥 <strong style="color: var(--color-success)">Premium patch.</strong> One of the best stretches in the remaining calendar. ' : 
+                          run.tier === 'great' ? '✅ <strong style="color: var(--color-info)">Great patch.</strong> Very favourable fixtures to target. ' : 
+                          '👍 <strong style="color: var(--color-warning)">Good patch.</strong> Below-average difficulty worth considering. '}
+                        ${run.easyCount >= run.length * 0.7 ? `${run.easyCount} of ${run.length} fixtures are FDR ≤ 2 — this is a dominant green stretch. ` : ''}
+                        ${run.hardCount > 0 ? `There ${run.hardCount === 1 ? 'is 1 tougher fixture' : `are ${run.hardCount} tougher fixtures`} mixed in, but the overall average is still strong. ` : 'No difficult fixtures (FDR ≥ 4) in this entire stretch. '}
+                        ${run.homeCount >= Math.ceil(run.length * 0.6) ? 'Heavy home schedule adds extra attacking value. ' : ''}
+                        ${run.attackPower >= 60 ? `${run.teamName} have strong attacking output — their forwards and midfielders are premium targets here. ` : ''}
+                        ${run.defensePower >= 60 ? 'Solid defensive record too — their defenders offer clean sheet potential. ' : ''}
+                        ${run.length >= 5 ? `At ${run.length} gameweeks, this patch is long enough to plan multiple transfers around. ` : ''}
+                        ${run.formRating >= 60 ? 'Currently in good form, which adds confidence to this pick. ' : run.formRating < 35 ? 'Form is poor though — monitor whether they can turn it around before committing. ' : ''}
                     </div>
                 </div>
             `;
