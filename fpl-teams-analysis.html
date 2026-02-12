@@ -2053,31 +2053,9 @@
     </svg>
 
     <script>
-        // Data URLs - try live FPL API first (via CORS proxies), fallback to local files
-        const FPL_API_BASE = 'https://fantasy.premierleague.com/api';
-        const CORS_PROXIES = [
-            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        ];
-        const LOCAL_BOOTSTRAP = 'data/bootstrap-static.json';
-        const LOCAL_FIXTURES = 'data/fixtures.json';
-
-        async function fetchWithProxy(path) {
-            const fullUrl = `${FPL_API_BASE}/${path}`;
-            // Try CORS proxies first
-            for (const proxy of CORS_PROXIES) {
-                try {
-                    const res = await fetch(proxy(fullUrl), { signal: AbortSignal.timeout(8000) });
-                    if (res.ok) return res;
-                } catch (e) { /* try next */ }
-            }
-            // Try direct (works if same-origin or CORS allowed)
-            try {
-                const res = await fetch(fullUrl, { signal: AbortSignal.timeout(5000) });
-                if (res.ok) return res;
-            } catch (e) { /* fallback to local */ }
-            return null;
-        }
+        // Data URLs - served from local files updated by GitHub Actions
+        const BOOTSTRAP_URL = 'data/bootstrap-static.json';
+        const FIXTURES_URL = 'data/fixtures.json';
         
         let allTeamsData = [];
         let currentView = 'attack';
@@ -2127,37 +2105,24 @@
             try {
                 showLoading(true);
 
-                // Try live API first, fallback to local files
-                let bootstrapData, fixturesData;
-                
                 const [bootstrapRes, fixturesRes] = await Promise.all([
-                    fetchWithProxy('bootstrap-static/'),
-                    fetchWithProxy('fixtures/')
+                    fetch(BOOTSTRAP_URL),
+                    fetch(FIXTURES_URL)
                 ]);
 
-                if (bootstrapRes && fixturesRes) {
-                    bootstrapData = await bootstrapRes.json();
-                    fixturesData = await fixturesRes.json();
-                    console.log('✅ Loaded from live FPL API');
-                } else {
-                    // Fallback to local files
-                    console.log('⚠️ API unavailable, trying local files...');
-                    const [localBoot, localFix] = await Promise.all([
-                        fetch(LOCAL_BOOTSTRAP),
-                        fetch(LOCAL_FIXTURES)
-                    ]);
-                    if (!localBoot.ok || !localFix.ok) throw new Error('Failed to load data from API and local files');
-                    bootstrapData = await localBoot.json();
-                    fixturesData = await localFix.json();
-                    console.log('✅ Loaded from local files');
+                if (!bootstrapRes.ok || !fixturesRes.ok) {
+                    throw new Error('Failed to load data — make sure data/ folder contains bootstrap-static.json and fixtures.json');
                 }
+
+                const bootstrapData = await bootstrapRes.json();
+                const fixturesData = await fixturesRes.json();
                 
                 // Store fixtures globally (includes stats array with goals, assists, cards, bonus etc.)
                 window.rawFixturesData = fixturesData;
                 
-                // Log stats availability for debugging
+                // Log stats availability
                 const fixturesWithStats = fixturesData.filter(f => f.stats && f.stats.length > 0);
-                console.log(`📊 ${fixturesWithStats.length}/${fixturesData.filter(f => f.finished).length} fixtures have detailed stats`);
+                console.log(`📊 Loaded ${fixturesData.length} fixtures (${fixturesWithStats.length} with detailed stats)`);
 
                 currentGW = bootstrapData.events.find(e => e.is_current)?.id || 
                                   bootstrapData.events.find(e => e.is_next)?.id || 1;
