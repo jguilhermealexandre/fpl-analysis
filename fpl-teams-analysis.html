@@ -1339,7 +1339,7 @@
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: var(--space-4);
+            gap: var(--space-3);
         }
 
         .stats-title {
@@ -1354,6 +1354,7 @@
             background: var(--surface-2);
             padding: var(--space-1);
             border-radius: var(--radius-md);
+            flex-wrap: wrap;
         }
 
         .stats-toggle-btn {
@@ -1362,10 +1363,11 @@
             border: none;
             border-radius: var(--radius-sm);
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
             cursor: pointer;
             transition: all 150ms;
+            white-space: nowrap;
         }
 
         .stats-toggle-btn:hover {
@@ -1384,7 +1386,7 @@
         .stats-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1000px;
+            min-width: 700px;
         }
 
         .stats-table th {
@@ -2051,9 +2053,31 @@
     </svg>
 
     <script>
-        // Data URLs
-        const BOOTSTRAP_URL = 'data/bootstrap-static.json';
-        const FIXTURES_URL = 'data/fixtures.json';
+        // Data URLs - try live FPL API first (via CORS proxies), fallback to local files
+        const FPL_API_BASE = 'https://fantasy.premierleague.com/api';
+        const CORS_PROXIES = [
+            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        ];
+        const LOCAL_BOOTSTRAP = 'data/bootstrap-static.json';
+        const LOCAL_FIXTURES = 'data/fixtures.json';
+
+        async function fetchWithProxy(path) {
+            const fullUrl = `${FPL_API_BASE}/${path}`;
+            // Try CORS proxies first
+            for (const proxy of CORS_PROXIES) {
+                try {
+                    const res = await fetch(proxy(fullUrl), { signal: AbortSignal.timeout(8000) });
+                    if (res.ok) return res;
+                } catch (e) { /* try next */ }
+            }
+            // Try direct (works if same-origin or CORS allowed)
+            try {
+                const res = await fetch(fullUrl, { signal: AbortSignal.timeout(5000) });
+                if (res.ok) return res;
+            } catch (e) { /* fallback to local */ }
+            return null;
+        }
         
         let allTeamsData = [];
         let currentView = 'attack';
@@ -2103,20 +2127,37 @@
             try {
                 showLoading(true);
 
+                // Try live API first, fallback to local files
+                let bootstrapData, fixturesData;
+                
                 const [bootstrapRes, fixturesRes] = await Promise.all([
-                    fetch(BOOTSTRAP_URL),
-                    fetch(FIXTURES_URL)
+                    fetchWithProxy('bootstrap-static/'),
+                    fetchWithProxy('fixtures/')
                 ]);
 
-                if (!bootstrapRes.ok || !fixturesRes.ok) {
-                    throw new Error('Failed to load data');
+                if (bootstrapRes && fixturesRes) {
+                    bootstrapData = await bootstrapRes.json();
+                    fixturesData = await fixturesRes.json();
+                    console.log('✅ Loaded from live FPL API');
+                } else {
+                    // Fallback to local files
+                    console.log('⚠️ API unavailable, trying local files...');
+                    const [localBoot, localFix] = await Promise.all([
+                        fetch(LOCAL_BOOTSTRAP),
+                        fetch(LOCAL_FIXTURES)
+                    ]);
+                    if (!localBoot.ok || !localFix.ok) throw new Error('Failed to load data from API and local files');
+                    bootstrapData = await localBoot.json();
+                    fixturesData = await localFix.json();
+                    console.log('✅ Loaded from local files');
                 }
-
-                const bootstrapData = await bootstrapRes.json();
-                const fixturesData = await fixturesRes.json();
                 
-                // Store fixtures globally for calendar view
+                // Store fixtures globally (includes stats array with goals, assists, cards, bonus etc.)
                 window.rawFixturesData = fixturesData;
+                
+                // Log stats availability for debugging
+                const fixturesWithStats = fixturesData.filter(f => f.stats && f.stats.length > 0);
+                console.log(`📊 ${fixturesWithStats.length}/${fixturesData.filter(f => f.finished).length} fixtures have detailed stats`);
 
                 currentGW = bootstrapData.events.find(e => e.is_current)?.id || 
                                   bootstrapData.events.find(e => e.is_next)?.id || 1;
@@ -3136,7 +3177,42 @@
 
         // ===== STATS TABLE =====
         let statsSort = { col: 'pts', dir: 'desc' };
-        let statsView = 'season'; // 'season' or 'last5'
+        let statsView = 'season'; // 'season', 'last10', or 'last5'
+        let statsCategory = 'overall'; // 'overall', 'attack', 'defense', 'discipline', 'fpl', 'homeAway'
+
+        function createEmptyStatBucket() {
+            return {
+                p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0,
+                cs: 0, fts: 0,
+                assists: 0, ownGoals: 0,
+                penScored: 0, penMissed: 0, penSaved: 0,
+                yellowCards: 0, redCards: 0,
+                saves: 0,
+                bonus: 0, bps: 0,
+                btts: 0, // both teams to score
+                o25: 0,  // over 2.5 goals
+                scoredFirst: 0,
+                concededFirst: 0,
+                comebacks: 0,
+                homeP: 0, homeW: 0, homeGf: 0, homeGa: 0, homeCs: 0,
+                awayP: 0, awayW: 0, awayGf: 0, awayGa: 0, awayCs: 0
+            };
+        }
+
+        function extractStatCount(statsArr, identifier, side) {
+            // side: 'h' or 'a'
+            if (!statsArr) return 0;
+            const stat = statsArr.find(s => s.identifier === identifier);
+            if (!stat || !stat[side]) return 0;
+            return stat[side].reduce((sum, entry) => sum + (entry.value || 0), 0);
+        }
+
+        function extractStatEntries(statsArr, identifier, side) {
+            if (!statsArr) return 0;
+            const stat = statsArr.find(s => s.identifier === identifier);
+            if (!stat || !stat[side]) return 0;
+            return stat[side].length; // number of players who got this stat
+        }
 
         function calculateSeasonStats() {
             const fixtures = window.rawFixturesData;
@@ -3149,13 +3225,10 @@
                     name: team.name,
                     shortName: team.shortName,
                     badgeUrl: team.badgeUrl,
-                    // Season stats
-                    season: { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, cs: 0, fts: 0, xg: 0 },
-                    // Last 5 stats  
-                    last5: { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, cs: 0, fts: 0, xg: 0 },
-                    // Form (last 5 results)
+                    season: createEmptyStatBucket(),
+                    last5: createEmptyStatBucket(),
+                    last10: createEmptyStatBucket(),
                     form: [],
-                    // FPL Strength ratings
                     attackStrength: (team.attackPowerHome + team.attackPowerAway) / 2,
                     defenseStrength: (team.defensePowerHome + team.defensePowerAway) / 2
                 };
@@ -3166,7 +3239,7 @@
                 .filter(f => f.finished && f.team_h_score !== null)
                 .sort((a, b) => a.event - b.event);
 
-            // Track last 5 fixtures per team
+            // Track per-team history for last 5
             const teamFixtureHistory = {};
             allTeamsData.forEach(team => {
                 teamFixtureHistory[team.id] = [];
@@ -3175,125 +3248,321 @@
             finishedFixtures.forEach(f => {
                 const homeId = f.team_h;
                 const awayId = f.team_a;
-                const homeGoals = f.team_h_score;
-                const awayGoals = f.team_a_score;
+                const hg = f.team_h_score;
+                const ag = f.team_a_score;
+                const st = f.stats || [];
 
-                // Home team stats
-                if (stats[homeId]) {
-                    const s = stats[homeId].season;
-                    s.p++;
-                    s.gf += homeGoals;
-                    s.ga += awayGoals;
-                    if (homeGoals > awayGoals) s.w++;
-                    else if (homeGoals === awayGoals) s.d++;
-                    else s.l++;
-                    if (awayGoals === 0) s.cs++;
-                    if (homeGoals === 0) s.fts++;
+                const totalGoals = hg + ag;
+                const btts = hg > 0 && ag > 0;
+                const o25 = totalGoals > 2;
 
-                    // Track for last 5 and form
-                    const result = homeGoals > awayGoals ? 'W' : homeGoals === awayGoals ? 'D' : 'L';
-                    teamFixtureHistory[homeId].push({
-                        gf: homeGoals,
-                        ga: awayGoals,
-                        cs: awayGoals === 0,
-                        fts: homeGoals === 0,
-                        result
-                    });
+                // === Extract stats from the fixture stats array ===
+                const homeAssists = extractStatCount(st, 'assists', 'h');
+                const awayAssists = extractStatCount(st, 'assists', 'a');
+                const homeOG = extractStatEntries(st, 'own_goals', 'h');
+                const awayOG = extractStatEntries(st, 'own_goals', 'a');
+                const homePenSaved = extractStatEntries(st, 'penalties_saved', 'h');
+                const awayPenSaved = extractStatEntries(st, 'penalties_saved', 'a');
+                const homePenMissed = extractStatEntries(st, 'penalties_missed', 'h');
+                const awayPenMissed = extractStatEntries(st, 'penalties_missed', 'a');
+                const homeYC = extractStatEntries(st, 'yellow_cards', 'h');
+                const awayYC = extractStatEntries(st, 'yellow_cards', 'a');
+                const homeRC = extractStatEntries(st, 'red_cards', 'h');
+                const awayRC = extractStatEntries(st, 'red_cards', 'a');
+                const homeSaves = extractStatCount(st, 'saves', 'h');
+                const awaySaves = extractStatCount(st, 'saves', 'a');
+                const homeBonus = extractStatCount(st, 'bonus', 'h');
+                const awayBonus = extractStatCount(st, 'bonus', 'a');
+                const homeBPS = extractStatCount(st, 'bps', 'h');
+                const awayBPS = extractStatCount(st, 'bps', 'a');
+
+                // Penalties scored: opponent's pen saved + pen missed = pens attempted
+                // Pen scored = goals from pens. We approximate: pens attempted by team = opponent penSaved + team penMissed
+                // Actually, pens scored = pens attempted - penMissed - oppPenSaved
+                // Simpler: count from goals that were penalties. But API doesn't separate that.
+                // We'll track penMissed per team and penSaved per team (saves made by keeper)
+                
+                // Build game record for both sides
+                function buildRecord(teamGoals, oppGoals, isHome, assists, og, penMissed, penSaved, yc, rc, saves, bonus, bps) {
+                    const result = teamGoals > oppGoals ? 'W' : teamGoals === oppGoals ? 'D' : 'L';
+                    return {
+                        gf: teamGoals, ga: oppGoals, result, isHome,
+                        cs: oppGoals === 0, fts: teamGoals === 0,
+                        assists, ownGoals: og, penMissed, penSaved, 
+                        yellowCards: yc, redCards: rc,
+                        saves, bonus, bps,
+                        btts, o25,
+                        scoredFirst: teamGoals > 0 && (isHome ? hg > 0 : ag > 0), // simplified
+                        totalGoals: teamGoals + oppGoals
+                    };
                 }
 
-                // Away team stats
-                if (stats[awayId]) {
-                    const s = stats[awayId].season;
-                    s.p++;
-                    s.gf += awayGoals;
-                    s.ga += homeGoals;
-                    if (awayGoals > homeGoals) s.w++;
-                    else if (awayGoals === homeGoals) s.d++;
-                    else s.l++;
-                    if (homeGoals === 0) s.cs++;
-                    if (awayGoals === 0) s.fts++;
+                // Home team record
+                const homeRec = buildRecord(hg, ag, true, homeAssists, homeOG, homePenMissed, homePenSaved, homeYC, homeRC, homeSaves, homeBonus, homeBPS);
+                // Away team record
+                const awayRec = buildRecord(ag, hg, false, awayAssists, awayOG, awayPenMissed, awayPenSaved, awayYC, awayRC, awaySaves, awayBonus, awayBPS);
 
-                    const result = awayGoals > homeGoals ? 'W' : awayGoals === homeGoals ? 'D' : 'L';
-                    teamFixtureHistory[awayId].push({
-                        gf: awayGoals,
-                        ga: homeGoals,
-                        cs: homeGoals === 0,
-                        fts: awayGoals === 0,
-                        result
-                    });
+                function addToBucket(bucket, rec) {
+                    bucket.p++;
+                    bucket.gf += rec.gf;
+                    bucket.ga += rec.ga;
+                    if (rec.result === 'W') bucket.w++;
+                    else if (rec.result === 'D') bucket.d++;
+                    else bucket.l++;
+                    if (rec.cs) bucket.cs++;
+                    if (rec.fts) bucket.fts++;
+                    bucket.assists += rec.assists;
+                    bucket.ownGoals += rec.ownGoals;
+                    bucket.penMissed += rec.penMissed;
+                    bucket.penSaved += rec.penSaved; // saves made by this team's keeper
+                    bucket.yellowCards += rec.yellowCards;
+                    bucket.redCards += rec.redCards;
+                    bucket.saves += rec.saves;
+                    bucket.bonus += rec.bonus;
+                    bucket.bps += rec.bps;
+                    if (rec.btts) bucket.btts++;
+                    if (rec.o25) bucket.o25++;
+                    if (rec.isHome) {
+                        bucket.homeP++;
+                        if (rec.result === 'W') bucket.homeW++;
+                        bucket.homeGf += rec.gf;
+                        bucket.homeGa += rec.ga;
+                        if (rec.cs) bucket.homeCs++;
+                    } else {
+                        bucket.awayP++;
+                        if (rec.result === 'W') bucket.awayW++;
+                        bucket.awayGf += rec.gf;
+                        bucket.awayGa += rec.ga;
+                        if (rec.cs) bucket.awayCs++;
+                    }
+                }
+
+                if (stats[homeId]) {
+                    addToBucket(stats[homeId].season, homeRec);
+                    teamFixtureHistory[homeId].push(homeRec);
+                }
+                if (stats[awayId]) {
+                    addToBucket(stats[awayId].season, awayRec);
+                    teamFixtureHistory[awayId].push(awayRec);
                 }
             });
 
-            // Calculate last 5 stats and form
+            // Calculate last 5, last 10 stats and form
             Object.keys(teamFixtureHistory).forEach(teamId => {
                 const history = teamFixtureHistory[teamId];
                 const last5Games = history.slice(-5);
+                const last10Games = history.slice(-10);
                 
                 if (stats[teamId]) {
                     stats[teamId].form = last5Games.map(g => g.result);
-                    
-                    const l5 = stats[teamId].last5;
-                    last5Games.forEach(g => {
-                        l5.p++;
-                        l5.gf += g.gf;
-                        l5.ga += g.ga;
-                        if (g.result === 'W') l5.w++;
-                        else if (g.result === 'D') l5.d++;
-                        else l5.l++;
-                        if (g.cs) l5.cs++;
-                        if (g.fts) l5.fts++;
-                    });
+                    last5Games.forEach(g => addToBucket_simple(stats[teamId].last5, g));
+                    last10Games.forEach(g => addToBucket_simple(stats[teamId].last10, g));
                 }
             });
+
+            // Simple add for last5 reuse
+            function addToBucket_simple(bucket, rec) {
+                bucket.p++;
+                bucket.gf += rec.gf;
+                bucket.ga += rec.ga;
+                if (rec.result === 'W') bucket.w++;
+                else if (rec.result === 'D') bucket.d++;
+                else bucket.l++;
+                if (rec.cs) bucket.cs++;
+                if (rec.fts) bucket.fts++;
+                bucket.assists += rec.assists;
+                bucket.ownGoals += rec.ownGoals;
+                bucket.penMissed += rec.penMissed;
+                bucket.penSaved += rec.penSaved;
+                bucket.yellowCards += rec.yellowCards;
+                bucket.redCards += rec.redCards;
+                bucket.saves += rec.saves;
+                bucket.bonus += rec.bonus;
+                bucket.bps += rec.bps;
+                if (rec.btts) bucket.btts++;
+                if (rec.o25) bucket.o25++;
+                if (rec.isHome) {
+                    bucket.homeP++;
+                    if (rec.result === 'W') bucket.homeW++;
+                    bucket.homeGf += rec.gf;
+                    bucket.homeGa += rec.ga;
+                    if (rec.cs) bucket.homeCs++;
+                } else {
+                    bucket.awayP++;
+                    if (rec.result === 'W') bucket.awayW++;
+                    bucket.awayGf += rec.gf;
+                    bucket.awayGa += rec.ga;
+                    if (rec.cs) bucket.awayCs++;
+                }
+            }
 
             return stats;
         }
 
+        function getStatsColumns() {
+            const cats = {
+                overall: {
+                    groupLabel: 'OVERALL',
+                    groupClass: 'overall-group',
+                    cols: [
+                        { key: 'p', label: 'P', title: 'Played' },
+                        { key: 'w', label: 'W', title: 'Wins' },
+                        { key: 'd', label: 'D', title: 'Draws' },
+                        { key: 'l', label: 'L', title: 'Losses', inverted: true },
+                        { key: 'pts', label: 'PTS', title: 'Points' },
+                        { key: 'gd', label: 'GD', title: 'Goal Difference' },
+                        { key: 'ppg', label: 'PPG', title: 'Points per Game', decimals: 2 },
+                        { key: 'form', label: 'FORM', title: 'Last 5 Results', noSort: true },
+                    ]
+                },
+                attack: {
+                    groupLabel: '⚔️ ATTACK',
+                    groupClass: 'attack-group',
+                    cols: [
+                        { key: 'gf', label: 'GF', title: 'Goals For' },
+                        { key: 'gpg', label: 'G/G', title: 'Goals per Game', decimals: 2 },
+                        { key: 'assists', label: 'AST', title: 'Total Assists' },
+                        { key: 'apg', label: 'A/G', title: 'Assists per Game', decimals: 2 },
+                        { key: 'fts', label: 'FTS', title: 'Failed to Score', inverted: true },
+                        { key: 'ftsPct', label: 'FTS%', title: 'Failed to Score %', decimals: 0, suffix: '%', inverted: true },
+                        { key: 'penMissed', label: 'PnM', title: 'Penalties Missed', inverted: true },
+                        { key: 'o25', label: 'O2.5', title: 'Games with Over 2.5 Goals' },
+                    ]
+                },
+                defense: {
+                    groupLabel: '🛡️ DEFENSE',
+                    groupClass: 'defense-group',
+                    cols: [
+                        { key: 'ga', label: 'GA', title: 'Goals Against', inverted: true },
+                        { key: 'gapg', label: 'GA/G', title: 'Goals Against per Game', decimals: 2, inverted: true },
+                        { key: 'cs', label: 'CS', title: 'Clean Sheets' },
+                        { key: 'csPct', label: 'CS%', title: 'Clean Sheet %', decimals: 0, suffix: '%' },
+                        { key: 'saves', label: 'SVS', title: 'Keeper Saves' },
+                        { key: 'svpg', label: 'SV/G', title: 'Saves per Game', decimals: 1 },
+                        { key: 'penSaved', label: 'PnS', title: 'Penalties Saved by Keeper' },
+                        { key: 'ownGoals', label: 'OG', title: 'Own Goals', inverted: true },
+                    ]
+                },
+                discipline: {
+                    groupLabel: '📋 DISCIPLINE & BETTING',
+                    groupClass: 'overall-group',
+                    cols: [
+                        { key: 'yellowCards', label: 'YC', title: 'Yellow Cards', inverted: true },
+                        { key: 'ycpg', label: 'YC/G', title: 'Yellow Cards per Game', decimals: 2, inverted: true },
+                        { key: 'redCards', label: 'RC', title: 'Red Cards', inverted: true },
+                        { key: 'btts', label: 'BTTS', title: 'Both Teams Scored' },
+                        { key: 'bttsPct', label: 'BTTS%', title: 'Both Teams Scored %', decimals: 0, suffix: '%' },
+                        { key: 'o25', label: 'O2.5', title: 'Over 2.5 Goals' },
+                        { key: 'o25Pct', label: 'O2.5%', title: 'Over 2.5 Goals %', decimals: 0, suffix: '%' },
+                    ]
+                },
+                fpl: {
+                    groupLabel: '🎮 FPL POINTS',
+                    groupClass: 'attack-group',
+                    cols: [
+                        { key: 'bonus', label: 'BNS', title: 'Total Bonus Points Won' },
+                        { key: 'bnspg', label: 'BNS/G', title: 'Bonus per Game', decimals: 2 },
+                        { key: 'bps', label: 'BPS', title: 'Total Bonus Point System Score' },
+                        { key: 'bpspg', label: 'BPS/G', title: 'Avg BPS per Game', decimals: 0 },
+                        { key: 'gAndA', label: 'G+A', title: 'Goals + Assists' },
+                        { key: 'gapg_combined', label: 'GA/G', title: 'Goals + Assists per Game', decimals: 2 },
+                        { key: 'csBonus', label: 'CS+SVS', title: 'Clean Sheets + Total Saves (Defender Value)' },
+                    ]
+                },
+                homeAway: {
+                    groupLabel: '🏠 HOME vs 🛣️ AWAY',
+                    groupClass: 'defense-group',
+                    cols: [
+                        { key: 'homeP', label: 'HP', title: 'Home Played' },
+                        { key: 'homeW', label: 'HW', title: 'Home Wins' },
+                        { key: 'homeGpg', label: 'HG/G', title: 'Home Goals per Game', decimals: 2 },
+                        { key: 'homeCsPct', label: 'HCS%', title: 'Home Clean Sheet %', decimals: 0, suffix: '%' },
+                        { key: 'awayP', label: 'AP', title: 'Away Played' },
+                        { key: 'awayW', label: 'AW', title: 'Away Wins' },
+                        { key: 'awayGpg', label: 'AG/G', title: 'Away Goals per Game', decimals: 2 },
+                        { key: 'awayCsPct', label: 'ACS%', title: 'Away Clean Sheet %', decimals: 0, suffix: '%' },
+                    ]
+                },
+            };
+            return cats;
+        }
+
         function renderStatsTable(container) {
             const seasonStats = calculateSeasonStats();
+            const cats = getStatsColumns();
+            const catKeys = Object.keys(cats);
 
             container.innerHTML = `
                 <div class="stats-container">
                     <div class="stats-header">
                         <div class="stats-title">📊 Team Statistics</div>
-                        <div class="stats-toggle">
-                            <button class="stats-toggle-btn ${statsView === 'season' ? 'active' : ''}" onclick="setStatsView('season')">Season</button>
-                            <button class="stats-toggle-btn ${statsView === 'last5' ? 'active' : ''}" onclick="setStatsView('last5')">Last 5</button>
+                        <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+                            <div class="stats-toggle">
+                                ${catKeys.map(k => `
+                                    <button class="stats-toggle-btn stats-cat-btn ${statsCategory === k ? 'active' : ''}" data-cat="${k}">${cats[k].groupLabel}</button>
+                                `).join('')}
+                            </div>
+                            <div class="stats-toggle">
+                                <button class="stats-toggle-btn stats-view-btn ${statsView === 'season' ? 'active' : ''}" data-view="season">Season</button>
+                                <button class="stats-toggle-btn stats-view-btn ${statsView === 'last10' ? 'active' : ''}" data-view="last10">Last 10</button>
+                                <button class="stats-toggle-btn stats-view-btn ${statsView === 'last5' ? 'active' : ''}" data-view="last5">Last 5</button>
+                            </div>
                         </div>
                     </div>
                     <div class="stats-scroll">
                         <table class="stats-table" id="statsTable">
-                            <thead>
-                                <tr class="col-groups">
-                                    <th class="team-col"></th>
-                                    <th colspan="5" class="overall-group">OVERALL</th>
-                                    <th colspan="3" class="attack-group section-divider">⚔️ ATTACK</th>
-                                    <th colspan="3" class="defense-group section-divider">🛡️ DEFENSE</th>
-                                </tr>
-                                <tr>
-                                    <th class="team-col">Team</th>
-                                    <th data-col="p" title="Played">P</th>
-                                    <th data-col="w" title="Wins">W</th>
-                                    <th data-col="d" title="Draws">D</th>
-                                    <th data-col="l" title="Losses">L</th>
-                                    <th data-col="pts" title="Points">PTS</th>
-                                    <th data-col="gf" class="section-divider" title="Goals For">GF</th>
-                                    <th data-col="gpg" title="Goals per Game">G/G</th>
-                                    <th data-col="fts" title="Failed to Score">FTS</th>
-                                    <th data-col="ga" class="section-divider" title="Goals Against">GA</th>
-                                    <th data-col="gapg" title="Goals Against per Game">GA/G</th>
-                                    <th data-col="cs" title="Clean Sheets">CS</th>
-                                </tr>
-                            </thead>
-                            <tbody id="statsBody">
-                            </tbody>
+                            <thead id="statsHead"></thead>
+                            <tbody id="statsBody"></tbody>
                         </table>
                     </div>
                 </div>
             `;
 
-            // Add click handlers for sorting
-            document.querySelectorAll('.stats-table th[data-col]').forEach(th => {
+            // Category toggle handlers
+            document.querySelectorAll('.stats-cat-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    statsCategory = btn.dataset.cat;
+                    statsSort = { col: 'pts', dir: 'desc' };
+                    renderStatsTable(document.getElementById('content-area'));
+                });
+            });
+
+            // View toggle handlers
+            document.querySelectorAll('.stats-view-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    statsView = btn.dataset.view;
+                    renderStatsTable(document.getElementById('content-area'));
+                });
+            });
+
+            buildStatsTableHeader(cats);
+            updateStatsTable(seasonStats);
+        }
+
+        function buildStatsTableHeader(cats) {
+            const thead = document.getElementById('statsHead');
+            if (!thead) return;
+
+            const cat = cats[statsCategory];
+            const cols = cat.cols;
+
+            thead.innerHTML = `
+                <tr class="col-groups">
+                    <th class="team-col"></th>
+                    <th colspan="${cols.length}" class="${cat.groupClass}">${cat.groupLabel}</th>
+                </tr>
+                <tr>
+                    <th class="team-col">Team</th>
+                    ${cols.map(c => `
+                        <th data-col="${c.key}" title="${c.title}">${c.label}</th>
+                    `).join('')}
+                </tr>
+            `;
+
+            // Sort handlers
+            thead.querySelectorAll('th[data-col]').forEach(th => {
+                if (th.dataset.col === 'form') return; // form is not sortable
+                th.style.cursor = 'pointer';
                 th.addEventListener('click', () => {
                     const col = th.dataset.col;
                     if (statsSort.col === col) {
@@ -3302,11 +3571,9 @@
                         statsSort.col = col;
                         statsSort.dir = 'desc';
                     }
-                    updateStatsTable(seasonStats);
+                    updateStatsTable(calculateSeasonStats());
                 });
             });
-
-            updateStatsTable(seasonStats);
         }
 
         function setStatsView(view) {
@@ -3318,46 +3585,81 @@
             const tbody = document.getElementById('statsBody');
             if (!tbody) return;
 
-            // Convert to array and add computed values
+            const cats = getStatsColumns();
+            const cat = cats[statsCategory];
+            const cols = cat.cols;
+
+            // Convert to flat array with computed values
             let teams = Object.values(seasonStats).map(team => {
-                const s = statsView === 'season' ? team.season : team.last5;
+                const s = statsView === 'season' ? team.season : (statsView === 'last10' ? team.last10 : team.last5);
                 const games = s.p || 1;
+                const pts = (s.w * 3) + s.d;
                 return {
                     ...team,
-                    p: s.p,
-                    w: s.w,
-                    d: s.d,
-                    l: s.l,
-                    pts: (s.w * 3) + s.d,
-                    gf: s.gf,
-                    ga: s.ga,
+                    ...s,
+                    pts,
                     gd: s.gf - s.ga,
+                    ppg: pts / games,
                     gpg: s.gf / games,
                     gapg: s.ga / games,
-                    cs: s.cs,
+                    apg: s.assists / games,
                     csPct: (s.cs / games) * 100,
-                    fts: s.fts,
                     ftsPct: (s.fts / games) * 100,
-                    att: team.attackStrength,
-                    def: team.defenseStrength
+                    svpg: s.saves / games,
+                    ycpg: s.yellowCards / games,
+                    bttsPct: (s.btts / games) * 100,
+                    o25Pct: (s.o25 / games) * 100,
+                    bnspg: s.bonus / games,
+                    bpspg: s.bps / games,
+                    homeGpg: s.homeP > 0 ? s.homeGf / s.homeP : 0,
+                    awayGpg: s.awayP > 0 ? s.awayGf / s.awayP : 0,
+                    homeCsPct: s.homeP > 0 ? (s.homeCs / s.homeP) * 100 : 0,
+                    awayCsPct: s.awayP > 0 ? (s.awayCs / s.awayP) * 100 : 0,
+                    gAndA: s.gf + s.assists,
+                    gapg_combined: (s.gf + s.assists) / games,
+                    csBonus: s.cs + s.saves,
                 };
             });
 
             // Sort
             const sortCol = statsSort.col;
             const sortDir = statsSort.dir;
+            const invertedCols = cols.filter(c => c.inverted).map(c => c.key);
+
             teams.sort((a, b) => {
                 let aVal = a[sortCol] ?? 0;
                 let bVal = b[sortCol] ?? 0;
-                // For FTS, lower is better
-                if (sortCol === 'fts' || sortCol === 'ga' || sortCol === 'gapg' || sortCol === 'l') {
+                if (invertedCols.includes(sortCol)) {
                     return sortDir === 'desc' ? aVal - bVal : bVal - aVal;
                 }
                 return sortDir === 'desc' ? bVal - aVal : aVal - bVal;
             });
 
-            // Update header styles
-            document.querySelectorAll('.stats-table th[data-col]').forEach(th => {
+            // Compute ranks/percentiles for color coding
+            const allVals = {};
+            cols.forEach(c => {
+                if (c.key === 'form') return;
+                allVals[c.key] = teams.map(t => t[c.key] ?? 0);
+            });
+
+            function getValueClass(key, val, col) {
+                const arr = allVals[key];
+                if (!arr || arr.length === 0) return '';
+                const sorted = [...arr].sort((a, b) => a - b);
+                const rank = sorted.indexOf(val);
+                const pct = rank / (sorted.length - 1);
+                if (col.inverted) {
+                    if (pct <= 0.25) return 'good';
+                    if (pct >= 0.75) return 'bad';
+                } else {
+                    if (pct >= 0.75) return 'good';
+                    if (pct <= 0.25) return 'bad';
+                }
+                return 'neutral';
+            }
+
+            // Update header active sort indicator
+            document.querySelectorAll('#statsHead th[data-col]').forEach(th => {
                 th.classList.remove('sorted-asc', 'sorted-desc');
                 if (th.dataset.col === sortCol) {
                     th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
@@ -3367,18 +3669,31 @@
             // Render rows
             tbody.innerHTML = teams.map((team, idx) => {
                 const rank = idx + 1;
-                const games = team.p || 1;
-
-                // Color coding helpers
-                const gpgClass = team.gpg >= 2 ? 'good' : team.gpg >= 1.5 ? 'neutral' : 'bad';
-                const gapgClass = team.gapg <= 1 ? 'good' : team.gapg <= 1.5 ? 'neutral' : 'bad';
-                const csClass = team.csPct >= 40 ? 'good' : team.csPct >= 25 ? 'neutral' : 'bad';
-                const ftsClass = team.ftsPct <= 20 ? 'good' : team.ftsPct <= 35 ? 'neutral' : 'bad';
                 
-                // Form dots
-                const formDots = team.form.map(r => 
-                    `<span class="stats-form-dot ${r}"></span>`
-                ).join('');
+                const cells = cols.map(col => {
+                    if (col.key === 'form') {
+                        const formDots = (team.form || []).map(r => 
+                            `<span class="stats-form-dot ${r}"></span>`
+                        ).join('');
+                        return `<td><div style="display:flex;gap:3px;justify-content:center;">${formDots}</div></td>`;
+                    }
+                    
+                    let val = team[col.key] ?? 0;
+                    let display;
+                    
+                    if (col.decimals !== undefined) {
+                        display = val.toFixed(col.decimals);
+                    } else {
+                        display = typeof val === 'number' && !Number.isInteger(val) ? val.toFixed(1) : val;
+                    }
+                    
+                    if (col.suffix) display += col.suffix;
+                    
+                    const cls = getValueClass(col.key, val, col);
+                    const isBold = ['pts', 'gf', 'ga', 'gd', 'bonus', 'bps'].includes(col.key);
+                    
+                    return `<td class="stats-value ${cls}">${isBold ? '<strong>' : ''}${display}${isBold ? '</strong>' : ''}</td>`;
+                }).join('');
 
                 return `
                     <tr>
@@ -3389,17 +3704,7 @@
                                 <span class="stats-team-name">${team.name}</span>
                             </div>
                         </td>
-                        <td>${team.p}</td>
-                        <td class="stats-value good">${team.w}</td>
-                        <td class="stats-value neutral">${team.d}</td>
-                        <td class="stats-value bad">${team.l}</td>
-                        <td><strong>${team.pts}</strong></td>
-                        <td class="section-divider"><strong>${team.gf}</strong></td>
-                        <td class="stats-value ${gpgClass}">${team.gpg.toFixed(2)}</td>
-                        <td class="stats-value ${ftsClass}">${team.fts} <span class="stats-mini">(${team.ftsPct.toFixed(0)}%)</span></td>
-                        <td class="section-divider"><strong>${team.ga}</strong></td>
-                        <td class="stats-value ${gapgClass}">${team.gapg.toFixed(2)}</td>
-                        <td class="stats-value ${csClass}">${team.cs} <span class="stats-mini">(${team.csPct.toFixed(0)}%)</span></td>
+                        ${cells}
                     </tr>
                 `;
             }).join('');
