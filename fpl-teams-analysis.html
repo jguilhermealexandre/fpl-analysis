@@ -1541,6 +1541,394 @@
             color: var(--text-primary) !important;
         }
 
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 14, 20, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 250ms ease-out;
+            padding: var(--space-4);
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-container {
+            background: var(--surface-1);
+            border: 1px solid var(--border-emphasis);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 720px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(16px) scale(0.97);
+            transition: transform 250ms ease-out;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+        }
+
+        .modal-overlay.open .modal-container {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-4) var(--space-6);
+            border-bottom: 1px solid var(--border-default);
+            flex-shrink: 0;
+        }
+
+        .modal-header-badge {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+        }
+
+        .modal-header-info {
+            flex: 1;
+        }
+
+        .modal-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .modal-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-default);
+            background: var(--surface-2);
+            color: var(--text-secondary);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 150ms;
+            flex-shrink: 0;
+        }
+
+        .modal-close:hover {
+            background: var(--surface-3);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: var(--space-4) var(--space-6);
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-section {
+            margin-bottom: var(--space-6);
+        }
+
+        .modal-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: var(--space-3);
+        }
+
+        .modal-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-2);
+            margin-bottom: var(--space-4);
+        }
+
+        .modal-stat {
+            background: var(--surface-0);
+            border-radius: var(--radius-md);
+            padding: var(--space-3);
+            text-align: center;
+        }
+
+        .modal-stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .modal-stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .modal-stat-value.good { color: var(--color-success); }
+        .modal-stat-value.bad { color: var(--color-error); }
+        .modal-stat-value.warn { color: var(--color-warning); }
+        .modal-stat-value.info { color: var(--color-info); }
+
+        .modal-stat-sub {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .modal-fdr-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: 8px var(--space-3);
+            background: var(--surface-0);
+            border-radius: var(--radius-sm);
+            margin-bottom: 4px;
+        }
+
+        .modal-fdr-gw {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            width: 36px;
+            flex-shrink: 0;
+        }
+
+        .modal-fdr-opp {
+            font-size: 13px;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .modal-fdr-venue {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+        }
+
+        .modal-fdr-venue.home {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--color-success);
+        }
+
+        .modal-fdr-venue.away {
+            background: rgba(96, 165, 250, 0.15);
+            color: var(--color-info);
+        }
+
+        .modal-fdr-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .modal-fdr-bar-container {
+            flex: 1;
+            height: 8px;
+            background: var(--surface-3);
+            border-radius: 4px;
+            overflow: hidden;
+            max-width: 120px;
+        }
+
+        .modal-fdr-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 300ms ease-out;
+        }
+
+        /* ===== SWINGS TAB PANELS ===== */
+        .swings-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-4);
+        }
+
+        @media (max-width: 900px) {
+            .swings-layout { grid-template-columns: 1fr; }
+        }
+
+        .swings-panel {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .swings-panel-header {
+            padding: var(--space-4) var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .swings-panel-icon {
+            font-size: 20px;
+        }
+
+        .swings-panel-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .swings-panel-count {
+            font-size: 11px;
+            padding: 2px 8px;
+            background: var(--surface-3);
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .swings-panel-body {
+            padding: var(--space-2);
+            max-height: 520px;
+            overflow-y: auto;
+        }
+
+        .swings-run-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 150ms;
+            border: 1px solid transparent;
+        }
+
+        .swings-run-item:hover {
+            background: var(--surface-2);
+            border-color: var(--border-default);
+        }
+
+        .swings-run-rank {
+            font-size: 12px;
+            font-weight: 700;
+            width: 22px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .swings-run-badge {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .swings-run-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .swings-run-name {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .swings-run-detail {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 1px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .swings-run-mini-fdr {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .swings-mini-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7px;
+            font-weight: 700;
+        }
+
+        .swings-run-stat {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .swings-run-arrow {
+            color: var(--text-muted);
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .swing-direction-group {
+            padding: var(--space-2) var(--space-3);
+        }
+
+        .swing-direction-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: var(--space-2) 0;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .swing-direction-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        .swing-fdr-change {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .swing-fdr-change .arrow {
+            font-size: 10px;
+        }
+
         /* Column group headers */
         .stats-table thead tr.col-groups th {
             padding: var(--space-1) var(--space-3);
@@ -1639,6 +2027,14 @@
             </div>
         </div>
     </main>
+
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal-container">
+            <div class="modal-header" id="modalHeader"></div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
 
     <!-- SVG Definitions for Sparklines -->
     <svg width="0" height="0">
@@ -2232,7 +2628,7 @@
             // Build fixture map for analysis
             const teamFixtureMap = buildFullSeasonMap();
             const easyRuns = findEasyRuns(teamFixtureMap);
-            const fixtureSwingTeams = findFixtureSwings(teamFixtureMap);
+            const fixtureSwingTeams = findFixtureSwingsEnhanced(teamFixtureMap);
             
             // Get display GWs for upcoming gold mines
             const allGWs = new Set();
@@ -2241,55 +2637,123 @@
             });
             const displayGWs = Array.from(allGWs).sort((a, b) => a - b).filter(gw => gw >= currentGW);
 
-            // Find teams with good swing opportunities
-            const swingTeams = allTeamsData
-                .filter(t => t.fixtureSwing === 'improving' || parseFloat(t.avgFdr) <= 2.8)
-                .sort((a, b) => parseFloat(a.avgFdr) - parseFloat(b.avgFdr))
-                .slice(0, 8);
+            // Store data globally for modal access
+            window._easyRunsData = easyRuns;
+            window._swingsData = fixtureSwingTeams;
+            window._teamFixtureMap = teamFixtureMap;
+
+            // Filter to future runs only
+            const futureRuns = easyRuns.filter(r => r.startGW >= currentGW);
+            const improvingSwings = fixtureSwingTeams.filter(s => s.direction === 'improving');
+            const worseningSwings = fixtureSwingTeams.filter(s => s.direction === 'worsening');
 
             const html = `
                 <div class="swing-section">
-                    <div class="swing-header">
-                        <h2 class="swing-title">Teams with Favorable Fixture Swings</h2>
-                    </div>
-                    <div class="swing-grid">
-                        ${swingTeams.map(team => {
-                            const timing = team.fixtureSwing === 'improving' ? 'buy-now' : 'buy-soon';
-                            const timingText = team.fixtureSwing === 'improving' ? 'Buy Now' : 'Good Fixtures';
-                            
-                            return `
-                                <div class="swing-card ${timing}">
-                                    <div class="swing-team">
-                                        <div class="team-badge">
-                                            <img src="${team.badgeUrl}" alt="${team.shortName}" style="width: 28px; height: 28px;">
-                                        </div>
-                                        <div>
-                                            <div class="team-name">${team.name}</div>
-                                            <div style="font-size: 11px; color: var(--text-muted);">FDR ${team.avgFdr}</div>
-                                        </div>
-                                        <span class="swing-timing ${timing}">${timingText}</span>
-                                    </div>
-                                    <div class="fdr-strip">
-                                        ${team.futureFixtures.map(f => `
-                                            <div class="fdr-badge fdr-${f.fdr}">
-                                                <span class="opp">${f.opponent}</span>
-                                                <span class="venue">${f.isHome ? 'H' : 'A'}</span>
+                    <div class="swings-layout">
+                        <!-- Easy Fixture Runs Panel -->
+                        <div class="swings-panel">
+                            <div class="swings-panel-header">
+                                <span class="swings-panel-icon">🟢</span>
+                                <span class="swings-panel-title">Best Easy Fixture Runs</span>
+                                <span class="swings-panel-count">${futureRuns.length} runs</span>
+                            </div>
+                            <div class="swings-panel-body">
+                                ${futureRuns.length === 0 ? 
+                                    '<div style="padding: var(--space-4); text-align: center; color: var(--text-muted); font-size: 12px;">No significant easy runs found in remaining fixtures.</div>' :
+                                    futureRuns.map((run, i) => {
+                                        const team = allTeamsData.find(t => t.id === run.teamId);
+                                        const fdrClass = run.avgFdr <= 2.0 ? 'good' : run.avgFdr <= 2.5 ? 'warn' : 'info';
+                                        return `
+                                            <div class="swings-run-item" onclick="openEasyRunModal(${i})">
+                                                <span class="swings-run-rank" style="color: ${i < 3 ? 'var(--color-warning)' : 'var(--text-muted)'}">${i + 1}</span>
+                                                <img src="${run.badgeUrl}" alt="${run.teamShort}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                <div class="swings-run-info">
+                                                    <div class="swings-run-name">${run.teamName}</div>
+                                                    <div class="swings-run-detail">
+                                                        <span>GW${run.startGW}–${run.endGW}</span>
+                                                        <span>•</span>
+                                                        <span>${run.homeCount}H ${run.length - run.homeCount}A</span>
+                                                    </div>
+                                                </div>
+                                                <div class="swings-run-mini-fdr">
+                                                    ${run.fixtures.slice(0, 6).map(f => `
+                                                        <div class="swings-mini-dot fdr-${Math.round(f.fdr)}">${f.opponent.slice(0,1)}</div>
+                                                    `).join('')}
+                                                </div>
+                                                <span class="swings-run-stat ${fdrClass}">${run.length}<span style="font-size:10px;font-weight:400;color:var(--text-muted)"> GWs</span></span>
+                                                <span class="swings-run-arrow">›</span>
                                             </div>
-                                        `).join('')}
-                                    </div>
-                                    <div class="swing-signals">
-                                        ${parseFloat(team.avgFdr) <= 2.5 ? '<span class="signal-tag">🟢 Easy run</span>' : ''}
-                                        ${team.homeFixtures >= 3 ? `<span class="signal-tag">🏠 ${team.homeFixtures} home</span>` : ''}
-                                        ${parseFloat(team.avgXG) >= 1.5 ? '<span class="signal-tag">⚡ High xG</span>' : ''}
-                                    </div>
+                                        `;
+                                    }).join('')
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Fixture Swings Panel -->
+                        <div class="swings-panel">
+                            <div class="swings-panel-header">
+                                <span class="swings-panel-icon">📈</span>
+                                <span class="swings-panel-title">Fixture Swings</span>
+                                <span class="swings-panel-count">${fixtureSwingTeams.length} swings</span>
+                            </div>
+                            <div class="swings-panel-body">
+                                <!-- Improving -->
+                                <div class="swing-direction-group">
+                                    <div class="swing-direction-label" style="color: var(--color-success);">↑ Getting Easier (${improvingSwings.length})</div>
+                                    ${improvingSwings.length === 0 ? 
+                                        '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
+                                        improvingSwings.map((s, i) => `
+                                            <div class="swings-run-item" onclick="openSwingModal(${i}, 'improving')">
+                                                <img src="${s.badgeUrl}" alt="${s.teamShort}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                <div class="swings-run-info">
+                                                    <div class="swings-run-name">${s.teamName}</div>
+                                                    <div class="swings-run-detail">
+                                                        <span>Eases from GW${s.swingGW}</span>
+                                                        <span>•</span>
+                                                        <span>${s.homeCountNext}H ${3 - s.homeCountNext}A next</span>
+                                                    </div>
+                                                </div>
+                                                <div class="swing-fdr-change">
+                                                    <span style="color: var(--color-error)">${s.currentFdr}</span>
+                                                    <span class="arrow" style="color: var(--color-success)">→</span>
+                                                    <span style="color: var(--color-success)">${s.futureFdr}</span>
+                                                </div>
+                                                <span class="swings-run-arrow">›</span>
+                                            </div>
+                                        `).join('')
+                                    }
                                 </div>
-                            `;
-                        }).join('')}
+                                <!-- Worsening -->
+                                <div class="swing-direction-group">
+                                    <div class="swing-direction-label" style="color: var(--color-error);">↓ Getting Harder (${worseningSwings.length})</div>
+                                    ${worseningSwings.length === 0 ?
+                                        '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
+                                        worseningSwings.map((s, i) => `
+                                            <div class="swings-run-item" onclick="openSwingModal(${i}, 'worsening')">
+                                                <img src="${s.badgeUrl}" alt="${s.teamShort}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                <div class="swings-run-info">
+                                                    <div class="swings-run-name">${s.teamName}</div>
+                                                    <div class="swings-run-detail">
+                                                        <span>Hardens from GW${s.swingGW}</span>
+                                                        <span>•</span>
+                                                        <span>${s.homeCountNext}H ${3 - s.homeCountNext}A next</span>
+                                                    </div>
+                                                </div>
+                                                <div class="swing-fdr-change">
+                                                    <span style="color: var(--color-success)">${s.currentFdr}</span>
+                                                    <span class="arrow" style="color: var(--color-error)">→</span>
+                                                    <span style="color: var(--color-error)">${s.futureFdr}</span>
+                                                </div>
+                                                <span class="swings-run-arrow">›</span>
+                                            </div>
+                                        `).join('')
+                                    }
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="calendar-analysis">
-                        ${renderEasyRunsAnalysis(easyRuns)}
-                        ${renderFixtureSwingAnalysis(fixtureSwingTeams)}
+                    <div class="calendar-analysis" style="margin-top: var(--space-6);">
                         ${renderUpcomingGoldMines(teamFixtureMap, displayGWs)}
                     </div>
                 </div>
@@ -2936,8 +3400,8 @@
 
         function findEasyRuns(fixtureMap) {
             const easyRuns = [];
-            const minRunLength = 3; // Minimum 3 consecutive easy fixtures
-            const maxFDR = 2.5; // FDR threshold for "easy"
+            const minRunLength = 3;
+            const maxFDR = 2.5;
 
             allTeamsData.forEach(team => {
                 const teamFixtures = fixtureMap[team.id];
@@ -2946,24 +3410,37 @@
                 const gws = Object.keys(teamFixtures).map(Number).sort((a, b) => a - b);
                 let runStart = null;
                 let runLength = 0;
+                let runFixtures = [];
+
+                const pushRun = (endGW) => {
+                    if (runLength >= minRunLength) {
+                        const homeCount = runFixtures.filter(f => f.isHome).length;
+                        const avgFdr = runFixtures.reduce((s, f) => s + f.fdr, 0) / runFixtures.length;
+                        easyRuns.push({
+                            teamId: team.id,
+                            teamName: team.name,
+                            teamShort: team.shortName,
+                            badgeUrl: team.badgeUrl,
+                            startGW: runStart,
+                            endGW: endGW,
+                            length: runLength,
+                            fixtures: [...runFixtures],
+                            homeCount,
+                            avgFdr: parseFloat(avgFdr.toFixed(2)),
+                            attackPower: team.attackPower,
+                            defensePower: team.defensePower,
+                            formRating: team.formRating
+                        });
+                    }
+                };
 
                 gws.forEach((gw, idx) => {
                     const fixtures = teamFixtures[gw];
                     if (!fixtures || fixtures.length === 0) {
-                        // End of run
-                        if (runLength >= minRunLength) {
-                            easyRuns.push({
-                                teamId: team.id,
-                                teamName: team.name,
-                                teamShort: team.shortName,
-                                badgeUrl: team.badgeUrl,
-                                startGW: runStart,
-                                endGW: gws[idx - 1],
-                                length: runLength
-                            });
-                        }
+                        pushRun(gws[idx - 1]);
                         runStart = null;
                         runLength = 0;
+                        runFixtures = [];
                         return;
                     }
 
@@ -2971,42 +3448,22 @@
                     const isEasy = avgFdr <= maxFDR && !fixtures[0].finished;
 
                     if (isEasy) {
-                        if (runStart === null) {
-                            runStart = gw;
-                        }
+                        if (runStart === null) runStart = gw;
                         runLength++;
+                        runFixtures.push({ ...fixtures[0], gw });
                     } else {
-                        if (runLength >= minRunLength) {
-                            easyRuns.push({
-                                teamId: team.id,
-                                teamName: team.name,
-                                teamShort: team.shortName,
-                                badgeUrl: team.badgeUrl,
-                                startGW: runStart,
-                                endGW: gws[idx - 1],
-                                length: runLength
-                            });
-                        }
+                        pushRun(gws[idx - 1]);
                         runStart = null;
                         runLength = 0;
+                        runFixtures = [];
                     }
                 });
 
                 // Check for run at end
-                if (runLength >= minRunLength) {
-                    easyRuns.push({
-                        teamId: team.id,
-                        teamName: team.name,
-                        teamShort: team.shortName,
-                        badgeUrl: team.badgeUrl,
-                        startGW: runStart,
-                        endGW: gws[gws.length - 1],
-                        length: runLength
-                    });
-                }
+                pushRun(gws[gws.length - 1]);
             });
 
-            return easyRuns.sort((a, b) => b.length - a.length);
+            return easyRuns.sort((a, b) => b.length - a.length || a.avgFdr - b.avgFdr);
         }
 
         function findFixtureSwings(fixtureMap) {
@@ -3058,87 +3515,351 @@
             return swings.sort((a, b) => b.swing - a.swing);
         }
 
-        function renderEasyRunsAnalysis(easyRuns) {
-            const topRuns = easyRuns.filter(r => r.startGW >= currentGW).slice(0, 5);
-            
-            if (topRuns.length === 0) {
-                return `
-                    <div class="analysis-card">
-                        <div class="analysis-card-header">
-                            <span class="analysis-card-icon">🟢</span>
-                            <span class="analysis-card-title">Best Easy Fixture Runs</span>
-                        </div>
-                        <p style="color: var(--text-muted); font-size: 12px;">No significant easy runs found in remaining fixtures.</p>
-                    </div>
-                `;
-            }
+        function findFixtureSwingsEnhanced(fixtureMap) {
+            const swings = [];
 
-            return `
-                <div class="analysis-card">
-                    <div class="analysis-card-header">
-                        <span class="analysis-card-icon">🟢</span>
-                        <span class="analysis-card-title">Best Easy Fixture Runs</span>
+            allTeamsData.forEach(team => {
+                const teamFixtures = fixtureMap[team.id];
+                if (!teamFixtures) return;
+
+                const futureGWs = Object.keys(teamFixtures)
+                    .map(Number)
+                    .filter(gw => gw >= currentGW)
+                    .sort((a, b) => a - b);
+
+                if (futureGWs.length < 6) return;
+
+                // Compare windows: GW1-3 vs GW4-6
+                const first3 = futureGWs.slice(0, 3);
+                const next3 = futureGWs.slice(3, 6);
+
+                const getAvg = (gws) => gws.reduce((sum, gw) => {
+                    const f = teamFixtures[gw];
+                    return sum + (f && f[0] ? f[0].fdr : 3);
+                }, 0) / gws.length;
+
+                const getFixtures = (gws) => gws.map(gw => {
+                    const f = teamFixtures[gw];
+                    return f && f[0] ? { ...f[0], gw } : null;
+                }).filter(Boolean);
+
+                const avgFirst = getAvg(first3);
+                const avgNext = getAvg(next3);
+                const swing = avgFirst - avgNext;
+
+                // Lowered threshold to 0.3 to capture more swings
+                if (Math.abs(swing) > 0.3) {
+                    const nextFixtures = getFixtures(next3);
+                    const currentFixtures = getFixtures(first3);
+                    const homeCountNext = nextFixtures.filter(f => f.isHome).length;
+                    const homeCountCurrent = currentFixtures.filter(f => f.isHome).length;
+
+                    // Also look at longer windows: GW1-5 vs GW6-10
+                    let longSwing = null;
+                    if (futureGWs.length >= 10) {
+                        const first5 = futureGWs.slice(0, 5);
+                        const next5 = futureGWs.slice(5, 10);
+                        const avgFirst5 = getAvg(first5);
+                        const avgNext5 = getAvg(next5);
+                        longSwing = {
+                            currentFdr: avgFirst5.toFixed(1),
+                            futureFdr: avgNext5.toFixed(1),
+                            swing: (avgFirst5 - avgNext5).toFixed(2),
+                            fixtures: getFixtures(next5)
+                        };
+                    }
+
+                    swings.push({
+                        teamId: team.id,
+                        teamName: team.name,
+                        teamShort: team.shortName,
+                        badgeUrl: team.badgeUrl,
+                        swing,
+                        direction: swing > 0 ? 'improving' : 'worsening',
+                        currentFdr: avgFirst.toFixed(1),
+                        futureFdr: avgNext.toFixed(1),
+                        swingGW: futureGWs[3],
+                        currentFixtures,
+                        nextFixtures,
+                        homeCountNext,
+                        homeCountCurrent,
+                        longSwing,
+                        attackPower: team.attackPower,
+                        defensePower: team.defensePower,
+                        formRating: team.formRating,
+                        allFutureFixtures: getFixtures(futureGWs.slice(0, 10))
+                    });
+                }
+            });
+
+            // Sort: improving by biggest positive swing, worsening by biggest negative
+            return swings.sort((a, b) => b.swing - a.swing);
+        }
+
+        // ===== MODAL FUNCTIONS =====
+        function openModal(headerHtml, bodyHtml) {
+            document.getElementById('modalHeader').innerHTML = headerHtml;
+            document.getElementById('modalBody').innerHTML = bodyHtml;
+            document.getElementById('modalOverlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        function getFdrColor(fdr) {
+            const rounded = Math.round(fdr);
+            const colors = { 1: '#4ADE80', 2: '#86EFAC', 3: '#A3A3A3', 4: '#FB923C', 5: '#EF4444' };
+            return colors[rounded] || '#A3A3A3';
+        }
+
+        function getFdrTextColor(fdr) {
+            return Math.round(fdr) >= 5 ? '#fff' : '#000';
+        }
+
+        function openEasyRunModal(index) {
+            const runs = window._easyRunsData.filter(r => r.startGW >= currentGW);
+            const run = runs[index];
+            if (!run) return;
+
+            const team = allTeamsData.find(t => t.id === run.teamId);
+            const avgFdrClass = run.avgFdr <= 2.0 ? 'good' : run.avgFdr <= 2.5 ? 'warn' : 'info';
+
+            const header = `
+                <img src="${run.badgeUrl}" alt="${run.teamShort}" class="modal-header-badge" onerror="this.style.display='none'">
+                <div class="modal-header-info">
+                    <div class="modal-title">${run.teamName}</div>
+                    <div class="modal-subtitle">Easy fixture run · GW${run.startGW} → GW${run.endGW}</div>
+                </div>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            `;
+
+            const body = `
+                <div class="modal-section">
+                    <div class="modal-stat-grid">
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Run Length</div>
+                            <div class="modal-stat-value good">${run.length}</div>
+                            <div class="modal-stat-sub">gameweeks</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Avg FDR</div>
+                            <div class="modal-stat-value ${avgFdrClass}">${run.avgFdr}</div>
+                            <div class="modal-stat-sub">difficulty</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Home Games</div>
+                            <div class="modal-stat-value info">${run.homeCount}</div>
+                            <div class="modal-stat-sub">of ${run.length}</div>
+                        </div>
                     </div>
-                    <div class="analysis-team-list">
-                        ${topRuns.map(run => `
-                            <div class="analysis-team-item">
-                                <img src="${run.badgeUrl}" alt="${run.teamShort}" class="analysis-team-badge" onerror="this.style.display='none'">
-                                <div class="analysis-team-info">
-                                    <div class="analysis-team-name">${run.teamName}</div>
-                                    <div class="analysis-team-detail">
-                                        <span class="gw-range-badge">GW${run.startGW} → GW${run.endGW}</span>
-                                    </div>
+                    <div class="modal-stat-grid">
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Attack</div>
+                            <div class="modal-stat-value ${run.attackPower >= 60 ? 'good' : run.attackPower < 40 ? 'bad' : ''}">${run.attackPower}</div>
+                            <div class="modal-stat-sub">power</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Defense</div>
+                            <div class="modal-stat-value ${run.defensePower >= 60 ? 'good' : run.defensePower < 40 ? 'bad' : ''}">${run.defensePower}</div>
+                            <div class="modal-stat-sub">power</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Form</div>
+                            <div class="modal-stat-value ${run.formRating >= 60 ? 'good' : run.formRating < 40 ? 'bad' : 'warn'}">${run.formRating}</div>
+                            <div class="modal-stat-sub">rating</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">Fixture Breakdown</div>
+                    ${run.fixtures.map(f => {
+                        const barWidth = Math.max(10, (5 - f.fdr) / 4 * 100);
+                        const barColor = getFdrColor(f.fdr);
+                        return `
+                            <div class="modal-fdr-row">
+                                <span class="modal-fdr-gw">GW${f.gw}</span>
+                                <div class="modal-fdr-dot fdr-${Math.round(f.fdr)}" style="color: ${getFdrTextColor(f.fdr)}">${Math.round(f.fdr)}</div>
+                                <span class="modal-fdr-opp">${f.opponent}</span>
+                                <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
+                                <div class="modal-fdr-bar-container">
+                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${barColor};"></div>
                                 </div>
-                                <span class="analysis-team-stat good">${run.length} GWs</span>
                             </div>
-                        `).join('')}
+                        `;
+                    }).join('')}
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">FPL Insight</div>
+                    <div style="background: var(--surface-0); border-radius: var(--radius-md); padding: var(--space-3); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                        ${run.avgFdr <= 2.0 ? '🔥 <strong style="color: var(--color-success)">Premium run.</strong> This is one of the easiest stretches remaining. ' : 
+                          run.avgFdr <= 2.3 ? '✅ <strong style="color: var(--color-success)">Strong run.</strong> Very favourable fixtures ahead. ' : 
+                          '👍 <strong style="color: var(--color-info)">Decent run.</strong> Fixtures are below-average difficulty. '}
+                        ${run.homeCount >= Math.ceil(run.length * 0.6) ? 'Heavy home schedule adds extra value for attackers. ' : ''}
+                        ${run.attackPower >= 60 ? `${run.teamName} have strong attacking output — target their forwards/mids. ` : ''}
+                        ${run.defensePower >= 60 ? `Solid defensive record too — their defenders are worth considering. ` : ''}
+                        ${run.length >= 5 ? `At ${run.length} gameweeks, this run is long enough to plan transfers around. ` : ''}
                     </div>
                 </div>
             `;
+
+            openModal(header, body);
+        }
+
+        function openSwingModal(index, direction) {
+            const swings = window._swingsData.filter(s => s.direction === direction);
+            const s = swings[index];
+            if (!s) return;
+
+            const isImproving = direction === 'improving';
+            const swingLabel = isImproving ? 'Getting Easier' : 'Getting Harder';
+            const swingColor = isImproving ? 'var(--color-success)' : 'var(--color-error)';
+            const swingMag = Math.abs(s.swing).toFixed(1);
+
+            const header = `
+                <img src="${s.badgeUrl}" alt="${s.teamShort}" class="modal-header-badge" onerror="this.style.display='none'">
+                <div class="modal-header-info">
+                    <div class="modal-title">${s.teamName}</div>
+                    <div class="modal-subtitle">Fixture swing · ${swingLabel} from GW${s.swingGW}</div>
+                </div>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            `;
+
+            const body = `
+                <div class="modal-section">
+                    <div class="modal-stat-grid">
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Current FDR</div>
+                            <div class="modal-stat-value ${parseFloat(s.currentFdr) <= 2.5 ? 'good' : parseFloat(s.currentFdr) >= 3.5 ? 'bad' : 'warn'}">${s.currentFdr}</div>
+                            <div class="modal-stat-sub">GW${currentGW}–${currentGW + 2}</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Swing</div>
+                            <div class="modal-stat-value" style="color: ${swingColor}">${isImproving ? '↓' : '↑'} ${swingMag}</div>
+                            <div class="modal-stat-sub">${swingLabel.toLowerCase()}</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Future FDR</div>
+                            <div class="modal-stat-value ${parseFloat(s.futureFdr) <= 2.5 ? 'good' : parseFloat(s.futureFdr) >= 3.5 ? 'bad' : 'warn'}">${s.futureFdr}</div>
+                            <div class="modal-stat-sub">GW${s.swingGW}–${s.swingGW + 2}</div>
+                        </div>
+                    </div>
+                    <div class="modal-stat-grid">
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Attack</div>
+                            <div class="modal-stat-value ${s.attackPower >= 60 ? 'good' : s.attackPower < 40 ? 'bad' : ''}">${s.attackPower}</div>
+                            <div class="modal-stat-sub">power</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Defense</div>
+                            <div class="modal-stat-value ${s.defensePower >= 60 ? 'good' : s.defensePower < 40 ? 'bad' : ''}">${s.defensePower}</div>
+                            <div class="modal-stat-sub">power</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-label">Form</div>
+                            <div class="modal-stat-value ${s.formRating >= 60 ? 'good' : s.formRating < 40 ? 'bad' : 'warn'}">${s.formRating}</div>
+                            <div class="modal-stat-sub">rating</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">Current Fixtures (GW${currentGW}–${currentGW + 2})</div>
+                    ${s.currentFixtures.map(f => {
+                        const barWidth = Math.max(10, (5 - f.fdr) / 4 * 100);
+                        return `
+                            <div class="modal-fdr-row">
+                                <span class="modal-fdr-gw">GW${f.gw}</span>
+                                <div class="modal-fdr-dot fdr-${Math.round(f.fdr)}" style="color: ${getFdrTextColor(f.fdr)}">${Math.round(f.fdr)}</div>
+                                <span class="modal-fdr-opp">${f.opponent}</span>
+                                <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
+                                <div class="modal-fdr-bar-container">
+                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(f.fdr)};"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">After Swing (GW${s.swingGW}+)</div>
+                    ${s.nextFixtures.map(f => {
+                        const barWidth = Math.max(10, (5 - f.fdr) / 4 * 100);
+                        return `
+                            <div class="modal-fdr-row">
+                                <span class="modal-fdr-gw">GW${f.gw}</span>
+                                <div class="modal-fdr-dot fdr-${Math.round(f.fdr)}" style="color: ${getFdrTextColor(f.fdr)}">${Math.round(f.fdr)}</div>
+                                <span class="modal-fdr-opp">${f.opponent}</span>
+                                <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
+                                <div class="modal-fdr-bar-container">
+                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(f.fdr)};"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                ${s.longSwing ? `
+                    <div class="modal-section">
+                        <div class="modal-section-title">Long-term View (Next 10 GWs)</div>
+                        <div style="background: var(--surface-0); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-3);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+                                <span style="font-size: 11px; color: var(--text-muted);">GW${currentGW}–${currentGW+4} avg</span>
+                                <span style="font-size: 11px; color: var(--text-muted);">GW${currentGW+5}–${currentGW+9} avg</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: var(--space-3); justify-content: center;">
+                                <span style="font-family: 'Space Grotesk'; font-size: 22px; font-weight: 700; color: ${parseFloat(s.longSwing.currentFdr) <= 2.8 ? 'var(--color-success)' : parseFloat(s.longSwing.currentFdr) >= 3.5 ? 'var(--color-error)' : 'var(--text-primary)'}">${s.longSwing.currentFdr}</span>
+                                <span style="font-size: 18px; color: ${swingColor};">${isImproving ? '→' : '→'}</span>
+                                <span style="font-family: 'Space Grotesk'; font-size: 22px; font-weight: 700; color: ${parseFloat(s.longSwing.futureFdr) <= 2.8 ? 'var(--color-success)' : parseFloat(s.longSwing.futureFdr) >= 3.5 ? 'var(--color-error)' : 'var(--text-primary)'}">${s.longSwing.futureFdr}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 2px;">
+                            ${s.allFutureFixtures.map((f, i) => `
+                                <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 700; background: ${getFdrColor(f.fdr)}; color: ${getFdrTextColor(f.fdr)}; ${i === 4 ? 'border-left: 2px solid var(--surface-1); border-right: 2px solid var(--surface-1);' : ''}">
+                                    ${f.opponent}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div class="modal-section">
+                    <div class="modal-section-title">FPL Insight</div>
+                    <div style="background: var(--surface-0); border-radius: var(--radius-md); padding: var(--space-3); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                        ${isImproving ? 
+                            `📈 <strong style="color: var(--color-success)">${s.teamName}'s fixtures ease significantly from GW${s.swingGW}.</strong> ` +
+                            `Average FDR drops from ${s.currentFdr} to ${s.futureFdr}. ` +
+                            (parseFloat(s.futureFdr) <= 2.5 ? 'The upcoming run looks very favourable — consider bringing in their assets ahead of the swing. ' : 'Worth monitoring for transfer planning. ') +
+                            (s.homeCountNext >= 2 ? `${s.homeCountNext} of the next 3 are at home, adding further value. ` : '') +
+                            (s.attackPower >= 55 ? 'Their attacking numbers support investment in forwards/midfielders. ' : '')
+                        :
+                            `📉 <strong style="color: var(--color-error)">${s.teamName}'s fixtures get considerably harder from GW${s.swingGW}.</strong> ` +
+                            `Average FDR rises from ${s.currentFdr} to ${s.futureFdr}. ` +
+                            (parseFloat(s.futureFdr) >= 4.0 ? 'This is a tough run — strongly consider selling their assets before the swing hits. ' : 'Keep an eye on this and prepare alternatives. ') +
+                            (s.homeCountNext <= 1 ? 'Heavy away schedule makes it even tougher. ' : '') +
+                            (s.defensePower < 50 ? 'Their defensive weaknesses could be badly exposed in this stretch. ' : '')
+                        }
+                    </div>
+                </div>
+            `;
+
+            openModal(header, body);
+        }
+
+        function renderEasyRunsAnalysis(easyRuns) {
+            return '';
         }
 
         function renderFixtureSwingAnalysis(swings) {
-            const improving = swings.filter(s => s.direction === 'improving').slice(0, 4);
-            const worsening = swings.filter(s => s.direction === 'worsening').slice(0, 4);
-
-            return `
-                <div class="analysis-card">
-                    <div class="analysis-card-header">
-                        <span class="analysis-card-icon">📈</span>
-                        <span class="analysis-card-title">Fixture Swings</span>
-                    </div>
-                    <div style="margin-bottom: var(--space-3);">
-                        <div style="font-size: 11px; color: var(--color-success); margin-bottom: var(--space-2); font-weight: 600;">↑ Getting Easier</div>
-                        <div class="analysis-team-list">
-                            ${improving.length > 0 ? improving.map(s => `
-                                <div class="analysis-team-item">
-                                    <img src="${s.badgeUrl}" alt="${s.teamShort}" class="analysis-team-badge" onerror="this.style.display='none'">
-                                    <div class="analysis-team-info">
-                                        <div class="analysis-team-name">${s.teamShort}</div>
-                                        <div class="analysis-team-detail">From GW${s.swingGW}</div>
-                                    </div>
-                                    <span class="analysis-team-stat good">${s.currentFdr} → ${s.futureFdr}</span>
-                                </div>
-                            `).join('') : '<div style="font-size: 11px; color: var(--text-muted);">None found</div>'}
-                        </div>
-                    </div>
-                    <div>
-                        <div style="font-size: 11px; color: var(--color-error); margin-bottom: var(--space-2); font-weight: 600;">↓ Getting Harder</div>
-                        <div class="analysis-team-list">
-                            ${worsening.length > 0 ? worsening.slice(0, 3).map(s => `
-                                <div class="analysis-team-item">
-                                    <img src="${s.badgeUrl}" alt="${s.teamShort}" class="analysis-team-badge" onerror="this.style.display='none'">
-                                    <div class="analysis-team-info">
-                                        <div class="analysis-team-name">${s.teamShort}</div>
-                                        <div class="analysis-team-detail">From GW${s.swingGW}</div>
-                                    </div>
-                                    <span class="analysis-team-stat bad">${s.currentFdr} → ${s.futureFdr}</span>
-                                </div>
-                            `).join('') : '<div style="font-size: 11px; color: var(--text-muted);">None found</div>'}
-                        </div>
-                    </div>
-                </div>
-            `;
+            return '';
         }
 
         function renderUpcomingGoldMines(fixtureMap, displayGWs) {
