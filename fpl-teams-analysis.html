@@ -375,6 +375,7 @@
         .power-metric.attack { border-top-color: var(--color-error); }
         .power-metric.defense { border-top-color: var(--color-info); }
         .power-metric.fixture { border-top-color: var(--color-success); }
+        .power-metric.form-metric { border-top-color: var(--color-warning); }
 
         .power-label {
             font-size: 9px;
@@ -1619,8 +1620,7 @@
         <!-- Filter Bar -->
         <div class="filter-bar">
             <div class="filter-tabs">
-                <button class="filter-tab active" data-view="overview">All Teams</button>
-                <button class="filter-tab" data-view="attack">Best for Attack</button>
+                <button class="filter-tab active" data-view="attack">Best for Attack</button>
                 <button class="filter-tab" data-view="defense">Best for Defense</button>
                 <button class="filter-tab" data-view="swings">Fixture Swings</button>
                 <button class="filter-tab" data-view="calendar">📅 Full Calendar</button>
@@ -1660,7 +1660,7 @@
         const FIXTURES_URL = 'data/fixtures.json';
         
         let allTeamsData = [];
-        let currentView = 'overview';
+        let currentView = 'attack';
         let currentGW = 1;
         window.rawFixturesData = [];
 
@@ -1964,6 +1964,41 @@
                 (defensePower * 0.2)                                 // Defense power contribution
             )));
 
+            // ===== WEIGHTED FORM RATING (0-100) =====
+            // Recent-weighted results: most recent game counts most
+            // W=3, D=1, L=0 with weights [5,4,3,2,1] for last 5 games
+            const weights = [5, 4, 3, 2, 1];
+            const reversedResults = [...pastResults].reverse(); // most recent first
+            let weightedPts = 0;
+            let weightSum = 0;
+            reversedResults.slice(0, 5).forEach((r, i) => {
+                const pts = r.result === 'W' ? 3 : r.result === 'D' ? 1 : 0;
+                weightedPts += pts * weights[i];
+                weightSum += weights[i];
+            });
+            const maxWeightedPts = 3 * weightSum; // max if all wins
+            const weightedFormBase = weightSum > 0 ? (weightedPts / maxWeightedPts) * 70 : 35; // 0-70
+
+            // Goal difference momentum bonus (last 5)
+            const recentGD = pastFixtures.slice(-5).reduce((sum, f) => {
+                const isH = f.team_h === teamId;
+                const scored = isH ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                const conceded = isH ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                return sum + (scored - conceded);
+            }, 0);
+            const gdBonus = Math.min(15, Math.max(-10, recentGD * 3)); // -10 to +15
+
+            // Winning streak / unbeaten run bonus
+            let streakBonus = 0;
+            for (let i = reversedResults.length - 1; i >= 0; i--) {
+                if (reversedResults[i]?.result === 'W') streakBonus += 3;
+                else if (reversedResults[i]?.result === 'D') streakBonus += 1;
+                else break;
+            }
+            streakBonus = Math.min(15, streakBonus);
+
+            const formRating = Math.round(Math.min(100, Math.max(0, weightedFormBase + gdBonus + streakBonus)));
+
             // ===== FIXTURE SWING =====
             let fixtureSwing = 'stable';
             if (futureDetails.length >= 4) {
@@ -2039,6 +2074,7 @@
                 
                 // Form & results
                 formScore,
+                formRating,
                 wins, draws, losses,
                 
                 // Stats
@@ -2084,11 +2120,6 @@
             const newGrid = document.getElementById('teams-grid');
 
             switch (currentView) {
-                case 'overview':
-                    const overviewSorted = [...allTeamsData].sort((a, b) => b.formScore - a.formScore);
-                    newGrid.innerHTML = overviewSorted.map((team, i) => createTeamCard(team, i + 1, 'form')).join('');
-                    break;
-
                 case 'attack':
                     const attackSorted = [...allTeamsData].sort((a, b) => b.attackPower - a.attackPower);
                     newGrid.innerHTML = attackSorted.map((team, i) => createTeamCard(team, i + 1, 'attack')).join('');
@@ -2116,10 +2147,9 @@
         function createTeamCard(team, rank, mode = 'form') {
             // Create FDR strip
             const fdrStrip = team.futureFixtures.slice(0, 5).map(f => `
-                <div class="fdr-badge fdr-${Math.round(f.fdr)}" title="${f.opponent} (${f.isHome ? 'H' : 'A'}) - CS: ${f.csChance}%">
+                <div class="fdr-badge fdr-${Math.round(f.fdr)}" title="${f.opponent} (${f.isHome ? 'H' : 'A'})">
                     <span class="opp">${f.opponent}</span>
                     <span class="venue">${f.isHome ? 'H' : 'A'}</span>
-                    ${f.bttsLikely ? '<span class="btts-dot"></span>' : ''}
                 </div>
             `).join('');
 
@@ -2142,13 +2172,6 @@
                 ? '<span class="xg-badge under">📉 Due</span>' 
                 : '';
 
-            // Tags
-            let tags = [];
-            if (team.venueLabel === 'home-fortress') tags.push('<span class="team-tag home-strong">🏠 Strong</span>');
-            if (team.venueLabel === 'road-warrior') tags.push('<span class="team-tag away-strong">🛣️ Away</span>');
-            if (team.bullyLabel === 'bully') tags.push('<span class="team-tag bully">🦁 Bully</span>');
-            if (team.bullyLabel === 'giant-killer') tags.push('<span class="team-tag">⚔️ Giant</span>');
-
             return `
                 <div class="team-card" data-team="${team.name}">
                     <div class="card-header">
@@ -2160,7 +2183,7 @@
                             <div class="team-meta">
                                 <span>FDR ${team.avgFdr}</span>
                                 <span>•</span>
-                                <span class="cs-badge">CS ${team.avgCSChance}%</span>
+                                <span>${team.wins}W ${team.draws}D ${team.losses}L</span>
                             </div>
                         </div>
                         <div class="rank-badge ${rank <= 3 ? 'top-3' : ''}">${rank}</div>
@@ -2182,9 +2205,12 @@
                             <div class="power-value ${team.fixtureScore >= 60 ? 'good' : team.fixtureScore < 40 ? 'bad' : ''}">${team.fixtureScore}</div>
                             <div class="power-sub">${team.homeFixtures}H ${team.awayFixtures}A</div>
                         </div>
+                        <div class="power-metric form-metric">
+                            <div class="power-label">🔥 FORM</div>
+                            <div class="power-value ${team.formRating >= 60 ? 'good' : team.formRating < 40 ? 'bad' : ''}">${team.formRating}</div>
+                            <div class="power-sub">${team.wins}W ${team.draws}D ${team.losses}L</div>
+                        </div>
                     </div>
-
-                    ${tags.length > 0 ? `<div class="tags-row">${tags.join('')}</div>` : ''}
 
                     <div class="fdr-strip">${fdrStrip}</div>
 
