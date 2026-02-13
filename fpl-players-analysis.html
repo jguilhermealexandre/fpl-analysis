@@ -146,6 +146,78 @@
             max-width: 100%;
         }
 
+        /* GLOBAL FILTER TOGGLES */
+        .global-filters {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .global-filter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 150ms;
+            user-select: none;
+        }
+        .global-filter-toggle:hover {
+            background: var(--surface-3);
+            color: var(--text-primary);
+        }
+        .global-filter-toggle.active {
+            background: rgba(74, 222, 128, 0.12);
+            color: var(--color-success);
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+        .global-filter-toggle .toggle-switch {
+            width: 32px;
+            height: 18px;
+            background: var(--surface-3);
+            border-radius: 9px;
+            position: relative;
+            transition: background 150ms;
+        }
+        .global-filter-toggle.active .toggle-switch {
+            background: var(--color-success);
+        }
+        .global-filter-toggle .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 150ms;
+        }
+        .global-filter-toggle.active .toggle-switch::after {
+            transform: translateX(14px);
+        }
+        .filter-status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+        .filter-status-bar .filter-count {
+            background: var(--surface-3);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
         /* POSITION RECOMMENDATIONS */
         .pos-rec-section { margin-bottom: 32px; }
         .pos-rec-title {
@@ -158,10 +230,11 @@
         }
         .pos-rec-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 20px;
         }
-        @media (max-width: 900px) { .pos-rec-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 1100px) { .pos-rec-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 700px) { .pos-rec-grid { grid-template-columns: 1fr; } }
 
         .pos-rec-col {
             background: var(--surface-1);
@@ -1853,6 +1926,19 @@
         <div class="page-header-inner">
             <h1 class="page-title">Players Analysis</h1>
             <p class="page-subtitle">Stats, form trends, and recommendations for all Premier League players</p>
+            <div class="global-filters" id="globalFilters">
+                <div class="global-filter-toggle" id="filterAvailability" onclick="toggleGlobalFilter('availability')">
+                    <span class="toggle-switch"></span>
+                    <span>🏥 Available Only</span>
+                </div>
+                <div class="global-filter-toggle" id="filterStarters" onclick="toggleGlobalFilter('starters')">
+                    <span class="toggle-switch"></span>
+                    <span>⚡ Regular Starters</span>
+                </div>
+                <div class="filter-status-bar" id="filterStatusBar">
+                    <span id="eligibleCount"></span>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -1890,6 +1976,7 @@
         // GLOBALS
         // ============================================
         let bootstrapData = null;
+        let bootstrapElements = {}; // id -> bootstrap element (for availability)
         let playerAnalyses = {};
         let teamFixtures = {};
         let teams = {};
@@ -1897,6 +1984,12 @@
         let currentPhase = 'mid';
         let allAnalyses = [];
         let currentPosition = 'RECOMMENDATIONS';
+
+        // Global filter state
+        let globalFilters = {
+            availability: false, // Hide injured/suspended (<75% chance)
+            starters: false      // Hide players <45 min/game (L5)
+        };
 
         // ============================================
         // TAB NAVIGATION
@@ -1930,15 +2023,34 @@
             try {
                 showLoading(true);
                 
-                const [playersRes, fixturesRes] = await Promise.all([
+                const [playersRes, fixturesRes, bootstrapRes] = await Promise.all([
                     fetch('data/players-data.json'),
-                    fetch('data/fixtures.json')
+                    fetch('data/fixtures.json'),
+                    fetch('data/bootstrap-static.json').catch(() => null)
                 ]);
 
                 if (!playersRes.ok) throw new Error('Failed to load players data');
                 
                 const staticData = await playersRes.json();
                 const fixturesData = fixturesRes.ok ? await fixturesRes.json() : [];
+
+                // Load bootstrap data for availability info
+                if (bootstrapRes && bootstrapRes.ok) {
+                    try {
+                        const bootData = await bootstrapRes.json();
+                        if (bootData.elements) {
+                            bootData.elements.forEach(el => {
+                                bootstrapElements[el.id] = {
+                                    status: el.status,           // 'a' = available, 'i' = injured, 's' = suspended, 'u' = unavailable, 'd' = doubtful, 'n' = not in squad
+                                    news: el.news || '',
+                                    chanceNextRound: el.chance_of_playing_next_round // null, 0, 25, 50, 75, 100
+                                };
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('Could not parse bootstrap-static.json for availability data:', e);
+                    }
+                }
 
                 // Build teams
                 staticData.teams.forEach(team => {
@@ -1977,6 +2089,12 @@
                                 };
                             }
                             
+                            // Merge availability from bootstrap data
+                            const bootInfo = bootstrapElements[player.id];
+                            const chanceNextRound = bootInfo?.chanceNextRound;
+                            const playerStatus = bootInfo?.status || 'a';
+                            const playerNews = bootInfo?.news || '';
+
                             analyses.push({
                                 id: player.id,
                                 name: player.name,
@@ -1990,7 +2108,11 @@
                                 selectedBy: parseFloat(player.ownership) || 0,
                                 totalPoints: player.totalPoints,
                                 season, l5, fixtures: fixtureData,
-                                history: player.history // Store history for trend charts
+                                history: player.history,
+                                // Availability fields
+                                status: playerStatus,
+                                news: playerNews,
+                                chanceNextRound: chanceNextRound
                             });
                         }
                     }
@@ -2049,9 +2171,12 @@
                 xGC: sum(games, 'expected_goals_conceded'),
                 penaltiesSaved: sum(games, 'penalties_saved'),
                 penaltiesMissed: sum(games, 'penalties_missed'),
-                bigChancesCreated: sum(games, 'big_chances_created') || Math.round(sum(games, 'expected_assists') * 2),
-                bigChancesMissed: sum(games, 'big_chances_missed') || Math.round(sum(games, 'expected_goals') * 0.8),
-                keyPasses: sum(games, 'key_passes') || Math.round(sum(games, 'expected_assists') * 5),
+                bigChancesCreated: sum(games, 'big_chances_created') || null,
+                _bigChancesCreatedEst: !sum(games, 'big_chances_created') ? Math.round(sum(games, 'expected_assists') * 2) : null,
+                bigChancesMissed: sum(games, 'big_chances_missed') || null,
+                _bigChancesMissedEst: !sum(games, 'big_chances_missed') ? Math.round(sum(games, 'expected_goals') * 0.8) : null,
+                keyPasses: sum(games, 'key_passes') || null,
+                _keyPassesEst: !sum(games, 'key_passes') ? Math.round(sum(games, 'expected_assists') * 5) : null,
                 ict: sum(games, 'ict_index'),
                 influence: sum(games, 'influence'),
                 creativity: sum(games, 'creativity'),
@@ -2061,13 +2186,92 @@
 
         function detectCurrentGameweek(analyses) {
             const maxGames = Math.max(...analyses.map(a => a.season?.games || 0));
-            return Math.min(38, Math.max(1, Math.ceil(maxGames / 10) * 10));
+            return Math.min(38, Math.max(1, maxGames));
         }
 
         function getSeasonPhase(gw) {
             if (gw <= 10) return 'early';
             if (gw >= 30) return 'late';
             return 'mid';
+        }
+
+        // ============================================
+        // SHARED ELIGIBILITY LOGIC (Task 3)
+        // ============================================
+        /**
+         * Central eligibility check for player recommendations/captaincy.
+         * @param {Object} p - Player analysis object
+         * @param {Object} opts - Options to override thresholds
+         * @param {boolean} opts.checkAvailability - Enforce availability filter (status + chance >= 75%)
+         * @param {boolean} opts.checkStarters - Enforce regular starter filter (>= 45 min/game L5)
+         * @param {number} opts.minGames - Minimum L5 games played (default: 3)
+         * @returns {boolean}
+         */
+        function isPlayerEligible(p, opts = {}) {
+            const checkAvailability = opts.checkAvailability ?? globalFilters.availability;
+            const checkStarters = opts.checkStarters ?? globalFilters.starters;
+            const minGames = opts.minGames ?? 3;
+
+            // Must have minimum games
+            if ((p.l5?.games || 0) < minGames) return false;
+
+            // Availability filter: exclude injured/suspended/unavailable
+            if (checkAvailability) {
+                const suspendedOrOut = ['s', 'u', 'n'].includes(p.status);
+                if (suspendedOrOut) return false;
+
+                // chance_of_playing_next_round: null means "no news" (treat as available)
+                // 0 = will not play, 25 = 25% chance, 50, 75, 100
+                const chance = p.chanceNextRound;
+                if (chance !== null && chance !== undefined && chance < 75) return false;
+            }
+
+            // Regular starters filter: average >= 45 mins/game in L5
+            if (checkStarters) {
+                const minsPerGame = (p.l5?.minutes || 0) / (p.l5?.games || 1);
+                if (minsPerGame < 45) return false;
+            }
+
+            return true;
+        }
+
+        // ============================================
+        // GLOBAL FILTER TOGGLES (Tasks 1 & 2)
+        // ============================================
+        function toggleGlobalFilter(filterName) {
+            globalFilters[filterName] = !globalFilters[filterName];
+
+            // Update toggle button visual
+            const btn = document.getElementById(
+                filterName === 'availability' ? 'filterAvailability' : 'filterStarters'
+            );
+            btn?.classList.toggle('active', globalFilters[filterName]);
+
+            // Re-render affected sections
+            reRenderWithFilters();
+        }
+
+        function reRenderWithFilters() {
+            if (!allAnalyses.length) return;
+
+            // Update eligible count
+            const eligible = allAnalyses.filter(p => isPlayerEligible(p, { minGames: 1 }));
+            const statusBar = document.getElementById('eligibleCount');
+            if (statusBar) {
+                const anyActive = globalFilters.availability || globalFilters.starters;
+                statusBar.textContent = anyActive
+                    ? `Showing ${eligible.length} of ${allAnalyses.length} players`
+                    : '';
+            }
+
+            // Re-render recommendations (always respects global filters)
+            document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(allAnalyses);
+
+            // Re-render tables (filters apply to quick filters too)
+            document.getElementById('section-GK').innerHTML = createTable('GK', allAnalyses);
+            document.getElementById('section-DEF').innerHTML = createTable('DEF', allAnalyses);
+            document.getElementById('section-MID').innerHTML = createTable('MID', allAnalyses);
+            document.getElementById('section-FWD').innerHTML = createTable('FWD', allAnalyses);
         }
 
         // ============================================
@@ -2078,42 +2282,45 @@
         function generateRecommendations(analyses) {
             let html = '';
 
-            // GK Recommendations - Focus on clean sheets, saves, goals conceded
+            // Compute dynamic budget caps from median price per position
+            const dynamicCap = computeDynamicBudgetCaps(analyses);
+
+            // GK Recommendations
             html += generatePositionRecs('GK', analyses, {
                 icon: '🧤',
                 title: 'Goalkeepers',
-                budgetCap: 5.0,
+                budgetCap: dynamicCap.GK,
                 metrics: ['cs', 'saves', 'gc', 'ptsG'],
                 budgetDesc: 'High save count, rotation options',
                 premiumDesc: 'Clean sheet magnets from top defenses'
             });
 
-            // DEF Recommendations - Focus on clean sheets, goals conceded, xGC
+            // DEF Recommendations
             html += generatePositionRecs('DEF', analyses, {
                 icon: '🛡️',
                 title: 'Defenders',
-                budgetCap: 5.5,
+                budgetCap: dynamicCap.DEF,
                 metrics: ['cs', 'gc', 'xGC', 'ptsG'],
                 budgetDesc: 'Solid CS potential at low cost',
                 premiumDesc: 'Elite defenders + attacking threat'
             });
 
-            // MID Recommendations - Focus on xGI, goals, assists
+            // MID Recommendations
             html += generatePositionRecs('MID', analyses, {
                 icon: '⚡',
                 title: 'Midfielders',
-                budgetCap: 7.0,
+                budgetCap: dynamicCap.MID,
                 metrics: ['xGI', 'goals', 'assists', 'ptsG'],
                 budgetDesc: 'High xGI relative to price',
                 premiumDesc: 'Elite creators and scorers'
             });
 
-            // FWD Recommendations - Focus on xG, goals, shots
+            // FWD Recommendations
             html += generatePositionRecs('FWD', analyses, {
                 icon: '🎯',
                 title: 'Forwards',
-                budgetCap: 7.5,
-                metrics: ['xG', 'goals', 'shots', 'ptsG'],
+                budgetCap: dynamicCap.FWD,
+                metrics: ['xG', 'goals', 'xA', 'ptsG'],
                 budgetDesc: 'Goal threat on a budget',
                 premiumDesc: 'Premium goal scorers'
             });
@@ -2121,11 +2328,33 @@
             return html;
         }
 
+        /** Compute budget cap per position as median price (rounded to 0.5) */
+        function computeDynamicBudgetCaps(analyses) {
+            const fallback = { GK: 5.0, DEF: 5.5, MID: 7.0, FWD: 7.5 };
+            const caps = {};
+            for (const [pos, posId] of [['GK',1],['DEF',2],['MID',3],['FWD',4]]) {
+                const prices = analyses
+                    .filter(a => a.position === posId && (a.l5?.games || 0) >= 1)
+                    .map(a => a.price)
+                    .sort((a, b) => a - b);
+                if (prices.length >= 5) {
+                    const median = prices[Math.floor(prices.length / 2)];
+                    caps[pos] = Math.round(median * 2) / 2; // round to nearest 0.5
+                } else {
+                    caps[pos] = fallback[pos];
+                }
+            }
+            return caps;
+        }
+
         function generatePositionRecs(pos, analyses, config) {
             const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
-            const posPlayers = analyses.filter(a => POSITIONS[a.position] === pos && a.l5?.games >= 3);
+            // Apply shared eligibility check (availability + starters filters)
+            const posPlayers = analyses.filter(a =>
+                POSITIONS[a.position] === pos && isPlayerEligible(a)
+            );
             
-            // Calculate position-specific scores
+            // Calculate position-specific Power Scores
             const scoredPlayers = posPlayers.map(p => ({
                 ...p,
                 score: calculatePositionScore(p, pos),
@@ -2142,10 +2371,16 @@
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 5);
 
+            // Differentials: low ownership (<10%) but high Power Score
+            const differentials = scoredPlayers
+                .filter(p => (p.selectedBy || 0) < 10 && (p.l5.minutes / p.l5.games) >= 60)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 5);
+
             return `
                 <div class="pos-rec-section">
                     <h2 class="pos-rec-title">${config.icon} ${config.title}</h2>
-                    <div class="pos-rec-grid">
+                    <div class="pos-rec-grid" style="grid-template-columns: repeat(3, 1fr);">
                         <div class="pos-rec-col">
                             <div class="pos-rec-col-header">
                                 <div class="pos-rec-col-title budget">Budget (≤£${config.budgetCap.toFixed(1)}m)</div>
@@ -2160,6 +2395,13 @@
                             </div>
                             ${premiumPlayers.length > 0 ? premiumPlayers.map((p, i) => renderRecCard(p, i + 1, pos)).join('') : '<div class="no-players">No players found</div>'}
                         </div>
+                        <div class="pos-rec-col">
+                            <div class="pos-rec-col-header">
+                                <div class="pos-rec-col-title" style="color: var(--color-info);">💎 Differentials (<10% owned)</div>
+                                <div class="pos-rec-col-desc">Low-ownership gems with strong underlying stats</div>
+                            </div>
+                            ${differentials.length > 0 ? differentials.map((p, i) => renderRecCard(p, i + 1, pos, true)).join('') : '<div class="no-players">No differentials found</div>'}
+                        </div>
                     </div>
                 </div>
             `;
@@ -2170,72 +2412,73 @@
             const minsPerGame = (p.l5?.minutes || 0) / games;
             const ptsPerGame = (p.l5?.points || 0) / games;
             const fdr = p.fixtures?.avgFDR3 || 3;
-            const fdrBonus = fdr <= 2 ? 15 : fdr <= 2.5 ? 10 : fdr <= 3 ? 5 : 0;
+            // Smooth FDR factor: bonus for easy, penalty for hard
+            const fdrFactor = Math.max(-10, (3.5 - fdr) * 8);
+            const nailedBonus = minsPerGame >= 80 ? 5 : minsPerGame >= 70 ? 2 : 0;
+            const value = ptsPerGame / Math.max(p.price, 3.5);
 
             if (pos === 'GK') {
-                // GK: Clean sheets, saves, low goals conceded
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
                 const savesPerGame = (p.l5?.saves || 0) / games;
-                const gcPerGame = (p.l5?.goalsConceded || 0) / games;
-                const value = ptsPerGame / p.price;
+                const xGCPerGame = (p.l5?.xGC || 0) / games;
+                // Use xGC instead of raw GC; cap negative contribution
+                const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
                 
-                return (csPerGame * 30) +           // Clean sheets very important
-                       (savesPerGame * 2) +          // Saves add bonus points
-                       ((4 - gcPerGame) * 5) +       // Fewer goals conceded = better
-                       (ptsPerGame * 3) +            // Overall points
-                       (value * 10) +                // Value for money
-                       fdrBonus +                    // Easy fixtures
-                       (minsPerGame >= 85 ? 5 : 0);  // Nailed on bonus
+                return (csPerGame * 30) +
+                       (savesPerGame * 2) +
+                       defScore +
+                       (ptsPerGame * 3) +
+                       (value * 10) +
+                       fdrFactor +
+                       nailedBonus;
             }
 
             if (pos === 'DEF') {
-                // DEF: Clean sheets, goals conceded, xGC, with small xGI bonus for attacking fullbacks
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
-                const gcPerGame = (p.l5?.goalsConceded || 0) / games;
                 const xGCPerGame = (p.l5?.xGC || 0) / games;
                 const xGIPerGame = (p.l5?.xGI || 0) / games;
-                const value = ptsPerGame / p.price;
+                // Use xGC for defensive quality; cap to avoid extreme negatives
+                const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
                 
-                return (csPerGame * 25) +            // Clean sheets important
-                       ((3 - gcPerGame) * 8) +       // Fewer goals conceded
-                       ((2 - xGCPerGame) * 5) +      // Good xGC
-                       (xGIPerGame * 10) +           // Attacking threat (bonus, not main)
-                       (ptsPerGame * 3) +            // Overall points
-                       (value * 10) +                // Value
-                       fdrBonus +                    // Easy fixtures
-                       (minsPerGame >= 80 ? 5 : 0);  // Nailed on
+                return (csPerGame * 25) +
+                       defScore +
+                       (xGIPerGame * 12) +          // Attacking threat
+                       (ptsPerGame * 3) +
+                       (value * 10) +
+                       fdrFactor +
+                       nailedBonus;
             }
 
             if (pos === 'MID') {
-                // MID: xGI, goals, assists, creativity
                 const xGIPerGame = (p.l5?.xGI || 0) / games;
-                const goalsPerGame = (p.l5?.goals || 0) / games;
-                const assistsPerGame = (p.l5?.assists || 0) / games;
-                const value = ptsPerGame / p.price;
+                const csPerGame = (p.l5?.cleanSheets || 0) / games;
+                // Overperformance delta: actual G+A vs xGI (positive = clinical)
+                const actualGI = ((p.l5?.goals || 0) + (p.l5?.assists || 0)) / games;
+                const overPerf = Math.max(0, actualGI - xGIPerGame);
                 
-                return (xGIPerGame * 40) +           // xGI most important
-                       (goalsPerGame * 15) +         // Goals
-                       (assistsPerGame * 10) +       // Assists
-                       (ptsPerGame * 3) +            // Points
-                       (value * 12) +                // Value
-                       fdrBonus +                    // Fixtures
-                       (minsPerGame >= 75 ? 5 : 0);  // Nailed on
+                return (xGIPerGame * 40) +
+                       (overPerf * 8) +             // Reward clinical players
+                       (csPerGame * 3) +            // MID CS bonus (1 FPL point)
+                       (ptsPerGame * 3) +
+                       (value * 12) +
+                       fdrFactor +
+                       nailedBonus;
             }
 
             if (pos === 'FWD') {
-                // FWD: xG, goals, shots, finishing
+                // Fixed: use xG and xA separately instead of triple-counting via xGI
                 const xGPerGame = (p.l5?.xG || 0) / games;
-                const goalsPerGame = (p.l5?.goals || 0) / games;
-                const xGIPerGame = (p.l5?.xGI || 0) / games;
-                const value = ptsPerGame / p.price;
+                const xAPerGame = (p.l5?.xA || 0) / games;
+                const actualGoals = (p.l5?.goals || 0) / games;
+                const overPerf = Math.max(0, actualGoals - xGPerGame);
                 
-                return (xGPerGame * 45) +            // xG most important for forwards
-                       (goalsPerGame * 15) +         // Actual goals
-                       (xGIPerGame * 20) +           // Overall involvement
-                       (ptsPerGame * 3) +            // Points
-                       (value * 12) +                // Value
-                       fdrBonus +                    // Fixtures
-                       (minsPerGame >= 70 ? 5 : 0);  // Nailed on
+                return (xGPerGame * 40) +           // xG is primary
+                       (xAPerGame * 15) +           // xA for creative forwards
+                       (overPerf * 10) +            // Reward clinical finishing
+                       (ptsPerGame * 3) +
+                       (value * 12) +
+                       fdrFactor +
+                       nailedBonus;
             }
 
             return 0;
@@ -2280,19 +2523,20 @@
             return {};
         }
 
-        function renderRecCard(p, rank, pos) {
+        function renderRecCard(p, rank, pos, isDifferential = false) {
             const games = p.l5?.games || 1;
             const ptsPerGame = ((p.l5?.points || 0) / games).toFixed(1);
             const fdr = p.fixtures?.avgFDR3 || 3;
             const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
             const metrics = p.displayMetrics;
+            const ownBadge = isDifferential ? `<span style="font-size:10px;color:var(--color-info);margin-left:4px;">${(p.selectedBy || 0).toFixed(1)}%</span>` : '';
             
             return `
                 <div class="rec-card">
                     <div class="rec-card-rank">${rank}</div>
                     <div class="rec-card-main">
                         <div class="rec-card-header">
-                            <div class="rec-card-name">${p.name}</div>
+                            <div class="rec-card-name">${p.name}${ownBadge}</div>
                             <div class="rec-card-team">${p.team} • £${p.price.toFixed(1)}m</div>
                         </div>
                         <div class="rec-card-stats">
@@ -2323,7 +2567,9 @@
         }
 
         function getBudgetCap(pos) {
-            return { GK: 5.0, DEF: 5.5, MID: 7.0, FWD: 7.5 }[pos] || 6.0;
+            // Fallback for any code that still calls this directly
+            const caps = computeDynamicBudgetCaps(allAnalyses);
+            return caps[pos] || { GK: 5.0, DEF: 5.5, MID: 7.0, FWD: 7.5 }[pos] || 6.0;
         }
 
         // ============================================
@@ -2370,14 +2616,14 @@
             goals: { label: 'G', key: 'l5.goals', sortable: true, tip: 'Goals scored (L5)' },
             xG: { label: 'xG', key: 'l5.xG', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals (L5)' },
             xGG: { label: 'xG/G', key: 'xgPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xG per game' },
-            bcm: { label: 'BCM', key: 'l5.bigChancesMissed', sortable: true, tip: 'Big chances missed (L5)' },
+            bcm: { label: 'BCM', key: 'l5.bigChancesMissed', sortable: true, tip: 'Big chances missed (L5). Null = estimated from xG', estimated: '_bigChancesMissedEst' },
             
             // Assists/Creativity
             assists: { label: 'A', key: 'l5.assists', sortable: true, tip: 'Assists (L5)' },
             xA: { label: 'xA', key: 'l5.xA', sortable: true, format: v => v.toFixed(2), tip: 'Expected assists (L5)' },
             xAG: { label: 'xA/G', key: 'xaPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xA per game' },
-            kp: { label: 'KP', key: 'l5.keyPasses', sortable: true, tip: 'Key passes (L5)' },
-            bcc: { label: 'BCC', key: 'l5.bigChancesCreated', sortable: true, tip: 'Big chances created (L5)' },
+            kp: { label: 'KP', key: 'l5.keyPasses', sortable: true, tip: 'Key passes (L5). Null = estimated from xA', estimated: '_keyPassesEst' },
+            bcc: { label: 'BCC', key: 'l5.bigChancesCreated', sortable: true, tip: 'Big chances created (L5). Null = estimated from xA', estimated: '_bigChancesCreatedEst' },
             
             // Combined Expected
             xGI: { label: 'xGI', key: 'l5.xGI', sortable: true, format: v => v.toFixed(2), tip: 'Expected goal involvement (L5)' },
@@ -2707,8 +2953,15 @@
                 return `<td style="color: var(--text-muted);">-</td>`;
             }
             
-            // Handle null/undefined values
+            // Handle null/undefined values — check for estimated fallback
             if (value === null || value === undefined) {
+                // If this column has an estimated field, show it with ~ prefix
+                if (col.estimated) {
+                    const estValue = getNestedValue(p, `l5.${col.estimated}`);
+                    if (estValue !== null && estValue !== undefined && estValue !== 0) {
+                        return `<td class="stat-cell" style="color: var(--text-muted);" title="Estimated from expected stats">~${estValue}</td>`;
+                    }
+                }
                 return `<td class="stat-cell" style="color: var(--text-muted);">-</td>`;
             }
             
@@ -2730,7 +2983,8 @@
         }
 
         function getNestedValue(obj, path) {
-            return path.split('.').reduce((o, k) => o?.[k], obj) || 0;
+            const val = path.split('.').reduce((o, k) => o?.[k], obj);
+            return val ?? 0;
         }
 
         // Table interactions
@@ -2897,20 +3151,33 @@
             }
             
             updateCompareBar();
-            // Refresh all tables to update checkboxes
-            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
-                const body = document.getElementById(`tableBody-${pos}`);
-                if (body) body.innerHTML = renderTableBody(pos);
-            });
+            // Only refresh the active table to update checkboxes
+            const activePos = currentPosition;
+            if (['GK', 'DEF', 'MID', 'FWD'].includes(activePos)) {
+                const body = document.getElementById(`tableBody-${activePos}`);
+                if (body) body.innerHTML = renderTableBody(activePos);
+            } else {
+                // If on a non-table tab, refresh all (will be lazy when user switches)
+                ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                    const body = document.getElementById(`tableBody-${pos}`);
+                    if (body) body.innerHTML = renderTableBody(pos);
+                });
+            }
         }
         
         function removeFromCompare(playerId) {
             compareList = compareList.filter(p => p.id !== playerId);
             updateCompareBar();
-            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
-                const body = document.getElementById(`tableBody-${pos}`);
-                if (body) body.innerHTML = renderTableBody(pos);
-            });
+            const activePos = currentPosition;
+            if (['GK', 'DEF', 'MID', 'FWD'].includes(activePos)) {
+                const body = document.getElementById(`tableBody-${activePos}`);
+                if (body) body.innerHTML = renderTableBody(activePos);
+            } else {
+                ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                    const body = document.getElementById(`tableBody-${pos}`);
+                    if (body) body.innerHTML = renderTableBody(pos);
+                });
+            }
         }
         
         function clearCompare() {
@@ -3839,7 +4106,7 @@
             `;
             
             // Create charts after DOM update
-            setTimeout(() => createAllCharts(validPlayers), 100);
+            requestAnimationFrame(() => createAllCharts(validPlayers));
             
             return html;
         }
@@ -4307,8 +4574,8 @@
             });
 
             const sorted = Object.values(teamData)
-                .filter(t => t.fixtures?.next5?.length)
-                .sort((a, b) => (a.fixtures.avgFDR5 || 5) - (b.fixtures.avgFDR5 || 5));
+                .filter(t => t.fixtures?.next5?.length || t.fixtures?.next3?.length)
+                .sort((a, b) => (a.fixtures.avgFDR5 ?? a.fixtures.avgFDR3 ?? 5) - (b.fixtures.avgFDR5 ?? b.fixtures.avgFDR3 ?? 5));
 
             return `
                 <div style="overflow-x: auto;">
@@ -4322,7 +4589,8 @@
                         </thead>
                         <tbody>
                             ${sorted.map(t => {
-                                const fixtures = t.fixtures.next5 || [];
+                                const fixtures = t.fixtures.next5 || t.fixtures.next3 || [];
+                                const avgFDR = t.fixtures.avgFDR5 ?? t.fixtures.avgFDR3 ?? 3;
                                 return `
                                     <tr>
                                         <td style="padding: 12px; font-weight: 500;">${t.name}</td>
@@ -4331,8 +4599,8 @@
                                             const fdrClass = f.difficulty <= 2 ? 'fdr-1' : f.difficulty <= 2.5 ? 'fdr-2' : f.difficulty <= 3.5 ? 'fdr-3' : f.difficulty <= 4 ? 'fdr-4' : 'fdr-5';
                                             return `<td style="text-align: center;"><span class="fdr-badge ${fdrClass}">${opp} ${f.isHome ? 'H' : 'A'}</span></td>`;
                                         }).join('')}
-                                        ${Array(5 - fixtures.length).fill('<td></td>').join('')}
-                                        <td style="text-align: center;"><span class="fdr-badge fdr-${Math.round(t.fixtures.avgFDR5)}">${t.fixtures.avgFDR5.toFixed(1)}</span></td>
+                                        ${Array(Math.max(0, 5 - fixtures.length)).fill('<td></td>').join('')}
+                                        <td style="text-align: center;"><span class="fdr-badge fdr-${Math.round(avgFDR)}">${avgFDR.toFixed(1)}</span></td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -4887,12 +5155,20 @@
                     // Method 2: Any query word matches any name part
                     for (const queryWord of queryWords) {
                         for (const namePart of nameParts) {
-                            // Exact match or one contains the other (for partial matches)
-                            if (namePart === queryWord || 
-                                (namePart.length > 3 && queryWord.includes(namePart)) ||
-                                (queryWord.length > 3 && namePart.includes(queryWord))) {
-                                found.push(p);
-                                return;
+                            // For short names/words (<= 4 chars), require exact match only
+                            if (namePart.length <= 4 || queryWord.length <= 4) {
+                                if (namePart === queryWord) {
+                                    found.push(p);
+                                    return;
+                                }
+                            } else {
+                                // For longer names, allow substring matching
+                                if (namePart === queryWord || 
+                                    queryWord.includes(namePart) ||
+                                    namePart.includes(queryWord)) {
+                                    found.push(p);
+                                    return;
+                                }
                             }
                         }
                     }
@@ -5193,15 +5469,18 @@
         }
 
         function generateCaptainResponse() {
-            // Find players with best combo of form + easy fixtures
+            // Find eligible players with best combo of form + easy fixtures
             const candidates = allAnalyses.filter(p => 
-                (p.l5?.games || 0) >= 3 &&
+                isPlayerEligible(p, { checkAvailability: true, checkStarters: true }) &&
                 p.fixtures?.avgFDR3
             ).map(p => {
                 const g = p.l5?.games || 1;
                 const ptsPerGame = p.l5?.points / g;
-                const fdrBonus = (5 - p.fixtures.avgFDR3) / 2; // Lower FDR = higher bonus
-                return { ...p, captainScore: ptsPerGame + fdrBonus };
+                const xGIPerGame = (p.l5?.xGI || 0) / g;
+                const fdr = p.fixtures.avgFDR3;
+                const fdrFactor = (3.5 - fdr) * 1.5;  // Smooth: +3 for FDR=1, -2.25 for FDR=5
+                const homeBonus = (p.fixtures.next3?.[0]?.isHome) ? 0.5 : 0;
+                return { ...p, captainScore: ptsPerGame + (xGIPerGame * 3) + fdrFactor + homeBonus };
             }).sort((a, b) => b.captainScore - a.captainScore);
 
             const top3 = candidates.slice(0, 3);
