@@ -1091,7 +1091,8 @@
         }
 
         function analyzePlayer(player) {
-            let sellRating = 0;
+            // Baseline: average player starts at 35 — dimensions push up (sell) or down (keep)
+            let sellRating = 35;
             let reasons = [], concerns = [], positives = [];
             const posAvg = positionAverages[player.position] || { form: 3, ppg: 3, ppm: 15, xGIPer90: 0.3 };
             const posConfig = POSITION_CONFIG[player.position];
@@ -1100,32 +1101,25 @@
             const isPremium = player.price >= 10.0;
             const isBudget = player.price <= 5.5;
 
-            // 1. AVAILABILITY (Critical)
+            // 1. AVAILABILITY (Critical — overrides baseline)
             if (player.status === 'i' || player.status === 'u' || player.status === 's') {
-                const penalty = player.status === 's' ? 55 : 60;
-                sellRating += penalty * userSettings.sellSensitivity;
+                sellRating += 40 * userSettings.sellSensitivity;
                 const statusText = player.status === 'i' ? 'Injured' : player.status === 'u' ? 'Unavailable' : 'Suspended';
                 concerns.push({ type: 'critical', title: statusText, text: player.news || 'Check team news for updates' });
                 reasons.push(`${statusText} — cannot play`);
             } else if (player.status === 'd') {
                 const chance = player.chanceNextRound;
-                const penalty = chance !== null ? Math.round((100 - chance) * 0.4) : 25;
+                const penalty = chance !== null ? Math.round((100 - chance) * 0.35) : 20;
                 sellRating += penalty * userSettings.sellSensitivity;
                 concerns.push({ type: 'warning', title: 'Doubtful', text: `${chance !== null ? chance + '% chance' : '75% chance'} of playing. ${player.news || ''}` });
-                if (penalty >= 25) reasons.push('Significant injury doubt');
+                if (penalty >= 20) reasons.push('Significant injury doubt');
             }
 
-            // 2. FORM (Position-adjusted thresholds)
+            // 2. FORM (Continuous — position-adjusted)
             const formDelta = player.form - posConfig.formMedian;
-            const formPenalty = (() => {
-                if (formDelta <= -2.5) return 28;
-                if (formDelta <= -1.5) return 18;
-                if (formDelta <= -0.5) return 8;
-                if (formDelta >= 2.5) return -20;
-                if (formDelta >= 1.5) return -12;
-                if (formDelta >= 0.5) return -5;
-                return 0;
-            })() * userSettings.formWeight * userSettings.sellSensitivity;
+            // Linear: each 1.0 of formDelta = ~8 points; capped at ±25
+            const rawFormPenalty = Math.max(-25, Math.min(25, Math.round(-formDelta * 8)));
+            const formPenalty = rawFormPenalty * userSettings.formWeight * userSettings.sellSensitivity;
             sellRating += formPenalty;
 
             if (formDelta <= -2.0) {
@@ -1139,7 +1133,7 @@
                 positives.push({ type: 'positive', title: 'Good Form', text: `Form ${player.form.toFixed(1)} — above average` });
             }
 
-            // 3. FIXTURES (Weighted — near fixtures matter more)
+            // 3. FIXTURES (Continuous — near fixtures weighted more)
             const fixtures = player.fixtures || [];
             let avgFDR = 3;
             if (fixtures.length >= 3) {
@@ -1151,38 +1145,28 @@
                     totalWeight += w;
                 });
                 avgFDR = weightedSum / totalWeight;
+            }
+            // Linear: FDR 3 is neutral, each 1.0 away = ~12 points
+            const rawFixPenalty = Math.max(-18, Math.min(18, Math.round((avgFDR - 3.0) * 12)));
+            sellRating += rawFixPenalty * userSettings.fixtureWeight * userSettings.sellSensitivity;
 
-                const fixPenalty = (() => {
-                    if (avgFDR >= 4.2) return 22;
-                    if (avgFDR >= 3.7) return 14;
-                    if (avgFDR >= 3.2) return 5;
-                    if (avgFDR <= 2.3) return -18;
-                    if (avgFDR <= 2.8) return -8;
-                    return 0;
-                })() * userSettings.fixtureWeight * userSettings.sellSensitivity;
-                sellRating += fixPenalty;
-
-                if (avgFDR >= 4.0) {
-                    concerns.push({ type: 'warning', title: 'Tough Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)} — difficult run ahead` });
-                    reasons.push('Brutal fixture run');
-                } else if (avgFDR <= 2.5) {
-                    positives.push({ type: 'positive', title: 'Great Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)} — fantastic fixture swing` });
-                } else if (avgFDR <= 3.0) {
-                    positives.push({ type: 'positive', title: 'Decent Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)}` });
-                }
+            if (avgFDR >= 4.0) {
+                concerns.push({ type: 'warning', title: 'Tough Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)} — difficult run ahead` });
+                reasons.push('Brutal fixture run');
+            } else if (avgFDR <= 2.5) {
+                positives.push({ type: 'positive', title: 'Great Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)} — fantastic fixture swing` });
+            } else if (avgFDR <= 3.0) {
+                positives.push({ type: 'positive', title: 'Decent Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)}` });
             }
             player.avgFDR = avgFDR;
 
-            // 4. MINUTES & ROTATION
-            const minsPenalty = (() => {
-                if (minsPerGame < 30) return 35;
-                if (minsPerGame < 50) return 25;
-                if (minsPerGame < userSettings.minutesThreshold) return 15;
-                if (minsPerGame >= 85) return -8;
-                if (minsPerGame >= 75) return -3;
-                return 0;
-            })() * userSettings.sellSensitivity;
-            sellRating += minsPenalty;
+            // 4. MINUTES & ROTATION (Continuous)
+            let minsPenalty = 0;
+            if (minsPerGame < 20) { minsPenalty = 30; }
+            else if (minsPerGame < 75) { minsPenalty = Math.round(28 - (minsPerGame - 20) * (28 / 55)); }
+            else if (minsPerGame >= 85) { minsPenalty = -6; }
+            else { minsPenalty = -2; }
+            sellRating += minsPenalty * userSettings.sellSensitivity;
             player.minsPerGame = minsPerGame;
 
             if (minsPerGame < 45) {
@@ -1194,20 +1178,17 @@
                 positives.push({ type: 'positive', title: 'Nailed On', text: `${minsPerGame.toFixed(0)} mins/game — consistent starter` });
             }
 
-            // 5. VALUE FOR MONEY (Points per Million)
+            // 5. VALUE FOR MONEY (Continuous — PPG compared to position average)
             const ppm = player.points / Math.max(player.price, 1);
             const ppmDelta = ppm - posAvg.ppm;
+            const ppgDelta = player.ppg - posAvg.ppg;
             player.ppm = ppm;
 
-            const valuePenalty = (() => {
-                if (isPremium && ppmDelta < -5) return 18;
-                if (isPremium && ppmDelta < -2) return 10;
-                if (!isBudget && ppmDelta < -5) return 12;
-                if (ppmDelta > 5) return -8;
-                if (ppmDelta > 2) return -4;
-                return 0;
-            })() * userSettings.valueWeight * userSettings.premiumHarshness * userSettings.sellSensitivity;
-            sellRating += valuePenalty;
+            // Blend PPM and PPG deltas for a richer value signal
+            const valueSignal = (ppmDelta * 0.6) + (ppgDelta * 2.5);
+            let rawValuePenalty = Math.max(-12, Math.min(18, Math.round(-valueSignal)));
+            if (isPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.3);
+            sellRating += rawValuePenalty * userSettings.valueWeight * userSettings.sellSensitivity;
 
             if (isPremium && player.form < posConfig.formMedian) {
                 concerns.push({ type: 'warning', title: 'Premium Underperforming', text: `£${player.price.toFixed(1)}m price tag not justified (${ppm.toFixed(1)} pts/£m vs avg ${posAvg.ppm.toFixed(1)})` });
@@ -1216,67 +1197,68 @@
                 positives.push({ type: 'positive', title: 'Great Value', text: `${ppm.toFixed(1)} pts/£m — well above ${posConfig.short} average (${posAvg.ppm.toFixed(1)})` });
             }
 
-            // 6. xG ANALYSIS
+            // 6. xG ANALYSIS (Continuous)
             if (player.position >= 3 && player.minutes >= 270) {
                 const xGIPer90 = (player.xGI / player.minutes) * 90;
                 const actualGI = player.goals + player.assists;
                 const overperformance = actualGI - player.xGI;
                 player.xGIPer90 = xGIPer90;
 
+                // Continuous: xGI/90 below 0.30 is a concern, above 0.50 is great
+                const xGPenalty = Math.max(-12, Math.min(15, Math.round((0.35 - xGIPer90) * 30)));
+                sellRating += xGPenalty * userSettings.sellSensitivity;
+
                 if (xGIPer90 < 0.20) {
-                    sellRating += 12 * userSettings.sellSensitivity;
                     concerns.push({ type: 'warning', title: 'Low Underlying Stats', text: `${xGIPer90.toFixed(2)} xGI/90 — not creating enough` });
                 } else if (xGIPer90 >= 0.60) {
-                    sellRating -= 10;
                     positives.push({ type: 'positive', title: 'Strong xGI', text: `${xGIPer90.toFixed(2)} xGI/90 — high-quality chances` });
                 }
 
-                if (overperformance > 3) {
-                    sellRating += 8 * userSettings.sellSensitivity;
+                if (overperformance > 2.5) {
+                    sellRating += Math.round(Math.min(10, overperformance * 2)) * userSettings.sellSensitivity;
                     concerns.push({ type: 'info', title: 'Overperforming xG', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — may regress (+${overperformance.toFixed(1)})` });
-                } else if (overperformance < -3) {
+                } else if (overperformance < -2.5) {
+                    sellRating -= Math.round(Math.min(8, Math.abs(overperformance) * 1.5));
                     positives.push({ type: 'positive', title: 'Due Returns', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — unlucky, due a haul (${overperformance.toFixed(1)})` });
-                    sellRating -= 5;
                 }
             } else if (player.position <= 2 && player.minutes >= 270) {
                 const csRate = player.cleanSheets / gamesPlayed;
                 player.csRate = csRate;
+                // Continuous: CS rate below 20% adds penalty, above 35% gives bonus
+                const csPenalty = Math.max(-8, Math.min(10, Math.round((0.28 - csRate) * 30)));
+                sellRating += csPenalty;
+
                 if (csRate >= 0.40) {
                     positives.push({ type: 'positive', title: 'CS Machine', text: `${(csRate * 100).toFixed(0)}% clean sheet rate` });
                 } else if (csRate <= 0.15 && !isBudget) {
                     concerns.push({ type: 'warning', title: 'Few Clean Sheets', text: `Only ${(csRate * 100).toFixed(0)}% CS rate` });
-                    sellRating += 8;
                 }
                 player.xGIPer90 = player.position === 1 ? (player.saves / Math.max(player.minutes / 90, 1)) : ((player.xGI / Math.max(player.minutes, 1)) * 90);
             }
 
             // 7. OWNERSHIP URGENCY
-            if (player.ownership > 25 && sellRating > 40) {
+            if (player.ownership > 25 && sellRating > 50) {
                 sellRating += 5;
                 concerns.push({ type: 'info', title: 'High Ownership Risk', text: `${player.ownership.toFixed(1)}% owned — price drop risk if others sell` });
-            } else if (player.ownership < 8 && sellRating < 10) {
+            } else if (player.ownership < 8 && sellRating < 25) {
                 positives.push({ type: 'positive', title: 'Differential', text: `Only ${player.ownership.toFixed(1)}% owned — great differential pick` });
+                sellRating -= 3;
             }
 
             const netTransfers = player.transfersIn - player.transfersOut;
             player.netTransfers = netTransfers;
 
-            // 8. BENCH DISCOUNT
-            if (player.onBench) {
-                sellRating = Math.round(sellRating * 0.55);
-            }
-
             sellRating = Math.max(0, Math.min(100, Math.round(sellRating)));
 
             // VERDICT
             let verdict, verdictReason;
-            if (sellRating >= 55) {
+            if (sellRating >= 60) {
                 verdict = 'sell';
                 verdictReason = reasons[0] || 'Multiple red flags — prioritize transfer';
-            } else if (sellRating >= 30) {
+            } else if (sellRating >= 40) {
                 verdict = 'monitor';
                 verdictReason = reasons[0] || 'Some concerns — monitor closely';
-            } else if (sellRating <= 8 && player.form >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
+            } else if (sellRating <= 15 && player.form >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
                 verdict = 'star';
                 verdictReason = positives.length > 0 ? positives[0].text : 'Top performer — team cornerstone';
             } else {
@@ -1591,7 +1573,7 @@
                     <div class="verdict-chip ${verdict}" style="font-size:13px;padding:6px 14px;">${verdict === 'star' ? '\u2605 STAR' : verdict.toUpperCase()}</div>
                     <div style="font-size:14px;color:var(--text-secondary);flex:1;">${verdictReason}</div>
                 </div>
-                <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100 ${player.onBench ? '(bench-adjusted)' : ''}</div>
+                <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100</div>
             </div>`;
 
             // Key Statistics with visual bars
