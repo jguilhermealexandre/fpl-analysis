@@ -3,1725 +3,825 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FPL Transfer Wizard</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <title>Lineup Wizard - FPL Tools</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         :root {
-            --bg: #0a0e14;
-            --surface: #151920;
-            --surface-light: #1d242e;
-            --accent-green: #00ff88;
-            --accent-red: #ff4757;
-            --accent-yellow: #ffa502;
-            --accent-blue: #00ccff;
-            --accent-purple: #9b59b6;
-            --text: #e0e5ed;
-            --text-dim: #8b95a5;
-            --border: #2a3340;
+            --surface-bg: #0A0E14;
+            --surface-0: #0D1117;
+            --surface-1: #161B22;
+            --surface-2: #1C2128;
+            --surface-3: #21262D;
+            --surface-4: #30363D;
+            --text-primary: rgba(255, 255, 255, 0.92);
+            --text-secondary: rgba(255, 255, 255, 0.65);
+            --text-muted: rgba(255, 255, 255, 0.45);
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --border-default: rgba(255, 255, 255, 0.10);
+            --border-emphasis: rgba(255, 255, 255, 0.16);
+            --color-success: #4ADE80;
+            --color-error: #F87171;
+            --color-warning: #FBBF24;
+            --color-info: #60A5FA;
+            --color-purple: #A78BFA;
+            --color-captain: #FCD34D;
+            --fdr-1: #4ADE80; --fdr-2: #86EFAC; --fdr-3: #9CA3AF; --fdr-4: #FB923C; --fdr-5: #EF4444;
+            --font-display: 'Space Grotesk', system-ui, sans-serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
         }
         
         body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'DM Mono', monospace;
-            line-height: 1.6;
+            font-family: var(--font-body);
+            background: var(--surface-bg);
+            color: var(--text-primary);
+            line-height: 1.5;
+            font-size: 14px;
             min-height: 100vh;
         }
-        
-        /* Header */
-        .header {
-            background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
-            border-bottom: 2px solid var(--accent-purple);
-            padding: 20px 30px;
-        }
-        
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .header h1 {
-            font-family: 'Space Mono', monospace;
-            font-size: 24px;
-            color: var(--accent-green);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .home-link {
-            color: var(--text-dim);
-            text-decoration: none;
-            font-size: 12px;
-            padding: 8px 16px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            transition: all 0.2s;
-        }
-        
-        .home-link:hover {
-            border-color: var(--accent-blue);
-            color: var(--accent-blue);
-        }
-        
-        /* Team ID Section */
-        .team-id-section {
-            background: var(--surface);
-            padding: 25px 30px;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        .team-id-inner {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .team-id-row {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-        
-        .team-id-label {
-            font-size: 14px;
-            font-weight: 500;
-        }
-        
-        .team-id-input {
-            background: var(--bg);
-            border: 2px solid var(--border);
-            color: var(--text);
-            padding: 12px 18px;
-            border-radius: 8px;
-            font-family: 'Space Mono', monospace;
-            font-size: 16px;
-            width: 200px;
-            transition: all 0.2s;
-        }
-        
-        .team-id-input:focus {
-            outline: none;
-            border-color: var(--accent-green);
-        }
-        
-        .load-btn {
-            padding: 12px 28px;
-            background: linear-gradient(135deg, var(--accent-green) 0%, #00cc70 100%);
-            color: var(--bg);
-            border: none;
-            border-radius: 8px;
-            font-family: 'Space Mono', monospace;
-            font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .load-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.4);
-        }
-        
-        .load-btn:disabled {
-            opacity: 0.6;
-            cursor: wait;
-        }
-        
-        .manager-card {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 15px 25px;
-            background: rgba(0, 255, 136, 0.08);
-            border: 1px solid rgba(0, 255, 136, 0.3);
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-        
-        .manager-card.hidden { display: none; }
-        
-        .manager-name {
-            font-family: 'Space Mono', monospace;
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--accent-green);
-        }
-        
-        .manager-stats {
-            display: flex;
-            gap: 25px;
-        }
-        
-        .manager-stat {
-            text-align: center;
-        }
-        
-        .manager-stat-value {
-            font-family: 'Space Mono', monospace;
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        .manager-stat-label {
-            font-size: 10px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-        }
-        
-        .help-link {
-            margin-left: auto;
-            font-size: 11px;
-            color: var(--text-dim);
-        }
-        
-        .help-link a {
-            color: var(--accent-blue);
-        }
-        
-        /* Progress Bar */
-        .progress-container {
-            background: var(--surface-light);
-            padding: 20px 30px;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        
-        .progress-inner {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .wizard-progress {
-            display: flex;
-            justify-content: space-between;
-            position: relative;
-        }
-        
-        .wizard-progress::before {
-            content: '';
-            position: absolute;
-            top: 22px;
-            left: 60px;
-            right: 60px;
-            height: 3px;
-            background: var(--border);
-        }
-        
-        .progress-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            z-index: 1;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .progress-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: var(--bg);
-            border: 3px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            margin-bottom: 8px;
-            transition: all 0.3s ease;
-        }
-        
-        .progress-step.active .progress-icon {
-            border-color: var(--accent-green);
-            background: var(--accent-green);
-            color: var(--bg);
-        }
-        
-        .progress-step.completed .progress-icon {
-            border-color: var(--accent-green);
-            background: rgba(0, 255, 136, 0.2);
-            color: var(--accent-green);
-        }
-        
-        .progress-step.disabled { opacity: 0.4; pointer-events: none; }
-        
-        .progress-label {
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--text-dim);
-            text-transform: uppercase;
-        }
-        
-        .progress-step.active .progress-label,
-        .progress-step.completed .progress-label {
-            color: var(--accent-green);
-        }
-        
-        /* Main Content */
-        .main-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 30px;
-        }
-        
-        /* Step Panels */
-        .step-panel {
-            display: none;
-            animation: fadeIn 0.4s ease;
-        }
-        
+
+        /* NAV */
+        .top-nav { background: var(--surface-0); border-bottom: 1px solid var(--border-default); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; height: 48px; gap: 32px; }
+        .nav-logo { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-primary); text-decoration: none; }
+        .nav-logo span { color: var(--color-success); }
+        .nav-links { display: flex; gap: 4px; }
+        .nav-link { display: flex; align-items: center; gap: 6px; padding: 6px 12px; color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 500; border-radius: var(--radius-sm); transition: all 0.15s; }
+        .nav-link:hover { color: var(--text-primary); background: var(--surface-1); }
+        .nav-link.active { color: var(--color-purple); background: rgba(167, 139, 250, 0.1); }
+        .nav-link .icon { font-size: 14px; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        .main-content { max-width: 1400px; margin: 0 auto; padding: 16px 24px 100px; }
+        .header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+        .page-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+        .team-input-row { display: flex; align-items: center; gap: 8px; }
+        .team-id-input { background: var(--surface-1); border: 1px solid var(--border-default); color: var(--text-primary); padding: 8px 12px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 13px; width: 100px; }
+        .team-id-input:focus { outline: none; border-color: var(--color-success); }
+        .btn { padding: 8px 16px; border: none; border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .btn-primary { background: var(--color-success); color: var(--surface-bg); }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-secondary { background: var(--surface-2); color: var(--text-primary); }
+        .btn-secondary:hover { background: var(--surface-3); }
+        .btn:disabled { opacity: 0.5; cursor: wait; }
+
+        .manager-info { display: flex; align-items: center; gap: 16px; padding: 8px 16px; background: var(--surface-1); border-radius: var(--radius-md); font-size: 13px; margin-bottom: 16px; }
+        .manager-info.hidden { display: none; }
+        .manager-name { font-weight: 600; color: var(--color-success); }
+        .manager-stat { color: var(--text-secondary); }
+        .manager-stat strong { color: var(--text-primary); font-family: var(--font-mono); }
+
+        .status { text-align: center; padding: 8px 16px; font-size: 13px; color: var(--text-secondary); border-radius: var(--radius-sm); }
+        .status.loading { color: var(--color-info); }
+        .status.success { color: var(--color-success); }
+        .status.error { color: var(--color-error); }
+
+        /* WIZARD STEPS */
+        .wizard-steps { display: flex; gap: 4px; margin-bottom: 20px; padding: 12px; background: var(--surface-1); border-radius: var(--radius-lg); border: 1px solid var(--border-default); }
+        .wizard-step { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; }
+        .wizard-step:hover { background: var(--surface-2); }
+        .wizard-step.active { background: rgba(167, 139, 250, 0.12); }
+        .wizard-step.completed { background: rgba(74, 222, 128, 0.08); }
+        .wizard-step.disabled { opacity: 0.4; pointer-events: none; }
+        .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; transition: all 0.15s; }
+        .wizard-step.active .step-num { background: var(--color-purple); color: white; }
+        .wizard-step.completed .step-num { background: var(--color-success); color: var(--surface-bg); }
+        .step-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+        .wizard-step.active .step-label { color: var(--color-purple); font-weight: 600; }
+        .wizard-step.completed .step-label { color: var(--color-success); }
+        @media (max-width: 768px) { .wizard-steps { flex-wrap: wrap; } .step-label { font-size: 11px; } }
+
+        .step-panel { display: none; animation: fadeIn 0.3s ease; }
         .step-panel.active { display: block; }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .panel-header {
-            margin-bottom: 25px;
-        }
-        
-        .panel-header h2 {
-            font-family: 'Space Mono', monospace;
-            font-size: 24px;
-            color: var(--accent-green);
-            margin-bottom: 8px;
-        }
-        
-        .panel-header p {
-            font-size: 13px;
-            color: var(--text-dim);
-        }
-        
-        /* Buttons */
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-family: 'DM Mono', monospace;
-            font-size: 12px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent-green) 0%, #00cc70 100%);
-            color: var(--bg);
-        }
-        
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.4);
-        }
-        
-        .btn-secondary {
-            background: var(--surface);
-            color: var(--text);
-            border: 2px solid var(--border);
-        }
-        
-        .btn-secondary:hover:not(:disabled) { border-color: var(--accent-blue); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        /* Status Bar */
-        .status-bar {
-            padding: 12px 20px;
-            background: var(--surface);
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 12px;
-        }
-        
-        .status-bar.loading { border-left: 4px solid var(--accent-yellow); }
-        .status-bar.success { border-left: 4px solid var(--accent-green); }
-        .status-bar.error { border-left: 4px solid var(--accent-red); }
-        
-        .spinner {
-            width: 18px;
-            height: 18px;
-            border: 2px solid var(--border);
-            border-top-color: var(--accent-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .panel-header { margin-bottom: 20px; }
+        .panel-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .panel-desc { font-size: 13px; color: var(--text-muted); }
+
+        /* PITCH VIEW */
+        .pitch { background: linear-gradient(180deg, #1a472a 0%, #1d5031 20%, #1a472a 40%, #1d5031 60%, #1a472a 80%, #1d5031 100%); border-radius: var(--radius-lg); padding: 24px 16px; margin-bottom: 20px; position: relative; border: 2px solid rgba(74, 222, 128, 0.2); }
+        .pitch::before { content: ''; position: absolute; top: 50%; left: 10%; right: 10%; height: 1px; background: rgba(255,255,255,0.1); }
+        .pitch-row { display: flex; justify-content: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .pitch-row:last-child { margin-bottom: 0; }
+        .pitch-player { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 72px; max-width: 90px; cursor: pointer; transition: all 0.15s; }
+        .pitch-player:hover { transform: translateY(-3px); }
+        .pitch-player.bench-player { opacity: 0.6; }
+        .pitch-player.captain .pitch-shirt { box-shadow: 0 0 12px rgba(252, 211, 77, 0.5); }
+        .pitch-player.vice .pitch-shirt { box-shadow: 0 0 8px rgba(192, 192, 192, 0.4); }
+        .pitch-shirt { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; position: relative; }
+        .pitch-shirt.gk { background: rgba(252, 211, 77, 0.3); border: 2px solid #FCD34D; }
+        .pitch-shirt.def { background: rgba(52, 211, 153, 0.3); border: 2px solid #34D399; }
+        .pitch-shirt.mid { background: rgba(96, 165, 250, 0.3); border: 2px solid #60A5FA; }
+        .pitch-shirt.fwd { background: rgba(248, 113, 113, 0.3); border: 2px solid #F87171; }
+        .captain-badge { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+        .captain-badge.c { background: var(--color-captain); color: #000; }
+        .captain-badge.vc { background: #C0C0C0; color: #000; }
+        .pitch-name { font-size: 10px; font-weight: 600; text-align: center; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+        .pitch-score { font-size: 10px; font-weight: 700; font-family: var(--font-mono); padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,0.5); }
+        .pitch-score.high { color: var(--color-success); }
+        .pitch-score.mid { color: var(--color-warning); }
+        .pitch-score.low { color: var(--color-error); }
+        .bench-section { background: var(--surface-1); border-radius: var(--radius-lg); padding: 16px; border: 1px solid var(--border-default); }
+        .bench-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; text-align: center; }
+        .bench-row { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+
+        /* TABLE */
+        .table-container { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow-x: auto; margin-bottom: 20px; }
+        .table-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-default); }
+        .table-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; }
+        .rankings-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .rankings-table th { padding: 10px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; text-align: left; border-bottom: 1px solid var(--border-default); position: sticky; top: 0; background: var(--surface-1); z-index: 1; }
+        .rankings-table th.num { text-align: center; }
+        .rankings-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+        .rankings-table td.num { text-align: center; font-family: var(--font-mono); font-weight: 600; }
+        .rankings-table tr:hover td { background: var(--surface-2); }
+        .rankings-table tr.in-squad td { background: rgba(74, 222, 128, 0.05); }
+        .rankings-table tr.on-bench td { background: rgba(255, 255, 255, 0.02); }
+        .pos-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+        .pos-badge.gk { background: rgba(252, 211, 77, 0.2); color: #FCD34D; }
+        .pos-badge.def { background: rgba(52, 211, 153, 0.2); color: #34D399; }
+        .pos-badge.mid { background: rgba(96, 165, 250, 0.2); color: #60A5FA; }
+        .pos-badge.fwd { background: rgba(248, 113, 113, 0.2); color: #F87171; }
+        .fixture-chip { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .fixture-chip.fdr-1 { background: rgba(74, 222, 128, 0.2); color: var(--fdr-1); }
+        .fixture-chip.fdr-2 { background: rgba(134, 239, 172, 0.2); color: var(--fdr-2); }
+        .fixture-chip.fdr-3 { background: rgba(156, 163, 175, 0.15); color: var(--fdr-3); }
+        .fixture-chip.fdr-4 { background: rgba(251, 146, 60, 0.2); color: var(--fdr-4); }
+        .fixture-chip.fdr-5 { background: rgba(239, 68, 68, 0.2); color: var(--fdr-5); }
+        .val-good { color: var(--color-success); }
+        .val-ok { color: var(--color-warning); }
+        .val-bad { color: var(--color-error); }
+
+        /* CAPTAIN CARDS */
+        .captain-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .captain-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 16px; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; }
+        .captain-card:hover { border-color: var(--border-emphasis); transform: translateY(-2px); }
+        .captain-card.selected { border-color: var(--color-captain); background: rgba(252, 211, 77, 0.06); }
+        .captain-card.vc-selected { border-color: #C0C0C0; background: rgba(192, 192, 192, 0.06); }
+        .captain-rank { position: absolute; top: 12px; right: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+        .captain-rank.gold { background: rgba(252, 211, 77, 0.2); color: #FCD34D; }
+        .captain-rank.silver { background: rgba(192, 192, 192, 0.2); color: #C0C0C0; }
+        .captain-rank.bronze { background: rgba(205, 127, 50, 0.2); color: #CD7F32; }
+        .captain-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .captain-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .captain-name { font-size: 15px; font-weight: 600; }
+        .captain-meta { font-size: 12px; color: var(--text-muted); }
+        .captain-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+        .captain-metric { text-align: center; padding: 8px 4px; background: var(--surface-2); border-radius: var(--radius-sm); }
+        .captain-metric-value { font-family: var(--font-mono); font-size: 15px; font-weight: 600; }
+        .captain-metric-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+        .captain-reasons { display: flex; flex-wrap: wrap; gap: 4px; }
+        .captain-reason { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 500; }
+        .captain-reason.pro { background: rgba(74, 222, 128, 0.15); color: var(--color-success); }
+        .captain-reason.con { background: rgba(248, 113, 113, 0.15); color: var(--color-error); }
+        .captain-reason.info { background: rgba(96, 165, 250, 0.15); color: var(--color-info); }
+        .captain-score-bar { position: absolute; bottom: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--color-captain), var(--color-success)); transition: width 0.3s; }
+        .captain-btns { display: flex; gap: 6px; margin-top: 12px; }
+        .captain-btn { flex: 1; padding: 8px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.15s; }
+        .captain-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+        .captain-btn.c-active { background: rgba(252, 211, 77, 0.15); color: var(--color-captain); border-color: var(--color-captain); }
+        .captain-btn.vc-active { background: rgba(192, 192, 192, 0.15); color: #ddd; border-color: #aaa; }
+
+        /* SUMMARY */
+        .summary-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 20px; }
+        .summary-formation { text-align: center; margin-bottom: 20px; }
+        .summary-formation-num { font-family: var(--font-display); font-size: 36px; font-weight: 700; color: var(--color-purple); }
+        .summary-formation-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .summary-stat { text-align: center; padding: 12px; background: var(--surface-2); border-radius: var(--radius-md); }
+        .summary-stat-value { font-family: var(--font-mono); font-size: 20px; font-weight: 700; }
+        .summary-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+        .summary-captain-row { display: flex; align-items: center; gap: 16px; padding: 16px; background: rgba(252, 211, 77, 0.08); border: 1px solid rgba(252, 211, 77, 0.2); border-radius: var(--radius-md); margin-bottom: 12px; }
+        .summary-vc-row { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: rgba(192, 192, 192, 0.06); border: 1px solid rgba(192, 192, 192, 0.15); border-radius: var(--radius-md); margin-bottom: 20px; }
+        .summary-player-list { display: flex; flex-direction: column; gap: 4px; }
+        .summary-player { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radius-sm); }
+        .summary-player:nth-child(odd) { background: var(--surface-2); }
+        .summary-player-pos { width: 32px; }
+        .summary-player-name { flex: 1; font-weight: 500; }
+        .summary-player-team { color: var(--text-muted); font-size: 12px; width: 40px; }
+        .summary-player-score { font-family: var(--font-mono); font-weight: 600; }
+
+        .wizard-nav { display: flex; justify-content: space-between; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+        .empty-state { text-align: center; padding: 60px 20px; }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        .empty-text { font-size: 14px; color: var(--text-secondary); }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,14,20,0.9); z-index: 300; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+        .loading-overlay.show { display: flex; }
+        .spinner { width: 40px; height: 40px; border: 3px solid var(--surface-3); border-top-color: var(--color-purple); border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .stat-card {
-            background: var(--surface);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-family: 'Space Mono', monospace;
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 10px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-        }
-        
-        /* Player Cards */
-        .players-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .player-card {
-            background: var(--surface);
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            padding: 18px;
-            transition: all 0.2s ease;
-        }
-        
-        .player-card.clickable {
-            cursor: pointer;
-        }
-        
-        .player-card.clickable:hover {
-            border-color: var(--accent-blue);
-            transform: translateY(-2px);
-        }
-        
-        .player-card.sell-selected {
-            border-color: var(--accent-red) !important;
-            background: rgba(255, 71, 87, 0.1);
-        }
-        
-        .player-card.buy-selected {
-            border-color: var(--accent-green) !important;
-            background: rgba(0, 255, 136, 0.1);
-        }
-        
-        .player-card.urgent { border-left: 4px solid var(--accent-red); }
-        .player-card.consider { border-left: 4px solid var(--accent-yellow); }
-        .player-card.hold { border-left: 4px solid var(--accent-green); }
-        
-        .player-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
-        }
-        
-        .player-info h4 {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .player-meta {
-            font-size: 11px;
-            color: var(--text-dim);
-        }
-        
-        .player-rating { text-align: right; }
-        
-        .rating-value {
-            font-family: 'Space Mono', monospace;
-            font-size: 26px;
-            font-weight: 700;
-            line-height: 1;
-        }
-        
-        .rating-value.urgent { color: var(--accent-red); }
-        .rating-value.consider { color: var(--accent-yellow); }
-        .rating-value.hold { color: var(--accent-green); }
-        
-        .rating-label {
-            font-size: 9px;
-            font-weight: 600;
-            text-transform: uppercase;
-            padding: 3px 8px;
-            border-radius: 4px;
-            margin-top: 4px;
-            display: inline-block;
-        }
-        
-        .rating-label.urgent { background: var(--accent-red); color: white; }
-        .rating-label.consider { background: var(--accent-yellow); color: var(--bg); }
-        .rating-label.hold { background: var(--accent-green); color: var(--bg); }
-        
-        .player-issues {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 10px;
-        }
-        
-        .issue-tag {
-            font-size: 9px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
-        
-        .issue-tag.critical { background: rgba(255, 71, 87, 0.2); color: var(--accent-red); }
-        .issue-tag.warning { background: rgba(255, 165, 2, 0.2); color: var(--accent-yellow); }
-        .issue-tag.positive { background: rgba(0, 255, 136, 0.2); color: var(--accent-green); }
-        .issue-tag.info { background: rgba(0, 204, 255, 0.2); color: var(--accent-blue); }
-        
-        .fixture-badges {
-            display: flex;
-            gap: 5px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .fixture-badge {
-            font-size: 9px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
-        
-        .fixture-badge.fdr-1, .fixture-badge.fdr-2 { background: rgba(0, 255, 136, 0.2); color: var(--accent-green); }
-        .fixture-badge.fdr-3 { background: rgba(255, 165, 2, 0.2); color: var(--accent-yellow); }
-        .fixture-badge.fdr-4, .fixture-badge.fdr-5 { background: rgba(255, 71, 87, 0.2); color: var(--accent-red); }
-        
-        /* Teams Grid */
-        .teams-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .team-card {
-            background: var(--surface);
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            padding: 18px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .team-card:hover { border-color: var(--accent-blue); }
-        
-        .team-name {
-            font-family: 'Space Mono', monospace;
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: var(--accent-blue);
-        }
-        
-        .team-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 12px;
-        }
-        
-        .team-stat {
-            text-align: center;
-            padding: 8px;
-            background: var(--bg);
-            border-radius: 6px;
-        }
-        
-        .team-stat-value {
-            font-family: 'Space Mono', monospace;
-            font-size: 18px;
-            font-weight: 600;
-        }
-        
-        .team-stat-label {
-            font-size: 9px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-        }
-        
-        /* Budget Display */
-        .budget-display {
-            background: var(--surface);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 15px;
-            text-align: center;
-        }
-        
-        .budget-item { padding: 0 15px; }
-        
-        .budget-value {
-            font-family: 'Space Mono', monospace;
-            font-size: 22px;
-            font-weight: 700;
-        }
-        
-        .budget-label {
-            font-size: 10px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            margin-top: 4px;
-        }
-        
-        /* Filter Bar */
-        .filter-bar {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: var(--surface);
-            border-radius: 10px;
-        }
-        
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .filter-label {
-            font-size: 11px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-        }
-        
-        .filter-select {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-family: 'DM Mono', monospace;
-            font-size: 11px;
-        }
-        
-        .filter-select:focus {
-            outline: none;
-            border-color: var(--accent-green);
-        }
-        
-        /* Summary Box */
-        .summary-box {
-            background: var(--surface);
-            border: 2px solid var(--accent-green);
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 25px;
-        }
-        
-        .summary-title {
-            font-family: 'Space Mono', monospace;
-            font-size: 18px;
-            color: var(--accent-green);
-            margin-bottom: 20px;
-        }
-        
-        .transfer-row {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 15px;
-            background: var(--bg);
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-        
-        .transfer-out, .transfer-in { flex: 1; }
-        .transfer-out { text-align: right; }
-        .transfer-arrow { font-size: 24px; color: var(--accent-green); }
-        .transfer-player-name { font-weight: 600; font-size: 15px; }
-        .transfer-player-team { font-size: 11px; color: var(--text-dim); }
-        .transfer-player-price { font-family: 'DM Mono', monospace; font-size: 13px; margin-top: 4px; }
-        .transfer-player-price.out { color: var(--accent-red); }
-        .transfer-player-price.in { color: var(--accent-green); }
-        
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-dim);
-        }
-        
-        .empty-state-icon { font-size: 64px; margin-bottom: 20px; }
-        .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 10px; }
-        
-        /* Navigation */
-        .wizard-nav {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-        }
-        
-        /* Scrollable */
-        .scroll-container {
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        
-        /* Success Box */
-        .success-box {
-            background: rgba(0, 255, 136, 0.1);
-            border: 2px solid var(--accent-green);
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .success-box h4 { color: var(--accent-green); margin-bottom: 8px; }
-        .success-box p { font-size: 12px; color: var(--text-dim); }
-        
-        /* Responsive */
+        .loading-text { font-size: 14px; color: var(--text-secondary); }
+
+        .insight-box { padding: 14px; background: var(--surface-2); border-radius: var(--radius-md); margin-bottom: 8px; }
+        .insight-box.positive { border-left: 3px solid var(--color-success); }
+        .insight-box.warning { border-left: 3px solid var(--color-warning); }
+        .insight-box.critical { border-left: 3px solid var(--color-error); }
+        .insight-box.info { border-left: 3px solid var(--color-info); }
+        .insight-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+        .insight-text { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+
+        .auto-banner { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: rgba(167, 139, 250, 0.08); border: 1px solid rgba(167, 139, 250, 0.2); border-radius: var(--radius-md); margin-bottom: 16px; }
+        .auto-banner-icon { font-size: 24px; flex-shrink: 0; }
+        .auto-banner-text { flex: 1; }
+        .auto-banner-title { font-size: 14px; font-weight: 600; color: var(--color-purple); }
+        .auto-banner-desc { font-size: 12px; color: var(--text-secondary); }
+
+        .formation-section { margin-bottom: 24px; }
+        .formation-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .formation-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; }
+        .formation-badge { padding: 4px 10px; background: var(--surface-2); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--color-info); }
+
+        .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface-0); border-top: 1px solid var(--border-default); padding: 8px 0; z-index: 100; }
         @media (max-width: 768px) {
-            .header-content { flex-direction: column; }
-            .team-id-row { flex-direction: column; align-items: stretch; }
-            .team-id-input { width: 100%; }
-            .help-link { margin-left: 0; margin-top: 10px; }
-            .manager-card { flex-direction: column; text-align: center; }
-            .manager-stats { justify-content: center; }
-            .wizard-progress::before { display: none; }
-            .progress-label { display: none; }
-            .players-grid { grid-template-columns: 1fr; }
-            .transfer-row { flex-direction: column; text-align: center; }
-            .transfer-out, .transfer-in { text-align: center; }
-            .transfer-arrow { transform: rotate(90deg); }
+            .mobile-nav { display: flex; justify-content: space-around; }
+            .main-content { padding-bottom: 80px; }
+            .header-row { flex-direction: column; align-items: stretch; }
+            .manager-info { flex-wrap: wrap; justify-content: center; text-align: center; }
+            .captain-grid { grid-template-columns: 1fr; }
+            .captain-metrics { grid-template-columns: repeat(2, 1fr); }
         }
+        .mobile-nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 8px; color: var(--text-muted); text-decoration: none; font-size: 10px; }
+        .mobile-nav-item.active { color: var(--color-purple); }
+        .mobile-nav-item .icon { font-size: 20px; }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <h1>🧙‍♂️ Transfer Wizard</h1>
-            <a href="index.html" class="home-link">← Back to Tools</a>
+    <nav class="top-nav"><div class="nav-container">
+        <a href="index.html" class="nav-logo">⚡ FPL<span>Tools</span></a>
+        <div class="nav-links">
+            <a href="fpl-transfer-wizard.html" class="nav-link active"><span class="icon">🧙‍♂️</span> Wizard</a>
+            <a href="fpl-my-team-analysis.html" class="nav-link"><span class="icon">⚽</span> My Team</a>
+            <a href="fpl-players-analysis.html" class="nav-link"><span class="icon">👤</span> Players</a>
+            <a href="fpl-teams-analysis.html" class="nav-link"><span class="icon">📊</span> Teams</a>
+            <a href="fpl-league-rivals.html" class="nav-link"><span class="icon">🏆</span> Rivals</a>
         </div>
-    </header>
-    
-    <!-- Team ID Input -->
-    <div class="team-id-section">
-        <div class="team-id-inner">
-            <div class="team-id-row">
-                <span class="team-id-label">🔑 Your FPL Team ID:</span>
-                <input type="text" id="teamIdInput" class="team-id-input" placeholder="e.g. 1234567">
-                <button class="load-btn" id="loadBtn" onclick="loadTeamById()">Load My Team</button>
-                <span class="help-link">
-                    Find it at <a href="https://fantasy.premierleague.com" target="_blank">FPL</a> → Points → check URL for number
-                </span>
-            </div>
-            
-            <div class="manager-card hidden" id="managerCard">
-                <div>
-                    <div class="manager-name" id="managerName">-</div>
-                    <div style="font-size: 11px; color: var(--text-dim);" id="teamName">-</div>
-                </div>
-                <div class="manager-stats">
-                    <div class="manager-stat">
-                        <div class="manager-stat-value" id="overallRank">-</div>
-                        <div class="manager-stat-label">Overall Rank</div>
-                    </div>
-                    <div class="manager-stat">
-                        <div class="manager-stat-value" id="totalPoints">-</div>
-                        <div class="manager-stat-label">Total Points</div>
-                    </div>
-                    <div class="manager-stat">
-                        <div class="manager-stat-value" style="color: var(--accent-green);" id="bankValue">-</div>
-                        <div class="manager-stat-label">In The Bank</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Progress Bar -->
-    <div class="progress-container">
-        <div class="progress-inner">
-            <div class="wizard-progress">
-                <div class="progress-step active" onclick="goToStep(1)">
-                    <div class="progress-icon">🎯</div>
-                    <span class="progress-label">Select</span>
-                </div>
-                <div class="progress-step disabled" onclick="goToStep(2)">
-                    <div class="progress-icon">📅</div>
-                    <span class="progress-label">Fixtures</span>
-                </div>
-                <div class="progress-step disabled" onclick="goToStep(3)">
-                    <div class="progress-icon">👤</div>
-                    <span class="progress-label">Replace</span>
-                </div>
-                <div class="progress-step disabled" onclick="goToStep(4)">
-                    <div class="progress-icon">✅</div>
-                    <span class="progress-label">Review</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Main Content -->
+    </div></nav>
+
     <main class="main-content">
-        <!-- Status Bar -->
-        <div id="statusBar" class="status-bar loading">
-            <div class="spinner"></div>
-            <span>Loading FPL data...</span>
-        </div>
-        
-        <!-- Step 1: Analyze & Select Players to Sell -->
-        <div class="step-panel active" id="panel-1">
-            <div class="panel-header">
-                <h2>Step 1: Analyze & Select Players to Sell</h2>
-                <p>Enter your FPL Team ID above. Your 15 players are analyzed and sorted by sell priority (red = urgent sell, yellow = consider, green = hold). Click to select players you want to transfer OUT.</p>
-            </div>
-            
-            <div class="budget-display" id="budgetDisplay" style="display: none;">
-                <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-green);" id="itbDisplay">£0.0m</div>
-                    <div class="budget-label">In The Bank</div>
-                </div>
-                <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-yellow);" id="sellValueDisplay">£0.0m</div>
-                    <div class="budget-label">Selling Value</div>
-                </div>
-                <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-green);" id="totalBudgetDisplay">£0.0m</div>
-                    <div class="budget-label">Total Budget</div>
-                </div>
-                <div class="budget-item">
-                    <div class="budget-value" id="sellCountDisplay">0</div>
-                    <div class="budget-label">Transfers Out</div>
-                </div>
-            </div>
-            
-            <div id="step1Content">
-                <div class="empty-state">
-                    <div class="empty-state-icon">⚽</div>
-                    <h3>No Team Loaded</h3>
-                    <p>Enter your FPL Team ID above and click "Load My Team"</p>
-                </div>
-            </div>
-            
-            <div class="wizard-nav" id="nav1" style="display: none;">
-                <div></div>
-                <button class="btn btn-primary" id="toStep2Btn" onclick="goToStep(2)" disabled>View Fixture Swings →</button>
+        <div class="header-row">
+            <h1 class="page-title">🧙‍♂️ Lineup Wizard</h1>
+            <div class="team-input-row">
+                <input type="text" id="teamIdInput" class="team-id-input" placeholder="Team ID">
+                <button class="btn btn-primary" id="loadTeamBtn" onclick="loadTeamById()">Load Team</button>
             </div>
         </div>
-        
-        <!-- Step 2: Fixture Analysis -->
-        <div class="step-panel" id="panel-2">
-            <div class="panel-header">
-                <h2>Step 2: Explore Fixture Opportunities</h2>
-                <p>Teams ranked by easiest upcoming fixtures. Click teams to filter replacements (multi-select enabled). Click again to deselect.</p>
-            </div>
-            
-            <div id="selectedTeamsDisplay" class="budget-display" style="display: none;">
-                <div class="budget-item" style="flex: 1; text-align: left;">
-                    <div class="budget-label">Selected Teams</div>
-                    <div id="selectedTeamsList" style="color: var(--accent-blue); font-size: 14px; margin-top: 5px;"></div>
-                </div>
-                <button class="btn btn-secondary" onclick="clearSelectedTeams()" style="padding: 8px 16px; font-size: 11px;">Clear All</button>
-            </div>
-            
-            <div id="step2Content" class="teams-grid"></div>
-            
-            <div class="wizard-nav">
-                <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
-                <button class="btn btn-primary" onclick="goToStep(3)">Find Replacements →</button>
-            </div>
+        <div class="manager-info hidden" id="managerInfo">
+            <span class="manager-name" id="managerName">-</span>
+            <span class="manager-stat">Rank: <strong id="overallRank">-</strong></span>
+            <span class="manager-stat">Points: <strong id="totalPoints">-</strong></span>
+            <span class="manager-stat">GW: <strong id="gwDisplay">-</strong></span>
         </div>
-        
-        <!-- Step 3: Find Replacements -->
-        <div class="step-panel" id="panel-3">
-            <div class="panel-header">
-                <h2>Step 3: Choose Replacements</h2>
-                <p>Select players to bring IN. Filter by position, price, and team.</p>
-            </div>
-            
-            <div class="filter-bar">
-                <div class="filter-group">
-                    <span class="filter-label">Position:</span>
-                    <select id="posFilter" class="filter-select" onchange="renderReplacements()">
-                        <option value="all">All</option>
-                        <option value="1">GK</option>
-                        <option value="2">DEF</option>
-                        <option value="3">MID</option>
-                        <option value="4">FWD</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <span class="filter-label">Max Price:</span>
-                    <select id="priceFilterSelect" class="filter-select" onchange="renderReplacements()">
-                        <option value="99">Any</option>
-                        <option value="5.0">≤£5.0m</option>
-                        <option value="6.0">≤£6.0m</option>
-                        <option value="7.0">≤£7.0m</option>
-                        <option value="8.0">≤£8.0m</option>
-                        <option value="10.0">≤£10.0m</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <span class="filter-label">Sort:</span>
-                    <select id="sortSelect" class="filter-select" onchange="renderReplacements()">
-                        <option value="score">Recommendation</option>
-                        <option value="form">Form</option>
-                        <option value="xgi">xGI/90</option>
-                        <option value="price">Price ↑</option>
-                        <option value="fdr">Fixtures</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <span class="filter-label">Team:</span>
-                    <select id="teamFilterSelect" class="filter-select" onchange="renderReplacements()">
-                        <option value="all">All Teams</option>
-                        <option value="selected">Selected Teams Only</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="budget-display">
-                <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-green);" id="availBudgetDisplay">£0.0m</div>
-                    <div class="budget-label">Available</div>
-                </div>
-                <div class="budget-item">
-                    <div class="budget-value" style="color: var(--accent-yellow);" id="spendingDisplay">£0.0m</div>
-                    <div class="budget-label">Spending</div>
-                </div>
-                <div class="budget-item">
-                    <div class="budget-value" id="remainingDisplay">£0.0m</div>
-                    <div class="budget-label">Remaining</div>
-                </div>
-                <div class="budget-item">
-                    <div class="budget-value" id="buyCountDisplay">0</div>
-                    <div class="budget-label">Transfers In</div>
-                </div>
-            </div>
-            
-            <div id="step3Content" class="scroll-container players-grid"></div>
-            
-            <div class="wizard-nav">
-                <button class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
-                <button class="btn btn-primary" id="toStep4Btn" onclick="goToStep(4)" disabled>Review Plan →</button>
-            </div>
+        <div class="status" id="status">Enter your FPL Team ID to get optimal lineup recommendations</div>
+        <div class="wizard-steps" id="wizardSteps" style="display:none;">
+            <div class="wizard-step active" onclick="goToStep(1)"><div class="step-num">1</div><span class="step-label">📊 Analysis</span></div>
+            <div class="wizard-step disabled" onclick="goToStep(2)"><div class="step-num">2</div><span class="step-label">⚽ Starting XI</span></div>
+            <div class="wizard-step disabled" onclick="goToStep(3)"><div class="step-num">3</div><span class="step-label">©️ Captain</span></div>
+            <div class="wizard-step disabled" onclick="goToStep(4)"><div class="step-num">4</div><span class="step-label">✅ Summary</span></div>
         </div>
-        
-        <!-- Step 4: Review -->
-        <div class="step-panel" id="panel-4">
-            <div class="panel-header">
-                <h2>Step 4: Review Your Transfer Plan</h2>
-                <p>Confirm your transfers before heading to the official FPL site.</p>
-            </div>
-            
-            <div id="step4Content"></div>
-            
-            <div class="wizard-nav">
-                <button class="btn btn-secondary" onclick="goToStep(3)">← Back</button>
-                <button class="btn btn-primary" onclick="executePlan()">Save & Go to FPL →</button>
-            </div>
-        </div>
+        <div class="step-panel active" id="panel-1"><div id="step1Content">
+            <div class="empty-state"><div class="empty-icon">🧙‍♂️</div><div class="empty-title">Load Your Team</div><div class="empty-text">Enter your FPL Team ID above to get AI-powered lineup recommendations</div></div>
+        </div></div>
+        <div class="step-panel" id="panel-2"><div id="step2Content"></div></div>
+        <div class="step-panel" id="panel-3"><div id="step3Content"></div></div>
+        <div class="step-panel" id="panel-4"><div id="step4Content"></div></div>
     </main>
-    
+
+    <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div><div class="loading-text" id="loadingText">Analyzing your squad...</div></div>
+
+    <nav class="mobile-nav">
+        <a href="fpl-transfer-wizard.html" class="mobile-nav-item active"><span class="icon">🧙‍♂️</span>Wizard</a>
+        <a href="fpl-my-team-analysis.html" class="mobile-nav-item"><span class="icon">⚽</span>My Team</a>
+        <a href="fpl-players-analysis.html" class="mobile-nav-item"><span class="icon">👤</span>Players</a>
+        <a href="fpl-teams-analysis.html" class="mobile-nav-item"><span class="icon">📊</span>Teams</a>
+        <a href="fpl-league-rivals.html" class="mobile-nav-item"><span class="icon">🏆</span>Rivals</a>
+    </nav>
+
     <script>
-        // ===== STATE =====
-        let allPlayers = [];
-        let allPlayersById = {};
-        let teams = {};
-        let teamFixtures = {};
-        let currentGW = 1;
-        let myTeam = [];
-        let analyzedTeam = [];
-        let toSell = new Set();
-        let toSellPlayers = [];
-        let toBuy = [];
-        let toBuyIds = new Set();
-        let itb = 0;
-        let managerData = null;
-        let selectedTeams = new Set(); // For multi-team selection in fixtures
-        
-        const POS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-        const PROXY = 'https://corsproxy.io/?';
-        
-        // ===== INIT =====
-        async function init() {
-            try {
-                updateStatus('Loading FPL data...', 'loading');
-                
-                // Bootstrap data
-                const bootRes = await fetch(PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/'));
-                const bootData = await bootRes.json();
-                
-                // Current GW
-                const currEvent = bootData.events.find(e => e.is_current);
-                currentGW = currEvent ? currEvent.id : 1;
-                
-                // Teams
-                bootData.teams.forEach(t => {
-                    teams[t.id] = {
-                        id: t.id,
-                        name: t.name,
-                        short: t.short_name,
-                        attackHome: t.strength_attack_home,
-                        attackAway: t.strength_attack_away,
-                        defHome: t.strength_defence_home,
-                        defAway: t.strength_defence_away
-                    };
-                });
-                
-                // Fixtures
-                const fixRes = await fetch(PROXY + encodeURIComponent('https://fantasy.premierleague.com/api/fixtures/'));
-                const fixData = await fixRes.json();
-                
-                const upcoming = fixData.filter(f => !f.finished && f.event).sort((a,b) => a.event - b.event);
-                
-                Object.keys(teams).forEach(tid => {
-                    const id = parseInt(tid);
-                    const fx = upcoming.filter(f => f.team_h === id || f.team_a === id).slice(0, 5);
-                    teamFixtures[id] = fx.map(f => ({
-                        opp: f.team_h === id ? teams[f.team_a]?.short : teams[f.team_h]?.short,
-                        fdr: f.team_h === id ? f.team_h_difficulty : f.team_a_difficulty,
-                        home: f.team_h === id
-                    }));
-                });
-                
-                // Players
-                bootData.elements.forEach(p => {
-                    const fx = teamFixtures[p.team] || [];
-                    const avgFDR = fx.length ? fx.slice(0,3).reduce((s,f) => s + f.fdr, 0) / Math.min(3, fx.length) : 3;
-                    
-                    const player = {
-                        id: p.id,
-                        name: p.web_name,
-                        team: teams[p.team]?.short || '?',
-                        teamId: p.team,
-                        teamName: teams[p.team]?.name || '?',
-                        pos: p.element_type,
-                        posName: POS[p.element_type],
-                        price: p.now_cost / 10,
-                        form: parseFloat(p.form) || 0,
-                        own: parseFloat(p.selected_by_percent) || 0,
-                        mins: p.minutes,
-                        pts: p.total_points,
-                        status: p.status,
-                        news: p.news || '',
-                        chance: p.chance_of_playing_next_round,
-                        xG: parseFloat(p.expected_goals) || 0,
-                        xA: parseFloat(p.expected_assists) || 0,
-                        xGI: parseFloat(p.expected_goal_involvements) || 0,
-                        fixtures: fx,
-                        avgFDR
-                    };
-                    
-                    allPlayers.push(player);
-                    allPlayersById[p.id] = player;
-                });
-                
-                // Team filter options - now using multi-select from fixtures step
-                // Individual teams will be filtered via the "selected" option
-                
-                updateStatus(`Loaded ${allPlayers.length} players • GW${currentGW}`, 'success');
-                
-                // Check saved team ID
-                const savedId = localStorage.getItem('fpl_team_id');
-                if (savedId) {
-                    document.getElementById('teamIdInput').value = savedId;
-                    loadTeamById();
-                }
-                
-            } catch (err) {
-                console.error(err);
-                updateStatus('Error loading data. Please refresh.', 'error');
-            }
+    // =====================================================
+    // LINEUP WIZARD — COMPREHENSIVE ANALYSIS ENGINE
+    // Uses: bootstrap-static, fixtures, players-data, teams-data
+    // Scoring: form, xGI, FDR, team attack/defense power,
+    // clean sheet probability, bonus points, ICT index,
+    // minutes/nailedness, overperformance, L3/L5 trends
+    // =====================================================
+
+    const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
+    const POS_CONFIG = {
+        1: { name: 'Goalkeeper', short: 'GK', cls: 'gk', icon: '🧤' },
+        2: { name: 'Defender', short: 'DEF', cls: 'def', icon: '🛡️' },
+        3: { name: 'Midfielder', short: 'MID', cls: 'mid', icon: '🎯' },
+        4: { name: 'Forward', short: 'FWD', cls: 'fwd', icon: '⚡' }
+    };
+    const VALID_FORMATIONS = [[3,4,3],[3,5,2],[4,3,3],[4,4,2],[4,5,1],[5,3,2],[5,4,1],[5,2,3]];
+
+    let allPlayers = [], allPlayersById = {}, teams = {}, teamFixtures = {}, teamPowerData = {}, playerHistory = {};
+    let currentGW = 1, mySquad = [], analyzedSquad = [], recommendedXI = [], recommendedBench = [];
+    let recommendedFormation = '', captainId = null, viceCaptainId = null;
+
+    async function fetchWithProxy(url) {
+        const apiPath = url.replace('https://fantasy.premierleague.com/', '');
+        const res = await fetch(`${WORKER_URL}/${apiPath}`, { signal: AbortSignal.timeout(15000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res;
+    }
+    function updateStatus(msg, type='info') { const el=document.getElementById('status'); el.textContent=msg; el.className='status '+type; }
+    function showLoading(show, text) { document.getElementById('loadingOverlay').classList.toggle('show', show); if(text) document.getElementById('loadingText').textContent=text; }
+
+    // ===== DATA LOADING =====
+    async function loadAllData() {
+        showLoading(true, 'Loading FPL bootstrap data...');
+        const bootData = await (await fetch('data/bootstrap-static.json')).json();
+        const currEvent = bootData.events.find(e => e.is_current);
+        currentGW = currEvent ? currEvent.id : 1;
+        teams = {};
+        bootData.teams.forEach(t => {
+            teams[t.id] = { id:t.id, name:t.name, short:t.short_name, strength:t.strength,
+                atkHome:t.strength_attack_home, atkAway:t.strength_attack_away,
+                defHome:t.strength_defence_home, defAway:t.strength_defence_away,
+                overallHome:t.strength_overall_home, overallAway:t.strength_overall_away };
+        });
+
+        showLoading(true, 'Loading fixtures...');
+        const fixturesData = await (await fetch('data/fixtures.json')).json();
+        processFixtures(fixturesData);
+
+        showLoading(true, 'Loading detailed player data...');
+        let playersDataRaw = [];
+        try { playersDataRaw = await (await fetch('data/players-data.json')).json(); } catch(e) {}
+        playerHistory = {};
+        if (Array.isArray(playersDataRaw)) {
+            playersDataRaw.forEach(entry => {
+                if (entry.id && entry.history) playerHistory[entry.id] = entry.history;
+                else if (entry.element) { if (!playerHistory[entry.element]) playerHistory[entry.element]=[]; playerHistory[entry.element].push(entry); }
+            });
         }
-        
-        // ===== LOAD TEAM BY ID =====
-        async function loadTeamById() {
-            const teamId = document.getElementById('teamIdInput').value.trim();
-            if (!teamId || isNaN(teamId)) {
-                alert('Please enter a valid FPL Team ID (numbers only)');
-                return;
-            }
-            
-            const btn = document.getElementById('loadBtn');
-            btn.disabled = true;
-            btn.textContent = 'Loading...';
-            
-            try {
-                updateStatus(`Fetching team ${teamId}...`, 'loading');
-                
-                // Get manager info
-                const mgrRes = await fetch(PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${teamId}/`));
-                if (!mgrRes.ok) throw new Error('Team not found');
-                managerData = await mgrRes.json();
-                
-                // Get picks
-                const picksRes = await fetch(PROXY + encodeURIComponent(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`));
-                if (!picksRes.ok) throw new Error('Could not load team picks');
-                const picksData = await picksRes.json();
-                
-                // Bank value
-                itb = (picksData.entry_history?.bank || 0) / 10;
-                
-                // Map picks to players
-                myTeam = picksData.picks.map(pick => {
-                    const p = allPlayersById[pick.element];
-                    return {
-                        ...p,
-                        isCaptain: pick.is_captain,
-                        isVice: pick.is_vice_captain,
-                        onBench: pick.position > 11
-                    };
-                });
-                
-                // Show manager card
-                document.getElementById('managerName').textContent = `${managerData.player_first_name} ${managerData.player_last_name}`;
-                document.getElementById('teamName').textContent = managerData.name;
-                document.getElementById('overallRank').textContent = managerData.summary_overall_rank?.toLocaleString() || '-';
-                document.getElementById('totalPoints').textContent = managerData.summary_overall_points || '-';
-                document.getElementById('bankValue').textContent = `£${itb.toFixed(1)}m`;
-                document.getElementById('managerCard').classList.remove('hidden');
-                
-                // Save for next time
-                localStorage.setItem('fpl_team_id', teamId);
-                
-                updateStatus(`Loaded ${managerData.name} • £${itb.toFixed(1)}m ITB`, 'success');
-                
-                // Analyze
-                analyzeTeam();
-                
-            } catch (err) {
-                console.error(err);
-                updateStatus(`Error: ${err.message}`, 'error');
-                document.getElementById('managerCard').classList.add('hidden');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Load My Team';
-            }
+
+        try { await (await fetch('data/teams-data.json')).json(); } catch(e) {}
+
+        showLoading(true, 'Computing team power ratings...');
+        computeTeamPower(bootData, fixturesData);
+
+        allPlayers = []; allPlayersById = {};
+        bootData.elements.forEach(p => {
+            const fx = teamFixtures[p.team] || [];
+            const history = playerHistory[p.id] || [];
+            const player = {
+                id:p.id, name:p.web_name, fullName:`${p.first_name} ${p.second_name}`,
+                team:teams[p.team]?.short||'?', teamId:p.team, teamName:teams[p.team]?.name||'?',
+                pos:p.element_type, posName:POS_CONFIG[p.element_type]?.short||'?',
+                price:p.now_cost/10, form:parseFloat(p.form)||0,
+                ownership:parseFloat(p.selected_by_percent)||0, totalPoints:p.total_points,
+                minutes:p.minutes, goals:p.goals_scored, assists:p.assists,
+                cleanSheets:p.clean_sheets, goalsConceded:p.goals_conceded, saves:p.saves,
+                bonus:p.bonus, bps:p.bps, status:p.status, news:p.news||'',
+                chanceNextRound:p.chance_of_playing_next_round,
+                xG:parseFloat(p.expected_goals)||0, xA:parseFloat(p.expected_assists)||0,
+                xGI:parseFloat(p.expected_goal_involvements)||0, xGC:parseFloat(p.expected_goals_conceded)||0,
+                ictIndex:parseFloat(p.ict_index)||0, influence:parseFloat(p.influence)||0,
+                creativity:parseFloat(p.creativity)||0, threat:parseFloat(p.threat)||0,
+                fixtures:fx, history, histStats:aggregateHistory(history),
+                l5Stats:aggregateHistory(history.slice(-5)), l3Stats:aggregateHistory(history.slice(-3))
+            };
+            allPlayers.push(player); allPlayersById[p.id] = player;
+        });
+        showLoading(false);
+    }
+
+    function processFixtures(fixturesData) {
+        teamFixtures = {};
+        const upcoming = fixturesData.filter(f => !f.finished && f.event !== null).sort((a,b) => a.event - b.event);
+        Object.keys(teams).forEach(tid => {
+            const id = parseInt(tid);
+            const fx = upcoming.filter(f => f.team_h===id || f.team_a===id).slice(0,6);
+            teamFixtures[id] = fx.map(f => {
+                const isHome = f.team_h===id;
+                return { opponent: isHome?teams[f.team_a]?.short:teams[f.team_h]?.short,
+                    opponentId: isHome?f.team_a:f.team_h,
+                    difficulty: isHome?f.team_h_difficulty:f.team_a_difficulty, isHome, event:f.event };
+            });
+        });
+    }
+
+    function aggregateHistory(entries) {
+        if (!entries || entries.length===0) return null;
+        const s = { games:0, minutes:0, points:0, goals:0, assists:0, cs:0, gc:0, saves:0, bonus:0, bps:0, xG:0, xA:0, xGI:0, xGC:0, influence:0, creativity:0, threat:0, starts:0, penSaved:0, penMissed:0 };
+        entries.forEach(e => { s.games++; s.minutes+=e.minutes||0; s.points+=e.total_points||0; s.goals+=e.goals_scored||0; s.assists+=e.assists||0; s.cs+=e.clean_sheets||0; s.gc+=e.goals_conceded||0; s.saves+=e.saves||0; s.bonus+=e.bonus||0; s.bps+=e.bps||0; s.xG+=parseFloat(e.expected_goals)||0; s.xA+=parseFloat(e.expected_assists)||0; s.xGI+=parseFloat(e.expected_goal_involvements)||0; s.xGC+=parseFloat(e.expected_goals_conceded)||0; s.influence+=parseFloat(e.influence)||0; s.creativity+=parseFloat(e.creativity)||0; s.threat+=parseFloat(e.threat)||0; if(e.starts||e.minutes>=60) s.starts++; s.penSaved+=e.penalties_saved||0; s.penMissed+=e.penalties_missed||0; });
+        return s;
+    }
+
+    function computeTeamPower(bootData, fixturesData) {
+        teamPowerData = {};
+        const ts = {};
+        Object.keys(teams).forEach(id => { ts[id]={goals:0,xG:0,ga:0,cs:0,games:0}; });
+        bootData.elements.forEach(p => { if(ts[p.team]) { ts[p.team].goals+=p.goals_scored||0; ts[p.team].xG+=parseFloat(p.expected_goals)||0; } });
+        fixturesData.filter(f=>f.finished).forEach(f => {
+            if(ts[f.team_h]){ts[f.team_h].games++;ts[f.team_h].ga+=f.team_a_score||0;if(!(f.team_a_score||0))ts[f.team_h].cs++;}
+            if(ts[f.team_a]){ts[f.team_a].games++;ts[f.team_a].ga+=f.team_h_score||0;if(!(f.team_h_score||0))ts[f.team_a].cs++;}
+        });
+        Object.keys(teams).forEach(tid => {
+            const t=teams[tid], ss=ts[tid], gp=Math.max(ss.games,1);
+            const gpg=ss.goals/gp, xgpg=ss.xG/gp, gapg=ss.ga/gp, csr=ss.cs/gp;
+            const as=((t.atkHome+t.atkAway)/2-900)/500, ds=((t.defHome+t.defAway)/2-900)/500;
+            const atk=Math.round(Math.min(gpg/2,1)*35+Math.min(xgpg/2,1)*35+Math.max(0,Math.min(1,as))*30);
+            const def=Math.round(Math.max(0,1-gapg/2)*70+Math.max(0,Math.min(1,ds))*30);
+            teamPowerData[tid]={attackPower:Math.max(0,Math.min(100,atk)),defensePower:Math.max(0,Math.min(100,def)),goalsPerGame:gpg,xGPerGame:xgpg,gaPerGame:gapg,csRate:csr,gamesPlayed:gp};
+        });
+    }
+
+    function getCleanSheetProb(teamId, opponentId, isHome) {
+        const tp=teamPowerData[teamId], op=teamPowerData[opponentId];
+        if(!tp||!op) return 0.25;
+        let base = isHome ? 0.35 : 0.25;
+        base += (tp.defensePower-50)*0.003;
+        base -= (op.attackPower-50)*0.0025;
+        base += (1.3-tp.gaPerGame)*0.06;
+        return Math.max(0.05, Math.min(0.65, base));
+    }
+
+    // ===== LINEUP SCORE =====
+    function computeLineupScore(player) {
+        let score=0; const reasons=[]; const fx=player.fixtures?.[0]; const pos=player.pos;
+
+        // Availability
+        if(player.status==='i'||player.status==='u'||player.status==='s') return {score:-100,reasons:[{text:'Unavailable',type:'con'}],available:false};
+        if(player.status==='d'){score-=30;reasons.push({text:`Doubtful: ${player.news||'75%'}`,type:'con'});}
+        if(player.chanceNextRound!==null&&player.chanceNextRound<75){score-=25;reasons.push({text:`${player.chanceNextRound}% play chance`,type:'con'});}
+
+        // Form
+        if(player.form>=7){score+=25;reasons.push({text:`🔥 Elite form (${player.form})`,type:'pro'});}
+        else if(player.form>=5.5){score+=18;reasons.push({text:`Good form (${player.form})`,type:'pro'});}
+        else if(player.form>=4){score+=10;}
+        else if(player.form>=2.5){score+=2;}
+        else{score-=10;reasons.push({text:`Poor form (${player.form})`,type:'con'});}
+
+        // L3 trend
+        if(player.l3Stats&&player.l5Stats&&player.l3Stats.games>=2&&player.l5Stats.games>=3){
+            const l3ppg=player.l3Stats.points/player.l3Stats.games, l5ppg=player.l5Stats.points/player.l5Stats.games;
+            if(l3ppg>l5ppg+1.5){score+=5;reasons.push({text:'📈 Rising form',type:'pro'});}
+            else if(l3ppg<l5ppg-1.5){score-=5;reasons.push({text:'📉 Declining form',type:'con'});}
         }
-        
-        // ===== THRESHOLDS (matching My Team Analysis) =====
-        const THRESHOLDS = {
-            form: { critical: 1.5, poor: 3.0, good: 4.5, excellent: 6.0 },
-            minutes: { critical: 45, rotation: 60, secure: 75 },
-            xgi: {
-                4: { critical: 0.45, elite: 0.70 },  // Forwards
-                3: { critical: 0.40, elite: 0.60 },  // Midfielders
-                2: { critical: 0.15, elite: 0.25 }   // Defenders
-            }
-        };
-        
-        const PRICE_TIERS = {
-            1: { premium: 5.5, floor: 4.0 },
-            2: { premium: 6.0, floor: 4.0 },
-            3: { premium: 9.0, floor: 4.5 },
-            4: { premium: 9.0, floor: 4.5 }
-        };
-        
-        // ===== ANALYZE TEAM (matching My Team Analysis logic) =====
-        function analyzeTeam() {
-            if (myTeam.length !== 15) {
-                document.getElementById('step1Content').innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">❌</div>
-                        <h3>Team Error</h3>
-                        <p>Expected 15 players, got ${myTeam.length}</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            analyzedTeam = myTeam.map(p => {
-                let sellRating = 0;
-                const issues = [];
-                
-                const isPremium = p.price >= PRICE_TIERS[p.pos]?.premium;
-                const isBudget = p.price <= PRICE_TIERS[p.pos]?.floor + 0.5;
-                const isBenchFodder = p.price <= PRICE_TIERS[p.pos]?.floor + 0.1;
-                
-                // ===== FACTOR 1: INJURY STATUS =====
-                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                    sellRating += 60;
-                    issues.push({ text: '🔴 Unavailable', type: 'critical' });
-                } else if (p.status === 'd') {
-                    sellRating += 30;
-                    issues.push({ text: '🟡 Doubtful', type: 'warning' });
-                }
-                
-                if (p.chance !== null && p.chance < 50) {
-                    sellRating += 25;
-                    issues.push({ text: `${p.chance}% Chance`, type: 'critical' });
-                }
-                
-                // ===== FACTOR 2: FORM =====
-                if (p.form < THRESHOLDS.form.critical) {
-                    sellRating += 35;
-                    issues.push({ text: `Very Poor Form (${p.form.toFixed(1)})`, type: 'critical' });
-                } else if (p.form < THRESHOLDS.form.poor) {
-                    sellRating += 20;
-                    issues.push({ text: `Below Avg Form (${p.form.toFixed(1)})`, type: 'warning' });
-                } else if (p.form >= THRESHOLDS.form.excellent) {
-                    sellRating -= 20;
-                    issues.push({ text: `Excellent Form (${p.form.toFixed(1)})`, type: 'positive' });
-                } else if (p.form >= THRESHOLDS.form.good) {
-                    sellRating -= 10;
-                    issues.push({ text: `Good Form (${p.form.toFixed(1)})`, type: 'positive' });
-                }
-                
-                // ===== FACTOR 3: POSITION-SPECIFIC xGI =====
-                if (p.mins > 200) {
-                    // Calculate weighted xGI (xG counts 1.2x more than xA - more repeatable)
-                    const xGIPer90 = (p.xGI / p.mins) * 90;
-                    const weightedXGI = ((p.xG * 1.2) + p.xA) / p.mins * 90;
-                    
-                    if (p.pos === 4) { // Forwards
-                        const weightedCritical = 0.54; // Adjusted for 1.2x weight
-                        const weightedElite = 0.84;
-                        
-                        if (weightedXGI < weightedCritical) {
-                            sellRating += 30;
-                            issues.push({ text: `Low xGI (${xGIPer90.toFixed(2)}/90)`, type: 'critical' });
-                        } else if (weightedXGI >= weightedElite) {
-                            sellRating -= 15;
-                            issues.push({ text: `Elite xGI (${xGIPer90.toFixed(2)}/90)`, type: 'positive' });
-                        }
-                    } else if (p.pos === 3) { // Midfielders
-                        const weightedCritical = 0.48;
-                        const weightedElite = 0.72;
-                        
-                        if (weightedXGI < weightedCritical) {
-                            sellRating += 25;
-                            issues.push({ text: `Low xGI (${xGIPer90.toFixed(2)}/90)`, type: 'warning' });
-                        } else if (weightedXGI >= weightedElite) {
-                            sellRating -= 15;
-                            issues.push({ text: `High xGI (${xGIPer90.toFixed(2)}/90)`, type: 'positive' });
-                        }
-                    } else if (p.pos === 2) { // Defenders
-                        if (xGIPer90 < THRESHOLDS.xgi[2].critical) {
-                            sellRating += 10;
-                            issues.push({ text: `Minimal Attack (${xGIPer90.toFixed(2)}/90)`, type: 'info' });
-                        } else if (xGIPer90 >= THRESHOLDS.xgi[2].elite) {
-                            sellRating -= 10;
-                            issues.push({ text: `Attacking DEF (${xGIPer90.toFixed(2)}/90)`, type: 'positive' });
-                        }
-                    }
-                }
-                
-                // ===== FACTOR 4: OWNERSHIP (Shield vs Sword) =====
-                if (p.own >= 30) {
-                    sellRating -= 25;
-                    issues.push({ text: '🛡️ Template (30%+)', type: 'info' });
-                } else if (p.own >= 15) {
-                    sellRating -= 10;
-                    issues.push({ text: '🛡️ Shield (15-29%)', type: 'info' });
-                } else if (p.own >= 5) {
-                    sellRating += 5;
-                    issues.push({ text: '⚔️ Differential', type: 'info' });
+
+        // Fixture
+        if(fx){
+            const fdr=fx.difficulty;
+            if(fdr<=2){score+=18;reasons.push({text:`Easy: ${fx.opponent}(${fx.isHome?'H':'A'}) FDR ${fdr}`,type:'pro'});}
+            else if(fdr===3){score+=6;}
+            else if(fdr===4){score-=6;reasons.push({text:`Tough: ${fx.opponent}(${fx.isHome?'H':'A'})`,type:'con'});}
+            else{score-=14;reasons.push({text:`Very hard: ${fx.opponent}(${fx.isHome?'H':'A'})`,type:'con'});}
+            if(fx.isHome) score+=3;
+
+            // Opponent strength
+            const opp=teamPowerData[fx.opponentId];
+            if(opp){
+                if(pos<=2){
+                    if(opp.attackPower<35){score+=8;reasons.push({text:`Weak opp attack (${opp.attackPower})`,type:'pro'});}
+                    else if(opp.attackPower>65){score-=8;reasons.push({text:`Strong opp attack (${opp.attackPower})`,type:'con'});}
+                    const csProb=getCleanSheetProb(player.teamId,fx.opponentId,fx.isHome);
+                    if(csProb>=0.40){score+=10;reasons.push({text:`High CS: ${(csProb*100).toFixed(0)}%`,type:'pro'});}
+                    else if(csProb>=0.30){score+=5;}
+                    else if(csProb<0.18){score-=5;reasons.push({text:`Low CS: ${(csProb*100).toFixed(0)}%`,type:'con'});}
                 } else {
-                    sellRating += 10;
-                    issues.push({ text: '⚔️ Punt (<5%)', type: 'info' });
+                    if(opp.defensePower<35){score+=8;reasons.push({text:`Weak opp defense (${opp.defensePower})`,type:'pro'});}
+                    else if(opp.defensePower>65){score-=6;reasons.push({text:`Strong opp defense (${opp.defensePower})`,type:'con'});}
                 }
-                
-                // ===== FACTOR 5: FIXTURES (Percentage-based) =====
-                const fdr = p.avgFDR;
-                if (fdr < 2.6) {
-                    // Easy fixtures - 30% discount on sell rating
-                    if (sellRating > 30) {
-                        const discount = Math.round(sellRating * 0.30);
-                        sellRating -= discount;
-                        issues.push({ text: `Easy Fixtures (${fdr.toFixed(1)})`, type: 'positive' });
-                    } else {
-                        sellRating -= 15;
-                        issues.push({ text: `Easy Fixtures (${fdr.toFixed(1)})`, type: 'positive' });
-                    }
-                } else if (fdr < 2.9) {
-                    // Favorable - 15% discount
-                    if (sellRating > 30) {
-                        const discount = Math.round(sellRating * 0.15);
-                        sellRating -= discount;
-                    }
-                    issues.push({ text: `Good Fixtures (${fdr.toFixed(1)})`, type: 'positive' });
-                } else if (fdr >= 3.4) {
-                    // Difficult fixtures - +20 penalty
-                    sellRating += 20;
-                    issues.push({ text: `Hard Fixtures (${fdr.toFixed(1)})`, type: 'critical' });
-                } else if (fdr >= 3.1) {
-                    // Challenging - +10 penalty
-                    sellRating += 10;
-                    issues.push({ text: `Tough Fixtures (${fdr.toFixed(1)})`, type: 'warning' });
-                }
-                
-                // ===== FACTOR 6: PRICE TIER ADJUSTMENTS =====
-                if (isPremium) {
-                    // Premium patience - 15% reduction
-                    sellRating = Math.round(sellRating * 0.85);
-                    issues.push({ text: '💎 Premium', type: 'info' });
-                } else if (isBudget && !isBenchFodder) {
-                    // Budget harshness - 10% increase
-                    sellRating = Math.round(sellRating * 1.10);
-                }
-                
-                // ===== FACTOR 7: BENCH FODDER SUPPRESSION =====
-                if (isBenchFodder && p.status === 'a') {
-                    // Cap sell rating at 35 for healthy bench fodder
-                    if (sellRating > 35) {
-                        sellRating = 35;
-                        issues.push({ text: '🪑 Bench Fodder', type: 'info' });
-                    }
-                }
-                
-                // ===== FACTOR 8: BENCH POSITION =====
-                if (p.onBench) {
-                    issues.push({ text: 'Bench', type: 'info' });
-                }
-                
-                // Clamp rating
-                sellRating = Math.max(0, Math.min(100, Math.round(sellRating)));
-                
-                // Determine priority
-                let priority, action;
-                if (sellRating >= 60) { priority = 'urgent'; action = 'SELL'; }
-                else if (sellRating >= 35) { priority = 'consider'; action = 'CONSIDER'; }
-                else { priority = 'hold'; action = 'HOLD'; }
-                
-                return { ...p, sellScore: sellRating, issues, priority, action };
-            });
-            
-            analyzedTeam.sort((a, b) => b.sellScore - a.sellScore);
-            
-            renderStep1();
-            document.getElementById('nav1').style.display = 'flex';
-            updateProgress(1);
+            }
         }
-        
-        // ===== RENDER STEP 1 (Combined Analyze + Select) =====
-        function renderStep1() {
-            const urgent = analyzedTeam.filter(p => p.priority === 'urgent').length;
-            const consider = analyzedTeam.filter(p => p.priority === 'consider').length;
-            const hold = 15 - urgent - consider;
-            
-            let html = `
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: var(--accent-red);">${urgent}</div>
-                        <div class="stat-label">Urgent Sells</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: var(--accent-yellow);">${consider}</div>
-                        <div class="stat-label">Consider</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: var(--accent-green);">${hold}</div>
-                        <div class="stat-label">Strong Holds</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: var(--accent-blue);">£${itb.toFixed(1)}m</div>
-                        <div class="stat-label">In The Bank</div>
-                    </div>
+
+        // xGI
+        if(player.minutes>200){
+            const xgi90=(player.xGI/player.minutes)*90, xg90=(player.xG/player.minutes)*90;
+            if(pos===4){ if(xg90>=0.50){score+=12;reasons.push({text:`Strong xG (${xg90.toFixed(2)}/90)`,type:'pro'});} else if(xg90>=0.35) score+=6; else if(xg90<0.20) score-=5; }
+            else if(pos===3){ if(xgi90>=0.55){score+=12;reasons.push({text:`Elite xGI (${xgi90.toFixed(2)}/90)`,type:'pro'});} else if(xgi90>=0.35) score+=6; else if(xgi90<0.20) score-=3; }
+            else if(pos===2){ if(xgi90>=0.18){score+=8;reasons.push({text:`Attacking DEF (${xgi90.toFixed(2)}/90)`,type:'pro'});} }
+            const overperf=player.goals-player.xG;
+            if(overperf>3){score-=3;reasons.push({text:`Overperforming xG by ${overperf.toFixed(1)}`,type:'info'});}
+            else if(overperf<-3){score+=3;reasons.push({text:`Due a goal (${Math.abs(overperf).toFixed(1)} below xG)`,type:'pro'});}
+        }
+
+        // Minutes / nailed
+        const mpg=player.minutes/Math.max(currentGW-1,1);
+        if(mpg>=85){score+=5;reasons.push({text:`Nailed (${mpg.toFixed(0)} mpg)`,type:'pro'});}
+        else if(mpg>=70) score+=2;
+        else if(mpg>=45){score-=5;reasons.push({text:`Rotation risk (${mpg.toFixed(0)} mpg)`,type:'con'});}
+        else{score-=15;reasons.push({text:`Low minutes (${mpg.toFixed(0)} mpg)`,type:'con'});}
+        if(player.l3Stats&&player.l3Stats.games>=2&&player.l3Stats.starts/player.l3Stats.games<0.5){score-=8;reasons.push({text:'Benched recently',type:'con'});}
+
+        // Bonus magnet
+        if(player.minutes>300){
+            const bpg=player.bonus/Math.max(currentGW-1,1);
+            if(bpg>=0.6){score+=4;reasons.push({text:`Bonus magnet (${bpg.toFixed(1)}/g)`,type:'pro'});}
+        }
+
+        // ICT
+        if(player.l5Stats&&player.l5Stats.games>=3){
+            const ict=(player.l5Stats.influence+player.l5Stats.creativity+player.l5Stats.threat)/player.l5Stats.games;
+            if(pos>=3&&ict>30) score+=4; else if(pos>=3&&ict>20) score+=2;
+        }
+
+        // GK saves
+        if(pos===1){
+            const spg=player.saves/Math.max(currentGW-1,1);
+            if(fx){const opp=teamPowerData[fx.opponentId];if(opp&&opp.attackPower>55&&spg>=3.5){score+=4;reasons.push({text:'Save points opportunity',type:'info'});}}
+            if(player.histStats&&player.histStats.penSaved>0) score+=2;
+        }
+
+        // PPG
+        const ppg=player.totalPoints/Math.max(currentGW-1,1);
+        if(ppg>=6) score+=6; else if(ppg>=5) score+=3; else if(ppg>=4) score+=1;
+
+        return {score:Math.round(score),reasons,available:player.status!=='i'&&player.status!=='u'&&player.status!=='s'};
+    }
+
+    // ===== CAPTAIN SCORE =====
+    function computeCaptainScore(player) {
+        let score=0; const reasons=[]; const fx=player.fixtures?.[0];
+        if(!player.lineupData?.available) return {score:-100,reasons:[{text:'Unavailable',type:'con'}]};
+        if(player.pos===1) return {score:-50,reasons:[{text:'GK not captain material',type:'con'}]};
+
+        const ppg=player.totalPoints/Math.max(currentGW-1,1);
+        score+=ppg*4;
+        if(ppg>=6) reasons.push({text:`${ppg.toFixed(1)} pts/game`,type:'pro'});
+
+        if(player.minutes>200){const xgi90=(player.xGI/player.minutes)*90;score+=xgi90*25;if(xgi90>=0.50) reasons.push({text:`${xgi90.toFixed(2)} xGI/90`,type:'pro'});}
+        score+=player.form*2;
+        if(player.form>=7) reasons.push({text:`🔥 Form: ${player.form}`,type:'pro'});
+
+        if(fx){
+            score+=(3.5-fx.difficulty)*6;
+            if(fx.isHome){score+=3;reasons.push({text:`Home vs ${fx.opponent}`,type:'pro'});}
+            if(fx.difficulty<=2) reasons.push({text:`Easy FDR ${fx.difficulty}`,type:'pro'});
+            if(fx.difficulty>=4) reasons.push({text:`Hard FDR ${fx.difficulty}`,type:'con'});
+            const opp=teamPowerData[fx.opponentId];
+            if(opp){
+                if(opp.defensePower<35){score+=8;reasons.push({text:`Leaky defense (${opp.defensePower}/100)`,type:'pro'});}
+                else if(opp.defensePower<45) score+=4;
+                if(opp.gaPerGame>1.6){score+=5;reasons.push({text:`Opp concedes ${opp.gaPerGame.toFixed(1)}/g`,type:'pro'});}
+            }
+        }
+
+        const bpg=player.bonus/Math.max(currentGW-1,1);
+        if(bpg>=0.5) score+=bpg*3;
+
+        if(player.histStats&&player.histStats.penMissed>0){score+=5;reasons.push({text:'🎯 Penalty taker',type:'pro'});}
+        if(player.ownership>=25) reasons.push({text:`${player.ownership.toFixed(0)}% owned (safe)`,type:'info'});
+        else if(player.ownership<10) reasons.push({text:`${player.ownership.toFixed(0)}% owned (diff)`,type:'info'});
+
+        if(player.threat>0){const tpg=player.threat/Math.max(currentGW-1,1);if(tpg>40)score+=4;else if(tpg>25)score+=2;}
+        if(player.price>=10){score+=3;reasons.push({text:`Premium (£${player.price.toFixed(1)}m)`,type:'info'});}
+
+        return {score:Math.round(score),reasons};
+    }
+
+    // ===== OPTIMAL LINEUP SOLVER =====
+    function solveOptimalLineup(squad) {
+        const byPos={1:[],2:[],3:[],4:[]};
+        squad.forEach(p=>{if(p.lineupData.available) byPos[p.pos].push(p);});
+        Object.values(byPos).forEach(a=>a.sort((a,b)=>b.lineupData.score-a.lineupData.score));
+
+        let bestFormation=null, bestScore=-Infinity, bestXI=null;
+        for(const[nD,nM,nF] of VALID_FORMATIONS){
+            if(byPos[1].length<1||byPos[2].length<nD||byPos[3].length<nM||byPos[4].length<nF) continue;
+            const xi=[byPos[1][0],...byPos[2].slice(0,nD),...byPos[3].slice(0,nM),...byPos[4].slice(0,nF)];
+            const total=xi.reduce((s,p)=>s+p.lineupData.score,0);
+            if(total>bestScore){bestScore=total;bestFormation=`${nD}-${nM}-${nF}`;bestXI=xi;}
+        }
+        if(!bestXI){const av=squad.filter(p=>p.lineupData.available).sort((a,b)=>b.lineupData.score-a.lineupData.score);bestXI=av.slice(0,11);bestFormation='N/A';}
+        const xiIds=new Set(bestXI.map(p=>p.id));
+        const bench=squad.filter(p=>!xiIds.has(p.id)).sort((a,b)=>{if(a.pos===1&&b.pos!==1)return-1;if(b.pos===1&&a.pos!==1)return 1;return b.lineupData.score-a.lineupData.score;});
+        return {xi:bestXI,bench,formation:bestFormation,totalScore:bestScore};
+    }
+
+    // ===== LOAD TEAM =====
+    async function loadTeamById() {
+        const teamId=document.getElementById('teamIdInput').value.trim();
+        if(!teamId||isNaN(teamId)){updateStatus('Please enter a valid Team ID','error');return;}
+        const btn=document.getElementById('loadTeamBtn');
+        btn.disabled=true; btn.textContent='Loading...';
+        try {
+            await loadAllData();
+            showLoading(true,'Fetching your team...');
+            const mgrRes=await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`);
+            const managerData=await mgrRes.json();
+            const picksRes=await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`);
+            const picksData=await picksRes.json();
+            mySquad=picksData.picks.map(pick=>{const p=allPlayersById[pick.element];if(!p)return null;return{...p,isCaptain:pick.is_captain,isViceCaptain:pick.is_vice_captain,onBench:pick.position>11,pickPosition:pick.position};}).filter(Boolean);
+            document.getElementById('managerInfo').classList.remove('hidden');
+            document.getElementById('managerName').textContent=`${managerData.player_first_name} ${managerData.player_last_name}`;
+            document.getElementById('overallRank').textContent=managerData.summary_overall_rank?.toLocaleString()||'-';
+            document.getElementById('totalPoints').textContent=managerData.summary_overall_points?.toLocaleString()||'-';
+            document.getElementById('gwDisplay').textContent=`GW${currentGW}`;
+            localStorage.setItem('fpl_team_id',teamId);
+            showLoading(true,'Running lineup optimization...');
+            runFullAnalysis();
+            updateStatus(`Lineup analysis complete for GW${currentGW}`,'success');
+        } catch(err) { console.error(err); updateStatus(err.message||'Failed to load team','error'); }
+        finally { btn.disabled=false; btn.textContent='Load Team'; showLoading(false); }
+    }
+
+    function runFullAnalysis() {
+        analyzedSquad=mySquad.map(p=>({...p,lineupData:computeLineupScore(p)}));
+        const solution=solveOptimalLineup(analyzedSquad);
+        recommendedXI=solution.xi; recommendedBench=solution.bench; recommendedFormation=solution.formation;
+        analyzedSquad.forEach(p=>{p.captainData=computeCaptainScore(p);});
+        const xiCap=recommendedXI.filter(p=>p.pos!==1).sort((a,b)=>b.captainData.score-a.captainData.score);
+        captainId=xiCap[0]?.id||recommendedXI[0]?.id;
+        viceCaptainId=xiCap[1]?.id||recommendedXI[1]?.id;
+        renderStep1();
+        document.getElementById('wizardSteps').style.display='flex';
+        goToStep(1);
+    }
+
+    // ===== STEP 1: ANALYSIS =====
+    function renderStep1() {
+        const sorted=[...analyzedSquad].sort((a,b)=>b.lineupData.score-a.lineupData.score);
+        const xiIds=new Set(recommendedXI.map(p=>p.id));
+        const captain=analyzedSquad.find(p=>p.id===captainId);
+        const unavailable=analyzedSquad.filter(p=>!p.lineupData.available);
+        const doubtful=analyzedSquad.filter(p=>p.status==='d');
+        const hotForm=analyzedSquad.filter(p=>p.form>=6).sort((a,b)=>b.form-a.form);
+
+        let ins='';
+        if(unavailable.length) ins+=`<div class="insight-box critical"><div class="insight-title">🚨 ${unavailable.length} Unavailable</div><div class="insight-text">${unavailable.map(p=>`${p.name} (${p.news||p.status})`).join(', ')}</div></div>`;
+        if(doubtful.length) ins+=`<div class="insight-box warning"><div class="insight-title">⚠️ ${doubtful.length} Doubtful</div><div class="insight-text">${doubtful.map(p=>`${p.name}: ${p.news}`).join('; ')}</div></div>`;
+        if(hotForm.length) ins+=`<div class="insight-box positive"><div class="insight-title">🔥 In-Form</div><div class="insight-text">${hotForm.slice(0,4).map(p=>`${p.name} (${p.form})`).join(', ')}</div></div>`;
+
+        const lowestStarter=[...recommendedXI].sort((a,b)=>a.lineupData.score-b.lineupData.score)[0];
+        const highestBench=recommendedBench.filter(p=>p.lineupData.available&&p.lineupData.score>0)[0];
+        if(highestBench&&lowestStarter&&highestBench.lineupData.score>lowestStarter.lineupData.score+5)
+            ins+=`<div class="insight-box info"><div class="insight-title">💡 Close Call</div><div class="insight-text">${highestBench.name} (bench, score ${highestBench.lineupData.score}) is close to ${lowestStarter.name} (XI, score ${lowestStarter.lineupData.score}). Formation constraints favor the current pick.</div></div>`;
+
+        let html=`
+            <div class="panel-header"><div class="panel-title">📊 Squad Analysis for GW${currentGW}</div>
+            <div class="panel-desc">Every player scored using form, fixtures, xGI, team strength, CS probability, bonus points, ICT index & minutes data</div></div>
+            <div class="auto-banner"><div class="auto-banner-icon">🧙‍♂️</div><div class="auto-banner-text">
+                <div class="auto-banner-title">Recommended: ${recommendedFormation} formation</div>
+                <div class="auto-banner-desc">Captain: ${captain?.name||'-'} • Based on ${Object.keys(teamPowerData).length} team power ratings & ${allPlayers.length}+ player stats</div>
+            </div></div>
+            ${ins}
+            <div class="table-container" style="margin-top:16px;"><div class="table-header"><div class="table-title">🏆 Player Rankings (All 15)</div><div style="font-size:12px;color:var(--text-muted);">Sorted by Lineup Score</div></div>
+            <table class="rankings-table"><thead><tr>
+                <th class="num">#</th><th>Player</th><th>Pos</th><th>Team</th><th class="num">Form</th><th class="num">xGI/90</th><th class="num">Pts/G</th><th class="num">BPS/G</th><th>Next Fixture</th><th class="num">CS%</th><th class="num">Score</th><th>Status</th><th>Key Factors</th>
+            </tr></thead><tbody>`;
+
+        sorted.forEach((p,i) => {
+            const inXI=xiIds.has(p.id);
+            const xgi90=p.minutes>200?((p.xGI/p.minutes)*90).toFixed(2):'-';
+            const ppg=(p.totalPoints/Math.max(currentGW-1,1)).toFixed(1);
+            const bpsg=(p.bps/Math.max(currentGW-1,1)).toFixed(0);
+            const fx=p.fixtures?.[0];
+            const csProb=fx?(getCleanSheetProb(p.teamId,fx.opponentId,fx.isHome)*100).toFixed(0):'-';
+            const sc=p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low';
+            const st=!p.lineupData.available?'🔴 Out':p.status==='d'?'🟡 Doubt':'🟢 Fit';
+            const rc=inXI?'in-squad':'on-bench';
+            const topR=p.lineupData.reasons.slice(0,2).map(r=>`<span class="captain-reason ${r.type}">${r.text}</span>`).join(' ');
+            html+=`<tr class="${rc}"><td class="num">${i+1}</td><td style="font-weight:600;">${inXI?'⚽ ':''}${p.name}${p.id===captainId?' ©':p.id===viceCaptainId?' (VC)':''}</td><td><span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></td><td style="color:var(--text-secondary);">${p.team}</td><td class="num" style="color:${p.form>=5?'var(--color-success)':p.form<3?'var(--color-error)':'var(--text-primary)'};">${p.form}</td><td class="num">${xgi90}</td><td class="num">${ppg}</td><td class="num">${bpsg}</td><td>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${fx.opponent}(${fx.isHome?'H':'A'})</span>`:'-'}</td><td class="num">${p.pos<=2?csProb+'%':'-'}</td><td class="num"><span class="pitch-score ${sc}">${p.lineupData.score}</span></td><td style="font-size:12px;">${st}</td><td style="font-size:11px;">${topR}</td></tr>`;
+        });
+
+        html+=`</tbody></table></div><div class="wizard-nav"><div></div><button class="btn btn-primary" onclick="goToStep(2)">Pick Starting XI →</button></div>`;
+        document.getElementById('step1Content').innerHTML=html;
+    }
+
+    // ===== STEP 2: PITCH VIEW =====
+    function renderStep2() {
+        const gk=recommendedXI.filter(p=>p.pos===1);
+        const defs=recommendedXI.filter(p=>p.pos===2).sort((a,b)=>b.lineupData.score-a.lineupData.score);
+        const mids=recommendedXI.filter(p=>p.pos===3).sort((a,b)=>b.lineupData.score-a.lineupData.score);
+        const fwds=recommendedXI.filter(p=>p.pos===4).sort((a,b)=>b.lineupData.score-a.lineupData.score);
+
+        function pp(p,bench=false){
+            const sc=p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low';
+            const cb=p.id===captainId?'<div class="captain-badge c">C</div>':p.id===viceCaptainId?'<div class="captain-badge vc">V</div>':'';
+            const cc=p.id===captainId?'captain':p.id===viceCaptainId?'vice':'';
+            return `<div class="pitch-player ${bench?'bench-player':''} ${cc}" title="${p.name} - Score: ${p.lineupData.score}"><div class="pitch-shirt ${POS_CONFIG[p.pos].cls}">${POS_CONFIG[p.pos].icon}${cb}</div><div class="pitch-name">${p.name}</div><div class="pitch-score ${sc}">${p.lineupData.score}</div></div>`;
+        }
+
+        const bp=recommendedBench.slice(0,4);
+        const fp=recommendedFormation.split('-').map(Number);
+
+        let html=`
+            <div class="panel-header"><div class="panel-title">⚽ Recommended Starting XI</div><div class="panel-desc">Optimal ${recommendedFormation} formation based on comprehensive analysis</div></div>
+            <div class="formation-section"><div class="formation-header"><div class="formation-title">Formation</div><div class="formation-badge">${recommendedFormation}</div></div></div>
+            <div class="pitch">
+                <div class="pitch-row">${fwds.map(p=>pp(p)).join('')}</div>
+                <div class="pitch-row">${mids.map(p=>pp(p)).join('')}</div>
+                <div class="pitch-row">${defs.map(p=>pp(p)).join('')}</div>
+                <div class="pitch-row">${gk.map(p=>pp(p)).join('')}</div>
+            </div>
+            <div class="bench-section"><div class="bench-title">📋 Bench</div><div class="bench-row">${bp.map(p=>pp(p,true)).join('')}</div></div>
+            <div style="margin-top:20px;">
+                <div class="insight-box info"><div class="insight-title">Why ${recommendedFormation}?</div><div class="insight-text">Maximizes total lineup score by selecting the best ${fp[0]} DEF, ${fp[1]} MID, ${fp[2]} FWD from your squad while respecting FPL formation rules (min 3 DEF, 2 MID, 1 FWD).</div></div>
+                ${bp.filter(p=>p.lineupData.available&&p.lineupData.score>0).length>0?`<div class="insight-box warning"><div class="insight-title">Bench Order</div><div class="insight-text">Auto-sub order: ${bp.filter(p=>p.lineupData.available).map((p,i)=>`${i+1}. ${p.name} (${p.posName}, score ${p.lineupData.score})`).join(' → ')}</div></div>`:''}
+            </div>
+            <div class="wizard-nav"><button class="btn btn-secondary" onclick="goToStep(1)">← Analysis</button><button class="btn btn-primary" onclick="goToStep(3)">Choose Captain →</button></div>`;
+        document.getElementById('step2Content').innerHTML=html;
+    }
+
+    // ===== STEP 3: CAPTAIN =====
+    function renderStep3() {
+        const candidates=recommendedXI.filter(p=>p.pos!==1&&p.lineupData.available).sort((a,b)=>b.captainData.score-a.captainData.score);
+        const maxS=candidates[0]?.captainData.score||1;
+
+        let html=`
+            <div class="panel-header"><div class="panel-title">©️ Captain & Vice Captain</div><div class="panel-desc">Ranked by expected output using xGI, fixture difficulty, opponent weakness, bonus history, and form.</div></div>
+            <div class="auto-banner"><div class="auto-banner-icon">👑</div><div class="auto-banner-text"><div class="auto-banner-title">Recommended: ${candidates[0]?.name||'-'} (C), ${candidates[1]?.name||'-'} (VC)</div><div class="auto-banner-desc">Based on expected points, fixture quality, and opponent defensive weakness</div></div></div>
+            <div class="captain-grid">`;
+
+        candidates.forEach((p,i)=>{
+            const fx=p.fixtures?.[0];
+            const xgi90=p.minutes>200?((p.xGI/p.minutes)*90).toFixed(2):'-';
+            const ppg=(p.totalPoints/Math.max(currentGW-1,1)).toFixed(1);
+            const bw=Math.round((p.captainData.score/Math.max(maxS,1))*100);
+            const rk=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+            const isC=p.id===captainId, isVC=p.id===viceCaptainId;
+            html+=`<div class="captain-card ${isC?'selected':isVC?'vc-selected':''}" id="capCard-${p.id}">
+                <div class="captain-rank ${rk}">${i+1}</div>
+                <div class="captain-top"><div class="captain-icon pitch-shirt ${POS_CONFIG[p.pos].cls}" style="width:36px;height:36px;font-size:16px;">${POS_CONFIG[p.pos].icon}</div><div><div class="captain-name">${p.name}</div><div class="captain-meta">${p.team} • ${p.posName} • £${p.price.toFixed(1)}m • ${p.ownership.toFixed(0)}% owned</div></div></div>
+                <div class="captain-metrics">
+                    <div class="captain-metric"><div class="captain-metric-value val-good">${p.form}</div><div class="captain-metric-label">Form</div></div>
+                    <div class="captain-metric"><div class="captain-metric-value" style="color:var(--color-info);">${xgi90}</div><div class="captain-metric-label">xGI/90</div></div>
+                    <div class="captain-metric"><div class="captain-metric-value">${ppg}</div><div class="captain-metric-label">Pts/G</div></div>
+                    <div class="captain-metric"><div class="captain-metric-value" style="color:var(--color-warning);">${fx?fx.difficulty:'-'}</div><div class="captain-metric-label">FDR</div></div>
                 </div>
-                <div class="players-grid">
-            `;
-            
-            analyzedTeam.forEach(p => {
-                const selected = toSell.has(p.id);
-                const fxHtml = p.fixtures?.slice(0, 3).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('') || '';
-                const cap = p.isCaptain ? '(C) ' : p.isVice ? '(V) ' : '';
-                
-                html += `
-                    <div class="player-card clickable ${p.priority} ${selected ? 'sell-selected' : ''}" onclick="toggleSell(${p.id})">
-                        <div class="player-top">
-                            <div class="player-info">
-                                <h4>${selected ? '✓ ' : ''}${cap}${p.name}</h4>
-                                <span class="player-meta">${p.team} • ${p.posName} • £${p.price.toFixed(1)}m • ${p.own.toFixed(1)}%</span>
-                            </div>
-                            <div class="player-rating">
-                                <div class="rating-value ${p.priority}">${p.sellScore}</div>
-                                <span class="rating-label ${p.priority}">${p.action}</span>
-                            </div>
-                        </div>
-                        <div class="player-issues">${p.issues.map(i => `<span class="issue-tag ${i.type}">${i.text}</span>`).join('')}</div>
-                        <div class="fixture-badges">${fxHtml}</div>
-                    </div>
-                `;
-            });
-            
-            html += '</div>';
-            document.getElementById('step1Content').innerHTML = html;
-            document.getElementById('budgetDisplay').style.display = 'flex';
-            updateBudgets();
-        }
-        
-        function toggleSell(id) {
-            if (toSell.has(id)) toSell.delete(id);
-            else toSell.add(id);
-            
-            toSellPlayers = analyzedTeam.filter(p => toSell.has(p.id));
-            renderStep1();
-            document.getElementById('toStep2Btn').disabled = toSell.size === 0;
-        }
-        
-        function updateBudgets() {
-            const sellVal = toSellPlayers.reduce((s, p) => s + p.price, 0);
-            const total = itb + sellVal;
-            const spending = toBuy.reduce((s, p) => s + p.price, 0);
-            
-            document.getElementById('itbDisplay').textContent = `£${itb.toFixed(1)}m`;
-            document.getElementById('sellValueDisplay').textContent = `£${sellVal.toFixed(1)}m`;
-            document.getElementById('totalBudgetDisplay').textContent = `£${total.toFixed(1)}m`;
-            document.getElementById('sellCountDisplay').textContent = toSell.size;
-            
-            document.getElementById('availBudgetDisplay').textContent = `£${total.toFixed(1)}m`;
-            document.getElementById('spendingDisplay').textContent = `£${spending.toFixed(1)}m`;
-            document.getElementById('remainingDisplay').textContent = `£${(total - spending).toFixed(1)}m`;
-            document.getElementById('buyCountDisplay').textContent = toBuy.length;
-        }
-        
-        // ===== RENDER STEP 2 (Fixtures with Multi-Select) =====
-        function renderStep2() {
-            const teamsData = Object.values(teams).map(t => {
-                const fx = teamFixtures[t.id] || [];
-                const avgFDR = fx.length ? fx.reduce((s, f) => s + f.fdr, 0) / fx.length : 3;
-                return { ...t, fixtures: fx, avgFDR };
-            }).sort((a, b) => a.avgFDR - b.avgFDR);
-            
-            let html = '';
-            teamsData.slice(0, 12).forEach(t => {
-                const isSelected = selectedTeams.has(t.id);
-                const color = t.avgFDR <= 2.5 ? 'var(--accent-green)' : t.avgFDR <= 3 ? 'var(--accent-yellow)' : 'var(--accent-red)';
-                const icon = t.avgFDR <= 2.5 ? '🟢' : t.avgFDR <= 3 ? '🟡' : '🔴';
-                const fxHtml = t.fixtures.slice(0, 5).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('');
-                
-                html += `
-                    <div class="team-card ${isSelected ? 'buy-selected' : ''}" onclick="toggleTeamSelection(${t.id})" style="${isSelected ? 'border-color: var(--accent-green); background: rgba(0, 255, 136, 0.1);' : ''}">
-                        <div class="team-name">${icon} ${isSelected ? '✓ ' : ''}${t.name}</div>
-                        <div class="team-stats">
-                            <div class="team-stat">
-                                <div class="team-stat-value" style="color: ${color};">${t.avgFDR.toFixed(1)}</div>
-                                <div class="team-stat-label">Avg FDR</div>
-                            </div>
-                            <div class="team-stat">
-                                <div class="team-stat-value">${Math.round((t.attackHome + t.attackAway) / 26 * 100)}%</div>
-                                <div class="team-stat-label">Attack</div>
-                            </div>
-                        </div>
-                        <div class="fixture-badges">${fxHtml}</div>
-                    </div>
-                `;
-            });
-            
-            document.getElementById('step2Content').innerHTML = html;
-            updateSelectedTeamsDisplay();
-        }
-        
-        function toggleTeamSelection(teamId) {
-            if (selectedTeams.has(teamId)) {
-                selectedTeams.delete(teamId);
-            } else {
-                selectedTeams.add(teamId);
-            }
-            renderStep2();
-        }
-        
-        function clearSelectedTeams() {
-            selectedTeams.clear();
-            renderStep2();
-        }
-        
-        function updateSelectedTeamsDisplay() {
-            const display = document.getElementById('selectedTeamsDisplay');
-            const list = document.getElementById('selectedTeamsList');
-            
-            if (selectedTeams.size > 0) {
-                display.style.display = 'flex';
-                const teamNames = Array.from(selectedTeams).map(id => teams[id]?.name || '?').join(', ');
-                list.textContent = teamNames;
-            } else {
-                display.style.display = 'none';
-            }
-        }
-        
-        // ===== RENDER STEP 3 (Replacements) =====
-        function renderReplacements() {
-            const posFilter = document.getElementById('posFilter').value;
-            const maxPrice = parseFloat(document.getElementById('priceFilterSelect').value);
-            const sortBy = document.getElementById('sortSelect').value;
-            const teamFilter = document.getElementById('teamFilterSelect').value;
-            
-            const sellVal = toSellPlayers.reduce((s, p) => s + p.price, 0);
-            const totalBudget = itb + sellVal;
-            
-            let filtered = allPlayers.filter(p => {
-                if (myTeam.some(mp => mp.id === p.id) && !toSell.has(p.id)) return false;
-                if (toBuyIds.has(p.id)) return false;
-                if (posFilter !== 'all' && p.pos !== parseInt(posFilter)) return false;
-                if (p.price > maxPrice) return false;
-                // Handle team filter - either "all", "selected" (multi-select), or a specific team ID
-                if (teamFilter === 'selected') {
-                    if (selectedTeams.size > 0 && !selectedTeams.has(p.teamId)) return false;
-                } else if (teamFilter !== 'all') {
-                    if (p.teamId !== parseInt(teamFilter)) return false;
-                }
-                if (p.status === 'i' || p.status === 's') return false;
-                if (p.mins < 200) return false;
-                return true;
-            });
-            
-            filtered.forEach(p => {
-                const xgi90 = p.mins > 0 ? (p.xGI / p.mins) * 90 : 0;
-                const ppg = p.price > 0 ? p.pts / p.price : 0;
-                p.recScore = (p.form * 2) + (xgi90 * 10) + (ppg * 0.5) + ((5 - p.avgFDR) * 3);
-                if (p.avgFDR <= 2.5) p.recScore += 5;
-            });
-            
-            switch (sortBy) {
-                case 'form': filtered.sort((a, b) => b.form - a.form); break;
-                case 'xgi': filtered.sort((a, b) => {
-                    const aX = a.mins > 0 ? (a.xGI / a.mins) * 90 : 0;
-                    const bX = b.mins > 0 ? (b.xGI / b.mins) * 90 : 0;
-                    return bX - aX;
-                }); break;
-                case 'price': filtered.sort((a, b) => a.price - b.price); break;
-                case 'fdr': filtered.sort((a, b) => a.avgFDR - b.avgFDR); break;
-                default: filtered.sort((a, b) => b.recScore - a.recScore);
-            }
-            
-            let html = '';
-            filtered.slice(0, 50).forEach(p => {
-                const xgi90 = p.mins > 0 ? (p.xGI / p.mins) * 90 : 0;
-                const ppg = p.price > 0 ? p.pts / p.price : 0;
-                const fxHtml = p.fixtures?.slice(0, 3).map(f => `<span class="fixture-badge fdr-${f.fdr}">${f.opp}(${f.home ? 'H' : 'A'})</span>`).join('') || '';
-                const fdrColor = p.avgFDR <= 2.5 ? 'var(--accent-green)' : p.avgFDR <= 3 ? 'var(--accent-yellow)' : 'var(--accent-red)';
-                
-                html += `
-                    <div class="player-card clickable" onclick="toggleBuy(${p.id})">
-                        <div class="player-top">
-                            <div class="player-info">
-                                <h4>${p.name}</h4>
-                                <span class="player-meta">${p.teamName} • ${p.posName} • ${p.own.toFixed(1)}%</span>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-family: 'Space Mono'; font-size: 20px; font-weight: 700; color: var(--accent-green);">£${p.price.toFixed(1)}m</div>
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px; background: var(--bg); border-radius: 8px; margin: 10px 0;">
-                            <div style="text-align: center;">
-                                <div style="font-family: 'Space Mono'; font-size: 14px; font-weight: 600; color: var(--accent-green);">${p.form.toFixed(1)}</div>
-                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Form</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-family: 'Space Mono'; font-size: 14px; font-weight: 600; color: var(--accent-green);">${xgi90.toFixed(2)}</div>
-                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">xGI/90</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-family: 'Space Mono'; font-size: 14px; font-weight: 600;">${ppg.toFixed(1)}</div>
-                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">Pts/£m</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-family: 'Space Mono'; font-size: 14px; font-weight: 600; color: ${fdrColor};">${p.avgFDR.toFixed(1)}</div>
-                                <div style="font-size: 8px; color: var(--text-dim); text-transform: uppercase;">FDR</div>
-                            </div>
-                        </div>
-                        <div class="fixture-badges">${fxHtml}</div>
-                    </div>
-                `;
-            });
-            
-            if (!html) html = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">🔍</div><h3>No Players Found</h3><p>Try adjusting filters</p></div>';
-            
-            document.getElementById('step3Content').innerHTML = html;
-            updateBudgets();
-        }
-        
-        function toggleBuy(id) {
-            const p = allPlayersById[id];
-            
-            if (toBuyIds.has(id)) {
-                toBuyIds.delete(id);
-                toBuy = toBuy.filter(x => x.id !== id);
-            } else {
-                const sellVal = toSellPlayers.reduce((s, p) => s + p.price, 0);
-                const totalBudget = itb + sellVal;
-                const spending = toBuy.reduce((s, p) => s + p.price, 0);
-                
-                if (spending + p.price > totalBudget) {
-                    alert('Not enough budget!');
-                    return;
-                }
-                
-                if (toBuy.length >= toSell.size) {
-                    alert(`You can only bring in ${toSell.size} player(s)`);
-                    return;
-                }
-                
-                toBuyIds.add(id);
-                toBuy.push(p);
-            }
-            
-            updateBudgets();
-            renderReplacements();
-            document.getElementById('toStep4Btn').disabled = toBuy.length !== toSell.size;
-        }
-        
-        // ===== RENDER STEP 4 (Review) =====
-        function renderStep4() {
-            const sellVal = toSellPlayers.reduce((s, p) => s + p.price, 0);
-            const buyVal = toBuy.reduce((s, p) => s + p.price, 0);
-            const net = buyVal - sellVal;
-            
-            const avgSellFDR = toSellPlayers.reduce((s, p) => s + p.avgFDR, 0) / toSellPlayers.length;
-            const avgBuyFDR = toBuy.reduce((s, p) => s + p.avgFDR, 0) / toBuy.length;
-            const fdrDiff = avgSellFDR - avgBuyFDR;
-            
-            const avgSellForm = toSellPlayers.reduce((s, p) => s + p.form, 0) / toSellPlayers.length;
-            const avgBuyForm = toBuy.reduce((s, p) => s + p.form, 0) / toBuy.length;
-            const formDiff = avgBuyForm - avgSellForm;
-            
-            let html = `<div class="summary-box"><div class="summary-title">📋 Transfer Summary</div>`;
-            
-            for (let i = 0; i < toSellPlayers.length; i++) {
-                const out = toSellPlayers[i];
-                const inp = toBuy[i];
-                html += `
-                    <div class="transfer-row">
-                        <div class="transfer-out">
-                            <div class="transfer-player-name">${out.name}</div>
-                            <div class="transfer-player-team">${out.team} • ${out.posName}</div>
-                            <div class="transfer-player-price out">-£${out.price.toFixed(1)}m</div>
-                        </div>
-                        <div class="transfer-arrow">→</div>
-                        <div class="transfer-in">
-                            <div class="transfer-player-name">${inp.name}</div>
-                            <div class="transfer-player-team">${inp.team} • ${inp.posName}</div>
-                            <div class="transfer-player-price in">+£${inp.price.toFixed(1)}m</div>
-                        </div>
-                    </div>
-                `;
-            }
-            html += '</div>';
-            
-            const hit = toSellPlayers.length > 1 ? (toSellPlayers.length - 1) * -4 : 0;
-            
-            html += `
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: ${net <= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">
-                            ${net <= 0 ? '+' : '-'}£${Math.abs(net).toFixed(1)}m
-                        </div>
-                        <div class="stat-label">${net <= 0 ? 'Saved' : 'Spent'}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: ${fdrDiff > 0 ? 'var(--accent-green)' : 'var(--accent-yellow)'};">
-                            ${fdrDiff > 0 ? '+' : ''}${fdrDiff.toFixed(1)}
-                        </div>
-                        <div class="stat-label">FDR ↓</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: ${formDiff > 0 ? 'var(--accent-green)' : 'var(--accent-yellow)'};">
-                            ${formDiff > 0 ? '+' : ''}${formDiff.toFixed(1)}
-                        </div>
-                        <div class="stat-label">Form ↑</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" style="color: ${hit < 0 ? 'var(--accent-red)' : 'var(--accent-green)'};">${hit}</div>
-                        <div class="stat-label">Hit</div>
-                    </div>
+                <div class="captain-reasons">${p.captainData.reasons.map(r=>`<span class="captain-reason ${r.type}">${r.text}</span>`).join('')}</div>
+                <div class="captain-btns"><button class="captain-btn ${isC?'c-active':''}" onclick="setCaptain(${p.id})">👑 Captain</button><button class="captain-btn ${isVC?'vc-active':''}" onclick="setViceCaptain(${p.id})">🥈 Vice</button></div>
+                <div class="captain-score-bar" style="width:${bw}%;"></div>
+            </div>`;
+        });
+
+        html+=`</div><div class="wizard-nav"><button class="btn btn-secondary" onclick="goToStep(2)">← Starting XI</button><button class="btn btn-primary" onclick="goToStep(4)">View Summary →</button></div>`;
+        document.getElementById('step3Content').innerHTML=html;
+    }
+
+    function setCaptain(id){if(viceCaptainId===id)viceCaptainId=captainId;captainId=id;renderStep3();}
+    function setViceCaptain(id){if(captainId===id)return;viceCaptainId=id;renderStep3();}
+
+    // ===== STEP 4: SUMMARY =====
+    function renderStep4() {
+        const captain=analyzedSquad.find(p=>p.id===captainId);
+        const vc=analyzedSquad.find(p=>p.id===viceCaptainId);
+        const totalScore=recommendedXI.reduce((s,p)=>s+p.lineupData.score,0);
+        const avgForm=(recommendedXI.reduce((s,p)=>s+p.form,0)/11).toFixed(1);
+        const avgFDR=recommendedXI.reduce((s,p)=>s+(p.fixtures?.[0]?.difficulty||3),0)/11;
+        const easyFx=recommendedXI.filter(p=>p.fixtures?.[0]?.difficulty<=2).length;
+        const hardFx=recommendedXI.filter(p=>p.fixtures?.[0]?.difficulty>=4).length;
+
+        let html=`
+            <div class="panel-header"><div class="panel-title">✅ Your GW${currentGW} Lineup Plan</div><div class="panel-desc">Copy this lineup to the official FPL site</div></div>
+            <div class="summary-card">
+                <div class="summary-formation"><div class="summary-formation-num">${recommendedFormation}</div><div class="summary-formation-label">Formation</div></div>
+                <div class="summary-stats">
+                    <div class="summary-stat"><div class="summary-stat-value val-good">${totalScore}</div><div class="summary-stat-label">Total Score</div></div>
+                    <div class="summary-stat"><div class="summary-stat-value">${avgForm}</div><div class="summary-stat-label">Avg Form</div></div>
+                    <div class="summary-stat"><div class="summary-stat-value" style="color:${avgFDR<=2.8?'var(--color-success)':avgFDR>=3.5?'var(--color-error)':'var(--color-warning)'};">${avgFDR.toFixed(1)}</div><div class="summary-stat-label">Avg FDR</div></div>
+                    <div class="summary-stat"><div class="summary-stat-value val-good">${easyFx}</div><div class="summary-stat-label">Easy Fixtures</div></div>
+                    <div class="summary-stat"><div class="summary-stat-value val-bad">${hardFx}</div><div class="summary-stat-label">Hard Fixtures</div></div>
                 </div>
-            `;
-            
-            if (fdrDiff > 0 && formDiff >= 0 && net <= 0) {
-                html += `<div class="success-box"><h4>✅ Smart Transfer</h4><p>Better fixtures, form improvement, and saving money!</p></div>`;
-            } else if (fdrDiff > 0 || formDiff > 0) {
-                html += `<div class="success-box" style="border-color: var(--accent-yellow); background: rgba(255, 165, 2, 0.1);"><h4 style="color: var(--accent-yellow);">⚡ Good Move</h4><p>Solid improvements. Consider the trade-offs.</p></div>`;
-            }
-            
-            document.getElementById('step4Content').innerHTML = html;
-        }
-        
-        function executePlan() {
-            localStorage.setItem('fpl_transfer_plan', JSON.stringify({
-                date: new Date().toISOString(),
-                out: toSellPlayers.map(p => ({ id: p.id, name: p.name })),
-                in: toBuy.map(p => ({ id: p.id, name: p.name }))
-            }));
-            alert('Plan saved! Opening FPL...');
-            window.open('https://fantasy.premierleague.com/transfers', '_blank');
-        }
-        
-        // ===== NAVIGATION =====
-        function goToStep(step) {
-            if (step >= 2 && myTeam.length !== 15) { alert('Load your team first!'); return; }
-            if (step >= 2 && toSell.size === 0) { alert('Select players to sell first!'); return; }
-            if (step === 4 && toBuy.length !== toSell.size) { alert('Select all replacements first!'); return; }
-            
-            document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
-            document.getElementById(`panel-${step}`).classList.add('active');
-            
-            updateProgress(step);
-            
-            if (step === 1) renderStep1();
-            else if (step === 2) renderStep2();
-            else if (step === 3) {
-                // If teams were selected in fixtures step, default to "selected" filter
-                if (selectedTeams.size > 0) {
-                    document.getElementById('teamFilterSelect').value = 'selected';
-                }
-                if (toSellPlayers.length === 1) document.getElementById('posFilter').value = toSellPlayers[0].pos;
-                renderReplacements();
-            }
-            else if (step === 4) renderStep4();
-            
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-        
-        function updateProgress(current) {
-            document.querySelectorAll('.progress-step').forEach((el, i) => {
-                el.classList.remove('active', 'completed', 'disabled');
-                if (i + 1 < current) el.classList.add('completed');
-                else if (i + 1 === current) el.classList.add('active');
-                else if (i + 1 > current + 1) el.classList.add('disabled');
+                <div class="summary-captain-row"><div style="font-size:28px;">👑</div><div style="flex:1;"><div style="font-size:11px;font-weight:600;color:var(--color-captain);text-transform:uppercase;letter-spacing:0.5px;">Captain</div><div style="font-size:16px;font-weight:700;">${captain?.name||'-'}</div><div style="font-size:12px;color:var(--text-secondary);">${captain?.team||''} • ${captain?.posName||''} • Form: ${captain?.form||'-'} • Score: ${captain?.captainData?.score||'-'}</div></div></div>
+                <div class="summary-vc-row"><div style="font-size:22px;">🥈</div><div style="flex:1;"><div style="font-size:11px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;">Vice Captain</div><div style="font-size:14px;font-weight:600;">${vc?.name||'-'}</div><div style="font-size:12px;color:var(--text-secondary);">${vc?.team||''} • ${vc?.posName||''}</div></div></div>
+                <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">Starting XI</div>
+                <div class="summary-player-list">`;
+
+        [1,2,3,4].forEach(pos=>{
+            recommendedXI.filter(p=>p.pos===pos).sort((a,b)=>b.lineupData.score-a.lineupData.score).forEach(p=>{
+                const fx=p.fixtures?.[0]; const ci=p.id===captainId?' 👑':p.id===viceCaptainId?' 🥈':'';
+                html+=`<div class="summary-player"><div class="summary-player-pos"><span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></div><div class="summary-player-name">${p.name}${ci}</div><div class="summary-player-team">${p.team}</div><div>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${fx.opponent}(${fx.isHome?'H':'A'})</span>`:'-'}</div><div class="summary-player-score pitch-score ${p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low'}">${p.lineupData.score}</div></div>`;
             });
-        }
-        
-        function updateStatus(msg, type) {
-            const bar = document.getElementById('statusBar');
-            bar.className = `status-bar ${type}`;
-            bar.innerHTML = type === 'loading' ? `<div class="spinner"></div><span>${msg}</span>` : `<span>${type === 'success' ? '✓' : '⚠'} ${msg}</span>`;
-        }
-        
-        // Enter key to load
-        document.getElementById('teamIdInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadTeamById(); });
-        
-        window.addEventListener('load', init);
+        });
+
+        html+=`</div><div style="font-size:13px;font-weight:600;margin:16px 0 8px;color:var(--text-muted);">Bench (auto-sub order)</div><div class="summary-player-list">`;
+        recommendedBench.slice(0,4).forEach((p,i)=>{
+            const fx=p.fixtures?.[0];
+            html+=`<div class="summary-player" style="opacity:0.6;"><div class="summary-player-pos"><span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></div><div class="summary-player-name">${i+1}. ${p.name}</div><div class="summary-player-team">${p.team}</div><div>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${fx.opponent}(${fx.isHome?'H':'A'})</span>`:'-'}</div><div class="summary-player-score pitch-score ${p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low'}">${p.lineupData.score}</div></div>`;
+        });
+
+        html+=`</div></div><div style="text-align:center;margin-top:20px;"><button class="btn btn-primary" style="padding:12px 32px;font-size:14px;" onclick="window.open('https://fantasy.premierleague.com/my-team','_blank')">Apply on FPL →</button></div><div class="wizard-nav"><button class="btn btn-secondary" onclick="goToStep(3)">← Captain</button><div></div></div>`;
+        document.getElementById('step4Content').innerHTML=html;
+    }
+
+    // ===== NAVIGATION =====
+    function goToStep(step) {
+        if(step>=2&&analyzedSquad.length===0){updateStatus('Load your team first!','error');return;}
+        document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
+        document.getElementById(`panel-${step}`).classList.add('active');
+        document.querySelectorAll('.wizard-step').forEach((el,i)=>{
+            el.classList.remove('active','completed','disabled');
+            if(i+1<step) el.classList.add('completed');
+            else if(i+1===step) el.classList.add('active');
+            else if(analyzedSquad.length>0){} else el.classList.add('disabled');
+        });
+        if(step===2)renderStep2();else if(step===3)renderStep3();else if(step===4)renderStep4();
+        window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    window.addEventListener('load',()=>{const s=localStorage.getItem('fpl_team_id');if(s)document.getElementById('teamIdInput').value=s;});
+    document.getElementById('teamIdInput').addEventListener('keypress',e=>{if(e.key==='Enter')loadTeamById();});
     </script>
 </body>
 </html>
