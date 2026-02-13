@@ -2523,18 +2523,18 @@
             //   30% FPL strength rating (expert assessment)
             let attackPower;
             if (hasRealXg && recent6Xg) {
-                const seasonXgRate = Math.min(1, seasonXg.xGpg / 2.5);      // 0-2.5 xG/g → 0-1
-                const recent6Rate = Math.min(1, recent6Xg.gpg / 2.5);       // 0-2.5 G/g → 0-1
+                const recentXgRate = Math.min(1, recent6Xg.xGpg / 2.0);    // 0-2.0 xG/g → 0-1  (recent form, not season)
+                const recent6Rate = Math.min(1, recent6Xg.gpg / 2.0);      // 0-2.0 G/g → 0-1
                 attackPower = Math.round((
-                    seasonXgRate * 0.35 +
+                    recentXgRate * 0.35 +
                     recent6Rate * 0.35 +
                     fplAttNorm * 0.30
                 ) * 100);
             } else {
                 // Fallback: same 3-component structure, using actual goals in place of xG
-                const seasonGoalRate = Math.min(1, avgGoals / 2.5);                  // 0-2.5 G/g → 0-1
+                const seasonGoalRate = Math.min(1, avgGoals / 2.0);                  // 0-2.0 G/g → 0-1
                 const avgXG = xGHistory.length > 0 ? xGHistory.reduce((a, b) => a + b, 0) / gamesPlayed : avgGoals;
-                const estimatedXgRate = Math.min(1, avgXG / 2.5);                    // 0-2.5 xG/g → 0-1
+                const estimatedXgRate = Math.min(1, avgXG / 2.0);                    // 0-2.0 xG/g → 0-1
                 attackPower = Math.round((
                     estimatedXgRate * 0.35 +
                     seasonGoalRate * 0.35 +
@@ -2550,20 +2550,26 @@
             //   30% FPL defense strength (expert assessment)
             let defensePower;
             if (hasRealXg && recent6Xg) {
-                const seasonXgcRate = Math.min(1, Math.max(0, 1 - (seasonXg.xGCpg / 2.5)));   // 0 xGC/g → 1.0, 2.5 → 0
-                const recent6DefRate = Math.min(1, Math.max(0, 1 - (recent6Xg.gapg / 2.5)));   // 0 GA/g → 1.0, 2.5 → 0
+                const recentXgcRate = Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0)));   // 0 xGC/g → 1.0, 2.0 → 0  (recent form)
+                const recent6DefRate = Math.min(1, Math.max(0, 1 - (recent6Xg.gapg / 2.0)));    // 0 GA/g → 1.0, 2.0 → 0
                 defensePower = Math.round((
-                    seasonXgcRate * 0.35 +
+                    recentXgcRate * 0.35 +
                     recent6DefRate * 0.35 +
                     fplDefNorm * 0.30
                 ) * 100);
             } else {
                 // Fallback: same 3-component structure, using actual GA in place of xGC
-                const seasonGaConcededRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.5)));  // 0 GA/g → 1.0, 2.5 → 0
-                const csRate = Math.min(1, cleanSheets / gamesPlayed);  // CS ratio as quality signal
+                const seasonGaRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.0)));       // 0 GA/g → 1.0, 2.0 → 0
+                // Recent 5-game GA rate for recency component (mirrors xGC path)
+                const recentConceded = pastFixtures.slice(-5).reduce((sum, f) => {
+                    const isH = f.team_h === teamId;
+                    return sum + (isH ? (f.team_a_score || 0) : (f.team_h_score || 0));
+                }, 0);
+                const recentGames = Math.min(5, pastFixtures.length) || 1;
+                const recentGaRate = Math.min(1, Math.max(0, 1 - ((recentConceded / recentGames) / 2.0)));
                 defensePower = Math.round((
-                    seasonGaConcededRate * 0.35 +
-                    csRate * 0.35 +
+                    seasonGaRate * 0.35 +
+                    recentGaRate * 0.35 +
                     fplDefNorm * 0.30
                 ) * 100);
             }
@@ -2575,14 +2581,14 @@
             const fplAttAwayNorm = Math.min(1, Math.max(0, (team.strength_attack_away - 900) / 500));
             
             const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                Math.min(1, homeStats.goals / homeStats.games / 2.5) * 0.35 +
-                (hasRealXg ? Math.min(1, seasonXg.xGpg / 2.5) * 0.35 : Math.min(1, homeStats.goals / homeStats.games / 2.5) * 0.35) +
+                Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.35 +
+                (hasRealXg && recent6Xg ? Math.min(1, recent6Xg.xGpg / 2.0) * 0.35 : Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.35) +
                 fplAttHomeNorm * 0.30
             ) * 100))) : attackPower;
 
             const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                Math.min(1, awayStats.goals / awayStats.games / 2.5) * 0.35 +
-                (hasRealXg ? Math.min(1, seasonXg.xGpg / 2.5) * 0.35 : Math.min(1, awayStats.goals / awayStats.games / 2.5) * 0.35) +
+                Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.35 +
+                (hasRealXg && recent6Xg ? Math.min(1, recent6Xg.xGpg / 2.0) * 0.35 : Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.35) +
                 fplAttAwayNorm * 0.30
             ) * 100))) : attackPower;
 
@@ -2590,12 +2596,12 @@
             const fplDefHomeNorm = Math.min(1, Math.max(0, (team.strength_defence_home - 900) / 500));
             const fplDefAwayNorm = Math.min(1, Math.max(0, (team.strength_defence_away - 900) / 500));
             
-            const homeGaConcededRate = homeStats.games > 0 ? Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.5))) : 0.5;
-            const awayGaConcededRate = awayStats.games > 0 ? Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.5))) : 0.5;
+            const homeGaConcededRate = homeStats.games > 0 ? Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.0))) : 0.5;
+            const awayGaConcededRate = awayStats.games > 0 ? Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.0))) : 0.5;
             
-            // xGC component: use season xGC if available, otherwise fall back to GA-based rate
-            const xgcHomeComponent = hasRealXg ? Math.min(1, Math.max(0, 1 - (seasonXg.xGCpg / 2.5))) : homeGaConcededRate;
-            const xgcAwayComponent = hasRealXg ? Math.min(1, Math.max(0, 1 - (seasonXg.xGCpg / 2.5))) : awayGaConcededRate;
+            // xGC component: use recent xGC if available, otherwise fall back to GA-based rate
+            const xgcHomeComponent = hasRealXg && recent6Xg ? Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0))) : homeGaConcededRate;
+            const xgcAwayComponent = hasRealXg && recent6Xg ? Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0))) : awayGaConcededRate;
             
             const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
                 homeGaConcededRate * 0.35 +
@@ -2610,9 +2616,12 @@
             ) * 100))) : defensePower;
 
             // FIXTURE SCORE (0-100) - Pure fixture opportunity
+            // DGW bonus: extra fixtures beyond 5 are valuable for FPL
+            const fixtureCountBonus = Math.max(0, (futureDetails.length - 5) * 8);
             const fixtureScore = Math.round(Math.min(100, Math.max(0,
-                ((5 - avgFdr) / 4) * 70 +
-                (homeFixtureCount / 5) * 30
+                ((5 - avgFdr) / 4) * 85 +
+                (homeFixtureCount / Math.max(1, futureDetails.length)) * 15 +
+                fixtureCountBonus
             )));
 
             // Average CS Chance across next fixtures
@@ -2652,13 +2661,6 @@
                 xgcPerformance = 'balanced-def';
             }
 
-            // ===== FORM SCORE =====
-            const formScore = Math.round(Math.min(100, Math.max(0,
-                (wins * 12) + (draws * 4) +
-                (attackPower * 0.2) +
-                (defensePower * 0.2)
-            )));
-
             // ===== WEIGHTED FORM RATING (0-100) =====
             const weights = [5, 4, 3, 2, 1];
             const reversedResults = [...pastResults].reverse();
@@ -2678,7 +2680,7 @@
                 const conceded = isH ? (f.team_a_score || 0) : (f.team_h_score || 0);
                 return sum + (scored - conceded);
             }, 0);
-            const gdBonus = Math.min(15, Math.max(-10, recentGD * 3));
+            const gdBonus = Math.min(10, Math.max(-10, recentGD * 2));
 
             let streakBonus = 0;
             for (let i = 0; i < reversedResults.length; i++) {
@@ -2777,7 +2779,6 @@
                 avgCSChance,
                 
                 // Form & results
-                formScore,
                 formRating,
                 wins, draws, losses,
                 
@@ -3612,6 +3613,42 @@
                 teamFixtureHistory[team.id] = [];
             });
 
+            // Shared bucket accumulator — used for season, last5, and last10
+            function addToBucket(bucket, rec) {
+                bucket.p++;
+                bucket.gf += rec.gf;
+                bucket.ga += rec.ga;
+                if (rec.result === 'W') bucket.w++;
+                else if (rec.result === 'D') bucket.d++;
+                else bucket.l++;
+                if (rec.cs) bucket.cs++;
+                if (rec.fts) bucket.fts++;
+                bucket.assists += rec.assists;
+                bucket.ownGoals += rec.ownGoals;
+                bucket.penMissed += rec.penMissed;
+                bucket.penSaved += rec.penSaved;
+                bucket.yellowCards += rec.yellowCards;
+                bucket.redCards += rec.redCards;
+                bucket.saves += rec.saves;
+                bucket.bonus += rec.bonus;
+                bucket.bps += rec.bps;
+                if (rec.btts) bucket.btts++;
+                if (rec.o25) bucket.o25++;
+                if (rec.isHome) {
+                    bucket.homeP++;
+                    if (rec.result === 'W') bucket.homeW++;
+                    bucket.homeGf += rec.gf;
+                    bucket.homeGa += rec.ga;
+                    if (rec.cs) bucket.homeCs++;
+                } else {
+                    bucket.awayP++;
+                    if (rec.result === 'W') bucket.awayW++;
+                    bucket.awayGf += rec.gf;
+                    bucket.awayGa += rec.ga;
+                    if (rec.cs) bucket.awayCs++;
+                }
+            }
+
             finishedFixtures.forEach(f => {
                 const homeId = f.team_h;
                 const awayId = f.team_a;
@@ -3668,41 +3705,6 @@
                 const homeRec = buildRecord(hg, ag, true, homeAssists, homeOG, homePenMissed, homePenSaved, homeYC, homeRC, homeSaves, homeBonus, homeBPS);
                 // Away team record
                 const awayRec = buildRecord(ag, hg, false, awayAssists, awayOG, awayPenMissed, awayPenSaved, awayYC, awayRC, awaySaves, awayBonus, awayBPS);
-
-                function addToBucket(bucket, rec) {
-                    bucket.p++;
-                    bucket.gf += rec.gf;
-                    bucket.ga += rec.ga;
-                    if (rec.result === 'W') bucket.w++;
-                    else if (rec.result === 'D') bucket.d++;
-                    else bucket.l++;
-                    if (rec.cs) bucket.cs++;
-                    if (rec.fts) bucket.fts++;
-                    bucket.assists += rec.assists;
-                    bucket.ownGoals += rec.ownGoals;
-                    bucket.penMissed += rec.penMissed;
-                    bucket.penSaved += rec.penSaved; // saves made by this team's keeper
-                    bucket.yellowCards += rec.yellowCards;
-                    bucket.redCards += rec.redCards;
-                    bucket.saves += rec.saves;
-                    bucket.bonus += rec.bonus;
-                    bucket.bps += rec.bps;
-                    if (rec.btts) bucket.btts++;
-                    if (rec.o25) bucket.o25++;
-                    if (rec.isHome) {
-                        bucket.homeP++;
-                        if (rec.result === 'W') bucket.homeW++;
-                        bucket.homeGf += rec.gf;
-                        bucket.homeGa += rec.ga;
-                        if (rec.cs) bucket.homeCs++;
-                    } else {
-                        bucket.awayP++;
-                        if (rec.result === 'W') bucket.awayW++;
-                        bucket.awayGf += rec.gf;
-                        bucket.awayGa += rec.ga;
-                        if (rec.cs) bucket.awayCs++;
-                    }
-                }
 
                 if (stats[homeId]) {
                     addToBucket(stats[homeId].season, homeRec);
