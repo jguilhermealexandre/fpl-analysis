@@ -2965,7 +2965,7 @@
                                                 </div>
                                                 <div class="swings-run-mini-fdr">
                                                     ${run.fixtures.slice(0, 7).map(f => `
-                                                        <div class="swings-mini-dot fdr-${Math.round(getEffectiveFdr(f))}">${f.opponent.slice(0,1)}</div>
+                                                        <div class="swings-mini-dot fdr-${Math.round(f.fdr)}">${f.opponent.slice(0,1)}</div>
                                                     `).join('')}
                                                 </div>
                                                 <span class="swings-run-stat" style="color: ${tier.color}">${run.avgFdr}<span style="font-size:10px;font-weight:400;color:var(--text-muted)"> avg</span></span>
@@ -3077,9 +3077,9 @@
 
             // Color mode descriptions
             const colorModeDesc = {
-                fdr: 'Standard FDR difficulty rating (1-5)',
-                attack: 'Attack FDR — rates fixtures by opponent\'s defensive strength (venue-adjusted). Low = leaky defense, great for your attackers',
-                defense: 'Defense FDR — rates fixtures by opponent\'s attacking strength (venue-adjusted). Low = weak attack, safe for your defenders',
+                fdr: 'FDR difficulty rating',
+                attack: 'Opponent defense weakness (green = leaky defense, good for attackers)',
+                defense: 'Opponent attack threat (green = weak attack, good for defenders)',
                 cs: 'Clean sheet probability (green = high CS chance)'
             };
 
@@ -3146,19 +3146,19 @@
                 `;
             } else if (calendarColorMode === 'attack') {
                 return `
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-1);"></div><span>1 — Leaky Def (Target)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-2);"></div><span>2 — Weak Def</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-3);"></div><span>3 — Average Def</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-4);"></div><span>4 — Strong Def</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-5);"></div><span>5 — Elite Def (Avoid)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #4ADE80;"></div><span>Leaky Def (Great)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #86EFAC;"></div><span>Weak Def</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #A3A3A3;"></div><span>Average</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #FB923C;"></div><span>Strong Def</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #EF4444;"></div><span>Elite Def (Avoid)</span></div>
                 `;
             } else if (calendarColorMode === 'defense') {
                 return `
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-1);"></div><span>1 — Weak Att (Safe)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-2);"></div><span>2 — Below Avg Att</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-3);"></div><span>3 — Average Att</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-4);"></div><span>4 — Strong Att</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-5);"></div><span>5 — Elite Att (Danger)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #4ADE80;"></div><span>Weak Att (Safe)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #86EFAC;"></div><span>Below Avg</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #A3A3A3;"></div><span>Average</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #FB923C;"></div><span>Strong Att</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: #EF4444;"></div><span>Elite Att (Danger)</span></div>
                 `;
             } else { // cs
                 return `
@@ -3179,23 +3179,6 @@
         function setCalendarColor(mode) {
             calendarColorMode = mode;
             renderCurrentView();
-        }
-
-        // Convert 0-100 power rating to 1-5 FDR scale
-        // Higher power = stronger opponent = harder fixture = higher FDR
-        function powerToFdr(power) {
-            if (power <= 28) return 1;      // Very weak
-            if (power <= 40) return 2;      // Below average
-            if (power <= 55) return 3;      // Average
-            if (power <= 68) return 4;      // Strong
-            return 5;                        // Elite
-        }
-
-        // Get the effective FDR for a fixture based on the current calendar color mode
-        function getEffectiveFdr(fixture) {
-            if (calendarColorMode === 'attack') return fixture.attackFdr || fixture.fdr;
-            if (calendarColorMode === 'defense') return fixture.defenseFdr || fixture.fdr;
-            return fixture.fdr;
         }
 
         function buildFullSeasonMap() {
@@ -3227,23 +3210,16 @@
                         const awayDef = awayTeam?.defensePower || 50;
                         const bttsLikely = (homeAtt > 50 && awayAtt > 50 && homeDef < 60 && awayDef < 60);
                         
-                        // Venue-adjusted opponent strengths:
-                        // Home team faces the AWAY version of the opponent
-                        const oppDefPowerVenueAdj = awayTeam?.defensePowerAway || awayTeam?.defensePower || 50;
-                        const oppAttPowerVenueAdj = awayTeam?.attackPowerAway || awayTeam?.attackPower || 50;
-                        
                         fixtureMap[f.team_h][f.event].push({
                             opponent: awayTeam?.shortName || '???',
                             opponentId: f.team_a,
                             isHome: true,
                             fdr: f.team_h_difficulty || 3,
-                            attackFdr: powerToFdr(oppDefPowerVenueAdj),   // Attackers care about opponent DEFENSE
-                            defenseFdr: powerToFdr(oppAttPowerVenueAdj),  // Defenders care about opponent ATTACK
                             finished: f.finished,
                             gw: f.event,
                             csChance,
-                            oppDefensePower: oppDefPowerVenueAdj,
-                            oppAttackPower: oppAttPowerVenueAdj,
+                            oppDefensePower: awayTeam?.defensePower || 50,
+                            oppAttackPower: awayTeam?.attackPower || 50,
                             bttsLikely
                         });
                     }
@@ -3261,23 +3237,16 @@
                         const awayDef = awayTeam?.defensePower || 50;
                         const bttsLikely = (homeAtt > 50 && awayAtt > 50 && homeDef < 60 && awayDef < 60);
                         
-                        // Venue-adjusted opponent strengths:
-                        // Away team faces the HOME version of the opponent
-                        const oppDefPowerVenueAdj = homeTeam?.defensePowerHome || homeTeam?.defensePower || 50;
-                        const oppAttPowerVenueAdj = homeTeam?.attackPowerHome || homeTeam?.attackPower || 50;
-                        
                         fixtureMap[f.team_a][f.event].push({
                             opponent: homeTeam?.shortName || '???',
                             opponentId: f.team_h,
                             isHome: false,
                             fdr: f.team_a_difficulty || 3,
-                            attackFdr: powerToFdr(oppDefPowerVenueAdj),   // Attackers care about opponent DEFENSE
-                            defenseFdr: powerToFdr(oppAttPowerVenueAdj),  // Defenders care about opponent ATTACK
                             finished: f.finished,
                             gw: f.event,
                             csChance,
-                            oppDefensePower: oppDefPowerVenueAdj,
-                            oppAttackPower: oppAttPowerVenueAdj,
+                            oppDefensePower: homeTeam?.defensePower || 50,
+                            oppAttackPower: homeTeam?.attackPower || 50,
                             bttsLikely
                         });
                     }
@@ -3306,7 +3275,7 @@
         }
 
         function renderCalendarRows(fixtureMap, displayGWs, easyRuns) {
-            // Sort teams by average FDR for the current mode (best fixtures first)
+            // Sort teams by average FDR (best fixtures first)
             const sortedTeams = [...allTeamsData].sort((a, b) => {
                 const avgA = calculateAvgFDR(fixtureMap[a.id], displayGWs);
                 const avgB = calculateAvgFDR(fixtureMap[b.id], displayGWs);
@@ -3342,13 +3311,21 @@
             if (calendarColorMode === 'fdr') {
                 return `fdr-${Math.round(fixture.fdr)}`;
             } else if (calendarColorMode === 'attack') {
-                // Attack FDR: based on opponent's defensive strength (venue-adjusted)
-                // Lower opponent defense = easier for your attackers = lower FDR
-                return `fdr-${Math.round(fixture.attackFdr || fixture.fdr)}`;
+                // Green = weak opponent defense (good for attackers)
+                const oppDef = fixture.oppDefensePower || 50;
+                if (oppDef <= 35) return 'color-1'; // Very weak defense
+                if (oppDef <= 45) return 'color-2';
+                if (oppDef <= 55) return 'color-3';
+                if (oppDef <= 65) return 'color-4';
+                return 'color-5'; // Elite defense
             } else if (calendarColorMode === 'defense') {
-                // Defense FDR: based on opponent's attacking strength (venue-adjusted)
-                // Lower opponent attack = safer for your defenders = lower FDR
-                return `fdr-${Math.round(fixture.defenseFdr || fixture.fdr)}`;
+                // Green = weak opponent attack (safe for defenders)
+                const oppAtt = fixture.oppAttackPower || 50;
+                if (oppAtt <= 35) return 'color-1'; // Very weak attack
+                if (oppAtt <= 45) return 'color-2';
+                if (oppAtt <= 55) return 'color-3';
+                if (oppAtt <= 65) return 'color-4';
+                return 'color-5'; // Elite attack
             } else { // cs
                 const cs = fixture.csChance || 30;
                 if (cs >= 50) return 'color-1';
@@ -3364,19 +3341,12 @@
             
             const base = `GW${gw}: ${fixture.opponent} (${fixture.isHome ? 'H' : 'A'})`;
             const fdr = `FDR: ${fixture.fdr}`;
-            const atkFdr = `Att FDR: ${fixture.attackFdr || '?'}`;
-            const defFdr = `Def FDR: ${fixture.defenseFdr || '?'}`;
             const cs = `CS: ${fixture.csChance || '?'}%`;
             const oppDef = `Opp Def: ${fixture.oppDefensePower || '?'}`;
             const oppAtt = `Opp Att: ${fixture.oppAttackPower || '?'}`;
             const btts = fixture.bttsLikely ? '🔥 BTTS Likely' : '';
             
-            if (calendarColorMode === 'attack') {
-                return `${base}\nAttack FDR: ${fixture.attackFdr} (Opp Def: ${fixture.oppDefensePower})\nStd FDR: ${fixture.fdr} | ${cs}${btts ? '\n' + btts : ''}`;
-            } else if (calendarColorMode === 'defense') {
-                return `${base}\nDefense FDR: ${fixture.defenseFdr} (Opp Att: ${fixture.oppAttackPower})\nStd FDR: ${fixture.fdr} | ${cs}${btts ? '\n' + btts : ''}`;
-            }
-            return `${base}\n${fdr} | ${atkFdr} | ${defFdr}\n${cs} | ${oppDef} | ${oppAtt}${btts ? '\n' + btts : ''}`;
+            return `${base}\n${fdr} | ${cs}${btts ? '\n' + btts : ''}\n${oppDef} | ${oppAtt}`;
         }
 
         function renderFixtureCell(fixtures, gw, easyRuns, team) {
@@ -3435,7 +3405,7 @@
                 if (fixtures && fixtures.length > 0) {
                     fixtures.forEach(f => {
                         if (!f.finished) {
-                            total += getEffectiveFdr(f);
+                            total += f.fdr;
                             count++;
                         }
                     });
@@ -4032,18 +4002,18 @@
 
                         if (windowFixtures.length < MIN_WINDOW) continue;
 
-                        const avgFdr = windowFixtures.reduce((s, f) => s + getEffectiveFdr(f), 0) / windowFixtures.length;
+                        const avgFdr = windowFixtures.reduce((s, f) => s + f.fdr, 0) / windowFixtures.length;
 
                         // Only include windows with avg FDR ≤ 3.0 (generous)
                         if (avgFdr > 3.0) continue;
 
                         // Count how many fixtures are genuinely easy (FDR ≤ 2)
-                        const easyCount = windowFixtures.filter(f => getEffectiveFdr(f) <= 2).length;
+                        const easyCount = windowFixtures.filter(f => f.fdr <= 2).length;
                         // Skip if none are actually easy
                         if (easyCount === 0) continue;
 
                         const homeCount = windowFixtures.filter(f => f.isHome).length;
-                        const hardCount = windowFixtures.filter(f => getEffectiveFdr(f) >= 4).length;
+                        const hardCount = windowFixtures.filter(f => f.fdr >= 4).length;
 
                         // Composite score: lower is better
                         // Rewards: low avg FDR, longer runs, more home games, fewer hard games
@@ -4127,12 +4097,12 @@
 
                 const avgFirst = first3.reduce((sum, gw) => {
                     const f = teamFixtures[gw];
-                    return sum + (f && f[0] ? getEffectiveFdr(f[0]) : 3);
+                    return sum + (f && f[0] ? f[0].fdr : 3);
                 }, 0) / 3;
 
                 const avgNext = next3.reduce((sum, gw) => {
                     const f = teamFixtures[gw];
-                    return sum + (f && f[0] ? getEffectiveFdr(f[0]) : 3);
+                    return sum + (f && f[0] ? f[0].fdr : 3);
                 }, 0) / 3;
 
                 const swing = avgFirst - avgNext;
@@ -4175,7 +4145,7 @@
 
                 const getAvg = (gws) => gws.reduce((sum, gw) => {
                     const f = teamFixtures[gw];
-                    return sum + (f && f[0] ? getEffectiveFdr(f[0]) : 3);
+                    return sum + (f && f[0] ? f[0].fdr : 3);
                 }, 0) / gws.length;
 
                 const getFixtures = (gws) => gws.map(gw => {
@@ -4347,13 +4317,12 @@
                 <div class="modal-section">
                     <div class="modal-section-title">Fixture Breakdown</div>
                     ${run.fixtures.map(f => {
-                        const effFdr = getEffectiveFdr(f);
-                        const barWidth = Math.max(10, (5 - effFdr) / 4 * 100);
-                        const barColor = getFdrColor(effFdr);
+                        const barWidth = Math.max(10, (5 - f.fdr) / 4 * 100);
+                        const barColor = getFdrColor(f.fdr);
                         return `
                             <div class="modal-fdr-row">
                                 <span class="modal-fdr-gw">GW${f.gw}</span>
-                                <div class="modal-fdr-dot fdr-${Math.round(effFdr)}" style="color: ${getFdrTextColor(effFdr)}">${Math.round(effFdr)}</div>
+                                <div class="modal-fdr-dot fdr-${Math.round(f.fdr)}" style="color: ${getFdrTextColor(f.fdr)}">${Math.round(f.fdr)}</div>
                                 <span class="modal-fdr-opp">${f.opponent}</span>
                                 <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
                                 <div class="modal-fdr-bar-container">
@@ -4367,13 +4336,11 @@
                 <div class="modal-section">
                     <div class="modal-section-title">FDR Distribution</div>
                     <div style="display: flex; gap: 3px; margin-bottom: var(--space-3);">
-                        ${run.fixtures.map(f => {
-                            const effFdr = getEffectiveFdr(f);
-                            return `
-                            <div style="flex: 1; height: ${24 + effFdr * 8}px; border-radius: var(--radius-sm); background: ${getFdrColor(effFdr)}; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px;">
-                                <span style="font-size: 8px; font-weight: 700; color: ${getFdrTextColor(effFdr)}">${f.opponent}</span>
-                            </div>`;
-                        }).join('')}
+                        ${run.fixtures.map(f => `
+                            <div style="flex: 1; height: ${24 + f.fdr * 8}px; border-radius: var(--radius-sm); background: ${getFdrColor(f.fdr)}; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px;">
+                                <span style="font-size: 8px; font-weight: 700; color: ${getFdrTextColor(f.fdr)}">${f.opponent}</span>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
 
@@ -4457,16 +4424,15 @@
                 <div class="modal-section">
                     <div class="modal-section-title">Current Fixtures (GW${currentGW}–${currentGW + 2})</div>
                     ${s.currentFixtures.map(f => {
-                        const effFdr = getEffectiveFdr(f);
-                        const barWidth = Math.max(10, (5 - effFdr) / 4 * 100);
+                        const barWidth = Math.max(10, (5 - f.fdr) / 4 * 100);
                         return `
                             <div class="modal-fdr-row">
                                 <span class="modal-fdr-gw">GW${f.gw}</span>
-                                <div class="modal-fdr-dot fdr-${Math.round(effFdr)}" style="color: ${getFdrTextColor(effFdr)}">${Math.round(effFdr)}</div>
+                                <div class="modal-fdr-dot fdr-${Math.round(f.fdr)}" style="color: ${getFdrTextColor(f.fdr)}">${Math.round(f.fdr)}</div>
                                 <span class="modal-fdr-opp">${f.opponent}</span>
                                 <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
                                 <div class="modal-fdr-bar-container">
-                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(effFdr)};"></div>
+                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(f.fdr)};"></div>
                                 </div>
                             </div>
                         `;
@@ -4476,16 +4442,15 @@
                 <div class="modal-section">
                     <div class="modal-section-title">After Swing (GW${s.swingGW}+)</div>
                     ${s.nextFixtures.map(f => {
-                        const effFdr = getEffectiveFdr(f);
-                        const barWidth = Math.max(10, (5 - effFdr) / 4 * 100);
+                        const barWidth = Math.max(10, (5 - f.fdr) / 4 * 100);
                         return `
                             <div class="modal-fdr-row">
                                 <span class="modal-fdr-gw">GW${f.gw}</span>
-                                <div class="modal-fdr-dot fdr-${Math.round(effFdr)}" style="color: ${getFdrTextColor(effFdr)}">${Math.round(effFdr)}</div>
+                                <div class="modal-fdr-dot fdr-${Math.round(f.fdr)}" style="color: ${getFdrTextColor(f.fdr)}">${Math.round(f.fdr)}</div>
                                 <span class="modal-fdr-opp">${f.opponent}</span>
                                 <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
                                 <div class="modal-fdr-bar-container">
-                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(effFdr)};"></div>
+                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(f.fdr)};"></div>
                                 </div>
                             </div>
                         `;
@@ -4508,7 +4473,7 @@
                         </div>
                         <div style="display: flex; gap: 2px;">
                             ${s.allFutureFixtures.map((f, i) => `
-                                <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 700; background: ${getFdrColor(getEffectiveFdr(f))}; color: ${getFdrTextColor(getEffectiveFdr(f))}; ${i === 4 ? 'border-left: 2px solid var(--surface-1); border-right: 2px solid var(--surface-1);' : ''}">
+                                <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 700; background: ${getFdrColor(f.fdr)}; color: ${getFdrTextColor(f.fdr)}; ${i === 4 ? 'border-left: 2px solid var(--surface-1); border-right: 2px solid var(--surface-1);' : ''}">
                                     ${f.opponent}
                                 </div>
                             `).join('')}
