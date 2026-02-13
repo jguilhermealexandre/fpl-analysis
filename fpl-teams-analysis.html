@@ -2215,26 +2215,44 @@
                         
                         (player.history || []).forEach(h => {
                             const gw = h.round;
+                            // Use fixture ID to handle DGWs (multiple fixtures in one round)
+                            const fixtureKey = h.fixture;
                             if (!teamXg[tid].perGw[gw]) {
                                 teamXg[tid].perGw[gw] = {
                                     xG: 0, xA: 0, xGC: 0,
                                     goals: 0, assists: 0, conceded: 0,
                                     wasHome: null, oppTeam: null,
-                                    xGC_90min: 0 // xGC from a 90-min player (= team xGC)
+                                    xGC_90min: 0, // xGC from a 90-min player (= team xGC)
+                                    _fixtures: {} // track per-fixture scores to avoid double-counting
                                 };
                             }
                             const d = teamXg[tid].perGw[gw];
                             d.xG += parseFloat(h.expected_goals) || 0;
                             d.xA += parseFloat(h.expected_assists) || 0;
-                            d.goals = Math.max(d.goals, h.was_home ? (h.team_h_score || 0) : (h.team_a_score || 0));
-                            d.conceded = Math.max(d.conceded, h.was_home ? (h.team_a_score || 0) : (h.team_h_score || 0));
+                            
+                            // Use fixture-keyed dedup for goals/conceded (handles DGWs)
+                            const teamGoals = h.was_home ? (h.team_h_score || 0) : (h.team_a_score || 0);
+                            const teamConceded = h.was_home ? (h.team_a_score || 0) : (h.team_h_score || 0);
+                            if (!d._fixtures[fixtureKey]) {
+                                d._fixtures[fixtureKey] = { goals: teamGoals, conceded: teamConceded };
+                                d.goals += teamGoals;
+                                d.conceded += teamConceded;
+                            }
+                            
                             d.wasHome = h.was_home;
                             d.oppTeam = h.opponent_team;
                             
-                            // xGC: use value from player who played 85+ minutes (same for all)
+                            // xGC: use value from player who played 85+ minutes (per-fixture)
                             if (h.minutes >= 85) {
                                 const xgc = parseFloat(h.expected_goals_conceded) || 0;
-                                if (xgc > d.xGC_90min) d.xGC_90min = xgc;
+                                // In DGWs, accumulate xGC across fixtures
+                                const fxKey = `_xgc_${fixtureKey}`;
+                                if (!d[fxKey]) {
+                                    d[fxKey] = true;
+                                    d.xGC_90min += xgc;
+                                } else if (xgc > 0) {
+                                    // Already have this fixture's xGC — keep the higher value
+                                }
                             }
                         });
                     });
@@ -2323,10 +2341,27 @@
         }
 
         // ===== TEAM ANALYSIS =====
-        const BIG_TEAMS = ['Arsenal', 'Chelsea', 'Liverpool', 'Man City', 'Man Utd', 'Spurs', 'Newcastle', 'Aston Villa'];
+        // Derive "big teams" dynamically from FPL strength ratings (top 8 by avg strength)
+        function getBigTeams(allTeams) {
+            return [...allTeams]
+                .map(t => ({
+                    name: t.name,
+                    avgStrength: (t.strength_attack_home + t.strength_attack_away + t.strength_defence_home + t.strength_defence_away) / 4
+                }))
+                .sort((a, b) => b.avgStrength - a.avgStrength)
+                .slice(0, 8)
+                .map(t => t.name);
+        }
 
         function analyzeTeam(team, allTeams, fixtures) {
             const teamId = team.id;
+            
+            // Compute big teams dynamically (cached per call batch via allTeams reference)
+            if (!analyzeTeam._bigTeams || analyzeTeam._teamCount !== allTeams.length) {
+                analyzeTeam._bigTeams = getBigTeams(allTeams);
+                analyzeTeam._teamCount = allTeams.length;
+            }
+            const bigTeamNames = analyzeTeam._bigTeams;
 
             // Past fixtures (last 5)
             const pastFixtures = fixtures
@@ -2360,7 +2395,7 @@
                 const oppScore = isHome ? f.team_a_score : f.team_h_score;
                 const oppId = isHome ? f.team_a : f.team_h;
                 const opponent = allTeams.find(t => t.id === oppId);
-                const isBigTeam = BIG_TEAMS.includes(opponent?.name);
+                const isBigTeam = bigTeamNames.includes(opponent?.name);
 
                 // Total stats
                 totalGoalsScored += teamScore || 0;
@@ -2496,11 +2531,15 @@
                     fplAttNorm * 0.30
                 ) * 100);
             } else {
-                // Fallback: old method
-                const avgXG = xGHistory.length > 0 ? xGHistory.reduce((a, b) => a + b, 0) / gamesPlayed : 1.0;
-                attackPower = Math.round(Math.min(100, Math.max(0,
-                    (avgGoals * 20) + (avgXG * 15) + (fplAttNorm * 30)
-                )));
+                // Fallback: same 3-component structure, using actual goals in place of xG
+                const seasonGoalRate = Math.min(1, avgGoals / 2.5);                  // 0-2.5 G/g → 0-1
+                const avgXG = xGHistory.length > 0 ? xGHistory.reduce((a, b) => a + b, 0) / gamesPlayed : avgGoals;
+                const estimatedXgRate = Math.min(1, avgXG / 2.5);                    // 0-2.5 xG/g → 0-1
+                attackPower = Math.round((
+                    estimatedXgRate * 0.35 +
+                    seasonGoalRate * 0.35 +
+                    fplAttNorm * 0.30
+                ) * 100);
             }
             attackPower = Math.min(100, Math.max(0, attackPower));
 
@@ -2519,41 +2558,56 @@
                     fplDefNorm * 0.30
                 ) * 100);
             } else {
-                defensePower = Math.round(Math.min(100, Math.max(0,
-                    ((cleanSheets / gamesPlayed) * 40) +
-                    ((2.5 - avgConceded) * 15) +
-                    (fplDefNorm * 30)
-                )));
+                // Fallback: same 3-component structure, using actual GA in place of xGC
+                const seasonGaConcededRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.5)));  // 0 GA/g → 1.0, 2.5 → 0
+                const csRate = Math.min(1, cleanSheets / gamesPlayed);  // CS ratio as quality signal
+                defensePower = Math.round((
+                    seasonGaConcededRate * 0.35 +
+                    csRate * 0.35 +
+                    fplDefNorm * 0.30
+                ) * 100);
             }
             defensePower = Math.min(100, Math.max(0, defensePower));
 
-            // ===== HOME/AWAY ATTACK POWER (with xG recency blend) =====
-            const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                ((homeStats.goals / homeStats.games) * 25) +
-                ((team.strength_attack_home - 900) / 500) * 35 +
-                ((homeStats.wins / homeStats.games) * 30) +
-                (hasRealXg ? (seasonXg.xGpg / 2.5) * 10 : 0)  // xG bonus
-            ))) : attackPower;
+            // ===== HOME/AWAY ATTACK POWER — same structure as overall, venue-specific =====
+            // Uses venue-specific goals + venue-specific FPL strength + xG blend
+            const fplAttHomeNorm = Math.min(1, Math.max(0, (team.strength_attack_home - 900) / 500));
+            const fplAttAwayNorm = Math.min(1, Math.max(0, (team.strength_attack_away - 900) / 500));
+            
+            const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
+                Math.min(1, homeStats.goals / homeStats.games / 2.5) * 0.35 +
+                (hasRealXg ? Math.min(1, seasonXg.xGpg / 2.5) * 0.35 : Math.min(1, homeStats.goals / homeStats.games / 2.5) * 0.35) +
+                fplAttHomeNorm * 0.30
+            ) * 100))) : attackPower;
 
-            const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                ((awayStats.goals / awayStats.games) * 25) +
-                ((team.strength_attack_away - 900) / 500) * 35 +
-                ((awayStats.wins / awayStats.games) * 30) +
-                (hasRealXg ? (seasonXg.xGpg / 2.5) * 10 : 0)
-            ))) : attackPower;
+            const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
+                Math.min(1, awayStats.goals / awayStats.games / 2.5) * 0.35 +
+                (hasRealXg ? Math.min(1, seasonXg.xGpg / 2.5) * 0.35 : Math.min(1, awayStats.goals / awayStats.games / 2.5) * 0.35) +
+                fplAttAwayNorm * 0.30
+            ) * 100))) : attackPower;
 
-            // ===== HOME/AWAY DEFENSE POWER (with xG recency blend) =====
-            const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                ((homeStats.cleanSheets / homeStats.games) * 45) +
-                ((2 - homeStats.conceded / homeStats.games) * 20) +
-                ((team.strength_defence_home - 900) / 500) * 35
-            ))) : defensePower;
+            // ===== HOME/AWAY DEFENSE POWER — same structure as overall, venue-specific + xGC =====
+            const fplDefHomeNorm = Math.min(1, Math.max(0, (team.strength_defence_home - 900) / 500));
+            const fplDefAwayNorm = Math.min(1, Math.max(0, (team.strength_defence_away - 900) / 500));
+            
+            const homeGaConcededRate = homeStats.games > 0 ? Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.5))) : 0.5;
+            const awayGaConcededRate = awayStats.games > 0 ? Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.5))) : 0.5;
+            
+            // xGC component: use season xGC if available, otherwise fall back to GA-based rate
+            const xgcHomeComponent = hasRealXg ? Math.min(1, Math.max(0, 1 - (seasonXg.xGCpg / 2.5))) : homeGaConcededRate;
+            const xgcAwayComponent = hasRealXg ? Math.min(1, Math.max(0, 1 - (seasonXg.xGCpg / 2.5))) : awayGaConcededRate;
+            
+            const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
+                homeGaConcededRate * 0.35 +
+                xgcHomeComponent * 0.35 +
+                fplDefHomeNorm * 0.30
+            ) * 100))) : defensePower;
 
-            const defensePowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                ((awayStats.cleanSheets / awayStats.games) * 45) +
-                ((2 - awayStats.conceded / awayStats.games) * 20) +
-                ((team.strength_defence_away - 900) / 500) * 35
-            ))) : defensePower;
+            const defensePowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
+                awayGaConcededRate * 0.35 +
+                xgcAwayComponent * 0.35 +
+                fplDefAwayNorm * 0.30
+            ) * 100))) : defensePower;
 
             // FIXTURE SCORE (0-100) - Pure fixture opportunity
             const fixtureScore = Math.round(Math.min(100, Math.max(0,
@@ -2627,7 +2681,7 @@
             const gdBonus = Math.min(15, Math.max(-10, recentGD * 3));
 
             let streakBonus = 0;
-            for (let i = reversedResults.length - 1; i >= 0; i--) {
+            for (let i = 0; i < reversedResults.length; i++) {
                 if (reversedResults[i]?.result === 'W') streakBonus += 3;
                 else if (reversedResults[i]?.result === 'D') streakBonus += 1;
                 else break;
@@ -2965,7 +3019,7 @@
                                                 </div>
                                                 <div class="swings-run-mini-fdr">
                                                     ${run.fixtures.slice(0, 7).map(f => `
-                                                        <div class="swings-mini-dot fdr-${Math.round(f.fdr)}">${f.opponent.slice(0,1)}</div>
+                                                        <div class="swings-mini-dot fdr-${Math.round(getEffectiveFdr(f))}">${f.opponent.slice(0,1)}</div>
                                                     `).join('')}
                                                 </div>
                                                 <span class="swings-run-stat" style="color: ${tier.color}">${run.avgFdr}<span style="font-size:10px;font-weight:400;color:var(--text-muted)"> avg</span></span>
@@ -3077,9 +3131,9 @@
 
             // Color mode descriptions
             const colorModeDesc = {
-                fdr: 'FDR difficulty rating',
-                attack: 'Opponent defense weakness (green = leaky defense, good for attackers)',
-                defense: 'Opponent attack threat (green = weak attack, good for defenders)',
+                fdr: 'Standard FDR difficulty rating (1-5)',
+                attack: 'Attack FDR — rates fixtures by opponent\'s defensive strength (venue-adjusted). Low = leaky defense, great for your attackers',
+                defense: 'Defense FDR — rates fixtures by opponent\'s attacking strength (venue-adjusted). Low = weak attack, safe for your defenders',
                 cs: 'Clean sheet probability (green = high CS chance)'
             };
 
@@ -3146,19 +3200,19 @@
                 `;
             } else if (calendarColorMode === 'attack') {
                 return `
-                    <div class="legend-item"><div class="legend-dot" style="background: #4ADE80;"></div><span>Leaky Def (Great)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: #86EFAC;"></div><span>Weak Def</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: #A3A3A3;"></div><span>Average</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: #FB923C;"></div><span>Strong Def</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: #EF4444;"></div><span>Elite Def (Avoid)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-1);"></div><span>1 — Leaky Def (Target)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-2);"></div><span>2 — Weak Def</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-3);"></div><span>3 — Average Def</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-4);"></div><span>4 — Strong Def</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-5);"></div><span>5 — Elite Def (Avoid)</span></div>
                 `;
             } else if (calendarColorMode === 'defense') {
                 return `
-                    <div class="legend-item"><div class="legend-dot" style="background: #4ADE80;"></div><span>Weak Att (Safe)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: #86EFAC;"></div><span>Below Avg</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: #A3A3A3;"></div><span>Average</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: #FB923C;"></div><span>Strong Att</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: #EF4444;"></div><span>Elite Att (Danger)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-1);"></div><span>1 — Weak Att (Safe)</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-2);"></div><span>2 — Below Avg Att</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-3);"></div><span>3 — Average Att</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-4);"></div><span>4 — Strong Att</span></div>
+                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-5);"></div><span>5 — Elite Att (Danger)</span></div>
                 `;
             } else { // cs
                 return `
@@ -3179,6 +3233,49 @@
         function setCalendarColor(mode) {
             calendarColorMode = mode;
             renderCurrentView();
+        }
+
+        // Convert 0-100 power rating to 1-5 FDR scale
+        // Uses percentile-based bucketing: ranks all teams and assigns quintiles
+        // so each FDR level gets ~4 teams, giving an even distribution
+        function powerToFdr(power) {
+            // Build sorted power array from all teams' relevant data
+            // This gets called per-fixture, so we cache the thresholds
+            if (!powerToFdr._thresholds || powerToFdr._cacheKey !== allTeamsData.length) {
+                const powers = allTeamsData.map(t => {
+                    // Average of attack and defense power as overall strength indicator
+                    return (t.attackPower + t.defensePower) / 2;
+                }).sort((a, b) => a - b);
+                
+                if (powers.length >= 5) {
+                    const q = powers.length;
+                    // Quintile boundaries: bottom 20% = FDR 1, next 20% = FDR 2, etc.
+                    powerToFdr._thresholds = [
+                        powers[Math.floor(q * 0.2)],   // below this = FDR 1 (weakest)
+                        powers[Math.floor(q * 0.4)],   // below this = FDR 2
+                        powers[Math.floor(q * 0.6)],   // below this = FDR 3
+                        powers[Math.floor(q * 0.8)]    // below this = FDR 4, above = FDR 5
+                    ];
+                } else {
+                    // Fallback for when team data isn't loaded yet
+                    powerToFdr._thresholds = [28, 40, 55, 68];
+                }
+                powerToFdr._cacheKey = allTeamsData.length;
+            }
+            
+            const t = powerToFdr._thresholds;
+            if (power <= t[0]) return 1;
+            if (power <= t[1]) return 2;
+            if (power <= t[2]) return 3;
+            if (power <= t[3]) return 4;
+            return 5;
+        }
+
+        // Get the effective FDR for a fixture based on the current calendar color mode
+        function getEffectiveFdr(fixture) {
+            if (calendarColorMode === 'attack') return fixture.attackFdr || fixture.fdr;
+            if (calendarColorMode === 'defense') return fixture.defenseFdr || fixture.fdr;
+            return fixture.fdr;
         }
 
         function buildFullSeasonMap() {
@@ -3210,16 +3307,23 @@
                         const awayDef = awayTeam?.defensePower || 50;
                         const bttsLikely = (homeAtt > 50 && awayAtt > 50 && homeDef < 60 && awayDef < 60);
                         
+                        // Venue-adjusted opponent strengths:
+                        // Home team faces the AWAY version of the opponent
+                        const oppDefPowerVenueAdj = awayTeam?.defensePowerAway || awayTeam?.defensePower || 50;
+                        const oppAttPowerVenueAdj = awayTeam?.attackPowerAway || awayTeam?.attackPower || 50;
+                        
                         fixtureMap[f.team_h][f.event].push({
                             opponent: awayTeam?.shortName || '???',
                             opponentId: f.team_a,
                             isHome: true,
                             fdr: f.team_h_difficulty || 3,
+                            attackFdr: powerToFdr(oppDefPowerVenueAdj),   // Attackers care about opponent DEFENSE
+                            defenseFdr: powerToFdr(oppAttPowerVenueAdj),  // Defenders care about opponent ATTACK
                             finished: f.finished,
                             gw: f.event,
                             csChance,
-                            oppDefensePower: awayTeam?.defensePower || 50,
-                            oppAttackPower: awayTeam?.attackPower || 50,
+                            oppDefensePower: oppDefPowerVenueAdj,
+                            oppAttackPower: oppAttPowerVenueAdj,
                             bttsLikely
                         });
                     }
@@ -3237,16 +3341,23 @@
                         const awayDef = awayTeam?.defensePower || 50;
                         const bttsLikely = (homeAtt > 50 && awayAtt > 50 && homeDef < 60 && awayDef < 60);
                         
+                        // Venue-adjusted opponent strengths:
+                        // Away team faces the HOME version of the opponent
+                        const oppDefPowerVenueAdj = homeTeam?.defensePowerHome || homeTeam?.defensePower || 50;
+                        const oppAttPowerVenueAdj = homeTeam?.attackPowerHome || homeTeam?.attackPower || 50;
+                        
                         fixtureMap[f.team_a][f.event].push({
                             opponent: homeTeam?.shortName || '???',
                             opponentId: f.team_h,
                             isHome: false,
                             fdr: f.team_a_difficulty || 3,
+                            attackFdr: powerToFdr(oppDefPowerVenueAdj),   // Attackers care about opponent DEFENSE
+                            defenseFdr: powerToFdr(oppAttPowerVenueAdj),  // Defenders care about opponent ATTACK
                             finished: f.finished,
                             gw: f.event,
                             csChance,
-                            oppDefensePower: homeTeam?.defensePower || 50,
-                            oppAttackPower: homeTeam?.attackPower || 50,
+                            oppDefensePower: oppDefPowerVenueAdj,
+                            oppAttackPower: oppAttPowerVenueAdj,
                             bttsLikely
                         });
                     }
@@ -3270,12 +3381,29 @@
             const defenseBonus = (teamDef - 50) * 0.3;
             const attackPenalty = (oppAtt - 50) * 0.25;
             
-            const csChance = Math.round(Math.min(65, Math.max(8, baseCS + defenseBonus - attackPenalty)));
+            // Incorporate real xGC data if available (stronger signal than FPL ratings)
+            let xgcAdjustment = 0;
+            const teamXgData = window.teamXgData?.[team.id];
+            const oppXgData = window.teamXgData?.[opponent.id];
+            if (teamXgData?.hasPerGwData && oppXgData?.hasPerGwData) {
+                const teamSeasonXg = getTeamSeasonXg(team.id);
+                const oppSeasonXg = getTeamSeasonXg(opponent.id);
+                if (teamSeasonXg && oppSeasonXg) {
+                    // Teams conceding less xG than average get a CS boost
+                    // Average PL xGC/game is roughly 1.3
+                    const avgLeagueXgcPg = 1.3;
+                    const teamXgcQuality = avgLeagueXgcPg - teamSeasonXg.xGCpg;  // positive = better than avg
+                    const oppXgQuality = oppSeasonXg.xGpg - avgLeagueXgcPg;       // positive = opponent scores more than avg
+                    xgcAdjustment = (teamXgcQuality * 8) - (oppXgQuality * 6);    // scale to ~percentage points
+                }
+            }
+            
+            const csChance = Math.round(Math.min(65, Math.max(8, baseCS + defenseBonus - attackPenalty + xgcAdjustment)));
             return csChance;
         }
 
         function renderCalendarRows(fixtureMap, displayGWs, easyRuns) {
-            // Sort teams by average FDR (best fixtures first)
+            // Sort teams by average FDR for the current mode (best fixtures first)
             const sortedTeams = [...allTeamsData].sort((a, b) => {
                 const avgA = calculateAvgFDR(fixtureMap[a.id], displayGWs);
                 const avgB = calculateAvgFDR(fixtureMap[b.id], displayGWs);
@@ -3311,21 +3439,13 @@
             if (calendarColorMode === 'fdr') {
                 return `fdr-${Math.round(fixture.fdr)}`;
             } else if (calendarColorMode === 'attack') {
-                // Green = weak opponent defense (good for attackers)
-                const oppDef = fixture.oppDefensePower || 50;
-                if (oppDef <= 35) return 'color-1'; // Very weak defense
-                if (oppDef <= 45) return 'color-2';
-                if (oppDef <= 55) return 'color-3';
-                if (oppDef <= 65) return 'color-4';
-                return 'color-5'; // Elite defense
+                // Attack FDR: based on opponent's defensive strength (venue-adjusted)
+                // Lower opponent defense = easier for your attackers = lower FDR
+                return `fdr-${Math.round(fixture.attackFdr || fixture.fdr)}`;
             } else if (calendarColorMode === 'defense') {
-                // Green = weak opponent attack (safe for defenders)
-                const oppAtt = fixture.oppAttackPower || 50;
-                if (oppAtt <= 35) return 'color-1'; // Very weak attack
-                if (oppAtt <= 45) return 'color-2';
-                if (oppAtt <= 55) return 'color-3';
-                if (oppAtt <= 65) return 'color-4';
-                return 'color-5'; // Elite attack
+                // Defense FDR: based on opponent's attacking strength (venue-adjusted)
+                // Lower opponent attack = safer for your defenders = lower FDR
+                return `fdr-${Math.round(fixture.defenseFdr || fixture.fdr)}`;
             } else { // cs
                 const cs = fixture.csChance || 30;
                 if (cs >= 50) return 'color-1';
@@ -3341,12 +3461,19 @@
             
             const base = `GW${gw}: ${fixture.opponent} (${fixture.isHome ? 'H' : 'A'})`;
             const fdr = `FDR: ${fixture.fdr}`;
+            const atkFdr = `Att FDR: ${fixture.attackFdr || '?'}`;
+            const defFdr = `Def FDR: ${fixture.defenseFdr || '?'}`;
             const cs = `CS: ${fixture.csChance || '?'}%`;
             const oppDef = `Opp Def: ${fixture.oppDefensePower || '?'}`;
             const oppAtt = `Opp Att: ${fixture.oppAttackPower || '?'}`;
             const btts = fixture.bttsLikely ? '🔥 BTTS Likely' : '';
             
-            return `${base}\n${fdr} | ${cs}${btts ? '\n' + btts : ''}\n${oppDef} | ${oppAtt}`;
+            if (calendarColorMode === 'attack') {
+                return `${base}\nAttack FDR: ${fixture.attackFdr} (Opp Def: ${fixture.oppDefensePower})\nStd FDR: ${fixture.fdr} | ${cs}${btts ? '\n' + btts : ''}`;
+            } else if (calendarColorMode === 'defense') {
+                return `${base}\nDefense FDR: ${fixture.defenseFdr} (Opp Att: ${fixture.oppAttackPower})\nStd FDR: ${fixture.fdr} | ${cs}${btts ? '\n' + btts : ''}`;
+            }
+            return `${base}\n${fdr} | ${atkFdr} | ${defFdr}\n${cs} | ${oppDef} | ${oppAtt}${btts ? '\n' + btts : ''}`;
         }
 
         function renderFixtureCell(fixtures, gw, easyRuns, team) {
@@ -3405,7 +3532,7 @@
                 if (fixtures && fixtures.length > 0) {
                     fixtures.forEach(f => {
                         if (!f.finished) {
-                            total += f.fdr;
+                            total += getEffectiveFdr(f);
                             count++;
                         }
                     });
@@ -3595,46 +3722,10 @@
                 
                 if (stats[teamId]) {
                     stats[teamId].form = last5Games.map(g => g.result);
-                    last5Games.forEach(g => addToBucket_simple(stats[teamId].last5, g));
-                    last10Games.forEach(g => addToBucket_simple(stats[teamId].last10, g));
+                    last5Games.forEach(g => addToBucket(stats[teamId].last5, g));
+                    last10Games.forEach(g => addToBucket(stats[teamId].last10, g));
                 }
             });
-
-            // Simple add for last5 reuse
-            function addToBucket_simple(bucket, rec) {
-                bucket.p++;
-                bucket.gf += rec.gf;
-                bucket.ga += rec.ga;
-                if (rec.result === 'W') bucket.w++;
-                else if (rec.result === 'D') bucket.d++;
-                else bucket.l++;
-                if (rec.cs) bucket.cs++;
-                if (rec.fts) bucket.fts++;
-                bucket.assists += rec.assists;
-                bucket.ownGoals += rec.ownGoals;
-                bucket.penMissed += rec.penMissed;
-                bucket.penSaved += rec.penSaved;
-                bucket.yellowCards += rec.yellowCards;
-                bucket.redCards += rec.redCards;
-                bucket.saves += rec.saves;
-                bucket.bonus += rec.bonus;
-                bucket.bps += rec.bps;
-                if (rec.btts) bucket.btts++;
-                if (rec.o25) bucket.o25++;
-                if (rec.isHome) {
-                    bucket.homeP++;
-                    if (rec.result === 'W') bucket.homeW++;
-                    bucket.homeGf += rec.gf;
-                    bucket.homeGa += rec.ga;
-                    if (rec.cs) bucket.homeCs++;
-                } else {
-                    bucket.awayP++;
-                    if (rec.result === 'W') bucket.awayW++;
-                    bucket.awayGf += rec.gf;
-                    bucket.awayGa += rec.ga;
-                    if (rec.cs) bucket.awayCs++;
-                }
-            }
 
             return stats;
         }
@@ -3741,8 +3832,18 @@
             return cats;
         }
 
+        // Cached season stats — invalidated when data changes
+        let _cachedSeasonStats = null;
+        let _cachedStatsKey = null;
+        
         function renderStatsTable(container) {
-            const seasonStats = calculateSeasonStats();
+            // Build cache key from data fingerprint
+            const cacheKey = `${allTeamsData.length}-${window.rawFixturesData?.length}`;
+            if (_cachedStatsKey !== cacheKey) {
+                _cachedSeasonStats = calculateSeasonStats();
+                _cachedStatsKey = cacheKey;
+            }
+            const seasonStats = _cachedSeasonStats;
             const cats = getStatsColumns();
             const catKeys = Object.keys(cats);
 
@@ -3825,7 +3926,7 @@
                         statsSort.col = col;
                         statsSort.dir = 'desc';
                     }
-                    updateStatsTable(calculateSeasonStats());
+                    updateStatsTable(_cachedSeasonStats || calculateSeasonStats());
                 });
             });
         }
@@ -3872,11 +3973,27 @@
                     gAndA: s.gf + s.assists,
                     gapg_combined: (s.gf + s.assists) / games,
                     csBonus: s.cs + s.saves,
-                    // xG data from team analysis
-                    xGpg: (() => { const sx = getTeamSeasonXg(team.id); return sx ? sx.xGpg : 0; })(),
-                    xGCpg: (() => { const sx = getTeamSeasonXg(team.id); return sx ? sx.xGCpg : 0; })(),
-                    xGdiffTotal: (() => { const sx = getTeamSeasonXg(team.id); return sx ? sx.xGoverperformance : 0; })(),
-                    xGCdiffTotal: (() => { const sx = getTeamSeasonXg(team.id); return sx ? (sx.totalConceded - sx.totalXgc) : 0; })(),
+                    // xG data — matched to current statsView window
+                    xGpg: (() => {
+                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? r.xGpg : 0; }
+                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? r.xGpg : 0; }
+                        const sx = getTeamSeasonXg(team.id); return sx ? sx.xGpg : 0;
+                    })(),
+                    xGCpg: (() => {
+                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? r.xGCpg : 0; }
+                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? r.xGCpg : 0; }
+                        const sx = getTeamSeasonXg(team.id); return sx ? sx.xGCpg : 0;
+                    })(),
+                    xGdiffTotal: (() => {
+                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? r.xGoverperformance : 0; }
+                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? r.xGoverperformance : 0; }
+                        const sx = getTeamSeasonXg(team.id); return sx ? sx.xGoverperformance : 0;
+                    })(),
+                    xGCdiffTotal: (() => {
+                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? (r.totalConceded - r.totalXgc) : 0; }
+                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? (r.totalConceded - r.totalXgc) : 0; }
+                        const sx = getTeamSeasonXg(team.id); return sx ? (sx.totalConceded - sx.totalXgc) : 0;
+                    })(),
                     r6xGpg: (() => { const r = getTeamXgWindow(team.id, 6); return r ? r.xGpg : 0; })(),
                     r6gapg: (() => { const r = getTeamXgWindow(team.id, 6); return r ? r.gapg : 0; })(),
                 };
@@ -3907,8 +4024,13 @@
                 const arr = allVals[key];
                 if (!arr || arr.length === 0) return '';
                 const sorted = [...arr].sort((a, b) => a - b);
-                const rank = sorted.indexOf(val);
-                const pct = rank / (sorted.length - 1);
+                // Use average rank for ties instead of indexOf (which always returns first occurrence)
+                const matchingIndices = [];
+                sorted.forEach((v, i) => { if (v === val) matchingIndices.push(i); });
+                const avgRank = matchingIndices.length > 0 
+                    ? matchingIndices.reduce((a, b) => a + b, 0) / matchingIndices.length 
+                    : sorted.indexOf(val);
+                const pct = avgRank / (sorted.length - 1);
                 if (col.inverted) {
                     if (pct <= 0.25) return 'good';
                     if (pct >= 0.75) return 'bad';
@@ -4002,22 +4124,24 @@
 
                         if (windowFixtures.length < MIN_WINDOW) continue;
 
-                        const avgFdr = windowFixtures.reduce((s, f) => s + f.fdr, 0) / windowFixtures.length;
+                        const avgFdr = windowFixtures.reduce((s, f) => s + getEffectiveFdr(f), 0) / windowFixtures.length;
 
                         // Only include windows with avg FDR ≤ 3.0 (generous)
                         if (avgFdr > 3.0) continue;
 
                         // Count how many fixtures are genuinely easy (FDR ≤ 2)
-                        const easyCount = windowFixtures.filter(f => f.fdr <= 2).length;
+                        const easyCount = windowFixtures.filter(f => getEffectiveFdr(f) <= 2).length;
                         // Skip if none are actually easy
                         if (easyCount === 0) continue;
 
                         const homeCount = windowFixtures.filter(f => f.isHome).length;
-                        const hardCount = windowFixtures.filter(f => f.fdr >= 4).length;
+                        const hardCount = windowFixtures.filter(f => getEffectiveFdr(f) >= 4).length;
 
                         // Composite score: lower is better
                         // Rewards: low avg FDR, longer runs, more home games, fewer hard games
-                        const score = avgFdr - (windowFixtures.length * 0.08) - (homeCount * 0.05) + (hardCount * 0.15);
+                        // Length bonus scales quadratically to properly reward longer useful runs
+                        const lengthBonus = windowFixtures.length * 0.05 + Math.pow(windowFixtures.length - MIN_WINDOW, 1.3) * 0.04;
+                        const score = avgFdr - lengthBonus - (homeCount * 0.06) + (hardCount * 0.20);
 
                         allRuns.push({
                             teamId: team.id,
@@ -4097,12 +4221,12 @@
 
                 const avgFirst = first3.reduce((sum, gw) => {
                     const f = teamFixtures[gw];
-                    return sum + (f && f[0] ? f[0].fdr : 3);
+                    return sum + (f && f[0] ? getEffectiveFdr(f[0]) : 3);
                 }, 0) / 3;
 
                 const avgNext = next3.reduce((sum, gw) => {
                     const f = teamFixtures[gw];
-                    return sum + (f && f[0] ? f[0].fdr : 3);
+                    return sum + (f && f[0] ? getEffectiveFdr(f[0]) : 3);
                 }, 0) / 3;
 
                 const swing = avgFirst - avgNext;
@@ -4145,7 +4269,7 @@
 
                 const getAvg = (gws) => gws.reduce((sum, gw) => {
                     const f = teamFixtures[gw];
-                    return sum + (f && f[0] ? f[0].fdr : 3);
+                    return sum + (f && f[0] ? getEffectiveFdr(f[0]) : 3);
                 }, 0) / gws.length;
 
                 const getFixtures = (gws) => gws.map(gw => {
@@ -4317,12 +4441,13 @@
                 <div class="modal-section">
                     <div class="modal-section-title">Fixture Breakdown</div>
                     ${run.fixtures.map(f => {
-                        const barWidth = Math.max(10, (5 - f.fdr) / 4 * 100);
-                        const barColor = getFdrColor(f.fdr);
+                        const effFdr = getEffectiveFdr(f);
+                        const barWidth = Math.max(10, (5 - effFdr) / 4 * 100);
+                        const barColor = getFdrColor(effFdr);
                         return `
                             <div class="modal-fdr-row">
                                 <span class="modal-fdr-gw">GW${f.gw}</span>
-                                <div class="modal-fdr-dot fdr-${Math.round(f.fdr)}" style="color: ${getFdrTextColor(f.fdr)}">${Math.round(f.fdr)}</div>
+                                <div class="modal-fdr-dot fdr-${Math.round(effFdr)}" style="color: ${getFdrTextColor(effFdr)}">${Math.round(effFdr)}</div>
                                 <span class="modal-fdr-opp">${f.opponent}</span>
                                 <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
                                 <div class="modal-fdr-bar-container">
@@ -4336,11 +4461,13 @@
                 <div class="modal-section">
                     <div class="modal-section-title">FDR Distribution</div>
                     <div style="display: flex; gap: 3px; margin-bottom: var(--space-3);">
-                        ${run.fixtures.map(f => `
-                            <div style="flex: 1; height: ${24 + f.fdr * 8}px; border-radius: var(--radius-sm); background: ${getFdrColor(f.fdr)}; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px;">
-                                <span style="font-size: 8px; font-weight: 700; color: ${getFdrTextColor(f.fdr)}">${f.opponent}</span>
-                            </div>
-                        `).join('')}
+                        ${run.fixtures.map(f => {
+                            const effFdr = getEffectiveFdr(f);
+                            return `
+                            <div style="flex: 1; height: ${24 + effFdr * 8}px; border-radius: var(--radius-sm); background: ${getFdrColor(effFdr)}; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px;">
+                                <span style="font-size: 8px; font-weight: 700; color: ${getFdrTextColor(effFdr)}">${f.opponent}</span>
+                            </div>`;
+                        }).join('')}
                     </div>
                 </div>
 
@@ -4424,15 +4551,16 @@
                 <div class="modal-section">
                     <div class="modal-section-title">Current Fixtures (GW${currentGW}–${currentGW + 2})</div>
                     ${s.currentFixtures.map(f => {
-                        const barWidth = Math.max(10, (5 - f.fdr) / 4 * 100);
+                        const effFdr = getEffectiveFdr(f);
+                        const barWidth = Math.max(10, (5 - effFdr) / 4 * 100);
                         return `
                             <div class="modal-fdr-row">
                                 <span class="modal-fdr-gw">GW${f.gw}</span>
-                                <div class="modal-fdr-dot fdr-${Math.round(f.fdr)}" style="color: ${getFdrTextColor(f.fdr)}">${Math.round(f.fdr)}</div>
+                                <div class="modal-fdr-dot fdr-${Math.round(effFdr)}" style="color: ${getFdrTextColor(effFdr)}">${Math.round(effFdr)}</div>
                                 <span class="modal-fdr-opp">${f.opponent}</span>
                                 <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
                                 <div class="modal-fdr-bar-container">
-                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(f.fdr)};"></div>
+                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(effFdr)};"></div>
                                 </div>
                             </div>
                         `;
@@ -4442,15 +4570,16 @@
                 <div class="modal-section">
                     <div class="modal-section-title">After Swing (GW${s.swingGW}+)</div>
                     ${s.nextFixtures.map(f => {
-                        const barWidth = Math.max(10, (5 - f.fdr) / 4 * 100);
+                        const effFdr = getEffectiveFdr(f);
+                        const barWidth = Math.max(10, (5 - effFdr) / 4 * 100);
                         return `
                             <div class="modal-fdr-row">
                                 <span class="modal-fdr-gw">GW${f.gw}</span>
-                                <div class="modal-fdr-dot fdr-${Math.round(f.fdr)}" style="color: ${getFdrTextColor(f.fdr)}">${Math.round(f.fdr)}</div>
+                                <div class="modal-fdr-dot fdr-${Math.round(effFdr)}" style="color: ${getFdrTextColor(effFdr)}">${Math.round(effFdr)}</div>
                                 <span class="modal-fdr-opp">${f.opponent}</span>
                                 <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
                                 <div class="modal-fdr-bar-container">
-                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(f.fdr)};"></div>
+                                    <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(effFdr)};"></div>
                                 </div>
                             </div>
                         `;
@@ -4473,7 +4602,7 @@
                         </div>
                         <div style="display: flex; gap: 2px;">
                             ${s.allFutureFixtures.map((f, i) => `
-                                <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 700; background: ${getFdrColor(f.fdr)}; color: ${getFdrTextColor(f.fdr)}; ${i === 4 ? 'border-left: 2px solid var(--surface-1); border-right: 2px solid var(--surface-1);' : ''}">
+                                <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 700; background: ${getFdrColor(getEffectiveFdr(f))}; color: ${getFdrTextColor(getEffectiveFdr(f))}; ${i === 4 ? 'border-left: 2px solid var(--surface-1); border-right: 2px solid var(--surface-1);' : ''}">
                                     ${f.opponent}
                                 </div>
                             `).join('')}
