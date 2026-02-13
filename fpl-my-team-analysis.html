@@ -1771,11 +1771,32 @@
         }
 
         // ===== INITIALIZATION =====
+        const DEFAULT_SETTINGS = {
+            sellSensitivity: 1.0,
+            fixtureWeight: 1.0,
+            formWeight: 1.0,
+            valueWeight: 1.0,
+            minutesThreshold: 60,
+            premiumHarshness: 1.0
+        };
+
         window.addEventListener('load', () => {
-            // Load saved settings
+            // Load saved settings — merge with defaults so missing/old keys don't produce NaN
             const savedSettings = localStorage.getItem('fpl_analysis_settings');
             if (savedSettings) {
-                userSettings = JSON.parse(savedSettings);
+                try {
+                    const parsed = JSON.parse(savedSettings);
+                    userSettings = { ...DEFAULT_SETTINGS, ...parsed };
+                    // Validate all numeric settings — fall back to defaults if corrupted
+                    for (const key of Object.keys(DEFAULT_SETTINGS)) {
+                        if (typeof userSettings[key] !== 'number' || isNaN(userSettings[key])) {
+                            userSettings[key] = DEFAULT_SETTINGS[key];
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Invalid saved settings, using defaults');
+                    userSettings = { ...DEFAULT_SETTINGS };
+                }
             }
 
             // Load saved team ID
