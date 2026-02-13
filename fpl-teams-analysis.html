@@ -530,6 +530,16 @@
             color: var(--color-success);
         }
 
+        .xg-badge.rising {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--color-success);
+        }
+
+        .xg-badge.falling {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--color-error);
+        }
+
         /* Tags Row */
         .tags-row {
             display: flex;
@@ -2056,11 +2066,14 @@
         // Data URLs - served from local files updated by GitHub Actions
         const BOOTSTRAP_URL = 'data/bootstrap-static.json';
         const FIXTURES_URL = 'data/fixtures.json';
+        const PLAYERS_URL = 'data/players-data.json';
         
         let allTeamsData = [];
         let currentView = 'attack';
         let currentGW = 1;
         window.rawFixturesData = [];
+        window.teamXgData = {};      // Per-GW xG/xGC aggregated by team
+        window.playerElements = [];  // Raw bootstrap elements (for season xG)
 
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', () => {
@@ -2119,6 +2132,7 @@
                 
                 // Store fixtures globally (includes stats array with goals, assists, cards, bonus etc.)
                 window.rawFixturesData = fixturesData;
+                window.playerElements = bootstrapData.elements || [];
                 
                 // Log stats availability
                 const fixturesWithStats = fixturesData.filter(f => f.stats && f.stats.length > 0);
@@ -2127,6 +2141,11 @@
                 currentGW = bootstrapData.events.find(e => e.is_current)?.id || 
                                   bootstrapData.events.find(e => e.is_next)?.id || 1;
                 document.getElementById('currentGW').textContent = `GW${currentGW}`;
+
+                // ===== BUILD TEAM xG DATA =====
+                // Try loading players-data.json for per-GW xG (gold standard)
+                // Falls back to bootstrap season-level xG if unavailable
+                await buildTeamXgData(bootstrapData);
 
                 allTeamsData = bootstrapData.teams.map(team => 
                     analyzeTeam(team, bootstrapData.teams, fixturesData)
@@ -2139,6 +2158,168 @@
                 console.error('Error:', error);
                 showLoading(false);
             }
+        }
+
+        // ===== xG DATA BUILDER =====
+        async function buildTeamXgData(bootstrapData) {
+            const teamXg = {};
+            const teams = bootstrapData.teams;
+            
+            // Initialize all teams
+            teams.forEach(t => {
+                teamXg[t.id] = {
+                    // Season totals (from bootstrap elements)
+                    seasonXg: 0, seasonXa: 0, seasonXgc: 0, seasonGoals: 0, seasonAssists: 0, seasonConceded: 0, seasonGames: 0,
+                    // Per-GW breakdown (populated from players-data.json if available)
+                    perGw: {},
+                    hasPerGwData: false
+                };
+            });
+
+            // 1. Season-level xG from bootstrap elements (always available)
+            (bootstrapData.elements || []).forEach(p => {
+                if (p.minutes > 0 && teamXg[p.team]) {
+                    const t = teamXg[p.team];
+                    t.seasonXg += parseFloat(p.expected_goals) || 0;
+                    t.seasonXa += parseFloat(p.expected_assists) || 0;
+                    t.seasonGoals += p.goals_scored || 0;
+                    t.seasonAssists += p.assists || 0;
+                }
+            });
+
+            // Count season games from fixtures
+            const finishedFixtures = window.rawFixturesData.filter(f => f.finished && f.team_h_score !== null);
+            finishedFixtures.forEach(f => {
+                if (teamXg[f.team_h]) teamXg[f.team_h].seasonGames++;
+                if (teamXg[f.team_a]) teamXg[f.team_a].seasonGames++;
+            });
+
+            // Season xGC: for each fixture, home team's xGC = away team's xG and vice versa
+            // We'll compute this after per-GW data is loaded, or estimate from fixture results
+            // For now, compute from the goals conceded in bootstrap
+            finishedFixtures.forEach(f => {
+                if (teamXg[f.team_h]) teamXg[f.team_h].seasonConceded += f.team_a_score || 0;
+                if (teamXg[f.team_a]) teamXg[f.team_a].seasonConceded += f.team_h_score || 0;
+            });
+
+            // 2. Try loading per-GW xG from players-data.json (much richer)
+            try {
+                const playersRes = await fetch(PLAYERS_URL);
+                if (playersRes.ok) {
+                    const playersData = await playersRes.json();
+                    console.log(`🎯 Loaded players-data.json: ${playersData.metadata?.playerCount} players with per-GW history`);
+                    
+                    (playersData.players || []).forEach(player => {
+                        const tid = player.team;
+                        if (!teamXg[tid]) return;
+                        
+                        (player.history || []).forEach(h => {
+                            const gw = h.round;
+                            if (!teamXg[tid].perGw[gw]) {
+                                teamXg[tid].perGw[gw] = {
+                                    xG: 0, xA: 0, xGC: 0,
+                                    goals: 0, assists: 0, conceded: 0,
+                                    wasHome: null, oppTeam: null,
+                                    xGC_90min: 0 // xGC from a 90-min player (= team xGC)
+                                };
+                            }
+                            const d = teamXg[tid].perGw[gw];
+                            d.xG += parseFloat(h.expected_goals) || 0;
+                            d.xA += parseFloat(h.expected_assists) || 0;
+                            d.goals = Math.max(d.goals, h.was_home ? (h.team_h_score || 0) : (h.team_a_score || 0));
+                            d.conceded = Math.max(d.conceded, h.was_home ? (h.team_a_score || 0) : (h.team_h_score || 0));
+                            d.wasHome = h.was_home;
+                            d.oppTeam = h.opponent_team;
+                            
+                            // xGC: use value from player who played 85+ minutes (same for all)
+                            if (h.minutes >= 85) {
+                                const xgc = parseFloat(h.expected_goals_conceded) || 0;
+                                if (xgc > d.xGC_90min) d.xGC_90min = xgc;
+                            }
+                        });
+                    });
+                    
+                    // Mark teams that have per-GW data
+                    teams.forEach(t => {
+                        const gwKeys = Object.keys(teamXg[t.id].perGw);
+                        if (gwKeys.length > 0) {
+                            teamXg[t.id].hasPerGwData = true;
+                            // Also compute season xGC from per-GW data (more accurate)
+                            teamXg[t.id].seasonXgc = gwKeys.reduce((sum, gw) => 
+                                sum + teamXg[t.id].perGw[gw].xGC_90min, 0);
+                        }
+                    });
+                    
+                    const teamsWithData = teams.filter(t => teamXg[t.id].hasPerGwData).length;
+                    console.log(`🎯 Per-GW xG data available for ${teamsWithData}/20 teams`);
+                }
+            } catch (e) {
+                console.log('⚠️ players-data.json not available, using season-level xG only');
+            }
+
+            window.teamXgData = teamXg;
+        }
+
+        // Helper: get team xG stats for a window of recent GWs
+        function getTeamXgWindow(teamId, windowSize = 6) {
+            const data = window.teamXgData[teamId];
+            if (!data || !data.hasPerGwData) return null;
+            
+            const gws = Object.keys(data.perGw).map(Number).sort((a, b) => a - b);
+            const recentGws = gws.slice(-windowSize);
+            if (recentGws.length === 0) return null;
+            
+            const n = recentGws.length;
+            const totals = recentGws.reduce((acc, gw) => {
+                const d = data.perGw[gw];
+                acc.xG += d.xG;
+                acc.xA += d.xA;
+                acc.xGC += d.xGC_90min;
+                acc.goals += d.goals;
+                acc.assists += d.assists;
+                acc.conceded += d.conceded;
+                acc.homeGames += d.wasHome ? 1 : 0;
+                return acc;
+            }, { xG: 0, xA: 0, xGC: 0, goals: 0, assists: 0, conceded: 0, homeGames: 0 });
+            
+            return {
+                games: n,
+                xGpg: totals.xG / n,
+                xApg: totals.xA / n,
+                xGCpg: totals.xGC / n,
+                gpg: totals.goals / n,
+                apg: totals.assists / n,
+                gapg: totals.conceded / n,
+                totalXg: totals.xG,
+                totalGoals: totals.goals,
+                totalXgc: totals.xGC,
+                totalConceded: totals.conceded,
+                homeGames: totals.homeGames,
+                xGoverperformance: totals.goals - totals.xG,
+                xGCoverperformance: totals.xGC - totals.conceded  // positive = conceding less than expected (good)
+            };
+        }
+
+        // Helper: get team season xG averages
+        function getTeamSeasonXg(teamId) {
+            const data = window.teamXgData[teamId];
+            if (!data) return null;
+            
+            const g = data.seasonGames || 1;
+            return {
+                games: data.seasonGames,
+                xGpg: data.seasonXg / g,
+                xApg: data.seasonXa / g,
+                xGCpg: data.seasonXgc / g,
+                gpg: data.seasonGoals / g,
+                gapg: data.seasonConceded / g,
+                totalXg: data.seasonXg,
+                totalGoals: data.seasonGoals,
+                totalXgc: data.seasonXgc,
+                totalConceded: data.seasonConceded,
+                xGoverperformance: data.seasonGoals - data.seasonXg,
+                xGCoverperformance: data.seasonXgc - data.seasonConceded
+            };
         }
 
         // ===== TEAM ANALYSIS =====
@@ -2226,12 +2407,24 @@
                     isBigTeam
                 });
 
-                // Calculate xG based on FPL strength ratings
-                const teamAttack = isHome ? team.strength_attack_home : team.strength_attack_away;
-                const oppDefense = isHome ? opponent?.strength_defence_away : opponent?.strength_defence_home;
-                const xG = 0.8 + ((teamAttack - 1000) / 400) * 1.0 - ((oppDefense - 1000) / 400) * 0.5 + (isHome ? 0.25 : 0);
-                xGHistory.push(Math.max(0.3, Math.min(3.5, xG)));
+                // Per-GW real xG from player data (if available)
+                const gwXg = window.teamXgData[teamId]?.perGw?.[f.event];
+                if (gwXg) {
+                    xGHistory.push(gwXg.xG);
+                } else {
+                    // Fallback: estimate from FPL strength ratings
+                    const teamAttack = isHome ? team.strength_attack_home : team.strength_attack_away;
+                    const oppDefense = isHome ? opponent?.strength_defence_away : opponent?.strength_defence_home;
+                    const estXG = 0.8 + ((teamAttack - 1000) / 400) * 1.0 - ((oppDefense - 1000) / 400) * 0.5 + (isHome ? 0.25 : 0);
+                    xGHistory.push(Math.max(0.3, Math.min(3.5, estXG)));
+                }
             });
+
+            // ===== REAL xG DATA (from players-data.json) =====
+            const seasonXg = getTeamSeasonXg(teamId);
+            const recent6Xg = getTeamXgWindow(teamId, 6);
+            const recent10Xg = getTeamXgWindow(teamId, 10);
+            const hasRealXg = seasonXg && seasonXg.totalXg > 0;
 
             // ===== FUTURE FIXTURES ANALYSIS =====
             const futureDetails = [];
@@ -2248,7 +2441,7 @@
                 // Calculate Clean Sheet probability for this fixture
                 const teamDefStrength = isHome ? team.strength_defence_home : team.strength_defence_away;
                 const oppAttStrength = isHome ? opponent?.strength_attack_away : opponent?.strength_attack_home;
-                const csBaseChance = isHome ? 0.38 : 0.28; // Base CS rates
+                const csBaseChance = isHome ? 0.38 : 0.28;
                 const csChance = Math.round(Math.min(65, Math.max(10, 
                     csBaseChance * 100 * (teamDefStrength / (oppAttStrength || 1000)) * 0.95
                 )));
@@ -2276,45 +2469,80 @@
             const homeFixtureCount = futureDetails.filter(f => f.isHome).length;
             const awayFixtureCount = futureDetails.length - homeFixtureCount;
 
-            // ===== CALCULATE PURE METRICS (NO FDR INFLUENCE) =====
+            // ===== CALCULATE METRICS WITH REAL xG + RECENCY WEIGHTING =====
             const gamesPlayed = pastFixtures.length || 1;
-            const avgXG = xGHistory.length > 0 ? xGHistory.reduce((a, b) => a + b, 0) / gamesPlayed : 1.0;
             const avgGoals = totalGoalsScored / gamesPlayed;
             const avgConceded = totalGoalsConceded / gamesPlayed;
             const cleanSheets = homeStats.cleanSheets + awayStats.cleanSheets;
 
-            // PURE ATTACK POWER (0-100) - No FDR!
-            // Based on: actual goals, xG, FPL strength rating
+            // FPL strength ratings (normalized 0-1 range)
             const fplAttackStrength = (team.strength_attack_home + team.strength_attack_away) / 2;
-            const attackPower = Math.round(Math.min(100, Math.max(0,
-                (avgGoals * 20) +                                    // Actual output (max ~40 for 2 goals/game)
-                (avgXG * 15) +                                       // Expected output (max ~30)
-                ((fplAttackStrength - 900) / 500) * 30              // FPL rating normalized (0-30)
-            )));
-
-            // PURE DEFENSE POWER (0-100) - No FDR!
-            // Based on: clean sheets, goals conceded, FPL strength rating
             const fplDefenseStrength = (team.strength_defence_home + team.strength_defence_away) / 2;
-            const defensePower = Math.round(Math.min(100, Math.max(0,
-                ((cleanSheets / gamesPlayed) * 40) +                 // CS rate (max 40)
-                ((2.5 - avgConceded) * 15) +                         // Goals conceded inverse (max ~30)
-                ((fplDefenseStrength - 900) / 500) * 30             // FPL rating normalized (0-30)
-            )));
+            const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));  // 900-1400 → 0-1
+            const fplDefNorm = Math.min(1, Math.max(0, (fplDefenseStrength - 900) / 500));
 
-            // Home/Away Attack Power
+            // ===== ATTACK POWER (0-100) — xG-informed + recency-weighted =====
+            // Three components blended:
+            //   35% Season xG rate (sustainable quality)
+            //   35% Last 6 actual goals/game (recent output)
+            //   30% FPL strength rating (expert assessment)
+            let attackPower;
+            if (hasRealXg && recent6Xg) {
+                const seasonXgRate = Math.min(1, seasonXg.xGpg / 2.5);      // 0-2.5 xG/g → 0-1
+                const recent6Rate = Math.min(1, recent6Xg.gpg / 2.5);       // 0-2.5 G/g → 0-1
+                attackPower = Math.round((
+                    seasonXgRate * 0.35 +
+                    recent6Rate * 0.35 +
+                    fplAttNorm * 0.30
+                ) * 100);
+            } else {
+                // Fallback: old method
+                const avgXG = xGHistory.length > 0 ? xGHistory.reduce((a, b) => a + b, 0) / gamesPlayed : 1.0;
+                attackPower = Math.round(Math.min(100, Math.max(0,
+                    (avgGoals * 20) + (avgXG * 15) + (fplAttNorm * 30)
+                )));
+            }
+            attackPower = Math.min(100, Math.max(0, attackPower));
+
+            // ===== DEFENSE POWER (0-100) — xGC-informed + recency-weighted =====
+            // Three components:
+            //   35% Season xGC rate inverted (sustainable defensive quality)
+            //   35% Last 6 actual GA/game inverted (recent defensive form)
+            //   30% FPL defense strength (expert assessment)
+            let defensePower;
+            if (hasRealXg && recent6Xg) {
+                const seasonXgcRate = Math.min(1, Math.max(0, 1 - (seasonXg.xGCpg / 2.5)));   // 0 xGC/g → 1.0, 2.5 → 0
+                const recent6DefRate = Math.min(1, Math.max(0, 1 - (recent6Xg.gapg / 2.5)));   // 0 GA/g → 1.0, 2.5 → 0
+                defensePower = Math.round((
+                    seasonXgcRate * 0.35 +
+                    recent6DefRate * 0.35 +
+                    fplDefNorm * 0.30
+                ) * 100);
+            } else {
+                defensePower = Math.round(Math.min(100, Math.max(0,
+                    ((cleanSheets / gamesPlayed) * 40) +
+                    ((2.5 - avgConceded) * 15) +
+                    (fplDefNorm * 30)
+                )));
+            }
+            defensePower = Math.min(100, Math.max(0, defensePower));
+
+            // ===== HOME/AWAY ATTACK POWER (with xG recency blend) =====
             const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
                 ((homeStats.goals / homeStats.games) * 25) +
                 ((team.strength_attack_home - 900) / 500) * 35 +
-                ((homeStats.wins / homeStats.games) * 30)
+                ((homeStats.wins / homeStats.games) * 30) +
+                (hasRealXg ? (seasonXg.xGpg / 2.5) * 10 : 0)  // xG bonus
             ))) : attackPower;
 
             const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
                 ((awayStats.goals / awayStats.games) * 25) +
                 ((team.strength_attack_away - 900) / 500) * 35 +
-                ((awayStats.wins / awayStats.games) * 30)
+                ((awayStats.wins / awayStats.games) * 30) +
+                (hasRealXg ? (seasonXg.xGpg / 2.5) * 10 : 0)
             ))) : attackPower;
 
-            // Home/Away Defense Power
+            // ===== HOME/AWAY DEFENSE POWER (with xG recency blend) =====
             const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
                 ((homeStats.cleanSheets / homeStats.games) * 45) +
                 ((2 - homeStats.conceded / homeStats.games) * 20) +
@@ -2329,8 +2557,8 @@
 
             // FIXTURE SCORE (0-100) - Pure fixture opportunity
             const fixtureScore = Math.round(Math.min(100, Math.max(0,
-                ((5 - avgFdr) / 4) * 70 +                            // FDR inverse (0-70)
-                (homeFixtureCount / 5) * 30                          // Home fixture bonus (0-30)
+                ((5 - avgFdr) / 4) * 70 +
+                (homeFixtureCount / 5) * 30
             )));
 
             // Average CS Chance across next fixtures
@@ -2339,8 +2567,6 @@
                 : 30;
 
             // ===== FLAT-TRACK BULLY INDEX =====
-            // Positive = scores more vs weaker teams (bully)
-            // Negative = scores more vs stronger teams (giant killer)
             let bullyIndex = 0;
             let bullyLabel = 'balanced';
             
@@ -2349,28 +2575,39 @@
                 const goalsVsOther = vsOtherTeams.goals / vsOtherTeams.games;
                 bullyIndex = goalsVsOther - goalsVsBig;
                 
-                if (bullyIndex > 0.8) bullyLabel = 'bully';        // Much better vs weak teams
-                else if (bullyIndex < -0.5) bullyLabel = 'giant-killer'; // Better vs top teams
+                if (bullyIndex > 0.8) bullyLabel = 'bully';
+                else if (bullyIndex < -0.5) bullyLabel = 'giant-killer';
                 else bullyLabel = 'consistent';
             }
 
-            // ===== xG vs GOALS COMPARISON =====
+            // ===== xG vs GOALS — REAL DATA =====
             const totalXG = xGHistory.reduce((a, b) => a + b, 0);
-            const xgDiff = totalGoalsScored - totalXG;
-            const xgPerformance = xgDiff > 0.5 ? 'overperforming' : xgDiff < -0.5 ? 'underperforming' : 'balanced';
+            const avgXG = xGHistory.length > 0 ? totalXG / gamesPlayed : 1.0;
+            
+            // Use real season xG data if available for overperformance
+            let xgDiff, xgPerformance, xgcDiff, xgcPerformance;
+            if (hasRealXg) {
+                xgDiff = seasonXg.xGoverperformance;
+                xgPerformance = xgDiff > 3 ? 'overperforming' : xgDiff < -3 ? 'underperforming' : 'balanced';
+                xgcDiff = seasonXg.xGCoverperformance;
+                xgcPerformance = xgcDiff > 3 ? 'overperforming-def' : xgcDiff < -3 ? 'underperforming-def' : 'balanced-def';
+            } else {
+                xgDiff = totalGoalsScored - totalXG;
+                xgPerformance = xgDiff > 0.5 ? 'overperforming' : xgDiff < -0.5 ? 'underperforming' : 'balanced';
+                xgcDiff = 0;
+                xgcPerformance = 'balanced-def';
+            }
 
-            // ===== FORM SCORE (combines everything for overview) =====
+            // ===== FORM SCORE =====
             const formScore = Math.round(Math.min(100, Math.max(0,
-                (wins * 12) + (draws * 4) +                          // Results (max 60)
-                (attackPower * 0.2) +                                // Attack power contribution
-                (defensePower * 0.2)                                 // Defense power contribution
+                (wins * 12) + (draws * 4) +
+                (attackPower * 0.2) +
+                (defensePower * 0.2)
             )));
 
             // ===== WEIGHTED FORM RATING (0-100) =====
-            // Recent-weighted results: most recent game counts most
-            // W=3, D=1, L=0 with weights [5,4,3,2,1] for last 5 games
             const weights = [5, 4, 3, 2, 1];
-            const reversedResults = [...pastResults].reverse(); // most recent first
+            const reversedResults = [...pastResults].reverse();
             let weightedPts = 0;
             let weightSum = 0;
             reversedResults.slice(0, 5).forEach((r, i) => {
@@ -2378,19 +2615,17 @@
                 weightedPts += pts * weights[i];
                 weightSum += weights[i];
             });
-            const maxWeightedPts = 3 * weightSum; // max if all wins
-            const weightedFormBase = weightSum > 0 ? (weightedPts / maxWeightedPts) * 70 : 35; // 0-70
+            const maxWeightedPts = 3 * weightSum;
+            const weightedFormBase = weightSum > 0 ? (weightedPts / maxWeightedPts) * 70 : 35;
 
-            // Goal difference momentum bonus (last 5)
             const recentGD = pastFixtures.slice(-5).reduce((sum, f) => {
                 const isH = f.team_h === teamId;
                 const scored = isH ? (f.team_h_score || 0) : (f.team_a_score || 0);
                 const conceded = isH ? (f.team_a_score || 0) : (f.team_h_score || 0);
                 return sum + (scored - conceded);
             }, 0);
-            const gdBonus = Math.min(15, Math.max(-10, recentGD * 3)); // -10 to +15
+            const gdBonus = Math.min(15, Math.max(-10, recentGD * 3));
 
-            // Winning streak / unbeaten run bonus
             let streakBonus = 0;
             for (let i = reversedResults.length - 1; i >= 0; i--) {
                 if (reversedResults[i]?.result === 'W') streakBonus += 3;
@@ -2411,7 +2646,6 @@
             }
 
             // ===== VENUE DEPENDENCY ANALYSIS =====
-            // Calculate how different home vs away performance is
             const attackHomeDiff = attackPowerHome - attackPowerAway;
             const defenseHomeDiff = defensePowerHome - defensePowerAway;
             const avgHomeDiff = (attackHomeDiff + defenseHomeDiff) / 2;
@@ -2426,8 +2660,6 @@
                 venueEmoji = '🛣️';
             }
             
-            // Calculate WEIGHTED power based on upcoming fixture venues
-            // If playing 4H 1A, weight home power more heavily
             const homeWeight = homeFixtureCount / 5;
             const awayWeight = awayFixtureCount / 5;
             
@@ -2438,9 +2670,25 @@
                 (defensePowerHome * homeWeight) + (defensePowerAway * awayWeight)
             );
             
-            // "Relevant" rating - what matters for the NEXT 5 fixtures
             const relevantAttack = weightedAttack;
             const relevantDefense = weightedDefense;
+
+            // ===== xG TREND (recency direction) =====
+            let xgTrend = 'stable';
+            if (hasRealXg && recent6Xg && seasonXg) {
+                const seasonRate = seasonXg.xGpg;
+                const recentRate = recent6Xg.xGpg;
+                if (recentRate > seasonRate + 0.25) xgTrend = 'rising';
+                else if (recentRate < seasonRate - 0.25) xgTrend = 'falling';
+            }
+
+            let xgcTrend = 'stable';
+            if (hasRealXg && recent6Xg && seasonXg) {
+                const seasonRate = seasonXg.xGCpg;
+                const recentRate = recent6Xg.xGCpg;
+                if (recentRate < seasonRate - 0.2) xgcTrend = 'improving';
+                else if (recentRate > seasonRate + 0.2) xgcTrend = 'worsening';
+            }
 
             return {
                 id: teamId,
@@ -2449,7 +2697,7 @@
                 shortName: team.short_name,
                 badgeUrl: `https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png`,
                 
-                // Core metrics (PURE - no FDR influence)
+                // Core metrics (xG-informed + recency-weighted)
                 attackPower,
                 defensePower,
                 attackPowerHome,
@@ -2485,9 +2733,19 @@
                 avgXG: avgXG.toFixed(2),
                 totalGoals: totalGoalsScored,
                 totalXG: totalXG.toFixed(1),
-                xgDiff: xgDiff.toFixed(1),
+                xgDiff: (typeof xgDiff === 'number' ? xgDiff : 0).toFixed(1),
                 xgPerformance,
+                xgcDiff: (typeof xgcDiff === 'number' ? xgcDiff : 0).toFixed(1),
+                xgcPerformance,
                 cleanSheets,
+                
+                // xG data (new!)
+                hasRealXg,
+                seasonXg,
+                recent6Xg,
+                recent10Xg,
+                xgTrend,
+                xgcTrend,
                 
                 // Home/Away
                 homeFixtures: homeFixtureCount,
@@ -2567,12 +2825,29 @@
             const trendText = team.fixtureSwing === 'improving' ? '↑ Easier' : 
                               team.fixtureSwing === 'worsening' ? '↓ Harder' : '→';
 
-            // xG badge
-            const xgBadge = team.xgPerformance === 'overperforming' 
-                ? '<span class="xg-badge over">📈 Over xG</span>' 
-                : team.xgPerformance === 'underperforming' 
-                ? '<span class="xg-badge under">📉 Due</span>' 
-                : '';
+            // xG badges - use real data
+            let xgBadges = '';
+            if (team.hasRealXg && team.seasonXg) {
+                const diff = parseFloat(team.xgDiff);
+                if (diff > 3) {
+                    xgBadges += `<span class="xg-badge over" title="Scoring ${diff.toFixed(1)} more than xG — may regress">📈 +${diff.toFixed(1)} xG</span>`;
+                } else if (diff < -3) {
+                    xgBadges += `<span class="xg-badge under" title="Scoring ${Math.abs(diff).toFixed(1)} fewer than xG — due a boost">📉 ${diff.toFixed(1)} xG</span>`;
+                }
+                // xG trend arrow
+                if (team.xgTrend === 'rising') {
+                    xgBadges += `<span class="xg-badge rising" title="xG creation rising in last 6 games">⬆ Rising</span>`;
+                } else if (team.xgTrend === 'falling') {
+                    xgBadges += `<span class="xg-badge falling" title="xG creation falling in last 6 games">⬇ Falling</span>`;
+                }
+            } else {
+                // Fallback to old badge
+                if (team.xgPerformance === 'overperforming') {
+                    xgBadges = '<span class="xg-badge over">📈 Over xG</span>';
+                } else if (team.xgPerformance === 'underperforming') {
+                    xgBadges = '<span class="xg-badge under">📉 Due</span>';
+                }
+            }
 
             return `
                 <div class="team-card" data-team="${team.name}">
@@ -2622,7 +2897,7 @@
                             <div class="form-dots">${formDots}</div>
                         </div>
                         <div class="footer-stats">
-                            ${xgBadge}
+                            ${xgBadges}
                             <span class="trend ${trendClass}">${trendText}</span>
                         </div>
                     </div>
@@ -3143,7 +3418,7 @@
         // ===== STATS TABLE =====
         let statsSort = { col: 'pts', dir: 'desc' };
         let statsView = 'season'; // 'season', 'last10', or 'last5'
-        let statsCategory = 'overall'; // 'overall', 'attack', 'defense', 'discipline', 'fpl', 'homeAway'
+        let statsCategory = 'overall'; // 'overall', 'attack', 'defense', 'discipline', 'fpl', 'xg', 'homeAway'
 
         function createEmptyStatBucket() {
             return {
@@ -3434,6 +3709,20 @@
                         { key: 'csBonus', label: 'CS+SVS', title: 'Clean Sheets + Total Saves (Defender Value)' },
                     ]
                 },
+                xg: {
+                    groupLabel: '📈 xG ANALYSIS',
+                    groupClass: 'defense-group',
+                    cols: [
+                        { key: 'xGpg', label: 'xG/G', title: 'Expected Goals per Game (from real Opta xG)', decimals: 2 },
+                        { key: 'gpg', label: 'G/G', title: 'Actual Goals per Game', decimals: 2 },
+                        { key: 'xGdiffTotal', label: 'G-xG', title: 'Goals minus xG (+ = overperforming, lucky)', decimals: 1 },
+                        { key: 'xGCpg', label: 'xGC/G', title: 'Expected Goals Conceded per Game', decimals: 2, inverted: true },
+                        { key: 'gapg', label: 'GA/G', title: 'Actual Goals Conceded per Game', decimals: 2, inverted: true },
+                        { key: 'xGCdiffTotal', label: 'GA-xGC', title: 'Goals Conceded minus xGC (- = overperforming defense)', decimals: 1, inverted: true },
+                        { key: 'r6xGpg', label: 'L6 xG/G', title: 'Last 6 Games xG per Game (recency)', decimals: 2 },
+                        { key: 'r6gapg', label: 'L6 GA/G', title: 'Last 6 Games Goals Conceded per Game', decimals: 2, inverted: true },
+                    ]
+                },
                 homeAway: {
                     groupLabel: '🏠 HOME vs 🛣️ AWAY',
                     groupClass: 'defense-group',
@@ -3583,6 +3872,13 @@
                     gAndA: s.gf + s.assists,
                     gapg_combined: (s.gf + s.assists) / games,
                     csBonus: s.cs + s.saves,
+                    // xG data from team analysis
+                    xGpg: (() => { const sx = getTeamSeasonXg(team.id); return sx ? sx.xGpg : 0; })(),
+                    xGCpg: (() => { const sx = getTeamSeasonXg(team.id); return sx ? sx.xGCpg : 0; })(),
+                    xGdiffTotal: (() => { const sx = getTeamSeasonXg(team.id); return sx ? sx.xGoverperformance : 0; })(),
+                    xGCdiffTotal: (() => { const sx = getTeamSeasonXg(team.id); return sx ? (sx.totalConceded - sx.totalXgc) : 0; })(),
+                    r6xGpg: (() => { const r = getTeamXgWindow(team.id, 6); return r ? r.xGpg : 0; })(),
+                    r6gapg: (() => { const r = getTeamXgWindow(team.id, 6); return r ? r.gapg : 0; })(),
                 };
             });
 
