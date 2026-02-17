@@ -384,6 +384,7 @@
                 chanceNextRound:p.chance_of_playing_next_round,
                 xG:parseFloat(p.expected_goals)||0, xA:parseFloat(p.expected_assists)||0,
                 xGI:parseFloat(p.expected_goal_involvements)||0, xGC:parseFloat(p.expected_goals_conceded)||0,
+                epNext:parseFloat(p.ep_next)||0, penOrder:p.penalties_order||null,
                 ictIndex:parseFloat(p.ict_index)||0, influence:parseFloat(p.influence)||0,
                 creativity:parseFloat(p.creativity)||0, threat:parseFloat(p.threat)||0,
                 fixtures:fx, history, histStats:aggregateHistory(history),
@@ -419,11 +420,14 @@
     function computeTeamPower(bootData, fixturesData) {
         teamPowerData = {};
         const ts = {};
-        Object.keys(teams).forEach(id => { ts[id]={goals:0,xG:0,ga:0,cs:0,games:0}; });
+        Object.keys(teams).forEach(id => { ts[id]={goals:0,xG:0,ga:0,cs:0,games:0,results:[]}; });
         bootData.elements.forEach(p => { if(ts[p.team]) { ts[p.team].goals+=p.goals_scored||0; ts[p.team].xG+=parseFloat(p.expected_goals)||0; } });
-        fixturesData.filter(f=>f.finished).forEach(f => {
-            if(ts[f.team_h]){ts[f.team_h].games++;ts[f.team_h].ga+=f.team_a_score||0;if(!(f.team_a_score||0))ts[f.team_h].cs++;}
-            if(ts[f.team_a]){ts[f.team_a].games++;ts[f.team_a].ga+=f.team_h_score||0;if(!(f.team_h_score||0))ts[f.team_a].cs++;}
+        const finished = fixturesData.filter(f=>f.finished).sort((a,b)=>a.event-b.event);
+        finished.forEach(f => {
+            if(ts[f.team_h]){ts[f.team_h].games++;ts[f.team_h].ga+=f.team_a_score||0;if(!(f.team_a_score||0))ts[f.team_h].cs++;
+                const hs=f.team_h_score||0,as2=f.team_a_score||0;ts[f.team_h].results.push(hs>as2?'W':hs===as2?'D':'L');}
+            if(ts[f.team_a]){ts[f.team_a].games++;ts[f.team_a].ga+=f.team_h_score||0;if(!(f.team_h_score||0))ts[f.team_a].cs++;
+                const hs2=f.team_h_score||0,as3=f.team_a_score||0;ts[f.team_a].results.push(as3>hs2?'W':as3===hs2?'D':'L');}
         });
         Object.keys(teams).forEach(tid => {
             const t=teams[tid], ss=ts[tid], gp=Math.max(ss.games,1);
@@ -431,7 +435,18 @@
             const as=((t.atkHome+t.atkAway)/2-900)/500, ds=((t.defHome+t.defAway)/2-900)/500;
             const atk=Math.round(Math.min(gpg/2,1)*35+Math.min(xgpg/2,1)*35+Math.max(0,Math.min(1,as))*30);
             const def=Math.round(Math.max(0,1-gapg/2)*70+Math.max(0,Math.min(1,ds))*30);
-            teamPowerData[tid]={attackPower:Math.max(0,Math.min(100,atk)),defensePower:Math.max(0,Math.min(100,def)),goalsPerGame:gpg,xGPerGame:xgpg,gaPerGame:gapg,csRate:csr,gamesPlayed:gp};
+            // Form rating from recent W/D/L with recency weighting
+            const recent=ss.results.slice(-8);
+            let formPts=0,formW=0;
+            recent.forEach((r,i)=>{const w=1+i*0.3;formW+=w;formPts+=(r==='W'?3:r==='D'?1:0)*w;});
+            const formRating=formW>0?Math.round((formPts/(formW*3))*100):50;
+            // Fixture score from upcoming FDR
+            const fx=teamFixtures[parseInt(tid)]||[];
+            const fxWeights=[1.0,0.7,0.5,0.35,0.25,0.2];
+            let fxScore=0,fxW=0;
+            fx.forEach((f,i)=>{const w=fxWeights[i]||0.15;fxW+=w;fxScore+=(6-f.difficulty)*w;});
+            const fixtureScore=fxW>0?Math.round(Math.max(0,Math.min(100,(fxScore/fxW-1)*25))):50;
+            teamPowerData[tid]={attackPower:Math.max(0,Math.min(100,atk)),defensePower:Math.max(0,Math.min(100,def)),formRating,fixtureScore,goalsPerGame:gpg,xGPerGame:xgpg,gaPerGame:gapg,csRate:csr,gamesPlayed:gp};
         });
     }
 
@@ -447,19 +462,35 @@
 
     // ===== LINEUP SCORE =====
     function computeLineupScore(player) {
-        let score=0; const reasons=[]; const fx=player.fixtures?.[0]; const pos=player.pos;
+        let score=0; const reasons=[]; const pos=player.pos;
 
         // Availability
         if(player.status==='i'||player.status==='u'||player.status==='s') return {score:-100,reasons:[{text:'Unavailable',type:'con'}],available:false};
         if(player.status==='d'){score-=30;reasons.push({text:`Doubtful: ${player.news||'75%'}`,type:'con'});}
-        if(player.chanceNextRound!==null&&player.chanceNextRound<75){score-=25;reasons.push({text:`${player.chanceNextRound}% play chance`,type:'con'});}
+        if(player.chanceNextRound!==null&&player.chanceNextRound<75){
+            const pen=Math.round((75-player.chanceNextRound)*0.6);
+            score-=pen;reasons.push({text:`${player.chanceNextRound}% play chance`,type:'con'});
+        }
 
-        // Form
-        if(player.form>=7){score+=25;reasons.push({text:`🔥 Elite form (${player.form})`,type:'pro'});}
-        else if(player.form>=5.5){score+=18;reasons.push({text:`Good form (${player.form})`,type:'pro'});}
-        else if(player.form>=4){score+=10;}
-        else if(player.form>=2.5){score+=2;}
-        else{score-=10;reasons.push({text:`Poor form (${player.form})`,type:'con'});}
+        // DGW / BGW detection
+        const nextEvent=player.fixtures?.[0]?.event;
+        const dgwFixtures=nextEvent?player.fixtures.filter(f=>f.event===nextEvent):[];
+        const isDGW=dgwFixtures.length>=2;
+        const isBGW=!nextEvent||player.fixtures.length===0;
+        if(isBGW){score-=100;reasons.push({text:'⛔ Blank Gameweek',type:'con'});return {score,reasons,available:true};}
+        if(isDGW){score+=25;reasons.push({text:`🎯 DGW: ${dgwFixtures.length} fixtures`,type:'pro'});}
+
+        // Expected points next round
+        if(player.epNext>0){
+            score+=player.epNext*3;
+            if(player.epNext>=4) reasons.push({text:`EP: ${player.epNext.toFixed(1)}`,type:'pro'});
+        }
+
+        // Form (continuous instead of step-based)
+        score+=(player.form-3.5)*5;
+        if(player.form>=7) reasons.push({text:`🔥 Elite form (${player.form})`,type:'pro'});
+        else if(player.form>=5.5) reasons.push({text:`Good form (${player.form})`,type:'pro'});
+        else if(player.form<2.5) reasons.push({text:`Poor form (${player.form})`,type:'con'});
 
         // L3 trend
         if(player.l3Stats&&player.l5Stats&&player.l3Stats.games>=2&&player.l5Stats.games>=3){
@@ -468,75 +499,86 @@
             else if(l3ppg<l5ppg-1.5){score-=5;reasons.push({text:'📉 Declining form',type:'con'});}
         }
 
-        // Fixture
-        if(fx){
-            const fdr=fx.difficulty;
-            if(fdr<=2){score+=18;reasons.push({text:`Easy: ${fx.opponent}(${fx.isHome?'H':'A'}) FDR ${fdr}`,type:'pro'});}
-            else if(fdr===3){score+=6;}
-            else if(fdr===4){score-=6;reasons.push({text:`Tough: ${fx.opponent}(${fx.isHome?'H':'A'})`,type:'con'});}
-            else{score-=14;reasons.push({text:`Very hard: ${fx.opponent}(${fx.isHome?'H':'A'})`,type:'con'});}
-            if(fx.isHome) score+=3;
+        // Fixtures (continuous, DGW-aware: score all fixtures in this GW)
+        dgwFixtures.forEach((fx,i)=>{
+            const mult=isDGW?0.65:1;
+            score+=(3-fx.difficulty)*6*mult;
+            if(fx.difficulty<=2) reasons.push({text:`Easy: ${fx.opponent}(${fx.isHome?'H':'A'}) FDR ${fx.difficulty}`,type:'pro'});
+            else if(fx.difficulty>=4) reasons.push({text:`Tough: ${fx.opponent}(${fx.isHome?'H':'A'}) FDR ${fx.difficulty}`,type:'con'});
+            if(fx.isHome) score+=3*mult;
 
-            // Opponent strength
+            // Opponent strength (continuous)
             const opp=teamPowerData[fx.opponentId];
             if(opp){
                 if(pos<=2){
-                    if(opp.attackPower<35){score+=8;reasons.push({text:`Weak opp attack (${opp.attackPower})`,type:'pro'});}
-                    else if(opp.attackPower>65){score-=8;reasons.push({text:`Strong opp attack (${opp.attackPower})`,type:'con'});}
+                    score-=((opp.attackPower-50)/50)*8*mult;
+                    if(opp.attackPower<35) reasons.push({text:`Weak opp attack (${opp.attackPower})`,type:'pro'});
+                    else if(opp.attackPower>65) reasons.push({text:`Strong opp attack (${opp.attackPower})`,type:'con'});
                     const csProb=getCleanSheetProb(player.teamId,fx.opponentId,fx.isHome);
-                    if(csProb>=0.40){score+=10;reasons.push({text:`High CS: ${(csProb*100).toFixed(0)}%`,type:'pro'});}
-                    else if(csProb>=0.30){score+=5;}
-                    else if(csProb<0.18){score-=5;reasons.push({text:`Low CS: ${(csProb*100).toFixed(0)}%`,type:'con'});}
+                    score+=(csProb-0.25)*30*mult;
+                    if(csProb>=0.40) reasons.push({text:`High CS: ${(csProb*100).toFixed(0)}%`,type:'pro'});
+                    else if(csProb<0.18) reasons.push({text:`Low CS: ${(csProb*100).toFixed(0)}%`,type:'con'});
                 } else {
-                    if(opp.defensePower<35){score+=8;reasons.push({text:`Weak opp defense (${opp.defensePower})`,type:'pro'});}
-                    else if(opp.defensePower>65){score-=6;reasons.push({text:`Strong opp defense (${opp.defensePower})`,type:'con'});}
+                    score+=((50-opp.defensePower)/50)*8*mult;
+                    if(opp.defensePower<35) reasons.push({text:`Weak opp defense (${opp.defensePower})`,type:'pro'});
+                    else if(opp.defensePower>65) reasons.push({text:`Strong opp defense (${opp.defensePower})`,type:'con'});
                 }
             }
+        });
+
+        // Team context
+        const tp=teamPowerData[player.teamId];
+        if(tp){
+            if(pos>=3){score+=(tp.attackPower-50)*0.15;if(tp.attackPower>=65) reasons.push({text:`Strong team attack (${tp.attackPower})`,type:'pro'});}
+            if(pos<=2){score+=(tp.defensePower-50)*0.15;if(tp.defensePower>=65) reasons.push({text:`Strong team defense (${tp.defensePower})`,type:'pro'});}
+            score+=(tp.formRating-50)*0.1;
+            if(tp.formRating>=70) reasons.push({text:`Team in form (${tp.formRating})`,type:'pro'});
+            else if(tp.formRating<=30) reasons.push({text:`Team poor form (${tp.formRating})`,type:'con'});
         }
 
-        // xGI
+        // xGI (continuous)
         if(player.minutes>200){
             const xgi90=(player.xGI/player.minutes)*90, xg90=(player.xG/player.minutes)*90;
-            if(pos===4){ if(xg90>=0.50){score+=12;reasons.push({text:`Strong xG (${xg90.toFixed(2)}/90)`,type:'pro'});} else if(xg90>=0.35) score+=6; else if(xg90<0.20) score-=5; }
-            else if(pos===3){ if(xgi90>=0.55){score+=12;reasons.push({text:`Elite xGI (${xgi90.toFixed(2)}/90)`,type:'pro'});} else if(xgi90>=0.35) score+=6; else if(xgi90<0.20) score-=3; }
-            else if(pos===2){ if(xgi90>=0.18){score+=8;reasons.push({text:`Attacking DEF (${xgi90.toFixed(2)}/90)`,type:'pro'});} }
+            if(pos===4){score+=Math.min(xg90,0.8)*15;if(xg90>=0.50) reasons.push({text:`Strong xG (${xg90.toFixed(2)}/90)`,type:'pro'});}
+            else if(pos===3){score+=Math.min(xgi90,1.0)*12;if(xgi90>=0.55) reasons.push({text:`Elite xGI (${xgi90.toFixed(2)}/90)`,type:'pro'});}
+            else if(pos===2){score+=Math.min(xgi90,0.4)*15;if(xgi90>=0.18) reasons.push({text:`Attacking DEF (${xgi90.toFixed(2)}/90)`,type:'pro'});}
             const overperf=player.goals-player.xG;
             if(overperf>3){score-=3;reasons.push({text:`Overperforming xG by ${overperf.toFixed(1)}`,type:'info'});}
             else if(overperf<-3){score+=3;reasons.push({text:`Due a goal (${Math.abs(overperf).toFixed(1)} below xG)`,type:'pro'});}
         }
 
-        // Minutes / nailed
+        // Minutes / nailed (continuous)
         const mpg=player.minutes/Math.max(currentGW-1,1);
-        if(mpg>=85){score+=5;reasons.push({text:`Nailed (${mpg.toFixed(0)} mpg)`,type:'pro'});}
-        else if(mpg>=70) score+=2;
-        else if(mpg>=45){score-=5;reasons.push({text:`Rotation risk (${mpg.toFixed(0)} mpg)`,type:'con'});}
-        else{score-=15;reasons.push({text:`Low minutes (${mpg.toFixed(0)} mpg)`,type:'con'});}
+        score+=(Math.min(mpg,90)-60)*0.3;
+        if(mpg>=85) reasons.push({text:`Nailed (${mpg.toFixed(0)} mpg)`,type:'pro'});
+        else if(mpg<45) reasons.push({text:`Low minutes (${mpg.toFixed(0)} mpg)`,type:'con'});
         if(player.l3Stats&&player.l3Stats.games>=2&&player.l3Stats.starts/player.l3Stats.games<0.5){score-=8;reasons.push({text:'Benched recently',type:'con'});}
 
-        // Bonus magnet
+        // Bonus magnet (continuous)
         if(player.minutes>300){
             const bpg=player.bonus/Math.max(currentGW-1,1);
-            if(bpg>=0.6){score+=4;reasons.push({text:`Bonus magnet (${bpg.toFixed(1)}/g)`,type:'pro'});}
+            score+=Math.min(bpg,1)*5;
+            if(bpg>=0.6) reasons.push({text:`Bonus magnet (${bpg.toFixed(1)}/g)`,type:'pro'});
         }
 
-        // ICT
+        // ICT (continuous)
         if(player.l5Stats&&player.l5Stats.games>=3){
             const ict=(player.l5Stats.influence+player.l5Stats.creativity+player.l5Stats.threat)/player.l5Stats.games;
-            if(pos>=3&&ict>30) score+=4; else if(pos>=3&&ict>20) score+=2;
+            if(pos>=3) score+=Math.min(ict,40)*0.12;
         }
 
         // GK saves
         if(pos===1){
             const spg=player.saves/Math.max(currentGW-1,1);
-            if(fx){const opp=teamPowerData[fx.opponentId];if(opp&&opp.attackPower>55&&spg>=3.5){score+=4;reasons.push({text:'Save points opportunity',type:'info'});}}
+            dgwFixtures.forEach(fx=>{const opp=teamPowerData[fx.opponentId];if(opp&&opp.attackPower>55&&spg>=3.5){score+=4;reasons.push({text:'Save points opportunity',type:'info'});}});
             if(player.histStats&&player.histStats.penSaved>0) score+=2;
         }
 
-        // PPG
+        // PPG (continuous)
         const ppg=player.totalPoints/Math.max(currentGW-1,1);
-        if(ppg>=6) score+=6; else if(ppg>=5) score+=3; else if(ppg>=4) score+=1;
+        score+=Math.min(ppg,8)*1.2;
 
-        return {score:Math.round(score),reasons,available:player.status!=='i'&&player.status!=='u'&&player.status!=='s'};
+        return {score:Math.round(score),reasons,available:true};
     }
 
     // ===== CAPTAIN SCORE =====
@@ -550,7 +592,7 @@
         if(ppg>=6) reasons.push({text:`${ppg.toFixed(1)} pts/game`,type:'pro'});
 
         if(player.minutes>200){const xgi90=(player.xGI/player.minutes)*90;score+=xgi90*25;if(xgi90>=0.50) reasons.push({text:`${xgi90.toFixed(2)} xGI/90`,type:'pro'});}
-        score+=player.form*2;
+        score+=player.form*2.5;
         if(player.form>=7) reasons.push({text:`🔥 Form: ${player.form}`,type:'pro'});
 
         if(fx){
@@ -569,7 +611,24 @@
         const bpg=player.bonus/Math.max(currentGW-1,1);
         if(bpg>=0.5) score+=bpg*3;
 
-        if(player.histStats&&player.histStats.penMissed>0){score+=5;reasons.push({text:'🎯 Penalty taker',type:'pro'});}
+        // Penalty taker detection (use penalties_order, fallback to history)
+        if(player.penOrder===1){score+=8;reasons.push({text:'🎯 Penalty taker (#1)',type:'pro'});}
+        else if(player.penOrder===2){score+=3;reasons.push({text:'🎯 Backup pen taker',type:'pro'});}
+        else if(player.histStats&&player.histStats.penMissed>0){score+=5;reasons.push({text:'🎯 Takes penalties',type:'pro'});}
+
+        // DGW captain boost
+        const nextEv=player.fixtures?.[0]?.event;
+        const dgwFxC=nextEv?player.fixtures.filter(f=>f.event===nextEv):[];
+        if(dgwFxC.length>=2){score+=20;reasons.push({text:'🎯 DGW captain boost',type:'pro'});}
+
+        // Team attack power context
+        const tpCap=teamPowerData[player.teamId];
+        if(tpCap){
+            score+=(tpCap.attackPower-50)*0.2;
+            if(tpCap.attackPower>=65) reasons.push({text:`Strong team attack (${tpCap.attackPower})`,type:'pro'});
+            if(tpCap.formRating>=65) score+=(tpCap.formRating-50)*0.1;
+        }
+
         if(player.ownership>=25) reasons.push({text:`${player.ownership.toFixed(0)}% owned (safe)`,type:'info'});
         else if(player.ownership<10) reasons.push({text:`${player.ownership.toFixed(0)}% owned (diff)`,type:'info'});
 
@@ -594,7 +653,16 @@
         }
         if(!bestXI){const av=squad.filter(p=>p.lineupData.available).sort((a,b)=>b.lineupData.score-a.lineupData.score);bestXI=av.slice(0,11);bestFormation='N/A';}
         const xiIds=new Set(bestXI.map(p=>p.id));
-        const bench=squad.filter(p=>!xiIds.has(p.id)).sort((a,b)=>{if(a.pos===1&&b.pos!==1)return-1;if(b.pos===1&&a.pos!==1)return 1;return b.lineupData.score-a.lineupData.score;});
+        const bench=squad.filter(p=>!xiIds.has(p.id)).sort((a,b)=>{
+            if(a.pos===1&&b.pos!==1)return 1;if(b.pos===1&&a.pos!==1)return-1; // GK last (bench slot 4)
+            const diff=b.lineupData.score-a.lineupData.score;
+            if(Math.abs(diff)>2) return diff;
+            // Tiebreaker: better upcoming fixtures (GW+2, GW+3)
+            const aFx=a.fixtures?.slice(1,3)||[], bFx=b.fixtures?.slice(1,3)||[];
+            const aFdr=aFx.reduce((s,f)=>s+f.difficulty,0)/(aFx.length||1);
+            const bFdr=bFx.reduce((s,f)=>s+f.difficulty,0)/(bFx.length||1);
+            return aFdr-bFdr;
+        });
         return {xi:bestXI,bench,formation:bestFormation,totalScore:bestScore};
     }
 
