@@ -907,6 +907,7 @@
         let allPlayers = [], allPlayersById = {}, teams = {}, teamFixtures = {};
         let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
         let positionAverages = {};
+        let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
 
         let userSettings = {
             sellSensitivity: 1.0,   // multiplier for sell rating (>1 = aggressive, <1 = patient)
@@ -960,6 +961,152 @@
                     xGIPer90: avg(posPlayers, p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0)
                 };
             });
+        }
+
+        // ===== TEAM ANALYSIS SCORES (ported from teams-analysis) =====
+        function computeTeamScores(bootTeams, fixturesData) {
+            teamAnalysis = {};
+
+            const finishedFixtures = fixturesData
+                .filter(f => f.finished && f.team_h_score !== null)
+                .sort((a, b) => a.event - b.event);
+
+            const upcomingFixtures = fixturesData
+                .filter(f => !f.finished && f.event !== null)
+                .sort((a, b) => a.event - b.event);
+
+            bootTeams.forEach(team => {
+                const teamId = team.id;
+
+                // Past fixtures for this team
+                const pastFixtures = finishedFixtures
+                    .filter(f => f.team_h === teamId || f.team_a === teamId);
+                const last10 = pastFixtures.slice(-10);
+                const last5 = pastFixtures.slice(-5);
+
+                // Future fixtures (next 5)
+                const futureFixtures = upcomingFixtures
+                    .filter(f => f.team_h === teamId || f.team_a === teamId)
+                    .slice(0, 5);
+
+                // Compute goals scored/conceded from last 10 games
+                let totalScored = 0, totalConceded = 0;
+                let homeStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
+                let awayStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
+
+                last10.forEach(f => {
+                    const isHome = f.team_h === teamId;
+                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    totalScored += scored;
+                    totalConceded += conceded;
+                    if (isHome) {
+                        homeStats.goals += scored; homeStats.conceded += conceded;
+                        homeStats.games++; if (conceded === 0) homeStats.cleanSheets++;
+                    } else {
+                        awayStats.goals += scored; awayStats.conceded += conceded;
+                        awayStats.games++; if (conceded === 0) awayStats.cleanSheets++;
+                    }
+                });
+
+                const gamesPlayed = last10.length || 1;
+                const avgGoals = totalScored / gamesPlayed;
+                const avgConceded = totalConceded / gamesPlayed;
+
+                // Attack Power (0-100): blend actual goals with FPL strength
+                const fplAttackStrength = (team.strength_attack_home + team.strength_attack_away) / 2;
+                const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));
+                const goalRate = Math.min(1, avgGoals / 2.0);
+                const attackPower = Math.round(Math.min(100, Math.max(0, (goalRate * 0.55 + fplAttNorm * 0.45) * 100)));
+
+                // Defense Power (0-100) - inverted
+                const fplDefenseStrength = (team.strength_defence_home + team.strength_defence_away) / 2;
+                const fplDefNorm = Math.min(1, Math.max(0, (fplDefenseStrength - 900) / 500));
+                const concedeRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.0)));
+                const defensePower = Math.round(Math.min(100, Math.max(0, (concedeRate * 0.55 + fplDefNorm * 0.45) * 100)));
+
+                // Home/Away splits
+                const fplAttHomeNorm = Math.min(1, Math.max(0, (team.strength_attack_home - 900) / 500));
+                const fplAttAwayNorm = Math.min(1, Math.max(0, (team.strength_attack_away - 900) / 500));
+                const fplDefHomeNorm = Math.min(1, Math.max(0, (team.strength_defence_home - 900) / 500));
+                const fplDefAwayNorm = Math.min(1, Math.max(0, (team.strength_defence_away - 900) / 500));
+
+                const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
+                    (Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.55 + fplAttHomeNorm * 0.45) * 100))) : attackPower;
+                const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
+                    (Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.55 + fplAttAwayNorm * 0.45) * 100))) : attackPower;
+                const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
+                    (Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.0))) * 0.55 + fplDefHomeNorm * 0.45) * 100))) : defensePower;
+                const defensePowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
+                    (Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.0))) * 0.55 + fplDefAwayNorm * 0.45) * 100))) : defensePower;
+
+                // Form Rating (0-100) - recency-weighted W/D/L from last 5
+                const formWeights = [5, 4, 3, 2, 1];
+                const reversedResults = [...last5].reverse();
+                let weightedPts = 0, weightSum = 0;
+                let wins = 0, draws = 0, losses = 0;
+                reversedResults.forEach((f, i) => {
+                    const isHome = f.team_h === teamId;
+                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    const result = scored > conceded ? 'W' : scored === conceded ? 'D' : 'L';
+                    const pts = result === 'W' ? 3 : result === 'D' ? 1 : 0;
+                    weightedPts += pts * formWeights[i];
+                    weightSum += formWeights[i];
+                    if (result === 'W') wins++; else if (result === 'D') draws++; else losses++;
+                });
+                const maxWeightedPts = 3 * weightSum;
+                const formBase = weightSum > 0 ? (weightedPts / maxWeightedPts) * 70 : 35;
+
+                // GD bonus from last 5
+                const recentGD = last5.reduce((sum, f) => {
+                    const isHome = f.team_h === teamId;
+                    return sum + (isHome ? (f.team_h_score || 0) : (f.team_a_score || 0))
+                                - (isHome ? (f.team_a_score || 0) : (f.team_h_score || 0));
+                }, 0);
+                const gdBonus = Math.min(10, Math.max(-10, recentGD * 2));
+
+                // Streak bonus
+                let streakBonus = 0;
+                for (let i = 0; i < reversedResults.length; i++) {
+                    const f = reversedResults[i];
+                    const isHome = f.team_h === teamId;
+                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    if (scored > conceded) streakBonus += 3;
+                    else if (scored === conceded) streakBonus += 1;
+                    else break;
+                }
+                streakBonus = Math.min(15, streakBonus);
+
+                const formRating = Math.round(Math.min(100, Math.max(0, formBase + gdBonus + streakBonus)));
+
+                // Fixture Score (0-100)
+                let totalFdr = 0;
+                const futureDetails = futureFixtures.map(f => {
+                    const isHome = f.team_h === teamId;
+                    const fdr = isHome ? f.team_h_difficulty : f.team_a_difficulty;
+                    totalFdr += fdr || 3;
+                    return { fdr: fdr || 3, isHome };
+                });
+                const avgFdr = futureDetails.length > 0 ? totalFdr / futureDetails.length : 3;
+                const homeFixCount = futureDetails.filter(f => f.isHome).length;
+                const fixtureScore = Math.round(Math.min(100, Math.max(0,
+                    ((5 - avgFdr) / 4) * 85 + (homeFixCount / Math.max(1, futureDetails.length)) * 15)));
+
+                // Clean Sheet Rate
+                const totalCS = homeStats.cleanSheets + awayStats.cleanSheets;
+                const csRate = gamesPlayed > 0 ? totalCS / gamesPlayed : 0;
+
+                teamAnalysis[teamId] = {
+                    attackPower, defensePower, formRating, fixtureScore,
+                    attackPowerHome, attackPowerAway, defensePowerHome, defensePowerAway,
+                    avgGoals, avgConceded, avgFdr, csRate, totalCS,
+                    wins, draws, losses, gamesPlayed,
+                    teamName: team.short_name || team.name
+                };
+            });
+            console.log('Team analysis computed for', Object.keys(teamAnalysis).length, 'teams');
         }
 
         // ===== DATA LOADING =====
@@ -1019,6 +1166,7 @@
                 allPlayersById = {};
                 allPlayers.forEach(p => allPlayersById[p.id] = p);
                 computePositionAverages();
+                computeTeamScores(bootData.teams, fixturesData);
 
                 // Fetch manager + picks in parallel
                 showLoading(true, `Loading team for GW${currentGW}...`);
@@ -1091,15 +1239,17 @@
         }
 
         function analyzePlayer(player) {
-            // Baseline: average player starts at 35 — dimensions push up (sell) or down (keep)
-            let sellRating = 35;
+            // Baseline: average player starts at 40 — dimensions push up (sell) or down (keep)
+            let sellRating = 40;
             let reasons = [], concerns = [], positives = [];
             const posAvg = positionAverages[player.position] || { form: 3, ppg: 3, ppm: 15, xGIPer90: 0.3 };
             const posConfig = POSITION_CONFIG[player.position];
             const gamesPlayed = Math.max(currentGW - 1, 1);
             const minsPerGame = player.minutes / gamesPlayed;
             const isPremium = player.price >= 10.0;
+            const isMidPremium = player.price >= 7.5;
             const isBudget = player.price <= 5.5;
+            const ta = teamAnalysis[player.teamId]; // Team analysis data
 
             // 1. AVAILABILITY (Critical — overrides baseline)
             if (player.status === 'i' || player.status === 'u' || player.status === 's') {
@@ -1109,23 +1259,23 @@
                 reasons.push(`${statusText} — cannot play`);
             } else if (player.status === 'd') {
                 const chance = player.chanceNextRound;
-                const penalty = chance !== null ? Math.round((100 - chance) * 0.35) : 20;
+                const penalty = chance !== null ? Math.round((100 - chance) * 0.4) : 22;
                 sellRating += penalty * userSettings.sellSensitivity;
                 concerns.push({ type: 'warning', title: 'Doubtful', text: `${chance !== null ? chance + '% chance' : '75% chance'} of playing. ${player.news || ''}` });
-                if (penalty >= 20) reasons.push('Significant injury doubt');
+                if (penalty >= 18) reasons.push('Significant injury doubt');
             }
 
-            // 2. FORM (Continuous — position-adjusted)
+            // 2. FORM (Continuous — position-adjusted, more aggressive)
             const formDelta = player.form - posConfig.formMedian;
-            // Linear: each 1.0 of formDelta = ~8 points; capped at ±25
-            const rawFormPenalty = Math.max(-25, Math.min(25, Math.round(-formDelta * 8)));
+            // Linear: each 1.0 of formDelta = ~10 points; capped at ±30
+            const rawFormPenalty = Math.max(-30, Math.min(30, Math.round(-formDelta * 10)));
             const formPenalty = rawFormPenalty * userSettings.formWeight * userSettings.sellSensitivity;
             sellRating += formPenalty;
 
-            if (formDelta <= -2.0) {
+            if (formDelta <= -1.5) {
                 concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${player.form.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian}` });
                 reasons.push('Form collapsed');
-            } else if (formDelta <= -1.0) {
+            } else if (formDelta <= -0.5) {
                 concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${player.form.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian}` });
             } else if (formDelta >= 2.5) {
                 positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${player.form.toFixed(1)} — top tier for ${posConfig.short}s` });
@@ -1146,11 +1296,11 @@
                 });
                 avgFDR = weightedSum / totalWeight;
             }
-            // Linear: FDR 3 is neutral, each 1.0 away = ~12 points
-            const rawFixPenalty = Math.max(-18, Math.min(18, Math.round((avgFDR - 3.0) * 12)));
+            // Linear: FDR 3 is neutral, each 1.0 away = ~14 points (was 12)
+            const rawFixPenalty = Math.max(-22, Math.min(22, Math.round((avgFDR - 3.0) * 14)));
             sellRating += rawFixPenalty * userSettings.fixtureWeight * userSettings.sellSensitivity;
 
-            if (avgFDR >= 4.0) {
+            if (avgFDR >= 3.8) {
                 concerns.push({ type: 'warning', title: 'Tough Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)} — difficult run ahead` });
                 reasons.push('Brutal fixture run');
             } else if (avgFDR <= 2.5) {
@@ -1160,10 +1310,43 @@
             }
             player.avgFDR = avgFDR;
 
-            // 4. MINUTES & ROTATION (Continuous)
+            // 3b. OPPONENT QUALITY (uses team analysis attack/defence power)
+            let opponentAdjustment = 0;
+            if (fixtures.length >= 3 && Object.keys(teamAnalysis).length > 0) {
+                const oppWeights = [3, 2.5, 2, 1.5, 1];
+                let oppWeightedScore = 0, oppTotalWeight = 0;
+                fixtures.slice(0, 5).forEach((f, i) => {
+                    const oppTA = teamAnalysis[f.opponentId];
+                    if (!oppTA) return;
+                    const w = oppWeights[i] || 1;
+                    if (player.position <= 2) {
+                        // Defenders: opponent attack power matters (strong attack = harder to keep CS)
+                        oppWeightedScore += ((oppTA.attackPower - 50) / 50) * w;
+                    } else {
+                        // Attackers: opponent defence power matters (strong defence = harder to score)
+                        oppWeightedScore += ((oppTA.defensePower - 50) / 50) * w;
+                    }
+                    oppTotalWeight += w;
+                });
+                if (oppTotalWeight > 0) {
+                    opponentAdjustment = Math.round(Math.max(-10, Math.min(12, (oppWeightedScore / oppTotalWeight) * 8)));
+                    sellRating += opponentAdjustment * userSettings.fixtureWeight * userSettings.sellSensitivity;
+
+                    if (opponentAdjustment >= 5) {
+                        const label = player.position <= 2 ? 'Strong Attacking Opponents' : 'Strong Defensive Opponents';
+                        concerns.push({ type: 'warning', title: label, text: `Upcoming opponents have high ${player.position <= 2 ? 'attack' : 'defence'} power — harder to return points` });
+                    } else if (opponentAdjustment <= -5) {
+                        const label = player.position <= 2 ? 'Weak Attacking Opponents' : 'Weak Defensive Opponents';
+                        positives.push({ type: 'positive', title: label, text: `Upcoming opponents are ${player.position <= 2 ? 'weak in attack' : 'leaky at the back'} — favourable matchups` });
+                    }
+                }
+            }
+
+            // 4. MINUTES & ROTATION (Continuous, more aggressive)
             let minsPenalty = 0;
-            if (minsPerGame < 20) { minsPenalty = 30; }
-            else if (minsPerGame < 75) { minsPenalty = Math.round(28 - (minsPerGame - 20) * (28 / 55)); }
+            if (minsPerGame < 20) { minsPenalty = 35; }
+            else if (minsPerGame < 60) { minsPenalty = Math.round(32 - (minsPerGame - 20) * (32 / 40)); }
+            else if (minsPerGame < 75) { minsPenalty = Math.round(5 - (minsPerGame - 60) * (7 / 15)); }
             else if (minsPerGame >= 85) { minsPenalty = -6; }
             else { minsPenalty = -2; }
             sellRating += minsPenalty * userSettings.sellSensitivity;
@@ -1172,13 +1355,13 @@
             if (minsPerGame < 45) {
                 concerns.push({ type: 'critical', title: 'Rotation Risk', text: `Only ${minsPerGame.toFixed(0)} mins/game (${player.starts} starts in ${gamesPlayed} GWs)` });
                 reasons.push('Not starting regularly');
-            } else if (minsPerGame < 60) {
-                concerns.push({ type: 'warning', title: 'Reduced Minutes', text: `${minsPerGame.toFixed(0)} mins/game — some rotation` });
+            } else if (minsPerGame < 65) {
+                concerns.push({ type: 'warning', title: 'Reduced Minutes', text: `${minsPerGame.toFixed(0)} mins/game — rotation concern` });
             } else if (minsPerGame >= 85) {
                 positives.push({ type: 'positive', title: 'Nailed On', text: `${minsPerGame.toFixed(0)} mins/game — consistent starter` });
             }
 
-            // 5. VALUE FOR MONEY (Continuous — PPG compared to position average)
+            // 5. VALUE FOR MONEY (Continuous — more aggressive, especially for premiums)
             const ppm = player.points / Math.max(player.price, 1);
             const ppmDelta = ppm - posAvg.ppm;
             const ppgDelta = player.ppg - posAvg.ppg;
@@ -1186,18 +1369,22 @@
 
             // Blend PPM and PPG deltas for a richer value signal
             const valueSignal = (ppmDelta * 0.6) + (ppgDelta * 2.5);
-            let rawValuePenalty = Math.max(-12, Math.min(18, Math.round(-valueSignal)));
-            if (isPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.3);
+            let rawValuePenalty = Math.max(-15, Math.min(22, Math.round(-valueSignal)));
+            if (isPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.5);
+            else if (isMidPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.2);
             sellRating += rawValuePenalty * userSettings.valueWeight * userSettings.sellSensitivity;
 
             if (isPremium && player.form < posConfig.formMedian) {
-                concerns.push({ type: 'warning', title: 'Premium Underperforming', text: `£${player.price.toFixed(1)}m price tag not justified (${ppm.toFixed(1)} pts/£m vs avg ${posAvg.ppm.toFixed(1)})` });
+                sellRating += 5 * userSettings.sellSensitivity; // Extra premium penalty
+                concerns.push({ type: 'critical', title: 'Premium Underperforming', text: `£${player.price.toFixed(1)}m price tag not justified (${ppm.toFixed(1)} pts/£m vs avg ${posAvg.ppm.toFixed(1)}) — funds tied up` });
                 if (!reasons.length) reasons.push('Premium not delivering');
+            } else if (isMidPremium && player.form < posConfig.formMedian - 0.5) {
+                concerns.push({ type: 'warning', title: 'Mid-Premium Underperforming', text: `£${player.price.toFixed(1)}m with poor form — consider downgrade` });
             } else if (ppmDelta > 3) {
                 positives.push({ type: 'positive', title: 'Great Value', text: `${ppm.toFixed(1)} pts/£m — well above ${posConfig.short} average (${posAvg.ppm.toFixed(1)})` });
             }
 
-            // 6. xG ANALYSIS (Continuous)
+            // 6. xG ANALYSIS (Continuous, wider penalty range)
             if (player.position >= 3 && player.minutes >= 270) {
                 const xGIPer90 = (player.xGI / player.minutes) * 90;
                 const actualGI = player.goals + player.assists;
@@ -1205,18 +1392,20 @@
                 player.xGIPer90 = xGIPer90;
 
                 // Continuous: xGI/90 below 0.30 is a concern, above 0.50 is great
-                const xGPenalty = Math.max(-12, Math.min(15, Math.round((0.35 - xGIPer90) * 30)));
+                const xGPenalty = Math.max(-15, Math.min(18, Math.round((0.35 - xGIPer90) * 35)));
                 sellRating += xGPenalty * userSettings.sellSensitivity;
 
                 if (xGIPer90 < 0.20) {
-                    concerns.push({ type: 'warning', title: 'Low Underlying Stats', text: `${xGIPer90.toFixed(2)} xGI/90 — not creating enough` });
+                    concerns.push({ type: 'warning', title: 'Low Underlying Stats', text: `${xGIPer90.toFixed(2)} xGI/90 — not creating enough chances` });
+                } else if (xGIPer90 < 0.30) {
+                    concerns.push({ type: 'info', title: 'Below Average xGI', text: `${xGIPer90.toFixed(2)} xGI/90 — mediocre output` });
                 } else if (xGIPer90 >= 0.60) {
                     positives.push({ type: 'positive', title: 'Strong xGI', text: `${xGIPer90.toFixed(2)} xGI/90 — high-quality chances` });
                 }
 
-                if (overperformance > 2.5) {
-                    sellRating += Math.round(Math.min(10, overperformance * 2)) * userSettings.sellSensitivity;
-                    concerns.push({ type: 'info', title: 'Overperforming xG', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — may regress (+${overperformance.toFixed(1)})` });
+                if (overperformance > 2.0) {
+                    sellRating += Math.round(Math.min(12, overperformance * 2.5)) * userSettings.sellSensitivity;
+                    concerns.push({ type: 'warning', title: 'Overperforming xG', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — regression likely (+${overperformance.toFixed(1)})` });
                 } else if (overperformance < -2.5) {
                     sellRating -= Math.round(Math.min(8, Math.abs(overperformance) * 1.5));
                     positives.push({ type: 'positive', title: 'Due Returns', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — unlucky, due a haul (${overperformance.toFixed(1)})` });
@@ -1224,41 +1413,96 @@
             } else if (player.position <= 2 && player.minutes >= 270) {
                 const csRate = player.cleanSheets / gamesPlayed;
                 player.csRate = csRate;
-                // Continuous: CS rate below 20% adds penalty, above 35% gives bonus
-                const csPenalty = Math.max(-8, Math.min(10, Math.round((0.28 - csRate) * 30)));
+                // Continuous: CS rate below 20% adds penalty, above 35% gives bonus (wider range)
+                const csPenalty = Math.max(-10, Math.min(14, Math.round((0.28 - csRate) * 35)));
                 sellRating += csPenalty;
 
                 if (csRate >= 0.40) {
                     positives.push({ type: 'positive', title: 'CS Machine', text: `${(csRate * 100).toFixed(0)}% clean sheet rate` });
-                } else if (csRate <= 0.15 && !isBudget) {
-                    concerns.push({ type: 'warning', title: 'Few Clean Sheets', text: `Only ${(csRate * 100).toFixed(0)}% CS rate` });
+                } else if (csRate <= 0.18 && !isBudget) {
+                    concerns.push({ type: 'warning', title: 'Few Clean Sheets', text: `Only ${(csRate * 100).toFixed(0)}% CS rate — poor defensive returns` });
                 }
                 player.xGIPer90 = player.position === 1 ? (player.saves / Math.max(player.minutes / 90, 1)) : ((player.xGI / Math.max(player.minutes, 1)) * 90);
             }
 
-            // 7. OWNERSHIP URGENCY
-            if (player.ownership > 25 && sellRating > 50) {
+            // 7. OWNERSHIP URGENCY (more sensitive)
+            if (player.ownership > 20 && sellRating > 45) {
                 sellRating += 5;
                 concerns.push({ type: 'info', title: 'High Ownership Risk', text: `${player.ownership.toFixed(1)}% owned — price drop risk if others sell` });
-            } else if (player.ownership < 8 && sellRating < 25) {
+            } else if (player.ownership < 8 && sellRating < 30) {
                 positives.push({ type: 'positive', title: 'Differential', text: `Only ${player.ownership.toFixed(1)}% owned — great differential pick` });
                 sellRating -= 3;
             }
 
+            // 7b. NET TRANSFERS — heavy selling = price drop risk
             const netTransfers = player.transfersIn - player.transfersOut;
             player.netTransfers = netTransfers;
+            if (netTransfers < -20000) {
+                sellRating += 4 * userSettings.sellSensitivity;
+                concerns.push({ type: 'info', title: 'Mass Selling', text: `${(netTransfers / 1000).toFixed(0)}k net transfers — price drop imminent` });
+            }
+
+            // 8. TEAM CONTEXT (from team analysis — attack, defence, form scoring)
+            if (ta) {
+                // Team form: poor team form = harder for all players to return
+                const teamFormDelta = (ta.formRating - 50) / 50; // -1 to +1
+                const teamFormPenalty = Math.round(teamFormDelta * -8); // bad form → +8, good form → -8
+                sellRating += teamFormPenalty * userSettings.sellSensitivity;
+
+                if (ta.formRating < 30) {
+                    concerns.push({ type: 'warning', title: 'Team in Poor Form', text: `${player.team} form rating ${ta.formRating}/100 — team struggling (W${ta.wins} D${ta.draws} L${ta.losses} last 5)` });
+                    if (!reasons.length) reasons.push('Team in poor form');
+                } else if (ta.formRating >= 70) {
+                    positives.push({ type: 'positive', title: 'Team in Great Form', text: `${player.team} form rating ${ta.formRating}/100 — team on fire (W${ta.wins} D${ta.draws} L${ta.losses} last 5)` });
+                }
+
+                // Position-specific: attackers benefit from strong team attack
+                if (player.position >= 3) {
+                    const attDelta = (ta.attackPower - 50) / 50;
+                    const teamAttPenalty = Math.round(attDelta * -8);
+                    sellRating += teamAttPenalty * userSettings.sellSensitivity;
+
+                    if (ta.attackPower < 35) {
+                        concerns.push({ type: 'warning', title: 'Weak Team Attack', text: `${player.team} attack power ${ta.attackPower}/100 — limited goal threat (${ta.avgGoals.toFixed(1)} goals/game)` });
+                    } else if (ta.attackPower >= 65) {
+                        positives.push({ type: 'positive', title: 'Strong Team Attack', text: `${player.team} attack power ${ta.attackPower}/100 — high goal output (${ta.avgGoals.toFixed(1)} goals/game)` });
+                    }
+                }
+
+                // Position-specific: defenders benefit from strong team defence
+                if (player.position <= 2) {
+                    const defDelta = (ta.defensePower - 50) / 50;
+                    const teamDefPenalty = Math.round(defDelta * -8);
+                    sellRating += teamDefPenalty * userSettings.sellSensitivity;
+
+                    if (ta.defensePower < 35) {
+                        concerns.push({ type: 'warning', title: 'Weak Team Defence', text: `${player.team} defence power ${ta.defensePower}/100 — hard to keep clean sheets (${ta.avgConceded.toFixed(1)} conceded/game)` });
+                    } else if (ta.defensePower >= 65) {
+                        positives.push({ type: 'positive', title: 'Strong Team Defence', text: `${player.team} defence power ${ta.defensePower}/100 — clean sheet potential (${ta.csRate > 0 ? (ta.csRate * 100).toFixed(0) + '% CS rate' : ''})` });
+                    }
+                }
+
+                // Team fixture score impacts all players
+                if (ta.fixtureScore < 30) {
+                    sellRating += 4 * userSettings.fixtureWeight * userSettings.sellSensitivity;
+                    concerns.push({ type: 'info', title: 'Poor Team Fixture Score', text: `${player.team} fixture score ${ta.fixtureScore}/100 — tough schedule ahead` });
+                } else if (ta.fixtureScore >= 70) {
+                    sellRating -= 3 * userSettings.fixtureWeight;
+                    positives.push({ type: 'positive', title: 'Great Team Fixture Score', text: `${player.team} fixture score ${ta.fixtureScore}/100 — favourable run` });
+                }
+            }
 
             sellRating = Math.max(0, Math.min(100, Math.round(sellRating)));
 
-            // VERDICT
+            // VERDICT (tighter thresholds — more active flagging)
             let verdict, verdictReason;
-            if (sellRating >= 60) {
+            if (sellRating >= 55) {
                 verdict = 'sell';
                 verdictReason = reasons[0] || 'Multiple red flags — prioritize transfer';
-            } else if (sellRating >= 40) {
+            } else if (sellRating >= 38) {
                 verdict = 'monitor';
                 verdictReason = reasons[0] || 'Some concerns — monitor closely';
-            } else if (sellRating <= 15 && player.form >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
+            } else if (sellRating <= 20 && player.form >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
                 verdict = 'star';
                 verdictReason = positives.length > 0 ? positives[0].text : 'Top performer — team cornerstone';
             } else {
@@ -1272,20 +1516,21 @@
 
         function buildKeyMetrics(player, posConfig, minsPerGame, avgFDR) {
             const form = player.form;
+            const ta = teamAnalysis[player.teamId];
             if (player.position <= 2) {
                 return {
                     primary: { label: 'Form', value: form.toFixed(1), status: form >= posConfig.formMedian + 1 ? 'good' : form < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
-                    secondary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' },
-                    tertiary: { label: 'PPG', value: player.ppg.toFixed(1), status: player.ppg >= 5 ? 'good' : player.ppg < 3 ? 'bad' : 'neutral' },
-                    quaternary: { label: 'Mins', value: minsPerGame.toFixed(0), status: minsPerGame >= 80 ? 'good' : minsPerGame < 60 ? 'bad' : 'warning' }
+                    secondary: { label: 'Def', value: ta ? ta.defensePower.toString() : '-', status: ta ? (ta.defensePower >= 60 ? 'good' : ta.defensePower < 40 ? 'bad' : 'warning') : 'neutral' },
+                    tertiary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' },
+                    quaternary: { label: 'PPG', value: player.ppg.toFixed(1), status: player.ppg >= 5 ? 'good' : player.ppg < 3 ? 'bad' : 'neutral' }
                 };
             } else {
                 const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
                 return {
                     primary: { label: 'Form', value: form.toFixed(1), status: form >= posConfig.formMedian + 1.5 ? 'good' : form < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
-                    secondary: { label: 'xGI/90', value: xGIPer90.toFixed(2), status: xGIPer90 >= 0.50 ? 'good' : xGIPer90 < 0.25 ? 'bad' : 'warning' },
-                    tertiary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' },
-                    quaternary: { label: 'PPG', value: player.ppg.toFixed(1), status: player.ppg >= 5 ? 'good' : player.ppg < 3 ? 'bad' : 'neutral' }
+                    secondary: { label: 'Att', value: ta ? ta.attackPower.toString() : '-', status: ta ? (ta.attackPower >= 60 ? 'good' : ta.attackPower < 40 ? 'bad' : 'warning') : 'neutral' },
+                    tertiary: { label: 'xGI/90', value: xGIPer90.toFixed(2), status: xGIPer90 >= 0.50 ? 'good' : xGIPer90 < 0.25 ? 'bad' : 'warning' },
+                    quaternary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' }
                 };
             }
         }
@@ -1610,6 +1855,20 @@
                 </div>
             </div>`;
 
+            // Team Analysis Context
+            const detailTA = teamAnalysis[player.teamId];
+            if (detailTA) {
+                html += `<div class="detail-section">
+                    <div class="detail-section-title">\ud83c\udfe2 Team Context \u2014 ${player.team}</div>
+                    <div class="detail-stats-grid">
+                        ${renderDetailStat('Attack', detailTA.attackPower.toString(), detailTA.attackPower / 100, detailTA.attackPower >= 60 ? 'var(--verdict-hold)' : detailTA.attackPower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgGoals.toFixed(1)} goals/game`)}
+                        ${renderDetailStat('Defence', detailTA.defensePower.toString(), detailTA.defensePower / 100, detailTA.defensePower >= 60 ? 'var(--verdict-hold)' : detailTA.defensePower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgConceded.toFixed(1)} conceded/game`)}
+                        ${renderDetailStat('Form', detailTA.formRating.toString(), detailTA.formRating / 100, detailTA.formRating >= 60 ? 'var(--verdict-hold)' : detailTA.formRating < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `W${detailTA.wins} D${detailTA.draws} L${detailTA.losses} last 5`)}
+                        ${renderDetailStat('Fixtures', detailTA.fixtureScore.toString(), detailTA.fixtureScore / 100, detailTA.fixtureScore >= 60 ? 'var(--verdict-hold)' : detailTA.fixtureScore < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `Avg FDR ${detailTA.avgFdr.toFixed(1)}`)}
+                    </div>
+                </div>`;
+            }
+
             // Concerns
             if (concerns.length > 0) {
                 html += `<div class="detail-section">
@@ -1712,11 +1971,19 @@
                 !selectedPlayers.some(sp => sp.id === p.id)
             );
 
-            // Composite scoring
+            // Composite scoring — enhanced with team analysis
             candidates.forEach(c => {
                 const fdr = c.fixtures.length >= 3
                     ? c.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / 3 : 3;
-                c._score = (c.form * 3) + (c.ppg * 2.5) + (c.epNext * 2) + ((5 - fdr) * 2) + (c.ownership > 15 ? 1 : 0);
+                const cTA = teamAnalysis[c.teamId];
+                let teamBonus = 0;
+                if (cTA) {
+                    teamBonus += (cTA.formRating - 50) / 25;              // Team form: up to ±2
+                    if (c.position >= 3) teamBonus += (cTA.attackPower - 50) / 25;   // Team attack for attackers
+                    if (c.position <= 2) teamBonus += (cTA.defensePower - 50) / 25;  // Team defence for defenders
+                    teamBonus += (cTA.fixtureScore - 50) / 25;            // Team fixture score
+                }
+                c._score = (c.form * 3) + (c.ppg * 2.5) + (c.epNext * 2) + ((5 - fdr) * 2.5) + teamBonus + (c.ownership > 15 ? 1 : 0);
                 c._fdr = fdr;
             });
             candidates.sort((a, b) => b._score - a._score);
