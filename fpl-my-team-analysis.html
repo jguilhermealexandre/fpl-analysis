@@ -310,6 +310,26 @@
         .fixture-chip.fdr-4 { background: rgba(251, 146, 60, 0.2); color: var(--fdr-4); }
         .fixture-chip.fdr-5 { background: rgba(239, 68, 68, 0.2); color: var(--fdr-5); }
 
+        .swing-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .swing-badge.improving {
+            background: rgba(74, 222, 128, 0.12);
+            color: var(--color-success);
+        }
+        .swing-badge.worsening {
+            background: rgba(248, 113, 113, 0.12);
+            color: var(--color-error);
+        }
+
         .fixture-team {
             display: block;
             font-size: 11px;
@@ -908,6 +928,8 @@
         let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
         let positionAverages = {};
         let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
+        let fixtureSwingData = {}; // Fixture swing detection per team
+        let seasonStats = {}; // Full-season team stats (W/D/L, GF/GA, CS%, home/away splits)
 
         let userSettings = {
             sellSensitivity: 1.0,   // multiplier for sell rating (>1 = aggressive, <1 = patient)
@@ -964,6 +986,95 @@
         }
 
         // ===== TEAM ANALYSIS SCORES (ported from teams-analysis) =====
+
+        // ===== FIXTURE SWING DETECTION (from teams-analysis) =====
+        function buildFixtureSwingData(bootTeams, fixturesData) {
+            const fixtureMap = {};
+            bootTeams.forEach(t => { fixtureMap[t.id] = {}; });
+            fixturesData.forEach(f => {
+                if (!f.event) return;
+                if (fixtureMap[f.team_h]) {
+                    if (!fixtureMap[f.team_h][f.event]) fixtureMap[f.team_h][f.event] = [];
+                    fixtureMap[f.team_h][f.event].push({ opponentId: f.team_a, fdr: f.team_h_difficulty || 3, isHome: true, finished: f.finished });
+                }
+                if (fixtureMap[f.team_a]) {
+                    if (!fixtureMap[f.team_a][f.event]) fixtureMap[f.team_a][f.event] = [];
+                    fixtureMap[f.team_a][f.event].push({ opponentId: f.team_h, fdr: f.team_a_difficulty || 3, isHome: false, finished: f.finished });
+                }
+            });
+            fixtureSwingData = {};
+            const gw = currentGW || 1;
+            bootTeams.forEach(team => {
+                const tfm = fixtureMap[team.id];
+                if (!tfm) return;
+                const futureGWs = Object.keys(tfm).map(Number).filter(g => g >= gw && tfm[g]?.[0] && !tfm[g][0].finished).sort((a, b) => a - b);
+                if (futureGWs.length < 6) return;
+                const first3 = futureGWs.slice(0, 3), next3 = futureGWs.slice(3, 6);
+                const getAvg = (gws) => gws.reduce((s, g) => { const fx = tfm[g]; return s + (fx?.[0] ? fx[0].fdr : 3); }, 0) / gws.length;
+                const avgFirst = getAvg(first3), avgNext = getAvg(next3);
+                const swing = avgFirst - avgNext;
+                if (Math.abs(swing) > 0.3) {
+                    fixtureSwingData[team.id] = { swing, direction: swing > 0 ? 'improving' : 'worsening', currentFdr: avgFirst.toFixed(1), futureFdr: avgNext.toFixed(1), swingGW: futureGWs[3] };
+                }
+            });
+            console.log('Fixture swings:', Object.keys(fixtureSwingData).length, 'teams');
+        }
+
+        // ===== SEASON STATS (from teams-analysis, without xG) =====
+        function calculateBasicSeasonStats(bootTeams, fixturesData) {
+            const stats = {};
+            const finishedFixtures = fixturesData.filter(f => f.finished && f.team_h_score !== null).sort((a, b) => a.event - b.event);
+            bootTeams.forEach(t => {
+                stats[t.id] = {
+                    played: 0, wins: 0, draws: 0, losses: 0, points: 0,
+                    goalsFor: 0, goalsAgainst: 0, goalDiff: 0,
+                    cleanSheets: 0, failedToScore: 0,
+                    homeP: 0, homeW: 0, homeGF: 0, homeGA: 0, homeCS: 0,
+                    awayP: 0, awayW: 0, awayGF: 0, awayGA: 0, awayCS: 0,
+                    last5Form: []
+                };
+            });
+            const teamHistory = {};
+            bootTeams.forEach(t => { teamHistory[t.id] = []; });
+            finishedFixtures.forEach(f => {
+                [[f.team_h, true], [f.team_a, false]].forEach(([tid, isHome]) => {
+                    if (!stats[tid]) return;
+                    const gf = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const ga = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    const result = gf > ga ? 'W' : gf === ga ? 'D' : 'L';
+                    stats[tid].played++;
+                    stats[tid].goalsFor += gf; stats[tid].goalsAgainst += ga;
+                    if (result === 'W') stats[tid].wins++;
+                    else if (result === 'D') stats[tid].draws++;
+                    else stats[tid].losses++;
+                    if (ga === 0) stats[tid].cleanSheets++;
+                    if (gf === 0) stats[tid].failedToScore++;
+                    if (isHome) {
+                        stats[tid].homeP++; if (result === 'W') stats[tid].homeW++;
+                        stats[tid].homeGF += gf; stats[tid].homeGA += ga;
+                        if (ga === 0) stats[tid].homeCS++;
+                    } else {
+                        stats[tid].awayP++; if (result === 'W') stats[tid].awayW++;
+                        stats[tid].awayGF += gf; stats[tid].awayGA += ga;
+                        if (ga === 0) stats[tid].awayCS++;
+                    }
+                    teamHistory[tid].push(result);
+                });
+            });
+            bootTeams.forEach(t => {
+                const s = stats[t.id];
+                s.last5Form = teamHistory[t.id].slice(-5);
+                const p = s.played || 1;
+                s.points = s.wins * 3 + s.draws;
+                s.goalDiff = s.goalsFor - s.goalsAgainst;
+                s.csPercent = Math.round((s.cleanSheets / p) * 100);
+                s.ftsPercent = Math.round((s.failedToScore / p) * 100);
+                s.gpg = (s.goalsFor / p).toFixed(2);
+                s.gapg = (s.goalsAgainst / p).toFixed(2);
+            });
+            return stats;
+        }
+
         function computeTeamScores(bootTeams, fixturesData) {
             teamAnalysis = {};
 
@@ -1167,6 +1278,8 @@
                 allPlayers.forEach(p => allPlayersById[p.id] = p);
                 computePositionAverages();
                 computeTeamScores(bootData.teams, fixturesData);
+                buildFixtureSwingData(bootData.teams, fixturesData);
+                seasonStats = calculateBasicSeasonStats(bootData.teams, fixturesData);
 
                 // Fetch manager + picks in parallel
                 showLoading(true, `Loading team for GW${currentGW}...`);
@@ -1727,7 +1840,7 @@
             <div class="player-card ${verdict}" onclick="openDetailPanel(${player.id})">
                 <div class="card-top">
                     <div class="player-info">
-                        <div class="player-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${player.name}</div>
+                        <div class="player-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${player.name}${(() => { const sw = fixtureSwingData[player.teamId]; return sw ? `<span class="swing-badge ${sw.direction}" title="Fixtures ${sw.direction} from GW${sw.swingGW}">${sw.direction === 'improving' ? '\u25b2' : '\u25bc'}</span>` : ''; })()}</div>
                         <div class="player-meta">
                             <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
                             <span>${player.team}</span>
@@ -1855,9 +1968,14 @@
                 </div>
             </div>`;
 
-            // Team Analysis Context
+            // Team Analysis Context (enriched with season stats)
             const detailTA = teamAnalysis[player.teamId];
+            const detailSS = seasonStats[player.teamId];
             if (detailTA) {
+                const swingInfo = fixtureSwingData[player.teamId];
+                const swingHtml = swingInfo
+                    ? `<div style="margin-top:8px;padding:6px 10px;border-radius:var(--radius-sm);background:${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)'};border:1px solid ${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'};font-size:11px;color:${swingInfo.direction === 'improving' ? 'var(--color-success)' : 'var(--color-error)'}">${swingInfo.direction === 'improving' ? '\u25b2' : '\u25bc'} Fixtures ${swingInfo.direction} from GW${swingInfo.swingGW}: FDR ${swingInfo.currentFdr} \u2192 ${swingInfo.futureFdr}</div>`
+                    : '';
                 html += `<div class="detail-section">
                     <div class="detail-section-title">\ud83c\udfe2 Team Context \u2014 ${player.team}</div>
                     <div class="detail-stats-grid">
@@ -1866,6 +1984,19 @@
                         ${renderDetailStat('Form', detailTA.formRating.toString(), detailTA.formRating / 100, detailTA.formRating >= 60 ? 'var(--verdict-hold)' : detailTA.formRating < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `W${detailTA.wins} D${detailTA.draws} L${detailTA.losses} last 5`)}
                         ${renderDetailStat('Fixtures', detailTA.fixtureScore.toString(), detailTA.fixtureScore / 100, detailTA.fixtureScore >= 60 ? 'var(--verdict-hold)' : detailTA.fixtureScore < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `Avg FDR ${detailTA.avgFdr.toFixed(1)}`)}
                     </div>
+                    ${detailSS ? `
+                    <div style="margin-top:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+                        <div class="metric-box"><div class="metric-label">Season</div><div class="metric-value neutral" style="font-size:11px;">W${detailSS.wins} D${detailSS.draws} L${detailSS.losses}</div></div>
+                        <div class="metric-box"><div class="metric-label">GF/GA</div><div class="metric-value ${detailSS.goalDiff > 0 ? 'good' : detailSS.goalDiff < -5 ? 'bad' : 'neutral'}" style="font-size:11px;">${detailSS.goalsFor}/${detailSS.goalsAgainst}</div></div>
+                        <div class="metric-box"><div class="metric-label">CS%</div><div class="metric-value ${detailSS.csPercent >= 35 ? 'good' : detailSS.csPercent < 20 ? 'bad' : 'neutral'}">${detailSS.csPercent}%</div></div>
+                        <div class="metric-box"><div class="metric-label">Pts</div><div class="metric-value neutral">${detailSS.points}</div></div>
+                    </div>
+                    <div style="margin-top:6px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+                        <div class="metric-box"><div class="metric-label">\ud83c\udfe0 Home</div><div class="metric-value neutral" style="font-size:10px;">W${detailSS.homeW}/${detailSS.homeP} \u2022 ${detailSS.homeGF}GF ${detailSS.homeGA}GA \u2022 ${detailSS.homeCS}CS</div></div>
+                        <div class="metric-box"><div class="metric-label">\u2708\ufe0f Away</div><div class="metric-value neutral" style="font-size:10px;">W${detailSS.awayW}/${detailSS.awayP} \u2022 ${detailSS.awayGF}GF ${detailSS.awayGA}GA \u2022 ${detailSS.awayCS}CS</div></div>
+                    </div>
+                    ` : ''}
+                    ${swingHtml}
                 </div>`;
             }
 
