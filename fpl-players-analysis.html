@@ -146,6 +146,155 @@
             max-width: 100%;
         }
 
+        /* ROUTES TO POINTS */
+        .routes-section { }
+        .routes-header { margin-bottom: 24px; }
+        .routes-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .routes-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 12px; }
+        .routes-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .routes-legend-item { display: flex; align-items: center; gap: 4px; }
+        .routes-section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 28px 0 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-default);
+        }
+        .routes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 16px;
+        }
+        @media (max-width: 700px) { .routes-grid { grid-template-columns: 1fr; } }
+
+        .route-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 16px;
+            transition: border-color 150ms, transform 150ms;
+        }
+        .route-card:hover {
+            border-color: rgba(74, 222, 128, 0.3);
+            transform: translateY(-2px);
+        }
+        .route-card-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .route-card-rank {
+            width: 28px;
+            height: 28px;
+            background: var(--surface-3);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .route-card:nth-child(1) .route-card-rank { background: rgba(251, 191, 36, 0.2); color: #FCD34D; }
+        .route-card:nth-child(2) .route-card-rank { background: rgba(192, 192, 192, 0.2); color: #C0C0C0; }
+        .route-card:nth-child(3) .route-card-rank { background: rgba(205, 127, 50, 0.2); color: #CD7F32; }
+        .route-card-player { flex: 1; min-width: 0; }
+        .route-card-name {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .route-card-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 2px;
+        }
+        .route-pos-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+        }
+        .route-card-score {
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .route-score-number {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-success);
+            line-height: 1;
+        }
+        .route-score-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .route-card-bars { display: flex; flex-direction: column; gap: 6px; }
+        .route-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+        }
+        .route-bar-icon { flex-shrink: 0; width: 18px; text-align: center; }
+        .route-bar-name {
+            width: 70px;
+            flex-shrink: 0;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .route-bar-track {
+            flex: 1;
+            height: 6px;
+            background: var(--surface-3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .route-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 300ms ease;
+        }
+        .route-bar-detail {
+            width: 70px;
+            flex-shrink: 0;
+            text-align: right;
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+        .route-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-subtle);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
         /* GLOBAL FILTER TOGGLES */
         .global-filters {
             display: flex;
@@ -1947,6 +2096,7 @@
             <button class="tab active" data-position="RECOMMENDATIONS">⭐ Recommendations</button>
             <button class="tab" data-position="CHARTS">📊 Charts</button>
             <button class="tab" data-position="FIXTURES">📅 Fixtures</button>
+            <button class="tab" data-position="ROUTES">🔀 Routes to Points</button>
             <button class="tab" data-position="GK">🧤 GK</button>
             <button class="tab" data-position="DEF">🛡️ DEF</button>
             <button class="tab" data-position="MID">⚡ MID</button>
@@ -1957,6 +2107,7 @@
     <main class="content">
         <div class="position-section active" id="section-RECOMMENDATIONS"></div>
         <div class="position-section" id="section-CHARTS"></div>
+        <div class="position-section" id="section-ROUTES"></div>
         <div class="position-section" id="section-FIXTURES"></div>
         <div class="position-section table-section-wrapper" id="section-GK"></div>
         <div class="position-section table-section-wrapper" id="section-DEF"></div>
@@ -2125,6 +2276,7 @@
                 // Render
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
                 document.getElementById('section-CHARTS').innerHTML = generateCharts(analyses);
+                document.getElementById('section-ROUTES').innerHTML = generateRoutesToPoints(analyses);
                 document.getElementById('section-FIXTURES').innerHTML = generateFixtureTicker(analyses);
                 document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
                 document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
@@ -2264,14 +2416,192 @@
                     : '';
             }
 
-            // Re-render recommendations (always respects global filters)
+            // Re-render recommendations and routes (always respects global filters)
             document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(allAnalyses);
+            document.getElementById('section-ROUTES').innerHTML = generateRoutesToPoints(allAnalyses);
 
             // Re-render tables (filters apply to quick filters too)
             document.getElementById('section-GK').innerHTML = createTable('GK', allAnalyses);
             document.getElementById('section-DEF').innerHTML = createTable('DEF', allAnalyses);
             document.getElementById('section-MID').innerHTML = createTable('MID', allAnalyses);
             document.getElementById('section-FWD').innerHTML = createTable('FWD', allAnalyses);
+        }
+
+        // ============================================
+        // ROUTES TO POINTS
+        // ============================================
+        function generateRoutesToPoints(analyses) {
+            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+
+            // Compute routes for each eligible player
+            const scored = analyses
+                .filter(p => isPlayerEligible(p, { minGames: 3 }))
+                .map(p => {
+                    const pos = posMap[p.position];
+                    const g = p.l5?.games || 1;
+                    const xGpg = (p.l5?.xG || 0) / g;
+                    const xApg = (p.l5?.xA || 0) / g;
+                    const csPg = (p.l5?.cleanSheets || 0) / g;
+                    const bonusPg = (p.l5?.bonus || 0) / g;
+                    const savesPg = (p.l5?.saves || 0) / g;
+                    const minsPg = (p.l5?.minutes || 0) / g;
+                    const threatPg = (p.l5?.threat || 0) / g;
+                    const creativityPg = (p.l5?.creativity || 0) / g;
+                    const goalsPg = (p.l5?.goals || 0) / g;
+                    const assistsPg = (p.l5?.assists || 0) / g;
+                    const bpsPg = (p.l5?.bps || 0) / g;
+
+                    // Define routes with thresholds and strengths
+                    const routes = [];
+
+                    // 1. Goals route
+                    if (xGpg >= 0.10 || goalsPg >= 0.2) {
+                        const strength = Math.min(10, (xGpg / 0.5) * 10);
+                        routes.push({ name: 'Goals', icon: '⚽', strength, detail: `${xGpg.toFixed(2)} xG/g`, color: '#F87171' });
+                    }
+
+                    // 2. Assists route
+                    if (xApg >= 0.08 || assistsPg >= 0.2) {
+                        const strength = Math.min(10, (xApg / 0.4) * 10);
+                        routes.push({ name: 'Assists', icon: '🅰️', strength, detail: `${xApg.toFixed(2)} xA/g`, color: '#60A5FA' });
+                    }
+
+                    // 3. Clean Sheets route (GK, DEF get 4pts; MID gets 1pt)
+                    if ((pos === 'GK' || pos === 'DEF') && csPg >= 0.15) {
+                        const strength = Math.min(10, (csPg / 0.6) * 10);
+                        routes.push({ name: 'Clean Sheets', icon: '🛡️', strength, detail: `${(csPg * 100).toFixed(0)}% CS rate`, color: '#34D399' });
+                    } else if (pos === 'MID' && csPg >= 0.25) {
+                        const strength = Math.min(10, (csPg / 0.6) * 8);
+                        routes.push({ name: 'Clean Sheets', icon: '🛡️', strength, detail: `${(csPg * 100).toFixed(0)}% CS rate`, color: '#34D399' });
+                    }
+
+                    // 4. Bonus Magnet route
+                    if (bonusPg >= 0.4) {
+                        const strength = Math.min(10, (bonusPg / 2) * 10);
+                        routes.push({ name: 'Bonus', icon: '⭐', strength, detail: `${bonusPg.toFixed(1)} bonus/g`, color: '#FBBF24' });
+                    }
+
+                    // 5. Saves route (GK only)
+                    if (pos === 'GK' && savesPg >= 2) {
+                        const strength = Math.min(10, (savesPg / 5) * 10);
+                        routes.push({ name: 'Saves', icon: '🧤', strength, detail: `${savesPg.toFixed(1)} saves/g`, color: '#A78BFA' });
+                    }
+
+                    // 6. Set Pieces / Creativity route
+                    if (creativityPg >= 15) {
+                        const strength = Math.min(10, (creativityPg / 50) * 10);
+                        routes.push({ name: 'Set Pieces', icon: '🎯', strength, detail: `${creativityPg.toFixed(0)} creativity/g`, color: '#FB923C' });
+                    }
+
+                    // 7. Nailed On (minutes) route
+                    if (minsPg >= 75) {
+                        const strength = Math.min(10, (minsPg / 90) * 10);
+                        routes.push({ name: 'Nailed', icon: '🔒', strength, detail: `${minsPg.toFixed(0)} mins/g`, color: '#94A3B8' });
+                    }
+
+                    // 8. BPS Accumulator (high baseline BPS even without returns)
+                    if (bpsPg >= 18) {
+                        const strength = Math.min(10, (bpsPg / 30) * 10);
+                        routes.push({ name: 'BPS Floor', icon: '📈', strength, detail: `${bpsPg.toFixed(0)} BPS/g`, color: '#E879F9' });
+                    }
+
+                    // Composite score: count of active routes × avg strength
+                    const routeCount = routes.length;
+                    const avgStrength = routeCount > 0 ? routes.reduce((s, r) => s + r.strength, 0) / routeCount : 0;
+                    const compositeScore = routeCount * avgStrength;
+
+                    return { ...p, pos, routes, routeCount, avgStrength, compositeScore };
+                })
+                .filter(p => p.routeCount >= 2)
+                .sort((a, b) => b.compositeScore - a.compositeScore);
+
+            // Split by position
+            const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
+            scored.forEach(p => byPos[p.pos]?.push(p));
+
+            // Overall top 20
+            const top20 = scored.slice(0, 20);
+
+            return `
+                <div class="routes-section">
+                    <div class="routes-header">
+                        <h2 class="routes-title">🔀 Routes to Points</h2>
+                        <p class="routes-subtitle">Players with the most diverse ways to score FPL points. More routes = more reliable returns.</p>
+                        <div class="routes-legend">
+                            <span class="routes-legend-item"><span style="color:#F87171">⚽</span> Goals</span>
+                            <span class="routes-legend-item"><span style="color:#60A5FA">🅰️</span> Assists</span>
+                            <span class="routes-legend-item"><span style="color:#34D399">🛡️</span> Clean Sheets</span>
+                            <span class="routes-legend-item"><span style="color:#FBBF24">⭐</span> Bonus</span>
+                            <span class="routes-legend-item"><span style="color:#A78BFA">🧤</span> Saves</span>
+                            <span class="routes-legend-item"><span style="color:#FB923C">🎯</span> Set Pieces</span>
+                            <span class="routes-legend-item"><span style="color:#94A3B8">🔒</span> Nailed</span>
+                            <span class="routes-legend-item"><span style="color:#E879F9">📈</span> BPS Floor</span>
+                        </div>
+                    </div>
+
+                    <h3 class="routes-section-title">🏆 Top 20 Overall</h3>
+                    <div class="routes-grid">
+                        ${top20.map((p, i) => renderRouteCard(p, i + 1)).join('')}
+                    </div>
+
+                    ${['DEF', 'MID', 'FWD', 'GK'].map(pos => {
+                        const posPlayers = byPos[pos].slice(0, 10);
+                        if (posPlayers.length === 0) return '';
+                        const posIcon = { GK: '🧤', DEF: '🛡️', MID: '⚡', FWD: '🎯' }[pos];
+                        const posName = { GK: 'Goalkeepers', DEF: 'Defenders', MID: 'Midfielders', FWD: 'Forwards' }[pos];
+                        return `
+                            <h3 class="routes-section-title">${posIcon} Top ${posName}</h3>
+                            <div class="routes-grid">
+                                ${posPlayers.map((p, i) => renderRouteCard(p, i + 1)).join('')}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderRouteCard(p, rank) {
+            const g = p.l5?.games || 1;
+            const ptsPerGame = ((p.l5?.points || 0) / g).toFixed(1);
+            const fdr = p.fixtures?.avgFDR3 || 3;
+            const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
+            const posColors = { GK: '#FBBF24', DEF: '#34D399', MID: '#60A5FA', FWD: '#F87171' };
+
+            return `
+                <div class="route-card">
+                    <div class="route-card-top">
+                        <div class="route-card-rank">${rank}</div>
+                        <div class="route-card-player">
+                            <div class="route-card-name">${p.name}</div>
+                            <div class="route-card-meta">
+                                <span class="route-pos-badge" style="background: ${posColors[p.pos]}20; color: ${posColors[p.pos]}">${p.pos}</span>
+                                ${p.team} · £${p.price.toFixed(1)}m
+                            </div>
+                        </div>
+                        <div class="route-card-score">
+                            <div class="route-score-number">${p.routeCount}</div>
+                            <div class="route-score-label">routes</div>
+                        </div>
+                    </div>
+                    <div class="route-card-bars">
+                        ${p.routes.map(r => `
+                            <div class="route-bar-row" title="${r.name}: ${r.detail}">
+                                <span class="route-bar-icon">${r.icon}</span>
+                                <span class="route-bar-name">${r.name}</span>
+                                <div class="route-bar-track">
+                                    <div class="route-bar-fill" style="width: ${r.strength * 10}%; background: ${r.color}"></div>
+                                </div>
+                                <span class="route-bar-detail">${r.detail}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="route-card-footer">
+                        <span>${ptsPerGame} pts/g</span>
+                        <span class="fdr-badge ${fdrClass}" style="font-size:10px;padding:2px 6px;">FDR ${fdr.toFixed(1)}</span>
+                        <span>${(p.selectedBy || 0).toFixed(1)}% owned</span>
+                    </div>
+                </div>
+            `;
         }
 
         // ============================================
