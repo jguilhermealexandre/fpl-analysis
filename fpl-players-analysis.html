@@ -1519,6 +1519,7 @@
             padding: 20px 24px;
             border-bottom: 1px solid var(--border-default);
             background: var(--surface-2);
+            flex-shrink: 0;
         }
         .chart-modal-title h2 {
             font-family: 'Space Grotesk', sans-serif;
@@ -1547,15 +1548,22 @@
             color: white;
         }
         .chart-modal-body {
-            padding: 24px;
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .chart-modal-left {
             flex: 1;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            padding: 24px;
+            min-width: 0;
+            border-right: 1px solid var(--border-default);
         }
         .chart-modal-canvas-container {
             flex: 1;
-            min-height: 500px;
+            min-height: 300px;
             position: relative;
         }
         .chart-modal-legend {
@@ -1565,6 +1573,7 @@
             padding-top: 16px;
             border-top: 1px solid var(--border-subtle);
             margin-top: 16px;
+            flex-shrink: 0;
         }
         .chart-legend-item {
             display: flex;
@@ -1578,46 +1587,120 @@
             height: 12px;
             border-radius: 3px;
         }
-        .chart-modal-players {
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid var(--border-subtle);
-            max-height: 200px;
-            overflow-y: auto;
+        .chart-modal-right {
+            width: 340px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chart-modal-players-header {
+            padding: 16px 20px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
         }
         .chart-modal-players-title {
-            font-size: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
             font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .chart-modal-players-subtitle {
+            font-size: 11px;
             color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
         }
-        .chart-players-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 8px;
+        .chart-players-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
         }
-        .chart-player-item {
+        .chart-player-card {
+            display: flex;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--surface-2);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            transition: background 150ms;
+        }
+        .chart-player-card:hover {
+            background: var(--surface-3);
+        }
+        .chart-player-rank {
+            width: 22px;
+            height: 22px;
+            background: var(--surface-3);
+            border-radius: 6px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: var(--surface-2);
-            border-radius: 8px;
-            font-size: 12px;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            margin-top: 1px;
         }
-        .chart-player-pos {
-            width: 8px;
-            height: 8px;
-            border-radius: 2px;
+        .chart-player-card:nth-child(1) .chart-player-rank { background: rgba(251,191,36,0.2); color: #FCD34D; }
+        .chart-player-card:nth-child(2) .chart-player-rank { background: rgba(192,192,192,0.2); color: #C0C0C0; }
+        .chart-player-card:nth-child(3) .chart-player-rank { background: rgba(205,127,50,0.2); color: #CD7F32; }
+        .chart-player-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .chart-player-name-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 3px;
         }
         .chart-player-name {
-            flex: 1;
-            font-weight: 500;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .chart-player-stat {
+        .chart-player-pos-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        .chart-player-meta {
+            font-size: 11px;
             color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .chart-player-reason {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        .chart-player-stat-badge {
+            flex-shrink: 0;
+            text-align: center;
+            margin-top: 1px;
+        }
+        .chart-player-stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--color-success);
+            line-height: 1;
+        }
+        .chart-player-stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        @media (max-width: 900px) {
+            .chart-modal-body { flex-direction: column; }
+            .chart-modal-left { border-right: none; border-bottom: 1px solid var(--border-default); }
+            .chart-modal-right { width: 100%; max-height: 300px; }
+            .chart-modal-canvas-container { min-height: 250px; }
         }
 
         /* COMPARE FUNCTIONALITY */
@@ -1985,30 +2068,35 @@
                 <button class="chart-modal-close" onclick="closeChartModal()">×</button>
             </div>
             <div class="chart-modal-body">
-                <div class="chart-modal-canvas-container">
-                    <canvas id="expandedChart"></canvas>
+                <div class="chart-modal-left">
+                    <div class="chart-modal-canvas-container">
+                        <canvas id="expandedChart"></canvas>
+                    </div>
+                    <div class="chart-modal-legend" id="chartModalLegend">
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-dot" style="background: #fbbf24;"></div>
+                            <span>GK</span>
+                        </div>
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-dot" style="background: #34d399;"></div>
+                            <span>DEF</span>
+                        </div>
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-dot" style="background: #60a5fa;"></div>
+                            <span>MID</span>
+                        </div>
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-dot" style="background: #f87171;"></div>
+                            <span>FWD</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="chart-modal-legend" id="chartModalLegend">
-                    <div class="chart-legend-item">
-                        <div class="chart-legend-dot" style="background: #fbbf24;"></div>
-                        <span>GK</span>
+                <div class="chart-modal-right">
+                    <div class="chart-modal-players-header">
+                        <div class="chart-modal-players-title" id="chartPlayersTitle">Notable Players</div>
+                        <div class="chart-modal-players-subtitle" id="chartPlayersSubtitle">Top performers for this metric</div>
                     </div>
-                    <div class="chart-legend-item">
-                        <div class="chart-legend-dot" style="background: #34d399;"></div>
-                        <span>DEF</span>
-                    </div>
-                    <div class="chart-legend-item">
-                        <div class="chart-legend-dot" style="background: #60a5fa;"></div>
-                        <span>MID</span>
-                    </div>
-                    <div class="chart-legend-item">
-                        <div class="chart-legend-dot" style="background: #f87171;"></div>
-                        <span>FWD</span>
-                    </div>
-                </div>
-                <div class="chart-modal-players" id="chartModalPlayers">
-                    <div class="chart-modal-players-title">Notable Players</div>
-                    <div class="chart-players-grid" id="chartPlayersGrid">
+                    <div class="chart-players-list" id="chartPlayersGrid">
                         <!-- Generated by JS -->
                     </div>
                 </div>
@@ -2095,7 +2183,6 @@
         <div class="tabs" id="tabs">
             <button class="tab active" data-position="RECOMMENDATIONS">⭐ Recommendations</button>
             <button class="tab" data-position="CHARTS">📊 Charts</button>
-            <button class="tab" data-position="FIXTURES">📅 Fixtures</button>
             <button class="tab" data-position="ROUTES">🔀 Routes to Points</button>
             <button class="tab" data-position="GK">🧤 GK</button>
             <button class="tab" data-position="DEF">🛡️ DEF</button>
@@ -2108,7 +2195,6 @@
         <div class="position-section active" id="section-RECOMMENDATIONS"></div>
         <div class="position-section" id="section-CHARTS"></div>
         <div class="position-section" id="section-ROUTES"></div>
-        <div class="position-section" id="section-FIXTURES"></div>
         <div class="position-section table-section-wrapper" id="section-GK"></div>
         <div class="position-section table-section-wrapper" id="section-DEF"></div>
         <div class="position-section table-section-wrapper" id="section-MID"></div>
@@ -2131,6 +2217,7 @@
         let playerAnalyses = {};
         let teamFixtures = {};
         let teams = {};
+        let teamAnalysis = {};
         let currentGameweek = null;
         let currentPhase = 'mid';
         let allAnalyses = [];
@@ -2217,6 +2304,9 @@
                 // Process fixtures
                 processFixtures(fixturesData);
 
+                // Compute team-level scores (attack, defense, form, fixtures)
+                computeTeamScores(staticData.teams, fixturesData);
+
                 // Process players
                 const analyses = [];
                 for (const player of staticData.players) {
@@ -2236,7 +2326,7 @@
                                 
                                 fixtureData = {
                                     avgFDR3, avgFDR5, next3, next5,
-                                    fixtureString: next3.map(f => `${teams[f.opponent]?.short_name || '???'}(${f.is_home ? 'H' : 'A'})`).join(', ')
+                                    fixtureString: next3.map(f => `${teams[f.opponent]?.short_name || '???'}(${f.isHome ? 'H' : 'A'})`).join(', ')
                                 };
                             }
                             
@@ -2263,7 +2353,9 @@
                                 // Availability fields
                                 status: playerStatus,
                                 news: playerNews,
-                                chanceNextRound: chanceNextRound
+                                chanceNextRound: chanceNextRound,
+                                // Team-level scores
+                                teamScores: teamAnalysis[player.team] || null
                             });
                         }
                     }
@@ -2277,7 +2369,6 @@
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
                 document.getElementById('section-CHARTS').innerHTML = generateCharts(analyses);
                 document.getElementById('section-ROUTES').innerHTML = generateRoutesToPoints(analyses);
-                document.getElementById('section-FIXTURES').innerHTML = generateFixtureTicker(analyses);
                 document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
                 document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
                 document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
@@ -2300,6 +2391,132 @@
                 teamFixtures[f.team_a].push({ opponent: f.team_h, isHome: false, difficulty: f.team_a_difficulty, event: f.event });
             });
             Object.keys(teamFixtures).forEach(id => teamFixtures[id].sort((a, b) => a.event - b.event));
+        }
+
+        // ============================================
+        // TEAM ANALYSIS SCORES (ported from my-team-analysis)
+        // ============================================
+        function computeTeamScores(bootTeams, fixturesData) {
+            teamAnalysis = {};
+
+            const finishedFixtures = fixturesData
+                .filter(f => f.finished && f.team_h_score !== null)
+                .sort((a, b) => a.event - b.event);
+
+            const upcomingFixtures = fixturesData
+                .filter(f => !f.finished && f.event !== null)
+                .sort((a, b) => a.event - b.event);
+
+            bootTeams.forEach(team => {
+                const teamId = team.id;
+
+                const pastFixtures = finishedFixtures
+                    .filter(f => f.team_h === teamId || f.team_a === teamId);
+                const last10 = pastFixtures.slice(-10);
+                const last5 = pastFixtures.slice(-5);
+
+                const futureFixtures = upcomingFixtures
+                    .filter(f => f.team_h === teamId || f.team_a === teamId)
+                    .slice(0, 5);
+
+                let totalScored = 0, totalConceded = 0;
+                let homeStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
+                let awayStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
+
+                last10.forEach(f => {
+                    const isHome = f.team_h === teamId;
+                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    totalScored += scored;
+                    totalConceded += conceded;
+                    if (isHome) {
+                        homeStats.goals += scored; homeStats.conceded += conceded;
+                        homeStats.games++; if (conceded === 0) homeStats.cleanSheets++;
+                    } else {
+                        awayStats.goals += scored; awayStats.conceded += conceded;
+                        awayStats.games++; if (conceded === 0) awayStats.cleanSheets++;
+                    }
+                });
+
+                const gamesPlayed = last10.length || 1;
+                const avgGoals = totalScored / gamesPlayed;
+                const avgConceded = totalConceded / gamesPlayed;
+
+                // Attack Power (0-100): blend actual goals with FPL strength
+                const fplAttackStrength = (team.strength_attack_home + team.strength_attack_away) / 2;
+                const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));
+                const goalRate = Math.min(1, avgGoals / 2.0);
+                const attackPower = Math.round(Math.min(100, Math.max(0, (goalRate * 0.55 + fplAttNorm * 0.45) * 100)));
+
+                // Defense Power (0-100) - inverted (higher = better defense)
+                const fplDefenseStrength = (team.strength_defence_home + team.strength_defence_away) / 2;
+                const fplDefNorm = Math.min(1, Math.max(0, (fplDefenseStrength - 900) / 500));
+                const concedeRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.0)));
+                const defensePower = Math.round(Math.min(100, Math.max(0, (concedeRate * 0.55 + fplDefNorm * 0.45) * 100)));
+
+                // Form Rating (0-100) - recency-weighted W/D/L from last 5
+                const formWeights = [5, 4, 3, 2, 1];
+                const reversedResults = [...last5].reverse();
+                let weightedPts = 0, weightSum = 0;
+                let wins = 0, draws = 0, losses = 0;
+                reversedResults.forEach((f, i) => {
+                    const isHome = f.team_h === teamId;
+                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    const result = scored > conceded ? 'W' : scored === conceded ? 'D' : 'L';
+                    const pts = result === 'W' ? 3 : result === 'D' ? 1 : 0;
+                    weightedPts += pts * formWeights[i];
+                    weightSum += formWeights[i];
+                    if (result === 'W') wins++; else if (result === 'D') draws++; else losses++;
+                });
+                const maxWeightedPts = 3 * weightSum;
+                const formBase = weightSum > 0 ? (weightedPts / maxWeightedPts) * 70 : 35;
+
+                const recentGD = last5.reduce((sum, f) => {
+                    const isHome = f.team_h === teamId;
+                    return sum + (isHome ? (f.team_h_score || 0) : (f.team_a_score || 0))
+                                - (isHome ? (f.team_a_score || 0) : (f.team_h_score || 0));
+                }, 0);
+                const gdBonus = Math.min(10, Math.max(-10, recentGD * 2));
+
+                let streakBonus = 0;
+                for (let i = 0; i < reversedResults.length; i++) {
+                    const f = reversedResults[i];
+                    const isHome = f.team_h === teamId;
+                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    if (scored > conceded) streakBonus += 3;
+                    else if (scored === conceded) streakBonus += 1;
+                    else break;
+                }
+                streakBonus = Math.min(15, streakBonus);
+
+                const formRating = Math.round(Math.min(100, Math.max(0, formBase + gdBonus + streakBonus)));
+
+                // Fixture Score (0-100)
+                let totalFdr = 0;
+                const futureDetails = futureFixtures.map(f => {
+                    const isHome = f.team_h === teamId;
+                    const fdr = isHome ? f.team_h_difficulty : f.team_a_difficulty;
+                    totalFdr += fdr || 3;
+                    return { fdr: fdr || 3, isHome };
+                });
+                const avgFdr = futureDetails.length > 0 ? totalFdr / futureDetails.length : 3;
+                const homeFixCount = futureDetails.filter(f => f.isHome).length;
+                const fixtureScore = Math.round(Math.min(100, Math.max(0,
+                    ((5 - avgFdr) / 4) * 85 + (homeFixCount / Math.max(1, futureDetails.length)) * 15)));
+
+                const totalCS = homeStats.cleanSheets + awayStats.cleanSheets;
+                const csRate = gamesPlayed > 0 ? totalCS / gamesPlayed : 0;
+
+                teamAnalysis[teamId] = {
+                    attackPower, defensePower, formRating, fixtureScore,
+                    avgGoals, avgConceded, avgFdr, csRate,
+                    wins, draws, losses, gamesPlayed,
+                    teamName: team.short_name || team.name
+                };
+            });
+            console.log('Team analysis computed for', Object.keys(teamAnalysis).length, 'teams');
         }
 
         function calculateStats(history, last5 = false) {
@@ -2742,16 +2959,30 @@
             const minsPerGame = (p.l5?.minutes || 0) / games;
             const ptsPerGame = (p.l5?.points || 0) / games;
             const fdr = p.fixtures?.avgFDR3 || 3;
-            // Smooth FDR factor: bonus for easy, penalty for hard
-            const fdrFactor = Math.max(-10, (3.5 - fdr) * 8);
             const nailedBonus = minsPerGame >= 80 ? 5 : minsPerGame >= 70 ? 2 : 0;
             const value = ptsPerGame / Math.max(p.price, 3.5);
+
+            // ── Team-level factors (from computeTeamScores) ──
+            // All team scores are 0-100 scales. We normalise to moderate bonus/penalty ranges
+            // so team context influences 15-20 % of the total score, not overwhelming individual quality.
+            const ts = p.teamScores;
+            // fixtureScore replaces the old raw-FDR factor: range -8 → +8
+            const fixtureFactor = ts ? ((ts.fixtureScore - 50) / 50) * 8 : Math.max(-10, (3.5 - fdr) * 8);
+            // Team form (momentum): range -3 → +3
+            const teamFormFactor = ts ? ((ts.formRating - 50) / 50) * 3 : 0;
+            // Position-specific team quality factor: range -4 → +4
+            //   • GK/DEF benefit from team defensePower (fewer goals conceded → more CS)
+            //   • MID/FWD benefit from team attackPower (more goals → more G/A)
+            const teamQualityFactor = ts
+                ? (pos === 'GK' || pos === 'DEF'
+                    ? ((ts.defensePower - 50) / 50) * 4
+                    : ((ts.attackPower - 50) / 50) * 4)
+                : 0;
 
             if (pos === 'GK') {
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
                 const savesPerGame = (p.l5?.saves || 0) / games;
                 const xGCPerGame = (p.l5?.xGC || 0) / games;
-                // Use xGC instead of raw GC; cap negative contribution
                 const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
                 
                 return (csPerGame * 30) +
@@ -2759,7 +2990,9 @@
                        defScore +
                        (ptsPerGame * 3) +
                        (value * 10) +
-                       fdrFactor +
+                       fixtureFactor +
+                       teamQualityFactor +
+                       teamFormFactor +
                        nailedBonus;
             }
 
@@ -2767,47 +3000,50 @@
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
                 const xGCPerGame = (p.l5?.xGC || 0) / games;
                 const xGIPerGame = (p.l5?.xGI || 0) / games;
-                // Use xGC for defensive quality; cap to avoid extreme negatives
                 const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
                 
                 return (csPerGame * 25) +
                        defScore +
-                       (xGIPerGame * 12) +          // Attacking threat
+                       (xGIPerGame * 12) +
                        (ptsPerGame * 3) +
                        (value * 10) +
-                       fdrFactor +
+                       fixtureFactor +
+                       teamQualityFactor +
+                       teamFormFactor +
                        nailedBonus;
             }
 
             if (pos === 'MID') {
                 const xGIPerGame = (p.l5?.xGI || 0) / games;
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
-                // Overperformance delta: actual G+A vs xGI (positive = clinical)
                 const actualGI = ((p.l5?.goals || 0) + (p.l5?.assists || 0)) / games;
                 const overPerf = Math.max(0, actualGI - xGIPerGame);
                 
                 return (xGIPerGame * 40) +
-                       (overPerf * 8) +             // Reward clinical players
-                       (csPerGame * 3) +            // MID CS bonus (1 FPL point)
+                       (overPerf * 8) +
+                       (csPerGame * 3) +
                        (ptsPerGame * 3) +
                        (value * 12) +
-                       fdrFactor +
+                       fixtureFactor +
+                       teamQualityFactor +
+                       teamFormFactor +
                        nailedBonus;
             }
 
             if (pos === 'FWD') {
-                // Fixed: use xG and xA separately instead of triple-counting via xGI
                 const xGPerGame = (p.l5?.xG || 0) / games;
                 const xAPerGame = (p.l5?.xA || 0) / games;
                 const actualGoals = (p.l5?.goals || 0) / games;
                 const overPerf = Math.max(0, actualGoals - xGPerGame);
                 
-                return (xGPerGame * 40) +           // xG is primary
-                       (xAPerGame * 15) +           // xA for creative forwards
-                       (overPerf * 10) +            // Reward clinical finishing
+                return (xGPerGame * 40) +
+                       (xAPerGame * 15) +
+                       (overPerf * 10) +
                        (ptsPerGame * 3) +
                        (value * 12) +
-                       fdrFactor +
+                       fixtureFactor +
+                       teamQualityFactor +
+                       teamFormFactor +
                        nailedBonus;
             }
 
@@ -3784,111 +4020,161 @@
         function populateChartPlayers(chartKey, container) {
             const players = chartData.players || [];
             if (!players.length) {
-                container.innerHTML = '<div style="color: var(--text-muted);">No player data available</div>';
+                container.innerHTML = '<div style="color: var(--text-muted); padding: 20px;">No player data available</div>';
                 return;
             }
-            
-            // Get top performers based on chart type
-            let sortedPlayers = [];
-            let statLabel = 'Pts/G';
-            
-            switch(chartKey) {
-                case 'priceVsPoints':
-                    sortedPlayers = [...players].sort((a, b) => b.valueScore - a.valueScore).slice(0, 12);
-                    statLabel = 'Value';
-                    break;
-                case 'xgiVsActual':
-                    sortedPlayers = [...players].sort((a, b) => (b.actualGI - b.xgiPerGame) - (a.actualGI - a.xgiPerGame)).slice(0, 12);
-                    statLabel = 'Over xGI';
-                    break;
-                case 'xPtsVsActual':
-                    sortedPlayers = [...players].sort((a, b) => (b.actualPts - b.xPts) - (a.actualPts - a.xPts)).slice(0, 12);
-                    statLabel = 'Over xPts';
-                    break;
-                case 'ownershipVsForm':
-                    sortedPlayers = [...players].filter(p => p.ownership < 10).sort((a, b) => b.ptsPerGame - a.ptsPerGame).slice(0, 12);
-                    statLabel = 'Differentials';
-                    break;
-                case 'bonusMagnet':
-                    sortedPlayers = [...players].sort((a, b) => b.bonusPerGame - a.bonusPerGame).slice(0, 12);
-                    statLabel = 'Bonus/G';
-                    break;
-                case 'formVsSeason':
-                    sortedPlayers = [...players].sort((a, b) => (b.ptsPerGame - b.seasonPtsPerGame) - (a.ptsPerGame - a.seasonPtsPerGame)).slice(0, 12);
-                    statLabel = 'Form Δ';
-                    break;
-                case 'xgcVsCS':
-                    sortedPlayers = [...players].filter(p => p.pos === 'GK' || p.pos === 'DEF').sort((a, b) => b.csPerGame - a.csPerGame).slice(0, 12);
-                    statLabel = 'CS/G';
-                    break;
-                case 'defAttacking':
-                    sortedPlayers = [...players].filter(p => p.pos === 'DEF').sort((a, b) => b.xgiPerGame - a.xgiPerGame).slice(0, 12);
-                    statLabel = 'xGI/G';
-                    break;
-                case 'gkSaves':
-                    sortedPlayers = [...players].filter(p => p.pos === 'GK').sort((a, b) => b.savesPerGame - a.savesPerGame).slice(0, 12);
-                    statLabel = 'Saves/G';
-                    break;
-                case 'reliability':
-                    sortedPlayers = [...players].sort((a, b) => (b.reliabilityPct + b.explosivenessPct) - (a.reliabilityPct + a.explosivenessPct)).slice(0, 12);
-                    statLabel = 'Score';
-                    break;
-                case 'valueVsOwnership':
-                    sortedPlayers = [...players].filter(p => p.ownership < 15).sort((a, b) => b.valueScore - a.valueScore).slice(0, 12);
-                    statLabel = 'Value';
-                    break;
-                default:
-                    sortedPlayers = [...players].sort((a, b) => b.ptsPerGame - a.ptsPerGame).slice(0, 12);
-            }
-            
-            const posColors = {
-                'GK': '#fbbf24',
-                'DEF': '#34d399',
-                'MID': '#60a5fa',
-                'FWD': '#f87171'
-            };
-            
-            container.innerHTML = sortedPlayers.map(p => {
-                let statValue = '';
-                switch(chartKey) {
-                    case 'priceVsPoints':
-                    case 'valueVsOwnership':
-                        statValue = p.valueScore.toFixed(2);
-                        break;
-                    case 'xgiVsActual':
-                        statValue = (p.actualGI - p.xgiPerGame).toFixed(2);
-                        break;
-                    case 'xPtsVsActual':
-                        statValue = (p.actualPts - p.xPts).toFixed(1);
-                        break;
-                    case 'bonusMagnet':
-                        statValue = p.bonusPerGame.toFixed(1);
-                        break;
-                    case 'formVsSeason':
-                        statValue = (p.ptsPerGame - p.seasonPtsPerGame).toFixed(1);
-                        break;
-                    case 'xgcVsCS':
-                        statValue = p.csPerGame.toFixed(2);
-                        break;
-                    case 'defAttacking':
-                    case 'ownershipVsForm':
-                        statValue = p.xgiPerGame.toFixed(2);
-                        break;
-                    case 'gkSaves':
-                        statValue = p.savesPerGame?.toFixed(1) || '-';
-                        break;
-                    case 'reliability':
-                        statValue = (p.reliabilityPct + p.explosivenessPct).toFixed(0);
-                        break;
-                    default:
-                        statValue = p.ptsPerGame.toFixed(1);
+
+            // Chart-specific config: sorting, stat display, panel title/subtitle, and reason generator
+            const chartConfig = {
+                priceVsPoints: {
+                    title: 'Best Value Picks',
+                    subtitle: 'Highest points per million spent',
+                    sort: (a, b) => b.valueScore - a.valueScore,
+                    statValue: p => p.valueScore.toFixed(2),
+                    statLabel: 'Val',
+                    reason: p => `${p.ptsPerGame.toFixed(1)} pts/g at just £${p.price.toFixed(1)}m — ${p.valueScore >= 1 ? 'elite' : 'strong'} value for money`
+                },
+                xgiVsActual: {
+                    title: 'Overperforming xGI',
+                    subtitle: 'Players outscoring their expected stats',
+                    sort: (a, b) => (b.actualGI - b.xgiPerGame) - (a.actualGI - a.xgiPerGame),
+                    statValue: p => '+' + (p.actualGI - p.xgiPerGame).toFixed(2),
+                    statLabel: 'Over',
+                    reason: p => {
+                        const delta = p.actualGI - p.xgiPerGame;
+                        return delta > 0.3 ? `Massively overperforming xGI — ${p.actualGI.toFixed(2)} actual vs ${p.xgiPerGame.toFixed(2)} expected. May regress`
+                            : delta > 0.1 ? `Clinical finisher — beating xGI by ${delta.toFixed(2)} per game`
+                            : `Slightly above expected — sustainable performance`;
+                    }
+                },
+                xPtsVsActual: {
+                    title: 'Lucky / Unlucky Players',
+                    subtitle: 'Actual points vs expected from underlying stats',
+                    sort: (a, b) => (b.actualPts - b.xPts) - (a.actualPts - a.xPts),
+                    statValue: p => { const d = p.actualPts - p.xPts; return (d >= 0 ? '+' : '') + d.toFixed(1); },
+                    statLabel: 'Δ Pts',
+                    reason: p => {
+                        const delta = p.actualPts - p.xPts;
+                        return delta > 1 ? `Overperforming expected points by ${delta.toFixed(1)} — bonus, set pieces, or clinical finishing`
+                            : delta < -1 ? `Underperforming by ${Math.abs(delta).toFixed(1)} pts — due a correction upward`
+                            : `Performing close to expected levels`;
+                    }
+                },
+                ownershipVsForm: {
+                    title: 'Top Differentials',
+                    subtitle: 'Under-owned players with strong form',
+                    filter: p => p.ownership < 10,
+                    sort: (a, b) => b.ptsPerGame - a.ptsPerGame,
+                    statValue: p => p.ownership.toFixed(1) + '%',
+                    statLabel: 'Own',
+                    reason: p => `Just ${p.ownership.toFixed(1)}% owned but delivering ${p.ptsPerGame.toFixed(1)} pts/g — genuine differential`
+                },
+                bonusMagnet: {
+                    title: 'Bonus Point Magnets',
+                    subtitle: 'Consistently earning bonus points',
+                    sort: (a, b) => b.bonusPerGame - a.bonusPerGame,
+                    statValue: p => p.bonusPerGame.toFixed(1),
+                    statLabel: 'Bon/G',
+                    reason: p => `Averaging ${p.bonusPerGame.toFixed(1)} bonus per game (${(p.l5?.bps || 0) / (p.l5?.games || 1) >= 25 ? 'elite' : 'strong'} BPS accumulator)`
+                },
+                formVsSeason: {
+                    title: 'Rising Form',
+                    subtitle: 'Players improving vs their season average',
+                    sort: (a, b) => (b.ptsPerGame - b.seasonPtsPerGame) - (a.ptsPerGame - a.seasonPtsPerGame),
+                    statValue: p => { const d = p.ptsPerGame - p.seasonPtsPerGame; return (d >= 0 ? '+' : '') + d.toFixed(1); },
+                    statLabel: 'Δ Form',
+                    reason: p => {
+                        const delta = p.ptsPerGame - p.seasonPtsPerGame;
+                        return delta > 2 ? `Huge form surge — L5 average ${p.ptsPerGame.toFixed(1)} vs season ${p.seasonPtsPerGame.toFixed(1)}. Get in now`
+                            : delta > 0.5 ? `Trending upward — recent form exceeding season baseline`
+                            : `Consistent performer with steady output`;
+                    }
+                },
+                xgcVsCS: {
+                    title: 'Best Defensive Assets',
+                    subtitle: 'Low xGC + high clean sheet rate',
+                    filter: p => p.pos === 'GK' || p.pos === 'DEF',
+                    sort: (a, b) => b.csPerGame - a.csPerGame,
+                    statValue: p => (p.csPerGame * 100).toFixed(0) + '%',
+                    statLabel: 'CS%',
+                    reason: p => `${(p.csPerGame * 100).toFixed(0)}% CS rate with ${p.xgcPerGame.toFixed(2)} xGC/g — ${p.xgcPerGame < 1 ? 'elite defense' : 'solid wall'}`
+                },
+                defAttacking: {
+                    title: 'Attacking Defenders',
+                    subtitle: 'Defenders with goal involvement threat',
+                    filter: p => p.pos === 'DEF',
+                    sort: (a, b) => b.xgiPerGame - a.xgiPerGame,
+                    statValue: p => p.xgiPerGame.toFixed(2),
+                    statLabel: 'xGI/G',
+                    reason: p => `${p.xgiPerGame.toFixed(2)} xGI/g — attacking wingback/centre-back with set piece threat`
+                },
+                gkSaves: {
+                    title: 'Save Point Machines',
+                    subtitle: 'Goalkeepers with highest save rates',
+                    filter: p => p.pos === 'GK',
+                    sort: (a, b) => b.savesPerGame - a.savesPerGame,
+                    statValue: p => p.savesPerGame?.toFixed(1) || '-',
+                    statLabel: 'Sav/G',
+                    reason: p => `${p.savesPerGame?.toFixed(1)} saves/g — busy keeper behind a porous defense = save point gold`
+                },
+                reliability: {
+                    title: 'Most Reliable Assets',
+                    subtitle: 'Consistent returns + explosive ceiling',
+                    sort: (a, b) => (b.reliabilityPct + b.explosivenessPct) - (a.reliabilityPct + a.explosivenessPct),
+                    statValue: p => (p.reliabilityPct + p.explosivenessPct).toFixed(0),
+                    statLabel: 'Score',
+                    reason: p => `${p.reliabilityPct.toFixed(0)}% reliability + ${p.explosivenessPct.toFixed(0)}% explosiveness — ${p.reliabilityPct > 60 ? 'set and forget' : 'high ceiling play'}`
+                },
+                valueVsOwnership: {
+                    title: 'Hidden Gems',
+                    subtitle: 'Great value at low ownership',
+                    filter: p => p.ownership < 15,
+                    sort: (a, b) => b.valueScore - a.valueScore,
+                    statValue: p => p.valueScore.toFixed(2),
+                    statLabel: 'Val',
+                    reason: p => `${p.valueScore.toFixed(2)} value score at only ${p.ownership.toFixed(1)}% owned — under the radar`
                 }
-                
+            };
+
+            const config = chartConfig[chartKey] || {
+                title: 'Top Performers',
+                subtitle: 'Best recent points output',
+                sort: (a, b) => b.ptsPerGame - a.ptsPerGame,
+                statValue: p => p.ptsPerGame.toFixed(1),
+                statLabel: 'Pts/G',
+                reason: p => `Averaging ${p.ptsPerGame.toFixed(1)} points per game in the last 5`
+            };
+
+            // Update panel header
+            const titleEl = document.getElementById('chartPlayersTitle');
+            const subtitleEl = document.getElementById('chartPlayersSubtitle');
+            if (titleEl) titleEl.textContent = config.title;
+            if (subtitleEl) subtitleEl.textContent = config.subtitle;
+
+            let filtered = config.filter ? players.filter(config.filter) : [...players];
+            filtered.sort(config.sort);
+            const top = filtered.slice(0, 10);
+
+            const posColors = { GK: '#fbbf24', DEF: '#34d399', MID: '#60a5fa', FWD: '#f87171' };
+
+            container.innerHTML = top.map((p, i) => {
+                const sv = config.statValue(p);
+                const reason = config.reason(p);
                 return `
-                    <div class="chart-player-item">
-                        <div class="chart-player-pos" style="background: ${posColors[p.pos]}"></div>
-                        <span class="chart-player-name">${p.name}</span>
-                        <span class="chart-player-stat">${statValue}</span>
+                    <div class="chart-player-card">
+                        <div class="chart-player-rank">${i + 1}</div>
+                        <div class="chart-player-info">
+                            <div class="chart-player-name-row">
+                                <span class="chart-player-name">${p.name}</span>
+                                <span class="chart-player-pos-badge" style="background: ${posColors[p.pos]}20; color: ${posColors[p.pos]}">${p.pos}</span>
+                            </div>
+                            <div class="chart-player-meta">${p.team} · £${p.price.toFixed(1)}m · ${p.ownership.toFixed(1)}% owned</div>
+                            <div class="chart-player-reason">${reason}</div>
+                        </div>
+                        <div class="chart-player-stat-badge">
+                            <div class="chart-player-stat-value">${sv}</div>
+                            <div class="chart-player-stat-label">${config.statLabel}</div>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -4890,54 +5176,6 @@
                     options: { ...baseOptions, plugins: { ...baseOptions.plugins, legend: { display: true, labels: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } } } }, scales: { x: baseOptions.scales.x, y: { ...baseOptions.scales.y, title: { display: true, text: 'Pts/Game (L5)', color: 'rgba(255,255,255,0.6)' } } } }
                 });
             }
-        }
-
-        // ============================================
-        // FIXTURES
-        // ============================================
-        function generateFixtureTicker(analyses) {
-            const teamData = {};
-            analyses.forEach(p => {
-                if (p.teamId && p.fixtures && !teamData[p.teamId]) {
-                    teamData[p.teamId] = { id: p.teamId, name: p.team, fixtures: p.fixtures };
-                }
-            });
-
-            const sorted = Object.values(teamData)
-                .filter(t => t.fixtures?.next5?.length || t.fixtures?.next3?.length)
-                .sort((a, b) => (a.fixtures.avgFDR5 ?? a.fixtures.avgFDR3 ?? 5) - (b.fixtures.avgFDR5 ?? b.fixtures.avgFDR3 ?? 5));
-
-            return `
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr>
-                                <th style="text-align: left; padding: 12px;">Team</th>
-                                <th>GW1</th><th>GW2</th><th>GW3</th><th>GW4</th><th>GW5</th>
-                                <th>Avg FDR</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${sorted.map(t => {
-                                const fixtures = t.fixtures.next5 || t.fixtures.next3 || [];
-                                const avgFDR = t.fixtures.avgFDR5 ?? t.fixtures.avgFDR3 ?? 3;
-                                return `
-                                    <tr>
-                                        <td style="padding: 12px; font-weight: 500;">${t.name}</td>
-                                        ${fixtures.slice(0, 5).map(f => {
-                                            const opp = teams[f.opponent]?.short_name || '???';
-                                            const fdrClass = f.difficulty <= 2 ? 'fdr-1' : f.difficulty <= 2.5 ? 'fdr-2' : f.difficulty <= 3.5 ? 'fdr-3' : f.difficulty <= 4 ? 'fdr-4' : 'fdr-5';
-                                            return `<td style="text-align: center;"><span class="fdr-badge ${fdrClass}">${opp} ${f.isHome ? 'H' : 'A'}</span></td>`;
-                                        }).join('')}
-                                        ${Array(Math.max(0, 5 - fixtures.length)).fill('<td></td>').join('')}
-                                        <td style="text-align: center;"><span class="fdr-badge fdr-${Math.round(avgFDR)}">${avgFDR.toFixed(1)}</span></td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
         }
 
         // ============================================
