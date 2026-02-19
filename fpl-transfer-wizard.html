@@ -320,6 +320,7 @@
         4: { name: 'Forward', short: 'FWD', cls: 'fwd', icon: '⚡' }
     };
     const VALID_FORMATIONS = [[3,4,3],[3,5,2],[4,3,3],[4,4,2],[4,5,1],[5,3,2],[5,4,1],[5,2,3]];
+    const POS_FORM_MEDIAN = { 1: 3.0, 2: 3.5, 3: 4.0, 4: 4.5 }; // Position-specific form baselines (from player-analysis medians)
 
     let allPlayers = [], allPlayersById = {}, teams = {}, teamFixtures = {}, teamPowerData = {}, playerHistory = {};
     let currentGW = 1, mySquad = [], analyzedSquad = [], recommendedXI = [], recommendedBench = [];
@@ -420,43 +421,95 @@
     function computeTeamPower(bootData, fixturesData) {
         teamPowerData = {};
         const ts = {};
-        Object.keys(teams).forEach(id => { ts[id]={goals:0,xG:0,ga:0,cs:0,games:0,results:[]}; });
-        bootData.elements.forEach(p => { if(ts[p.team]) { ts[p.team].goals+=p.goals_scored||0; ts[p.team].xG+=parseFloat(p.expected_goals)||0; } });
+        Object.keys(teams).forEach(id => { ts[id]={goals:0,xG:0,xGC:0,ga:0,cs:0,games:0,results:[],
+            homeGoals:0,homeGA:0,homeGames:0,homeXG:0,homeXGC:0,
+            awayGoals:0,awayGA:0,awayGames:0,awayXG:0,awayXGC:0}; });
+        bootData.elements.forEach(p => { if(ts[p.team]) {
+            ts[p.team].goals+=p.goals_scored||0;
+            ts[p.team].xG+=parseFloat(p.expected_goals)||0;
+            // Aggregate xGC from defenders/GKs (avoid double counting: use only GK)
+            if(p.element_type===1) ts[p.team].xGC+=parseFloat(p.expected_goals_conceded)||0;
+        }});
         const finished = fixturesData.filter(f=>f.finished).sort((a,b)=>a.event-b.event);
         finished.forEach(f => {
-            if(ts[f.team_h]){ts[f.team_h].games++;ts[f.team_h].ga+=f.team_a_score||0;if(!(f.team_a_score||0))ts[f.team_h].cs++;
+            if(ts[f.team_h]){
+                ts[f.team_h].games++;ts[f.team_h].ga+=f.team_a_score||0;if(!(f.team_a_score||0))ts[f.team_h].cs++;
+                ts[f.team_h].homeGames++;ts[f.team_h].homeGA+=f.team_a_score||0;ts[f.team_h].homeGoals+=f.team_h_score||0;
                 const hs=f.team_h_score||0,as2=f.team_a_score||0;ts[f.team_h].results.push(hs>as2?'W':hs===as2?'D':'L');}
-            if(ts[f.team_a]){ts[f.team_a].games++;ts[f.team_a].ga+=f.team_h_score||0;if(!(f.team_h_score||0))ts[f.team_a].cs++;
+            if(ts[f.team_a]){
+                ts[f.team_a].games++;ts[f.team_a].ga+=f.team_h_score||0;if(!(f.team_h_score||0))ts[f.team_a].cs++;
+                ts[f.team_a].awayGames++;ts[f.team_a].awayGA+=f.team_h_score||0;ts[f.team_a].awayGoals+=f.team_a_score||0;
                 const hs2=f.team_h_score||0,as3=f.team_a_score||0;ts[f.team_a].results.push(as3>hs2?'W':as3===hs2?'D':'L');}
+        });
+        // Compute per-GW xG/xGC from player history for recency weighting
+        Object.keys(teams).forEach(tid => {
+            const id=parseInt(tid);
+            let recentXG=0,recentXGC=0,recentGames=0;
+            const recentFx=finished.filter(f=>f.team_h===id||f.team_a===id).slice(-6);
+            recentFx.forEach(f=>{
+                recentGames++;
+                const isHome=f.team_h===id;
+                // Estimate xG from finished fixtures (aggregate later)
+                if(isHome){recentXGC+=(f.team_a_score||0)*0.95;} // approximate with actual goals * regression
+                else{recentXGC+=(f.team_h_score||0)*0.95;}
+            });
+            if(ts[tid]){ts[tid].recentXGCpg=recentGames>0?recentXGC/recentGames:1.3;ts[tid].recentGames=recentGames;}
         });
         Object.keys(teams).forEach(tid => {
             const t=teams[tid], ss=ts[tid], gp=Math.max(ss.games,1);
             const gpg=ss.goals/gp, xgpg=ss.xG/gp, gapg=ss.ga/gp, csr=ss.cs/gp;
+            const xgcpg=gp>0?ss.xGC/gp:1.3;
             const as=((t.atkHome+t.atkAway)/2-900)/500, ds=((t.defHome+t.defAway)/2-900)/500;
+            // Enhanced: 35/35/30 blend (aligned with teams-analysis)
             const atk=Math.round(Math.min(gpg/2,1)*35+Math.min(xgpg/2,1)*35+Math.max(0,Math.min(1,as))*30);
-            const def=Math.round(Math.max(0,1-gapg/2)*70+Math.max(0,Math.min(1,ds))*30);
-            // Form rating from recent W/D/L with recency weighting
-            const recent=ss.results.slice(-8);
-            let formPts=0,formW=0;
-            recent.forEach((r,i)=>{const w=1+i*0.3;formW+=w;formPts+=(r==='W'?3:r==='D'?1:0)*w;});
-            const formRating=formW>0?Math.round((formPts/(formW*3))*100):50;
+            const def=Math.round(Math.max(0,Math.min(1,1-gapg/2))*35+Math.max(0,Math.min(1,1-xgcpg/2))*35+Math.max(0,Math.min(1,ds))*30);
+            // Venue-adjusted power
+            const hGP=Math.max(ss.homeGames,1), aGP=Math.max(ss.awayGames,1);
+            const atkHome=Math.round(Math.min(ss.homeGoals/hGP/2,1)*35+Math.min(xgpg/2,1)*35+Math.max(0,Math.min(1,(t.atkHome-900)/500))*30);
+            const atkAway=Math.round(Math.min(ss.awayGoals/aGP/2,1)*35+Math.min(xgpg/2,1)*35+Math.max(0,Math.min(1,(t.atkAway-900)/500))*30);
+            const defHome=Math.round(Math.max(0,Math.min(1,1-ss.homeGA/hGP/2))*35+Math.max(0,Math.min(1,1-xgcpg/2))*35+Math.max(0,Math.min(1,(t.defHome-900)/500))*30);
+            const defAway=Math.round(Math.max(0,Math.min(1,1-ss.awayGA/aGP/2))*35+Math.max(0,Math.min(1,1-xgcpg/2))*35+Math.max(0,Math.min(1,(t.defAway-900)/500))*30);
+            // Form rating from recent W/D/L with recency weighting (improved: weights [5,4,3,2,1] for last 5)
+            const recent=ss.results.slice(-5);
+            const formWeights=[5,4,3,2,1];
+            let formPts=0,formW=0,gdBonus=0,streakBonus=0;
+            recent.forEach((r,i)=>{const w=formWeights[i]||1;formW+=w;formPts+=(r==='W'?3:r==='D'?1:0)*w;});
+            const formBase=formW>0?Math.round((formPts/(formW*3))*70):35;
+            // Streak bonus
+            for(let i=recent.length-1;i>=0;i--){if(recent[i]==='W')streakBonus+=3;else if(recent[i]==='D')streakBonus+=1;else break;}
+            streakBonus=Math.min(15,streakBonus);
+            const formRating=Math.min(100,Math.max(0,formBase+streakBonus));
             // Fixture score from upcoming FDR
             const fx=teamFixtures[parseInt(tid)]||[];
             const fxWeights=[1.0,0.7,0.5,0.35,0.25,0.2];
             let fxScore=0,fxW=0;
             fx.forEach((f,i)=>{const w=fxWeights[i]||0.15;fxW+=w;fxScore+=(6-f.difficulty)*w;});
             const fixtureScore=fxW>0?Math.round(Math.max(0,Math.min(100,(fxScore/fxW-1)*25))):50;
-            teamPowerData[tid]={attackPower:Math.max(0,Math.min(100,atk)),defensePower:Math.max(0,Math.min(100,def)),formRating,fixtureScore,goalsPerGame:gpg,xGPerGame:xgpg,gaPerGame:gapg,csRate:csr,gamesPlayed:gp};
+            teamPowerData[tid]={
+                attackPower:Math.max(0,Math.min(100,atk)),defensePower:Math.max(0,Math.min(100,def)),
+                attackPowerHome:Math.max(0,Math.min(100,atkHome)),attackPowerAway:Math.max(0,Math.min(100,atkAway)),
+                defensePowerHome:Math.max(0,Math.min(100,defHome)),defensePowerAway:Math.max(0,Math.min(100,defAway)),
+                formRating,fixtureScore,goalsPerGame:gpg,xGPerGame:xgpg,gaPerGame:gapg,xGCPerGame:xgcpg,
+                csRate:csr,gamesPlayed:gp,recentXGCpg:ss.recentXGCpg||1.3
+            };
         });
     }
 
     function getCleanSheetProb(teamId, opponentId, isHome) {
         const tp=teamPowerData[teamId], op=teamPowerData[opponentId];
         if(!tp||!op) return 0.25;
+        // Enhanced model aligned with teams-analysis: base + defense bonus - attack penalty + xGC adjustment
         let base = isHome ? 0.35 : 0.25;
-        base += (tp.defensePower-50)*0.003;
-        base -= (op.attackPower-50)*0.0025;
-        base += (1.3-tp.gaPerGame)*0.06;
+        // Use venue-adjusted power when available
+        const teamDef = isHome ? (tp.defensePowerHome||tp.defensePower) : (tp.defensePowerAway||tp.defensePower);
+        const oppAtk = isHome ? (op.attackPowerAway||op.attackPower) : (op.attackPowerHome||op.attackPower);
+        base += (teamDef-50)*0.003;
+        base -= (oppAtk-50)*0.0025;
+        // xGC adjustment (from teams-analysis model)
+        const avgLeagueXGCpg = 1.3;
+        const xgcAdj = ((avgLeagueXGCpg - (tp.xGCPerGame||1.3)) * 0.08) - (((op.xGPerGame||1.3) - avgLeagueXGCpg) * 0.06);
+        base += xgcAdj;
+        base += (1.3-tp.gaPerGame)*0.04;
         return Math.max(0.05, Math.min(0.65, base));
     }
 
@@ -486,17 +539,29 @@
             if(player.epNext>=4) reasons.push({text:`EP: ${player.epNext.toFixed(1)}`,type:'pro'});
         }
 
-        // Form (continuous instead of step-based)
-        score+=(player.form-3.5)*5;
+        // Form (continuous, position-adjusted baselines from player-analysis medians)
+        const formBaseline = POS_FORM_MEDIAN[pos] || 3.5;
+        score+=(player.form-formBaseline)*5;
         if(player.form>=7) reasons.push({text:`🔥 Elite form (${player.form})`,type:'pro'});
-        else if(player.form>=5.5) reasons.push({text:`Good form (${player.form})`,type:'pro'});
-        else if(player.form<2.5) reasons.push({text:`Poor form (${player.form})`,type:'con'});
+        else if(player.form>=formBaseline+1.5) reasons.push({text:`Good form (${player.form})`,type:'pro'});
+        else if(player.form<formBaseline-1.0) reasons.push({text:`Poor form (${player.form})`,type:'con'});
 
-        // L3 trend
+        // L3/L5 trend (continuous instead of step-based)
         if(player.l3Stats&&player.l5Stats&&player.l3Stats.games>=2&&player.l5Stats.games>=3){
             const l3ppg=player.l3Stats.points/player.l3Stats.games, l5ppg=player.l5Stats.points/player.l5Stats.games;
-            if(l3ppg>l5ppg+1.5){score+=5;reasons.push({text:'📈 Rising form',type:'pro'});}
-            else if(l3ppg<l5ppg-1.5){score-=5;reasons.push({text:'📉 Declining form',type:'con'});}
+            const ppgDelta = l3ppg - l5ppg;
+            // Continuous: each 1.0 ppg delta = ±3.5 score
+            const trendScore = Math.max(-8, Math.min(8, Math.round(ppgDelta * 3.5)));
+            score += trendScore;
+            if(ppgDelta > 1.0) reasons.push({text:`📈 Rising form (+${ppgDelta.toFixed(1)} ppg)`,type:'pro'});
+            else if(ppgDelta < -1.0) reasons.push({text:`📉 Declining form (${ppgDelta.toFixed(1)} ppg)`,type:'con'});
+        }
+        // L5 xGI trend (underlying performance trend, not just points)
+        if(player.l3Stats&&player.l5Stats&&player.l3Stats.games>=2&&player.l5Stats.games>=3&&player.l3Stats.minutes>90){
+            const l3xgipg=player.l3Stats.xGI/player.l3Stats.games, l5xgipg=player.l5Stats.xGI/player.l5Stats.games;
+            const xgiDelta = l3xgipg - l5xgipg;
+            if(xgiDelta > 0.15){score+=3;reasons.push({text:`📈 xGI rising (${l3xgipg.toFixed(2)} vs ${l5xgipg.toFixed(2)})`,type:'pro'});}
+            else if(xgiDelta < -0.15){score-=3;reasons.push({text:`📉 xGI falling (${l3xgipg.toFixed(2)} vs ${l5xgipg.toFixed(2)})`,type:'con'});}
         }
 
         // Fixtures (continuous, DGW-aware: score all fixtures in this GW)
@@ -507,21 +572,23 @@
             else if(fx.difficulty>=4) reasons.push({text:`Tough: ${fx.opponent}(${fx.isHome?'H':'A'}) FDR ${fx.difficulty}`,type:'con'});
             if(fx.isHome) score+=3*mult;
 
-            // Opponent strength (continuous)
+            // Opponent strength (venue-adjusted: use opponent's away attack if player is home, etc.)
             const opp=teamPowerData[fx.opponentId];
             if(opp){
                 if(pos<=2){
-                    score-=((opp.attackPower-50)/50)*8*mult;
-                    if(opp.attackPower<35) reasons.push({text:`Weak opp attack (${opp.attackPower})`,type:'pro'});
-                    else if(opp.attackPower>65) reasons.push({text:`Strong opp attack (${opp.attackPower})`,type:'con'});
+                    const oppAtk = fx.isHome ? (opp.attackPowerAway||opp.attackPower) : (opp.attackPowerHome||opp.attackPower);
+                    score-=((oppAtk-50)/50)*8*mult;
+                    if(oppAtk<35) reasons.push({text:`Weak opp attack (${oppAtk})`,type:'pro'});
+                    else if(oppAtk>65) reasons.push({text:`Strong opp attack (${oppAtk})`,type:'con'});
                     const csProb=getCleanSheetProb(player.teamId,fx.opponentId,fx.isHome);
                     score+=(csProb-0.25)*30*mult;
                     if(csProb>=0.40) reasons.push({text:`High CS: ${(csProb*100).toFixed(0)}%`,type:'pro'});
                     else if(csProb<0.18) reasons.push({text:`Low CS: ${(csProb*100).toFixed(0)}%`,type:'con'});
                 } else {
-                    score+=((50-opp.defensePower)/50)*8*mult;
-                    if(opp.defensePower<35) reasons.push({text:`Weak opp defense (${opp.defensePower})`,type:'pro'});
-                    else if(opp.defensePower>65) reasons.push({text:`Strong opp defense (${opp.defensePower})`,type:'con'});
+                    const oppDef = fx.isHome ? (opp.defensePowerAway||opp.defensePower) : (opp.defensePowerHome||opp.defensePower);
+                    score+=((50-oppDef)/50)*8*mult;
+                    if(oppDef<35) reasons.push({text:`Weak opp defense (${oppDef})`,type:'pro'});
+                    else if(oppDef>65) reasons.push({text:`Strong opp defense (${oppDef})`,type:'con'});
                 }
             }
         });
@@ -567,6 +634,10 @@
             if(pos>=3) score+=Math.min(ict,40)*0.12;
         }
 
+        // Penalty / set-piece taker bonus (was only in captain score — adding to lineup score too)
+        if(player.penOrder===1){score+=4;reasons.push({text:'🎯 Penalty taker',type:'pro'});}
+        else if(player.penOrder===2){score+=1.5;}
+
         // GK saves
         if(pos===1){
             const spg=player.saves/Math.max(currentGW-1,1);
@@ -583,29 +654,68 @@
 
     // ===== CAPTAIN SCORE =====
     function computeCaptainScore(player) {
-        let score=0; const reasons=[]; const fx=player.fixtures?.[0];
+        let score=0; const reasons=[];
         if(!player.lineupData?.available) return {score:-100,reasons:[{text:'Unavailable',type:'con'}]};
         if(player.pos===1) return {score:-50,reasons:[{text:'GK not captain material',type:'con'}]};
+        // Small penalty for DEF captaincy (historically MID/FWD outscore as captains)
+        if(player.pos===2){score-=5;reasons.push({text:'DEF captain (slight penalty)',type:'info'});}
+
+        // DGW detection — iterate ALL fixtures in the GW (not just first)
+        const nextEv=player.fixtures?.[0]?.event;
+        const dgwFxC=nextEv?player.fixtures.filter(f=>f.event===nextEv):[];
+        const isDGW=dgwFxC.length>=2;
 
         const ppg=player.totalPoints/Math.max(currentGW-1,1);
         score+=ppg*4;
         if(ppg>=6) reasons.push({text:`${ppg.toFixed(1)} pts/game`,type:'pro'});
 
-        if(player.minutes>200){const xgi90=(player.xGI/player.minutes)*90;score+=xgi90*25;if(xgi90>=0.50) reasons.push({text:`${xgi90.toFixed(2)} xGI/90`,type:'pro'});}
+        if(player.minutes>200){
+            const xgi90=(player.xGI/player.minutes)*90;score+=xgi90*25;
+            if(xgi90>=0.50) reasons.push({text:`${xgi90.toFixed(2)} xGI/90`,type:'pro'});
+            // xG regression adjustment: overperformers slightly penalized, underperformers boosted
+            const overperf=player.goals-player.xG;
+            if(overperf>3){score-=4;reasons.push({text:`Overperforming xG by ${overperf.toFixed(1)} (regression risk)`,type:'con'});}
+            else if(overperf<-2.5){score+=4;reasons.push({text:`Due goals (${Math.abs(overperf).toFixed(1)} below xG)`,type:'pro'});}
+        }
         score+=player.form*2.5;
         if(player.form>=7) reasons.push({text:`🔥 Form: ${player.form}`,type:'pro'});
 
-        if(fx){
-            score+=(3.5-fx.difficulty)*6;
-            if(fx.isHome){score+=3;reasons.push({text:`Home vs ${fx.opponent}`,type:'pro'});}
-            if(fx.difficulty<=2) reasons.push({text:`Easy FDR ${fx.difficulty}`,type:'pro'});
-            if(fx.difficulty>=4) reasons.push({text:`Hard FDR ${fx.difficulty}`,type:'con'});
+        // L3/L5 trend bonus for captain
+        if(player.l3Stats&&player.l5Stats&&player.l3Stats.games>=2&&player.l5Stats.games>=3){
+            const l3ppg=player.l3Stats.points/player.l3Stats.games, l5ppg=player.l5Stats.points/player.l5Stats.games;
+            const trendDelta=l3ppg-l5ppg;
+            if(trendDelta>1.5){score+=6;reasons.push({text:`📈 Trending up (+${trendDelta.toFixed(1)} ppg L3 vs L5)`,type:'pro'});}
+            else if(trendDelta>0.5){score+=3;}
+            else if(trendDelta<-1.5){score-=5;reasons.push({text:`📉 Trending down (${trendDelta.toFixed(1)} ppg L3 vs L5)`,type:'con'});}
+        }
+
+        // Iterate ALL fixtures in GW (DGW-aware instead of just first fixture)
+        dgwFxC.forEach((fx,i)=>{
+            const mult=isDGW?0.65:1;
+            score+=(3.5-fx.difficulty)*6*mult;
+            if(fx.isHome){score+=3*mult;reasons.push({text:`Home vs ${fx.opponent}`,type:'pro'});}
+            if(fx.difficulty<=2) reasons.push({text:`Easy: ${fx.opponent} FDR ${fx.difficulty}`,type:'pro'});
+            if(fx.difficulty>=4) reasons.push({text:`Hard: ${fx.opponent} FDR ${fx.difficulty}`,type:'con'});
             const opp=teamPowerData[fx.opponentId];
             if(opp){
-                if(opp.defensePower<35){score+=8;reasons.push({text:`Leaky defense (${opp.defensePower}/100)`,type:'pro'});}
-                else if(opp.defensePower<45) score+=4;
-                if(opp.gaPerGame>1.6){score+=5;reasons.push({text:`Opp concedes ${opp.gaPerGame.toFixed(1)}/g`,type:'pro'});}
+                // Venue-adjusted opponent defense
+                const oppDef = fx.isHome ? (opp.defensePowerAway||opp.defensePower) : (opp.defensePowerHome||opp.defensePower);
+                if(oppDef<35){score+=8*mult;reasons.push({text:`Leaky defense (${oppDef}/100)`,type:'pro'});}
+                else if(oppDef<45) score+=4*mult;
+                if(opp.gaPerGame>1.6){score+=5*mult;reasons.push({text:`Opp concedes ${opp.gaPerGame.toFixed(1)}/g`,type:'pro'});}
+                // For DEF captains: CS probability adds value
+                if(player.pos===2){
+                    const csProb=getCleanSheetProb(player.teamId,fx.opponentId,fx.isHome);
+                    if(csProb>=0.35){score+=5*mult;reasons.push({text:`CS chance ${(csProb*100).toFixed(0)}% (DEF captain value)`,type:'pro'});}
+                }
             }
+        });
+        // DGW bonus (scaled by fixture quality instead of flat +20)
+        if(isDGW){
+            const avgDGWfdr=dgwFxC.reduce((s,f)=>s+f.difficulty,0)/dgwFxC.length;
+            const dgwBonus=Math.round(12 + Math.max(0,(3.5-avgDGWfdr))*6);
+            score+=dgwBonus;
+            reasons.push({text:`🎯 DGW (${dgwFxC.length} games, avg FDR ${avgDGWfdr.toFixed(1)}, +${dgwBonus})`,type:'pro'});
         }
 
         const bpg=player.bonus/Math.max(currentGW-1,1);
@@ -616,10 +726,11 @@
         else if(player.penOrder===2){score+=3;reasons.push({text:'🎯 Backup pen taker',type:'pro'});}
         else if(player.histStats&&player.histStats.penMissed>0){score+=5;reasons.push({text:'🎯 Takes penalties',type:'pro'});}
 
-        // DGW captain boost
-        const nextEv=player.fixtures?.[0]?.event;
-        const dgwFxC=nextEv?player.fixtures.filter(f=>f.event===nextEv):[];
-        if(dgwFxC.length>=2){score+=20;reasons.push({text:'🎯 DGW captain boost',type:'pro'});}
+        // Minutes reliability — 90-minute players are safer captain picks
+        const mpg=player.minutes/Math.max(currentGW-1,1);
+        if(mpg>=85){score+=3;reasons.push({text:`Nailed (${mpg.toFixed(0)} mpg)`,type:'pro'});}
+        else if(mpg<60){score-=6;reasons.push({text:`Low mins (${mpg.toFixed(0)} mpg) — risky captain`,type:'con'});}
+        else if(mpg<75){score-=3;reasons.push({text:`Rotation risk (${mpg.toFixed(0)} mpg)`,type:'con'});}
 
         // Team attack power context
         const tpCap=teamPowerData[player.teamId];
@@ -653,8 +764,27 @@
         }
         if(!bestXI){const av=squad.filter(p=>p.lineupData.available).sort((a,b)=>b.lineupData.score-a.lineupData.score);bestXI=av.slice(0,11);bestFormation='N/A';}
         const xiIds=new Set(bestXI.map(p=>p.id));
-        const bench=squad.filter(p=>!xiIds.has(p.id)).sort((a,b)=>{
-            if(a.pos===1&&b.pos!==1)return 1;if(b.pos===1&&a.pos!==1)return-1; // GK last (bench slot 4)
+        // Smart bench ordering: ensure formation-valid auto-subs + score-based priority
+        const benchRaw=squad.filter(p=>!xiIds.has(p.id));
+        // Count XI positions to detect thin coverage
+        const xiPosCounts={1:0,2:0,3:0,4:0};
+        bestXI.forEach(p=>xiPosCounts[p.pos]++);
+        const needsDefCover=xiPosCounts[2]===3; // exactly min DEF, need DEF high on bench
+        const needsFwdCover=xiPosCounts[4]===1; // exactly min FWD, need FWD high on bench
+
+        const bench=benchRaw.sort((a,b)=>{
+            // GK always last (bench slot 4 per FPL rules)
+            if(a.pos===1&&b.pos!==1)return 1;if(b.pos===1&&a.pos!==1)return-1;
+            // Formation-coverage priority: if XI has exactly 3 DEF, push a DEF higher in bench order
+            if(needsDefCover){
+                if(a.pos===2&&b.pos!==2&&a.lineupData.available) return -1;
+                if(b.pos===2&&a.pos!==2&&b.lineupData.available) return 1;
+            }
+            // Similarly for FWD coverage when only 1 FWD in XI
+            if(needsFwdCover){
+                if(a.pos===4&&b.pos!==4&&a.lineupData.available) return -1;
+                if(b.pos===4&&a.pos!==4&&b.lineupData.available) return 1;
+            }
             const diff=b.lineupData.score-a.lineupData.score;
             if(Math.abs(diff)>2) return diff;
             // Tiebreaker: better upcoming fixtures (GW+2, GW+3)
@@ -785,7 +915,7 @@
             <div class="bench-section"><div class="bench-title">📋 Bench</div><div class="bench-row">${bp.map(p=>pp(p,true)).join('')}</div></div>
             <div style="margin-top:20px;">
                 <div class="insight-box info"><div class="insight-title">Why ${recommendedFormation}?</div><div class="insight-text">Maximizes total lineup score by selecting the best ${fp[0]} DEF, ${fp[1]} MID, ${fp[2]} FWD from your squad while respecting FPL formation rules (min 3 DEF, 2 MID, 1 FWD).</div></div>
-                ${bp.filter(p=>p.lineupData.available&&p.lineupData.score>0).length>0?`<div class="insight-box warning"><div class="insight-title">Bench Order</div><div class="insight-text">Auto-sub order: ${bp.filter(p=>p.lineupData.available).map((p,i)=>`${i+1}. ${p.name} (${p.posName}, score ${p.lineupData.score})`).join(' → ')}</div></div>`:''}
+                ${bp.filter(p=>p.lineupData.available&&p.lineupData.score>0).length>0?`<div class="insight-box warning"><div class="insight-title">Bench Order</div><div class="insight-text">Auto-sub order: ${bp.filter(p=>p.lineupData.available).map((p,i)=>`${i+1}. ${p.name} (${p.posName}, score ${p.lineupData.score})`).join(' → ')}${(()=>{const xiPC={1:0,2:0,3:0,4:0};recommendedXI.forEach(p=>xiPC[p.pos]++);const notes=[];if(xiPC[2]===3)notes.push('DEF prioritized on bench (3-at-the-back needs position cover)');if(xiPC[4]===1)notes.push('FWD prioritized on bench (lone striker needs position cover)');return notes.length?' — '+notes.join('; '):'';})()} </div></div>`:''}
             </div>
             <div class="wizard-nav"><button class="btn btn-secondary" onclick="goToStep(1)">← Analysis</button><button class="btn btn-primary" onclick="goToStep(3)">Choose Captain →</button></div>`;
         document.getElementById('step2Content').innerHTML=html;
