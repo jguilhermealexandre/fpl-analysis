@@ -1999,6 +1999,159 @@
         /* Clickable cards */
         .rec-card { cursor: pointer; }
         .route-card { cursor: pointer; }
+
+        /* RISING FORM */
+        .rising-section { }
+        .rising-header { margin-bottom: 24px; }
+        .rising-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .rising-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 12px; }
+        .rising-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .rising-legend-item { display: flex; align-items: center; gap: 5px; }
+        .rising-legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .rising-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 16px;
+        }
+        @media (max-width: 700px) { .rising-grid { grid-template-columns: 1fr; } }
+
+        .rising-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: border-color 150ms, transform 150ms;
+        }
+        .rising-card:hover {
+            border-color: rgba(251, 146, 60, 0.4);
+            transform: translateY(-2px);
+        }
+        .rising-card-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .rising-card-rank {
+            width: 28px;
+            height: 28px;
+            background: var(--surface-3);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .rising-card:nth-child(1) .rising-card-rank { background: rgba(251, 191, 36, 0.2); color: #FCD34D; }
+        .rising-card:nth-child(2) .rising-card-rank { background: rgba(192, 192, 192, 0.2); color: #C0C0C0; }
+        .rising-card:nth-child(3) .rising-card-rank { background: rgba(205, 127, 50, 0.2); color: #CD7F32; }
+        .rising-card-player { flex: 1; min-width: 0; }
+        .rising-card-name {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .rising-card-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 2px;
+        }
+        .rising-card-score {
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .rising-score-number {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: #FB923C;
+            line-height: 1;
+        }
+        .rising-score-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .rising-signals {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .rising-signal {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: var(--surface-2);
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        .rising-signal-icon {
+            width: 22px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .rising-signal-label {
+            color: var(--text-secondary);
+            flex: 1;
+            font-weight: 500;
+        }
+        .rising-signal-value {
+            font-weight: 600;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+        .rising-signal-value.positive { color: var(--color-success); }
+        .rising-signal-value.neutral { color: var(--text-secondary); }
+        .rising-signal-value.negative { color: var(--color-error); }
+        .rising-signal-bar {
+            width: 60px;
+            height: 5px;
+            background: var(--surface-3);
+            border-radius: 3px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .rising-signal-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 300ms ease;
+        }
+        .rising-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-subtle);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
@@ -2152,6 +2305,7 @@
     <div class="tabs-container">
         <div class="tabs" id="tabs">
             <button class="tab active" data-position="RECOMMENDATIONS">⭐ Recommendations</button>
+            <button class="tab" data-position="RISING">🔥 Rising Form</button>
             <button class="tab" data-position="CHARTS">📊 Charts</button>
             <button class="tab" data-position="ROUTES">🔀 Routes to Points</button>
             <button class="tab" data-position="GK">🧤 GK</button>
@@ -2163,6 +2317,7 @@
 
     <main class="content">
         <div class="position-section active" id="section-RECOMMENDATIONS"></div>
+        <div class="position-section" id="section-RISING"></div>
         <div class="position-section" id="section-CHARTS"></div>
         <div class="position-section" id="section-ROUTES"></div>
         <div class="position-section table-section-wrapper" id="section-GK"></div>
@@ -2347,6 +2502,7 @@
                 // Render
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
                 document.getElementById('section-CHARTS').innerHTML = generateCharts(analyses);
+                document.getElementById('section-RISING').innerHTML = generateRisingForm(analyses);
                 document.getElementById('section-ROUTES').innerHTML = generateRoutesToPoints(analyses);
                 document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
                 document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
@@ -3428,6 +3584,424 @@
             document.getElementById('routes-panel-' + pos)?.classList.add('active');
         }
 
+        function switchRisingTab(pos, btn) {
+            document.querySelectorAll('#risingSubTabs .sub-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('[id^="rising-panel-"]').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('rising-panel-' + pos)?.classList.add('active');
+        }
+
+        // ============================================
+        // RISING FORM — Players Picking Up Form
+        // ============================================
+        /**
+         * Rising Form model — identifies players with converging positive signals.
+         *
+         * Three pillars (matching teams-analysis methodology):
+         *   1. TEAM FORM — results momentum (W/D/L recency-weighted) + team xG quality trend
+         *      • formRating (0-100, recency-weighted) measures results momentum
+         *      • xG trend: recent-6 xG/g vs season xG/g (rising = team creating more / conceding less)
+         *      • xG regression: team underperforming xG (actual goals < xG) → positive reversion likely
+         *      These are SEPARATE sub-signals because a team can have bad results but rising xG
+         *      (unlucky) — that's actually a strong BUY signal.
+         *
+         *   2. FIXTURE SWING — fixtures getting easier or already easy
+         *      • fixtureSwingData: compares GW1-3 FDR vs GW4-6 FDR (threshold ±0.3)
+         *      • Currently easy: avg FDR of next 3 ≤ 2.5
+         *      • Home-heavy: upcoming fixtures skewed home (≥60% of next 5)
+         *
+         *   3. PLAYER STATS — underlying xG / ICT improving recently
+         *      • L3 vs season-excluding-L3 per-game rates for position-specific key metrics
+         *      • FPL points trend: L3 avg vs prior-2 avg (within L5 window)
+         *      • Minutes trend: gaining game time (rotation risk decreasing)
+         *
+         * Players need ≥2 signals and a minimum composite score to appear.
+         * Window sizes: team xG uses 6-game (matches teams-analysis), player stats uses 3-game.
+         */
+        function generateRisingForm(analyses) {
+            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+
+            const scored = analyses
+                .filter(p => {
+                    if ((p.l5?.games || 0) < 3) return false;
+                    if ((p.season?.games || 0) < 6) return false; // need season baseline
+                    return true;
+                })
+                .map(p => {
+                    const pos = posMap[p.position];
+                    const g5 = p.l5?.games || 1;
+                    const gS = p.season?.games || 1;
+                    const signals = [];
+                    let risingScore = 0;
+                    const isDefPos = (pos === 'GK' || pos === 'DEF');
+
+                    // ─────────────────────────────────────────────
+                    // PILLAR 1: TEAM PICKING UP FORM
+                    // ─────────────────────────────────────────────
+                    const ts = p.teamScores; // from computeTeamScores()
+                    const seasonXg = getTeamSeasonXg(p.teamId);
+                    const recent6Xg = getTeamXgWindow(p.teamId, 6); // 6-game window per teams-analysis
+
+                    // 1a. Results momentum — recency-weighted W/D/L (formRating 0-100)
+                    let teamFormSignal = 0;
+                    if (ts && ts.formRating > 55) {
+                        // Only fire when form is genuinely above average (55+)
+                        // Scale: 55→0, 100→9
+                        teamFormSignal = Math.min(9, ((ts.formRating - 55) / 45) * 9);
+                        risingScore += teamFormSignal * 1.5;
+                        signals.push({
+                            icon: '📈', label: 'Team in form',
+                            detail: `${ts.wins}W ${ts.draws}D ${ts.losses}L (L5)`,
+                            strength: Math.min(10, teamFormSignal),
+                            color: '#4ADE80'
+                        });
+                    }
+
+                    // 1b. Team xG quality trend — is the underlying process improving?
+                    // Compare recent 6 xG/g (or xGC/g for defenders) to season average.
+                    // Uses same 6-game window and thresholds as teams-analysis xgTrend/xgcTrend.
+                    let xgTrendSignal = 0;
+                    if (recent6Xg && seasonXg && seasonXg.games >= 8) {
+                        if (isDefPos) {
+                            // Defensive: team conceding less xG recently → improving
+                            // Threshold ±0.20 per game (from teams-analysis xgcTrend)
+                            const xgcDelta = seasonXg.xGCpg - recent6Xg.xGCpg; // positive = improving
+                            if (xgcDelta > 0.10) {
+                                xgTrendSignal = Math.min(10, (xgcDelta / 0.6) * 10);
+                                risingScore += xgTrendSignal * 2;
+                                signals.push({
+                                    icon: '🛡️', label: 'Team xGC improving',
+                                    detail: `${recent6Xg.xGCpg.toFixed(2)} vs ${seasonXg.xGCpg.toFixed(2)} xGC/g`,
+                                    strength: xgTrendSignal,
+                                    color: '#34D399'
+                                });
+                            }
+                        } else {
+                            // Attacking: team creating more xG recently → rising
+                            // Threshold ±0.25 per game (from teams-analysis xgTrend)
+                            const xgDelta = recent6Xg.xGpg - seasonXg.xGpg; // positive = rising
+                            if (xgDelta > 0.10) {
+                                xgTrendSignal = Math.min(10, (xgDelta / 0.6) * 10);
+                                risingScore += xgTrendSignal * 2;
+                                signals.push({
+                                    icon: '⚽', label: 'Team xG rising',
+                                    detail: `${recent6Xg.xGpg.toFixed(2)} vs ${seasonXg.xGpg.toFixed(2)} xG/g`,
+                                    strength: xgTrendSignal,
+                                    color: '#34D399'
+                                });
+                            }
+                        }
+                    }
+
+                    // 1c. xG regression potential — team due positive mean reversion
+                    // If team scored fewer goals than xG (underperforming), goals should
+                    // increase to match underlying quality. Inverse for defense.
+                    let regressionSignal = 0;
+                    if (seasonXg && seasonXg.games >= 10) {
+                        if (isDefPos) {
+                            // Defense: conceding more goals than xGC → due to concede less
+                            const xgcOverperf = (seasonXg.totalConceded - seasonXg.totalXgc);
+                            if (xgcOverperf > 2) { // conceding 2+ more goals than xGC
+                                regressionSignal = Math.min(8, (xgcOverperf / 6) * 8);
+                                risingScore += regressionSignal * 1.5;
+                                signals.push({
+                                    icon: '🔄', label: 'CS regression due',
+                                    detail: `${seasonXg.totalConceded} GA vs ${seasonXg.totalXgc.toFixed(1)} xGC`,
+                                    strength: Math.min(10, regressionSignal),
+                                    color: '#C084FC'
+                                });
+                            }
+                        } else {
+                            // Attack: scoring fewer goals than xG → due to score more
+                            const xgUnderperf = (seasonXg.totalXg - seasonXg.totalGoals);
+                            if (xgUnderperf > 2) { // 2+ fewer goals than xG
+                                regressionSignal = Math.min(8, (xgUnderperf / 6) * 8);
+                                risingScore += regressionSignal * 1.5;
+                                signals.push({
+                                    icon: '🔄', label: 'Goals regression due',
+                                    detail: `${seasonXg.totalGoals} G vs ${seasonXg.totalXg.toFixed(1)} xG`,
+                                    strength: Math.min(10, regressionSignal),
+                                    color: '#C084FC'
+                                });
+                            }
+                        }
+                    }
+
+                    // ─────────────────────────────────────────────
+                    // PILLAR 2: FIXTURE SWING / EASY RUN
+                    // ─────────────────────────────────────────────
+                    let fixtureSignal = 0;
+
+                    // 2a. Fixture swing — FDR dropping from GW1-3 to GW4-6
+                    const swing = fixtureSwingData[p.teamId];
+                    if (swing && swing.direction === 'improving') {
+                        fixtureSignal = Math.min(10, Math.abs(swing.swing) * 4);
+                        risingScore += fixtureSignal * 2.5;
+                        signals.push({
+                            icon: '📅', label: 'Fixtures improving',
+                            detail: `FDR ${swing.currentFdr} → ${swing.futureFdr} (GW${swing.swingGW}+)`,
+                            strength: fixtureSignal,
+                            color: '#60A5FA'
+                        });
+                    }
+
+                    // 2b. Currently easy fixtures (avg FDR3 ≤ 2.5)
+                    const avgFdr = p.fixtures?.avgFDR3 || 3;
+                    if (avgFdr <= 2.5) {
+                        const easyBonus = Math.min(8, (3 - avgFdr) * 6);
+                        fixtureSignal = Math.max(fixtureSignal, easyBonus);
+                        risingScore += easyBonus * 1.2;
+                        if (!swing || swing.direction !== 'improving') {
+                            signals.push({
+                                icon: '🟢', label: 'Easy run now',
+                                detail: `FDR ${avgFdr.toFixed(1)}`,
+                                strength: Math.min(10, easyBonus * 1.5),
+                                color: '#4ADE80'
+                            });
+                        }
+                    }
+
+                    // 2c. Home-heavy upcoming stretch (≥3 of next 5 at home)
+                    const next5 = p.fixtures?.next5 || [];
+                    const homeCount = next5.filter(f => f.isHome).length;
+                    if (next5.length >= 4 && homeCount >= 3) {
+                        const homeRatio = homeCount / next5.length;
+                        const homeBonus = Math.min(5, (homeRatio - 0.5) * 15);
+                        if (homeBonus > 1) {
+                            risingScore += homeBonus;
+                            signals.push({
+                                icon: '🏟️', label: 'Home-heavy run',
+                                detail: `${homeCount}/${next5.length} at home`,
+                                strength: Math.min(10, homeBonus * 2),
+                                color: '#60A5FA'
+                            });
+                        }
+                    }
+
+                    // ─────────────────────────────────────────────
+                    // PILLAR 3: PLAYER UNDERLYING STATS IMPROVING
+                    // ─────────────────────────────────────────────
+
+                    // 3a. Key metric uplift — L3 per-game vs rest-of-season per-game
+                    // Exclude L3 from season baseline to avoid circular comparison
+                    let statUplift = 0;
+                    const history = p.history || [];
+                    if (history.length >= 6) {
+                        const last3 = history.slice(-3);
+                        const restOfSeason = history.slice(0, -3);
+                        const rosGames = restOfSeason.length || 1;
+
+                        const computePerGame = (games, n) => ({
+                            xGI: games.reduce((s, g) => s + (parseFloat(g.expected_goal_involvements) || 0), 0) / n,
+                            xG: games.reduce((s, g) => s + (parseFloat(g.expected_goals) || 0), 0) / n,
+                            xA: games.reduce((s, g) => s + (parseFloat(g.expected_assists) || 0), 0) / n,
+                            bps: games.reduce((s, g) => s + (parseFloat(g.bps) || 0), 0) / n,
+                            creativity: games.reduce((s, g) => s + (parseFloat(g.creativity) || 0), 0) / n,
+                            threat: games.reduce((s, g) => s + (parseFloat(g.threat) || 0), 0) / n,
+                            influence: games.reduce((s, g) => s + (parseFloat(g.influence) || 0), 0) / n,
+                            xGC: games.reduce((s, g) => s + (parseFloat(g.expected_goals_conceded) || 0), 0) / n,
+                            saves: games.reduce((s, g) => s + (parseFloat(g.saves) || 0), 0) / n
+                        });
+
+                        const baselinePerGame = computePerGame(restOfSeason, rosGames);
+                        const l3PerGame = computePerGame(last3, 3);
+
+                        // Position-specific key metrics with FPL-appropriate weights
+                        let keyMetrics;
+                        const detailParts = [];
+                        if (pos === 'GK') {
+                            keyMetrics = [
+                                { key: 'xGC', weight: 3, invert: true, label: 'xGC' },
+                                { key: 'saves', weight: 2, invert: false, label: 'Saves' }
+                            ];
+                        } else if (pos === 'DEF') {
+                            keyMetrics = [
+                                { key: 'xGC', weight: 2.5, invert: true, label: 'xGC' },
+                                { key: 'xGI', weight: 2, invert: false, label: 'xGI' },
+                                { key: 'bps', weight: 1, invert: false, label: 'BPS' }
+                            ];
+                        } else if (pos === 'MID') {
+                            keyMetrics = [
+                                { key: 'xGI', weight: 3, invert: false, label: 'xGI' },
+                                { key: 'creativity', weight: 1.5, invert: false, label: 'Creativity' },
+                                { key: 'threat', weight: 1.5, invert: false, label: 'Threat' }
+                            ];
+                        } else { // FWD
+                            keyMetrics = [
+                                { key: 'xG', weight: 3, invert: false, label: 'xG' },
+                                { key: 'xA', weight: 1.5, invert: false, label: 'xA' },
+                                { key: 'threat', weight: 1.5, invert: false, label: 'Threat' }
+                            ];
+                        }
+
+                        keyMetrics.forEach(m => {
+                            const baseVal = baselinePerGame[m.key] || 0.001;
+                            const recentVal = l3PerGame[m.key] || 0;
+                            let pctChange;
+                            if (m.invert) {
+                                // For xGC: lower is better, so improvement = baseline - recent
+                                pctChange = baseVal > 0.01 ? (baseVal - recentVal) / baseVal : 0;
+                            } else {
+                                pctChange = baseVal > 0.01 ? (recentVal - baseVal) / baseVal : 0;
+                            }
+                            // Only credit improvements, not declines
+                            const contribution = Math.max(0, pctChange) * m.weight * 5;
+                            statUplift += contribution;
+                            if (pctChange > 0.10) { // 10% threshold to show in detail
+                                detailParts.push(`${m.label} +${(pctChange * 100).toFixed(0)}%`);
+                            }
+                        });
+
+                        statUplift = Math.min(15, statUplift);
+                        risingScore += statUplift * 2;
+
+                        if (statUplift >= 2 && detailParts.length > 0) {
+                            signals.push({
+                                icon: '⚡', label: 'Stats improving',
+                                detail: detailParts.slice(0, 2).join(', '),
+                                strength: Math.min(10, statUplift),
+                                color: '#FBBF24'
+                            });
+                        }
+                    }
+
+                    // 3b. FPL points trend — L3 avg vs prior-2 avg (within L5)
+                    if (history.length >= 5) {
+                        const last5Pts = history.slice(-5).map(g => parseFloat(g.total_points) || 0);
+                        const last3Pts = last5Pts.slice(-3);
+                        const prior2Pts = last5Pts.slice(0, 2);
+                        const l3Avg = last3Pts.reduce((s, v) => s + v, 0) / 3;
+                        const p2Avg = prior2Pts.reduce((s, v) => s + v, 0) / 2;
+                        if (l3Avg > p2Avg + 1) {
+                            const ptsTrend = Math.min(8, (l3Avg - p2Avg) * 1.5);
+                            risingScore += ptsTrend;
+                            signals.push({
+                                icon: '🔥', label: 'Points trending up',
+                                detail: `${p2Avg.toFixed(1)} → ${l3Avg.toFixed(1)} pts/g`,
+                                strength: Math.min(10, ptsTrend * 1.5),
+                                color: '#FB923C'
+                            });
+                        }
+                    }
+
+                    // 3c. Minutes trending up (rotation risk decreasing)
+                    if (history.length >= 5) {
+                        const last5Mins = history.slice(-5).map(g => parseFloat(g.minutes) || 0);
+                        const last3MinsAvg = last5Mins.slice(-3).reduce((s, v) => s + v, 0) / 3;
+                        const prior2MinsAvg = last5Mins.slice(0, 2).reduce((s, v) => s + v, 0) / 2;
+                        if (last3MinsAvg > prior2MinsAvg + 10 && prior2MinsAvg < 75) {
+                            const minsTrend = Math.min(5, (last3MinsAvg - prior2MinsAvg) / 15);
+                            risingScore += minsTrend * 1.5;
+                            signals.push({
+                                icon: '⏱️', label: 'More minutes',
+                                detail: `${prior2MinsAvg.toFixed(0)} → ${last3MinsAvg.toFixed(0)} mpg`,
+                                strength: Math.min(10, minsTrend * 2),
+                                color: '#A78BFA'
+                            });
+                        }
+                    }
+
+                    return {
+                        ...p, pos, signals, risingScore, statUplift,
+                        teamFormSignal, xgTrendSignal, regressionSignal, fixtureSignal,
+                        signalCount: signals.length
+                    };
+                })
+                .filter(p => p.signalCount >= 2 && p.risingScore >= 8) // need ≥2 converging signals
+                .sort((a, b) => b.risingScore - a.risingScore);
+
+            // Split by position
+            const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
+            scored.forEach(p => byPos[p.pos]?.push(p));
+
+            const posConfigs = [
+                { pos: 'GK', icon: '🧤', name: 'Goalkeepers' },
+                { pos: 'DEF', icon: '🛡️', name: 'Defenders' },
+                { pos: 'MID', icon: '⚡', name: 'Midfielders' },
+                { pos: 'FWD', icon: '🎯', name: 'Forwards' }
+            ];
+
+            const tabs = posConfigs.map((cfg, i) =>
+                `<button class="sub-tab ${i === 0 ? 'active' : ''}" onclick="switchRisingTab('${cfg.pos}', this)">${cfg.icon} ${cfg.name}</button>`
+            ).join('');
+
+            const panels = posConfigs.map((cfg, i) => {
+                const posPlayers = byPos[cfg.pos].slice(0, 10);
+                return `
+                    <div class="sub-tab-panel ${i === 0 ? 'active' : ''}" id="rising-panel-${cfg.pos}">
+                        ${posPlayers.length > 0
+                            ? `<div class="rising-grid">${posPlayers.map((p, j) => renderRisingCard(p, j + 1)).join('')}</div>`
+                            : '<div class="no-players">No players currently picking up form at this position</div>'
+                        }
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="rising-section">
+                    <div class="rising-header">
+                        <h2 class="rising-title">🔥 Rising Form</h2>
+                        <p class="rising-subtitle">Players with converging positive signals — team form improving, fixtures getting easier, and underlying stats trending up.</p>
+                        <div class="rising-legend">
+                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#4ADE80;"></span> Team Form</span>
+                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#34D399;"></span> xG Trend</span>
+                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#C084FC;"></span> Regression Due</span>
+                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#60A5FA;"></span> Fixture Swing</span>
+                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#FBBF24;"></span> Stats Improving</span>
+                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#FB923C;"></span> Points Trend</span>
+                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#A78BFA;"></span> Minutes Rising</span>
+                        </div>
+                    </div>
+
+                    <div class="sub-tabs" id="risingSubTabs">${tabs}</div>
+                    ${panels}
+                </div>
+            `;
+        }
+
+        function renderRisingCard(p, rank) {
+            const g = p.l5?.games || 1;
+            const ptsPerGame = ((p.l5?.points || 0) / g).toFixed(1);
+            const fdr = p.fixtures?.avgFDR3 || 3;
+            const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
+            const posColors = { GK: '#FBBF24', DEF: '#34D399', MID: '#60A5FA', FWD: '#F87171' };
+
+            return `
+                <div class="rising-card" onclick="openPlayerModal(${p.id})">
+                    <div class="rising-card-top">
+                        <div class="rising-card-rank">${rank}</div>
+                        <div class="rising-card-player">
+                            <div class="rising-card-name">${p.name}</div>
+                            <div class="rising-card-meta">
+                                <span class="route-pos-badge" style="background: ${posColors[p.pos]}20; color: ${posColors[p.pos]}">${p.pos}</span>
+                                ${p.team} \u00b7 \u00a3${p.price.toFixed(1)}m
+                            </div>
+                        </div>
+                        <div class="rising-card-score">
+                            <div class="rising-score-number">${p.signalCount}</div>
+                            <div class="rising-score-label">signals</div>
+                        </div>
+                    </div>
+                    <div class="rising-signals">
+                        ${p.signals.map(s => `
+                            <div class="rising-signal">
+                                <span class="rising-signal-icon">${s.icon}</span>
+                                <span class="rising-signal-label">${s.label}</span>
+                                <div class="rising-signal-bar">
+                                    <div class="rising-signal-bar-fill" style="width: ${s.strength * 10}%; background: ${s.color}"></div>
+                                </div>
+                                <span class="rising-signal-value positive">${s.detail}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="rising-card-footer">
+                        <span>${ptsPerGame} pts/g</span>
+                        <span>${(p.selectedBy || 0).toFixed(1)}% owned</span>
+                        <span class="fdr-badge ${fdrClass}" style="font-size:10px;padding:2px 6px;">FDR ${fdr.toFixed(1)}</span>
+                    </div>
+                </div>
+            `;
+        }
 
         // ============================================
         // TABLES
