@@ -2176,32 +2176,136 @@
             line-height: 1.4;
         }
 
-        /* TOP PICKS SECTION */
-        .toppicks-section { }
-        .toppicks-header { margin-bottom: 24px; }
-        .toppicks-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-        .toppicks-subtitle {
-            color: var(--text-muted);
-            font-size: 14px;
-            margin-bottom: 12px;
-        }
-        .toppicks-weights {
+        /* SECTION TOOLBAR — compact inline bar for legend + filters */
+        .section-toolbar {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
             flex-wrap: wrap;
-            gap: 16px;
-            font-size: 12px;
+        }
+        .section-toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .section-toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Legend toggle button */
+        .legend-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 150ms;
+            white-space: nowrap;
+        }
+        .legend-toggle:hover {
+            color: var(--text-secondary);
+            border-color: rgba(255,255,255,0.15);
+        }
+        .legend-toggle.active {
+            color: var(--text-secondary);
+            background: var(--surface-3);
+        }
+        .legend-toggle .legend-caret {
+            font-size: 8px;
+            transition: transform 200ms;
+        }
+        .legend-toggle.active .legend-caret {
+            transform: rotate(180deg);
+        }
+
+        /* Collapsible legend panel */
+        .legend-panel {
+            display: none;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 11px;
             color: var(--text-secondary);
         }
-        .toppicks-weight {
+        .legend-panel.show {
+            display: flex;
+        }
+        .legend-panel-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .legend-panel-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        /* Charts inline filter bar */
+        .charts-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .charts-filter-bar .pos-chip {
+            padding: 4px 10px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms;
             display: flex;
             align-items: center;
             gap: 4px;
         }
+        .charts-filter-bar .pos-chip:hover {
+            background: var(--surface-3);
+        }
+        .charts-filter-bar .pos-chip.active {
+            border-color: rgba(74, 222, 128, 0.3);
+            background: rgba(74, 222, 128, 0.08);
+        }
+        .charts-filter-bar .pos-chip .pos-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+        .charts-filter-bar .reset-link {
+            font-size: 11px;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-decoration: none;
+            padding: 4px 6px;
+            border-radius: 4px;
+            transition: all 150ms;
+        }
+        .charts-filter-bar .reset-link:hover {
+            color: var(--text-secondary);
+            background: var(--surface-2);
+        }
+
+        /* TOP PICKS SECTION */
+        .toppicks-section { }
         .toppicks-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -3338,23 +3442,27 @@
 
             return `
                 <div class="routes-section">
-                    <div class="routes-header">
-                        <h2 class="routes-title">🔀 Routes to Points</h2>
-                        <p class="routes-subtitle">Players with the most diverse ways to score FPL points. More routes = more reliable returns.</p>
-                        <div class="routes-legend">
-                            <span class="routes-legend-item"><span style="color:#F87171">⚽</span> Goals</span>
-                            <span class="routes-legend-item"><span style="color:#60A5FA">🅰️</span> Assists</span>
-                            <span class="routes-legend-item"><span style="color:#34D399">🛡️</span> Clean Sheets</span>
-                            <span class="routes-legend-item"><span style="color:#FBBF24">⭐</span> Bonus</span>
-                            <span class="routes-legend-item"><span style="color:#A78BFA">🧤</span> Saves</span>
-                            <span class="routes-legend-item"><span style="color:#FB923C">🎯</span> Creativity</span>
-                            <span class="routes-legend-item"><span style="color:#F472B6">🥅</span> Penalties</span>
-                            <span class="routes-legend-item"><span style="color:#E879F9">📈</span> BPS Floor</span>
-                            <span class="routes-legend-item" style="margin-left:8px;">🔒 = Nailed</span>
+                    <div class="section-toolbar">
+                        <div class="section-toolbar-left">
+                            <div class="sub-tabs" id="routesSubTabs">${tabs}</div>
+                        </div>
+                        <div class="section-toolbar-right">
+                            <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('routesLegend').classList.toggle('show')">
+                                <span>ℹ️ Legend</span><span class="legend-caret">▾</span>
+                            </button>
                         </div>
                     </div>
-
-                    <div class="sub-tabs" id="routesSubTabs">${tabs}</div>
+                    <div class="legend-panel" id="routesLegend">
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#F87171"></span> ⚽ Goals</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#60A5FA"></span> 🅰️ Assists</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#34D399"></span> 🛡️ Clean Sheets</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FBBF24"></span> ⭐ Bonus</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#A78BFA"></span> 🧤 Saves</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FB923C"></span> 🎯 Creativity</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#F472B6"></span> 🥅 Penalties</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#E879F9"></span> 📈 BPS Floor</span>
+                        <span class="legend-panel-item" style="margin-left:8px;">🔒 = Nailed on</span>
+                    </div>
                     ${panels}
                 </div>
             `;
@@ -3586,18 +3694,23 @@
 
             return `
                 <div class="toppicks-section">
-                    <div class="toppicks-header">
-                        <h2 class="toppicks-title">🏆 Top 5 Picks by Position</h2>
-                        <p class="toppicks-subtitle">The best players per position — composite score blending quality, routes, momentum, and expected points. Higher confidence = more modules agree.</p>
-                        <div class="toppicks-weights">
-                            <span class="toppicks-weight"><span style="color:var(--color-warning)">⭐</span> Quality 35%</span>
-                            <span class="toppicks-weight"><span style="color:#A78BFA">🔀</span> Routes 25%</span>
-                            <span class="toppicks-weight"><span style="color:#FB923C">🔥</span> Rising 20%</span>
-                            <span class="toppicks-weight"><span style="color:var(--color-success)">📊</span> xPts 20%</span>
+                    <div class="section-toolbar">
+                        <div class="section-toolbar-left">
+                            <div class="sub-tabs" id="topPicksSubTabs">${tabs}</div>
+                        </div>
+                        <div class="section-toolbar-right">
+                            <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('toppicksLegend').classList.toggle('show')">
+                                <span>ℹ️ Weights</span><span class="legend-caret">▾</span>
+                            </button>
                         </div>
                     </div>
-
-                    <div class="sub-tabs" id="topPicksSubTabs">${tabs}</div>
+                    <div class="legend-panel" id="toppicksLegend">
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FBBF24"></span> Quality 35%</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#A78BFA"></span> Routes 25%</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FB923C"></span> Rising 20%</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#4ADE80"></span> xPts 20%</span>
+                        <span class="legend-panel-item" style="color:var(--text-muted);margin-left:8px;">●●●○ = confidence (modules agreeing)</span>
+                    </div>
                     ${panels}
                 </div>
             `;
@@ -4412,21 +4525,25 @@
 
             return `
                 <div class="rising-section">
-                    <div class="rising-header">
-                        <h2 class="rising-title">🔥 Rising Form</h2>
-                        <p class="rising-subtitle">Players with converging positive signals — team form improving, fixtures getting easier, and underlying stats trending up.</p>
-                        <div class="rising-legend">
-                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#4ADE80;"></span> Team Form</span>
-                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#34D399;"></span> xG Trend</span>
-                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#C084FC;"></span> Regression Due</span>
-                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#60A5FA;"></span> Fixture Swing</span>
-                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#FBBF24;"></span> Stats Improving</span>
-                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#FB923C;"></span> Points Trend</span>
-                            <span class="rising-legend-item"><span class="rising-legend-dot" style="background:#A78BFA;"></span> Minutes Rising</span>
+                    <div class="section-toolbar">
+                        <div class="section-toolbar-left">
+                            <div class="sub-tabs" id="risingSubTabs">${tabs}</div>
+                        </div>
+                        <div class="section-toolbar-right">
+                            <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('risingLegend').classList.toggle('show')">
+                                <span>ℹ️ Signals</span><span class="legend-caret">▾</span>
+                            </button>
                         </div>
                     </div>
-
-                    <div class="sub-tabs" id="risingSubTabs">${tabs}</div>
+                    <div class="legend-panel" id="risingLegend">
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#4ADE80"></span> Team Form</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#34D399"></span> xG Trend</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#C084FC"></span> Regression Due</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#60A5FA"></span> Fixture Swing</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FBBF24"></span> Stats Improving</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FB923C"></span> Points Trend</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#A78BFA"></span> Minutes Rising</span>
+                    </div>
                     ${panels}
                 </div>
             `;
@@ -5926,18 +6043,15 @@
 
             const html = `
                 <div class="charts-section">
-                    <div class="charts-header">
-                        <h2>📊 Visual Analysis</h2>
-                        <p>Interactive charts to identify value picks, underperformers, and differentials. Hover for details.</p>
-                        <div class="position-toggles">
-                            <span>Filter:</span>
+                    <div class="section-toolbar" style="margin-bottom:20px;">
+                        <div class="charts-filter-bar">
                             ${['GK', 'DEF', 'MID', 'FWD'].map(pos => `
-                                <label class="pos-toggle" style="--pos-color: ${POSITION_COLORS[pos].border}">
-                                    <input type="checkbox" id="filter-${pos}" checked onchange="togglePositionFilter('${pos}')">
+                                <label class="pos-chip active" id="chartChip-${pos}" onclick="toggleChartChip('${pos}', this)">
+                                    <span class="pos-dot" style="background:${POSITION_COLORS[pos].border}"></span>
                                     <span>${pos}</span>
                                 </label>
                             `).join('')}
-                            <button onclick="resetPositionFilters()" class="reset-btn">Reset</button>
+                            <span class="reset-link" onclick="resetPositionFilters()">Reset</span>
                         </div>
                     </div>
                     
@@ -6171,12 +6285,22 @@
             activePositionFilters[pos] = !activePositionFilters[pos];
             updateAllCharts();
         }
+
+        function toggleChartChip(pos, el) {
+            activePositionFilters[pos] = !activePositionFilters[pos];
+            if (activePositionFilters[pos]) {
+                el.classList.add('active');
+            } else {
+                el.classList.remove('active');
+            }
+            updateAllCharts();
+        }
         
         function resetPositionFilters() {
             ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
                 activePositionFilters[pos] = true;
-                const el = document.getElementById(`filter-${pos}`);
-                if (el) el.checked = true;
+                const chip = document.getElementById(`chartChip-${pos}`);
+                if (chip) chip.classList.add('active');
             });
             updateAllCharts();
         }
