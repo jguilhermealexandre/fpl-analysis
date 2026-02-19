@@ -2662,6 +2662,33 @@
             const games = last5 ? history.slice(-5) : history;
             if (games.length === 0) return null;
             const sum = (arr, key) => arr.reduce((acc, g) => acc + (parseFloat(g[key]) || 0), 0);
+
+            // Home/away splits for L5 (used by next-match scoring)
+            const homeGames = games.filter(g => g.was_home);
+            const awayGames = games.filter(g => !g.was_home);
+            const homeSplit = homeGames.length > 0 ? {
+                games: homeGames.length,
+                points: sum(homeGames, 'total_points'),
+                xGI: sum(homeGames, 'expected_goal_involvements'),
+                xG: sum(homeGames, 'expected_goals'),
+                xA: sum(homeGames, 'expected_assists'),
+                cleanSheets: sum(homeGames, 'clean_sheets'),
+                saves: sum(homeGames, 'saves'),
+                bonus: sum(homeGames, 'bonus'),
+                minutes: sum(homeGames, 'minutes')
+            } : null;
+            const awaySplit = awayGames.length > 0 ? {
+                games: awayGames.length,
+                points: sum(awayGames, 'total_points'),
+                xGI: sum(awayGames, 'expected_goal_involvements'),
+                xG: sum(awayGames, 'expected_goals'),
+                xA: sum(awayGames, 'expected_assists'),
+                cleanSheets: sum(awayGames, 'clean_sheets'),
+                saves: sum(awayGames, 'saves'),
+                bonus: sum(awayGames, 'bonus'),
+                minutes: sum(awayGames, 'minutes')
+            } : null;
+
             return {
                 games: games.length,
                 minutes: sum(games, 'minutes'),
@@ -2688,8 +2715,25 @@
                 ict: sum(games, 'ict_index'),
                 influence: sum(games, 'influence'),
                 creativity: sum(games, 'creativity'),
-                threat: sum(games, 'threat')
+                threat: sum(games, 'threat'),
+                homeSplit,
+                awaySplit
             };
+        }
+
+        /**
+         * Recency-weighted per-game average for L5 stats.
+         * Most recent game gets weight 5, oldest gets weight 1.
+         * Falls back to flat average if history not available.
+         */
+        function recencyWeightedAvg(history, key, n = 5) {
+            if (!history || history.length === 0) return 0;
+            const games = history.slice(-n);
+            // weights: oldest=1, newest=n (left-to-right in the slice)
+            const weights = games.map((_, i) => i + 1);
+            const totalWeight = weights.reduce((s, w) => s + w, 0);
+            const weightedSum = games.reduce((s, g, i) => s + (parseFloat(g[key]) || 0) * weights[i], 0);
+            return weightedSum / totalWeight;
         }
 
         function detectCurrentGameweek(analyses) {
@@ -2869,12 +2913,24 @@
 
                     // ── Composite Score ──
                     // Weighted sum of (route strength × FPL point weight) rather than count × avg
-                    // This means a strong goals route for a MID (5pts) matters more than a moderate saves route (1.5pts)
                     const routeCount = routes.length;
                     const weightedSum = routes.reduce((s, r) => s + r.strength * (r.ptWeight || 1), 0);
-                    // Apply nailed multiplier and fixture factor
-                    const fdr = p.fixtures?.avgFDR3 || 3;
-                    const fixtureFactor = Math.max(0.8, Math.min(1.2, (4 - fdr) * 0.15 + 1));
+
+                    // Opponent-specific fixture factor using next match opponent quality
+                    const nextFx = p.fixtures?.next3?.[0] || null;
+                    let fixtureFactor = 1.0;
+                    if (nextFx?.opponent && teamAnalysis[nextFx.opponent]) {
+                        const oppAttack = teamAnalysis[nextFx.opponent].attackPower || 50;
+                        const oppDefense = teamAnalysis[nextFx.opponent].defensePower || 50;
+                        const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
+                        fixtureFactor = 1 + (50 - relevantOpp) * 0.004;
+                        if (nextFx.isHome) fixtureFactor += 0.04; // home boost
+                        fixtureFactor = Math.max(0.75, Math.min(1.3, fixtureFactor));
+                    } else {
+                        const fdr = p.fixtures?.avgFDR3 || 3;
+                        fixtureFactor = Math.max(0.8, Math.min(1.2, (4 - fdr) * 0.15 + 1));
+                    }
+
                     const compositeScore = weightedSum * nailedMultiplier * fixtureFactor;
                     // Reliability bonus: consistent players with many routes are extra valuable
                     const reliabilityBonus = routeCount >= 3 ? consistency * 0.5 : 0;
@@ -3097,35 +3153,93 @@
         function calculatePositionScore(p, pos) {
             const games = p.l5?.games || 1;
             const minsPerGame = (p.l5?.minutes || 0) / games;
-            const ptsPerGame = (p.l5?.points || 0) / games;
-            const fdr = p.fixtures?.avgFDR3 || 3;
             const nailedBonus = minsPerGame >= 80 ? 5 : minsPerGame >= 70 ? 2 : 0;
-            const value = ptsPerGame / Math.max(p.price, 3.5);
+
+            // ── Recency-weighted per-game stats (most recent games count more) ──
+            const rwPtsPerGame = p.history ? recencyWeightedAvg(p.history, 'total_points') : (p.l5?.points || 0) / games;
+            const rwXGI = p.history ? recencyWeightedAvg(p.history, 'expected_goal_involvements') : (p.l5?.xGI || 0) / games;
+            const rwXG = p.history ? recencyWeightedAvg(p.history, 'expected_goals') : (p.l5?.xG || 0) / games;
+            const rwXA = p.history ? recencyWeightedAvg(p.history, 'expected_assists') : (p.l5?.xA || 0) / games;
+            const rwBonus = p.history ? recencyWeightedAvg(p.history, 'bonus') : (p.l5?.bonus || 0) / games;
+
+            const value = rwPtsPerGame / Math.max(p.price, 3.5);
+
+            // ── Next-match specific fixture factor (GW1 opponent, not 3-GW avg) ──
+            const nextFixture = p.fixtures?.next3?.[0] || null;
+            const nextOpponent = nextFixture?.opponent || null;
+            const nextIsHome = nextFixture?.isHome ?? null;
+            const nextFdr = nextFixture?.difficulty || p.fixtures?.avgFDR3 || 3;
+
+            // ── Home/Away adjustment ──
+            // Use the player's home or away split stats to adjust predictions for the next match venue
+            let venueMultiplier = 1.0;
+            if (nextIsHome !== null && p.l5) {
+                const split = nextIsHome ? p.l5.homeSplit : p.l5.awaySplit;
+                if (split && split.games >= 1) {
+                    const splitPtsPerGame = split.points / split.games;
+                    const overallPtsPerGame = (p.l5.points || 0) / games;
+                    if (overallPtsPerGame > 0) {
+                        // Blend: 70% overall + 30% venue-specific (avoid over-fitting on 1-2 games)
+                        venueMultiplier = 0.7 + 0.3 * (splitPtsPerGame / overallPtsPerGame);
+                        venueMultiplier = Math.max(0.8, Math.min(1.25, venueMultiplier));
+                    }
+                } else {
+                    // No venue data — small default: home boost / away penalty
+                    venueMultiplier = nextIsHome ? 1.05 : 0.95;
+                }
+            }
 
             // ── Team-level factors (from computeTeamScores) ──
-            // All team scores are 0-100 scales. We normalise to moderate bonus/penalty ranges
-            // so team context influences 15-20 % of the total score, not overwhelming individual quality.
             const ts = p.teamScores;
-            // fixtureScore replaces the old raw-FDR factor: range -8 → +8
-            const fixtureFactor = ts ? ((ts.fixtureScore - 50) / 50) * 8 : Math.max(-10, (3.5 - fdr) * 8);
+
+            // Next-match fixture factor: use the specific opponent FDR, range -10 → +10
+            let fixtureFactor;
+            if (nextOpponent && teamAnalysis[nextOpponent]) {
+                // Opponent quality: strong opponent = harder fixture
+                const oppAttack = teamAnalysis[nextOpponent].attackPower || 50;
+                const oppDefense = teamAnalysis[nextOpponent].defensePower || 50;
+                // For attackers, opponent defense matters; for defenders, opponent attack matters
+                const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
+                // Convert 0-100 opponent quality to -10..+10 (weak opponent = positive)
+                fixtureFactor = ((50 - relevantOpp) / 50) * 10;
+                // Home advantage bump
+                if (nextIsHome) fixtureFactor += 1.5;
+            } else {
+                fixtureFactor = ts ? ((ts.fixtureScore - 50) / 50) * 8 : Math.max(-10, (3.5 - nextFdr) * 8);
+            }
+
             // Team form (momentum): range -3 → +3
             const teamFormFactor = ts ? ((ts.formRating - 50) / 50) * 3 : 0;
             // Position-specific team quality factor: range -4 → +4
-            //   • GK/DEF benefit from team defensePower (fewer goals conceded → more CS)
-            //   • MID/FWD benefit from team attackPower (more goals → more G/A)
             const teamQualityFactor = ts
                 ? (pos === 'GK' || pos === 'DEF'
                     ? ((ts.defensePower - 50) / 50) * 4
                     : ((ts.attackPower - 50) / 50) * 4)
                 : 0;
 
-            // ── CS Probability factor (GK/DEF only) ──
-            // Uses fixture-specific opponent strength to model clean sheet likelihood
+            // ── CS Probability factor (GK/DEF only) — use NEXT match opponent specifically ──
             let csProbFactor = 0;
-            if ((pos === 'GK' || pos === 'DEF') && p.fixtures?.next3?.length > 0) {
+            if ((pos === 'GK' || pos === 'DEF') && nextOpponent) {
+                const csProb = getCleanSheetProb(p.teamId, nextOpponent, nextIsHome ?? true);
+                csProbFactor = (csProb - 0.28) * 35; // 28% league avg, range roughly -8 to +13
+            } else if ((pos === 'GK' || pos === 'DEF') && p.fixtures?.next3?.length > 0) {
                 const probs = p.fixtures.next3.map(f => getCleanSheetProb(p.teamId, f.opponent, f.isHome));
                 const avgProb = probs.reduce((s, v) => s + v, 0) / probs.length;
-                csProbFactor = (avgProb - 0.28) * 30; // 28% league average, range roughly -7 to +11
+                csProbFactor = (avgProb - 0.28) * 30;
+            }
+
+            // ── Penalty / set-piece taker bonus (all positions except GK) ──
+            let penTakerBonus = 0;
+            if (pos !== 'GK') {
+                const seasonGames = p.season?.games || 1;
+                const seasonPenGoals = Math.max(0, (p.season?.goals || 0) - (p.season?.xG || 0));
+                const penMissed = (p.season?.penaltiesMissed || 0);
+                const penAttempts = Math.round(seasonPenGoals + penMissed);
+                if (penAttempts >= 2 || (seasonGames >= 10 && penAttempts >= 1)) {
+                    // Penalty taker: ~0.76 conversion, worth goal pts for the position
+                    const goalPts = { DEF: 6, MID: 5, FWD: 4 }[pos] || 4;
+                    penTakerBonus = Math.min(6, penAttempts * 1.5);
+                }
             }
 
             if (pos === 'GK') {
@@ -3134,68 +3248,73 @@
                 const xGCPerGame = (p.l5?.xGC || 0) / games;
                 const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
                 
-                return (csPerGame * 30) +
+                return ((csPerGame * 30) +
                        (savesPerGame * 2) +
                        defScore +
-                       (ptsPerGame * 3) +
+                       (rwPtsPerGame * 3) +
                        (value * 10) +
                        fixtureFactor +
                        teamQualityFactor +
                        teamFormFactor +
                        csProbFactor +
-                       nailedBonus;
+                       nailedBonus) * venueMultiplier;
             }
 
             if (pos === 'DEF') {
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
                 const xGCPerGame = (p.l5?.xGC || 0) / games;
-                const xGIPerGame = (p.l5?.xGI || 0) / games;
                 const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
                 
-                return (csPerGame * 25) +
+                return ((csPerGame * 25) +
                        defScore +
-                       (xGIPerGame * 12) +
-                       (ptsPerGame * 3) +
+                       (rwXGI * 12) +
+                       (rwPtsPerGame * 3) +
                        (value * 10) +
                        fixtureFactor +
                        teamQualityFactor +
                        teamFormFactor +
                        csProbFactor +
-                       nailedBonus;
+                       penTakerBonus +
+                       nailedBonus) * venueMultiplier;
             }
 
             if (pos === 'MID') {
-                const xGIPerGame = (p.l5?.xGI || 0) / games;
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
                 const actualGI = ((p.l5?.goals || 0) + (p.l5?.assists || 0)) / games;
-                const overPerf = Math.max(0, actualGI - xGIPerGame);
+                // Regression penalty: over-performers likely to regress, under-performers may improve
+                const overPerf = actualGI - rwXGI;
+                const regressionAdj = overPerf > 0 ? overPerf * -3 : overPerf * -2; // penalise over, reward under
                 
-                return (xGIPerGame * 40) +
-                       (overPerf * 8) +
+                return ((rwXGI * 40) +
+                       regressionAdj +
                        (csPerGame * 3) +
-                       (ptsPerGame * 3) +
+                       (rwPtsPerGame * 3) +
+                       (rwBonus * 2) +
                        (value * 12) +
                        fixtureFactor +
                        teamQualityFactor +
                        teamFormFactor +
-                       nailedBonus;
+                       penTakerBonus +
+                       nailedBonus) * venueMultiplier;
             }
 
             if (pos === 'FWD') {
-                const xGPerGame = (p.l5?.xG || 0) / games;
-                const xAPerGame = (p.l5?.xA || 0) / games;
                 const actualGoals = (p.l5?.goals || 0) / games;
-                const overPerf = Math.max(0, actualGoals - xGPerGame);
+                // Regression: over-scorers tend to regress, under-scorers may bounce back
+                const overPerf = actualGoals - rwXG;
+                const regressionAdj = overPerf > 0 ? overPerf * -4 : overPerf * -2;
                 
-                return (xGPerGame * 40) +
-                       (xAPerGame * 15) +
-                       (overPerf * 10) +
-                       (ptsPerGame * 3) +
+                return ((rwXG * 40) +
+                       (rwXA * 15) +
+                       regressionAdj +
+                       (rwPtsPerGame * 3) +
+                       (rwBonus * 2) +
                        (value * 12) +
                        fixtureFactor +
                        teamQualityFactor +
                        teamFormFactor +
-                       nailedBonus;
+                       penTakerBonus +
+                       nailedBonus) * venueMultiplier;
             }
 
             return 0;
@@ -4902,21 +5021,103 @@
         
         function calculateExpectedPoints(p, pos) {
             const l5Games = p.l5.games;
-            const xGI = p.l5.xGI / l5Games;
-            const csRate = (p.l5.cleanSheets || 0) / l5Games;
             const mins = p.l5.minutes / l5Games;
-            
-            let xPts = 2;
-            if (pos === 'GK' || pos === 'DEF') {
-                xPts += csRate * 4 + xGI * 6;
-            } else if (pos === 'MID') {
-                xPts += xGI * 5.5;
-            } else {
-                xPts += xGI * 4.5;
+
+            // Use recency-weighted stats if history available, else flat average
+            const rwXGI = p.history ? recencyWeightedAvg(p.history, 'expected_goal_involvements') : p.l5.xGI / l5Games;
+            const rwXG = p.history ? recencyWeightedAvg(p.history, 'expected_goals') : (p.l5.xG || 0) / l5Games;
+            const rwXA = p.history ? recencyWeightedAvg(p.history, 'expected_assists') : (p.l5.xA || 0) / l5Games;
+            const rwCS = p.history ? recencyWeightedAvg(p.history, 'clean_sheets') : (p.l5.cleanSheets || 0) / l5Games;
+            const rwBonus = p.history ? recencyWeightedAvg(p.history, 'bonus') : (p.l5.bonus || 0) / l5Games;
+            const rwSaves = p.history ? recencyWeightedAvg(p.history, 'saves') : (p.l5.saves || 0) / l5Games;
+
+            // ── Next-match opponent adjustment ──
+            const nextFixture = p.fixtures?.next3?.[0] || null;
+            const nextOpp = nextFixture?.opponent || null;
+            const nextIsHome = nextFixture?.isHome ?? null;
+            let oppMultiplier = 1.0;
+            if (nextOpp && teamAnalysis[nextOpp]) {
+                const oppAttack = teamAnalysis[nextOpp].attackPower || 50;
+                const oppDefense = teamAnalysis[nextOpp].defensePower || 50;
+                // For attackers: weak opponent defense = more goals. For defenders: weak opponent attack = more CS.
+                const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
+                oppMultiplier = 1 + (50 - relevantOpp) * 0.004; // range ~0.8–1.2
+                oppMultiplier = Math.max(0.75, Math.min(1.3, oppMultiplier));
             }
-            xPts += Math.min(xGI * 1.5, 2);
-            if (mins < 60) xPts *= 0.5;
-            return xPts;
+
+            // ── Home/away venue adjustment ──
+            let venueAdj = 1.0;
+            if (nextIsHome !== null) {
+                venueAdj = nextIsHome ? 1.06 : 0.94; // ~6% home advantage
+                // Refine with player's own home/away split if available
+                if (p.l5) {
+                    const split = nextIsHome ? p.l5.homeSplit : p.l5.awaySplit;
+                    if (split && split.games >= 2) {
+                        const splitPts = split.points / split.games;
+                        const avgPts = p.l5.points / l5Games;
+                        if (avgPts > 0) {
+                            const ratio = splitPts / avgPts;
+                            venueAdj = 0.6 * venueAdj + 0.4 * Math.max(0.8, Math.min(1.25, ratio));
+                        }
+                    }
+                }
+            }
+
+            // ── Base expected points model ──
+            let xPts = 0;
+
+            // Appearance points: 2pts for 60+ mins, 1pt for <60
+            if (mins >= 60) xPts += 2;
+            else if (mins >= 1) xPts += 1;
+
+            // Goals: xG × position point value
+            const goalPts = { GK: 6, DEF: 6, MID: 5, FWD: 4 }[pos] || 4;
+            xPts += rwXG * goalPts;
+
+            // Assists: xA × 3pts
+            xPts += rwXA * 3;
+
+            // Clean sheets (GK/DEF = 4pts, MID = 1pt)
+            if (pos === 'GK' || pos === 'DEF') {
+                // Use CS probability model if next opponent known
+                let csExpected = rwCS;
+                if (nextOpp) {
+                    const csProb = getCleanSheetProb(p.teamId, nextOpp, nextIsHome ?? true);
+                    csExpected = csProb; // opponent-specific probability
+                }
+                xPts += csExpected * 4;
+            } else if (pos === 'MID') {
+                xPts += rwCS * 1;
+            }
+
+            // Saves (GK only): 1pt per 3 saves
+            if (pos === 'GK') {
+                xPts += rwSaves / 3;
+            }
+
+            // Bonus points: directly use recency-weighted bonus per game
+            xPts += rwBonus;
+
+            // Goals conceded penalty (GK/DEF): -1pt per 2 goals conceded
+            if (pos === 'GK' || pos === 'DEF') {
+                const rwGC = p.history ? recencyWeightedAvg(p.history, 'goals_conceded') : (p.l5.goalsConceded || 0) / l5Games;
+                if (nextOpp && teamAnalysis[nextOpp]) {
+                    // Adjust GC expectation by opponent attack strength
+                    const oppGoalRate = teamAnalysis[nextOpp].avgGoals || 1.3;
+                    xPts -= (oppGoalRate / 2);
+                } else {
+                    xPts -= rwGC / 2;
+                }
+            }
+
+            // Minutes risk: reduce if not a regular starter
+            if (mins < 45) xPts *= 0.4;
+            else if (mins < 60) xPts *= 0.7;
+
+            // Apply opponent & venue adjustments
+            xPts *= oppMultiplier * venueAdj;
+
+            return Math.max(0, xPts);
         }
         
         function togglePositionFilter(pos) {
