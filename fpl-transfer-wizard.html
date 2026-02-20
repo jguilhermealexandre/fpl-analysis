@@ -238,6 +238,27 @@
         .formation-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; }
         .formation-badge { padding: 4px 10px; background: var(--surface-2); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--color-info); }
 
+        /* Position group sections */
+        .pos-section { margin-bottom: 16px; }
+        .pos-section-header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+        .pos-section-header.gk { background: rgba(252, 211, 77, 0.08); border-left: 3px solid #FCD34D; }
+        .pos-section-header.def { background: rgba(52, 211, 153, 0.08); border-left: 3px solid #34D399; }
+        .pos-section-header.mid { background: rgba(96, 165, 250, 0.08); border-left: 3px solid #60A5FA; }
+        .pos-section-header.fwd { background: rgba(248, 113, 113, 0.08); border-left: 3px solid #F87171; }
+        .pos-section-title { font-family: var(--font-display); font-size: 13px; font-weight: 700; }
+        .pos-section-count { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+        .pos-section .table-container { border-radius: 0 0 var(--radius-lg) var(--radius-lg); margin-bottom: 0; }
+        .pos-section .rankings-table td:first-child { padding-left: 16px; }
+
+        /* Swap UI */
+        .pitch-player.swap-selected { transform: translateY(-5px) scale(1.1); z-index: 5; }
+        .pitch-player.swap-selected .pitch-shirt { box-shadow: 0 0 18px rgba(167, 139, 250, 0.7) !important; border-color: var(--color-purple) !important; }
+        .pitch-player.swap-target { cursor: pointer; }
+        .pitch-player.swap-target .pitch-shirt { border-style: dashed !important; border-color: var(--color-purple) !important; box-shadow: 0 0 10px rgba(167, 139, 250, 0.3) !important; }
+        .swap-bar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px; background: rgba(167, 139, 250, 0.06); border: 1px solid rgba(167, 139, 250, 0.15); border-radius: var(--radius-md); margin-bottom: 12px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; }
+        .swap-stat { font-family: var(--font-mono); font-weight: 600; font-size: 11px; padding: 2px 6px; background: var(--surface-2); border-radius: 4px; }
+        .swap-hint { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+
         .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface-0); border-top: 1px solid var(--border-default); padding: 8px 0; z-index: 100; }
         @media (max-width: 768px) {
             .mobile-nav { display: flex; justify-content: space-around; }
@@ -325,6 +346,7 @@
     let allPlayers = [], allPlayersById = {}, teams = {}, teamFixtures = {}, teamPowerData = {}, playerHistory = {};
     let currentGW = 1, mySquad = [], analyzedSquad = [], recommendedXI = [], recommendedBench = [];
     let recommendedFormation = '', captainId = null, viceCaptainId = null;
+    let swapSelectedId = null;
 
     async function fetchWithProxy(url) {
         const apiPath = url.replace('https://fantasy.premierleague.com/', '');
@@ -593,14 +615,43 @@
             }
         });
 
-        // Team context
+        // Team context — enhanced: venue-aware power, recent form heavily weighted, goals/CS rate
         const tp=teamPowerData[player.teamId];
         if(tp){
-            if(pos>=3){score+=(tp.attackPower-50)*0.15;if(tp.attackPower>=65) reasons.push({text:`Strong team attack (${tp.attackPower})`,type:'pro'});}
-            if(pos<=2){score+=(tp.defensePower-50)*0.15;if(tp.defensePower>=65) reasons.push({text:`Strong team defense (${tp.defensePower})`,type:'pro'});}
-            score+=(tp.formRating-50)*0.1;
-            if(tp.formRating>=70) reasons.push({text:`Team in form (${tp.formRating})`,type:'pro'});
-            else if(tp.formRating<=30) reasons.push({text:`Team poor form (${tp.formRating})`,type:'con'});
+            // Use venue-adjusted power based on next fixture home/away
+            const nextFx=dgwFixtures[0];
+            const isNextHome=nextFx?.isHome;
+
+            if(pos>=3){
+                // Attacking players benefit from strong team attack (venue-adjusted)
+                const teamAtk = isNextHome!=null ? (isNextHome ? (tp.attackPowerHome||tp.attackPower) : (tp.attackPowerAway||tp.attackPower)) : tp.attackPower;
+                score+=(teamAtk-50)*0.25;
+                if(teamAtk>=65) reasons.push({text:`Strong team attack (${teamAtk}${isNextHome!=null?(isNextHome?' H':' A'):''})`  ,type:'pro'});
+                else if(teamAtk<35) reasons.push({text:`Weak team attack (${teamAtk})`,type:'con'});
+                // Bonus for high-scoring teams (goals per game)
+                if(tp.goalsPerGame>=2.0){score+=3;reasons.push({text:`Team scores ${tp.goalsPerGame.toFixed(1)}/g`,type:'pro'});}
+                else if(tp.goalsPerGame>=1.6){score+=1.5;}
+                else if(tp.goalsPerGame<1.0){score-=2;reasons.push({text:`Low-scoring team (${tp.goalsPerGame.toFixed(1)}/g)`,type:'con'});}
+            }
+            if(pos<=2){
+                // Defensive players benefit from strong team defense (venue-adjusted)
+                const teamDef = isNextHome!=null ? (isNextHome ? (tp.defensePowerHome||tp.defensePower) : (tp.defensePowerAway||tp.defensePower)) : tp.defensePower;
+                score+=(teamDef-50)*0.25;
+                if(teamDef>=65) reasons.push({text:`Strong team defense (${teamDef}${isNextHome!=null?(isNextHome?' H':' A'):''})`  ,type:'pro'});
+                else if(teamDef<35) reasons.push({text:`Weak team defense (${teamDef})`,type:'con'});
+                // Bonus for clean sheet rate
+                if(tp.csRate>=0.40){score+=4;reasons.push({text:`High CS rate (${(tp.csRate*100).toFixed(0)}%)`,type:'pro'});}
+                else if(tp.csRate>=0.30){score+=2;}
+                else if(tp.csRate<0.15){score-=3;reasons.push({text:`Poor CS rate (${(tp.csRate*100).toFixed(0)}%)`,type:'con'});}
+            }
+
+            // Recent team form — more heavily weighted (up to ±10 from form, ±5 from streak)
+            const formDelta = (tp.formRating-50)/50; // -1 to +1
+            score+=formDelta*10;
+            if(tp.formRating>=75) reasons.push({text:`🟢 Team flying (form ${tp.formRating})`,type:'pro'});
+            else if(tp.formRating>=60) reasons.push({text:`Team in form (${tp.formRating})`,type:'pro'});
+            else if(tp.formRating<=25) reasons.push({text:`🔴 Team struggling (form ${tp.formRating})`,type:'con'});
+            else if(tp.formRating<=35) reasons.push({text:`Team poor form (${tp.formRating})`,type:'con'});
         }
 
         // xGI (continuous)
@@ -838,52 +889,78 @@
 
     // ===== STEP 1: ANALYSIS =====
     function renderStep1() {
-        const sorted=[...analyzedSquad].sort((a,b)=>b.lineupData.score-a.lineupData.score);
         const xiIds=new Set(recommendedXI.map(p=>p.id));
-        const captain=analyzedSquad.find(p=>p.id===captainId);
-        const unavailable=analyzedSquad.filter(p=>!p.lineupData.available);
-        const doubtful=analyzedSquad.filter(p=>p.status==='d');
-        const hotForm=analyzedSquad.filter(p=>p.form>=6).sort((a,b)=>b.form-a.form);
-
-        let ins='';
-        if(unavailable.length) ins+=`<div class="insight-box critical"><div class="insight-title">🚨 ${unavailable.length} Unavailable</div><div class="insight-text">${unavailable.map(p=>`${p.name} (${p.news||p.status})`).join(', ')}</div></div>`;
-        if(doubtful.length) ins+=`<div class="insight-box warning"><div class="insight-title">⚠️ ${doubtful.length} Doubtful</div><div class="insight-text">${doubtful.map(p=>`${p.name}: ${p.news}`).join('; ')}</div></div>`;
-        if(hotForm.length) ins+=`<div class="insight-box positive"><div class="insight-title">🔥 In-Form</div><div class="insight-text">${hotForm.slice(0,4).map(p=>`${p.name} (${p.form})`).join(', ')}</div></div>`;
-
-        const lowestStarter=[...recommendedXI].sort((a,b)=>a.lineupData.score-b.lineupData.score)[0];
-        const highestBench=recommendedBench.filter(p=>p.lineupData.available&&p.lineupData.score>0)[0];
-        if(highestBench&&lowestStarter&&highestBench.lineupData.score>lowestStarter.lineupData.score+5)
-            ins+=`<div class="insight-box info"><div class="insight-title">💡 Close Call</div><div class="insight-text">${highestBench.name} (bench, score ${highestBench.lineupData.score}) is close to ${lowestStarter.name} (XI, score ${lowestStarter.lineupData.score}). Formation constraints favor the current pick.</div></div>`;
-
-        let html=`
-            <div class="panel-header"><div class="panel-title">📊 Squad Analysis for GW${currentGW}</div>
-            <div class="panel-desc">Every player scored using form, fixtures, xGI, team strength, CS probability, bonus points, ICT index & minutes data</div></div>
-            <div class="auto-banner"><div class="auto-banner-icon">🧙‍♂️</div><div class="auto-banner-text">
-                <div class="auto-banner-title">Recommended: ${recommendedFormation} formation</div>
-                <div class="auto-banner-desc">Captain: ${captain?.name||'-'} • Based on ${Object.keys(teamPowerData).length} team power ratings & ${allPlayers.length}+ player stats</div>
-            </div></div>
-            ${ins}
-            <div class="table-container" style="margin-top:16px;"><div class="table-header"><div class="table-title">🏆 Player Rankings (All 15)</div><div style="font-size:12px;color:var(--text-muted);">Sorted by Lineup Score</div></div>
-            <table class="rankings-table"><thead><tr>
-                <th class="num">#</th><th>Player</th><th>Pos</th><th>Team</th><th class="num">Form</th><th class="num">xGI/90</th><th class="num">Pts/G</th><th class="num">BPS/G</th><th>Next Fixture</th><th class="num">CS%</th><th class="num">Score</th><th>Status</th><th>Key Factors</th>
-            </tr></thead><tbody>`;
-
-        sorted.forEach((p,i) => {
-            const inXI=xiIds.has(p.id);
-            const xgi90=p.minutes>200?((p.xGI/p.minutes)*90).toFixed(2):'-';
-            const ppg=(p.totalPoints/Math.max(currentGW-1,1)).toFixed(1);
-            const bpsg=(p.bps/Math.max(currentGW-1,1)).toFixed(0);
-            const fx=p.fixtures?.[0];
-            const csProb=fx?(getCleanSheetProb(p.teamId,fx.opponentId,fx.isHome)*100).toFixed(0):'-';
-            const sc=p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low';
-            const st=!p.lineupData.available?'🔴 Out':p.status==='d'?'🟡 Doubt':'🟢 Fit';
-            const rc=inXI?'in-squad':'on-bench';
-            const topR=p.lineupData.reasons.slice(0,2).map(r=>`<span class="captain-reason ${r.type}">${r.text}</span>`).join(' ');
-            html+=`<tr class="${rc}"><td class="num">${i+1}</td><td style="font-weight:600;">${inXI?'⚽ ':''}${p.name}${p.id===captainId?' ©':p.id===viceCaptainId?' (VC)':''}</td><td><span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></td><td style="color:var(--text-secondary);">${p.team}</td><td class="num" style="color:${p.form>=5?'var(--color-success)':p.form<3?'var(--color-error)':'var(--text-primary)'};">${p.form}</td><td class="num">${xgi90}</td><td class="num">${ppg}</td><td class="num">${bpsg}</td><td>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${fx.opponent}(${fx.isHome?'H':'A'})</span>`:'-'}</td><td class="num">${p.pos<=2?csProb+'%':'-'}</td><td class="num"><span class="pitch-score ${sc}">${p.lineupData.score}</span></td><td style="font-size:12px;">${st}</td><td style="font-size:11px;">${topR}</td></tr>`;
+        const groups=[
+            {pos:1,label:'Goalkeepers',cls:'gk',icon:'🧤',players:[...analyzedSquad].filter(p=>p.pos===1).sort((a,b)=>b.lineupData.score-a.lineupData.score)},
+            {pos:2,label:'Defenders',cls:'def',icon:'🛡️',players:[...analyzedSquad].filter(p=>p.pos===2).sort((a,b)=>b.lineupData.score-a.lineupData.score)},
+            {pos:3,label:'Midfielders',cls:'mid',icon:'🎯',players:[...analyzedSquad].filter(p=>p.pos===3).sort((a,b)=>b.lineupData.score-a.lineupData.score)},
+            {pos:4,label:'Forwards',cls:'fwd',icon:'⚡',players:[...analyzedSquad].filter(p=>p.pos===4).sort((a,b)=>b.lineupData.score-a.lineupData.score)}
+        ];
+        let html=`<div class="panel-header"><div class="panel-title">📊 Squad Analysis — GW${currentGW}</div><div class="panel-desc">Players ranked by position · Scores based on form, fixtures, underlying stats & team context</div></div>`;
+        groups.forEach(g=>{
+            if(!g.players.length) return;
+            const isDef=g.pos<=2;
+            const xLabel=isDef?'xGC/90':'xGI/90';
+            const secLabel=isDef?'CS%':'BPS/G';
+            html+=`<div class="pos-section"><div class="pos-section-header ${g.cls}"><span style="font-size:15px;">${g.icon}</span><span class="pos-section-title">${g.label}</span><span class="pos-section-count">${g.players.length} player${g.players.length>1?'s':''}</span></div>`;
+            html+=`<div class="table-container"><table class="rankings-table"><thead><tr><th>Player</th><th>Team</th><th class="num">Form</th><th class="num">${xLabel}</th><th class="num">${secLabel}</th><th class="num">Pts/G</th><th>Next Fix</th><th class="num">Score</th><th>Key Factors</th></tr></thead><tbody>`;
+            g.players.forEach(p=>{
+                const inXI=xiIds.has(p.id);
+                const ppg=(p.totalPoints/Math.max(currentGW-1,1)).toFixed(1);
+                const fx=p.fixtures?.[0];
+                const csProb=fx?(getCleanSheetProb(p.teamId,fx.opponentId,fx.isHome)*100).toFixed(0):'-';
+                const sc=p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low';
+                const st=!p.lineupData.available?'🔴 ':p.status==='d'?'🟡 ':'';
+                let xStatVal,xStatColor;
+                if(isDef){
+                    if(p.minutes>200){const v=(p.xGC/p.minutes)*90;xStatVal=v.toFixed(2);xStatColor=v<=1.0?'var(--color-success)':v>=1.5?'var(--color-error)':'var(--text-primary)';}
+                    else{xStatVal='-';xStatColor='var(--text-muted)';}
+                }else{
+                    if(p.minutes>200){const v=(p.xGI/p.minutes)*90;xStatVal=v.toFixed(2);xStatColor=v>=0.50?'var(--color-success)':v<0.25?'var(--color-error)':'var(--text-primary)';}
+                    else{xStatVal='-';xStatColor='var(--text-muted)';}
+                }
+                const secVal=isDef?(csProb!=='-'?csProb+'%':'-'):(p.bps/Math.max(currentGW-1,1)).toFixed(0);
+                const rc=inXI?'in-squad':'on-bench';
+                const topR=p.lineupData.reasons.slice(0,2).map(r=>`<span class="captain-reason ${r.type}">${r.text}</span>`).join(' ');
+                html+=`<tr class="${rc}"><td style="font-weight:600;white-space:nowrap;">${st}${inXI?'⚽ ':''}${p.name}${p.id===captainId?' ©':p.id===viceCaptainId?' (VC)':''}</td><td style="color:var(--text-secondary);">${p.team}</td><td class="num" style="color:${p.form>=5?'var(--color-success)':p.form<3?'var(--color-error)':'var(--text-primary)'}">${p.form}</td><td class="num" style="color:${xStatColor}">${xStatVal}</td><td class="num">${secVal}</td><td class="num">${ppg}</td><td>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${fx.opponent}(${fx.isHome?'H':'A'})</span>`:'-'}</td><td class="num"><span class="pitch-score ${sc}">${p.lineupData.score}</span></td><td style="font-size:11px;">${topR}</td></tr>`;
+            });
+            html+=`</tbody></table></div></div>`;
         });
-
-        html+=`</tbody></table></div><div class="wizard-nav"><div></div><button class="btn btn-primary" onclick="goToStep(2)">Pick Starting XI →</button></div>`;
+        html+=`<div class="wizard-nav"><div></div><button class="btn btn-primary" onclick="goToStep(2)">Pick Starting XI →</button></div>`;
         document.getElementById('step1Content').innerHTML=html;
+    }
+
+    // ===== SWAP FUNCTIONALITY =====
+    function canSwapPlayers(id1, id2) {
+        const p1xi=recommendedXI.find(p=>p.id===id1), p1bench=recommendedBench.find(p=>p.id===id1);
+        const p2xi=recommendedXI.find(p=>p.id===id2), p2bench=recommendedBench.find(p=>p.id===id2);
+        let xiP,benchP;
+        if(p1xi&&p2bench){xiP=p1xi;benchP=p2bench;}
+        else if(p2xi&&p1bench){xiP=p2xi;benchP=p1bench;}
+        else return false;
+        if(xiP.pos===1&&benchP.pos!==1) return false;
+        if(benchP.pos===1&&xiP.pos!==1) return false;
+        const newXI=recommendedXI.filter(p=>p.id!==xiP.id).concat([benchP]);
+        const pc={1:0,2:0,3:0,4:0};
+        newXI.forEach(p=>pc[p.pos]++);
+        if(pc[1]!==1||pc[2]<3||pc[3]<2||pc[4]<1) return false;
+        return VALID_FORMATIONS.some(f=>f[0]===pc[2]&&f[1]===pc[3]&&f[2]===pc[4]);
+    }
+    function doSwap(id1, id2) {
+        let xiIdx=recommendedXI.findIndex(p=>p.id===id1), benchIdx=recommendedBench.findIndex(p=>p.id===id2);
+        if(xiIdx<0||benchIdx<0){xiIdx=recommendedXI.findIndex(p=>p.id===id2);benchIdx=recommendedBench.findIndex(p=>p.id===id1);}
+        if(xiIdx>=0&&benchIdx>=0){
+            [recommendedXI[xiIdx],recommendedBench[benchIdx]]=[recommendedBench[benchIdx],recommendedXI[xiIdx]];
+            const pc={1:0,2:0,3:0,4:0};recommendedXI.forEach(p=>pc[p.pos]++);
+            recommendedFormation=`${pc[2]}-${pc[3]}-${pc[4]}`;
+        }
+    }
+    function handleSwapClick(pid) {
+        if(!swapSelectedId){swapSelectedId=pid;}
+        else if(swapSelectedId===pid){swapSelectedId=null;}
+        else if(canSwapPlayers(swapSelectedId,pid)){doSwap(swapSelectedId,pid);swapSelectedId=null;}
+        else{swapSelectedId=pid;}
+        renderStep2();
     }
 
     // ===== STEP 2: PITCH VIEW =====
@@ -892,20 +969,32 @@
         const defs=recommendedXI.filter(p=>p.pos===2).sort((a,b)=>b.lineupData.score-a.lineupData.score);
         const mids=recommendedXI.filter(p=>p.pos===3).sort((a,b)=>b.lineupData.score-a.lineupData.score);
         const fwds=recommendedXI.filter(p=>p.pos===4).sort((a,b)=>b.lineupData.score-a.lineupData.score);
+        const selP=swapSelectedId?analyzedSquad.find(p=>p.id===swapSelectedId):null;
 
         function pp(p,bench=false){
+            const isSel=p.id===swapSelectedId;
+            const isTgt=swapSelectedId&&swapSelectedId!==p.id&&canSwapPlayers(swapSelectedId,p.id);
             const sc=p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low';
             const cb=p.id===captainId?'<div class="captain-badge c">C</div>':p.id===viceCaptainId?'<div class="captain-badge vc">V</div>':'';
             const cc=p.id===captainId?'captain':p.id===viceCaptainId?'vice':'';
-            return `<div class="pitch-player ${bench?'bench-player':''} ${cc}" title="${p.name} - Score: ${p.lineupData.score}"><div class="pitch-shirt ${POS_CONFIG[p.pos].cls}">${POS_CONFIG[p.pos].icon}${cb}</div><div class="pitch-name">${p.name}</div><div class="pitch-score ${sc}">${p.lineupData.score}</div></div>`;
+            const cls=[bench?'bench-player':'',cc,isSel?'swap-selected':'',isTgt?'swap-target':''].filter(Boolean).join(' ');
+            const fx=p.fixtures?.[0];
+            return `<div class="pitch-player ${cls}" onclick="handleSwapClick(${p.id})" title="${p.name} · Score ${p.lineupData.score} · Form ${p.form}${fx?' · vs '+fx.opponent:''}"><div class="pitch-shirt ${POS_CONFIG[p.pos].cls}">${POS_CONFIG[p.pos].icon}${cb}</div><div class="pitch-name">${p.name}</div><div class="pitch-score ${sc}">${p.lineupData.score}</div></div>`;
         }
 
         const bp=recommendedBench.slice(0,4);
-        const fp=recommendedFormation.split('-').map(Number);
+        let swapBar='';
+        if(selP){
+            const fx=selP.fixtures?.[0];
+            const isInXI=recommendedXI.some(p=>p.id===selP.id);
+            const fxInfo=fx?`vs ${fx.opponent}(${fx.isHome?'H':'A'}) FDR ${fx.difficulty}`:'';
+            swapBar=`<div class="swap-bar"><span class="pos-badge ${POS_CONFIG[selP.pos].cls}">${selP.posName}</span><strong>${selP.name}</strong><span class="swap-stat">Score ${selP.lineupData.score}</span><span class="swap-stat">Form ${selP.form}</span>${fxInfo?`<span class="swap-stat">${fxInfo}</span>`:''}<span style="color:var(--text-muted);">→ tap a ${isInXI?'bench':'starting'} player to swap</span></div>`;
+        }
 
         let html=`
-            <div class="panel-header"><div class="panel-title">⚽ Recommended Starting XI</div><div class="panel-desc">Optimal ${recommendedFormation} formation based on comprehensive analysis</div></div>
+            <div class="panel-header"><div class="panel-title">⚽ Starting XI</div><div class="panel-desc">${recommendedFormation} · Tap any player to swap with bench</div></div>
             <div class="formation-section"><div class="formation-header"><div class="formation-title">Formation</div><div class="formation-badge">${recommendedFormation}</div></div></div>
+            ${swapBar}
             <div class="pitch">
                 <div class="pitch-row">${fwds.map(p=>pp(p)).join('')}</div>
                 <div class="pitch-row">${mids.map(p=>pp(p)).join('')}</div>
@@ -913,10 +1002,7 @@
                 <div class="pitch-row">${gk.map(p=>pp(p)).join('')}</div>
             </div>
             <div class="bench-section"><div class="bench-title">📋 Bench</div><div class="bench-row">${bp.map(p=>pp(p,true)).join('')}</div></div>
-            <div style="margin-top:20px;">
-                <div class="insight-box info"><div class="insight-title">Why ${recommendedFormation}?</div><div class="insight-text">Maximizes total lineup score by selecting the best ${fp[0]} DEF, ${fp[1]} MID, ${fp[2]} FWD from your squad while respecting FPL formation rules (min 3 DEF, 2 MID, 1 FWD).</div></div>
-                ${bp.filter(p=>p.lineupData.available&&p.lineupData.score>0).length>0?`<div class="insight-box warning"><div class="insight-title">Bench Order</div><div class="insight-text">Auto-sub order: ${bp.filter(p=>p.lineupData.available).map((p,i)=>`${i+1}. ${p.name} (${p.posName}, score ${p.lineupData.score})`).join(' → ')}${(()=>{const xiPC={1:0,2:0,3:0,4:0};recommendedXI.forEach(p=>xiPC[p.pos]++);const notes=[];if(xiPC[2]===3)notes.push('DEF prioritized on bench (3-at-the-back needs position cover)');if(xiPC[4]===1)notes.push('FWD prioritized on bench (lone striker needs position cover)');return notes.length?' — '+notes.join('; '):'';})()} </div></div>`:''}
-            </div>
+            ${!swapSelectedId?'<div class="swap-hint">Tap any player to start a swap</div>':''}
             <div class="wizard-nav"><button class="btn btn-secondary" onclick="goToStep(1)">← Analysis</button><button class="btn btn-primary" onclick="goToStep(3)">Choose Captain →</button></div>`;
         document.getElementById('step2Content').innerHTML=html;
     }
@@ -1014,7 +1100,7 @@
             else if(i+1===step) el.classList.add('active');
             else if(analyzedSquad.length>0){} else el.classList.add('disabled');
         });
-        if(step===2)renderStep2();else if(step===3)renderStep3();else if(step===4)renderStep4();
+        if(step===2){swapSelectedId=null;renderStep2();}else if(step===3)renderStep3();else if(step===4)renderStep4();
         window.scrollTo({top:0,behavior:'smooth'});
     }
 
