@@ -868,6 +868,156 @@
         .chip-top-gw .gw-score-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.5s; }
 
         .chip-empty-msg { text-align: center; padding: 40px 20px; color: var(--text-secondary); font-size: 0.85rem; }
+
+        /* ===== GAMEWEEK PLANNER ===== */
+        .planner-intro { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); }
+        .planner-intro span { font-size: 1.2rem; }
+
+        /* Squad Overview Table */
+        .planner-table-wrap { overflow-x: auto; border-radius: var(--radius-lg); border: 1px solid var(--border-default); background: var(--surface-1); }
+        .planner-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .planner-table th { position: sticky; top: 0; background: var(--surface-2); padding: 8px 6px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: center; border-bottom: 1px solid var(--border-emphasis); white-space: nowrap; z-index: 2; }
+        .planner-table th:first-child { text-align: left; padding-left: 12px; min-width: 160px; position: sticky; left: 0; z-index: 3; }
+        .planner-table td { padding: 6px; text-align: center; border-bottom: 1px solid var(--border-subtle); font-size: 0.78rem; vertical-align: middle; }
+        .planner-table td:first-child { text-align: left; padding-left: 12px; position: sticky; left: 0; background: inherit; z-index: 1; }
+        .planner-table tr { background: var(--surface-1); transition: background 0.15s; }
+        .planner-table tr:hover { background: var(--surface-2); }
+        .planner-table tr.bench-row { opacity: 0.55; }
+        .planner-table tr.bench-row:hover { opacity: 0.8; }
+
+        /* Position group headers */
+        .planner-pos-header td { background: var(--surface-0) !important; padding: 6px 12px !important; font-family: var(--font-display); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid var(--border-emphasis); }
+        .planner-pos-header.pos-gk td { color: var(--position-gk); }
+        .planner-pos-header.pos-def td { color: var(--position-def); }
+        .planner-pos-header.pos-mid td { color: var(--position-mid); }
+        .planner-pos-header.pos-fwd td { color: var(--position-fwd); }
+        .planner-bench-header td { background: var(--surface-0) !important; padding: 8px 12px !important; font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-top: 2px solid var(--border-emphasis); border-bottom: 1px solid var(--border-default); }
+
+        /* Player name cell */
+        .planner-player { display: flex; align-items: center; gap: 8px; min-width: 140px; }
+        .planner-player-name { font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; cursor: pointer; }
+        .planner-player-name:hover { color: var(--color-info); text-decoration: underline; }
+        .planner-player-team { font-size: 0.65rem; color: var(--text-muted); }
+        .planner-player-price { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-secondary); }
+        .planner-captain-badge { font-size: 0.7rem; }
+
+        /* Stat badges */
+        .planner-stat { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600; }
+        .planner-stat-label { font-size: 0.55rem; font-weight: 400; color: var(--text-muted); display: block; line-height: 1; margin-bottom: 1px; }
+        .planner-stat.good { color: var(--color-success); }
+        .planner-stat.avg { color: var(--text-secondary); }
+        .planner-stat.poor { color: var(--color-error); }
+        .planner-stat-group { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+
+        /* Trend arrows */
+        .planner-trend { font-size: 0.6rem; margin-left: 1px; }
+        .planner-trend.up { color: var(--color-success); }
+        .planner-trend.down { color: var(--color-error); }
+        .planner-trend.flat { color: var(--text-muted); }
+
+        /* FDR cells */
+        .planner-fdr { width: 58px; min-width: 58px; padding: 4px 2px !important; }
+        .planner-fdr-cell { border-radius: var(--radius-sm); padding: 4px 3px; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; line-height: 1.2; text-align: center; color: #000; }
+        .planner-fdr-cell .fdr-opp { font-size: 0.62rem; font-weight: 600; display: block; }
+        .planner-fdr-cell .fdr-ha { font-size: 0.5rem; font-weight: 400; opacity: 0.7; }
+        .fdr-1 { background: var(--fdr-1); }
+        .fdr-2 { background: var(--fdr-2); }
+        .fdr-3 { background: var(--fdr-3); }
+        .fdr-4 { background: var(--fdr-4); color: #fff; }
+        .fdr-5 { background: var(--fdr-5); color: #fff; }
+
+        /* Compare checkbox */
+        .planner-compare-cb { width: 16px; height: 16px; accent-color: var(--color-info); cursor: pointer; flex-shrink: 0; }
+
+        /* Season / L6 column group headers */
+        .planner-col-group { font-size: 0.6rem; padding: 2px 4px !important; color: var(--text-muted); border-bottom: none !important; }
+        .planner-col-season { background: rgba(96,165,250,0.06) !important; }
+        .planner-col-recent { background: rgba(74,222,128,0.06) !important; }
+
+        /* ===== PLANNER COMPARE BAR ===== */
+        .planner-compare-bar { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(120px); display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border-emphasis); border-radius: var(--radius-xl); padding: 8px 16px; z-index: 200; box-shadow: 0 8px 32px rgba(0,0,0,0.5); transition: transform 0.3s ease; max-width: 95vw; }
+        .planner-compare-bar.show { transform: translateX(-50%) translateY(0); }
+        .planner-compare-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+        .planner-compare-chip { display: flex; align-items: center; gap: 4px; background: var(--surface-3); border: 1px solid var(--border-default); border-radius: 20px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; color: var(--text-primary); }
+        .planner-compare-chip .chip-remove { cursor: pointer; color: var(--text-muted); font-size: 0.85rem; margin-left: 2px; }
+        .planner-compare-chip .chip-remove:hover { color: var(--color-error); }
+        .planner-compare-actions { display: flex; gap: 6px; }
+        .planner-compare-clear { background: none; border: 1px solid var(--border-default); color: var(--text-secondary); font-size: 0.75rem; padding: 6px 12px; border-radius: var(--radius-md); cursor: pointer; }
+        .planner-compare-clear:hover { border-color: var(--color-error); color: var(--color-error); }
+        .planner-compare-btn { background: var(--color-info); border: none; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 6px 16px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; }
+        .planner-compare-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .planner-compare-btn:not(:disabled):hover { background: #3B82F6; transform: translateY(-1px); }
+
+        /* ===== PLANNER COMPARE MODAL ===== */
+        .planner-compare-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 300; display: none; justify-content: center; align-items: flex-start; padding: 20px; overflow-y: auto; }
+        .planner-compare-modal.show { display: flex; }
+        .planner-compare-modal-content { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-xl); width: 100%; max-width: 1000px; overflow: hidden; animation: fadeInUp 0.3s; }
+        .planner-compare-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border-default); background: var(--surface-2); }
+        .planner-compare-modal-header h2 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; }
+        .planner-compare-modal-body { padding: 16px; overflow-x: auto; }
+
+        /* Compare modal table */
+        .cmp-header-row { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border-default); padding-bottom: 12px; }
+        .cmp-player-col { flex: 1; text-align: center; padding: 8px; min-width: 140px; }
+        .cmp-player-name { font-family: var(--font-display); font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+        .cmp-player-meta { font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; }
+        .cmp-group { margin-bottom: 16px; }
+        .cmp-group-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--color-info); padding: 6px 10px; background: rgba(96,165,250,0.08); border-radius: var(--radius-sm); margin-bottom: 6px; }
+        .cmp-row { display: flex; align-items: center; padding: 6px 10px; border-radius: var(--radius-sm); }
+        .cmp-row:nth-child(even) { background: rgba(255,255,255,0.02); }
+        .cmp-row-label { width: 120px; flex-shrink: 0; font-size: 0.75rem; color: var(--text-secondary); }
+        .cmp-row-values { display: flex; flex: 1; gap: 0; }
+        .cmp-val { flex: 1; text-align: center; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; color: var(--text-primary); min-width: 100px; }
+        .cmp-val.best { color: var(--color-success); background: rgba(74,222,128,0.08); border-radius: var(--radius-sm); padding: 2px 6px; }
+
+        /* FDR comparison in modal */
+        .cmp-fdr-section { margin-bottom: 16px; }
+        .cmp-fdr-row { display: flex; gap: 0; }
+        .cmp-fdr-col { flex: 1; display: flex; gap: 3px; justify-content: center; padding: 4px; min-width: 140px; }
+        .cmp-fdr-badge { border-radius: var(--radius-sm); padding: 3px 5px; font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700; text-align: center; min-width: 42px; color: #000; }
+        .cmp-fdr-badge.fdr-4, .cmp-fdr-badge.fdr-5 { color: #fff; }
+
+        /* ===== PLANNER TRANSFER PANEL ===== */
+        .planner-transfer-panel { max-width: 520px; }
+        .planner-search-wrap { position: relative; margin-bottom: 16px; }
+        .planner-search-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-0); color: var(--text-primary); font-family: var(--font-body); font-size: 0.85rem; outline: none; }
+        .planner-search-input:focus { border-color: var(--color-info); box-shadow: 0 0 0 2px rgba(96,165,250,0.2); }
+        .planner-search-input::placeholder { color: var(--text-muted); }
+        .planner-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-2); border: 1px solid var(--border-emphasis); border-radius: var(--radius-md); max-height: 240px; overflow-y: auto; z-index: 10; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        .planner-search-dropdown.show { display: block; }
+        .planner-search-item { padding: 8px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); font-size: 0.8rem; }
+        .planner-search-item:hover { background: var(--surface-3); }
+        .planner-search-item-name { font-weight: 600; color: var(--text-primary); }
+        .planner-search-item-meta { font-size: 0.7rem; color: var(--text-muted); }
+
+        /* Side-by-side comparison in transfer panel */
+        .transfer-vs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 16px; }
+        .transfer-vs-col { padding: 12px; text-align: center; }
+        .transfer-vs-col:first-child { border-right: 1px solid var(--border-subtle); }
+        .transfer-vs-name { font-family: var(--font-display); font-size: 0.9rem; font-weight: 700; margin-bottom: 2px; }
+        .transfer-vs-meta { font-size: 0.7rem; color: var(--text-secondary); }
+        .transfer-vs-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .transfer-fdr-strip { display: flex; gap: 3px; justify-content: center; margin: 8px 0; }
+        .transfer-fdr-badge { border-radius: 4px; padding: 3px 5px; font-family: var(--font-mono); font-size: 0.6rem; font-weight: 700; text-align: center; min-width: 36px; color: #000; }
+        .transfer-fdr-badge.fdr-4, .transfer-fdr-badge.fdr-5 { color: #fff; }
+        .transfer-stat-table { width: 100%; border-collapse: collapse; }
+        .transfer-stat-table td { padding: 5px 8px; font-size: 0.78rem; border-bottom: 1px solid var(--border-subtle); }
+        .transfer-stat-table .stat-label { color: var(--text-secondary); text-align: left; width: 35%; }
+        .transfer-stat-table .stat-val { text-align: center; font-family: var(--font-mono); font-weight: 600; width: 32.5%; }
+        .transfer-stat-table .stat-val.better { color: var(--color-success); background: rgba(74,222,128,0.06); }
+        .transfer-stat-table .stat-val.worse { color: var(--color-error); background: rgba(248,113,113,0.06); }
+        .transfer-section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-info); margin: 12px 0 6px; padding: 4px 0; border-bottom: 1px solid rgba(96,165,250,0.15); }
+        .transfer-add-compare { display: flex; gap: 6px; margin-top: 12px; }
+        .transfer-add-compare button { flex: 1; padding: 8px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-2); color: var(--text-primary); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .transfer-add-compare button:hover { border-color: var(--color-info); color: var(--color-info); }
+
+        /* Responsive: planner on mobile */
+        @media (max-width: 768px) {
+            .planner-compare-bar { bottom: 56px; }
+            .planner-transfer-panel { max-width: 100%; }
+            .cmp-row-label { width: 80px; font-size: 0.68rem; }
+            .cmp-val { font-size: 0.72rem; min-width: 80px; }
+        }
     </style>
 </head>
 <body>
@@ -913,6 +1063,7 @@
         <div class="tab-bar" id="tabBar">
             <button class="tab-btn active" onclick="switchTab('team')" id="tabTeam">⚽ Squad Analysis</button>
             <button class="tab-btn" onclick="switchTab('chips')" id="tabChips">🎯 Chip Strategy</button>
+            <button class="tab-btn" onclick="switchTab('planner')" id="tabPlanner">🗓️ GW Planner</button>
         </div>
 
         <!-- Team Display -->
@@ -920,7 +1071,44 @@
 
         <!-- Chip Strategy Display -->
         <div id="chipDisplay" style="display:none;"></div>
+
+        <!-- Gameweek Planner Display -->
+        <div id="plannerDisplay" style="display:none;"></div>
     </main>
+
+    <!-- Planner Compare Bar (floating bottom) -->
+    <div class="planner-compare-bar" id="plannerCompareBar">
+        <div class="planner-compare-chips" id="plannerCompareChips"></div>
+        <div class="planner-compare-actions">
+            <button class="planner-compare-clear" onclick="clearPlannerCompare()">Clear</button>
+            <button class="planner-compare-btn" id="plannerCompareBtn" onclick="showPlannerCompareModal()" disabled>Compare <span id="plannerCompareCount">0</span></button>
+        </div>
+    </div>
+
+    <!-- Planner Compare Modal (full-screen) -->
+    <div class="planner-compare-modal" id="plannerCompareModal">
+        <div class="planner-compare-modal-content">
+            <div class="planner-compare-modal-header">
+                <h2>⚖️ Player Comparison</h2>
+                <button class="detail-close" onclick="closePlannerCompareModal()">&times;</button>
+            </div>
+            <div class="planner-compare-modal-body" id="plannerCompareModalBody"></div>
+        </div>
+    </div>
+
+    <!-- Planner Transfer Panel (slide-out) -->
+    <div class="detail-overlay" id="plannerTransferOverlay" onclick="closePlannerTransferPanel(event)">
+        <div class="detail-panel planner-transfer-panel" id="plannerTransferPanel">
+            <div class="detail-header">
+                <div>
+                    <div class="player-name" id="plannerTransferTitle">Transfer Comparison</div>
+                    <div class="player-meta" id="plannerTransferMeta">-</div>
+                </div>
+                <button class="detail-close" onclick="closePlannerTransferPanel()">&times;</button>
+            </div>
+            <div class="detail-body" id="plannerTransferBody"></div>
+        </div>
+    </div>
 
     <!-- Detail Panel Overlay -->
     <div class="detail-overlay" id="detailOverlay" onclick="closeDetailPanel(event)">
@@ -1003,6 +1191,14 @@
         let allFixtures = [];     // All fixtures from fixtures.json
         let managerHistory = null; // Manager history from /api/entry/{id}/history/
         let chipAnalysisResults = null; // Chip analysis output
+
+        // Gameweek Planner state
+        let playersDetailData = null; // Full players-data.json with per-GW history
+        let teamXgData = {};          // Team-level xG aggregated from player history
+        let teamFixtures6 = {};       // Next 6 fixtures per team (extended from teamFixtures)
+        let plannerCompareList = [];   // Players selected for multi-compare (max 4)
+        let plannerReplacementTarget = null; // Current player being evaluated for transfer
+        let plannerRendered = false;   // Lazy rendering flag
 
         let userSettings = {
             sellSensitivity: 1.0,   // multiplier for sell rating (>1 = aggressive, <1 = patient)
@@ -1303,10 +1499,11 @@
             showLoading(true, 'Loading FPL data...');
 
             try {
-                // Load bootstrap + fixtures in parallel
-                const [bootData, fixturesData] = await Promise.all([
+                // Load bootstrap + fixtures + players-data in parallel
+                const [bootData, fixturesData, playersDataRes] = await Promise.all([
                     fetch('data/bootstrap-static.json').then(r => { if (!r.ok) throw new Error('Data load failed'); return r.json(); }),
-                    fetch('data/fixtures.json').then(r => { if (!r.ok) throw new Error('Fixtures load failed'); return r.json(); })
+                    fetch('data/fixtures.json').then(r => r.ok ? r.json() : []),
+                    fetch('data/players-data.json').then(r => r.ok ? r.json() : null).catch(() => null)
                 ]);
 
                 teams = {};
@@ -1316,6 +1513,11 @@
                 allEvents = bootData.events || [];
                 allFixtures = fixturesData;
                 processFixtures(fixturesData);
+                processFixtures6(fixturesData);
+
+                // Store players detail data for per-GW history
+                playersDetailData = playersDataRes;
+                console.log('📊 Players detail data:', playersDetailData ? `${(playersDetailData.players||[]).length} players with history` : 'not available');
 
                 // Build players with ALL available data
                 allPlayers = bootData.elements.map(p => ({
@@ -1356,6 +1558,10 @@
                 buildFixtureSwingData(bootData.teams, fixturesData);
                 seasonStats = calculateBasicSeasonStats(bootData.teams, fixturesData);
 
+                // Build team xG data for planner
+                buildPlannerTeamXgData(bootData.elements);
+                console.log('📊 Team xG data built for', Object.keys(teamXgData).length, 'teams');
+
                 // Fetch manager + picks + history in parallel
                 showLoading(true, `Loading team for GW${currentGW}...`);
                 const [mgrRes, picksRes, histRes] = await Promise.all([
@@ -1387,6 +1593,8 @@
 
                 // Chip strategy analysis
                 analyzeChips();
+                plannerRendered = false;
+                plannerCompareList = [];
                 document.getElementById('tabBar').classList.add('visible');
             } catch (error) {
                 console.error('Error loading team:', error);
@@ -2367,20 +2575,29 @@
         function switchTab(tab) {
             const teamDisplay = document.getElementById('teamDisplay');
             const chipDisplay = document.getElementById('chipDisplay');
+            const plannerDisplay = document.getElementById('plannerDisplay');
             const tabTeam = document.getElementById('tabTeam');
             const tabChips = document.getElementById('tabChips');
+            const tabPlanner = document.getElementById('tabPlanner');
+
+            teamDisplay.style.display = 'none';
+            chipDisplay.style.display = 'none';
+            plannerDisplay.style.display = 'none';
+            tabTeam.classList.remove('active');
+            tabChips.classList.remove('active');
+            tabPlanner.classList.remove('active');
 
             if (tab === 'team') {
                 teamDisplay.style.display = '';
-                chipDisplay.style.display = 'none';
                 tabTeam.classList.add('active');
-                tabChips.classList.remove('active');
-            } else {
-                teamDisplay.style.display = 'none';
+            } else if (tab === 'chips') {
                 chipDisplay.style.display = '';
-                tabTeam.classList.remove('active');
                 tabChips.classList.add('active');
                 renderChipStrategy();
+            } else if (tab === 'planner') {
+                plannerDisplay.style.display = '';
+                tabPlanner.classList.add('active');
+                if (!plannerRendered) renderGameweekPlanner();
             }
         }
 
@@ -2596,6 +2813,790 @@
             });
             candidates.sort((a, b) => b._score - a._score);
             return candidates.slice(0, count);
+        }
+
+        // ===== GAMEWEEK PLANNER ENGINE =====
+
+        // Build team-level xG data from player history (ported from teams-analysis)
+        function buildPlannerTeamXgData(bootstrapElements) {
+            teamXgData = {};
+            Object.keys(teams).forEach(tid => {
+                teamXgData[tid] = {
+                    seasonXg: 0, seasonXa: 0, seasonXgc: 0, seasonGoals: 0, seasonAssists: 0, seasonConceded: 0, seasonGames: 0,
+                    perGw: {}, hasPerGwData: false
+                };
+            });
+
+            // Season-level from bootstrap elements
+            (bootstrapElements || []).forEach(p => {
+                if (p.minutes > 0 && teamXgData[p.team]) {
+                    teamXgData[p.team].seasonXg += parseFloat(p.expected_goals) || 0;
+                    teamXgData[p.team].seasonXa += parseFloat(p.expected_assists) || 0;
+                    teamXgData[p.team].seasonGoals += p.goals_scored || 0;
+                    teamXgData[p.team].seasonAssists += p.assists || 0;
+                }
+            });
+
+            // Season games + conceded from fixtures
+            const finished = allFixtures.filter(f => f.finished && f.team_h_score !== null);
+            finished.forEach(f => {
+                if (teamXgData[f.team_h]) { teamXgData[f.team_h].seasonGames++; teamXgData[f.team_h].seasonConceded += f.team_a_score || 0; }
+                if (teamXgData[f.team_a]) { teamXgData[f.team_a].seasonGames++; teamXgData[f.team_a].seasonConceded += f.team_h_score || 0; }
+            });
+
+            // Per-GW from players-data.json (richer)
+            if (playersDetailData && playersDetailData.players) {
+                playersDetailData.players.forEach(player => {
+                    const tid = player.team;
+                    if (!teamXgData[tid]) return;
+                    (player.history || []).forEach(h => {
+                        const gw = h.round;
+                        const fixtureKey = h.fixture;
+                        if (!teamXgData[tid].perGw[gw]) {
+                            teamXgData[tid].perGw[gw] = { xG: 0, xA: 0, xGC: 0, goals: 0, assists: 0, conceded: 0, wasHome: null, oppTeam: null, xGC_90min: 0, _fixtures: {} };
+                        }
+                        const d = teamXgData[tid].perGw[gw];
+                        d.xG += parseFloat(h.expected_goals) || 0;
+                        d.xA += parseFloat(h.expected_assists) || 0;
+                        const tGoals = h.was_home ? (h.team_h_score || 0) : (h.team_a_score || 0);
+                        const tConceded = h.was_home ? (h.team_a_score || 0) : (h.team_h_score || 0);
+                        if (!d._fixtures[fixtureKey]) {
+                            d._fixtures[fixtureKey] = true;
+                            d.goals += tGoals;
+                            d.conceded += tConceded;
+                        }
+                        d.wasHome = h.was_home;
+                        d.oppTeam = h.opponent_team;
+                        if (h.minutes >= 85) {
+                            const xgc = parseFloat(h.expected_goals_conceded) || 0;
+                            const fxKey = `_xgc_${fixtureKey}`;
+                            if (!d[fxKey]) { d[fxKey] = true; d.xGC_90min += xgc; }
+                        }
+                    });
+                });
+
+                Object.keys(teamXgData).forEach(tid => {
+                    const gwKeys = Object.keys(teamXgData[tid].perGw);
+                    if (gwKeys.length > 0) {
+                        teamXgData[tid].hasPerGwData = true;
+                        teamXgData[tid].seasonXgc = gwKeys.reduce((sum, gw) => sum + teamXgData[tid].perGw[gw].xGC_90min, 0);
+                    }
+                });
+            }
+        }
+
+        function getTeamXgWindow(teamId, windowSize = 6) {
+            const data = teamXgData[teamId];
+            if (!data || !data.hasPerGwData) return null;
+            const gws = Object.keys(data.perGw).map(Number).sort((a, b) => a - b);
+            const recentGws = gws.slice(-windowSize);
+            if (recentGws.length === 0) return null;
+            const n = recentGws.length;
+            const totals = recentGws.reduce((acc, gw) => {
+                const d = data.perGw[gw];
+                acc.xG += d.xG; acc.xA += d.xA; acc.xGC += d.xGC_90min;
+                acc.goals += d.goals; acc.conceded += d.conceded;
+                return acc;
+            }, { xG: 0, xA: 0, xGC: 0, goals: 0, conceded: 0 });
+            return { games: n, xGpg: totals.xG / n, xGCpg: totals.xGC / n, gpg: totals.goals / n, gapg: totals.conceded / n };
+        }
+
+        function getTeamSeasonXg(teamId) {
+            const data = teamXgData[teamId];
+            if (!data) return null;
+            const g = data.seasonGames || 1;
+            return { games: data.seasonGames, xGpg: data.seasonXg / g, xGCpg: data.seasonXgc / g, gpg: data.seasonGoals / g, gapg: data.seasonConceded / g };
+        }
+
+        // Process fixtures for next 6 GWs
+        function processFixtures6(fixturesData) {
+            teamFixtures6 = {};
+            const upcoming = fixturesData.filter(f => !f.finished && f.event !== null).sort((a, b) => a.event - b.event);
+            Object.keys(teams).forEach(teamId => {
+                const tid = parseInt(teamId);
+                const teamFix = upcoming.filter(f => f.team_h === tid || f.team_a === tid).slice(0, 6);
+                teamFixtures6[tid] = teamFix.map(f => {
+                    const isHome = f.team_h === tid;
+                    return {
+                        opponent: isHome ? teams[f.team_a]?.short_name : teams[f.team_h]?.short_name,
+                        opponentId: isHome ? f.team_a : f.team_h,
+                        difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
+                        isHome, event: f.event
+                    };
+                });
+            });
+        }
+
+        // Get per-player recent stats from players-data.json history
+        function getPlayerRecentStats(playerId, windowSize = 6) {
+            if (!playersDetailData || !playersDetailData.players) return null;
+            const pd = playersDetailData.players.find(p => p.id === playerId);
+            if (!pd || !pd.history) return null;
+            const played = pd.history.filter(h => h.minutes > 0);
+            const window = played.slice(-windowSize);
+            if (window.length === 0) return null;
+            const totalMins = window.reduce((s, h) => s + h.minutes, 0);
+            if (totalMins === 0) return null;
+            const sum = (key) => window.reduce((s, h) => s + (parseFloat(h[key]) || 0), 0);
+            const per90 = (val) => totalMins > 0 ? (val / totalMins) * 90 : 0;
+            const cs = window.reduce((s, h) => s + (h.clean_sheets || 0), 0);
+            const gamesCS = window.filter(h => h.minutes >= 60).length;
+            return {
+                games: window.length, minutes: totalMins,
+                goals: sum('goals_scored'), assists: sum('assists'),
+                xG: sum('expected_goals'), xA: sum('expected_assists'),
+                xGI: sum('expected_goal_involvements'), xGC: sum('expected_goals_conceded'),
+                cs: cs, saves: sum('saves'), bonus: sum('bonus'), bps: sum('bps'),
+                points: sum('total_points'),
+                xGPer90: per90(sum('expected_goals')),
+                xAPer90: per90(sum('expected_assists')),
+                xGIPer90: per90(sum('expected_goal_involvements')),
+                xGCPer90: per90(sum('expected_goals_conceded')),
+                csPercent: gamesCS > 0 ? (cs / gamesCS) * 100 : 0,
+                savesPer90: per90(sum('saves')),
+                savePct: (() => { const sa = sum('saves'); const gc = sum('goals_conceded'); return (sa + gc) > 0 ? (sa / (sa + gc)) * 100 : 0; })(),
+                ppg: window.length > 0 ? sum('total_points') / window.length : 0
+            };
+        }
+
+        // Get season per-90 stats from bootstrap aggregates
+        function getPlayerSeasonPer90(player) {
+            const mins = player.minutes || 1;
+            const per90 = (val) => (val / mins) * 90;
+            const gamesPlayed = Math.max(currentGW - 1, 1);
+            const gamesCS = player.starts || Math.round(mins / 90);
+            return {
+                xGPer90: per90(player.xG), xAPer90: per90(player.xA),
+                xGIPer90: per90(player.xGI), xGCPer90: per90(player.xGC),
+                csPercent: gamesCS > 0 ? (player.cleanSheets / gamesCS) * 100 : 0,
+                savesPer90: per90(player.saves),
+                savePct: (player.saves + player.goalsConceded) > 0 ? (player.saves / (player.saves + player.goalsConceded)) * 100 : 0,
+                goals: player.goals, assists: player.assists, ppg: player.ppg
+            };
+        }
+
+        // Get the position-specific stats for a player (3 key stats)
+        function getPositionStats(player, seasonStats, recentStats) {
+            const pos = player.position;
+            const fmt = (v) => v != null ? v.toFixed(2) : '-';
+            const fmtPct = (v) => v != null ? v.toFixed(0) + '%' : '-';
+
+            const season = seasonStats || {};
+            const recent = recentStats || {};
+
+            if (pos === 1) { // GK
+                return [
+                    { label: 'Sv%', season: fmtPct(season.savePct), recent: fmtPct(recent.savePct), sVal: season.savePct || 0, rVal: recent.savePct || 0, higherBetter: true },
+                    { label: 'xGC/90', season: fmt(season.xGCPer90), recent: fmt(recent.xGCPer90), sVal: season.xGCPer90 || 0, rVal: recent.xGCPer90 || 0, higherBetter: false },
+                    { label: 'CS%', season: fmtPct(season.csPercent), recent: fmtPct(recent.csPercent), sVal: season.csPercent || 0, rVal: recent.csPercent || 0, higherBetter: true }
+                ];
+            } else if (pos === 2) { // DEF
+                return [
+                    { label: 'xGC/90', season: fmt(season.xGCPer90), recent: fmt(recent.xGCPer90), sVal: season.xGCPer90 || 0, rVal: recent.xGCPer90 || 0, higherBetter: false },
+                    { label: 'CS%', season: fmtPct(season.csPercent), recent: fmtPct(recent.csPercent), sVal: season.csPercent || 0, rVal: recent.csPercent || 0, higherBetter: true },
+                    { label: 'xGI/90', season: fmt(season.xGIPer90), recent: fmt(recent.xGIPer90), sVal: season.xGIPer90 || 0, rVal: recent.xGIPer90 || 0, higherBetter: true }
+                ];
+            } else if (pos === 3) { // MID
+                return [
+                    { label: 'xGI/90', season: fmt(season.xGIPer90), recent: fmt(recent.xGIPer90), sVal: season.xGIPer90 || 0, rVal: recent.xGIPer90 || 0, higherBetter: true },
+                    { label: 'xG/90', season: fmt(season.xGPer90), recent: fmt(recent.xGPer90), sVal: season.xGPer90 || 0, rVal: recent.xGPer90 || 0, higherBetter: true },
+                    { label: 'xA/90', season: fmt(season.xAPer90), recent: fmt(recent.xAPer90), sVal: season.xAPer90 || 0, rVal: recent.xAPer90 || 0, higherBetter: true }
+                ];
+            } else { // FWD
+                return [
+                    { label: 'xG/90', season: fmt(season.xGPer90), recent: fmt(recent.xGPer90), sVal: season.xGPer90 || 0, rVal: recent.xGPer90 || 0, higherBetter: true },
+                    { label: 'xGI/90', season: fmt(season.xGIPer90), recent: fmt(recent.xGIPer90), sVal: season.xGIPer90 || 0, rVal: recent.xGIPer90 || 0, higherBetter: true },
+                    { label: 'Goals', season: String(season.goals || 0), recent: String(recent.goals || 0), sVal: season.goals || 0, rVal: recent.goals || 0, higherBetter: true }
+                ];
+            }
+        }
+
+        // Determine trend arrow for a stat comparing season to recent
+        function getTrend(seasonVal, recentVal, higherBetter) {
+            if (seasonVal == null || recentVal == null || seasonVal === 0) return { icon: '', cls: 'flat' };
+            const diff = recentVal - seasonVal;
+            const pct = Math.abs(diff / (seasonVal || 1));
+            if (pct < 0.08) return { icon: '', cls: 'flat' };
+            const improving = higherBetter ? diff > 0 : diff < 0;
+            return { icon: improving ? '▲' : '▼', cls: improving ? 'up' : 'down' };
+        }
+
+        // Rate how good a stat value is (for color coding)
+        function rateStat(value, label, position) {
+            // Thresholds per stat for "good" / "avg" / "poor"
+            const thresholds = {
+                'xGI/90': [0.35, 0.2], 'xG/90': [0.3, 0.15], 'xA/90': [0.2, 0.1],
+                'xGC/90': [1.0, 1.4], // lower is better
+                'CS%': [35, 20], 'Sv%': [70, 60], 'Goals': [6, 3],
+                'Saves/90': [3, 2]
+            };
+            const t = thresholds[label];
+            if (!t) return 'avg';
+            const lowerBetter = label === 'xGC/90';
+            if (lowerBetter) return value <= t[0] ? 'good' : value >= t[1] ? 'poor' : 'avg';
+            return value >= t[0] ? 'good' : value <= t[1] ? 'poor' : 'avg';
+        }
+
+        // ===== RENDER GAMEWEEK PLANNER =====
+        function renderGameweekPlanner() {
+            plannerRendered = true;
+            const container = document.getElementById('plannerDisplay');
+            if (!selectedPlayers || selectedPlayers.length === 0) {
+                container.innerHTML = '<div class="chip-empty-msg">Load your team to see the Gameweek Planner.</div>';
+                return;
+            }
+
+            // Determine next 6 GW numbers
+            const gwNumbers = [];
+            const upcoming = allFixtures.filter(f => !f.finished && f.event !== null).map(f => f.event);
+            const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
+            for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) gwNumbers.push(uniqueGWs[i]);
+            if (gwNumbers.length === 0) for (let i = currentGW + 1; i <= Math.min(currentGW + 6, 38); i++) gwNumbers.push(i);
+
+            // Separate starters and bench
+            const starters = selectedPlayers.filter(p => !p.onBench).sort((a, b) => a.position - b.position || a.pickPosition - b.pickPosition);
+            const bench = selectedPlayers.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
+
+            let html = '';
+            html += `<div class="planner-intro"><span>🗓️</span> Your squad's next 6 gameweeks with position-specific underlying stats (Season vs Last 6). Click a player to explore transfer options, or select players to compare.</div>`;
+
+            // Build the table
+            html += `<div class="planner-table-wrap"><table class="planner-table">`;
+
+            // Double header row: group labels
+            html += `<thead><tr>`;
+            html += `<th rowspan="2" style="min-width:160px;">Player</th>`;
+            html += `<th colspan="3" class="planner-col-group planner-col-season" style="border-bottom:1px solid rgba(96,165,250,0.15);">Season</th>`;
+            html += `<th colspan="3" class="planner-col-group planner-col-recent" style="border-bottom:1px solid rgba(74,222,128,0.15);">Last 6 GWs</th>`;
+            gwNumbers.forEach(gw => { html += `<th rowspan="2" class="planner-fdr">GW${gw}</th>`; });
+            html += `<th rowspan="2" style="width:30px;">⚖️</th>`;
+            html += `</tr><tr>`;
+            // Sub-headers for stats will be position-dependent, show generic labels
+            html += `<th class="planner-col-season" style="font-size:0.55rem;">S1</th><th class="planner-col-season" style="font-size:0.55rem;">S2</th><th class="planner-col-season" style="font-size:0.55rem;">S3</th>`;
+            html += `<th class="planner-col-recent" style="font-size:0.55rem;">L1</th><th class="planner-col-recent" style="font-size:0.55rem;">L2</th><th class="planner-col-recent" style="font-size:0.55rem;">L3</th>`;
+            html += `</tr></thead>`;
+
+            html += `<tbody>`;
+
+            // Render groups
+            const posGroups = [
+                { pos: 1, label: 'Goalkeepers', cls: 'pos-gk' },
+                { pos: 2, label: 'Defenders', cls: 'pos-def' },
+                { pos: 3, label: 'Midfielders', cls: 'pos-mid' },
+                { pos: 4, label: 'Forwards', cls: 'pos-fwd' }
+            ];
+
+            posGroups.forEach(({ pos, label, cls }) => {
+                const groupPlayers = starters.filter(p => p.position === pos);
+                if (groupPlayers.length === 0) return;
+                const totalCols = 1 + 6 + gwNumbers.length + 1;
+                html += `<tr class="planner-pos-header ${cls}"><td colspan="${totalCols}">${label}</td></tr>`;
+                groupPlayers.forEach(p => { html += renderPlannerRow(p, gwNumbers, false); });
+            });
+
+            // Bench
+            if (bench.length > 0) {
+                const totalCols = 1 + 6 + gwNumbers.length + 1;
+                html += `<tr class="planner-bench-header"><td colspan="${totalCols}">📋 Bench</td></tr>`;
+                bench.forEach(p => { html += renderPlannerRow(p, gwNumbers, true); });
+            }
+
+            html += `</tbody></table></div>`;
+
+            // Team context section
+            html += renderPlannerTeamContext();
+
+            container.innerHTML = html;
+        }
+
+        function renderPlannerRow(player, gwNumbers, isBench) {
+            const seasonStats = getPlayerSeasonPer90(player);
+            const recentStats = getPlayerRecentStats(player.id, 6);
+            const posStats = getPositionStats(player, seasonStats, recentStats);
+            const fixtures = teamFixtures6[player.teamId] || [];
+
+            let row = `<tr class="${isBench ? 'bench-row' : ''}" data-player-id="${player.id}">`;
+
+            // Player name cell
+            const captain = player.isCaptain ? '<span class="planner-captain-badge">👑</span> ' : player.isVice ? '<span class="planner-captain-badge">©</span> ' : '';
+            const statusIcon = player.status === 'i' ? '🤕 ' : player.status === 'd' ? '⚠️ ' : '';
+            row += `<td><div class="planner-player">
+                <div>
+                    ${captain}${statusIcon}<span class="planner-player-name" onclick="openPlannerTransferPanel(${player.id})">${player.name}</span>
+                    <div><span class="planner-player-team">${player.team}</span> <span class="planner-player-price">£${player.price.toFixed(1)}m</span></div>
+                </div>
+            </div></td>`;
+
+            // Season stats (3 columns)
+            posStats.forEach(stat => {
+                const rating = rateStat(stat.sVal, stat.label, player.position);
+                row += `<td><div class="planner-stat-group"><span class="planner-stat-label">${stat.label}</span><span class="planner-stat ${rating}">${stat.season}</span></div></td>`;
+            });
+
+            // Recent stats (3 columns) with trend arrows
+            posStats.forEach(stat => {
+                const rating = rateStat(stat.rVal, stat.label, player.position);
+                const trend = getTrend(stat.sVal, stat.rVal, stat.higherBetter);
+                row += `<td><div class="planner-stat-group"><span class="planner-stat-label">${stat.label}</span><span class="planner-stat ${rating}">${stat.recent}${trend.icon ? `<span class="planner-trend ${trend.cls}">${trend.icon}</span>` : ''}</span></div></td>`;
+            });
+
+            // FDR cells for next 6 GWs
+            gwNumbers.forEach(gw => {
+                const fix = fixtures.find(f => f.event === gw);
+                if (fix) {
+                    const fdrClass = `fdr-${fix.difficulty || 3}`;
+                    row += `<td class="planner-fdr"><div class="planner-fdr-cell ${fdrClass}"><span class="fdr-opp">${fix.opponent || '?'}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div></td>`;
+                } else {
+                    row += `<td class="planner-fdr"><div class="planner-fdr-cell" style="background:var(--surface-3);color:var(--text-muted);">-</div></td>`;
+                }
+            });
+
+            // Compare checkbox
+            const checked = plannerCompareList.includes(player.id) ? 'checked' : '';
+            row += `<td><input type="checkbox" class="planner-compare-cb" ${checked} onchange="togglePlannerCompare(${player.id})" title="Add to comparison"></td>`;
+
+            row += `</tr>`;
+            return row;
+        }
+
+        function renderPlannerTeamContext() {
+            // Show team-level xG context for teams represented in the squad
+            const teamIds = [...new Set(selectedPlayers.map(p => p.teamId))];
+            let html = `<div style="margin-top:16px;"><div class="transfer-section-title" style="margin-bottom:10px;">🏟️ Team Context — Attack & Defence Underlying Stats</div>`;
+            html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">`;
+
+            teamIds.forEach(tid => {
+                const team = teams[tid];
+                if (!team) return;
+                const ta = teamAnalysis[tid];
+                const sXg = getTeamSeasonXg(tid);
+                const rXg = getTeamXgWindow(tid, 6);
+                const ss = seasonStats[tid];
+
+                html += `<div style="background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:12px;">`;
+                html += `<div style="font-family:var(--font-display);font-weight:700;font-size:0.85rem;margin-bottom:8px;">${team.short_name || team.name}</div>`;
+                html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;">`;
+
+                if (ta) {
+                    html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.6rem;">ATK Power</div><div style="font-family:var(--font-mono);font-weight:700;color:${ta.attackPower > 60 ? 'var(--color-success)' : ta.attackPower < 40 ? 'var(--color-error)' : 'var(--text-secondary)'};">${ta.attackPower}</div></div>`;
+                    html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.6rem;">DEF Power</div><div style="font-family:var(--font-mono);font-weight:700;color:${ta.defensePower > 60 ? 'var(--color-success)' : ta.defensePower < 40 ? 'var(--color-error)' : 'var(--text-secondary)'};">${ta.defensePower}</div></div>`;
+                }
+                if (sXg) {
+                    html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.6rem;">xG/g (Season)</div><div style="font-family:var(--font-mono);font-weight:600;">${sXg.xGpg.toFixed(2)}</div></div>`;
+                    html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.6rem;">xGC/g (Season)</div><div style="font-family:var(--font-mono);font-weight:600;">${sXg.xGCpg.toFixed(2)}</div></div>`;
+                }
+                if (rXg) {
+                    html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.6rem;">xG/g (L6)</div><div style="font-family:var(--font-mono);font-weight:600;color:${rXg.xGpg > (sXg?.xGpg || 0) ? 'var(--color-success)' : 'var(--color-error)'};">${rXg.xGpg.toFixed(2)}</div></div>`;
+                    html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.6rem;">xGC/g (L6)</div><div style="font-family:var(--font-mono);font-weight:600;color:${rXg.xGCpg < (sXg?.xGCpg || 0) ? 'var(--color-success)' : 'var(--color-error)'};">${rXg.xGCpg.toFixed(2)}</div></div>`;
+                }
+                if (ss) {
+                    html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.6rem;">CS%</div><div style="font-family:var(--font-mono);font-weight:600;">${ss.csPercent}%</div></div>`;
+                    html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.6rem;">Form</div><div style="font-family:var(--font-mono);font-weight:600;">${ss.last5Form?.join('') || '-'}</div></div>`;
+                }
+                html += `</div></div>`;
+            });
+
+            html += `</div></div>`;
+            return html;
+        }
+
+        // ===== PLANNER TRANSFER PANEL (slide-out 1:1) =====
+        function openPlannerTransferPanel(playerId) {
+            plannerReplacementTarget = allPlayersById[playerId];
+            if (!plannerReplacementTarget) return;
+
+            const player = selectedPlayers.find(p => p.id === playerId) || plannerReplacementTarget;
+            const posConfig = POSITION_CONFIG[player.position];
+
+            document.getElementById('plannerTransferTitle').textContent = `🔄 ${player.name}`;
+            document.getElementById('plannerTransferMeta').innerHTML = `<span class="position-badge ${posConfig.class}">${posConfig.short}</span> ${player.team} · £${player.price.toFixed(1)}m`;
+
+            let html = '';
+
+            // Current player stats
+            const seasonStats = getPlayerSeasonPer90(player);
+            const recentStats = getPlayerRecentStats(player.id, 6);
+            const posStats = getPositionStats(player, seasonStats, recentStats);
+
+            html += `<div class="detail-section">
+                <div class="detail-section-title">📊 Current Player</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
+                    ${posStats.map(s => `<div style="text-align:center;background:var(--surface-0);padding:6px;border-radius:var(--radius-sm);">
+                        <div style="font-size:0.6rem;color:var(--text-muted);">${s.label}</div>
+                        <div style="font-family:var(--font-mono);font-weight:700;font-size:0.85rem;">${s.season}</div>
+                        <div style="font-size:0.6rem;color:var(--text-muted);">L6: ${s.recent}</div>
+                    </div>`).join('')}
+                </div>
+                <div class="transfer-section-title">Upcoming Fixtures</div>
+                <div class="transfer-fdr-strip">
+                    ${(teamFixtures6[player.teamId] || []).map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${f.opponent}${f.isHome ? '(H)' : '(A)'}</div>`).join('')}
+                </div>
+            </div>`;
+
+            // Search for replacement
+            html += `<div class="detail-section">
+                <div class="detail-section-title">🔍 Find Replacement</div>
+                <div class="planner-search-wrap">
+                    <input type="text" class="planner-search-input" id="plannerSearchInput" placeholder="Search ${posConfig.name}s by name..." oninput="filterPlannerSearch()" onfocus="filterPlannerSearch()">
+                    <div class="planner-search-dropdown" id="plannerSearchDropdown"></div>
+                </div>
+            </div>`;
+
+            // Comparison area (populated when a replacement is selected)
+            html += `<div id="plannerTransferComparison"></div>`;
+
+            // Quick suggestions
+            const suggestions = findReplacements(player, 8);
+            if (suggestions.length > 0) {
+                html += `<div class="detail-section">
+                    <div class="detail-section-title">⚡ Top Suggestions</div>
+                    ${suggestions.map(r => `<div class="planner-search-item" onclick="selectPlannerReplacement(${r.id})" style="cursor:pointer;background:var(--surface-0);border-radius:var(--radius-sm);margin-bottom:4px;">
+                        <div>
+                            <span class="planner-search-item-name">${r.name}</span>
+                            <span class="planner-search-item-meta">${r.team} · £${r.price.toFixed(1)}m · ${r.form} form</span>
+                        </div>
+                    </div>`).join('')}
+                </div>`;
+            }
+
+            document.getElementById('plannerTransferBody').innerHTML = html;
+            document.getElementById('plannerTransferOverlay').classList.add('show');
+        }
+
+        function closePlannerTransferPanel(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('plannerTransferOverlay').classList.remove('show');
+            plannerReplacementTarget = null;
+        }
+
+        function filterPlannerSearch() {
+            const input = document.getElementById('plannerSearchInput');
+            const dropdown = document.getElementById('plannerSearchDropdown');
+            const query = input.value.trim().toLowerCase();
+
+            if (query.length < 2) { dropdown.classList.remove('show'); return; }
+
+            const pos = plannerReplacementTarget?.position;
+            const results = allPlayers
+                .filter(p => p.position === pos && p.name.toLowerCase().includes(query) && p.id !== plannerReplacementTarget?.id && p.minutes > 0)
+                .sort((a, b) => b.form - a.form)
+                .slice(0, 12);
+
+            if (results.length === 0) {
+                dropdown.innerHTML = '<div class="planner-search-item" style="color:var(--text-muted);">No players found</div>';
+            } else {
+                dropdown.innerHTML = results.map(p => `<div class="planner-search-item" onclick="selectPlannerReplacement(${p.id})">
+                    <div><span class="planner-search-item-name">${p.name}</span></div>
+                    <span class="planner-search-item-meta">${p.team} · £${p.price.toFixed(1)}m · ${p.form} form</span>
+                </div>`).join('');
+            }
+            dropdown.classList.add('show');
+        }
+
+        function selectPlannerReplacement(replacementId) {
+            const dropdown = document.getElementById('plannerSearchDropdown');
+            if (dropdown) dropdown.classList.remove('show');
+
+            const current = plannerReplacementTarget;
+            const replacement = allPlayersById[replacementId];
+            if (!current || !replacement) return;
+
+            const cSeason = getPlayerSeasonPer90(current);
+            const cRecent = getPlayerRecentStats(current.id, 6);
+            const rSeason = getPlayerSeasonPer90(replacement);
+            const rRecent = getPlayerRecentStats(replacement.id, 6);
+            const cPosStats = getPositionStats(current, cSeason, cRecent);
+            const rPosStats = getPositionStats(replacement, rSeason, rRecent);
+
+            const cFix = teamFixtures6[current.teamId] || [];
+            const rFix = teamFixtures6[replacement.teamId] || [];
+
+            let html = `<div class="detail-section">
+                <div class="detail-section-title">⚔️ Side-by-Side Comparison</div>
+                <div class="transfer-vs">
+                    <div class="transfer-vs-col">
+                        <div class="transfer-vs-label">Current</div>
+                        <div class="transfer-vs-name" style="color:var(--color-error);">${current.name}</div>
+                        <div class="transfer-vs-meta">${current.team} · £${current.price.toFixed(1)}m</div>
+                        <div class="transfer-fdr-strip">${cFix.map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${f.opponent}</div>`).join('')}</div>
+                    </div>
+                    <div class="transfer-vs-col">
+                        <div class="transfer-vs-label">Replacement</div>
+                        <div class="transfer-vs-name" style="color:var(--color-success);">${replacement.name}</div>
+                        <div class="transfer-vs-meta">${replacement.team} · £${replacement.price.toFixed(1)}m</div>
+                        <div class="transfer-fdr-strip">${rFix.map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${f.opponent}</div>`).join('')}</div>
+                    </div>
+                </div>
+
+                <div class="transfer-section-title">Season Stats</div>
+                <table class="transfer-stat-table">
+                    <tr><td class="stat-label">Points</td><td class="stat-val ${current.points > replacement.points ? 'better' : current.points < replacement.points ? 'worse' : ''}">${current.points}</td><td class="stat-val ${replacement.points > current.points ? 'better' : replacement.points < current.points ? 'worse' : ''}">${replacement.points}</td></tr>
+                    <tr><td class="stat-label">Form</td><td class="stat-val ${current.form > replacement.form ? 'better' : current.form < replacement.form ? 'worse' : ''}">${current.form.toFixed(1)}</td><td class="stat-val ${replacement.form > current.form ? 'better' : replacement.form < current.form ? 'worse' : ''}">${replacement.form.toFixed(1)}</td></tr>
+                    <tr><td class="stat-label">PPG</td><td class="stat-val ${current.ppg > replacement.ppg ? 'better' : current.ppg < replacement.ppg ? 'worse' : ''}">${current.ppg.toFixed(2)}</td><td class="stat-val ${replacement.ppg > current.ppg ? 'better' : replacement.ppg < current.ppg ? 'worse' : ''}">${replacement.ppg.toFixed(2)}</td></tr>
+                    ${cPosStats.map((s, i) => {
+                        const rS = rPosStats[i];
+                        const cBetter = s.higherBetter ? s.sVal > rS.sVal : s.sVal < rS.sVal;
+                        const rBetter = s.higherBetter ? rS.sVal > s.sVal : rS.sVal < s.sVal;
+                        return `<tr><td class="stat-label">${s.label} (Season)</td><td class="stat-val ${cBetter ? 'better' : rBetter ? 'worse' : ''}">${s.season}</td><td class="stat-val ${rBetter ? 'better' : cBetter ? 'worse' : ''}">${rS.season}</td></tr>`;
+                    }).join('')}
+                </table>
+
+                <div class="transfer-section-title">Last 6 GWs</div>
+                <table class="transfer-stat-table">
+                    <tr><td class="stat-label">PPG</td><td class="stat-val ${(cRecent?.ppg||0) > (rRecent?.ppg||0) ? 'better' : (cRecent?.ppg||0) < (rRecent?.ppg||0) ? 'worse' : ''}">${(cRecent?.ppg||0).toFixed(2)}</td><td class="stat-val ${(rRecent?.ppg||0) > (cRecent?.ppg||0) ? 'better' : (rRecent?.ppg||0) < (cRecent?.ppg||0) ? 'worse' : ''}">${(rRecent?.ppg||0).toFixed(2)}</td></tr>
+                    ${cPosStats.map((s, i) => {
+                        const rS = rPosStats[i];
+                        const cBetter = s.higherBetter ? s.rVal > rS.rVal : s.rVal < rS.rVal;
+                        const rBetter = s.higherBetter ? rS.rVal > s.rVal : rS.rVal < s.rVal;
+                        return `<tr><td class="stat-label">${s.label} (L6)</td><td class="stat-val ${cBetter ? 'better' : rBetter ? 'worse' : ''}">${s.recent}</td><td class="stat-val ${rBetter ? 'better' : cBetter ? 'worse' : ''}">${rS.recent}</td></tr>`;
+                    }).join('')}
+                </table>
+
+                ${(() => {
+                    const cTA = teamAnalysis[current.teamId];
+                    const rTA = teamAnalysis[replacement.teamId];
+                    if (!cTA || !rTA) return '';
+                    const atkLabel = current.position >= 3 ? 'ATK Power' : 'DEF Power';
+                    const cPow = current.position >= 3 ? cTA.attackPower : cTA.defensePower;
+                    const rPow = replacement.position >= 3 ? rTA.attackPower : rTA.defensePower;
+                    return `<div class="transfer-section-title">Team Context</div>
+                    <table class="transfer-stat-table">
+                        <tr><td class="stat-label">${atkLabel}</td><td class="stat-val ${cPow > rPow ? 'better' : cPow < rPow ? 'worse' : ''}">${cPow}</td><td class="stat-val ${rPow > cPow ? 'better' : rPow < cPow ? 'worse' : ''}">${rPow}</td></tr>
+                        <tr><td class="stat-label">Form Rating</td><td class="stat-val ${cTA.formRating > rTA.formRating ? 'better' : 'worse'}">${cTA.formRating}</td><td class="stat-val ${rTA.formRating > cTA.formRating ? 'better' : 'worse'}">${rTA.formRating}</td></tr>
+                        <tr><td class="stat-label">Fixture Score</td><td class="stat-val ${cTA.fixtureScore > rTA.fixtureScore ? 'better' : 'worse'}">${cTA.fixtureScore}</td><td class="stat-val ${rTA.fixtureScore > cTA.fixtureScore ? 'better' : 'worse'}">${rTA.fixtureScore}</td></tr>
+                    </table>`;
+                })()}
+
+                <div class="transfer-add-compare">
+                    <button onclick="addToPlannerCompare(${current.id})">⚖️ Compare ${current.name}</button>
+                    <button onclick="addToPlannerCompare(${replacement.id})">⚖️ Compare ${replacement.name}</button>
+                </div>
+            </div>`;
+
+            document.getElementById('plannerTransferComparison').innerHTML = html;
+        }
+
+        // ===== PLANNER MULTI-COMPARE =====
+        function togglePlannerCompare(playerId) {
+            const idx = plannerCompareList.indexOf(playerId);
+            if (idx >= 0) {
+                plannerCompareList.splice(idx, 1);
+            } else {
+                if (plannerCompareList.length >= 4) {
+                    updateStatus('Maximum 4 players for comparison', 'error');
+                    // Uncheck the checkbox
+                    const cb = document.querySelector(`.planner-compare-cb[onchange="togglePlannerCompare(${playerId})"]`);
+                    if (cb) cb.checked = false;
+                    return;
+                }
+                plannerCompareList.push(playerId);
+            }
+            updatePlannerCompareBar();
+        }
+
+        function addToPlannerCompare(playerId) {
+            if (plannerCompareList.includes(playerId)) return;
+            if (plannerCompareList.length >= 4) {
+                updateStatus('Maximum 4 players for comparison', 'error');
+                return;
+            }
+            plannerCompareList.push(playerId);
+            updatePlannerCompareBar();
+            // Update checkboxes in table
+            const cb = document.querySelector(`.planner-compare-cb[onchange="togglePlannerCompare(${playerId})"]`);
+            if (cb) cb.checked = true;
+        }
+
+        function removePlannerCompare(playerId) {
+            plannerCompareList = plannerCompareList.filter(id => id !== playerId);
+            updatePlannerCompareBar();
+            const cb = document.querySelector(`.planner-compare-cb[onchange="togglePlannerCompare(${playerId})"]`);
+            if (cb) cb.checked = false;
+        }
+
+        function clearPlannerCompare() {
+            plannerCompareList = [];
+            updatePlannerCompareBar();
+            document.querySelectorAll('.planner-compare-cb').forEach(cb => cb.checked = false);
+        }
+
+        function updatePlannerCompareBar() {
+            const bar = document.getElementById('plannerCompareBar');
+            const chips = document.getElementById('plannerCompareChips');
+            const btn = document.getElementById('plannerCompareBtn');
+            const count = document.getElementById('plannerCompareCount');
+
+            if (plannerCompareList.length === 0) {
+                bar.classList.remove('show');
+                return;
+            }
+
+            bar.classList.add('show');
+            count.textContent = plannerCompareList.length;
+            btn.disabled = plannerCompareList.length < 2;
+
+            chips.innerHTML = plannerCompareList.map(id => {
+                const p = allPlayersById[id];
+                return p ? `<div class="planner-compare-chip">${p.name} <span class="chip-remove" onclick="removePlannerCompare(${id})">×</span></div>` : '';
+            }).join('');
+        }
+
+        function showPlannerCompareModal() {
+            if (plannerCompareList.length < 2) return;
+            const players = plannerCompareList.map(id => allPlayersById[id]).filter(Boolean);
+            const modal = document.getElementById('plannerCompareModal');
+            const body = document.getElementById('plannerCompareModalBody');
+
+            let html = '';
+
+            // Player header row
+            html += `<div class="cmp-header-row">`;
+            players.forEach(p => {
+                const posConfig = POSITION_CONFIG[p.position];
+                html += `<div class="cmp-player-col">
+                    <div class="cmp-player-name">${p.name}</div>
+                    <div class="cmp-player-meta"><span class="position-badge ${posConfig.class}" style="font-size:0.65rem;padding:1px 6px;">${posConfig.short}</span> ${p.team} · £${p.price.toFixed(1)}m</div>
+                </div>`;
+            });
+            html += `</div>`;
+
+            // FDR Calendar section
+            html += `<div class="cmp-group"><div class="cmp-group-title">📅 Next 6 Fixtures (FDR)</div>`;
+            html += `<div class="cmp-fdr-row">`;
+            players.forEach(p => {
+                const fix = teamFixtures6[p.teamId] || [];
+                html += `<div class="cmp-fdr-col">${fix.map(f => `<div class="cmp-fdr-badge fdr-${f.difficulty || 3}">${f.opponent}<br><span style="font-size:0.5rem;">${f.isHome ? 'H' : 'A'}</span></div>`).join('')}</div>`;
+            });
+            html += `</div></div>`;
+
+            // Build stats for each player
+            const allSeasonStats = players.map(p => getPlayerSeasonPer90(p));
+            const allRecentStats = players.map(p => getPlayerRecentStats(p.id, 6));
+
+            // Overview group
+            const overviewStats = [
+                { label: 'Price', key: 'price', lowerBetter: true },
+                { label: 'Ownership', key: 'ownership' },
+                { label: 'Form', key: 'form' },
+                { label: 'Total Points', key: 'points' },
+                { label: 'PPG', key: 'ppg' },
+                { label: 'Minutes', key: 'minutes' }
+            ];
+            html += renderCmpGroup('Overview', overviewStats, players, null, null);
+
+            // Season position-specific stats
+            const posStatDefs = getCompareStatDefs(players);
+            html += `<div class="cmp-group"><div class="cmp-group-title">📊 Season Stats (Per 90)</div>`;
+            posStatDefs.forEach(sd => {
+                const values = allSeasonStats.map(s => s ? (s[sd.key] ?? 0) : 0);
+                const bestIdx = sd.lowerBetter ? values.indexOf(Math.min(...values)) : values.indexOf(Math.max(...values));
+                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
+                values.forEach((v, i) => {
+                    const fmt = sd.pct ? v.toFixed(0) + '%' : v.toFixed(2);
+                    html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${fmt}</div>`;
+                });
+                html += `</div></div>`;
+            });
+            html += `</div>`;
+
+            // Last 6 GWs stats
+            html += `<div class="cmp-group"><div class="cmp-group-title">🔥 Last 6 GWs (Per 90)</div>`;
+            posStatDefs.forEach(sd => {
+                const values = allRecentStats.map(s => s ? (s[sd.key] ?? 0) : 0);
+                const bestIdx = sd.lowerBetter ? values.indexOf(Math.min(...values)) : values.indexOf(Math.max(...values));
+                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
+                values.forEach((v, i) => {
+                    const fmt = sd.pct ? v.toFixed(0) + '%' : v.toFixed(2);
+                    html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${fmt}</div>`;
+                });
+                html += `</div></div>`;
+            });
+            // Also add raw totals for L6
+            const l6Totals = [
+                { label: 'Points (L6)', key: 'points' },
+                { label: 'Goals (L6)', key: 'goals' },
+                { label: 'Assists (L6)', key: 'assists' },
+                { label: 'Bonus (L6)', key: 'bonus' }
+            ];
+            l6Totals.forEach(sd => {
+                const values = allRecentStats.map(s => s ? (s[sd.key] ?? 0) : 0);
+                const bestIdx = values.indexOf(Math.max(...values));
+                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
+                values.forEach((v, i) => { html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : v}</div>`; });
+                html += `</div></div>`;
+            });
+            html += `</div>`;
+
+            // Team context group
+            html += `<div class="cmp-group"><div class="cmp-group-title">🏟️ Team Context</div>`;
+            const teamCtxStats = [
+                { label: 'ATK Power', get: (p) => teamAnalysis[p.teamId]?.attackPower || 0 },
+                { label: 'DEF Power', get: (p) => teamAnalysis[p.teamId]?.defensePower || 0 },
+                { label: 'Form Rating', get: (p) => teamAnalysis[p.teamId]?.formRating || 0 },
+                { label: 'Fixture Score', get: (p) => teamAnalysis[p.teamId]?.fixtureScore || 0 },
+                { label: 'Team xG/g', get: (p) => getTeamSeasonXg(p.teamId)?.xGpg || 0 },
+                { label: 'Team xGC/g', get: (p) => getTeamSeasonXg(p.teamId)?.xGCpg || 0, lowerBetter: true }
+            ];
+            teamCtxStats.forEach(sd => {
+                const values = players.map(p => sd.get(p));
+                const bestIdx = sd.lowerBetter ? values.indexOf(Math.min(...values)) : values.indexOf(Math.max(...values));
+                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
+                values.forEach((v, i) => { html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${typeof v === 'number' ? v.toFixed(v >= 10 ? 0 : 2) : v}</div>`; });
+                html += `</div></div>`;
+            });
+            html += `</div>`;
+
+            body.innerHTML = html;
+            modal.classList.add('show');
+        }
+
+        function closePlannerCompareModal() {
+            document.getElementById('plannerCompareModal').classList.remove('show');
+        }
+
+        function getCompareStatDefs(players) {
+            // Build union of position-relevant per-90 stats
+            const hasPos = new Set(players.map(p => p.position));
+            const stats = [];
+
+            if (hasPos.has(1)) { // GK
+                stats.push({ label: 'Save %', key: 'savePct', pct: true });
+            }
+            if (hasPos.has(1) || hasPos.has(2)) { // GK or DEF
+                stats.push({ label: 'xGC/90', key: 'xGCPer90', lowerBetter: true });
+                stats.push({ label: 'CS%', key: 'csPercent', pct: true });
+            }
+            if (hasPos.has(2) || hasPos.has(3) || hasPos.has(4)) { // DEF/MID/FWD
+                stats.push({ label: 'xGI/90', key: 'xGIPer90' });
+            }
+            if (hasPos.has(3) || hasPos.has(4)) { // MID/FWD
+                stats.push({ label: 'xG/90', key: 'xGPer90' });
+                stats.push({ label: 'xA/90', key: 'xAPer90' });
+            }
+
+            // Deduplicate
+            const seen = new Set();
+            return stats.filter(s => { if (seen.has(s.key)) return false; seen.add(s.key); return true; });
+        }
+
+        function renderCmpGroup(title, statDefs, players) {
+            let html = `<div class="cmp-group"><div class="cmp-group-title">${title}</div>`;
+            statDefs.forEach(sd => {
+                const values = players.map(p => {
+                    if (sd.key === 'price') return p.price;
+                    if (sd.key === 'ownership') return p.ownership;
+                    return p[sd.key] ?? 0;
+                });
+                const bestIdx = sd.lowerBetter ? values.indexOf(Math.min(...values)) : values.indexOf(Math.max(...values));
+                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
+                values.forEach((v, i) => {
+                    const fmt = sd.key === 'price' ? `£${v.toFixed(1)}m` : sd.key === 'ownership' ? `${v.toFixed(1)}%` : (typeof v === 'number' ? (v >= 100 ? v : v.toFixed(1)) : v);
+                    html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${fmt}</div>`;
+                });
+                html += `</div></div>`;
+            });
+            html += `</div>`;
+            return html;
         }
 
         // ===== SETTINGS =====
