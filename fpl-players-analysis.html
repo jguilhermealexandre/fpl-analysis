@@ -2304,154 +2304,144 @@
             background: var(--surface-2);
         }
 
-        /* TOP PICKS SECTION */
-        .toppicks-section { }
-        .toppicks-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-            gap: 16px;
+        /* ===== SHORTLIST ===== */
+        .shortlist-star {
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            opacity: 0.35;
+            transition: all 0.2s;
+            user-select: none;
+            filter: grayscale(1);
         }
-        @media (max-width: 700px) { .toppicks-grid { grid-template-columns: 1fr; } }
-
-        .toppick-card {
+        .shortlist-star:hover {
+            opacity: 0.8;
+            transform: scale(1.2);
+            filter: grayscale(0);
+        }
+        .shortlist-star.shortlisted {
+            opacity: 1;
+            filter: grayscale(0);
+            text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+        }
+        .shortlist-star-card {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 5;
+            font-size: 18px;
+            padding: 4px;
+        }
+        .shortlist-empty {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-muted);
+        }
+        .shortlist-empty-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+        .shortlist-empty-title { font-size: 1.1rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+        .shortlist-empty-desc { font-size: 0.85rem; line-height: 1.5; }
+        .shortlist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+        }
+        .shortlist-pos-group { margin-bottom: 24px; }
+        .shortlist-pos-title {
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .shortlist-card {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
             border-radius: 12px;
-            padding: 16px;
+            padding: 14px;
+            position: relative;
             cursor: pointer;
-            transition: border-color 150ms, transform 150ms;
+            transition: all 0.2s;
         }
-        .toppick-card:hover {
-            border-color: rgba(74, 222, 128, 0.3);
+        .shortlist-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
         }
-        .toppick-card:nth-child(1) { border-left: 3px solid #FCD34D; }
-        .toppick-card:nth-child(2) { border-left: 3px solid #C0C0C0; }
-        .toppick-card:nth-child(3) { border-left: 3px solid #CD7F32; }
-
-        .toppick-card-top {
+        .shortlist-card-top {
             display: flex;
             align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .shortlist-card-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+        .shortlist-card-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .shortlist-card-stats {
+            display: flex;
             gap: 12px;
-            margin-bottom: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
         }
-        .toppick-rank {
-            width: 32px;
-            height: 32px;
-            background: var(--surface-3);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-muted);
-            flex-shrink: 0;
-        }
-        .toppick-card:nth-child(1) .toppick-rank { background: rgba(251, 191, 36, 0.2); color: #FCD34D; }
-        .toppick-card:nth-child(2) .toppick-rank { background: rgba(192, 192, 192, 0.2); color: #C0C0C0; }
-        .toppick-card:nth-child(3) .toppick-rank { background: rgba(205, 127, 50, 0.2); color: #CD7F32; }
-        .toppick-player { flex: 1; min-width: 0; }
-        .toppick-name {
-            font-size: 15px;
-            font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .toppick-meta {
-            font-size: 11px;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 2px;
-        }
-        .toppick-score {
+        .shortlist-stat {
             text-align: center;
-            flex-shrink: 0;
         }
-        .toppick-score-number {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 26px;
+        .shortlist-stat-value {
+            font-family: var(--font-mono);
             font-weight: 700;
-            color: var(--color-success);
-            line-height: 1;
+            font-size: 0.9rem;
+            color: var(--text-primary);
         }
-        .toppick-score-label {
-            font-size: 10px;
-            color: var(--text-muted);
+        .shortlist-stat-label {
+            font-size: 0.6rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-        }
-
-        /* Module bars */
-        .toppick-modules {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 12px;
-        }
-        .toppick-module { }
-        .toppick-module-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 3px;
-        }
-        .toppick-module-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-        .toppick-module-value {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .toppick-module-bar {
-            height: 6px;
-            background: var(--surface-3);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-        .toppick-module-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 300ms ease;
-        }
-
-        /* Tags */
-        .toppick-tags {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 12px;
-        }
-        .toppick-tag {
-            font-size: 10px;
-            font-weight: 600;
-            padding: 3px 8px;
-            border-radius: 4px;
-            white-space: nowrap;
-        }
-        .toppick-tag.dominant {
-            background: rgba(74, 222, 128, 0.12);
-            color: var(--color-success);
-        }
-        .toppick-tag.secondary {
-            background: rgba(96, 165, 250, 0.10);
-            color: var(--color-info);
-        }
-
-        .toppick-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 10px;
-            border-top: 1px solid var(--border-subtle);
-            font-size: 11px;
             color: var(--text-muted);
         }
+        .shortlist-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            padding-top: 8px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .shortlist-remove {
+            cursor: pointer;
+            color: var(--color-error);
+            font-size: 0.75rem;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .shortlist-card:hover .shortlist-remove { opacity: 1; }
+        .tab .shortlist-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: var(--color-primary);
+            color: #fff;
+            font-size: 0.65rem;
+            font-weight: 700;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .tab .shortlist-badge:empty { display: none; }
+        /* Make cards position relative for star overlay */
+        .route-card, .rec-card, .rising-card { position: relative; }
     </style>
 </head>
 <body>
@@ -2604,7 +2594,7 @@
 
     <div class="tabs-container">
         <div class="tabs" id="tabs">
-            <button class="tab active" data-position="TOPPICKS" data-desc="The best 5 players per position — blending form, fixtures, xG models, and scoring routes into one composite ranking.">🏆 Top Picks</button>
+            <button class="tab active" data-position="SHORTLIST" data-desc="Your shortlisted players for quick comparison and tracking. Click the ⭐ on any player to add them.">⭐ Shortlist <span class="shortlist-badge" id="shortlistBadge"></span></button>
             <button class="tab" data-position="RECOMMENDATIONS" data-desc="Position-specific recommendations split by budget, premium, and differential tiers using form, fixtures, and value.">⭐ Recommendations</button>
             <button class="tab" data-position="RISING" data-desc="Players with converging positive signals — team form improving, fixtures getting easier, and underlying stats trending up.">🔥 Rising Form</button>
             <button class="tab" data-position="CHARTS" data-desc="Interactive scatter plots to visually identify value picks, underperformers, regression candidates, and differentials.">📊 Charts</button>
@@ -2619,12 +2609,12 @@
     <div class="tab-description" id="tabDescription">
         <div class="tab-description-inner">
             <span class="tab-desc-icon">💡</span>
-            <span class="tab-desc-text">The best 5 players per position — blending form, fixtures, xG models, and scoring routes into one composite ranking.</span>
+            <span class="tab-desc-text">Your shortlisted players for quick comparison and tracking. Click the ⭐ on any player to add them.</span>
         </div>
     </div>
 
     <main class="content">
-        <div class="position-section active" id="section-TOPPICKS"></div>
+        <div class="position-section active" id="section-SHORTLIST"></div>
         <div class="position-section" id="section-RECOMMENDATIONS"></div>
         <div class="position-section" id="section-RISING"></div>
         <div class="position-section" id="section-CHARTS"></div>
@@ -2658,7 +2648,121 @@
         let currentGameweek = null;
         let currentPhase = 'mid';
         let allAnalyses = [];
-        let currentPosition = 'TOPPICKS';
+        let currentPosition = 'SHORTLIST';
+
+        // Shortlist state (persisted to localStorage)
+        let shortlistedPlayerIds = new Set(JSON.parse(localStorage.getItem('fpl_shortlist') || '[]'));
+
+        function saveShortlist() {
+            localStorage.setItem('fpl_shortlist', JSON.stringify([...shortlistedPlayerIds]));
+            updateShortlistBadge();
+        }
+
+        function updateShortlistBadge() {
+            const badge = document.getElementById('shortlistBadge');
+            if (badge) badge.textContent = shortlistedPlayerIds.size > 0 ? shortlistedPlayerIds.size : '';
+        }
+
+        function toggleShortlist(playerId, event) {
+            if (event) { event.stopPropagation(); event.preventDefault(); }
+            if (shortlistedPlayerIds.has(playerId)) {
+                shortlistedPlayerIds.delete(playerId);
+            } else {
+                shortlistedPlayerIds.add(playerId);
+            }
+            saveShortlist();
+            // Update all star icons on the page
+            document.querySelectorAll(`.shortlist-star[data-player-id="${playerId}"]`).forEach(el => {
+                el.classList.toggle('shortlisted', shortlistedPlayerIds.has(playerId));
+            });
+            // Re-render shortlist tab if active
+            if (currentPosition === 'SHORTLIST') renderShortlistTab();
+        }
+
+        function getStarHtml(playerId, extraClass = '') {
+            const active = shortlistedPlayerIds.has(playerId) ? 'shortlisted' : '';
+            return `<span class="shortlist-star ${active} ${extraClass}" data-player-id="${playerId}" onclick="toggleShortlist(${playerId}, event)" title="Toggle shortlist">⭐</span>`;
+        }
+
+        function renderShortlistTab() {
+            const section = document.getElementById('section-SHORTLIST');
+            if (!section) return;
+
+            if (shortlistedPlayerIds.size === 0) {
+                section.innerHTML = `
+                    <div class="shortlist-empty">
+                        <div class="shortlist-empty-icon">⭐</div>
+                        <div class="shortlist-empty-title">No players shortlisted yet</div>
+                        <div class="shortlist-empty-desc">Click the ⭐ on any player card or table row to add them to your shortlist for quick comparison and tracking.</div>
+                    </div>`;
+                return;
+            }
+
+            const POSITIONS_MAP = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posIcons = { GK: '🧤', DEF: '🛡️', MID: '⚡', FWD: '🎯' };
+            const shortlisted = allAnalyses.filter(p => shortlistedPlayerIds.has(p.id));
+            const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
+            shortlisted.forEach(p => {
+                const pos = POSITIONS_MAP[p.position];
+                if (byPos[pos]) byPos[pos].push(p);
+            });
+
+            // Remove IDs that are no longer in allAnalyses (stale)
+            const validIds = new Set(allAnalyses.map(p => p.id));
+            let staleRemoved = false;
+            shortlistedPlayerIds.forEach(id => {
+                if (!validIds.has(id)) { shortlistedPlayerIds.delete(id); staleRemoved = true; }
+            });
+            if (staleRemoved) saveShortlist();
+
+            let html = '';
+            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                const players = byPos[pos];
+                if (players.length === 0) return;
+                html += `<div class="shortlist-pos-group">`;
+                html += `<div class="shortlist-pos-title">${posIcons[pos]} ${pos} (${players.length})</div>`;
+                html += `<div class="shortlist-grid">`;
+                players.forEach(p => {
+                    const g = p.l5?.games || 1;
+                    const ptsPerGame = ((p.l5?.points || 0) / g).toFixed(1);
+                    const xGI = ((p.l5?.xGI || 0) / g).toFixed(2);
+                    const fdr = p.fixtures?.avgFDR3 || 3;
+                    const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
+                    const next3 = p.fixtures?.next3 || [];
+                    const fixturesHtml = next3.map(f => {
+                        const d = f.difficulty || 3;
+                        const cls = d <= 2 ? 'fdr-1' : d <= 2.5 ? 'fdr-2' : d <= 3.5 ? 'fdr-3' : d <= 4 ? 'fdr-4' : 'fdr-5';
+                        const opp = teams[f.opponent]?.short_name || '???';
+                        const venue = f.isHome ? 'H' : 'A';
+                        return `<span class="fdr-badge ${cls}" style="font-size:9px;padding:2px 5px;">${opp}(${venue})</span>`;
+                    }).join(' ');
+
+                    html += `
+                        <div class="shortlist-card" onclick="openPlayerModal(${p.id})">
+                            <div class="shortlist-card-top">
+                                <div>
+                                    <div class="shortlist-card-name">${p.name}</div>
+                                    <div class="shortlist-card-meta">${p.team} · £${p.price.toFixed(1)}m · ${(p.selectedBy || 0).toFixed(1)}% owned</div>
+                                </div>
+                            </div>
+                            <div class="shortlist-card-stats">
+                                <div class="shortlist-stat"><div class="shortlist-stat-value">${ptsPerGame}</div><div class="shortlist-stat-label">Pts/G</div></div>
+                                <div class="shortlist-stat"><div class="shortlist-stat-value">${xGI}</div><div class="shortlist-stat-label">xGI/G</div></div>
+                                <div class="shortlist-stat"><div class="shortlist-stat-value">${p.l5?.goals || 0}</div><div class="shortlist-stat-label">Goals</div></div>
+                                <div class="shortlist-stat"><div class="shortlist-stat-value">${p.l5?.assists || 0}</div><div class="shortlist-stat-label">Assists</div></div>
+                                <div class="shortlist-stat"><div class="shortlist-stat-value">${(p.form || 0).toFixed(1)}</div><div class="shortlist-stat-label">Form</div></div>
+                            </div>
+                            <div class="shortlist-card-footer">
+                                <span>${fixturesHtml || '-'}</span>
+                                <span class="shortlist-remove" onclick="toggleShortlist(${p.id}, event)">✕ Remove</span>
+                            </div>
+                        </div>`;
+                });
+                html += `</div></div>`;
+            });
+
+            section.innerHTML = html;
+        }
 
         // Global filter state
         let globalFilters = { // kept for isPlayerEligible defaults (both always false now)
@@ -2679,6 +2783,9 @@
                 
                 document.querySelectorAll('.position-section').forEach(s => s.classList.remove('active'));
                 document.getElementById(`section-${pos}`)?.classList.add('active');
+
+                // Render shortlist tab content when switching to it
+                if (pos === 'SHORTLIST') renderShortlistTab();
 
                 // Update tab description
                 const desc = tab.dataset.desc;
@@ -2816,7 +2923,6 @@
                 buildFixtureSwingData(staticData.teams, fixturesData);
 
                 // Render
-                document.getElementById('section-TOPPICKS').innerHTML = generateTopPicks(analyses);
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
                 document.getElementById('section-CHARTS').innerHTML = generateCharts(analyses);
                 document.getElementById('section-RISING').innerHTML = generateRisingForm(analyses);
@@ -2825,6 +2931,10 @@
                 document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
                 document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
                 document.getElementById('section-FWD').innerHTML = createTable('FWD', analyses);
+
+                // Initialize shortlist badge count and render shortlist (default tab)
+                updateShortlistBadge();
+                renderShortlistTab();
 
                 showLoading(false);
             } catch (error) {
@@ -3480,6 +3590,7 @@
 
             return `
                 <div class="route-card" onclick="openPlayerModal(${p.id})">
+                    ${getStarHtml(p.id, 'shortlist-star-card')}
                     <div class="route-card-top">
                         <div class="route-card-rank">${rank}</div>
                         <div class="route-card-player">
@@ -3518,271 +3629,6 @@
                     </div>
                 </div>
             `;
-        }
-
-        // ============================================
-        // TOP PICKS — Composite Ensemble Ranking
-        // ============================================
-        /**
-         * Blends four independent scoring modules into one composite ranking:
-         *   1. Recommendations (calculatePositionScore) — 35% — overall quality
-         *   2. Routes to Points (weighted route score)   — 25% — scoring diversity
-         *   3. Rising Form (risingScore)                 — 20% — momentum signals
-         *   4. Charts (calculateExpectedPoints)           — 20% — forward-looking xPts
-         *
-         * Each module's raw scores are min-max normalized to 0-100 within position,
-         * then weighted and summed. Top 5 per position are shown.
-         */
-        function generateTopPicks(analyses) {
-            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const posIds = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
-
-            // Step 1: Score every eligible player through all 4 modules
-            const eligible = analyses.filter(p => isPlayerEligible(p, { minGames: 3 }));
-
-            const playerScores = eligible.map(p => {
-                const pos = posMap[p.position];
-                const g5 = p.l5?.games || 1;
-                const gS = p.season?.games || g5;
-
-                // Module 1: Recommendation score
-                const recScore = calculatePositionScore(p, pos);
-
-                // Module 2: Routes to Points composite
-                let routeScore = 0;
-                {
-                    const blend = (l5val, sVal) => (l5val / g5) * 0.6 + (sVal / gS) * 0.4;
-                    const xGpg = blend(p.l5?.xG || 0, p.season?.xG || 0);
-                    const xApg = blend(p.l5?.xA || 0, p.season?.xA || 0);
-                    const goalsPg = blend(p.l5?.goals || 0, p.season?.goals || 0);
-                    const csPg = blend(p.l5?.cleanSheets || 0, p.season?.cleanSheets || 0);
-                    const bonusPg = blend(p.l5?.bonus || 0, p.season?.bonus || 0);
-                    const savesPg = blend(p.l5?.saves || 0, p.season?.saves || 0);
-                    const creativityPg = blend(p.l5?.creativity || 0, p.season?.creativity || 0);
-                    const bpsPg = blend(p.l5?.bps || 0, p.season?.bps || 0);
-                    const minsPg = blend(p.l5?.minutes || 0, p.season?.minutes || 0);
-                    const goalPts = { GK: 6, DEF: 6, MID: 5, FWD: 4 };
-                    const csPts = { GK: 4, DEF: 4, MID: 1, FWD: 0 };
-                    const goalTh = { GK: 0.03, DEF: 0.06, MID: 0.12, FWD: 0.15 }[pos];
-                    const assistTh = { GK: 0.02, DEF: 0.06, MID: 0.10, FWD: 0.08 }[pos];
-                    const csTh = { GK: 0.15, DEF: 0.15, MID: 0.30, FWD: 999 }[pos];
-                    const bonusTh = { GK: 0.3, DEF: 0.3, MID: 0.4, FWD: 0.5 }[pos];
-                    const bpsTh = { GK: 15, DEF: 16, MID: 18, FWD: 18 }[pos];
-                    const routes = [];
-                    if (xGpg >= goalTh || goalsPg >= goalTh * 1.5) { const s = Math.min(10, (xGpg / (pos === 'FWD' ? 0.6 : pos === 'MID' ? 0.5 : 0.3)) * 10); routes.push({ s, w: goalPts[pos] }); }
-                    if (xApg >= assistTh) { const s = Math.min(10, (xApg / (pos === 'MID' ? 0.4 : 0.3)) * 10); routes.push({ s, w: 3 }); }
-                    if (csPg >= csTh) { const s = Math.min(10, (csPg / 0.55) * 10); routes.push({ s, w: csPts[pos] }); }
-                    if (bonusPg >= bonusTh) { const s = Math.min(10, (bonusPg / 2) * 10); routes.push({ s, w: 2 }); }
-                    if (pos === 'GK' && savesPg >= 2) { const s = Math.min(10, (savesPg / 5) * 10); routes.push({ s, w: 1.5 }); }
-                    if (creativityPg >= 12 && (pos === 'MID' || pos === 'DEF')) { const s = Math.min(10, (creativityPg / 45) * 10); routes.push({ s, w: 1.5 }); }
-                    if (bpsPg >= bpsTh) { const s = Math.min(10, (bpsPg / 30) * 10); routes.push({ s, w: 1 }); }
-                    const nailed = minsPg >= 85 ? 1.15 : minsPg >= 75 ? 1.07 : minsPg >= 60 ? 1.0 : 0.85;
-                    routeScore = routes.reduce((sum, r) => sum + r.s * (r.w || 1), 0) * nailed;
-                }
-
-                // Module 3: Rising Form score
-                let risingScore = 0;
-                {
-                    // Simplified: team form + fixture swing + stat uplift
-                    const ts = p.teamScores;
-                    if (ts && ts.formRating > 55) risingScore += ((ts.formRating - 55) / 45) * 9 * 1.5;
-                    const seasonXg = getTeamSeasonXg(p.teamId);
-                    const recent6Xg = getTeamXgWindow(p.teamId, 6);
-                    const isDefPos = (pos === 'GK' || pos === 'DEF');
-                    if (recent6Xg && seasonXg && seasonXg.games >= 8) {
-                        if (isDefPos) { const d = seasonXg.xGCpg - recent6Xg.xGCpg; if (d > 0.1) risingScore += Math.min(10, (d / 0.6) * 10) * 2; }
-                        else { const d = recent6Xg.xGpg - seasonXg.xGpg; if (d > 0.1) risingScore += Math.min(10, (d / 0.6) * 10) * 2; }
-                    }
-                    const swing = fixtureSwingData[p.teamId];
-                    if (swing && swing.direction === 'improving') risingScore += Math.min(10, Math.abs(swing.swing) * 4) * 2.5;
-                    const avgFdr = p.fixtures?.avgFDR3 || 3;
-                    if (avgFdr <= 2.5) risingScore += Math.min(8, (3 - avgFdr) * 6) * 1.2;
-                    const hist = p.history || [];
-                    if (hist.length >= 5) {
-                        const l5Pts = hist.slice(-5).map(g => parseFloat(g.total_points) || 0);
-                        const l3Avg = l5Pts.slice(-3).reduce((s, v) => s + v, 0) / 3;
-                        const p2Avg = l5Pts.slice(0, 2).reduce((s, v) => s + v, 0) / 2;
-                        if (l3Avg > p2Avg + 1) risingScore += Math.min(8, (l3Avg - p2Avg) * 1.5);
-                    }
-                }
-
-                // Module 4: Expected Points (xPts)
-                const xPts = calculateExpectedPoints(p, pos);
-
-                return { ...p, pos, recScore, routeScore, risingScore, xPts };
-            });
-
-            // Step 2: Normalize per position (min-max to 0-100)
-            const normalize = (arr, key) => {
-                const vals = arr.map(p => p[key]);
-                const min = Math.min(...vals);
-                const max = Math.max(...vals);
-                const range = max - min || 1;
-                arr.forEach(p => { p[key + 'Norm'] = ((p[key] - min) / range) * 100; });
-            };
-
-            const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
-            playerScores.forEach(p => byPos[p.pos]?.push(p));
-
-            // Weights
-            const W = { rec: 0.35, route: 0.25, rising: 0.20, xpts: 0.20 };
-
-            const posConfigs = [
-                { pos: 'GK', icon: '🧤', name: 'Goalkeepers', color: '#FBBF24' },
-                { pos: 'DEF', icon: '🛡️', name: 'Defenders', color: '#34D399' },
-                { pos: 'MID', icon: '⚡', name: 'Midfielders', color: '#60A5FA' },
-                { pos: 'FWD', icon: '🎯', name: 'Forwards', color: '#F87171' }
-            ];
-
-            const allRanked = {};
-
-            posConfigs.forEach(cfg => {
-                const group = byPos[cfg.pos];
-                if (group.length === 0) { allRanked[cfg.pos] = []; return; }
-                normalize(group, 'recScore');
-                normalize(group, 'routeScore');
-                normalize(group, 'risingScore');
-                normalize(group, 'xPts');
-
-                group.forEach(p => {
-                    p.compositeScore = W.rec * p.recScoreNorm + W.route * p.routeScoreNorm + W.rising * p.risingScoreNorm + W.xpts * p.xPtsNorm;
-                    // Confidence: how many modules rank player in top 25%?
-                    const threshold75 = 75;
-                    p.agreementCount = [p.recScoreNorm, p.routeScoreNorm, p.risingScoreNorm, p.xPtsNorm].filter(v => v >= threshold75).length;
-                    // Dominant signal
-                    const signals = [
-                        { key: 'recScoreNorm', label: '⭐ Quality', tag: 'quality' },
-                        { key: 'routeScoreNorm', label: '🔀 Routes', tag: 'routes' },
-                        { key: 'risingScoreNorm', label: '🔥 Rising', tag: 'rising' },
-                        { key: 'xPtsNorm', label: '📊 xPts', tag: 'xpts' }
-                    ];
-                    const sorted = signals.slice().sort((a, b) => p[b.key] - p[a.key]);
-                    p.dominantSignal = sorted[0];
-                    p.secondSignal = sorted[1];
-                });
-
-                group.sort((a, b) => b.compositeScore - a.compositeScore);
-                // Enforce max 2 from same team
-                const picked = [];
-                const teamCount = {};
-                for (const p of group) {
-                    const tc = teamCount[p.teamId] || 0;
-                    if (tc >= 2) continue;
-                    picked.push(p);
-                    teamCount[p.teamId] = tc + 1;
-                    if (picked.length >= 5) break;
-                }
-                allRanked[cfg.pos] = picked;
-            });
-
-            // Step 3: Render
-            const tabs = posConfigs.map((cfg, i) =>
-                `<button class="sub-tab ${i === 0 ? 'active' : ''}" onclick="switchTopPicksTab('${cfg.pos}', this)">${cfg.icon} ${cfg.name}</button>`
-            ).join('');
-
-            const panels = posConfigs.map((cfg, i) => {
-                const picks = allRanked[cfg.pos];
-                return `
-                    <div class="sub-tab-panel ${i === 0 ? 'active' : ''}" id="toppicks-panel-${cfg.pos}">
-                        ${picks.length > 0
-                            ? `<div class="toppicks-grid">${picks.map((p, j) => renderTopPickCard(p, j + 1, cfg)).join('')}</div>`
-                            : '<div class="no-players">Not enough data to rank players at this position</div>'
-                        }
-                    </div>
-                `;
-            }).join('');
-
-            return `
-                <div class="toppicks-section">
-                    <div class="section-toolbar">
-                        <div class="section-toolbar-left">
-                            <div class="sub-tabs" id="topPicksSubTabs">${tabs}</div>
-                        </div>
-                        <div class="section-toolbar-right">
-                            <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('toppicksLegend').classList.toggle('show')">
-                                <span>ℹ️ Weights</span><span class="legend-caret">▾</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="legend-panel" id="toppicksLegend">
-                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FBBF24"></span> Quality 35%</span>
-                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#A78BFA"></span> Routes 25%</span>
-                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FB923C"></span> Rising 20%</span>
-                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#4ADE80"></span> xPts 20%</span>
-                        <span class="legend-panel-item" style="color:var(--text-muted);margin-left:8px;">●●●○ = confidence (modules agreeing)</span>
-                    </div>
-                    ${panels}
-                </div>
-            `;
-        }
-
-        function renderTopPickCard(p, rank, cfg) {
-            const g = p.l5?.games || 1;
-            const ptsPerGame = ((p.l5?.points || 0) / g).toFixed(1);
-            const fdr = p.fixtures?.avgFDR3 || 3;
-            const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
-            const confLabel = p.agreementCount >= 3 ? 'High' : p.agreementCount >= 2 ? 'Medium' : 'Low';
-            const confColor = p.agreementCount >= 3 ? 'var(--color-success)' : p.agreementCount >= 2 ? 'var(--color-warning)' : 'var(--text-muted)';
-            const confDots = '●'.repeat(p.agreementCount) + '○'.repeat(4 - p.agreementCount);
-
-            const modules = [
-                { label: 'Quality', value: p.recScoreNorm, color: '#FBBF24' },
-                { label: 'Routes', value: p.routeScoreNorm, color: '#A78BFA' },
-                { label: 'Rising', value: p.risingScoreNorm, color: '#FB923C' },
-                { label: 'xPts', value: p.xPtsNorm, color: '#4ADE80' }
-            ];
-
-            return `
-                <div class="toppick-card" onclick="openPlayerModal(${p.id})">
-                    <div class="toppick-card-top">
-                        <div class="toppick-rank">${rank}</div>
-                        <div class="toppick-player">
-                            <div class="toppick-name">${p.name}</div>
-                            <div class="toppick-meta">
-                                <span class="route-pos-badge" style="background: ${cfg.color}20; color: ${cfg.color}">${p.pos}</span>
-                                ${p.team} · £${p.price.toFixed(1)}m
-                            </div>
-                        </div>
-                        <div class="toppick-score">
-                            <div class="toppick-score-number">${p.compositeScore.toFixed(0)}</div>
-                            <div class="toppick-score-label">score</div>
-                        </div>
-                    </div>
-
-                    <div class="toppick-modules">
-                        ${modules.map(m => `
-                            <div class="toppick-module">
-                                <div class="toppick-module-header">
-                                    <span class="toppick-module-label">${m.label}</span>
-                                    <span class="toppick-module-value" style="color: ${m.color}">${m.value.toFixed(0)}</span>
-                                </div>
-                                <div class="toppick-module-bar">
-                                    <div class="toppick-module-fill" style="width: ${m.value}%; background: ${m.color}"></div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-
-                    <div class="toppick-tags">
-                        <span class="toppick-tag dominant">${p.dominantSignal.label}</span>
-                        ${p.secondSignal ? `<span class="toppick-tag secondary">${p.secondSignal.label}</span>` : ''}
-                    </div>
-
-                    <div class="toppick-footer">
-                        <span>${ptsPerGame} pts/g</span>
-                        <span style="color: ${confColor}; font-weight: 600; letter-spacing: 1px;" title="${confLabel} confidence — ${p.agreementCount}/4 modules agree">${confDots}</span>
-                        <span class="fdr-badge ${fdrClass}" style="font-size:10px;padding:2px 6px;">FDR ${fdr.toFixed(1)}</span>
-                        <span>${(p.selectedBy || 0).toFixed(1)}%</span>
-                    </div>
-                </div>
-            `;
-        }
-
-        function switchTopPicksTab(pos, btn) {
-            document.querySelectorAll('#topPicksSubTabs .sub-tab').forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
-            document.querySelectorAll('[id^="toppicks-panel-"]').forEach(p => p.classList.remove('active'));
-            document.getElementById(`toppicks-panel-${pos}`)?.classList.add('active');
         }
 
         // ============================================
@@ -4115,6 +3961,7 @@
             
             return `
                 <div class="rec-card" onclick="openPlayerModal(${p.id})">
+                    ${getStarHtml(p.id, 'shortlist-star-card')}
                     <div class="rec-card-rank">${rank}</div>
                     <div class="rec-card-main">
                         <div class="rec-card-header">
@@ -4558,6 +4405,7 @@
 
             return `
                 <div class="rising-card" onclick="openPlayerModal(${p.id})">
+                    ${getStarHtml(p.id, 'shortlist-star-card')}
                     <div class="rising-card-top">
                         <div class="rising-card-rank">${rank}</div>
                         <div class="rising-card-player">
@@ -4854,6 +4702,7 @@
         function renderTableHeader(position) {
             const state = tableState[position];
             const compareHeader = `<th class="compare-header" style="width: 40px; text-align: center;">⚖️</th>`;
+            const starHeader = `<th style="width: 36px; text-align: center; cursor: default;">⭐</th>`;
             const cols = state.visibleCols.map(colKey => {
                 const col = COLUMN_DEFS[colKey];
                 if (!col) return '';
@@ -4863,7 +4712,7 @@
                     ${col.label}<span class="sort-icon">${sortIcon}</span>
                 </th>`;
             }).join('');
-            return compareHeader + cols;
+            return compareHeader + starHeader + cols;
         }
 
         function renderTableBody(position) {
@@ -4925,7 +4774,8 @@
                     ${!isSelected && compareList.length >= 5 ? 'disabled' : ''}
                     onchange="toggleComparePlayer(${p.id}, '${position}')">
             </td>`;
-            return `<tr class="${isSelected ? 'selected-row' : ''}">${checkboxCell}${state.visibleCols.map(colKey => renderCell(p, colKey)).join('')}</tr>`;
+            const starCell = `<td style="text-align:center;">${getStarHtml(p.id)}</td>`;
+            return `<tr class="${isSelected ? 'selected-row' : ''}">${checkboxCell}${starCell}${state.visibleCols.map(colKey => renderCell(p, colKey)).join('')}</tr>`;
         }
 
         function renderCell(p, colKey) {
