@@ -663,6 +663,96 @@
             color: #fff;
         }
 
+        /* Compact Toolbar (ALL Players) */
+        .compact-toolbar {
+            padding: 8px 12px;
+            background: var(--surface-1);
+            border-bottom: 1px solid var(--border-default);
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+        .compact-toolbar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .compact-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border-default);
+            flex-shrink: 0;
+        }
+        .compact-search input {
+            width: 160px;
+            padding: 6px 10px 6px 32px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+        .compact-search .search-icon {
+            left: 10px;
+            font-size: 12px;
+        }
+        .compact-pill {
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 14px;
+        }
+        .compact-spacer { flex: 1; }
+        .compact-count {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .compact-icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid var(--border-default);
+            background: var(--surface-2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 150ms;
+            flex-shrink: 0;
+        }
+        .compact-icon-btn:hover {
+            background: var(--surface-3);
+            border-color: var(--text-secondary);
+        }
+
+        /* Compact mode table density */
+        .compact-mode .data-table td {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        .compact-mode .data-table thead th {
+            padding: 8px 10px;
+            font-size: 10px;
+        }
+        .compact-mode .player-cell {
+            min-width: 150px;
+            gap: 8px;
+        }
+        .compact-mode .player-avatar {
+            width: 24px;
+            height: 24px;
+            font-size: 9px;
+            border-radius: 4px;
+        }
+        .compact-mode .player-name { font-size: 11px; }
+        .compact-mode .player-team { font-size: 9px; }
+        .compact-mode .player-trend { height: 18px; padding-left: 6px; }
+        .compact-mode .spark-bar { width: 3px; }
+        .compact-mode .data-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
         /* Column Selector Dropdown */
         .column-selector {
             position: relative;
@@ -3594,14 +3684,15 @@
         // ============================================
         const POSITIONS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
 
+        const BUDGET_CAPS = { GK: 5.0, DEF: 5.0, MID: 7.5, FWD: 7.0 };
+
         function generateRecommendations(analyses) {
             // Build each position's HTML but wrap in tab panels
-            const dynamicCap = computeDynamicBudgetCaps(analyses);
             const positions = [
-                { pos: 'GK', icon: '🧤', title: 'Goalkeepers', budgetCap: dynamicCap.GK, metrics: ['cs','saves','gc','ptsG'], budgetDesc: 'High save count, rotation options', premiumDesc: 'Clean sheet magnets from top defenses' },
-                { pos: 'DEF', icon: '🛡️', title: 'Defenders', budgetCap: dynamicCap.DEF, metrics: ['cs','gc','xGC','ptsG'], budgetDesc: 'Solid CS potential at low cost', premiumDesc: 'Elite defenders + attacking threat' },
-                { pos: 'MID', icon: '⚡', title: 'Midfielders', budgetCap: dynamicCap.MID, metrics: ['xGI','goals','assists','ptsG'], budgetDesc: 'High xGI relative to price', premiumDesc: 'Elite creators and scorers' },
-                { pos: 'FWD', icon: '🎯', title: 'Forwards', budgetCap: dynamicCap.FWD, metrics: ['xG','goals','xA','ptsG'], budgetDesc: 'Goal threat on a budget', premiumDesc: 'Premium goal scorers' }
+                { pos: 'GK', icon: '🧤', title: 'Goalkeepers', budgetCap: BUDGET_CAPS.GK, metrics: ['cs','saves','gc','ptsG'], budgetDesc: 'High save count, rotation options', premiumDesc: 'Clean sheet magnets from top defenses' },
+                { pos: 'DEF', icon: '🛡️', title: 'Defenders', budgetCap: BUDGET_CAPS.DEF, metrics: ['cs','gc','xGC','ptsG'], budgetDesc: 'Solid CS potential at low cost', premiumDesc: 'Elite defenders + attacking threat' },
+                { pos: 'MID', icon: '⚡', title: 'Midfielders', budgetCap: BUDGET_CAPS.MID, metrics: ['xGI','goals','assists','ptsG'], budgetDesc: 'High xGI relative to price', premiumDesc: 'Elite creators and scorers' },
+                { pos: 'FWD', icon: '🎯', title: 'Forwards', budgetCap: BUDGET_CAPS.FWD, metrics: ['xG','goals','xA','ptsG'], budgetDesc: 'Goal threat on a budget', premiumDesc: 'Premium goal scorers' }
             ];
 
             const tabs = positions.map((cfg, i) =>
@@ -3631,24 +3722,7 @@
             document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(allAnalyses);
         }
 
-        /** Compute budget cap per position as median price (rounded to 0.5) */
-        function computeDynamicBudgetCaps(analyses) {
-            const fallback = { GK: 5.0, DEF: 5.5, MID: 7.0, FWD: 7.5 };
-            const caps = {};
-            for (const [pos, posId] of [['GK',1],['DEF',2],['MID',3],['FWD',4]]) {
-                const prices = analyses
-                    .filter(a => a.position === posId && (a.l5?.games || 0) >= 1)
-                    .map(a => a.price)
-                    .sort((a, b) => a - b);
-                if (prices.length >= 5) {
-                    const median = prices[Math.floor(prices.length / 2)];
-                    caps[pos] = Math.round(median * 2) / 2; // round to nearest 0.5
-                } else {
-                    caps[pos] = fallback[pos];
-                }
-            }
-            return caps;
-        }
+
 
         function generatePositionRecs(pos, analyses, config) {
             const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
@@ -4020,9 +4094,7 @@
         }
 
         function getBudgetCap(pos) {
-            // Fallback for any code that still calls this directly
-            const caps = computeDynamicBudgetCaps(allAnalyses);
-            return caps[pos] || { GK: 5.0, DEF: 5.5, MID: 7.0, FWD: 7.5 }[pos] || 6.0;
+            return BUDGET_CAPS[pos] || 6.0;
         }
 
         function switchRecTab(pos, btn) {
@@ -4479,7 +4551,9 @@
             FWD: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
             ALL: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1, positionFilter: 'ALL' }
         };
-        const ROWS_PER_PAGE = 25;
+        const ROWS_PER_PAGE_DEFAULT = 25;
+        const ROWS_PER_PAGE_ALL = 50;
+        function getRowsPerPage(position) { return position === 'ALL' ? ROWS_PER_PAGE_ALL : ROWS_PER_PAGE_DEFAULT; }
         
         // Compare functionality
         let compareList = [];
@@ -4552,8 +4626,20 @@
             DEF: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'gc', 'xGI', 'goals', 'assists', 'bonus', 'fdr'],
             MID: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'xA', 'bonus', 'fdr'],
             FWD: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'bcm', 'bonus', 'fdr'],
-            ALL: ['player', 'pos', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'bonus', 'form', 'fdr']
+            ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
         };
+
+        const COLS_STORAGE_KEY = 'fpl_allplayers_cols';
+        function loadSavedColumns() {
+            try {
+                const saved = localStorage.getItem(COLS_STORAGE_KEY);
+                if (saved) return JSON.parse(saved);
+            } catch(e) {}
+            return null;
+        }
+        function saveColumns(cols) {
+            try { localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(cols)); } catch(e) {}
+        }
 
         // Available columns per position - FULL LIST
         const AVAILABLE_COLS = {
@@ -4572,7 +4658,12 @@
             
             // Initialize state
             if (!tableState[position].visibleCols.length) {
-                tableState[position].visibleCols = [...DEFAULT_COLS[position]];
+                if (position === 'ALL') {
+                    const saved = loadSavedColumns();
+                    tableState[position].visibleCols = saved ? saved : [...DEFAULT_COLS[position]];
+                } else {
+                    tableState[position].visibleCols = [...DEFAULT_COLS[position]];
+                }
             }
 
             // Process players with computed fields
@@ -4602,129 +4693,163 @@
 
             tableData[position] = players;
 
-            // Position filter pills (only for ALL tab)
-            const positionFilterHtml = position === 'ALL' ? `
-                <div class="position-filter-bar">
-                    <div class="position-filter-pills">
-                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'ALL' ? 'active' : ''}" onclick="setPositionFilter('ALL')">All</button>
-                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'GK' ? 'active' : ''}" onclick="setPositionFilter('GK')">🧤 GK</button>
-                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'DEF' ? 'active' : ''}" onclick="setPositionFilter('DEF')">🛡️ DEF</button>
-                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'MID' ? 'active' : ''}" onclick="setPositionFilter('MID')">⚡ MID</button>
-                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'FWD' ? 'active' : ''}" onclick="setPositionFilter('FWD')">🎯 FWD</button>
+            // Build column dropdown (shared between both layouts)
+            const colDropdownHtml = `
+                <div class="column-dropdown" id="colDropdown-${position}">
+                    <div class="column-dropdown-title">Show/Hide Columns</div>
+                    <div class="column-dropdown-actions">
+                        <button onclick="selectAllColumns('${position}')" class="col-action-btn">Select All</button>
+                        <button onclick="deselectAllColumns('${position}')" class="col-action-btn">Deselect All</button>
+                        <button onclick="resetColumns('${position}')" class="col-action-btn">Reset</button>
                     </div>
-                    <button class="filter-pill ${tableState.ALL.filters.shortlist ? 'active' : ''}" id="shortlistPill-ALL"
-                        onclick="quickFilter('ALL', 'shortlist', true)">
-                        <span class="dot"></span> ⭐ Shortlisted${shortlistedPlayerIds.size > 0 ? ' (' + shortlistedPlayerIds.size + ')' : ''}
-                    </button>
+                    <div class="column-options-list">
+                        ${AVAILABLE_COLS[position].map(col => {
+                            const def = COLUMN_DEFS[col];
+                            if (!def) return '';
+                            const checked = tableState[position].visibleCols.includes(col);
+                            const disabled = def.always ? 'disabled' : '';
+                            return `
+                                <div class="column-option">
+                                    <input type="checkbox" id="col-${position}-${col}" ${checked ? 'checked' : ''} ${disabled}
+                                        onchange="toggleColumn('${position}', '${col}')">
+                                    <label for="col-${position}-${col}">${def.label}${def.always ? ' *' : ''}</label>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
                 </div>
-            ` : '';
+            `;
+
+            // Filters panel (shared between both layouts)
+            const filtersPanelHtml = `
+                <div class="filters-panel" id="filtersPanel-${position}">
+                    <div class="filter-group">
+                        <div class="filter-group-label">Price Range</div>
+                        <div class="filter-range">
+                            <input type="number" placeholder="Min" step="0.5" id="priceMin-${position}" 
+                                onchange="applyRangeFilter('${position}', 'price')">
+                            <span>to</span>
+                            <input type="number" placeholder="Max" step="0.5" id="priceMax-${position}"
+                                onchange="applyRangeFilter('${position}', 'price')">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-group-label">Ownership</div>
+                        <div class="filter-options">
+                            <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'low')">< 5% (Diff)</button>
+                            <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'mid')">5-15%</button>
+                            <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'high')">15-30%</button>
+                            <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'template')"> 30%+</button>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-group-label">Minutes (Last 5)</div>
+                        <div class="filter-options">
+                            <button class="filter-option" onclick="setFilter('${position}', 'minutes', '90')">90 mins avg</button>
+                            <button class="filter-option" onclick="setFilter('${position}', 'minutes', '75')">75+ mins</button>
+                            <button class="filter-option" onclick="setFilter('${position}', 'minutes', '60')">60+ mins</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <button class="action-btn" onclick="clearFilters('${position}')">Clear All Filters</button>
+                    </div>
+                </div>
+            `;
+
+            // Compact toolbar for ALL position; classic for individual positions
+            const toolbarHtml = position === 'ALL' ? `
+                <div class="compact-toolbar" id="compactToolbar-${position}">
+                    <div class="compact-toolbar-row">
+                        <div class="position-filter-pills">
+                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'ALL' ? 'active' : ''}" onclick="setPositionFilter('ALL')">All</button>
+                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'GK' ? 'active' : ''}" onclick="setPositionFilter('GK')">GK</button>
+                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'DEF' ? 'active' : ''}" onclick="setPositionFilter('DEF')">DEF</button>
+                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'MID' ? 'active' : ''}" onclick="setPositionFilter('MID')">MID</button>
+                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'FWD' ? 'active' : ''}" onclick="setPositionFilter('FWD')">FWD</button>
+                        </div>
+                        <div class="compact-divider"></div>
+                        <div class="search-box compact-search">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" placeholder="Search..." id="search-${position}" 
+                                oninput="handleSearch('${position}', this.value)">
+                        </div>
+                        <div class="compact-divider"></div>
+                        <div class="filter-pills">
+                            <button class="filter-pill compact-pill ${tableState[position].filters.form === 'hot' ? 'active' : ''}" 
+                                onclick="quickFilter('${position}', 'form', 'hot')">🔥 Hot</button>
+                            <button class="filter-pill compact-pill ${tableState[position].filters.fixtures === 'easy' ? 'active' : ''}" 
+                                onclick="quickFilter('${position}', 'fixtures', 'easy')">📅 Easy</button>
+                            <button class="filter-pill compact-pill ${tableState[position].filters.value === 'high' ? 'active' : ''}" 
+                                onclick="quickFilter('${position}', 'value', 'high')">💰 Value</button>
+                            <button class="filter-pill compact-pill ${tableState[position].filters.nailed === true ? 'active' : ''}" 
+                                onclick="quickFilter('${position}', 'nailed', true)">🔒 Nailed</button>
+                            <button class="filter-pill compact-pill ${tableState.ALL.filters.shortlist ? 'active' : ''}" id="shortlistPill-ALL"
+                                onclick="quickFilter('ALL', 'shortlist', true)">⭐ ${shortlistedPlayerIds.size > 0 ? shortlistedPlayerIds.size : ''}</button>
+                        </div>
+                        <div class="compact-spacer"></div>
+                        <span class="compact-count"><span id="rowCount-${position}">${players.length}</span> players</span>
+                        <button class="compact-icon-btn" onclick="toggleFilters('${position}')" id="filterBtn-${position}" title="Advanced Filters">⚙️</button>
+                        <div class="column-selector">
+                            <button class="compact-icon-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}" title="Columns">📊</button>
+                            ${colDropdownHtml}
+                        </div>
+                    </div>
+                </div>
+                ${filtersPanelHtml}
+            ` : `
+                <div class="table-toolbar">
+                    <div class="table-toolbar-top">
+                        <div class="table-title-section">
+                            <div class="table-icon ${position.toLowerCase()}">${posIcons[position]}</div>
+                            <div>
+                                <div class="table-title">${posNames[position]}</div>
+                                <div class="table-count"><span id="rowCount-${position}">${players.length}</span> players</div>
+                            </div>
+                        </div>
+                        <div class="table-actions">
+                            <button class="action-btn" onclick="toggleFilters('${position}')" id="filterBtn-${position}">
+                                <span>⚙️</span> Filters
+                            </button>
+                            <div class="column-selector">
+                                <button class="action-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}">
+                                    <span>📊</span> Columns
+                                </button>
+                                ${colDropdownHtml}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-controls">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" placeholder="Search players..." id="search-${position}" 
+                                oninput="handleSearch('${position}', this.value)">
+                        </div>
+                        <div class="filter-pills">
+                            <button class="filter-pill ${tableState[position].filters.form === 'hot' ? 'active' : ''}" 
+                                onclick="quickFilter('${position}', 'form', 'hot')">
+                                <span class="dot"></span> Hot Form
+                            </button>
+                            <button class="filter-pill ${tableState[position].filters.fixtures === 'easy' ? 'active' : ''}" 
+                                onclick="quickFilter('${position}', 'fixtures', 'easy')">
+                                <span class="dot"></span> Easy Fixtures
+                            </button>
+                            <button class="filter-pill ${tableState[position].filters.value === 'high' ? 'active' : ''}" 
+                                onclick="quickFilter('${position}', 'value', 'high')">
+                                <span class="dot"></span> High Value
+                            </button>
+                            <button class="filter-pill ${tableState[position].filters.nailed === true ? 'active' : ''}" 
+                                onclick="quickFilter('${position}', 'nailed', true)">
+                                <span class="dot"></span> Nailed On
+                            </button>
+                        </div>
+                    </div>
+                    ${filtersPanelHtml}
+                </div>
+            `;
 
             return `
-                <div class="table-section" id="tableSection-${position}">
-                    <div class="table-toolbar">
-                        <div class="table-toolbar-top">
-                            <div class="table-title-section">
-                                <div class="table-icon ${position.toLowerCase()}">${posIcons[position]}</div>
-                                <div>
-                                    <div class="table-title">${posNames[position]}</div>
-                                    <div class="table-count"><span id="rowCount-${position}">${players.length}</span> players</div>
-                                </div>
-                            </div>
-                            <div class="table-actions">
-                                <button class="action-btn" onclick="toggleFilters('${position}')" id="filterBtn-${position}">
-                                    <span>⚙️</span> Filters
-                                </button>
-                                <div class="column-selector">
-                                    <button class="action-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}">
-                                        <span>📊</span> Columns
-                                    </button>
-                                    <div class="column-dropdown" id="colDropdown-${position}">
-                                        <div class="column-dropdown-title">Show/Hide Columns</div>
-                                        <div class="column-dropdown-actions">
-                                            <button onclick="selectAllColumns('${position}')" class="col-action-btn">Select All</button>
-                                            <button onclick="deselectAllColumns('${position}')" class="col-action-btn">Deselect All</button>
-                                            <button onclick="resetColumns('${position}')" class="col-action-btn">Reset</button>
-                                        </div>
-                                        <div class="column-options-list">
-                                            ${AVAILABLE_COLS[position].map(col => {
-                                                const def = COLUMN_DEFS[col];
-                                                if (!def) return '';
-                                                const checked = tableState[position].visibleCols.includes(col);
-                                                const disabled = def.always ? 'disabled' : '';
-                                                return `
-                                                    <div class="column-option">
-                                                        <input type="checkbox" id="col-${position}-${col}" ${checked ? 'checked' : ''} ${disabled}
-                                                            onchange="toggleColumn('${position}', '${col}')">
-                                                        <label for="col-${position}-${col}">${def.label}${def.always ? ' *' : ''}</label>
-                                                    </div>
-                                                `;
-                                            }).join('')}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        ${positionFilterHtml}
-                        <div class="table-controls">
-                            <div class="search-box">
-                                <span class="search-icon">🔍</span>
-                                <input type="text" placeholder="Search players..." id="search-${position}" 
-                                    oninput="handleSearch('${position}', this.value)">
-                            </div>
-                            <div class="filter-pills">
-                                <button class="filter-pill ${tableState[position].filters.form === 'hot' ? 'active' : ''}" 
-                                    onclick="quickFilter('${position}', 'form', 'hot')">
-                                    <span class="dot"></span> Hot Form
-                                </button>
-                                <button class="filter-pill ${tableState[position].filters.fixtures === 'easy' ? 'active' : ''}" 
-                                    onclick="quickFilter('${position}', 'fixtures', 'easy')">
-                                    <span class="dot"></span> Easy Fixtures
-                                </button>
-                                <button class="filter-pill ${tableState[position].filters.value === 'high' ? 'active' : ''}" 
-                                    onclick="quickFilter('${position}', 'value', 'high')">
-                                    <span class="dot"></span> High Value
-                                </button>
-                                <button class="filter-pill ${tableState[position].filters.nailed === true ? 'active' : ''}" 
-                                    onclick="quickFilter('${position}', 'nailed', true)">
-                                    <span class="dot"></span> Nailed On
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="filters-panel" id="filtersPanel-${position}">
-                            <div class="filter-group">
-                                <div class="filter-group-label">Price Range</div>
-                                <div class="filter-range">
-                                    <input type="number" placeholder="Min" step="0.5" id="priceMin-${position}" 
-                                        onchange="applyRangeFilter('${position}', 'price')">
-                                    <span>to</span>
-                                    <input type="number" placeholder="Max" step="0.5" id="priceMax-${position}"
-                                        onchange="applyRangeFilter('${position}', 'price')">
-                                </div>
-                            </div>
-                            <div class="filter-group">
-                                <div class="filter-group-label">Ownership</div>
-                                <div class="filter-options">
-                                    <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'low')">< 5% (Diff)</button>
-                                    <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'mid')">5-15%</button>
-                                    <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'high')">15-30%</button>
-                                    <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'template')"> 30%+</button>
-                                </div>
-                            </div>
-                            <div class="filter-group">
-                                <div class="filter-group-label">Minutes (Last 5)</div>
-                                <div class="filter-options">
-                                    <button class="filter-option" onclick="setFilter('${position}', 'minutes', '90')">90 mins avg</button>
-                                    <button class="filter-option" onclick="setFilter('${position}', 'minutes', '75')">75+ mins</button>
-                                    <button class="filter-option" onclick="setFilter('${position}', 'minutes', '60')">60+ mins</button>
-                                </div>
-                            </div>
-                            <div style="margin-top: 12px;">
-                                <button class="action-btn" onclick="clearFilters('${position}')">Clear All Filters</button>
-                            </div>
-                        </div>
-                    </div>
-                    
+                <div class="table-section ${position === 'ALL' ? 'compact-mode' : ''}" id="tableSection-${position}">
+                    ${toolbarHtml}
                     <div class="table-container">
                         <table class="data-table" id="table-${position}">
                             <thead>
@@ -4737,10 +4862,9 @@
                             </tbody>
                         </table>
                     </div>
-                    
                     <div class="table-footer">
                         <div class="table-info">
-                            Showing <span id="showingCount-${position}">${Math.min(ROWS_PER_PAGE, players.length)}</span> of ${players.length}
+                            Showing <span id="showingCount-${position}">${Math.min(getRowsPerPage(position), players.length)}</span> of ${players.length}
                         </div>
                         <div class="table-pagination" id="pagination-${position}">
                             ${renderPagination(position, players.length)}
@@ -4822,12 +4946,13 @@
                 const countEl = document.getElementById(`rowCount-${position}`);
                 if (countEl) countEl.textContent = players.length;
                 const showingEl = document.getElementById(`showingCount-${position}`);
-                if (showingEl) showingEl.textContent = Math.min(ROWS_PER_PAGE * state.page, players.length);
+                if (showingEl) showingEl.textContent = Math.min(getRowsPerPage(position) * state.page, players.length);
             }, 0);
             
             // Paginate
-            const start = (state.page - 1) * ROWS_PER_PAGE;
-            const paginated = players.slice(start, start + ROWS_PER_PAGE);
+            const rpp = getRowsPerPage(position);
+            const start = (state.page - 1) * rpp;
+            const paginated = players.slice(start, start + rpp);
             
             return paginated.map(p => renderPlayerRow(p, position)).join('');
         }
@@ -4915,7 +5040,8 @@
         }
 
         function renderPagination(position, total) {
-            const pages = Math.ceil(total / ROWS_PER_PAGE);
+            const rpp = getRowsPerPage(position);
+            const pages = Math.ceil(total / rpp);
             if (pages <= 1) return '';
             
             const state = tableState[position];
@@ -4967,9 +5093,11 @@
             state.positionFilter = posFilter;
             state.page = 1;
             
-            // Update default columns when filtering to a specific position
-            if (posFilter !== 'ALL' && DEFAULT_COLS[posFilter]) {
-                // Add 'pos' column to position-specific defaults
+            // Try to use saved cols; only change if user hasn't customised
+            const saved = loadSavedColumns();
+            if (saved) {
+                state.visibleCols = [...saved];
+            } else if (posFilter !== 'ALL' && DEFAULT_COLS[posFilter]) {
                 state.visibleCols = ['player', 'pos', ...DEFAULT_COLS[posFilter].filter(c => c !== 'player')];
             } else {
                 state.visibleCols = [...DEFAULT_COLS.ALL];
@@ -5027,6 +5155,7 @@
             } else {
                 state.visibleCols.push(colKey);
             }
+            if (position === 'ALL') saveColumns(state.visibleCols);
             refreshTable(position);
         }
 
@@ -5038,6 +5167,7 @@
                 const checkbox = document.getElementById(`col-${position}-${col}`);
                 if (checkbox) checkbox.checked = true;
             });
+            if (position === 'ALL') saveColumns(state.visibleCols);
             refreshTable(position);
         }
 
@@ -5050,6 +5180,7 @@
                 const checkbox = document.getElementById(`col-${position}-${col}`);
                 if (checkbox && !COLUMN_DEFS[col]?.always) checkbox.checked = false;
             });
+            if (position === 'ALL') saveColumns(state.visibleCols);
             refreshTable(position);
         }
 
@@ -5061,6 +5192,7 @@
                 const checkbox = document.getElementById(`col-${position}-${col}`);
                 if (checkbox) checkbox.checked = DEFAULT_COLS[position].includes(col);
             });
+            if (position === 'ALL') saveColumns(state.visibleCols);
             refreshTable(position);
         }
 

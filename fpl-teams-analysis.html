@@ -356,51 +356,71 @@
             color: #000;
         }
 
-        /* Power Metrics - Compact Horizontal */
+        /* Power Metrics - Redesigned with bars */
         .power-metrics {
             display: flex;
-            gap: var(--space-2);
+            flex-direction: column;
+            gap: 6px;
             margin-bottom: var(--space-3);
         }
 
         .power-metric {
-            flex: 1;
-            background: var(--surface-0);
-            border-radius: var(--radius-sm);
-            padding: 8px 6px;
-            text-align: center;
-            border-top: 2px solid var(--surface-3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border-radius: 0;
+            padding: 0;
+            text-align: left;
+            border-top: none;
         }
 
-        .power-metric.attack { border-top-color: var(--color-error); }
-        .power-metric.defense { border-top-color: var(--color-info); }
-        .power-metric.fixture { border-top-color: var(--color-success); }
-        .power-metric.form-metric { border-top-color: var(--color-warning); }
+        .power-metric.attack .power-bar-fill { background: var(--color-error); }
+        .power-metric.defense .power-bar-fill { background: var(--color-info); }
+        .power-metric.fixture .power-bar-fill { background: var(--color-success); }
+        .power-metric.form-metric .power-bar-fill { background: var(--color-warning); }
 
         .power-label {
-            font-size: 9px;
-            text-transform: uppercase;
+            font-size: 10px;
+            font-weight: 600;
             letter-spacing: 0.3px;
-            color: var(--text-muted);
-            margin-bottom: 2px;
+            color: var(--text-secondary);
+            width: 52px;
+            flex-shrink: 0;
+            text-align: right;
+        }
+
+        .power-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--surface-3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .power-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 400ms ease-out;
         }
 
         .power-value {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 18px;
+            font-size: 12px;
             font-weight: 700;
             color: var(--text-primary);
+            width: 28px;
+            text-align: right;
+            flex-shrink: 0;
             line-height: 1;
         }
 
         .power-value.good { color: var(--color-success); }
         .power-value.bad { color: var(--color-error); }
 
-        .power-sub {
-            font-size: 9px;
-            color: var(--text-muted);
-            margin-top: 2px;
-        }
+        .power-metric.highlight .power-bar { height: 8px; }
+        .power-metric.highlight .power-label { color: var(--text-primary); font-weight: 700; }
+        .power-metric.highlight .power-value { font-size: 14px; }
 
         /* FDR Strip - Compact */
         .fdr-strip {
@@ -482,6 +502,24 @@
         .form-dot.draw { background: var(--color-warning); }
         .form-dot.loss { background: var(--color-error); }
 
+        .form-letters {
+            display: flex;
+            gap: 3px;
+        }
+        .form-letter {
+            font-size: 10px;
+            font-weight: 700;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+        }
+        .form-letter.win { background: rgba(74, 222, 128, 0.15); color: var(--color-success); }
+        .form-letter.draw { background: rgba(251, 191, 36, 0.15); color: var(--color-warning); }
+        .form-letter.loss { background: rgba(248, 113, 113, 0.15); color: var(--color-error); }
+
         .footer-stats {
             display: flex;
             align-items: center;
@@ -538,6 +576,142 @@
         .xg-badge.falling {
             background: rgba(248, 113, 113, 0.15);
             color: var(--color-error);
+        }
+
+        /* Team Report Modal */
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-2);
+            margin-bottom: var(--space-4);
+        }
+        .report-stat {
+            background: var(--surface-0);
+            border-radius: var(--radius-md);
+            padding: var(--space-3);
+            text-align: center;
+        }
+        .report-stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .report-stat-value.good { color: var(--color-success); }
+        .report-stat-value.bad { color: var(--color-error); }
+        .report-stat-value.warn { color: var(--color-warning); }
+        .report-stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .report-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .report-bar-label {
+            width: 80px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .report-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--surface-3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .report-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 400ms ease-out;
+        }
+        .report-bar-value {
+            width: 32px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .report-venue-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-3);
+        }
+        .report-venue-card {
+            background: var(--surface-0);
+            border-radius: var(--radius-md);
+            padding: var(--space-3);
+        }
+        .report-venue-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .report-venue-stat {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            padding: 3px 0;
+            color: var(--text-secondary);
+        }
+        .report-venue-stat span:last-child { font-weight: 600; color: var(--text-primary); }
+        .report-form-strip {
+            display: flex;
+            gap: 6px;
+            margin-bottom: var(--space-3);
+        }
+        .report-form-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px 4px;
+            border-radius: var(--radius-sm);
+            background: var(--surface-0);
+        }
+        .report-form-result {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .report-form-result.w { color: var(--color-success); }
+        .report-form-result.d { color: var(--color-warning); }
+        .report-form-result.l { color: var(--color-error); }
+        .report-form-opp { font-size: 9px; color: var(--text-muted); }
+        .report-form-score { font-size: 10px; color: var(--text-secondary); }
+        .report-fdr-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: var(--space-3);
+        }
+        .report-fdr-match {
+            flex: 1;
+            padding: 10px 4px;
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+        .report-fdr-opp { font-size: 11px; font-weight: 700; display: block; }
+        .report-fdr-venue { font-size: 9px; opacity: 0.7; }
+        .report-fdr-cs { font-size: 9px; margin-top: 2px; color: rgba(0,0,0,0.6); }
+        .report-verdict {
+            background: var(--surface-0);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            border-left: 3px solid var(--color-info);
+        }
+        .report-verdict p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            margin: 0;
         }
 
         /* Tags Row */
@@ -2868,11 +3042,11 @@
                 </div>
             `).join('');
 
-            // Create form dots (last 5)
-            const formDots = team.pastResults.slice(0, 5).map(r => `
-                <div class="form-dot ${r.result.toLowerCase() === 'w' ? 'win' : r.result.toLowerCase() === 'd' ? 'draw' : 'loss'}" 
-                     title="${r.opponent} ${r.score}"></div>
-            `).join('');
+            // Create form results (last 5 as W/D/L text)
+            const formText = team.pastResults.slice(0, 5).map(r => {
+                const cls = r.result.toLowerCase() === 'w' ? 'win' : r.result.toLowerCase() === 'd' ? 'draw' : 'loss';
+                return `<span class="form-letter ${cls}" title="${r.opponent} ${r.score}">${r.result.toUpperCase()}</span>`;
+            }).join('');
 
             // Trend badge
             const trendClass = team.fixtureSwing === 'improving' ? 'improving' : 
@@ -2880,32 +3054,27 @@
             const trendText = team.fixtureSwing === 'improving' ? '↑ Easier' : 
                               team.fixtureSwing === 'worsening' ? '↓ Harder' : '→';
 
-            // xG badges - use real data
-            let xgBadges = '';
+            // xG badge - simplified label
+            let xgBadge = '';
             if (team.hasRealXg && team.seasonXg) {
                 const diff = parseFloat(team.xgDiff);
                 if (diff > 3) {
-                    xgBadges += `<span class="xg-badge over" title="Scoring ${diff.toFixed(1)} more than xG — may regress">📈 +${diff.toFixed(1)} xG</span>`;
+                    xgBadge = `<span class="xg-badge over" title="Overperforming xG by ${diff.toFixed(1)}">Over xG</span>`;
                 } else if (diff < -3) {
-                    xgBadges += `<span class="xg-badge under" title="Scoring ${Math.abs(diff).toFixed(1)} fewer than xG — due a boost">📉 ${diff.toFixed(1)} xG</span>`;
+                    xgBadge = `<span class="xg-badge under" title="Underperforming xG by ${Math.abs(diff).toFixed(1)}">Due boost</span>`;
                 }
-                // xG trend arrow
-                if (team.xgTrend === 'rising') {
-                    xgBadges += `<span class="xg-badge rising" title="xG creation rising in last 6 games">⬆ Rising</span>`;
-                } else if (team.xgTrend === 'falling') {
-                    xgBadges += `<span class="xg-badge falling" title="xG creation falling in last 6 games">⬇ Falling</span>`;
-                }
-            } else {
-                // Fallback to old badge
-                if (team.xgPerformance === 'overperforming') {
-                    xgBadges = '<span class="xg-badge over">📈 Over xG</span>';
-                } else if (team.xgPerformance === 'underperforming') {
-                    xgBadges = '<span class="xg-badge under">📉 Due</span>';
-                }
+            } else if (team.xgPerformance === 'overperforming') {
+                xgBadge = '<span class="xg-badge over">Over xG</span>';
+            } else if (team.xgPerformance === 'underperforming') {
+                xgBadge = '<span class="xg-badge under">Due</span>';
             }
 
+            // Determine which metric to highlight based on mode
+            const highlightATK = mode === 'attack' ? ' highlight' : '';
+            const highlightDEF = mode === 'defense' ? ' highlight' : '';
+
             return `
-                <div class="team-card" data-team="${team.name}">
+                <div class="team-card" data-team="${team.name}" onclick="openTeamReport(${team.id})">
                     <div class="card-header">
                         <div class="team-badge">
                             <img src="${team.badgeUrl}" alt="${team.shortName}" onerror="this.style.display='none'">
@@ -2922,25 +3091,25 @@
                     </div>
 
                     <div class="power-metrics">
-                        <div class="power-metric attack">
-                            <div class="power-label">⚔️ ATK</div>
+                        <div class="power-metric attack${highlightATK}">
+                            <div class="power-label">Attack</div>
+                            <div class="power-bar"><div class="power-bar-fill" style="width:${team.attackPower}%"></div></div>
                             <div class="power-value ${team.attackPower >= 60 ? 'good' : team.attackPower < 40 ? 'bad' : ''}">${team.attackPower}</div>
-                            <div class="power-sub">${team.attackPowerHome}H / ${team.attackPowerAway}A</div>
                         </div>
-                        <div class="power-metric defense">
-                            <div class="power-label">🛡️ DEF</div>
+                        <div class="power-metric defense${highlightDEF}">
+                            <div class="power-label">Defence</div>
+                            <div class="power-bar"><div class="power-bar-fill" style="width:${team.defensePower}%"></div></div>
                             <div class="power-value ${team.defensePower >= 60 ? 'good' : team.defensePower < 40 ? 'bad' : ''}">${team.defensePower}</div>
-                            <div class="power-sub">${team.defensePowerHome}H / ${team.defensePowerAway}A</div>
                         </div>
                         <div class="power-metric fixture">
-                            <div class="power-label">📅 FIX</div>
+                            <div class="power-label">Fixtures</div>
+                            <div class="power-bar"><div class="power-bar-fill" style="width:${team.fixtureScore}%"></div></div>
                             <div class="power-value ${team.fixtureScore >= 60 ? 'good' : team.fixtureScore < 40 ? 'bad' : ''}">${team.fixtureScore}</div>
-                            <div class="power-sub">${team.homeFixtures}H ${team.awayFixtures}A</div>
                         </div>
                         <div class="power-metric form-metric">
-                            <div class="power-label">🔥 FORM</div>
+                            <div class="power-label">Form</div>
+                            <div class="power-bar"><div class="power-bar-fill" style="width:${team.formRating}%"></div></div>
                             <div class="power-value ${team.formRating >= 60 ? 'good' : team.formRating < 40 ? 'bad' : ''}">${team.formRating}</div>
-                            <div class="power-sub">${team.wins}W ${team.draws}D ${team.losses}L</div>
                         </div>
                     </div>
 
@@ -2949,10 +3118,10 @@
                     <div class="card-footer">
                         <div class="form-section">
                             <span class="form-label">Form</span>
-                            <div class="form-dots">${formDots}</div>
+                            <div class="form-letters">${formText}</div>
                         </div>
                         <div class="footer-stats">
-                            ${xgBadges}
+                            ${xgBadge}
                             <span class="trend ${trendClass}">${trendText}</span>
                         </div>
                     </div>
@@ -4357,6 +4526,179 @@
 
         function getFdrTextColor(fdr) {
             return Math.round(fdr) >= 5 ? '#fff' : '#000';
+        }
+
+        function openTeamReport(teamId) {
+            const team = allTeamsData.find(t => t.id === teamId);
+            if (!team) return;
+
+            const header = `
+                <img src="${team.badgeUrl}" alt="${team.shortName}" class="modal-header-badge" onerror="this.style.display='none'">
+                <div class="modal-header-info">
+                    <div class="modal-title">${team.name}</div>
+                    <div class="modal-subtitle">${team.wins}W ${team.draws}D ${team.losses}L &nbsp;•&nbsp; Avg FDR ${team.avgFdr}</div>
+                </div>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            `;
+
+            // Power overview
+            const powerBars = [
+                { label: 'Attack', value: team.attackPower, color: 'var(--color-error)' },
+                { label: 'Defence', value: team.defensePower, color: 'var(--color-info)' },
+                { label: 'Fixtures', value: team.fixtureScore, color: 'var(--color-success)' },
+                { label: 'Form', value: team.formRating, color: 'var(--color-warning)' }
+            ].map(m => {
+                const cls = m.value >= 60 ? 'good' : m.value < 40 ? 'bad' : '';
+                return `<div class="report-bar-row">
+                    <div class="report-bar-label">${m.label}</div>
+                    <div class="report-bar"><div class="report-bar-fill" style="width:${m.value}%;background:${m.color}"></div></div>
+                    <div class="report-bar-value ${cls}">${m.value}</div>
+                </div>`;
+            }).join('');
+
+            // Key stats grid
+            const statsGrid = `
+                <div class="report-grid">
+                    <div class="report-stat">
+                        <div class="report-stat-value">${team.totalGoals}</div>
+                        <div class="report-stat-label">Goals</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-value">${team.totalXG}</div>
+                        <div class="report-stat-label">xG</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-value">${team.cleanSheets}</div>
+                        <div class="report-stat-label">CS</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-value ${parseFloat(team.bullyIndex) >= 60 ? 'good' : ''}">${team.bullyIndex}</div>
+                        <div class="report-stat-label">Bully Index</div>
+                    </div>
+                </div>
+            `;
+
+            // Venue splits
+            const hs = team.homeStats || {};
+            const as = team.awayStats || {};
+            const venueSplit = `
+                <div class="report-venue-split">
+                    <div class="report-venue-card">
+                        <div class="report-venue-title">🏟 Home</div>
+                        <div class="report-venue-stat"><span>Attack</span><span>${team.attackPowerHome}</span></div>
+                        <div class="report-venue-stat"><span>Defence</span><span>${team.defensePowerHome}</span></div>
+                        <div class="report-venue-stat"><span>Avg Goals</span><span>${hs.avgGoals !== undefined ? hs.avgGoals.toFixed(2) : team.avgGoals}</span></div>
+                        <div class="report-venue-stat"><span>Avg Conceded</span><span>${hs.avgConceded !== undefined ? hs.avgConceded.toFixed(2) : '-'}</span></div>
+                    </div>
+                    <div class="report-venue-card">
+                        <div class="report-venue-title">✈️ Away</div>
+                        <div class="report-venue-stat"><span>Attack</span><span>${team.attackPowerAway}</span></div>
+                        <div class="report-venue-stat"><span>Defence</span><span>${team.defensePowerAway}</span></div>
+                        <div class="report-venue-stat"><span>Avg Goals</span><span>${as.avgGoals !== undefined ? as.avgGoals.toFixed(2) : '-'}</span></div>
+                        <div class="report-venue-stat"><span>Avg Conceded</span><span>${as.avgConceded !== undefined ? as.avgConceded.toFixed(2) : '-'}</span></div>
+                    </div>
+                </div>
+            `;
+
+            // xG analysis
+            let xgSection = '';
+            if (team.hasRealXg && team.seasonXg) {
+                const sxg = team.seasonXg;
+                const diff = parseFloat(team.xgDiff);
+                const diffCls = diff > 3 ? 'warn' : diff < -3 ? 'good' : '';
+                const xgcDiff = parseFloat(team.xgcDiff);
+                const xgcDiffCls = xgcDiff > 3 ? 'bad' : xgcDiff < -3 ? 'good' : '';
+                const trendLabel = team.xgTrend === 'rising' ? '↑ Rising' : team.xgTrend === 'falling' ? '↓ Falling' : '→ Stable';
+                const trendCls = team.xgTrend === 'rising' ? 'good' : team.xgTrend === 'falling' ? 'bad' : '';
+                xgSection = `
+                    <div class="modal-section">
+                        <div class="modal-section-title">xG Analysis</div>
+                        <div class="report-grid">
+                            <div class="report-stat">
+                                <div class="report-stat-value">${sxg.xg !== undefined ? sxg.xg.toFixed(1) : team.totalXG}</div>
+                                <div class="report-stat-label">Season xG</div>
+                            </div>
+                            <div class="report-stat">
+                                <div class="report-stat-value ${diffCls}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}</div>
+                                <div class="report-stat-label">Goals - xG</div>
+                            </div>
+                            <div class="report-stat">
+                                <div class="report-stat-value ${xgcDiffCls}">${xgcDiff > 0 ? '+' : ''}${xgcDiff.toFixed(1)}</div>
+                                <div class="report-stat-label">GC - xGC</div>
+                            </div>
+                            <div class="report-stat">
+                                <div class="report-stat-value ${trendCls}">${trendLabel}</div>
+                                <div class="report-stat-label">xG Trend</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Recent form
+            const formStrip = team.pastResults.slice(0, 5).map(r => {
+                const cls = r.result.toLowerCase();
+                return `<div class="report-form-item">
+                    <div class="report-form-result ${cls}">${r.result.toUpperCase()}</div>
+                    <div class="report-form-opp">${r.opponent}</div>
+                    <div class="report-form-score">${r.score}</div>
+                </div>`;
+            }).join('');
+
+            // Fixture outlook (next 5)
+            const fdrRow = team.futureFixtures.slice(0, 5).map(f => {
+                const bg = getFdrColor(f.fdr);
+                const tc = getFdrTextColor(f.fdr);
+                return `<div class="report-fdr-match" style="background:${bg};color:${tc};">
+                    <span class="report-fdr-opp">${f.opponent}</span>
+                    <span class="report-fdr-venue">${f.isHome ? 'HOME' : 'AWAY'}</span>
+                    ${f.csChance ? `<span class="report-fdr-cs">CS ${(f.csChance * 100).toFixed(0)}%</span>` : ''}
+                </div>`;
+            }).join('');
+
+            // Build verdict
+            const verdictParts = [];
+            if (team.attackPower >= 65) verdictParts.push(`Strong attacking side (${team.attackPower}/100).`);
+            else if (team.attackPower < 40) verdictParts.push(`Weak in attack (${team.attackPower}/100).`);
+            if (team.defensePower >= 65) verdictParts.push(`Solid defence (${team.defensePower}/100) — target clean sheet players.`);
+            else if (team.defensePower < 40) verdictParts.push(`Leaky defence (${team.defensePower}/100) — avoid defensive assets.`);
+            if (team.fixtureScore >= 65) verdictParts.push(`Favourable upcoming fixtures.`);
+            else if (team.fixtureScore < 35) verdictParts.push(`Tough fixture run ahead.`);
+            if (team.venueLabel) verdictParts.push(`${team.venueEmoji || ''} ${team.venueLabel}.`);
+            const xgDiffVal = parseFloat(team.xgDiff);
+            if (xgDiffVal > 3) verdictParts.push(`Overperforming xG — regression risk.`);
+            else if (xgDiffVal < -3) verdictParts.push(`Underperforming xG — due a goals boost.`);
+            if (verdictParts.length === 0) verdictParts.push('Mid-table profile with balanced metrics.');
+
+            const body = `
+                <div class="modal-section">
+                    <div class="modal-section-title">Power Overview</div>
+                    ${powerBars}
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">Key Stats</div>
+                    ${statsGrid}
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">Venue Split</div>
+                    ${venueSplit}
+                </div>
+                ${xgSection}
+                <div class="modal-section">
+                    <div class="modal-section-title">Recent Form</div>
+                    <div class="report-form-strip">${formStrip}</div>
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">Fixture Outlook</div>
+                    <div class="report-fdr-row">${fdrRow}</div>
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">Verdict</div>
+                    <div class="report-verdict"><p>${verdictParts.join(' ')}</p></div>
+                </div>
+            `;
+
+            openModal(header, body);
         }
 
         function openEasyRunModal(index) {
