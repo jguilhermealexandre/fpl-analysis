@@ -818,6 +818,154 @@
         .tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
         .tab-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
 
+        /* ===== TRANSFER WIZARD ===== */
+        .tw-container { padding: 0; }
+        .tw-intro { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); }
+        .tw-intro span { font-size: 1.2rem; }
+
+        /* Wizard Steps Indicator */
+        .tw-steps { display: flex; gap: 2px; margin-bottom: 20px; padding: 4px; background: var(--surface-1); border-radius: var(--radius-lg); border: 1px solid var(--border-default); }
+        .tw-step { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 8px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; background: transparent; border: none; color: var(--text-muted); font-family: var(--font-body); font-size: 12px; font-weight: 600; }
+        .tw-step:hover:not(.disabled) { background: rgba(255,255,255,0.04); color: var(--text-secondary); }
+        .tw-step.active { background: var(--color-info); color: #fff; box-shadow: 0 2px 8px rgba(96,165,250,0.3); }
+        .tw-step.completed { color: var(--color-success); }
+        .tw-step.disabled { cursor: not-allowed; opacity: 0.4; }
+        .tw-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
+        .tw-step.active .tw-step-num { background: rgba(255,255,255,0.2); }
+        .tw-step.completed .tw-step-num { background: var(--color-success); color: #000; }
+        @media (max-width: 600px) { .tw-step span.tw-step-label { display: none; } }
+
+        /* Step Panels */
+        .tw-panel { display: none; }
+        .tw-panel.active { display: block; }
+
+        /* Budget Bar */
+        .tw-budget-bar { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 16px; flex-wrap: wrap; }
+        .tw-budget-item { display: flex; flex-direction: column; gap: 2px; }
+        .tw-budget-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
+        .tw-budget-value { font-size: 16px; font-weight: 700; font-family: var(--font-mono); }
+        .tw-budget-value.positive { color: var(--color-success); }
+        .tw-budget-value.negative { color: var(--color-error); }
+        .tw-budget-sep { width: 1px; height: 32px; background: var(--border-default); }
+
+        /* Sell Selection Cards */
+        .tw-squad-group { margin-bottom: 16px; }
+        .tw-squad-group-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; padding-left: 4px; }
+        .tw-sell-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+        .tw-sell-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; position: relative; }
+        .tw-sell-card:hover { border-color: var(--border-emphasis); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .tw-sell-card.selected { border-color: var(--color-info); background: rgba(96,165,250,0.08); box-shadow: 0 0 0 1px var(--color-info); }
+        .tw-sell-card.suggested { border-color: rgba(239,68,68,0.3); }
+        .tw-sell-card.suggested-monitor { border-color: rgba(245,158,11,0.3); }
+        .tw-sell-card .tw-check { width: 20px; height: 20px; border: 2px solid var(--border-emphasis); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; font-size: 12px; }
+        .tw-sell-card.selected .tw-check { background: var(--color-info); border-color: var(--color-info); color: #fff; }
+        .tw-sell-info { flex: 1; min-width: 0; }
+        .tw-sell-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tw-sell-meta { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .tw-sell-stats { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+        .tw-sell-stat { text-align: center; }
+        .tw-sell-stat-val { font-size: 13px; font-weight: 700; font-family: var(--font-mono); }
+        .tw-sell-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+        .tw-sell-verdict { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
+        .tw-sell-verdict.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
+        .tw-sell-verdict.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
+        .tw-sell-verdict.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
+        .tw-sell-verdict.star { background: var(--verdict-star-bg); color: var(--verdict-star); }
+        .tw-counter { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); margin-left: auto; }
+        .tw-counter strong { color: var(--text-primary); font-family: var(--font-mono); }
+
+        /* Action Buttons */
+        .tw-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+        .tw-btn { padding: 10px 20px; border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .tw-btn-primary { background: var(--color-info); color: #fff; }
+        .tw-btn-primary:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+        .tw-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .tw-btn-secondary { background: var(--surface-2); color: var(--text-primary); }
+        .tw-btn-secondary:hover { background: var(--surface-3); }
+        .tw-btn-back { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-default); }
+        .tw-btn-back:hover { background: var(--surface-1); color: var(--text-primary); }
+
+        /* Package Cards */
+        .tw-packages { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .tw-package { padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.2s; }
+        .tw-package:hover { border-color: var(--border-emphasis); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+        .tw-package.selected { border-color: var(--color-info); box-shadow: 0 0 0 1px var(--color-info); }
+        .tw-package-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+        .tw-package-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+        .tw-package-delta { font-family: var(--font-mono); font-size: 14px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-sm); }
+        .tw-package-delta.positive { background: rgba(74,222,128,0.12); color: var(--color-success); }
+        .tw-package-delta.negative { background: rgba(248,113,113,0.12); color: var(--color-error); }
+        .tw-package-transfers { display: flex; flex-direction: column; gap: 8px; }
+        .tw-package-transfer { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .tw-package-player { display: flex; align-items: center; gap: 6px; min-width: 120px; }
+        .tw-package-arrow { color: var(--text-muted); font-size: 16px; flex-shrink: 0; }
+        .tw-package-player.out { color: var(--color-error); }
+        .tw-package-player.in { color: var(--color-success); }
+        .tw-package-footer { display: flex; align-items: center; gap: 16px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-muted); flex-wrap: wrap; }
+        .tw-package-stat { display: flex; align-items: center; gap: 4px; }
+        .tw-package-stat strong { color: var(--text-secondary); font-family: var(--font-mono); }
+
+        /* Slot Panels (Step 3) */
+        .tw-slots { display: flex; flex-direction: column; gap: 20px; }
+        .tw-slot { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+        .tw-slot-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); }
+        .tw-slot-sold { flex: 1; }
+        .tw-slot-sold-name { font-weight: 600; font-size: 13px; }
+        .tw-slot-sold-meta { font-size: 11px; color: var(--text-secondary); }
+        .tw-slot-locked { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--color-success); }
+        .tw-slot-budget { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+
+        /* Filter pills for slot */
+        .tw-slot-filters { display: flex; gap: 4px; padding: 8px 16px; flex-wrap: wrap; }
+        .tw-filter-pill { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); }
+        .tw-filter-pill:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
+        .tw-filter-pill.active { background: var(--color-info); border-color: var(--color-info); color: #fff; }
+
+        /* Replacement rows */
+        .tw-replacements { padding: 0; }
+        .tw-replacement { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; transition: all 0.15s; }
+        .tw-replacement:last-child { border-bottom: none; }
+        .tw-replacement:hover { background: rgba(255,255,255,0.03); }
+        .tw-replacement.locked { background: rgba(96,165,250,0.08); border-left: 3px solid var(--color-info); }
+        .tw-replacement-rank { width: 24px; height: 24px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; color: var(--text-secondary); }
+        .tw-replacement:nth-child(-n+3) .tw-replacement-rank { background: rgba(96,165,250,0.15); color: var(--color-info); }
+        .tw-replacement-info { flex: 1; min-width: 0; }
+        .tw-replacement-name { font-weight: 600; font-size: 13px; }
+        .tw-replacement-meta { font-size: 11px; color: var(--text-secondary); }
+        .tw-replacement-stats { display: flex; gap: 10px; align-items: center; }
+        .tw-replacement-stat { text-align: center; min-width: 36px; }
+        .tw-replacement-stat-val { font-size: 12px; font-weight: 700; font-family: var(--font-mono); }
+        .tw-replacement-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+        .tw-replacement-delta { font-size: 11px; font-weight: 600; font-family: var(--font-mono); padding: 2px 6px; border-radius: 3px; }
+        .tw-replacement-delta.positive { background: rgba(74,222,128,0.12); color: var(--color-success); }
+        .tw-replacement-delta.negative { background: rgba(248,113,113,0.12); color: var(--color-error); }
+        .tw-lock-btn { padding: 5px 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); flex-shrink: 0; }
+        .tw-lock-btn:hover { border-color: var(--color-info); color: var(--color-info); }
+        .tw-lock-btn.locked { background: var(--color-info); border-color: var(--color-info); color: #fff; }
+
+        /* Summary (Step 4) */
+        .tw-summary { display: flex; flex-direction: column; gap: 16px; }
+        .tw-summary-card { padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
+        .tw-summary-header { font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .tw-summary-transfers { display: flex; flex-direction: column; gap: 10px; }
+        .tw-summary-transfer { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); }
+        .tw-summary-out, .tw-summary-in { flex: 1; }
+        .tw-summary-player-name { font-weight: 600; font-size: 13px; }
+        .tw-summary-player-meta { font-size: 11px; color: var(--text-secondary); }
+        .tw-summary-arrow { font-size: 18px; color: var(--text-muted); flex-shrink: 0; }
+        .tw-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+        .tw-summary-metric { padding: 10px; background: var(--surface-2); border-radius: var(--radius-md); text-align: center; }
+        .tw-summary-metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
+        .tw-summary-metric-val { font-size: 18px; font-weight: 700; font-family: var(--font-mono); margin-top: 2px; }
+        .tw-summary-metric-delta { font-size: 11px; font-weight: 600; font-family: var(--font-mono); }
+
+        /* Comparison inline table */
+        .tw-compare-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+        .tw-compare-table th { padding: 6px 8px; text-align: left; font-size: 10px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-default); }
+        .tw-compare-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); }
+        .tw-compare-table .better { color: var(--color-success); }
+        .tw-compare-table .worse { color: var(--color-error); }
+
         /* ===== GAMEWEEK PLANNER ===== */
         .planner-intro { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); }
         .planner-intro span { font-size: 1.2rem; }
@@ -882,6 +1030,64 @@
         .planner-col-group { font-size: 0.6rem; padding: 2px 4px !important; color: var(--text-muted); border-bottom: none !important; }
         .planner-col-season { background: rgba(96,165,250,0.06) !important; }
         .planner-col-recent { background: rgba(74,222,128,0.06) !important; }
+
+        /* ===== PLANNER LINEUP BUILDER ===== */
+        .planner-gw-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+        .planner-gw-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+        .planner-gw-pill { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; font-family: var(--font-mono); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .planner-gw-pill:hover { border-color: var(--color-info); color: var(--color-info); background: rgba(96,165,250,0.08); }
+        .planner-gw-pill.active { background: var(--color-info); color: #fff; border-color: var(--color-info); box-shadow: 0 2px 8px rgba(96,165,250,0.3); }
+        .planner-gw-pill.modified::after { content: '●'; margin-left: 4px; font-size: 0.5rem; color: var(--color-warning); vertical-align: super; }
+        .planner-gw-pill.active.modified::after { color: #fff; }
+        .planner-formation-label { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; color: var(--text-primary); padding: 4px 12px; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-left: 4px; }
+        .planner-toolbar-actions { display: flex; gap: 6px; margin-left: auto; }
+        .planner-reset-btn { padding: 5px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .planner-reset-btn:hover { border-color: var(--color-error); color: var(--color-error); background: rgba(239,68,68,0.06); }
+
+        /* Planner Pitch View */
+        .planner-pitch-wrap { margin-bottom: 16px; }
+        .planner-pitch-container { background: linear-gradient(180deg, #14472a 0%, #1a5c36 30%, #1a5c36 70%, #14472a 100%); border-radius: var(--radius-lg); padding: 20px 12px 12px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+        .planner-pitch-container::before { content: ''; position: absolute; top: 50%; left: 8%; right: 8%; height: 1px; background: rgba(255,255,255,0.10); }
+        .planner-pitch-container::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 60px; height: 60px; border: 1px solid rgba(255,255,255,0.10); border-radius: 50%; }
+        .planner-pitch-rows { display: flex; flex-direction: column; gap: 2px; position: relative; z-index: 1; }
+        .planner-pitch-row { display: flex; justify-content: center; gap: 6px; padding: 4px 0; }
+        .planner-pitch-row.planner-bench-row { background: rgba(0,0,0,0.35); margin: 10px -12px -12px; padding: 10px 12px 8px; border-radius: 0 0 var(--radius-lg) var(--radius-lg); gap: 8px; position: relative; }
+        .planner-bench-tag { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--surface-2); color: var(--text-muted); padding: 2px 10px; border-radius: 10px; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--border-default); }
+
+        .planner-pitch-player { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; transition: all 0.2s; min-width: 58px; max-width: 72px; padding: 4px 2px; border-radius: var(--radius-md); border: 2px solid transparent; }
+        .planner-pitch-player:hover { transform: translateY(-2px); background: rgba(255,255,255,0.05); }
+        .planner-pitch-player-node { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: white; border: 3px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); position: relative; transition: all 0.3s; }
+        .planner-pitch-player-node.pos-gk { border-color: var(--position-gk); }
+        .planner-pitch-player-node.pos-def { border-color: var(--position-def); }
+        .planner-pitch-player-node.pos-mid { border-color: var(--position-mid); }
+        .planner-pitch-player-node.pos-fwd { border-color: var(--position-fwd); }
+        .planner-pitch-player-name { font-size: 9px; color: rgba(255,255,255,0.85); font-weight: 600; text-align: center; max-width: 68px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.7); line-height: 1.1; }
+        .planner-pitch-captain { position: absolute; top: -4px; right: -4px; width: 15px; height: 15px; background: var(--color-captain); border-radius: 50%; font-size: 8px; font-weight: 800; color: #1a1a1a; display: flex; align-items: center; justify-content: center; border: 1.5px solid rgba(0,0,0,0.3); }
+        .planner-pitch-injured { opacity: 0.45; }
+
+        /* FDR chip below player node on pitch */
+        .planner-fdr-chip { border-radius: 6px; padding: 1px 5px; font-family: var(--font-mono); font-size: 0.55rem; font-weight: 700; line-height: 1.3; text-align: center; color: #000; min-width: 36px; white-space: nowrap; }
+        .planner-fdr-chip .fdr-chip-ha { font-size: 0.45rem; font-weight: 400; opacity: 0.7; margin-left: 1px; }
+
+        /* Swap interaction states */
+        .planner-pitch-player.swap-selected { border-color: var(--color-captain); background: rgba(252,211,77,0.12); animation: plannerSwapPulse 1.2s ease-in-out infinite; }
+        .planner-pitch-player.swap-target { border-color: rgba(96,165,250,0.6); border-style: dashed; background: rgba(96,165,250,0.08); cursor: pointer; }
+        .planner-pitch-player.swap-target:hover { border-color: var(--color-info); background: rgba(96,165,250,0.18); transform: translateY(-3px) scale(1.04); }
+        .planner-pitch-player.swap-ineligible { opacity: 0.3; cursor: not-allowed; }
+        @keyframes plannerSwapPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(252,211,77,0.4); } 50% { box-shadow: 0 0 12px 4px rgba(252,211,77,0.25); } }
+
+        /* Swap column in planner table */
+        .planner-swap-btn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border-default); background: var(--surface-2); color: var(--text-muted); font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .planner-swap-btn:hover { border-color: var(--color-info); color: var(--color-info); background: rgba(96,165,250,0.1); }
+        .planner-swap-btn.swap-active { border-color: var(--color-captain); color: var(--color-captain); background: rgba(252,211,77,0.12); animation: plannerSwapPulse 1.2s ease-in-out infinite; }
+        tr.planner-swap-highlight { background: rgba(96,165,250,0.08) !important; }
+        tr.planner-swap-highlight td:first-child::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--color-info); }
+        tr.planner-swap-highlight:hover { background: rgba(96,165,250,0.15) !important; }
+        tr.planner-swap-ineligible { opacity: 0.35; }
+
+        /* Lineup change indicator */
+        .planner-lineup-hint { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(96,165,250,0.06); border: 1px solid rgba(96,165,250,0.15); border-radius: var(--radius-md); margin-bottom: 12px; font-size: 0.75rem; color: var(--text-secondary); }
+        .planner-lineup-hint span { font-size: 1rem; }
 
         /* ===== PLANNER COMPARE BAR ===== */
         .planner-compare-bar { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(120px); display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border-emphasis); border-radius: var(--radius-xl); padding: 8px 16px; z-index: 200; box-shadow: 0 8px 32px rgba(0,0,0,0.5); transition: transform 0.3s ease; max-width: 95vw; }
@@ -1012,6 +1218,7 @@
         <div class="tab-bar" id="tabBar">
             <button class="tab-btn active" onclick="switchTab('team')" id="tabTeam">⚽ Squad Analysis</button>
             <button class="tab-btn" onclick="switchTab('planner')" id="tabPlanner">🗓️ GW Planner</button>
+            <button class="tab-btn" onclick="switchTab('transfer')" id="tabTransfer">🔄 Transfer Wizard</button>
         </div>
 
         <!-- Team Display -->
@@ -1019,6 +1226,9 @@
 
         <!-- Gameweek Planner Display -->
         <div id="plannerDisplay" style="display:none;"></div>
+
+        <!-- Transfer Wizard Display -->
+        <div id="transferDisplay" style="display:none;"></div>
     </main>
 
     <!-- Planner Compare Bar (floating bottom) -->
@@ -1141,6 +1351,21 @@
         let plannerCompareList = [];   // Players selected for multi-compare (max 4)
         let plannerReplacementTarget = null; // Current player being evaluated for transfer
         let plannerRendered = false;   // Lazy rendering flag
+        let transferRendered = false;  // Transfer wizard lazy rendering flag
+        let transferState = {
+            step: 1,
+            sellPlayers: [],       // selected players to sell
+            packages: [],          // generated transfer packages
+            selections: {},        // per-slot locked replacement { slotIdx: player }
+            budget: 0,             // total budget (sell prices + bank)
+            candidateCache: {}     // position -> scored candidates
+        };
+
+        // Per-GW Lineup Builder state
+        let plannerLineups = {};       // Per-GW lineups: { gwNumber: [...players with onBench flags] }
+        let plannerGWNumbers = [];     // Array of upcoming GW numbers (up to 6)
+        let plannerSelectedGW = null;  // Currently selected GW number for pitch view
+        let plannerSwapSource = null;  // Player ID currently selected for swapping (first click)
 
         let userSettings = {
             sellSensitivity: 1.0,   // multiplier for sell rating (>1 = aggressive, <1 = patient)
@@ -1534,6 +1759,11 @@
 
                 plannerRendered = false;
                 plannerCompareList = [];
+                plannerLineups = {};
+                plannerSelectedGW = null;
+                plannerSwapSource = null;
+                transferRendered = false;
+                transferState = { step: 1, sellPlayers: [], packages: [], selections: {}, budget: 0, candidateCache: {} };
                 document.getElementById('tabBar').classList.add('visible');
             } catch (error) {
                 console.error('Error loading team:', error);
@@ -2128,13 +2358,17 @@
         function switchTab(tab) {
             const teamDisplay = document.getElementById('teamDisplay');
             const plannerDisplay = document.getElementById('plannerDisplay');
+            const transferDisplay = document.getElementById('transferDisplay');
             const tabTeam = document.getElementById('tabTeam');
             const tabPlanner = document.getElementById('tabPlanner');
+            const tabTransfer = document.getElementById('tabTransfer');
 
             teamDisplay.style.display = 'none';
             plannerDisplay.style.display = 'none';
+            transferDisplay.style.display = 'none';
             tabTeam.classList.remove('active');
             tabPlanner.classList.remove('active');
+            tabTransfer.classList.remove('active');
 
             if (tab === 'team') {
                 teamDisplay.style.display = '';
@@ -2143,6 +2377,10 @@
                 plannerDisplay.style.display = '';
                 tabPlanner.classList.add('active');
                 if (!plannerRendered) renderGameweekPlanner();
+            } else if (tab === 'transfer') {
+                transferDisplay.style.display = '';
+                tabTransfer.classList.add('active');
+                if (!transferRendered) renderTransferWizard();
             }
         }
 
@@ -2582,6 +2820,278 @@
             return value >= t[0] ? 'good' : value <= t[1] ? 'poor' : 'avg';
         }
 
+        // ===== PER-GW LINEUP BUILDER =====
+
+        function initPlannerLineups() {
+            // Determine next 6 GW numbers
+            plannerGWNumbers = [];
+            const upcoming = allFixtures.filter(f => !f.finished && f.event !== null).map(f => f.event);
+            const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
+            for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) plannerGWNumbers.push(uniqueGWs[i]);
+            if (plannerGWNumbers.length === 0) for (let i = currentGW + 1; i <= Math.min(currentGW + 6, 38); i++) plannerGWNumbers.push(i);
+
+            // Initialize per-GW lineups as deep copies of selectedPlayers
+            plannerLineups = {};
+            plannerGWNumbers.forEach(gw => {
+                plannerLineups[gw] = selectedPlayers.map(p => ({ ...p }));
+            });
+            plannerSelectedGW = plannerGWNumbers[0] || null;
+            plannerSwapSource = null;
+        }
+
+        function getPlannerLineup(gw) {
+            if (!plannerLineups[gw]) {
+                plannerLineups[gw] = selectedPlayers.map(p => ({ ...p }));
+            }
+            return plannerLineups[gw];
+        }
+
+        function getFormation(lineup) {
+            const starters = lineup.filter(p => !p.onBench);
+            const def = starters.filter(p => p.position === 2).length;
+            const mid = starters.filter(p => p.position === 3).length;
+            const fwd = starters.filter(p => p.position === 4).length;
+            return `${def}-${mid}-${fwd}`;
+        }
+
+        function isValidFormation(lineup) {
+            const starters = lineup.filter(p => !p.onBench);
+            if (starters.length !== 11) return false;
+            const gk = starters.filter(p => p.position === 1).length;
+            const def = starters.filter(p => p.position === 2).length;
+            const mid = starters.filter(p => p.position === 3).length;
+            const fwd = starters.filter(p => p.position === 4).length;
+            return gk === 1 && def >= 3 && mid >= 2 && fwd >= 1;
+        }
+
+        function isGWModified(gw) {
+            const lineup = plannerLineups[gw];
+            if (!lineup) return false;
+            return lineup.some(p => {
+                const orig = selectedPlayers.find(op => op.id === p.id);
+                return orig && orig.onBench !== p.onBench;
+            });
+        }
+
+        function canSwap(sourceId, targetId, gw) {
+            const lineup = getPlannerLineup(gw);
+            const source = lineup.find(p => p.id === sourceId);
+            const target = lineup.find(p => p.id === targetId);
+            if (!source || !target) return false;
+            if (source.onBench === target.onBench) return false; // must be on different sides
+            // Simulate the swap
+            const simLineup = lineup.map(p => {
+                if (p.id === sourceId) return { ...p, onBench: target.onBench };
+                if (p.id === targetId) return { ...p, onBench: source.onBench };
+                return p;
+            });
+            return isValidFormation(simLineup);
+        }
+
+        function performSwap(sourceId, targetId) {
+            const gw = plannerSelectedGW;
+            const lineup = getPlannerLineup(gw);
+            const source = lineup.find(p => p.id === sourceId);
+            const target = lineup.find(p => p.id === targetId);
+            if (!source || !target) return;
+            const srcBench = source.onBench;
+            source.onBench = target.onBench;
+            target.onBench = srcBench;
+            plannerSwapSource = null;
+            rerenderPlannerView();
+        }
+
+        function selectPlannerSwapSource(playerId) {
+            if (plannerSwapSource === playerId) {
+                // Deselect
+                plannerSwapSource = null;
+            } else {
+                plannerSwapSource = playerId;
+            }
+            rerenderPlannerView();
+        }
+
+        function handlePlannerPitchClick(playerId) {
+            if (plannerSwapSource === null) {
+                // First click — select this player as swap source
+                selectPlannerSwapSource(playerId);
+            } else if (plannerSwapSource === playerId) {
+                // Clicked same player — deselect
+                plannerSwapSource = null;
+                rerenderPlannerView();
+            } else {
+                // Second click — attempt swap
+                if (canSwap(plannerSwapSource, playerId, plannerSelectedGW)) {
+                    performSwap(plannerSwapSource, playerId);
+                } else {
+                    // Clicked an ineligible target — just switch source to this player
+                    selectPlannerSwapSource(playerId);
+                }
+            }
+        }
+
+        function handlePlannerTableSwapClick(playerId) {
+            handlePlannerPitchClick(playerId);
+        }
+
+        function switchPlannerGW(gw) {
+            plannerSelectedGW = gw;
+            plannerSwapSource = null;
+            rerenderPlannerView();
+        }
+
+        function resetPlannerGW(gw) {
+            plannerLineups[gw] = selectedPlayers.map(p => ({ ...p }));
+            plannerSwapSource = null;
+            if (plannerSelectedGW === gw) rerenderPlannerView();
+        }
+
+        function resetAllPlannerGWs() {
+            plannerGWNumbers.forEach(gw => {
+                plannerLineups[gw] = selectedPlayers.map(p => ({ ...p }));
+            });
+            plannerSwapSource = null;
+            rerenderPlannerView();
+        }
+
+        function rerenderPlannerView() {
+            // Re-render just the pitch and table body, keeping container intact
+            const pitchArea = document.getElementById('plannerPitchArea');
+            if (pitchArea) pitchArea.innerHTML = renderPlannerPitchHTML();
+
+            const toolbar = document.getElementById('plannerGWToolbar');
+            if (toolbar) toolbar.innerHTML = renderPlannerToolbarInner();
+
+            const tbody = document.querySelector('#plannerTableBody');
+            if (tbody) tbody.innerHTML = renderPlannerTableBody();
+        }
+
+        function renderPlannerToolbarInner() {
+            const gw = plannerSelectedGW;
+            const lineup = getPlannerLineup(gw);
+            const formation = getFormation(lineup);
+            let html = '';
+            html += `<div class="planner-gw-pills">`;
+            plannerGWNumbers.forEach(g => {
+                const active = g === gw ? 'active' : '';
+                const modified = isGWModified(g) ? 'modified' : '';
+                html += `<button class="planner-gw-pill ${active} ${modified}" onclick="switchPlannerGW(${g})">GW${g}</button>`;
+            });
+            html += `</div>`;
+            html += `<div class="planner-formation-label">${formation}</div>`;
+            html += `<div class="planner-toolbar-actions">`;
+            if (isGWModified(gw)) {
+                html += `<button class="planner-reset-btn" onclick="resetPlannerGW(${gw})" title="Reset this GW to original lineup">↩ Reset GW${gw}</button>`;
+            }
+            const anyModified = plannerGWNumbers.some(g => isGWModified(g));
+            if (anyModified) {
+                html += `<button class="planner-reset-btn" onclick="resetAllPlannerGWs()" title="Reset all GWs to original lineup">↩ Reset All</button>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        function renderPlannerPitchHTML() {
+            const gw = plannerSelectedGW;
+            if (!gw) return '';
+            const lineup = getPlannerLineup(gw);
+            const starters = lineup.filter(p => !p.onBench);
+            const bench = lineup.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
+
+            const gks = starters.filter(p => p.position === 1);
+            const defs = starters.filter(p => p.position === 2);
+            const mids = starters.filter(p => p.position === 3);
+            const fwds = starters.filter(p => p.position === 4);
+
+            const renderNode = (p, isBenchPlayer) => {
+                const posClass = `pos-${POSITION_CONFIG[p.position]?.class || 'mid'}`;
+                const fixtures = teamFixtures6[p.teamId] || [];
+                const fix = fixtures.find(f => f.event === gw);
+                const injured = p.status === 'i' || p.status === 'u';
+
+                // Determine swap state
+                let swapClass = '';
+                if (plannerSwapSource === p.id) {
+                    swapClass = 'swap-selected';
+                } else if (plannerSwapSource !== null) {
+                    if (canSwap(plannerSwapSource, p.id, gw)) {
+                        swapClass = 'swap-target';
+                    } else {
+                        swapClass = 'swap-ineligible';
+                    }
+                }
+
+                let node = `<div class="planner-pitch-player ${swapClass}" onclick="handlePlannerPitchClick(${p.id})" title="${p.name} — ${POSITION_CONFIG[p.position]?.short || ''} · ${p.team}${fix ? ` · ${fix.opponent} (${fix.isHome ? 'H' : 'A'})` : ''}">`;
+                node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}">`;
+                node += p.team;
+                if (p.isCaptain) node += `<span class="planner-pitch-captain">C</span>`;
+                if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
+                node += `</div>`;
+                // FDR chip
+                if (fix) {
+                    const fdrClass = `fdr-${fix.difficulty || 3}`;
+                    node += `<div class="planner-fdr-chip ${fdrClass}">${fix.opponent || '?'}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
+                } else {
+                    node += `<div class="planner-fdr-chip" style="background:var(--surface-3);color:var(--text-muted);">-</div>`;
+                }
+                node += `<div class="planner-pitch-player-name">${p.name}</div>`;
+                node += `</div>`;
+                return node;
+            };
+
+            let html = `<div class="planner-pitch-container">`;
+            html += `<div class="planner-pitch-rows">`;
+            html += `<div class="planner-pitch-row">${fwds.map(p => renderNode(p, false)).join('')}</div>`;
+            html += `<div class="planner-pitch-row">${mids.map(p => renderNode(p, false)).join('')}</div>`;
+            html += `<div class="planner-pitch-row">${defs.map(p => renderNode(p, false)).join('')}</div>`;
+            html += `<div class="planner-pitch-row">${gks.map(p => renderNode(p, false)).join('')}</div>`;
+            html += `<div class="planner-pitch-row planner-bench-row">`;
+            html += `<div class="planner-bench-tag">Bench</div>`;
+            html += bench.map(p => renderNode(p, true)).join('');
+            html += `</div>`;
+            html += `</div></div>`;
+
+            // Hint text
+            if (plannerSwapSource !== null) {
+                const src = lineup.find(p => p.id === plannerSwapSource);
+                html += `<div class="planner-lineup-hint"><span>👆</span> ${src ? src.name : 'Player'} selected — click an eligible player to swap. Click same player to cancel.</div>`;
+            } else {
+                html += `<div class="planner-lineup-hint"><span>💡</span> Click any player on the pitch to start a swap between starting XI and bench. Each GW has its own independent lineup.</div>`;
+            }
+
+            return html;
+        }
+
+        function renderPlannerTableBody() {
+            const gw = plannerSelectedGW;
+            const lineup = getPlannerLineup(gw);
+            const gwNumbers = plannerGWNumbers;
+            const starters = lineup.filter(p => !p.onBench).sort((a, b) => a.position - b.position || a.pickPosition - b.pickPosition);
+            const bench = lineup.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
+
+            const posGroups = [
+                { pos: 1, label: 'Goalkeepers', cls: 'pos-gk' },
+                { pos: 2, label: 'Defenders', cls: 'pos-def' },
+                { pos: 3, label: 'Midfielders', cls: 'pos-mid' },
+                { pos: 4, label: 'Forwards', cls: 'pos-fwd' }
+            ];
+
+            const totalCols = 1 + 6 + gwNumbers.length + 1 + 1; // +1 for swap col
+            let html = '';
+            posGroups.forEach(({ pos, label, cls }) => {
+                const groupPlayers = starters.filter(p => p.position === pos);
+                if (groupPlayers.length === 0) return;
+                html += `<tr class="planner-pos-header ${cls}"><td colspan="${totalCols}">${label}</td></tr>`;
+                groupPlayers.forEach(p => { html += renderPlannerRow(p, gwNumbers, false); });
+            });
+
+            if (bench.length > 0) {
+                html += `<tr class="planner-bench-header"><td colspan="${totalCols}">📋 Bench</td></tr>`;
+                bench.forEach(p => { html += renderPlannerRow(p, gwNumbers, true); });
+            }
+            return html;
+        }
+
         // ===== RENDER GAMEWEEK PLANNER =====
         function renderGameweekPlanner() {
             plannerRendered = true;
@@ -2591,19 +3101,18 @@
                 return;
             }
 
-            // Determine next 6 GW numbers
-            const gwNumbers = [];
-            const upcoming = allFixtures.filter(f => !f.finished && f.event !== null).map(f => f.event);
-            const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
-            for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) gwNumbers.push(uniqueGWs[i]);
-            if (gwNumbers.length === 0) for (let i = currentGW + 1; i <= Math.min(currentGW + 6, 38); i++) gwNumbers.push(i);
-
-            // Separate starters and bench
-            const starters = selectedPlayers.filter(p => !p.onBench).sort((a, b) => a.position - b.position || a.pickPosition - b.pickPosition);
-            const bench = selectedPlayers.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
+            // Initialize per-GW lineups
+            initPlannerLineups();
+            const gwNumbers = plannerGWNumbers;
 
             let html = '';
-            html += `<div class="planner-intro"><span>🗓️</span> Your squad's next 6 gameweeks with position-specific underlying stats (Season vs Last 6). Click a player to explore transfer options, or select players to compare.</div>`;
+            html += `<div class="planner-intro"><span>🗓️</span> Plan your lineup for each gameweek. Click players on the pitch or use the ↕ button in the table to swap between starting XI and bench. Each GW has its own independent lineup.</div>`;
+
+            // GW Toolbar
+            html += `<div class="planner-gw-toolbar" id="plannerGWToolbar">${renderPlannerToolbarInner()}</div>`;
+
+            // Pitch View
+            html += `<div class="planner-pitch-wrap" id="plannerPitchArea">${renderPlannerPitchHTML()}</div>`;
 
             // Build the table
             html += `<div class="planner-table-wrap"><table class="planner-table">`;
@@ -2614,38 +3123,15 @@
             html += `<th colspan="3" class="planner-col-group planner-col-season" style="border-bottom:1px solid rgba(96,165,250,0.15);">Season</th>`;
             html += `<th colspan="3" class="planner-col-group planner-col-recent" style="border-bottom:1px solid rgba(74,222,128,0.15);">Last 6 GWs</th>`;
             gwNumbers.forEach(gw => { html += `<th rowspan="2" class="planner-fdr">GW${gw}</th>`; });
+            html += `<th rowspan="2" style="width:30px;">↕</th>`;
             html += `<th rowspan="2" style="width:30px;">⚖️</th>`;
             html += `</tr><tr>`;
-            // Sub-headers for stats will be position-dependent, show generic labels
             html += `<th class="planner-col-season" style="font-size:0.55rem;">S1</th><th class="planner-col-season" style="font-size:0.55rem;">S2</th><th class="planner-col-season" style="font-size:0.55rem;">S3</th>`;
             html += `<th class="planner-col-recent" style="font-size:0.55rem;">L1</th><th class="planner-col-recent" style="font-size:0.55rem;">L2</th><th class="planner-col-recent" style="font-size:0.55rem;">L3</th>`;
             html += `</tr></thead>`;
 
-            html += `<tbody>`;
-
-            // Render groups
-            const posGroups = [
-                { pos: 1, label: 'Goalkeepers', cls: 'pos-gk' },
-                { pos: 2, label: 'Defenders', cls: 'pos-def' },
-                { pos: 3, label: 'Midfielders', cls: 'pos-mid' },
-                { pos: 4, label: 'Forwards', cls: 'pos-fwd' }
-            ];
-
-            posGroups.forEach(({ pos, label, cls }) => {
-                const groupPlayers = starters.filter(p => p.position === pos);
-                if (groupPlayers.length === 0) return;
-                const totalCols = 1 + 6 + gwNumbers.length + 1;
-                html += `<tr class="planner-pos-header ${cls}"><td colspan="${totalCols}">${label}</td></tr>`;
-                groupPlayers.forEach(p => { html += renderPlannerRow(p, gwNumbers, false); });
-            });
-
-            // Bench
-            if (bench.length > 0) {
-                const totalCols = 1 + 6 + gwNumbers.length + 1;
-                html += `<tr class="planner-bench-header"><td colspan="${totalCols}">📋 Bench</td></tr>`;
-                bench.forEach(p => { html += renderPlannerRow(p, gwNumbers, true); });
-            }
-
+            html += `<tbody id="plannerTableBody">`;
+            html += renderPlannerTableBody();
             html += `</tbody></table></div>`;
 
             // Team context section
@@ -2660,14 +3146,29 @@
             const posStats = getPositionStats(player, seasonStats, recentStats);
             const fixtures = teamFixtures6[player.teamId] || [];
 
-            let row = `<tr class="${isBench ? 'bench-row' : ''}" data-player-id="${player.id}">`;
+            // Determine swap classes for this row
+            let rowSwapClass = '';
+            if (plannerSwapSource === player.id) {
+                rowSwapClass = 'planner-swap-highlight';
+            } else if (plannerSwapSource !== null) {
+                if (canSwap(plannerSwapSource, player.id, plannerSelectedGW)) {
+                    rowSwapClass = 'planner-swap-highlight';
+                } else {
+                    rowSwapClass = 'planner-swap-ineligible';
+                }
+            }
+
+            let row = `<tr class="${isBench ? 'bench-row' : ''} ${rowSwapClass}" data-player-id="${player.id}">`;
 
             // Player name cell
             const captain = player.isCaptain ? '<span class="planner-captain-badge">👑</span> ' : player.isVice ? '<span class="planner-captain-badge">©</span> ' : '';
             const statusIcon = player.status === 'i' ? '🤕 ' : player.status === 'd' ? '⚠️ ' : '';
+            // Show if this player was moved from their original position
+            const orig = selectedPlayers.find(op => op.id === player.id);
+            const movedBadge = (orig && orig.onBench !== player.onBench) ? `<span style="font-size:0.6rem;color:var(--color-warning);" title="Moved from ${orig.onBench ? 'bench' : 'starting XI'}">★</span> ` : '';
             row += `<td><div class="planner-player">
                 <div>
-                    ${captain}${statusIcon}<span class="planner-player-name" onclick="openPlannerTransferPanel(${player.id})">${player.name}</span>
+                    ${movedBadge}${captain}${statusIcon}<span class="planner-player-name" onclick="openPlannerTransferPanel(${player.id})">${player.name}</span>
                     <div><span class="planner-player-team">${player.team}</span> <span class="planner-player-price">£${player.price.toFixed(1)}m</span></div>
                 </div>
             </div></td>`;
@@ -2695,6 +3196,12 @@
                     row += `<td class="planner-fdr"><div class="planner-fdr-cell" style="background:var(--surface-3);color:var(--text-muted);">-</div></td>`;
                 }
             });
+
+            // Swap button
+            const isSwapSource = plannerSwapSource === player.id;
+            const isSwapTarget = plannerSwapSource !== null && canSwap(plannerSwapSource, player.id, plannerSelectedGW);
+            const swapBtnClass = isSwapSource ? 'swap-active' : '';
+            row += `<td><button class="planner-swap-btn ${swapBtnClass}" onclick="handlePlannerTableSwapClick(${player.id})" title="${isSwapSource ? 'Cancel swap' : isSwapTarget ? 'Swap with selected player' : 'Select for swap'}">↕</button></td>`;
 
             // Compare checkbox
             const checked = plannerCompareList.includes(player.id) ? 'checked' : '';
@@ -3142,6 +3649,915 @@
             });
             html += `</div>`;
             return html;
+        }
+
+        // ===== TRANSFER WIZARD ENGINE =====
+
+        // Recency-weighted average (ported from players-analysis)
+        function recencyWeightedAvg(history, key, n = 5) {
+            if (!history || history.length === 0) return 0;
+            const played = history.filter(h => h.minutes > 0);
+            const window = played.slice(-n);
+            if (window.length === 0) return 0;
+            const weights = window.map((_, i) => i + 1);
+            const wSum = weights.reduce((a, b) => a + b, 0);
+            let total = 0;
+            window.forEach((h, i) => { total += (parseFloat(h[key]) || 0) * weights[i]; });
+            return total / wSum;
+        }
+
+        // Clean sheet probability model (ported from lineup wizard)
+        function getCleanSheetProb(teamId, opponentId, isHome) {
+            const tp = teamAnalysis[teamId], op = teamAnalysis[opponentId];
+            if (!tp || !op) return 0.25;
+            let base = isHome ? 0.35 : 0.25;
+            const teamDef = tp.defensePower || 50;
+            const oppAtk = op.attackPower || 50;
+            base += (teamDef - 50) * 0.003;
+            base -= (oppAtk - 50) * 0.0025;
+            const avgLeagueGApg = 1.3;
+            base += (avgLeagueGApg - (tp.avgConceded || 1.3)) * 0.04;
+            return Math.max(0.05, Math.min(0.65, base));
+        }
+
+        // Transfer Score — multi-factor ranking for replacement candidates
+        function calculateTransferScore(player, pos) {
+            const recent = getPlayerRecentStats(player.id, 5);
+            const seasonStats = getPlayerSeasonPer90 ? getPlayerSeasonPer90(player) : null;
+            const games = Math.max(currentGW - 1, 1);
+            const minsPerGame = player.minutes / Math.max(games, 1);
+            const nailedBonus = Math.min(5, Math.max(0, (minsPerGame - 60) / 4));
+
+            // Per-game stats (prefer recent, fall back to season)
+            const ppg = recent ? recent.ppg : player.ppg;
+            const xGIPer90 = recent ? recent.xGIPer90 : (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
+            const xGPer90 = recent ? recent.xGPer90 : (player.minutes > 0 ? (player.xG / player.minutes) * 90 : 0);
+            const xAPer90 = recent ? recent.xAPer90 : (player.minutes > 0 ? (player.xA / player.minutes) * 90 : 0);
+            const bonusPer90 = recent ? (recent.bonus / Math.max(recent.games, 1)) : (player.bonus / games);
+            const csPercent = recent ? recent.csPercent / 100 : (player.cleanSheets / Math.max(player.starts || games, 1));
+
+            const value = ppg / Math.max(player.price, 3.5);
+
+            // Fixture factor — weighted next 3 fixtures (3/2/1)
+            const fixtures = player.fixtures || teamFixtures[player.teamId] || [];
+            let fixtureFactor = 0;
+            const fixWeights = [3, 2, 1];
+            let fixWeightSum = 0;
+            fixtures.slice(0, 3).forEach((f, i) => {
+                const w = fixWeights[i] || 1;
+                const fdr = f.difficulty || 3;
+                const ta = teamAnalysis[f.opponentId];
+                let oppStr = 50;
+                if (ta) {
+                    if (pos >= 3) oppStr = ta.defensePower || 50;
+                    else oppStr = ta.attackPower || 50;
+                }
+                const rawDiff = pos >= 3 ? (50 - oppStr) / 50 : (oppStr - 50) / 50;
+                const fdrAdj = (3 - fdr) / 2;
+                fixtureFactor += (fdrAdj * 4 + rawDiff * 3) * w;
+                fixWeightSum += w;
+            });
+            if (fixWeightSum > 0) fixtureFactor /= fixWeightSum;
+
+            // Team context
+            const ta = teamAnalysis[player.teamId];
+            let teamFormFactor = 0, teamQualityFactor = 0;
+            if (ta) {
+                teamFormFactor = ((ta.formRating || 50) - 50) / 50 * 3;
+                teamQualityFactor = pos >= 3
+                    ? ((ta.attackPower || 50) - 50) / 50 * 4
+                    : ((ta.defensePower || 50) - 50) / 50 * 4;
+            }
+
+            // CS probability factor for GK/DEF
+            let csProbFactor = 0;
+            if (pos <= 2 && fixtures.length > 0) {
+                let avgProb = 0, probCount = 0;
+                fixtures.slice(0, 3).forEach(f => {
+                    avgProb += getCleanSheetProb(player.teamId, f.opponentId, f.isHome);
+                    probCount++;
+                });
+                if (probCount > 0) avgProb /= probCount;
+                csProbFactor = (avgProb - 0.28) * 35;
+            }
+
+            // Position-specific formula
+            let score = 0;
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posName = posNames[pos] || 'MID';
+            const valueWeight = posName === 'GK' || posName === 'DEF' ? 10 : 12;
+
+            if (posName === 'GK') {
+                const savesPer90 = recent ? recent.savesPer90 : (player.minutes > 0 ? (player.saves / player.minutes) * 90 : 0);
+                score = csPercent * 30 + savesPer90 * 2 + ppg * 3 + value * valueWeight + fixtureFactor + teamQualityFactor + teamFormFactor + csProbFactor + nailedBonus;
+            } else if (posName === 'DEF') {
+                score = csPercent * 25 + xGIPer90 * 12 + ppg * 3 + value * valueWeight + fixtureFactor + teamQualityFactor + teamFormFactor + csProbFactor + nailedBonus;
+            } else if (posName === 'MID') {
+                score = xGIPer90 * 40 + csPercent * 3 + ppg * 3 + bonusPer90 * 2 + value * valueWeight + fixtureFactor + teamQualityFactor + teamFormFactor + nailedBonus;
+            } else { // FWD
+                score = xGPer90 * 40 + xAPer90 * 15 + ppg * 3 + bonusPer90 * 2 + value * valueWeight + fixtureFactor + teamQualityFactor + teamFormFactor + nailedBonus;
+            }
+
+            // Venue multiplier for next match
+            if (fixtures.length > 0 && fixtures[0].isHome) score *= 1.06;
+            else score *= 0.94;
+
+            return score;
+        }
+
+        // Find replacement candidates for a position within budget
+        function findTransferCandidates(position, maxPrice, excludeIds) {
+            const candidates = allPlayers.filter(p =>
+                p.position === position &&
+                p.price <= maxPrice &&
+                !excludeIds.has(p.id) &&
+                (p.status === 'a' || p.status === 'd') &&
+                p.minutes >= 100
+            );
+
+            // Score each candidate
+            candidates.forEach(c => {
+                c._transferScore = calculateTransferScore(c, c.position);
+                // Get recent stats for display
+                c._recentStats = getPlayerRecentStats(c.id, 5);
+            });
+
+            candidates.sort((a, b) => b._transferScore - a._transferScore);
+            return candidates.slice(0, 30); // Top 30 per slot
+        }
+
+        // Generate curated transfer packages
+        function generateTransferPackages() {
+            const sells = transferState.sellPlayers;
+            const bank = (picksData?.entry_history?.bank || 0) / 10;
+            const totalBudget = sells.reduce((s, p) => s + (p.sellPrice || p.price), 0) + bank;
+            transferState.budget = totalBudget;
+
+            // Remaining squad (excluding sold players)
+            const sellIds = new Set(sells.map(p => p.id));
+            const remainingSquad = selectedPlayers.filter(p => !sellIds.has(p.id));
+            const remainingIds = new Set(remainingSquad.map(p => p.id));
+
+            // Count players per team in remaining squad
+            const teamCounts = {};
+            remainingSquad.forEach(p => { teamCounts[p.teamId] = (teamCounts[p.teamId] || 0) + 1; });
+
+            // Get candidates per slot
+            const slotCandidates = sells.map(sold => {
+                const cands = findTransferCandidates(sold.position, totalBudget, new Set([...remainingIds, ...sellIds]));
+                // Enforce max 3 from same team
+                return cands.filter(c => (teamCounts[c.teamId] || 0) < 3);
+            });
+
+            // Cache candidates
+            transferState.candidateCache = {};
+            sells.forEach((sold, i) => { transferState.candidateCache[i] = slotCandidates[i]; });
+
+            // Score the sold player for comparison
+            sells.forEach(s => { s._transferScore = calculateTransferScore(s, s.position); });
+
+            const packages = [];
+
+            // Helper: build a package given a strategy function
+            function buildPackage(name, icon, description, strategyFn) {
+                const picks = [];
+                let spent = 0;
+                const usedIds = new Set(remainingIds);
+                const localTeamCounts = { ...teamCounts };
+
+                for (let i = 0; i < sells.length; i++) {
+                    const candidates = slotCandidates[i].filter(c =>
+                        !usedIds.has(c.id) && (localTeamCounts[c.teamId] || 0) < 3
+                    );
+                    const pick = strategyFn(candidates, sells[i], totalBudget - spent, i);
+                    if (pick) {
+                        picks.push(pick);
+                        spent += pick.price;
+                        usedIds.add(pick.id);
+                        localTeamCounts[pick.teamId] = (localTeamCounts[pick.teamId] || 0) + 1;
+                    }
+                }
+
+                if (picks.length === sells.length && spent <= totalBudget + 0.01) {
+                    const totalScoreDelta = picks.reduce((s, p, i) => s + (p._transferScore - sells[i]._transferScore), 0);
+                    packages.push({
+                        name, icon, description,
+                        picks, sells: [...sells],
+                        totalCost: spent,
+                        remaining: totalBudget - spent,
+                        scoreDelta: totalScoreDelta
+                    });
+                }
+            }
+
+            // 1. Best Overall — highest combined score
+            buildPackage('Best Overall', '🏆', 'Maximizes combined transfer score across all slots', (cands, sold, budgetLeft) => {
+                const affordable = cands.filter(c => c.price <= budgetLeft);
+                return affordable.length > 0 ? affordable[0] : null; // Already sorted by score
+            });
+
+            // 2. Value Package — best score/price ratio
+            buildPackage('Value Pick', '💰', 'Best points-per-million return, freeing up budget', (cands, sold, budgetLeft) => {
+                const affordable = cands.filter(c => c.price <= budgetLeft && c.price <= sold.price);
+                affordable.sort((a, b) => (b._transferScore / b.price) - (a._transferScore / a.price));
+                return affordable.length > 0 ? affordable[0] : cands.filter(c => c.price <= budgetLeft)[0] || null;
+            });
+
+            // 3. Premium Upgrade — spend the most on improving the weakest slot
+            buildPackage('Premium Upgrade', '👑', 'Invests heavily in the slot with most room for improvement', (cands, sold, budgetLeft) => {
+                const affordable = cands.filter(c => c.price <= budgetLeft);
+                // Prefer expensive high-scorers
+                affordable.sort((a, b) => (b._transferScore * 0.7 + b.price * 0.3) - (a._transferScore * 0.7 + a.price * 0.3));
+                return affordable.length > 0 ? affordable[0] : null;
+            });
+
+            // 4. Differential — low-ownership picks
+            buildPackage('Differential', '🎯', 'Under-the-radar picks with <10% ownership', (cands, sold, budgetLeft) => {
+                const diffs = cands.filter(c => c.price <= budgetLeft && c.ownership < 10);
+                if (diffs.length > 0) {
+                    diffs.sort((a, b) => (b._transferScore + (10 - b.ownership) * 0.3) - (a._transferScore + (10 - a.ownership) * 0.3));
+                    return diffs[0];
+                }
+                return cands.filter(c => c.price <= budgetLeft)[0] || null;
+            });
+
+            // 5. Form Chasers — highest recent form
+            buildPackage('Form Chasers', '🔥', 'Players in the hottest recent form regardless of value', (cands, sold, budgetLeft) => {
+                const affordable = cands.filter(c => c.price <= budgetLeft);
+                affordable.sort((a, b) => b.form - a.form);
+                return affordable.length > 0 ? affordable[0] : null;
+            });
+
+            // Sort packages by score delta
+            packages.sort((a, b) => b.scoreDelta - a.scoreDelta);
+            transferState.packages = packages;
+            return packages;
+        }
+
+        // ===== TRANSFER WIZARD RENDERING =====
+
+        function renderTransferWizard() {
+            transferRendered = true;
+            transferState = { step: 1, sellPlayers: [], packages: [], selections: {}, budget: 0, candidateCache: {} };
+            const container = document.getElementById('transferDisplay');
+
+            container.innerHTML = `
+                <div class="tw-container">
+                    <div class="tw-intro">
+                        <span>🔄</span>
+                        <div>Select 1–3 players to sell, then explore AI-powered replacement packages that consider form, fixtures, team strength, and budget.</div>
+                    </div>
+
+                    <!-- Step Indicator -->
+                    <div class="tw-steps" id="twSteps">
+                        <button class="tw-step active" onclick="goToTransferStep(1)">
+                            <div class="tw-step-num">1</div>
+                            <span class="tw-step-label">📋 Select Sells</span>
+                        </button>
+                        <button class="tw-step disabled" onclick="goToTransferStep(2)">
+                            <div class="tw-step-num">2</div>
+                            <span class="tw-step-label">📦 Packages</span>
+                        </button>
+                        <button class="tw-step disabled" onclick="goToTransferStep(3)">
+                            <div class="tw-step-num">3</div>
+                            <span class="tw-step-label">🔍 Per-Slot</span>
+                        </button>
+                        <button class="tw-step disabled" onclick="goToTransferStep(4)">
+                            <div class="tw-step-num">4</div>
+                            <span class="tw-step-label">✅ Summary</span>
+                        </button>
+                    </div>
+
+                    <!-- Step Panels -->
+                    <div class="tw-panel active" id="twPanel1"></div>
+                    <div class="tw-panel" id="twPanel2"></div>
+                    <div class="tw-panel" id="twPanel3"></div>
+                    <div class="tw-panel" id="twPanel4"></div>
+                </div>
+            `;
+
+            renderTransferStep1();
+        }
+
+        // Step navigation
+        function goToTransferStep(step) {
+            // Validation
+            if (step >= 2 && transferState.sellPlayers.length === 0) return;
+            if (step >= 3 && transferState.packages.length === 0 && Object.keys(transferState.candidateCache).length === 0) return;
+            if (step >= 4 && Object.keys(transferState.selections).length < transferState.sellPlayers.length) return;
+
+            transferState.step = step;
+
+            // Update step indicators
+            document.querySelectorAll('.tw-step').forEach((el, i) => {
+                el.classList.remove('active', 'completed', 'disabled');
+                if (i + 1 === step) el.classList.add('active');
+                else if (i + 1 < step) el.classList.add('completed');
+                else el.classList.add('disabled');
+            });
+
+            // Show/hide panels
+            document.querySelectorAll('.tw-panel').forEach((el, i) => {
+                el.classList.toggle('active', i + 1 === step);
+            });
+
+            // Render the target step
+            if (step === 1) renderTransferStep1();
+            else if (step === 2) renderTransferStep2();
+            else if (step === 3) renderTransferStep3();
+            else if (step === 4) renderTransferStep4();
+        }
+
+        // ===== STEP 1: Select Sells =====
+        function renderTransferStep1() {
+            const panel = document.getElementById('twPanel1');
+            const bank = (picksData?.entry_history?.bank || 0) / 10;
+            const sellTotal = transferState.sellPlayers.reduce((s, p) => s + (p.sellPrice || p.price), 0);
+            const totalBudget = sellTotal + bank;
+
+            const starters = selectedPlayers.filter(p => !p.onBench).sort((a, b) => a.position - b.position || a.pickPosition - b.pickPosition);
+            const bench = selectedPlayers.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
+
+            const sellIds = new Set(transferState.sellPlayers.map(p => p.id));
+
+            function renderSellCard(player) {
+                const analysis = analysisResults.find(a => a.player.id === player.id);
+                const verdict = analysis?.verdict || 'hold';
+                const sellRating = analysis?.sellRating || 40;
+                const posConfig = POSITION_CONFIG[player.position];
+                const isSelected = sellIds.has(player.id);
+                const suggestClass = verdict === 'sell' ? 'suggested' : verdict === 'monitor' ? 'suggested-monitor' : '';
+
+                return `<div class="tw-sell-card ${isSelected ? 'selected' : ''} ${suggestClass}" onclick="toggleTransferSell(${player.id})">
+                    <div class="tw-check">${isSelected ? '✓' : ''}</div>
+                    <span class="position-badge ${posConfig.class}" style="font-size:10px;padding:2px 6px;">${posConfig.short}</span>
+                    <div class="tw-sell-info">
+                        <div class="tw-sell-name">${player.name}</div>
+                        <div class="tw-sell-meta">
+                            <span>${player.team}</span>
+                            <span>£${(player.sellPrice || player.price).toFixed(1)}m</span>
+                            <span class="tw-sell-verdict ${verdict}">${verdict}</span>
+                        </div>
+                    </div>
+                    <div class="tw-sell-stats">
+                        <div class="tw-sell-stat">
+                            <div class="tw-sell-stat-val">${player.form.toFixed(1)}</div>
+                            <div class="tw-sell-stat-label">Form</div>
+                        </div>
+                        <div class="tw-sell-stat">
+                            <div class="tw-sell-stat-val">${player.ppg.toFixed(1)}</div>
+                            <div class="tw-sell-stat-label">PPG</div>
+                        </div>
+                        <div class="tw-sell-stat">
+                            <div class="tw-sell-stat-val" style="color:${sellRating >= 55 ? 'var(--color-error)' : sellRating >= 38 ? 'var(--color-warning)' : 'var(--color-success)'}">${sellRating}</div>
+                            <div class="tw-sell-stat-label">Sell</div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            let html = `
+                <div class="tw-budget-bar" id="twBudgetBar1">
+                    <div class="tw-budget-item">
+                        <div class="tw-budget-label">Selling</div>
+                        <div class="tw-budget-value" id="twSelling">£${sellTotal.toFixed(1)}m</div>
+                    </div>
+                    <div class="tw-budget-sep"></div>
+                    <div class="tw-budget-item">
+                        <div class="tw-budget-label">Bank</div>
+                        <div class="tw-budget-value">£${bank.toFixed(1)}m</div>
+                    </div>
+                    <div class="tw-budget-sep"></div>
+                    <div class="tw-budget-item">
+                        <div class="tw-budget-label">Total Budget</div>
+                        <div class="tw-budget-value positive" id="twTotalBudget">£${totalBudget.toFixed(1)}m</div>
+                    </div>
+                    <div class="tw-counter">
+                        <span>Selected:</span>
+                        <strong id="twSellCount">${transferState.sellPlayers.length}/3</strong>
+                    </div>
+                </div>
+
+                <div class="tw-squad-group">
+                    <div class="tw-squad-group-title">Starting XI</div>
+                    <div class="tw-sell-grid">${starters.map(p => renderSellCard(p)).join('')}</div>
+                </div>
+                <div class="tw-squad-group">
+                    <div class="tw-squad-group-title">Bench</div>
+                    <div class="tw-sell-grid">${bench.map(p => renderSellCard(p)).join('')}</div>
+                </div>
+
+                <div class="tw-actions">
+                    <button class="tw-btn tw-btn-primary" id="twFindBtn" onclick="proceedToPackages()" ${transferState.sellPlayers.length === 0 ? 'disabled' : ''}>
+                        Find Replacements →
+                    </button>
+                </div>
+            `;
+
+            panel.innerHTML = html;
+        }
+
+        function toggleTransferSell(playerId) {
+            const player = selectedPlayers.find(p => p.id === playerId);
+            if (!player) return;
+
+            const idx = transferState.sellPlayers.findIndex(p => p.id === playerId);
+            if (idx >= 0) {
+                transferState.sellPlayers.splice(idx, 1);
+            } else {
+                if (transferState.sellPlayers.length >= 3) return; // Max 3
+                transferState.sellPlayers.push(player);
+            }
+
+            // Reset downstream state
+            transferState.packages = [];
+            transferState.selections = {};
+            transferState.candidateCache = {};
+
+            renderTransferStep1();
+        }
+
+        function proceedToPackages() {
+            if (transferState.sellPlayers.length === 0) return;
+            generateTransferPackages();
+            goToTransferStep(2);
+        }
+
+        // ===== STEP 2: Packages =====
+        function renderTransferStep2() {
+            const panel = document.getElementById('twPanel2');
+            const packages = transferState.packages;
+            const bank = (picksData?.entry_history?.bank || 0) / 10;
+
+            let html = `
+                <div class="tw-budget-bar">
+                    <div class="tw-budget-item">
+                        <div class="tw-budget-label">Total Budget</div>
+                        <div class="tw-budget-value positive">£${transferState.budget.toFixed(1)}m</div>
+                    </div>
+                    <div class="tw-budget-sep"></div>
+                    <div class="tw-budget-item">
+                        <div class="tw-budget-label">Transfers</div>
+                        <div class="tw-budget-value">${transferState.sellPlayers.length}</div>
+                    </div>
+                </div>
+            `;
+
+            if (packages.length === 0) {
+                html += `<div style="padding:24px;text-align:center;color:var(--text-muted);">No viable packages found within budget. Try selling different players.</div>`;
+            } else {
+                html += `<div class="tw-packages">`;
+                packages.forEach((pkg, pkgIdx) => {
+                    const deltaClass = pkg.scoreDelta >= 0 ? 'positive' : 'negative';
+                    const deltaSign = pkg.scoreDelta >= 0 ? '+' : '';
+
+                    html += `<div class="tw-package" onclick="applyPackage(${pkgIdx})">
+                        <div class="tw-package-header">
+                            <div class="tw-package-name">${pkg.icon} ${pkg.name}</div>
+                            <div class="tw-package-delta ${deltaClass}">${deltaSign}${pkg.scoreDelta.toFixed(1)} score</div>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">${pkg.description}</div>
+                        <div class="tw-package-transfers">`;
+
+                    pkg.sells.forEach((sold, i) => {
+                        const pick = pkg.picks[i];
+                        const pickFdr = pick.fixtures?.length > 0 ? pick.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / Math.min(pick.fixtures.length, 3) : 3;
+                        html += `<div class="tw-package-transfer">
+                            <div class="tw-package-player out">
+                                <span class="position-badge ${POSITION_CONFIG[sold.position].class}" style="font-size:9px;padding:1px 4px;">${POSITION_CONFIG[sold.position].short}</span>
+                                <span>${sold.name}</span>
+                                <span style="color:var(--text-muted);">£${(sold.sellPrice || sold.price).toFixed(1)}m</span>
+                            </div>
+                            <div class="tw-package-arrow">→</div>
+                            <div class="tw-package-player in">
+                                <span>${pick.name}</span>
+                                <span style="color:var(--text-muted);">£${pick.price.toFixed(1)}m</span>
+                                <span style="color:var(--text-muted);">F:${pick.form.toFixed(1)}</span>
+                            </div>
+                        </div>`;
+                    });
+
+                    html += `</div>
+                        <div class="tw-package-footer">
+                            <div class="tw-package-stat">Cost: <strong>£${pkg.totalCost.toFixed(1)}m</strong></div>
+                            <div class="tw-package-stat">Remaining: <strong style="color:var(--color-success);">£${pkg.remaining.toFixed(1)}m</strong></div>
+                        </div>
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
+            html += `
+                <div class="tw-actions">
+                    <button class="tw-btn tw-btn-back" onclick="goToTransferStep(1)">← Back</button>
+                    <button class="tw-btn tw-btn-secondary" onclick="goToCustomSlots()">Build Custom →</button>
+                </div>
+            `;
+
+            panel.innerHTML = html;
+        }
+
+        function applyPackage(pkgIdx) {
+            const pkg = transferState.packages[pkgIdx];
+            if (!pkg) return;
+            transferState.selections = {};
+            pkg.picks.forEach((pick, i) => { transferState.selections[i] = pick; });
+            goToTransferStep(3);
+        }
+
+        function goToCustomSlots() {
+            transferState.selections = {};
+            goToTransferStep(3);
+        }
+
+        // ===== STEP 3: Per-Slot Drill-down =====
+        function renderTransferStep3() {
+            const panel = document.getElementById('twPanel3');
+            const sells = transferState.sellPlayers;
+            const bank = (picksData?.entry_history?.bank || 0) / 10;
+            const totalBudget = transferState.budget;
+
+            // Calculate spent so far from locked selections
+            const lockedSpent = Object.values(transferState.selections).reduce((s, p) => s + p.price, 0);
+            const remaining = totalBudget - lockedSpent;
+            const allLocked = Object.keys(transferState.selections).length === sells.length;
+
+            let html = `
+                <div class="tw-budget-bar">
+                    <div class="tw-budget-item">
+                        <div class="tw-budget-label">Total Budget</div>
+                        <div class="tw-budget-value">£${totalBudget.toFixed(1)}m</div>
+                    </div>
+                    <div class="tw-budget-sep"></div>
+                    <div class="tw-budget-item">
+                        <div class="tw-budget-label">Spent</div>
+                        <div class="tw-budget-value">£${lockedSpent.toFixed(1)}m</div>
+                    </div>
+                    <div class="tw-budget-sep"></div>
+                    <div class="tw-budget-item">
+                        <div class="tw-budget-label">Remaining</div>
+                        <div class="tw-budget-value ${remaining >= 0 ? 'positive' : 'negative'}">£${remaining.toFixed(1)}m</div>
+                    </div>
+                </div>
+                <div class="tw-slots">
+            `;
+
+            sells.forEach((sold, slotIdx) => {
+                const locked = transferState.selections[slotIdx];
+                const posConfig = POSITION_CONFIG[sold.position];
+                const candidates = transferState.candidateCache[slotIdx] || [];
+
+                // Filter out players locked in other slots
+                const otherLockedIds = new Set();
+                Object.entries(transferState.selections).forEach(([idx, p]) => {
+                    if (parseInt(idx) !== slotIdx) otherLockedIds.add(p.id);
+                });
+                const availableCandidates = candidates.filter(c => !otherLockedIds.has(c.id));
+
+                // Budget filter state
+                const slotFilterId = `twSlotFilter${slotIdx}`;
+
+                html += `<div class="tw-slot">
+                    <div class="tw-slot-header">
+                        <span class="position-badge ${posConfig.class}" style="font-size:10px;padding:2px 6px;">${posConfig.short}</span>
+                        <div class="tw-slot-sold">
+                            <div class="tw-slot-sold-name">${sold.name} <span style="color:var(--color-error);font-size:11px;">OUT</span></div>
+                            <div class="tw-slot-sold-meta">${sold.team} · £${(sold.sellPrice || sold.price).toFixed(1)}m · Form ${sold.form.toFixed(1)} · PPG ${sold.ppg.toFixed(1)}</div>
+                        </div>
+                        ${locked ? `<div class="tw-slot-locked">✓ ${locked.name} locked</div>` : ''}
+                    </div>
+
+                    <div class="tw-slot-filters">
+                        <button class="tw-filter-pill active" onclick="filterSlotCandidates(${slotIdx},'all')">All</button>
+                        <button class="tw-filter-pill" onclick="filterSlotCandidates(${slotIdx},'budget')">Budget (≤£6m)</button>
+                        <button class="tw-filter-pill" onclick="filterSlotCandidates(${slotIdx},'mid')">Mid (£6–9m)</button>
+                        <button class="tw-filter-pill" onclick="filterSlotCandidates(${slotIdx},'premium')">Premium (≥£9m)</button>
+                    </div>
+
+                    <div class="tw-replacements" id="twSlotList${slotIdx}">`;
+
+                availableCandidates.slice(0, 10).forEach((c, rank) => {
+                    const isLocked = locked && locked.id === c.id;
+                    const delta = c._transferScore - sold._transferScore;
+                    const deltaClass = delta >= 0 ? 'positive' : 'negative';
+                    const deltaSign = delta >= 0 ? '+' : '';
+                    const fdr = c.fixtures?.length > 0 ? (c.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / Math.min(c.fixtures.length, 3)).toFixed(1) : '-';
+                    const xgiDisplay = c._recentStats ? c._recentStats.xGIPer90.toFixed(2) : (c.minutes > 0 ? ((c.xGI / c.minutes) * 90).toFixed(2) : '-');
+
+                    html += `<div class="tw-replacement ${isLocked ? 'locked' : ''}" id="twRep${slotIdx}_${c.id}">
+                        <div class="tw-replacement-rank">${rank + 1}</div>
+                        <div class="tw-replacement-info">
+                            <div class="tw-replacement-name">${c.name}</div>
+                            <div class="tw-replacement-meta">${c.team} · £${c.price.toFixed(1)}m · ${c.ownership.toFixed(1)}% owned</div>
+                        </div>
+                        <div class="tw-replacement-stats">
+                            <div class="tw-replacement-stat">
+                                <div class="tw-replacement-stat-val">${c.form.toFixed(1)}</div>
+                                <div class="tw-replacement-stat-label">Form</div>
+                            </div>
+                            <div class="tw-replacement-stat">
+                                <div class="tw-replacement-stat-val">${c.ppg.toFixed(1)}</div>
+                                <div class="tw-replacement-stat-label">PPG</div>
+                            </div>
+                            <div class="tw-replacement-stat">
+                                <div class="tw-replacement-stat-val">${xgiDisplay}</div>
+                                <div class="tw-replacement-stat-label">xGI/90</div>
+                            </div>
+                            <div class="tw-replacement-stat">
+                                <div class="tw-replacement-stat-val">${fdr}</div>
+                                <div class="tw-replacement-stat-label">FDR</div>
+                            </div>
+                        </div>
+                        <div class="tw-replacement-delta ${deltaClass}">${deltaSign}${delta.toFixed(1)}</div>
+                        <button class="tw-lock-btn ${isLocked ? 'locked' : ''}" onclick="event.stopPropagation();lockSlotChoice(${slotIdx},${c.id})">${isLocked ? '✓ Locked' : 'Lock In'}</button>
+                    </div>`;
+                });
+
+                if (availableCandidates.length === 0) {
+                    html += `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No affordable candidates found for this slot.</div>`;
+                }
+
+                html += `</div></div>`;
+            });
+
+            html += `</div>`;
+
+            html += `
+                <div class="tw-actions">
+                    <button class="tw-btn tw-btn-back" onclick="goToTransferStep(2)">← Back to Packages</button>
+                    <button class="tw-btn tw-btn-primary" id="twSummaryBtn" onclick="goToTransferStep(4)" ${!allLocked ? 'disabled' : ''}>
+                        View Summary →
+                    </button>
+                    <span style="font-size:11px;color:var(--text-muted);margin-left:8px;" id="twLockHint">${!allLocked ? `Lock in all ${sells.length} slot${sells.length > 1 ? 's' : ''} to continue` : ''}</span>
+                </div>
+            `;
+
+            panel.innerHTML = html;
+        }
+
+        function lockSlotChoice(slotIdx, playerId) {
+            const candidates = transferState.candidateCache[slotIdx] || [];
+            const player = candidates.find(c => c.id === playerId);
+            if (!player) return;
+
+            // Toggle lock
+            if (transferState.selections[slotIdx]?.id === playerId) {
+                delete transferState.selections[slotIdx];
+            } else {
+                // Check budget feasibility
+                const otherSpent = Object.entries(transferState.selections)
+                    .filter(([idx]) => parseInt(idx) !== slotIdx)
+                    .reduce((s, [, p]) => s + p.price, 0);
+                if (otherSpent + player.price > transferState.budget + 0.01) {
+                    // Can't afford — flash a warning
+                    return;
+                }
+                transferState.selections[slotIdx] = player;
+            }
+
+            renderTransferStep3();
+        }
+
+        function filterSlotCandidates(slotIdx, filter) {
+            const candidates = transferState.candidateCache[slotIdx] || [];
+            const sold = transferState.sellPlayers[slotIdx];
+            const locked = transferState.selections[slotIdx];
+
+            // Filter out players locked in other slots
+            const otherLockedIds = new Set();
+            Object.entries(transferState.selections).forEach(([idx, p]) => {
+                if (parseInt(idx) !== slotIdx) otherLockedIds.add(p.id);
+            });
+
+            let filtered = candidates.filter(c => !otherLockedIds.has(c.id));
+            if (filter === 'budget') filtered = filtered.filter(c => c.price <= 6);
+            else if (filter === 'mid') filtered = filtered.filter(c => c.price > 6 && c.price < 9);
+            else if (filter === 'premium') filtered = filtered.filter(c => c.price >= 9);
+
+            // Update filter pill styles
+            const slot = document.querySelector(`#twSlotList${slotIdx}`)?.closest('.tw-slot');
+            if (slot) {
+                slot.querySelectorAll('.tw-filter-pill').forEach(pill => pill.classList.remove('active'));
+                const pills = slot.querySelectorAll('.tw-filter-pill');
+                if (filter === 'all') pills[0]?.classList.add('active');
+                else if (filter === 'budget') pills[1]?.classList.add('active');
+                else if (filter === 'mid') pills[2]?.classList.add('active');
+                else if (filter === 'premium') pills[3]?.classList.add('active');
+            }
+
+            // Re-render just the list
+            const listEl = document.getElementById(`twSlotList${slotIdx}`);
+            if (!listEl) return;
+
+            let html = '';
+            filtered.slice(0, 10).forEach((c, rank) => {
+                const isLocked = locked && locked.id === c.id;
+                const delta = c._transferScore - sold._transferScore;
+                const deltaClass = delta >= 0 ? 'positive' : 'negative';
+                const deltaSign = delta >= 0 ? '+' : '';
+                const fdr = c.fixtures?.length > 0 ? (c.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / Math.min(c.fixtures.length, 3)).toFixed(1) : '-';
+                const xgiDisplay = c._recentStats ? c._recentStats.xGIPer90.toFixed(2) : (c.minutes > 0 ? ((c.xGI / c.minutes) * 90).toFixed(2) : '-');
+
+                html += `<div class="tw-replacement ${isLocked ? 'locked' : ''}">
+                    <div class="tw-replacement-rank">${rank + 1}</div>
+                    <div class="tw-replacement-info">
+                        <div class="tw-replacement-name">${c.name}</div>
+                        <div class="tw-replacement-meta">${c.team} · £${c.price.toFixed(1)}m · ${c.ownership.toFixed(1)}% owned</div>
+                    </div>
+                    <div class="tw-replacement-stats">
+                        <div class="tw-replacement-stat">
+                            <div class="tw-replacement-stat-val">${c.form.toFixed(1)}</div>
+                            <div class="tw-replacement-stat-label">Form</div>
+                        </div>
+                        <div class="tw-replacement-stat">
+                            <div class="tw-replacement-stat-val">${c.ppg.toFixed(1)}</div>
+                            <div class="tw-replacement-stat-label">PPG</div>
+                        </div>
+                        <div class="tw-replacement-stat">
+                            <div class="tw-replacement-stat-val">${xgiDisplay}</div>
+                            <div class="tw-replacement-stat-label">xGI/90</div>
+                        </div>
+                        <div class="tw-replacement-stat">
+                            <div class="tw-replacement-stat-val">${fdr}</div>
+                            <div class="tw-replacement-stat-label">FDR</div>
+                        </div>
+                    </div>
+                    <div class="tw-replacement-delta ${deltaClass}">${deltaSign}${delta.toFixed(1)}</div>
+                    <button class="tw-lock-btn ${isLocked ? 'locked' : ''}" onclick="event.stopPropagation();lockSlotChoice(${slotIdx},${c.id})">${isLocked ? '✓ Locked' : 'Lock In'}</button>
+                </div>`;
+            });
+
+            if (filtered.length === 0) {
+                html += `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No players in this price range.</div>`;
+            }
+
+            listEl.innerHTML = html;
+        }
+
+        // ===== STEP 4: Summary =====
+        function renderTransferStep4() {
+            const panel = document.getElementById('twPanel4');
+            const sells = transferState.sellPlayers;
+            const picks = sells.map((_, i) => transferState.selections[i]);
+            const totalCost = picks.reduce((s, p) => s + (p?.price || 0), 0);
+            const remaining = transferState.budget - totalCost;
+
+            // Compute before/after metrics
+            const sellIds = new Set(sells.map(p => p.id));
+            const keptPlayers = selectedPlayers.filter(p => !sellIds.has(p.id));
+
+            // Average form: before vs after
+            const beforeForm = selectedPlayers.reduce((s, p) => s + p.form, 0) / selectedPlayers.length;
+            const afterPlayers = [...keptPlayers, ...picks.filter(Boolean)];
+            const afterForm = afterPlayers.reduce((s, p) => s + p.form, 0) / afterPlayers.length;
+
+            // Total points: before vs after
+            const beforePts = selectedPlayers.reduce((s, p) => s + p.points, 0);
+            const afterPts = afterPlayers.reduce((s, p) => s + p.points, 0);
+
+            // Average PPG
+            const beforePpg = selectedPlayers.reduce((s, p) => s + p.ppg, 0) / selectedPlayers.length;
+            const afterPpg = afterPlayers.reduce((s, p) => s + p.ppg, 0) / afterPlayers.length;
+
+            // Squad value
+            const beforeValue = selectedPlayers.reduce((s, p) => s + p.price, 0);
+            const afterValue = afterPlayers.reduce((s, p) => s + p.price, 0);
+
+            // xGI total
+            const beforeXGI = selectedPlayers.reduce((s, p) => s + p.xGI, 0);
+            const afterXGI = afterPlayers.reduce((s, p) => s + p.xGI, 0);
+
+            // Overall score delta
+            const totalScoreDelta = picks.reduce((s, p, i) => {
+                if (!p) return s;
+                return s + ((p._transferScore || 0) - (sells[i]._transferScore || 0));
+            }, 0);
+
+            function fmtDelta(val, decimals = 1) {
+                const sign = val >= 0 ? '+' : '';
+                return `<span class="tw-summary-metric-delta" style="color:${val >= 0 ? 'var(--color-success)' : 'var(--color-error)'}">${sign}${val.toFixed(decimals)}</span>`;
+            }
+
+            let html = `
+                <div class="tw-summary">
+                    <div class="tw-summary-card">
+                        <div class="tw-summary-header">🔄 Transfer Plan</div>
+                        <div class="tw-summary-transfers">
+            `;
+
+            sells.forEach((sold, i) => {
+                const pick = picks[i];
+                if (!pick) return;
+                const priceDiff = pick.price - (sold.sellPrice || sold.price);
+                html += `<div class="tw-summary-transfer">
+                    <div class="tw-summary-out">
+                        <div class="tw-summary-player-name" style="color:var(--color-error);">
+                            <span class="position-badge ${POSITION_CONFIG[sold.position].class}" style="font-size:9px;padding:1px 4px;margin-right:4px;">${POSITION_CONFIG[sold.position].short}</span>
+                            ${sold.name}
+                        </div>
+                        <div class="tw-summary-player-meta">${sold.team} · £${(sold.sellPrice || sold.price).toFixed(1)}m · Form ${sold.form.toFixed(1)}</div>
+                    </div>
+                    <div class="tw-summary-arrow">→</div>
+                    <div class="tw-summary-in">
+                        <div class="tw-summary-player-name" style="color:var(--color-success);">
+                            <span class="position-badge ${POSITION_CONFIG[pick.position].class}" style="font-size:9px;padding:1px 4px;margin-right:4px;">${POSITION_CONFIG[pick.position].short}</span>
+                            ${pick.name}
+                        </div>
+                        <div class="tw-summary-player-meta">${pick.team} · £${pick.price.toFixed(1)}m · Form ${pick.form.toFixed(1)}</div>
+                    </div>
+                </div>`;
+            });
+
+            html += `</div></div>`;
+
+            // Before/After comparison
+            html += `
+                <div class="tw-summary-card">
+                    <div class="tw-summary-header">📊 Before vs After</div>
+                    <div class="tw-summary-grid">
+                        <div class="tw-summary-metric">
+                            <div class="tw-summary-metric-label">Avg Form</div>
+                            <div class="tw-summary-metric-val">${afterForm.toFixed(1)}</div>
+                            ${fmtDelta(afterForm - beforeForm)}
+                        </div>
+                        <div class="tw-summary-metric">
+                            <div class="tw-summary-metric-label">Avg PPG</div>
+                            <div class="tw-summary-metric-val">${afterPpg.toFixed(2)}</div>
+                            ${fmtDelta(afterPpg - beforePpg, 2)}
+                        </div>
+                        <div class="tw-summary-metric">
+                            <div class="tw-summary-metric-label">Total xGI</div>
+                            <div class="tw-summary-metric-val">${afterXGI.toFixed(1)}</div>
+                            ${fmtDelta(afterXGI - beforeXGI)}
+                        </div>
+                        <div class="tw-summary-metric">
+                            <div class="tw-summary-metric-label">Squad Value</div>
+                            <div class="tw-summary-metric-val">£${afterValue.toFixed(1)}m</div>
+                            ${fmtDelta(afterValue - beforeValue)}
+                        </div>
+                        <div class="tw-summary-metric">
+                            <div class="tw-summary-metric-label">Transfer Score</div>
+                            <div class="tw-summary-metric-val" style="color:${totalScoreDelta >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">${totalScoreDelta >= 0 ? '+' : ''}${totalScoreDelta.toFixed(1)}</div>
+                            <div class="tw-summary-metric-delta" style="color:var(--text-muted);">vs sold players</div>
+                        </div>
+                        <div class="tw-summary-metric">
+                            <div class="tw-summary-metric-label">ITB After</div>
+                            <div class="tw-summary-metric-val positive">£${remaining.toFixed(1)}m</div>
+                            <div class="tw-summary-metric-delta" style="color:var(--text-muted);">in the bank</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Per-transfer comparison tables
+            html += `<div class="tw-summary-card">
+                <div class="tw-summary-header">⚖️ Detailed Comparison</div>`;
+
+            sells.forEach((sold, i) => {
+                const pick = picks[i];
+                if (!pick) return;
+                const soldRecent = getPlayerRecentStats(sold.id, 5);
+                const pickRecent = getPlayerRecentStats(pick.id, 5);
+
+                const metrics = [
+                    { label: 'Price', soldVal: `£${(sold.sellPrice || sold.price).toFixed(1)}m`, pickVal: `£${pick.price.toFixed(1)}m`, lowerBetter: true, soldNum: sold.sellPrice || sold.price, pickNum: pick.price },
+                    { label: 'Form', soldVal: sold.form.toFixed(1), pickVal: pick.form.toFixed(1), soldNum: sold.form, pickNum: pick.form },
+                    { label: 'PPG', soldVal: sold.ppg.toFixed(1), pickVal: pick.ppg.toFixed(1), soldNum: sold.ppg, pickNum: pick.ppg },
+                    { label: 'Ownership', soldVal: `${sold.ownership.toFixed(1)}%`, pickVal: `${pick.ownership.toFixed(1)}%`, soldNum: sold.ownership, pickNum: pick.ownership },
+                    { label: 'xGI/90 (recent)', soldVal: soldRecent ? soldRecent.xGIPer90.toFixed(2) : '-', pickVal: pickRecent ? pickRecent.xGIPer90.toFixed(2) : '-', soldNum: soldRecent?.xGIPer90 || 0, pickNum: pickRecent?.xGIPer90 || 0 },
+                ];
+
+                const avgFdrSold = sold.fixtures?.length > 0 ? (sold.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / Math.min(sold.fixtures.length, 3)) : 3;
+                const avgFdrPick = pick.fixtures?.length > 0 ? (pick.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / Math.min(pick.fixtures.length, 3)) : 3;
+                metrics.push({ label: 'Avg FDR (next 3)', soldVal: avgFdrSold.toFixed(1), pickVal: avgFdrPick.toFixed(1), lowerBetter: true, soldNum: avgFdrSold, pickNum: avgFdrPick });
+
+                html += `<table class="tw-compare-table" style="margin-bottom:12px;">
+                    <tr><th></th><th style="color:var(--color-error);">${sold.name} (out)</th><th style="color:var(--color-success);">${pick.name} (in)</th></tr>`;
+
+                metrics.forEach(m => {
+                    const soldBetter = m.lowerBetter ? m.soldNum < m.pickNum : m.soldNum > m.pickNum;
+                    const pickBetter = m.lowerBetter ? m.pickNum < m.soldNum : m.pickNum > m.soldNum;
+                    html += `<tr>
+                        <td>${m.label}</td>
+                        <td class="${soldBetter ? 'better' : pickBetter ? 'worse' : ''}">${m.soldVal}</td>
+                        <td class="${pickBetter ? 'better' : soldBetter ? 'worse' : ''}">${m.pickVal}</td>
+                    </tr>`;
+                });
+
+                html += `</table>`;
+            });
+
+            html += `</div>`;
+
+            // Actions
+            html += `
+                <div class="tw-actions">
+                    <button class="tw-btn tw-btn-back" onclick="goToTransferStep(3)">← Edit Selections</button>
+                    <button class="tw-btn tw-btn-secondary" onclick="renderTransferWizard()">🔄 Start Over</button>
+                </div>
+            </div>`;
+
+            panel.innerHTML = html;
         }
 
         // ===== SETTINGS =====

@@ -628,6 +628,41 @@
             background: currentColor;
         }
 
+        /* Position filter bar (All Players tab) */
+        .position-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-wrap: wrap;
+        }
+        .position-filter-pills {
+            display: flex;
+            gap: 6px;
+        }
+        .pos-filter-pill {
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border-default);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+        .pos-filter-pill:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+        }
+        .pos-filter-pill.active {
+            background: var(--color-info);
+            border-color: var(--color-info);
+            color: #fff;
+        }
+
         /* Column Selector Dropdown */
         .column-selector {
             position: relative;
@@ -2594,35 +2629,27 @@
 
     <div class="tabs-container">
         <div class="tabs" id="tabs">
-            <button class="tab active" data-position="SHORTLIST" data-desc="Your shortlisted players for quick comparison and tracking. Click the ⭐ on any player to add them.">⭐ Shortlist <span class="shortlist-badge" id="shortlistBadge"></span></button>
-            <button class="tab" data-position="RECOMMENDATIONS" data-desc="Position-specific recommendations split by budget, premium, and differential tiers using form, fixtures, and value.">⭐ Recommendations</button>
+            <button class="tab active" data-position="RECOMMENDATIONS" data-desc="Position-specific recommendations split by budget, premium, and differential tiers using form, fixtures, and value.">⭐ Recommendations</button>
             <button class="tab" data-position="RISING" data-desc="Players with converging positive signals — team form improving, fixtures getting easier, and underlying stats trending up.">🔥 Rising Form</button>
             <button class="tab" data-position="CHARTS" data-desc="Interactive scatter plots to visually identify value picks, underperformers, regression candidates, and differentials.">📊 Charts</button>
             <button class="tab" data-position="ROUTES" data-desc="Players with the most diverse ways to score FPL points. More routes = more reliable returns.">🔀 Routes to Points</button>
-            <button class="tab" data-position="GK" data-desc="Full stats table for all goalkeepers — sortable, filterable, and comparable.">🧤 GK</button>
-            <button class="tab" data-position="DEF" data-desc="Full stats table for all defenders — sortable, filterable, and comparable.">🛡️ DEF</button>
-            <button class="tab" data-position="MID" data-desc="Full stats table for all midfielders — sortable, filterable, and comparable.">⚡ MID</button>
-            <button class="tab" data-position="FWD" data-desc="Full stats table for all forwards — sortable, filterable, and comparable.">🎯 FWD</button>
+            <button class="tab" data-position="ALL" data-desc="Full stats table for all players — sortable, filterable by position, with shortlist support. Click ⭐ to shortlist players.">📋 All Players</button>
         </div>
     </div>
 
     <div class="tab-description" id="tabDescription">
         <div class="tab-description-inner">
             <span class="tab-desc-icon">💡</span>
-            <span class="tab-desc-text">Your shortlisted players for quick comparison and tracking. Click the ⭐ on any player to add them.</span>
+            <span class="tab-desc-text">Position-specific recommendations split by budget, premium, and differential tiers using form, fixtures, and value.</span>
         </div>
     </div>
 
     <main class="content">
-        <div class="position-section active" id="section-SHORTLIST"></div>
-        <div class="position-section" id="section-RECOMMENDATIONS"></div>
+        <div class="position-section active" id="section-RECOMMENDATIONS"></div>
         <div class="position-section" id="section-RISING"></div>
         <div class="position-section" id="section-CHARTS"></div>
         <div class="position-section" id="section-ROUTES"></div>
-        <div class="position-section table-section-wrapper" id="section-GK"></div>
-        <div class="position-section table-section-wrapper" id="section-DEF"></div>
-        <div class="position-section table-section-wrapper" id="section-MID"></div>
-        <div class="position-section table-section-wrapper" id="section-FWD"></div>
+        <div class="position-section table-section-wrapper" id="section-ALL"></div>
     </main>
 
     <!-- Hidden elements for JS compatibility -->
@@ -2648,7 +2675,7 @@
         let currentGameweek = null;
         let currentPhase = 'mid';
         let allAnalyses = [];
-        let currentPosition = 'SHORTLIST';
+        let currentPosition = 'RECOMMENDATIONS';
 
         // Shortlist state (persisted to localStorage)
         let shortlistedPlayerIds = new Set(JSON.parse(localStorage.getItem('fpl_shortlist') || '[]'));
@@ -2659,8 +2686,12 @@
         }
 
         function updateShortlistBadge() {
-            const badge = document.getElementById('shortlistBadge');
-            if (badge) badge.textContent = shortlistedPlayerIds.size > 0 ? shortlistedPlayerIds.size : '';
+            // Update the shortlist filter pill badge in the All Players table
+            const pill = document.getElementById('shortlistPill-ALL');
+            if (pill) {
+                const count = shortlistedPlayerIds.size;
+                pill.innerHTML = `<span class="dot"></span> ⭐ Shortlisted${count > 0 ? ' (' + count + ')' : ''}`;
+            }
         }
 
         function toggleShortlist(playerId, event) {
@@ -2675,8 +2706,11 @@
             document.querySelectorAll(`.shortlist-star[data-player-id="${playerId}"]`).forEach(el => {
                 el.classList.toggle('shortlisted', shortlistedPlayerIds.has(playerId));
             });
-            // Re-render shortlist tab if active
-            if (currentPosition === 'SHORTLIST') renderShortlistTab();
+            // Re-render the All Players table if shortlist filter is active
+            if (currentPosition === 'ALL' && tableState.ALL?.filters?.shortlist) {
+                refreshTable('ALL');
+            }
+            updateShortlistBadge();
         }
 
         function getStarHtml(playerId, extraClass = '') {
@@ -2684,89 +2718,19 @@
             return `<span class="shortlist-star ${active} ${extraClass}" data-player-id="${playerId}" onclick="toggleShortlist(${playerId}, event)" title="Toggle shortlist">⭐</span>`;
         }
 
-        function renderShortlistTab() {
-            const section = document.getElementById('section-SHORTLIST');
-            if (!section) return;
-
-            if (shortlistedPlayerIds.size === 0) {
-                section.innerHTML = `
-                    <div class="shortlist-empty">
-                        <div class="shortlist-empty-icon">⭐</div>
-                        <div class="shortlist-empty-title">No players shortlisted yet</div>
-                        <div class="shortlist-empty-desc">Click the ⭐ on any player card or table row to add them to your shortlist for quick comparison and tracking.</div>
-                    </div>`;
-                return;
-            }
-
-            const POSITIONS_MAP = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const posIcons = { GK: '🧤', DEF: '🛡️', MID: '⚡', FWD: '🎯' };
-            const shortlisted = allAnalyses.filter(p => shortlistedPlayerIds.has(p.id));
-            const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
-            shortlisted.forEach(p => {
-                const pos = POSITIONS_MAP[p.position];
-                if (byPos[pos]) byPos[pos].push(p);
-            });
-
-            // Remove IDs that are no longer in allAnalyses (stale)
+        // Clean stale shortlist IDs on load
+        function cleanStaleShortlist() {
             const validIds = new Set(allAnalyses.map(p => p.id));
             let staleRemoved = false;
             shortlistedPlayerIds.forEach(id => {
                 if (!validIds.has(id)) { shortlistedPlayerIds.delete(id); staleRemoved = true; }
             });
             if (staleRemoved) saveShortlist();
-
-            let html = '';
-            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
-                const players = byPos[pos];
-                if (players.length === 0) return;
-                html += `<div class="shortlist-pos-group">`;
-                html += `<div class="shortlist-pos-title">${posIcons[pos]} ${pos} (${players.length})</div>`;
-                html += `<div class="shortlist-grid">`;
-                players.forEach(p => {
-                    const g = p.l5?.games || 1;
-                    const ptsPerGame = ((p.l5?.points || 0) / g).toFixed(1);
-                    const xGI = ((p.l5?.xGI || 0) / g).toFixed(2);
-                    const fdr = p.fixtures?.avgFDR3 || 3;
-                    const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
-                    const next3 = p.fixtures?.next3 || [];
-                    const fixturesHtml = next3.map(f => {
-                        const d = f.difficulty || 3;
-                        const cls = d <= 2 ? 'fdr-1' : d <= 2.5 ? 'fdr-2' : d <= 3.5 ? 'fdr-3' : d <= 4 ? 'fdr-4' : 'fdr-5';
-                        const opp = teams[f.opponent]?.short_name || '???';
-                        const venue = f.isHome ? 'H' : 'A';
-                        return `<span class="fdr-badge ${cls}" style="font-size:9px;padding:2px 5px;">${opp}(${venue})</span>`;
-                    }).join(' ');
-
-                    html += `
-                        <div class="shortlist-card" onclick="openPlayerModal(${p.id})">
-                            <div class="shortlist-card-top">
-                                <div>
-                                    <div class="shortlist-card-name">${p.name}</div>
-                                    <div class="shortlist-card-meta">${p.team} · £${p.price.toFixed(1)}m · ${(p.selectedBy || 0).toFixed(1)}% owned</div>
-                                </div>
-                            </div>
-                            <div class="shortlist-card-stats">
-                                <div class="shortlist-stat"><div class="shortlist-stat-value">${ptsPerGame}</div><div class="shortlist-stat-label">Pts/G</div></div>
-                                <div class="shortlist-stat"><div class="shortlist-stat-value">${xGI}</div><div class="shortlist-stat-label">xGI/G</div></div>
-                                <div class="shortlist-stat"><div class="shortlist-stat-value">${p.l5?.goals || 0}</div><div class="shortlist-stat-label">Goals</div></div>
-                                <div class="shortlist-stat"><div class="shortlist-stat-value">${p.l5?.assists || 0}</div><div class="shortlist-stat-label">Assists</div></div>
-                                <div class="shortlist-stat"><div class="shortlist-stat-value">${(p.form || 0).toFixed(1)}</div><div class="shortlist-stat-label">Form</div></div>
-                            </div>
-                            <div class="shortlist-card-footer">
-                                <span>${fixturesHtml || '-'}</span>
-                                <span class="shortlist-remove" onclick="toggleShortlist(${p.id}, event)">✕ Remove</span>
-                            </div>
-                        </div>`;
-                });
-                html += `</div></div>`;
-            });
-
-            section.innerHTML = html;
         }
 
         // Global filter state
-        let globalFilters = { // kept for isPlayerEligible defaults (both always false now)
-            availability: false, // Hide injured/suspended (<75% chance)
+        let globalFilters = {
+            availability: true,  // Improvement #4: Default ON — hide injured/suspended (<75% chance)
             starters: false      // Hide players <45 min/game (L5)
         };
 
@@ -2783,9 +2747,6 @@
                 
                 document.querySelectorAll('.position-section').forEach(s => s.classList.remove('active'));
                 document.getElementById(`section-${pos}`)?.classList.add('active');
-
-                // Render shortlist tab content when switching to it
-                if (pos === 'SHORTLIST') renderShortlistTab();
 
                 // Update tab description
                 const desc = tab.dataset.desc;
@@ -2927,14 +2888,11 @@
                 document.getElementById('section-CHARTS').innerHTML = generateCharts(analyses);
                 document.getElementById('section-RISING').innerHTML = generateRisingForm(analyses);
                 document.getElementById('section-ROUTES').innerHTML = generateRoutesToPoints(analyses);
-                document.getElementById('section-GK').innerHTML = createTable('GK', analyses);
-                document.getElementById('section-DEF').innerHTML = createTable('DEF', analyses);
-                document.getElementById('section-MID').innerHTML = createTable('MID', analyses);
-                document.getElementById('section-FWD').innerHTML = createTable('FWD', analyses);
+                document.getElementById('section-ALL').innerHTML = createTable('ALL', analyses);
 
-                // Initialize shortlist badge count and render shortlist (default tab)
+                // Clean stale shortlist IDs and update badge
+                cleanStaleShortlist();
                 updateShortlistBadge();
-                renderShortlistTab();
 
                 showLoading(false);
             } catch (error) {
@@ -3655,9 +3613,22 @@
             ).join('');
 
             return `
+                <div class="rec-controls" style="display:flex;align-items:center;gap:16px;padding:8px 0 4px;margin-bottom:4px;">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
+                        <input type="checkbox" id="recIncludeDoubtful" onchange="toggleRecAvailability()" style="cursor:pointer;">
+                        Include doubtful players
+                    </label>
+                </div>
                 <div class="sub-tabs" id="recSubTabs">${tabs}</div>
                 ${panels}
             `;
+        }
+
+        function toggleRecAvailability() {
+            const checkbox = document.getElementById('recIncludeDoubtful');
+            globalFilters.availability = !(checkbox?.checked);
+            // Re-generate recommendations
+            document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(allAnalyses);
         }
 
         /** Compute budget cap per position as median price (rounded to 0.5) */
@@ -3703,9 +3674,13 @@
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 5);
 
-            // Differentials: low ownership (<10%) but high Power Score
+            // Improvement #8: Differentials get an ownership bonus (lower ownership = more differential value)
             const differentials = scoredPlayers
                 .filter(p => (p.selectedBy || 0) < 10 && (p.l5.minutes / p.l5.games) >= 60)
+                .map(p => ({
+                    ...p,
+                    score: p.score + (10 - (p.selectedBy || 0)) * 0.3 // +0.3 to +3 bonus for true differentials
+                }))
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 5);
 
@@ -3741,7 +3716,8 @@
         function calculatePositionScore(p, pos) {
             const games = p.l5?.games || 1;
             const minsPerGame = (p.l5?.minutes || 0) / games;
-            const nailedBonus = minsPerGame >= 80 ? 5 : minsPerGame >= 70 ? 2 : 0;
+            // Improvement #3: Continuous nailed bonus — gradual credit from 60 min (0) to 80 min (5)
+            const nailedBonus = Math.min(5, Math.max(0, (minsPerGame - 60) / 4));
 
             // ── Recency-weighted per-game stats (most recent games count more) ──
             const rwPtsPerGame = p.history ? recencyWeightedAvg(p.history, 'total_points') : (p.l5?.points || 0) / games;
@@ -3752,49 +3728,60 @@
 
             const value = rwPtsPerGame / Math.max(p.price, 3.5);
 
-            // ── Next-match specific fixture factor (GW1 opponent, not 3-GW avg) ──
-            const nextFixture = p.fixtures?.next3?.[0] || null;
-            const nextOpponent = nextFixture?.opponent || null;
-            const nextIsHome = nextFixture?.isHome ?? null;
-            const nextFdr = nextFixture?.difficulty || p.fixtures?.avgFDR3 || 3;
+            // Improvement #5: Scale value weight by season phase
+            const valueWeight = currentPhase === 'late' ? 6 : (pos === 'GK' || pos === 'DEF') ? 10 : 12;
 
-            // ── Home/Away adjustment ──
-            // Use the player's home or away split stats to adjust predictions for the next match venue
+            // ── Improvement #1: Multi-GW fixture factor (weighted avg of next 3 fixtures) ──
+            const next3 = p.fixtures?.next3 || [];
+            const fixtureWeights = [3, 2, 1]; // GW+1 matters most
+            let fixtureFactor = 0;
             let venueMultiplier = 1.0;
-            if (nextIsHome !== null && p.l5) {
-                const split = nextIsHome ? p.l5.homeSplit : p.l5.awaySplit;
-                if (split && split.games >= 1) {
-                    const splitPtsPerGame = split.points / split.games;
-                    const overallPtsPerGame = (p.l5.points || 0) / games;
-                    if (overallPtsPerGame > 0) {
-                        // Blend: 70% overall + 30% venue-specific (avoid over-fitting on 1-2 games)
-                        venueMultiplier = 0.7 + 0.3 * (splitPtsPerGame / overallPtsPerGame);
-                        venueMultiplier = Math.max(0.8, Math.min(1.25, venueMultiplier));
+            
+            if (next3.length > 0) {
+                let totalWeight = 0;
+                let weightedFixture = 0;
+                next3.slice(0, 3).forEach((fixture, idx) => {
+                    const w = fixtureWeights[idx] || 1;
+                    const opp = fixture.opponent;
+                    const isHome = fixture.isHome;
+                    let ff = 0;
+                    if (opp && teamAnalysis[opp]) {
+                        const oppAttack = teamAnalysis[opp].attackPower || 50;
+                        const oppDefense = teamAnalysis[opp].defensePower || 50;
+                        const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
+                        ff = ((50 - relevantOpp) / 50) * 10;
+                        if (isHome) ff += 1.5;
+                    } else {
+                        const fdr = fixture.difficulty || 3;
+                        ff = Math.max(-10, (3.5 - fdr) * 8);
                     }
-                } else {
-                    // No venue data — small default: home boost / away penalty
-                    venueMultiplier = nextIsHome ? 1.05 : 0.95;
+                    weightedFixture += ff * w;
+                    totalWeight += w;
+                });
+                fixtureFactor = totalWeight > 0 ? weightedFixture / totalWeight : 0;
+                
+                // Home/Away adjustment based on next match venue
+                const nextIsHome = next3[0]?.isHome ?? null;
+                if (nextIsHome !== null && p.l5) {
+                    const split = nextIsHome ? p.l5.homeSplit : p.l5.awaySplit;
+                    if (split && split.games >= 1) {
+                        const splitPtsPerGame = split.points / split.games;
+                        const overallPtsPerGame = (p.l5.points || 0) / games;
+                        if (overallPtsPerGame > 0) {
+                            venueMultiplier = 0.7 + 0.3 * (splitPtsPerGame / overallPtsPerGame);
+                            venueMultiplier = Math.max(0.8, Math.min(1.25, venueMultiplier));
+                        }
+                    } else {
+                        venueMultiplier = nextIsHome ? 1.05 : 0.95;
+                    }
                 }
+            } else {
+                const ts_temp = p.teamScores;
+                fixtureFactor = ts_temp ? ((ts_temp.fixtureScore - 50) / 50) * 8 : 0;
             }
 
             // ── Team-level factors (from computeTeamScores) ──
             const ts = p.teamScores;
-
-            // Next-match fixture factor: use the specific opponent FDR, range -10 → +10
-            let fixtureFactor;
-            if (nextOpponent && teamAnalysis[nextOpponent]) {
-                // Opponent quality: strong opponent = harder fixture
-                const oppAttack = teamAnalysis[nextOpponent].attackPower || 50;
-                const oppDefense = teamAnalysis[nextOpponent].defensePower || 50;
-                // For attackers, opponent defense matters; for defenders, opponent attack matters
-                const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
-                // Convert 0-100 opponent quality to -10..+10 (weak opponent = positive)
-                fixtureFactor = ((50 - relevantOpp) / 50) * 10;
-                // Home advantage bump
-                if (nextIsHome) fixtureFactor += 1.5;
-            } else {
-                fixtureFactor = ts ? ((ts.fixtureScore - 50) / 50) * 8 : Math.max(-10, (3.5 - nextFdr) * 8);
-            }
 
             // Team form (momentum): range -3 → +3
             const teamFormFactor = ts ? ((ts.formRating - 50) / 50) * 3 : 0;
@@ -3805,29 +3792,60 @@
                     : ((ts.attackPower - 50) / 50) * 4)
                 : 0;
 
-            // ── CS Probability factor (GK/DEF only) — use NEXT match opponent specifically ──
+            // ── CS Probability factor (GK/DEF only) — blended across next 3 fixtures ──
             let csProbFactor = 0;
-            if ((pos === 'GK' || pos === 'DEF') && nextOpponent) {
-                const csProb = getCleanSheetProb(p.teamId, nextOpponent, nextIsHome ?? true);
-                csProbFactor = (csProb - 0.28) * 35; // 28% league avg, range roughly -8 to +13
-            } else if ((pos === 'GK' || pos === 'DEF') && p.fixtures?.next3?.length > 0) {
-                const probs = p.fixtures.next3.map(f => getCleanSheetProb(p.teamId, f.opponent, f.isHome));
-                const avgProb = probs.reduce((s, v) => s + v, 0) / probs.length;
-                csProbFactor = (avgProb - 0.28) * 30;
+            if ((pos === 'GK' || pos === 'DEF') && next3.length > 0) {
+                let csTotal = 0, csWeightTotal = 0;
+                next3.slice(0, 3).forEach((f, idx) => {
+                    const w = fixtureWeights[idx] || 1;
+                    if (f.opponent) {
+                        const prob = getCleanSheetProb(p.teamId, f.opponent, f.isHome);
+                        csTotal += prob * w;
+                        csWeightTotal += w;
+                    }
+                });
+                if (csWeightTotal > 0) {
+                    const avgProb = csTotal / csWeightTotal;
+                    csProbFactor = (avgProb - 0.28) * 35; // 28% league avg
+                }
             }
 
-            // ── Penalty / set-piece taker bonus (all positions except GK) ──
+            // ── Improvement #2: Improved penalty taker detection ──
             let penTakerBonus = 0;
             if (pos !== 'GK') {
                 const seasonGames = p.season?.games || 1;
-                const seasonPenGoals = Math.max(0, (p.season?.goals || 0) - (p.season?.xG || 0));
+                const totalGoals = p.season?.goals || 0;
+                const seasonPenGoals = Math.max(0, totalGoals - (p.season?.xG || 0));
                 const penMissed = (p.season?.penaltiesMissed || 0);
                 const penAttempts = Math.round(seasonPenGoals + penMissed);
-                if (penAttempts >= 2 || (seasonGames >= 10 && penAttempts >= 1)) {
-                    // Penalty taker: ~0.76 conversion, worth goal pts for the position
-                    const goalPts = { DEF: 6, MID: 5, FWD: 4 }[pos] || 4;
+                // Stricter filter: require penAttempts >= 2 AND pen goals > 25% of total goals
+                const penRatio = totalGoals > 0 ? seasonPenGoals / totalGoals : 1;
+                if (penAttempts >= 2 && penRatio > 0.25) {
                     penTakerBonus = Math.min(6, penAttempts * 1.5);
+                } else if (seasonGames >= 10 && penAttempts >= 1 && penRatio > 0.25) {
+                    penTakerBonus = Math.min(4, penAttempts * 1.5);
                 }
+            }
+
+            // ── Improvement #6: Rotation risk penalty ──
+            let rotationPenalty = 0;
+            if (p.teamId && teamFixtures[p.teamId]) {
+                // Check if team has a midweek match in the next 2 gameweeks
+                const upcomingFixtures = teamFixtures[p.teamId].slice(0, 4);
+                const hasCongestion = upcomingFixtures.length >= 3; // 3+ fixtures in short window
+                if (hasCongestion && minsPerGame < 85) {
+                    rotationPenalty = -2; // rotation risk for non-nailed players
+                }
+            }
+
+            // ── Improvement #5: xPts integration ──
+            const POSITIONS_xPts = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            let xPtsFactor = 0;
+            if (typeof calculateExpectedPoints === 'function') {
+                try {
+                    const xPts = calculateExpectedPoints(p, pos);
+                    xPtsFactor = (xPts || 0) * 3;
+                } catch(e) { /* silent fallback */ }
             }
 
             if (pos === 'GK') {
@@ -3840,11 +3858,13 @@
                        (savesPerGame * 2) +
                        defScore +
                        (rwPtsPerGame * 3) +
-                       (value * 10) +
+                       (value * valueWeight) +
                        fixtureFactor +
                        teamQualityFactor +
                        teamFormFactor +
                        csProbFactor +
+                       xPtsFactor +
+                       rotationPenalty +
                        nailedBonus) * venueMultiplier;
             }
 
@@ -3857,11 +3877,13 @@
                        defScore +
                        (rwXGI * 12) +
                        (rwPtsPerGame * 3) +
-                       (value * 10) +
+                       (value * valueWeight) +
                        fixtureFactor +
                        teamQualityFactor +
                        teamFormFactor +
                        csProbFactor +
+                       xPtsFactor +
+                       rotationPenalty +
                        penTakerBonus +
                        nailedBonus) * venueMultiplier;
             }
@@ -3869,26 +3891,26 @@
             if (pos === 'MID') {
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
                 const actualGI = ((p.l5?.goals || 0) + (p.l5?.assists || 0)) / games;
-                // Regression penalty: over-performers likely to regress, under-performers may improve
                 const overPerf = actualGI - rwXGI;
-                const regressionAdj = overPerf > 0 ? overPerf * -3 : overPerf * -2; // penalise over, reward under
+                const regressionAdj = overPerf > 0 ? overPerf * -3 : overPerf * -2;
                 
                 return ((rwXGI * 40) +
                        regressionAdj +
                        (csPerGame * 3) +
                        (rwPtsPerGame * 3) +
                        (rwBonus * 2) +
-                       (value * 12) +
+                       (value * valueWeight) +
                        fixtureFactor +
                        teamQualityFactor +
                        teamFormFactor +
+                       xPtsFactor +
+                       rotationPenalty +
                        penTakerBonus +
                        nailedBonus) * venueMultiplier;
             }
 
             if (pos === 'FWD') {
                 const actualGoals = (p.l5?.goals || 0) / games;
-                // Regression: over-scorers tend to regress, under-scorers may bounce back
                 const overPerf = actualGoals - rwXG;
                 const regressionAdj = overPerf > 0 ? overPerf * -4 : overPerf * -2;
                 
@@ -3897,10 +3919,12 @@
                        regressionAdj +
                        (rwPtsPerGame * 3) +
                        (rwBonus * 2) +
-                       (value * 12) +
+                       (value * valueWeight) +
                        fixtureFactor +
                        teamQualityFactor +
                        teamFormFactor +
+                       xPtsFactor +
+                       rotationPenalty +
                        penTakerBonus +
                        nailedBonus) * venueMultiplier;
             }
@@ -4452,7 +4476,8 @@
             GK: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
             DEF: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
             MID: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
-            FWD: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 }
+            FWD: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
+            ALL: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1, positionFilter: 'ALL' }
         };
         const ROWS_PER_PAGE = 25;
         
@@ -4464,6 +4489,7 @@
         const COLUMN_DEFS = {
             // Core
             player: { label: 'Player', key: 'name', sortable: true, always: true, tip: 'Player name' },
+            pos: { label: 'Pos', key: 'posName', sortable: true, tip: 'Position' },
             team: { label: 'Team', key: 'team', sortable: true, tip: 'Team' },
             price: { label: 'Price', key: 'price', sortable: true, format: v => `£${v.toFixed(1)}m`, tip: 'Current price' },
             own: { label: 'Own%', key: 'selectedBy', sortable: true, format: v => v.toFixed(1) + '%', tip: 'Ownership percentage' },
@@ -4525,7 +4551,8 @@
             GK: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'saves', 'gc', 'xGC', 'bonus', 'fdr'],
             DEF: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'gc', 'xGI', 'goals', 'assists', 'bonus', 'fdr'],
             MID: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'xA', 'bonus', 'fdr'],
-            FWD: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'bcm', 'bonus', 'fdr']
+            FWD: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'bcm', 'bonus', 'fdr'],
+            ALL: ['player', 'pos', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'bonus', 'form', 'fdr']
         };
 
         // Available columns per position - FULL LIST
@@ -4533,13 +4560,15 @@
             GK: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'saves', 'gc', 'xGC', 'penSaved', 'bonus', 'bps', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
             DEF: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'gc', 'xGC', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'bcc', 'kp', 'bonus', 'bps', 'ict', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
             MID: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'cs', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-            FWD: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
+            FWD: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+            ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
         };
 
         function createTable(position, analyses) {
             const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
-            const posNames = { GK: 'Goalkeepers', DEF: 'Defenders', MID: 'Midfielders', FWD: 'Forwards' };
-            const posIcons = { GK: '🧤', DEF: '🛡️', MID: '⚡', FWD: '🎯' };
+            const posNames = { GK: 'Goalkeepers', DEF: 'Defenders', MID: 'Midfielders', FWD: 'Forwards', ALL: 'All Players' };
+            const posIcons = { GK: '🧤', DEF: '🛡️', MID: '⚡', FWD: '🎯', ALL: '📋' };
+            const POSITIONS_MAP = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             
             // Initialize state
             if (!tableState[position].visibleCols.length) {
@@ -4548,12 +4577,16 @@
 
             // Process players with computed fields
             const players = analyses
-                .filter(a => a.position === posMap[position] && a.l5?.games >= 1)
+                .filter(a => {
+                    if (position === 'ALL') return a.l5?.games >= 1;
+                    return a.position === posMap[position] && a.l5?.games >= 1;
+                })
                 .map(p => {
                     const l5Games = p.l5?.games || 1;
                     const seasonGames = p.season?.games || 1;
                     return {
                         ...p,
+                        posName: POSITIONS_MAP[p.position] || '?',
                         ptsPerGame: (p.l5?.points || 0) / l5Games,
                         xgiPerGame: (p.l5?.xGI || 0) / l5Games,
                         xgPerGame: (p.l5?.xG || 0) / l5Games,
@@ -4568,6 +4601,23 @@
                 });
 
             tableData[position] = players;
+
+            // Position filter pills (only for ALL tab)
+            const positionFilterHtml = position === 'ALL' ? `
+                <div class="position-filter-bar">
+                    <div class="position-filter-pills">
+                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'ALL' ? 'active' : ''}" onclick="setPositionFilter('ALL')">All</button>
+                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'GK' ? 'active' : ''}" onclick="setPositionFilter('GK')">🧤 GK</button>
+                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'DEF' ? 'active' : ''}" onclick="setPositionFilter('DEF')">🛡️ DEF</button>
+                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'MID' ? 'active' : ''}" onclick="setPositionFilter('MID')">⚡ MID</button>
+                        <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'FWD' ? 'active' : ''}" onclick="setPositionFilter('FWD')">🎯 FWD</button>
+                    </div>
+                    <button class="filter-pill ${tableState.ALL.filters.shortlist ? 'active' : ''}" id="shortlistPill-ALL"
+                        onclick="quickFilter('ALL', 'shortlist', true)">
+                        <span class="dot"></span> ⭐ Shortlisted${shortlistedPlayerIds.size > 0 ? ' (' + shortlistedPlayerIds.size + ')' : ''}
+                    </button>
+                </div>
+            ` : '';
 
             return `
                 <div class="table-section" id="tableSection-${position}">
@@ -4614,6 +4664,7 @@
                                 </div>
                             </div>
                         </div>
+                        ${positionFilterHtml}
                         <div class="table-controls">
                             <div class="search-box">
                                 <span class="search-icon">🔍</span>
@@ -4725,6 +4776,18 @@
                 players = players.filter(p => p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q));
             }
             
+            // Apply position filter (ALL tab only)
+            if (position === 'ALL' && state.positionFilter && state.positionFilter !== 'ALL') {
+                const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
+                const filterPosId = posMap[state.positionFilter];
+                players = players.filter(p => p.position === filterPosId);
+            }
+
+            // Apply shortlist filter
+            if (state.filters.shortlist) {
+                players = players.filter(p => shortlistedPlayerIds.has(p.id));
+            }
+
             // Apply filters
             if (state.filters.form === 'hot') players = players.filter(p => p.form >= 5);
             if (state.filters.fixtures === 'easy') players = players.filter(p => p.fdr <= 2.5);
@@ -4746,6 +4809,10 @@
                 players.sort((a, b) => {
                     const aVal = getNestedValue(a, sortCol.key);
                     const bVal = getNestedValue(b, sortCol.key);
+                    // Handle string sorting (e.g. player name, position, team)
+                    if (typeof aVal === 'string' && typeof bVal === 'string') {
+                        return state.sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                    }
                     return state.sortDir === 'asc' ? aVal - bVal : bVal - aVal;
                 });
             }
@@ -4802,6 +4869,12 @@
             if (colKey === 'team') {
                 return `<td>${p.team}</td>`;
             }
+
+            if (colKey === 'pos') {
+                const posColors = { GK: '#f39c12', DEF: '#27ae60', MID: '#3498db', FWD: '#e74c3c' };
+                const posName = p.posName || '?';
+                return `<td><span class="pos-badge" style="background:${posColors[posName] || '#888'};color:#fff;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;">${posName}</span></td>`;
+            }
             
             if (col.type === 'fdr') {
                 const fdrClass = value <= 2 ? 'fdr-1' : value <= 2.5 ? 'fdr-2' : value <= 3.5 ? 'fdr-3' : value <= 4 ? 'fdr-4' : 'fdr-5';
@@ -4855,7 +4928,8 @@
 
         function getNestedValue(obj, path) {
             const val = path.split('.').reduce((o, k) => o?.[k], obj);
-            return val ?? 0;
+            if (val === null || val === undefined) return 0;
+            return val;
         }
 
         // Table interactions
@@ -4886,6 +4960,30 @@
             state.page = 1;
             refreshTable(position);
             updateFilterButtons(position);
+        }
+
+        function setPositionFilter(posFilter) {
+            const state = tableState.ALL;
+            state.positionFilter = posFilter;
+            state.page = 1;
+            
+            // Update default columns when filtering to a specific position
+            if (posFilter !== 'ALL' && DEFAULT_COLS[posFilter]) {
+                // Add 'pos' column to position-specific defaults
+                state.visibleCols = ['player', 'pos', ...DEFAULT_COLS[posFilter].filter(c => c !== 'player')];
+            } else {
+                state.visibleCols = [...DEFAULT_COLS.ALL];
+            }
+            
+            // Re-render entire table (to update column dropdown checkboxes too)
+            const section = document.getElementById('section-ALL');
+            if (section) {
+                section.innerHTML = createTable('ALL', allAnalyses);
+            }
+            
+            // Update position filter pill active states
+            document.querySelectorAll('.pos-filter-pill').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.pos-filter-pill[onclick="setPositionFilter('${posFilter}')"]`)?.classList.add('active');
         }
 
         function setFilter(position, type, value) {
@@ -5002,8 +5100,16 @@
                 if (text.includes('Easy Fixtures')) isActive = state.filters.fixtures === 'easy';
                 if (text.includes('High Value')) isActive = state.filters.value === 'high';
                 if (text.includes('Nailed On')) isActive = state.filters.nailed === true;
+                if (text.includes('Shortlisted')) isActive = !!state.filters.shortlist;
                 btn.classList.toggle('active', isActive);
             });
+            // Update position filter pills
+            if (position === 'ALL') {
+                document.querySelectorAll('.pos-filter-pill').forEach(btn => {
+                    const filter = btn.getAttribute('onclick')?.match(/setPositionFilter\('(\w+)'\)/)?.[1];
+                    btn.classList.toggle('active', filter === state.positionFilter);
+                });
+            }
         }
 
         // ============================================
@@ -5022,42 +5128,23 @@
             }
             
             updateCompareBar();
-            // Only refresh the active table to update checkboxes
-            const activePos = currentPosition;
-            if (['GK', 'DEF', 'MID', 'FWD'].includes(activePos)) {
-                const body = document.getElementById(`tableBody-${activePos}`);
-                if (body) body.innerHTML = renderTableBody(activePos);
-            } else {
-                // If on a non-table tab, refresh all (will be lazy when user switches)
-                ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
-                    const body = document.getElementById(`tableBody-${pos}`);
-                    if (body) body.innerHTML = renderTableBody(pos);
-                });
-            }
+            // Refresh the ALL table
+            const body = document.getElementById('tableBody-ALL');
+            if (body) body.innerHTML = renderTableBody('ALL');
         }
         
         function removeFromCompare(playerId) {
             compareList = compareList.filter(p => p.id !== playerId);
             updateCompareBar();
-            const activePos = currentPosition;
-            if (['GK', 'DEF', 'MID', 'FWD'].includes(activePos)) {
-                const body = document.getElementById(`tableBody-${activePos}`);
-                if (body) body.innerHTML = renderTableBody(activePos);
-            } else {
-                ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
-                    const body = document.getElementById(`tableBody-${pos}`);
-                    if (body) body.innerHTML = renderTableBody(pos);
-                });
-            }
+            const body = document.getElementById('tableBody-ALL');
+            if (body) body.innerHTML = renderTableBody('ALL');
         }
         
         function clearCompare() {
             compareList = [];
             updateCompareBar();
-            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
-                const body = document.getElementById(`tableBody-${pos}`);
-                if (body) body.innerHTML = renderTableBody(pos);
-            });
+            const body = document.getElementById('tableBody-ALL');
+            if (body) body.innerHTML = renderTableBody('ALL');
         }
         
         function updateCompareBar() {
