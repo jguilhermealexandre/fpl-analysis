@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lineup Wizard - FPL Tools</title>
+    <title>FPL Wizard - FPL Tools</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -57,6 +57,8 @@
         .nav-link:hover { color: var(--text-primary); background: var(--surface-1); }
         .nav-link.active { color: var(--color-purple); background: rgba(167, 139, 250, 0.1); }
         .nav-link .icon { font-size: 14px; }
+        .nav-link--accent { background: rgba(167, 139, 250, 0.08); border: 1px solid rgba(167, 139, 250, 0.25); }
+        .nav-link--accent:not(.active) { color: var(--color-purple); }
         @media (max-width: 768px) { .nav-links { display: none; } }
 
         .main-content { max-width: 1400px; margin: 0 auto; padding: 16px 24px 100px; }
@@ -72,7 +74,7 @@
         .btn-secondary:hover { background: var(--surface-3); }
         .btn:disabled { opacity: 0.5; cursor: wait; }
 
-        .manager-info { display: flex; align-items: center; gap: 16px; padding: 8px 16px; background: var(--surface-1); border-radius: var(--radius-md); font-size: 13px; margin-bottom: 16px; }
+        .manager-info { display: flex; align-items: center; gap: 16px; padding: 8px 16px; background: var(--surface-1); border-radius: var(--radius-md); font-size: 13px; margin-bottom: 16px; flex-wrap: wrap; }
         .manager-info.hidden { display: none; }
         .manager-name { font-weight: 600; color: var(--color-success); }
         .manager-stat { color: var(--text-secondary); }
@@ -83,20 +85,24 @@
         .status.success { color: var(--color-success); }
         .status.error { color: var(--color-error); }
 
-        /* WIZARD STEPS */
-        .wizard-steps { display: flex; gap: 4px; margin-bottom: 20px; padding: 12px; background: var(--surface-1); border-radius: var(--radius-lg); border: 1px solid var(--border-default); }
-        .wizard-step { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; }
-        .wizard-step:hover { background: var(--surface-2); }
+        /* WIZARD STEPS - enhanced */
+        .wizard-steps { display: none; gap: 2px; margin-bottom: 20px; padding: 8px; background: var(--surface-1); border-radius: var(--radius-lg); border: 1px solid var(--border-default); flex-wrap: wrap; }
+        .wizard-steps.visible { display: flex; }
+        .wizard-step { flex: 1; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; min-width: 0; }
+        .wizard-step:hover:not(.disabled) { background: var(--surface-2); }
         .wizard-step.active { background: rgba(167, 139, 250, 0.12); }
         .wizard-step.completed { background: rgba(74, 222, 128, 0.08); }
         .wizard-step.disabled { opacity: 0.4; pointer-events: none; }
-        .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; transition: all 0.15s; }
+        .step-num { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; transition: all 0.15s; }
         .wizard-step.active .step-num { background: var(--color-purple); color: white; }
         .wizard-step.completed .step-num { background: var(--color-success); color: var(--surface-bg); }
-        .step-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+        .step-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .wizard-step.active .step-label { color: var(--color-purple); font-weight: 600; }
         .wizard-step.completed .step-label { color: var(--color-success); }
-        @media (max-width: 768px) { .wizard-steps { flex-wrap: wrap; } .step-label { font-size: 11px; } }
+        .wizard-phase-sep { display: flex; align-items: center; padding: 0 8px; flex-shrink: 0; }
+        .wizard-phase-sep .sep-line { width: 2px; height: 30px; background: var(--border-emphasis); border-radius: 1px; }
+        @media (max-width: 768px) { .wizard-steps { gap: 1px; padding: 4px; } .wizard-step { padding: 6px 4px; gap: 4px; } .step-label { font-size: 10px; } .step-num { width: 22px; height: 22px; font-size: 10px; } }
+        @media (max-width: 500px) { .step-label { display: none; } }
 
         .step-panel { display: none; animation: fadeIn 0.3s ease; }
         .step-panel.active { display: block; }
@@ -270,14 +276,128 @@
         }
         .mobile-nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 8px; color: var(--text-muted); text-decoration: none; font-size: 10px; }
         .mobile-nav-item.active { color: var(--color-purple); }
+        .mobile-nav-item--accent { color: var(--color-purple) !important; }
         .mobile-nav-item .icon { font-size: 20px; }
+
+        /* ===== WIZARD LANDING ===== */
+        .wizard-landing { max-width: 900px; margin: 40px auto; }
+        .wizard-landing-title { font-family: var(--font-display); font-size: 28px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+        .wizard-landing-subtitle { text-align: center; color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+        .wizard-mode-cards { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        .wizard-mode-card { padding: 24px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 20px; }
+        .wizard-mode-card:hover { border-color: var(--color-purple); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .wizard-mode-card.featured { border-color: rgba(167, 139, 250, 0.3); background: rgba(167, 139, 250, 0.04); }
+        .wizard-mode-icon { width: 56px; height: 56px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+        .wizard-mode-icon.full { background: rgba(167, 139, 250, 0.15); }
+        .wizard-mode-icon.transfer { background: rgba(96, 165, 250, 0.15); }
+        .wizard-mode-icon.lineup { background: rgba(74, 222, 128, 0.15); }
+        .wizard-mode-info { flex: 1; }
+        .wizard-mode-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .wizard-mode-tag.full { color: var(--color-purple); }
+        .wizard-mode-tag.transfer { color: var(--color-info); }
+        .wizard-mode-tag.lineup { color: var(--color-success); }
+        .wizard-mode-name { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .wizard-mode-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+        .wizard-mode-arrow { font-size: 20px; color: var(--text-muted); flex-shrink: 0; }
+        @media (max-width: 600px) { .wizard-landing { margin: 16px auto; } .wizard-landing-title { font-size: 22px; } .wizard-mode-card { padding: 16px; gap: 14px; } .wizard-mode-icon { width: 44px; height: 44px; font-size: 22px; } .wizard-mode-name { font-size: 15px; } }
+
+        /* ===== TRANSFER WIZARD STYLES ===== */
+        .tw-player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
+        .tw-squad-section { margin-bottom: 20px; }
+        .tw-squad-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 10px; padding-left: 4px; }
+        .tw-player-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; }
+        .tw-player-card:hover { border-color: var(--border-emphasis); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .tw-player-card.selected { border-color: var(--color-info); background: rgba(96,165,250,0.08); box-shadow: 0 0 0 1px var(--color-info); }
+        .tw-player-card.injured { border-left: 3px solid var(--color-error); }
+        .tw-player-card.doubtful { border-left: 3px solid var(--color-warning); }
+        .tw-player-card.bad-fixtures { border-left: 3px solid var(--color-warning); }
+        .tw-player-card.healthy { opacity: 0.65; }
+        .tw-player-card.healthy:hover { opacity: 1; }
+        .tw-player-card .tw-check { width: 20px; height: 20px; border: 2px solid var(--border-emphasis); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; font-size: 12px; }
+        .tw-player-card.selected .tw-check { background: var(--color-info); border-color: var(--color-info); color: #fff; }
+        .tw-player-info { flex: 1; min-width: 0; }
+        .tw-player-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tw-player-meta { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .tw-player-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+        .tw-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
+        .tw-badge.injury-long { background: rgba(248,113,113,0.2); color: var(--color-error); }
+        .tw-badge.injury-short { background: rgba(251,191,36,0.2); color: var(--color-warning); }
+        .tw-badge.price-drop { background: rgba(248,113,113,0.15); color: var(--color-error); }
+        .tw-badge.premium { background: rgba(167,139,250,0.15); color: var(--color-purple); }
+        .tw-badge.bench-cover { background: rgba(74,222,128,0.15); color: var(--color-success); }
+        .tw-badge.no-cover { background: rgba(248,113,113,0.15); color: var(--color-error); }
+        .tw-badge.set-piece { background: rgba(252,211,77,0.15); color: var(--color-captain); }
+        .tw-badge.nailed { background: rgba(74,222,128,0.15); color: var(--color-success); }
+        .tw-badge.rotation { background: rgba(251,191,36,0.15); color: var(--color-warning); }
+        .tw-badge.captain-pick { background: rgba(252,211,77,0.2); color: var(--color-captain); }
+        .tw-player-stats { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+        .tw-stat { text-align: center; }
+        .tw-stat-val { font-size: 13px; font-weight: 700; font-family: var(--font-mono); }
+        .tw-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+        .tw-sell-list { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 16px; flex-wrap: wrap; }
+        .tw-sell-list-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
+        .tw-sell-list-count { font-size: 16px; font-weight: 700; font-family: var(--font-mono); color: var(--color-info); }
+        .tw-sell-list-budget { font-size: 14px; font-weight: 700; font-family: var(--font-mono); color: var(--color-success); }
+        .tw-sell-list-sep { width: 1px; height: 28px; background: var(--border-default); }
+        .tw-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+        .tw-btn { padding: 10px 20px; border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .tw-btn-primary { background: var(--color-info); color: #fff; }
+        .tw-btn-primary:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+        .tw-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+        .tw-btn-secondary { background: var(--surface-2); color: var(--text-primary); }
+        .tw-btn-secondary:hover { background: var(--surface-3); }
+        .tw-btn-back { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-default); }
+        .tw-btn-back:hover { background: var(--surface-1); color: var(--text-primary); }
+        .tw-checklist { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+        .tw-checklist-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface-1); border-radius: var(--radius-md); font-size: 13px; }
+        .tw-checklist-item.done { border-left: 3px solid var(--color-success); }
+        .tw-checklist-item.warn { border-left: 3px solid var(--color-warning); }
+        .tw-slot { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px; }
+        .tw-slot-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); flex-wrap: wrap; }
+        .tw-slot-locked { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--color-success); }
+        .tw-slot-filters { display: flex; gap: 4px; padding: 8px 16px; flex-wrap: wrap; }
+        .tw-filter-pill { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); }
+        .tw-filter-pill:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
+        .tw-filter-pill.active { background: var(--color-info); border-color: var(--color-info); color: #fff; }
+        .tw-replacement { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; transition: all 0.15s; }
+        .tw-replacement:last-child { border-bottom: none; }
+        .tw-replacement:hover { background: rgba(255,255,255,0.03); }
+        .tw-replacement.locked { background: rgba(96,165,250,0.08); border-left: 3px solid var(--color-info); }
+        .tw-replacement-rank { width: 24px; height: 24px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; color: var(--text-secondary); }
+        .tw-replacement:nth-child(-n+3) .tw-replacement-rank { background: rgba(96,165,250,0.15); color: var(--color-info); }
+        .tw-lock-btn { padding: 5px 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); flex-shrink: 0; }
+        .tw-lock-btn:hover { border-color: var(--color-info); color: var(--color-info); }
+        .tw-lock-btn.locked { background: var(--color-info); border-color: var(--color-info); color: #fff; }
+        .tw-strategy-toggle { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 12px; cursor: pointer; }
+        .tw-strategy-toggle:hover { border-color: var(--border-emphasis); }
+        .tw-strategy-toggle.active { border-color: var(--color-purple); background: rgba(167,139,250,0.06); }
+        .tw-toggle-switch { width: 40px; height: 22px; border-radius: 11px; background: var(--surface-3); position: relative; transition: all 0.2s; flex-shrink: 0; }
+        .tw-toggle-switch::after { content: ''; width: 18px; height: 18px; border-radius: 50%; background: var(--text-secondary); position: absolute; top: 2px; left: 2px; transition: all 0.2s; }
+        .tw-strategy-toggle.active .tw-toggle-switch { background: var(--color-purple); }
+        .tw-strategy-toggle.active .tw-toggle-switch::after { left: 20px; background: white; }
+        .tw-transfer-advisor { padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; }
+        .tw-advisor-title { font-weight: 700; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .tw-advisor-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); margin-bottom: 6px; }
+        .tw-advisor-row .out-name { color: var(--color-error); font-weight: 600; font-size: 13px; flex: 1; }
+        .tw-advisor-row .in-name { color: var(--color-success); font-weight: 600; font-size: 13px; flex: 1; }
+        .tw-advisor-arrow { color: var(--text-muted); font-size: 16px; }
+        .tw-points-delta { font-family: var(--font-mono); font-weight: 700; font-size: 13px; padding: 3px 8px; border-radius: var(--radius-sm); }
+        .tw-points-delta.positive { background: rgba(74,222,128,0.12); color: var(--color-success); }
+        .tw-points-delta.negative { background: rgba(248,113,113,0.12); color: var(--color-error); }
+        .tw-summary-card { padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; }
+        .tw-summary-header { font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .tw-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+        .tw-summary-metric { padding: 10px; background: var(--surface-2); border-radius: var(--radius-md); text-align: center; }
+        .tw-summary-metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
+        .tw-summary-metric-val { font-size: 18px; font-weight: 700; font-family: var(--font-mono); margin-top: 2px; }
+        .fixture-strip { display: flex; gap: 4px; flex-wrap: wrap; }
     </style>
 </head>
 <body>
     <nav class="top-nav"><div class="nav-container">
         <a href="index.html" class="nav-logo">⚡ FPL<span>Tools</span></a>
         <div class="nav-links">
-            <a href="fpl-transfer-wizard.html" class="nav-link active"><span class="icon">🧙‍♂️</span> Wizard</a>
+            <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent active"><span class="icon">🔮</span> FPL Wizard</a>
             <a href="fpl-my-team-analysis.html" class="nav-link"><span class="icon">⚽</span> My Team</a>
             <a href="fpl-players-analysis.html" class="nav-link"><span class="icon">👤</span> Players</a>
             <a href="fpl-teams-analysis.html" class="nav-link"><span class="icon">📊</span> Teams</a>
@@ -287,7 +407,7 @@
 
     <main class="main-content">
         <div class="header-row">
-            <h1 class="page-title">🧙‍♂️ Lineup Wizard</h1>
+            <h1 class="page-title">🔮 FPL Wizard</h1>
             <div class="team-input-row">
                 <input type="text" id="teamIdInput" class="team-id-input" placeholder="Team ID">
                 <button class="btn btn-primary" id="loadTeamBtn" onclick="loadTeamById()">Load Team</button>
@@ -297,27 +417,25 @@
             <span class="manager-name" id="managerName">-</span>
             <span class="manager-stat">Rank: <strong id="overallRank">-</strong></span>
             <span class="manager-stat">Points: <strong id="totalPoints">-</strong></span>
+            <span class="manager-stat">Bank: <strong id="bankDisplay">-</strong></span>
             <span class="manager-stat">GW: <strong id="gwDisplay">-</strong></span>
         </div>
-        <div class="status" id="status">Enter your FPL Team ID to get optimal lineup recommendations</div>
-        <div class="wizard-steps" id="wizardSteps" style="display:none;">
-            <div class="wizard-step active" onclick="goToStep(1)"><div class="step-num">1</div><span class="step-label">📊 Analysis</span></div>
-            <div class="wizard-step disabled" onclick="goToStep(2)"><div class="step-num">2</div><span class="step-label">⚽ Starting XI</span></div>
-            <div class="wizard-step disabled" onclick="goToStep(3)"><div class="step-num">3</div><span class="step-label">©️ Captain</span></div>
-            <div class="wizard-step disabled" onclick="goToStep(4)"><div class="step-num">4</div><span class="step-label">✅ Summary</span></div>
-        </div>
-        <div class="step-panel active" id="panel-1"><div id="step1Content">
-            <div class="empty-state"><div class="empty-icon">🧙‍♂️</div><div class="empty-title">Load Your Team</div><div class="empty-text">Enter your FPL Team ID above to get AI-powered lineup recommendations</div></div>
-        </div></div>
-        <div class="step-panel" id="panel-2"><div id="step2Content"></div></div>
-        <div class="step-panel" id="panel-3"><div id="step3Content"></div></div>
-        <div class="step-panel" id="panel-4"><div id="step4Content"></div></div>
+        <div class="status" id="status">Enter your FPL Team ID to get started with the wizard</div>
+
+        <!-- Landing Screen -->
+        <div id="wizardLanding" class="wizard-landing" style="display:none;"></div>
+
+        <!-- Dynamic Wizard Step Indicator -->
+        <div class="wizard-steps" id="wizardSteps"></div>
+
+        <!-- Dynamic Step Panels -->
+        <div id="wizardPanels"></div>
     </main>
 
     <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div><div class="loading-text" id="loadingText">Analyzing your squad...</div></div>
 
     <nav class="mobile-nav">
-        <a href="fpl-transfer-wizard.html" class="mobile-nav-item active"><span class="icon">🧙‍♂️</span>Wizard</a>
+        <a href="fpl-transfer-wizard.html" class="mobile-nav-item mobile-nav-item--accent active"><span class="icon">🔮</span>Wizard</a>
         <a href="fpl-my-team-analysis.html" class="mobile-nav-item"><span class="icon">⚽</span>My Team</a>
         <a href="fpl-players-analysis.html" class="mobile-nav-item"><span class="icon">👤</span>Players</a>
         <a href="fpl-teams-analysis.html" class="mobile-nav-item"><span class="icon">📊</span>Teams</a>
@@ -347,6 +465,36 @@
     let currentGW = 1, mySquad = [], analyzedSquad = [], recommendedXI = [], recommendedBench = [];
     let recommendedFormation = '', captainId = null, viceCaptainId = null;
     let swapSelectedId = null;
+
+    // Unified wizard state
+    let bankValue = 0, wizardMode = null, currentStepIndex = 0;
+    let transferSellList = [], transferTargets = {}, transferCandidateCache = {};
+    let wildcardPlanned = false, freeHitPlanned = false;
+
+    const STEPS = {
+        transfer: [
+            { id: 'tw1', label: 'Urgent Fires', icon: '🚨', phase: 'transfer' },
+            { id: 'tw2', label: 'Fixtures & Form', icon: '📅', phase: 'transfer' },
+            { id: 'tw3', label: 'Target Test', icon: '🎯', phase: 'transfer' },
+            { id: 'tw4', label: 'Strategy', icon: '♟️', phase: 'transfer' }
+        ],
+        lineup: [
+            { id: 'lw1', label: 'Analysis', icon: '📊', phase: 'lineup' },
+            { id: 'lw2', label: 'Starting XI', icon: '⚽', phase: 'lineup' },
+            { id: 'lw3', label: 'Captain', icon: '©️', phase: 'lineup' },
+            { id: 'lw4', label: 'Summary', icon: '✅', phase: 'lineup' }
+        ],
+        full: [
+            { id: 'tw1', label: 'Urgent Fires', icon: '🚨', phase: 'transfer' },
+            { id: 'tw2', label: 'Fixtures & Form', icon: '📅', phase: 'transfer' },
+            { id: 'tw3', label: 'Targets', icon: '🎯', phase: 'transfer' },
+            { id: 'tw4', label: 'Strategy', icon: '♟️', phase: 'transfer' },
+            { id: 'lw1', label: 'Analysis', icon: '📊', phase: 'lineup' },
+            { id: 'lw2', label: 'Starting XI', icon: '⚽', phase: 'lineup' },
+            { id: 'lw3', label: 'Captain', icon: '©️', phase: 'lineup' },
+            { id: 'lw4', label: 'Summary', icon: '✅', phase: 'lineup' }
+        ]
+    };
 
     async function fetchWithProxy(url) {
         const apiPath = url.replace('https://fantasy.premierleague.com/', '');
@@ -861,34 +1009,578 @@
             const picksRes=await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`);
             const picksData=await picksRes.json();
             mySquad=picksData.picks.map(pick=>{const p=allPlayersById[pick.element];if(!p)return null;return{...p,isCaptain:pick.is_captain,isViceCaptain:pick.is_vice_captain,onBench:pick.position>11,pickPosition:pick.position};}).filter(Boolean);
+            // Extract bank value
+            const transfersRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/transfers-latest/`).catch(()=>null);
+            bankValue = (picksData.entry_history?.bank || 0) / 10;
             document.getElementById('managerInfo').classList.remove('hidden');
             document.getElementById('managerName').textContent=`${managerData.player_first_name} ${managerData.player_last_name}`;
             document.getElementById('overallRank').textContent=managerData.summary_overall_rank?.toLocaleString()||'-';
             document.getElementById('totalPoints').textContent=managerData.summary_overall_points?.toLocaleString()||'-';
+            document.getElementById('bankDisplay').textContent=`£${bankValue.toFixed(1)}m`;
             document.getElementById('gwDisplay').textContent=`GW${currentGW}`;
             localStorage.setItem('fpl_team_id',teamId);
+            // Pre-compute analysis for lineup wizard steps
             showLoading(true,'Running lineup optimization...');
-            runFullAnalysis();
-            updateStatus(`Lineup analysis complete for GW${currentGW}`,'success');
+            analyzedSquad=mySquad.map(p=>({...p,lineupData:computeLineupScore(p)}));
+            const solution=solveOptimalLineup(analyzedSquad);
+            recommendedXI=solution.xi; recommendedBench=solution.bench; recommendedFormation=solution.formation;
+            analyzedSquad.forEach(p=>{p.captainData=computeCaptainScore(p);});
+            const xiCap=recommendedXI.filter(p=>p.pos!==1).sort((a,b)=>b.captainData.score-a.captainData.score);
+            captainId=xiCap[0]?.id||recommendedXI[0]?.id;
+            viceCaptainId=xiCap[1]?.id||recommendedXI[1]?.id;
+            // Show landing screen
+            renderWizardLanding();
+            updateStatus(`Team loaded for GW${currentGW} — choose your wizard mode`,'success');
         } catch(err) { console.error(err); updateStatus(err.message||'Failed to load team','error'); }
         finally { btn.disabled=false; btn.textContent='Load Team'; showLoading(false); }
     }
 
-    function runFullAnalysis() {
-        analyzedSquad=mySquad.map(p=>({...p,lineupData:computeLineupScore(p)}));
-        const solution=solveOptimalLineup(analyzedSquad);
-        recommendedXI=solution.xi; recommendedBench=solution.bench; recommendedFormation=solution.formation;
-        analyzedSquad.forEach(p=>{p.captainData=computeCaptainScore(p);});
-        const xiCap=recommendedXI.filter(p=>p.pos!==1).sort((a,b)=>b.captainData.score-a.captainData.score);
-        captainId=xiCap[0]?.id||recommendedXI[0]?.id;
-        viceCaptainId=xiCap[1]?.id||recommendedXI[1]?.id;
-        renderStep1();
-        document.getElementById('wizardSteps').style.display='flex';
-        goToStep(1);
+    // ===== WIZARD LANDING =====
+    function renderWizardLanding() {
+        document.getElementById('wizardSteps').classList.remove('visible');
+        document.getElementById('wizardPanels').innerHTML = '';
+        const el = document.getElementById('wizardLanding');
+        el.style.display = 'block';
+        el.innerHTML = `
+            <div class="wizard-landing-title">🔮 Choose Your Wizard Mode</div>
+            <div class="wizard-landing-subtitle">GW${currentGW} · ${analyzedSquad.length} players loaded · £${bankValue.toFixed(1)}m in the bank</div>
+            <div class="wizard-mode-cards">
+                <div class="wizard-mode-card featured" onclick="startWizard('full')">
+                    <div class="wizard-mode-icon full">🔮</div>
+                    <div class="wizard-mode-info">
+                        <div class="wizard-mode-tag full">Recommended</div>
+                        <div class="wizard-mode-name">Full GW Wizard</div>
+                        <div class="wizard-mode-desc">Complete decision flow: check injuries → evaluate fixtures → find targets → set strategy → pick your XI → choose captain</div>
+                    </div>
+                    <div class="wizard-mode-arrow">→</div>
+                </div>
+                <div class="wizard-mode-card" onclick="startWizard('transfer')">
+                    <div class="wizard-mode-icon transfer">🔄</div>
+                    <div class="wizard-mode-info">
+                        <div class="wizard-mode-tag transfer">Transfers Only</div>
+                        <div class="wizard-mode-name">Transfer Wizard</div>
+                        <div class="wizard-mode-desc">Urgent fires audit → fixture & form check → target test → macro strategy</div>
+                    </div>
+                    <div class="wizard-mode-arrow">→</div>
+                </div>
+                <div class="wizard-mode-card" onclick="startWizard('lineup')">
+                    <div class="wizard-mode-icon lineup">⚽</div>
+                    <div class="wizard-mode-info">
+                        <div class="wizard-mode-tag lineup">Lineup Only</div>
+                        <div class="wizard-mode-name">Lineup Wizard</div>
+                        <div class="wizard-mode-desc">Squad analysis → pick starting XI → choose captain & vice → final summary</div>
+                    </div>
+                    <div class="wizard-mode-arrow">→</div>
+                </div>
+            </div>`;
     }
 
-    // ===== STEP 1: ANALYSIS =====
-    function renderStep1() {
+    function startWizard(mode) {
+        wizardMode = mode;
+        currentStepIndex = 0;
+        transferSellList = [];
+        transferTargets = {};
+        transferCandidateCache = {};
+        wildcardPlanned = false;
+        freeHitPlanned = false;
+        document.getElementById('wizardLanding').style.display = 'none';
+        renderStepIndicator();
+        renderCurrentStep();
+    }
+
+    function renderStepIndicator() {
+        const steps = STEPS[wizardMode];
+        const el = document.getElementById('wizardSteps');
+        let html = '';
+        let lastPhase = null;
+        steps.forEach((s, i) => {
+            if (lastPhase && s.phase !== lastPhase) {
+                html += '<div class="wizard-phase-sep"><div class="sep-line"></div></div>';
+            }
+            lastPhase = s.phase;
+            const cls = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : '';
+            html += `<div class="wizard-step ${cls}" onclick="goToStep(${i})"><div class="step-num">${i < currentStepIndex ? '✓' : i + 1}</div><div class="step-label">${s.label}</div></div>`;
+        });
+        el.innerHTML = html;
+        el.classList.add('visible');
+    }
+
+    function renderCurrentStep() {
+        const steps = STEPS[wizardMode];
+        const step = steps[currentStepIndex];
+        renderStepIndicator();
+        const panel = document.getElementById('wizardPanels');
+        switch (step.id) {
+            case 'tw1': renderTW_Step1(panel); break;
+            case 'tw2': renderTW_Step2(panel); break;
+            case 'tw3': renderTW_Step3(panel); break;
+            case 'tw4': renderTW_Step4(panel); break;
+            case 'lw1': renderLW_Step1(panel); break;
+            case 'lw2': renderLW_Step2(panel); break;
+            case 'lw3': renderLW_Step3(panel); break;
+            case 'lw4': renderLW_Step4(panel); break;
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function goToStep(idx) {
+        if (idx < 0 || idx >= STEPS[wizardMode].length) return;
+        currentStepIndex = idx;
+        renderCurrentStep();
+    }
+
+    function goNext() {
+        const steps = STEPS[wizardMode];
+        if (currentStepIndex < steps.length - 1) {
+            currentStepIndex++;
+            renderCurrentStep();
+        }
+    }
+
+    function goBack() {
+        if (currentStepIndex > 0) {
+            currentStepIndex--;
+            renderCurrentStep();
+        }
+    }
+
+    function backToLanding() {
+        wizardMode = null;
+        currentStepIndex = 0;
+        document.getElementById('wizardSteps').classList.remove('visible');
+        document.getElementById('wizardPanels').innerHTML = '';
+        renderWizardLanding();
+    }
+
+    function wizardNav(backLabel, nextLabel, nextAction) {
+        const steps = STEPS[wizardMode];
+        const isFirst = currentStepIndex === 0;
+        const isLast = currentStepIndex === steps.length - 1;
+        let html = '<div class="wizard-nav">';
+        if (isFirst) {
+            html += `<button class="btn btn-secondary" onclick="backToLanding()">← Back to Modes</button>`;
+        } else {
+            html += `<button class="btn btn-secondary" onclick="goBack()">← ${backLabel || 'Back'}</button>`;
+        }
+        if (!isLast) {
+            html += `<button class="btn btn-primary" onclick="${nextAction || 'goNext()'}">${nextLabel || 'Next'} →</button>`;
+        }
+        html += '</div>';
+        return html;
+    }
+
+    // ===== TRANSFER WIZARD FUNCTIONS =====
+    function calculateTransferScore(player) {
+        let score = 0;
+        const flags = [];
+        // Injury severity
+        if (player.status === 'i' || player.status === 'u' || player.status === 's') {
+            score += 50;
+            const news = (player.news || '').toLowerCase();
+            const isLong = news.includes('unknown') || news.includes('season') || news.includes('month') || news.includes('weeks');
+            flags.push({ text: isLong ? '3+ weeks out' : '1-2 weeks', cls: isLong ? 'injury-long' : 'injury-short' });
+            if (isLong) score += 20;
+        } else if (player.status === 'd') {
+            score += 15;
+            flags.push({ text: `Doubtful: ${player.chanceNextRound || 75}%`, cls: 'injury-short' });
+        }
+        // Price
+        if (player.price >= 10) { flags.push({ text: `£${player.price.toFixed(1)}m premium`, cls: 'premium' }); score += 5; }
+        // Form
+        const formBaseline = POS_FORM_MEDIAN[player.pos] || 3.5;
+        if (player.form < formBaseline - 1.5) { score += 10; flags.push({ text: `Poor form (${player.form})`, cls: 'injury-short' }); }
+        // Fixtures
+        const nextFx = (player.fixtures || []).slice(0, 4);
+        const avgFdr = nextFx.length ? nextFx.reduce((s, f) => s + f.difficulty, 0) / nextFx.length : 3;
+        if (avgFdr >= 3.8) { score += 10; flags.push({ text: `Hard fixtures (avg ${avgFdr.toFixed(1)})`, cls: 'injury-short' }); }
+        // Bench cover check
+        const samePosBench = analyzedSquad.filter(p => p.pos === player.pos && p.onBench && p.lineupData.available);
+        if (samePosBench.length > 0 && (player.status === 'i' || player.status === 'u')) {
+            score -= 10;
+            flags.push({ text: 'Bench covers', cls: 'bench-cover' });
+        } else if (player.status === 'i' || player.status === 'u') {
+            flags.push({ text: 'No bench cover', cls: 'no-cover' });
+        }
+        // Minutes risk
+        const mpg = player.minutes / Math.max(currentGW - 1, 1);
+        if (mpg < 50 && player.status === 'a') { score += 8; flags.push({ text: `Low mins (${mpg.toFixed(0)} mpg)`, cls: 'rotation' }); }
+        // Nailed bonus (reduces urgency)
+        if (mpg >= 85 && player.status === 'a') { flags.push({ text: 'Nailed', cls: 'nailed' }); }
+        // Penalty taker
+        if (player.penOrder === 1) flags.push({ text: 'Pen taker', cls: 'set-piece' });
+        return { score, flags };
+    }
+
+    function findTransferCandidates(pos, maxPrice) {
+        const cacheKey = `${pos}_${maxPrice.toFixed(1)}`;
+        if (transferCandidateCache[cacheKey]) return transferCandidateCache[cacheKey];
+        const squadIds = new Set(mySquad.map(p => p.id));
+        const candidates = allPlayers.filter(p =>
+            p.pos === pos && p.price <= maxPrice && !squadIds.has(p.id) &&
+            p.status === 'a' && p.minutes > 90
+        ).map(p => {
+            let score = 0;
+            // Form
+            score += p.form * 3;
+            // Fixtures
+            const fx = (p.fixtures || []).slice(0, 4);
+            const avgFdr = fx.length ? fx.reduce((s, f) => s + f.difficulty, 0) / fx.length : 3;
+            score += (4 - avgFdr) * 8;
+            // xGI
+            if (p.minutes > 200) {
+                const xgi90 = (p.xGI / p.minutes) * 90;
+                score += xgi90 * 15;
+            }
+            // Points per game
+            const ppg = p.totalPoints / Math.max(currentGW - 1, 1);
+            score += ppg * 2;
+            // Minutes reliability
+            const mpg = p.minutes / Math.max(currentGW - 1, 1);
+            if (mpg >= 85) score += 5;
+            else if (mpg < 50) score -= 5;
+            // Penalty taker
+            if (p.penOrder === 1) score += 5;
+            // Team attack/defense
+            const tp = teamPowerData[p.teamId];
+            if (tp) {
+                if (pos >= 3) score += (tp.attackPower - 50) * 0.15;
+                if (pos <= 2) score += (tp.defensePower - 50) * 0.15;
+            }
+            // Captain potential
+            const isCaptainPick = pos >= 3 && p.form >= 6 && ppg >= 5;
+            return { ...p, transferScore: Math.round(score), isCaptainPick, avgFdr };
+        }).sort((a, b) => b.transferScore - a.transferScore).slice(0, 8);
+        transferCandidateCache[cacheKey] = candidates;
+        return candidates;
+    }
+
+    function toggleSell(playerId) {
+        const idx = transferSellList.indexOf(playerId);
+        if (idx >= 0) { transferSellList.splice(idx, 1); delete transferTargets[playerId]; }
+        else transferSellList.push(playerId);
+        renderCurrentStep();
+    }
+
+    function lockTarget(sellId, buyId) {
+        if (transferTargets[sellId] === buyId) delete transferTargets[sellId];
+        else transferTargets[sellId] = buyId;
+        renderCurrentStep();
+    }
+
+    // ===== TRANSFER WIZARD STEP 1: URGENT FIRES AUDIT =====
+    function renderTW_Step1(panel) {
+        const injured = analyzedSquad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's');
+        const doubtful = analyzedSquad.filter(p => p.status === 'd');
+        const poorForm = analyzedSquad.filter(p => p.status === 'a' && p.form < (POS_FORM_MEDIAN[p.pos] || 3.5) - 1.5);
+
+        // Sort by transfer urgency score
+        const allConcern = analyzedSquad.map(p => ({ ...p, twData: calculateTransferScore(p) })).filter(p => p.twData.score > 0).sort((a, b) => b.twData.score - a.twData.score);
+
+        let html = `<div class="panel-header"><div class="panel-title">🚨 Step 1: Urgent Fires Audit</div><div class="panel-desc">Identify players who need immediate attention — injuries, suspensions, and severe form drops</div></div>`;
+
+        // Summary checklist
+        html += '<div class="tw-checklist">';
+        html += `<div class="tw-checklist-item ${injured.length > 0 ? 'warn' : 'done'}"><span style="font-size:16px;">${injured.length > 0 ? '⚠️' : '✅'}</span><span><strong>${injured.length}</strong> injured/suspended player${injured.length !== 1 ? 's' : ''}</span></div>`;
+        html += `<div class="tw-checklist-item ${doubtful.length > 0 ? 'warn' : 'done'}"><span style="font-size:16px;">${doubtful.length > 0 ? '🟡' : '✅'}</span><span><strong>${doubtful.length}</strong> doubtful player${doubtful.length !== 1 ? 's' : ''}</span></div>`;
+        html += `<div class="tw-checklist-item ${poorForm.length > 0 ? 'warn' : 'done'}"><span style="font-size:16px;">${poorForm.length > 0 ? '📉' : '✅'}</span><span><strong>${poorForm.length}</strong> player${poorForm.length !== 1 ? 's' : ''} in poor form</span></div>`;
+        html += '</div>';
+
+        if (allConcern.length === 0) {
+            html += '<div class="insight-box positive"><div class="insight-title">✅ Squad looks healthy</div><div class="insight-text">No urgent fires — you can focus on optimization rather than firefighting.</div></div>';
+        }
+
+        // Player cards with selection
+        const posGroups = [
+            { pos: 1, label: 'Goalkeepers', players: allConcern.filter(p => p.pos === 1) },
+            { pos: 2, label: 'Defenders', players: allConcern.filter(p => p.pos === 2) },
+            { pos: 3, label: 'Midfielders', players: allConcern.filter(p => p.pos === 3) },
+            { pos: 4, label: 'Forwards', players: allConcern.filter(p => p.pos === 4) }
+        ];
+
+        // Also show healthy players (less prominent, selectable)
+        html += '<div style="margin-top:20px;">';
+        posGroups.forEach(g => {
+            const healthy = analyzedSquad.filter(p => p.pos === g.pos && !allConcern.find(c => c.id === p.id));
+            const all = [...g.players, ...healthy.map(p => ({ ...p, twData: { score: 0, flags: [{ text: 'Healthy', cls: 'nailed' }] } }))];
+            if (all.length === 0) return;
+            html += `<div class="tw-squad-section"><div class="tw-squad-section-title">${g.label}</div><div class="tw-player-grid">`;
+            all.forEach(p => {
+                const isSel = transferSellList.includes(p.id);
+                const statusCls = (p.status === 'i' || p.status === 'u' || p.status === 's') ? 'injured' : p.status === 'd' ? 'doubtful' : p.twData.score > 5 ? 'bad-fixtures' : 'healthy';
+                const ppg = (p.totalPoints / Math.max(currentGW - 1, 1)).toFixed(1);
+                html += `<div class="tw-player-card ${statusCls} ${isSel ? 'selected' : ''}" onclick="toggleSell(${p.id})">
+                    <div class="tw-check">${isSel ? '✓' : ''}</div>
+                    <div class="tw-player-info">
+                        <div class="tw-player-name">${p.name}</div>
+                        <div class="tw-player-meta"><span>${p.team}</span><span>£${p.price.toFixed(1)}m</span><span>Form ${p.form}</span></div>
+                        <div class="tw-player-badges">${p.twData.flags.map(f => `<span class="tw-badge ${f.cls}">${f.text}</span>`).join('')}</div>
+                    </div>
+                    <div class="tw-player-stats"><div class="tw-stat"><div class="tw-stat-val">${ppg}</div><div class="tw-stat-label">PPG</div></div></div>
+                </div>`;
+            });
+            html += '</div></div>';
+        });
+        html += '</div>';
+
+        // Sell list summary
+        if (transferSellList.length > 0) {
+            const sellBudget = transferSellList.reduce((s, id) => s + (allPlayersById[id]?.price || 0), 0);
+            html += `<div class="tw-sell-list">
+                <span class="tw-sell-list-label">Transfer out</span>
+                <span class="tw-sell-list-count">${transferSellList.length} player${transferSellList.length > 1 ? 's' : ''}</span>
+                <div class="tw-sell-list-sep"></div>
+                <span class="tw-sell-list-label">Budget freed</span>
+                <span class="tw-sell-list-budget">£${(sellBudget + bankValue).toFixed(1)}m</span>
+            </div>`;
+        }
+
+        html += wizardNav('Modes', transferSellList.length > 0 ? 'Find Replacements' : 'Next', 'goNext()');
+        panel.innerHTML = html;
+    }
+
+    // ===== TRANSFER WIZARD STEP 2: FIXTURE & FORM CHECK =====
+    function renderTW_Step2(panel) {
+        let html = `<div class="panel-header"><div class="panel-title">📅 Step 2: Fixture & Form Check</div><div class="panel-desc">Evaluate your squad's upcoming fixture run and current form trajectory</div></div>`;
+
+        // FDR calendar for squad
+        const fxLookAhead = 6;
+        html += '<div class="tw-summary-card"><div class="tw-summary-header">📊 Squad Fixture Difficulty (Next ${fxLookAhead} GWs)</div>';
+        html += `<div style="overflow-x:auto;"><table class="rankings-table" style="min-width:600px;"><thead><tr><th>Player</th><th>Form</th><th>Pts/G</th>`;
+        for (let i = 0; i < fxLookAhead; i++) html += `<th class="num" style="width:60px;">GW${currentGW + i}</th>`;
+        html += '<th class="num">Avg FDR</th></tr></thead><tbody>';
+
+        const sorted = [...analyzedSquad].sort((a, b) => {
+            if (a.onBench !== b.onBench) return a.onBench ? 1 : -1;
+            return a.pos - b.pos || b.lineupData.score - a.lineupData.score;
+        });
+
+        sorted.forEach(p => {
+            const ppg = (p.totalPoints / Math.max(currentGW - 1, 1)).toFixed(1);
+            const isSell = transferSellList.includes(p.id);
+            const rowCls = isSell ? 'style="background:rgba(248,113,113,0.08);"' : p.onBench ? 'style="opacity:0.6;"' : '';
+            html += `<tr ${rowCls}><td style="font-weight:600;white-space:nowrap;">${isSell ? '🔴 ' : ''}${p.name} <span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></td>`;
+            html += `<td class="num" style="color:${p.form >= 5 ? 'var(--color-success)' : p.form < 3 ? 'var(--color-error)' : 'var(--text-primary)'};">${p.form}</td>`;
+            html += `<td class="num">${ppg}</td>`;
+
+            const fx = p.fixtures || [];
+            let fdrSum = 0, fdrCount = 0;
+            for (let i = 0; i < fxLookAhead; i++) {
+                const gwFx = fx.filter(f => f.event === currentGW + i);
+                if (gwFx.length > 0) {
+                    html += '<td class="num">';
+                    gwFx.forEach(f => {
+                        html += `<span class="fixture-chip fdr-${f.difficulty}" style="font-size:9px;">${f.opponent}(${f.isHome ? 'H' : 'A'})</span> `;
+                        fdrSum += f.difficulty; fdrCount++;
+                    });
+                    html += '</td>';
+                } else {
+                    html += '<td class="num" style="color:var(--text-muted);">-</td>';
+                }
+            }
+            const avgFdr = fdrCount > 0 ? (fdrSum / fdrCount).toFixed(1) : '-';
+            const fdrColor = fdrCount > 0 ? (fdrSum / fdrCount <= 2.5 ? 'var(--color-success)' : fdrSum / fdrCount >= 3.8 ? 'var(--color-error)' : 'var(--text-primary)') : 'var(--text-muted)';
+            html += `<td class="num" style="color:${fdrColor};font-weight:700;">${avgFdr}</td></tr>`;
+        });
+        html += '</tbody></table></div></div>';
+
+        // Form trends
+        const rising = analyzedSquad.filter(p => {
+            if (!p.l3Stats || !p.l5Stats || p.l3Stats.games < 2 || p.l5Stats.games < 3) return false;
+            return (p.l3Stats.points / p.l3Stats.games) - (p.l5Stats.points / p.l5Stats.games) > 1.0;
+        });
+        const falling = analyzedSquad.filter(p => {
+            if (!p.l3Stats || !p.l5Stats || p.l3Stats.games < 2 || p.l5Stats.games < 3) return false;
+            return (p.l3Stats.points / p.l3Stats.games) - (p.l5Stats.points / p.l5Stats.games) < -1.0;
+        });
+
+        if (rising.length > 0 || falling.length > 0) {
+            html += '<div class="tw-summary-card"><div class="tw-summary-header">📈 Form Trends (L3 vs L5)</div>';
+            if (rising.length > 0) {
+                html += '<div style="margin-bottom:8px;">';
+                rising.forEach(p => {
+                    const delta = ((p.l3Stats.points / p.l3Stats.games) - (p.l5Stats.points / p.l5Stats.games)).toFixed(1);
+                    html += `<div class="insight-box positive"><div class="insight-title">${p.name} 📈</div><div class="insight-text">+${delta} ppg trend — keep!</div></div>`;
+                });
+                html += '</div>';
+            }
+            if (falling.length > 0) {
+                falling.forEach(p => {
+                    const delta = ((p.l3Stats.points / p.l3Stats.games) - (p.l5Stats.points / p.l5Stats.games)).toFixed(1);
+                    html += `<div class="insight-box warning"><div class="insight-title">${p.name} 📉</div><div class="insight-text">${delta} ppg trend — consider selling</div></div>`;
+                });
+            }
+            html += '</div>';
+        }
+
+        // Captaincy outlook
+        const capCandidates = analyzedSquad.filter(p => p.pos >= 3 && p.lineupData.available).sort((a, b) => b.captainData.score - a.captainData.score).slice(0, 3);
+        html += '<div class="tw-summary-card"><div class="tw-summary-header">👑 Captaincy Outlook</div>';
+        capCandidates.forEach((p, i) => {
+            const fx = (p.fixtures || []).slice(0, 3);
+            html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 12px;${i > 0 ? 'border-top:1px solid var(--border-subtle);' : ''}">
+                <span style="font-size:16px;">${i === 0 ? '👑' : i === 1 ? '🥈' : '🥉'}</span>
+                <span style="font-weight:600;flex:1;">${p.name}</span>
+                <span class="tw-stat"><span class="tw-stat-val">${p.form}</span><span class="tw-stat-label"> Form</span></span>
+                <div class="fixture-strip">${fx.map(f => `<span class="fixture-chip fdr-${f.difficulty}" style="font-size:9px;">${f.opponent}</span>`).join('')}</div>
+            </div>`;
+        });
+        html += '</div>';
+
+        html += wizardNav('Fires', 'Find Targets', 'goNext()');
+        panel.innerHTML = html;
+    }
+
+    // ===== TRANSFER WIZARD STEP 3: TARGET TEST =====
+    function renderTW_Step3(panel) {
+        let html = `<div class="panel-header"><div class="panel-title">🎯 Step 3: Target Test</div><div class="panel-desc">Find the best replacements for each player you're selling</div></div>`;
+
+        if (transferSellList.length === 0) {
+            html += '<div class="insight-box info"><div class="insight-title">No players selected for transfer</div><div class="insight-text">Go back to Step 1 to select players to sell, or skip directly to strategy.</div></div>';
+            html += wizardNav('Fixtures', 'Strategy', 'goNext()');
+            panel.innerHTML = html;
+            return;
+        }
+
+        transferSellList.forEach(sellId => {
+            const seller = allPlayersById[sellId];
+            if (!seller) return;
+            const budget = seller.price + bankValue;
+            const candidates = findTransferCandidates(seller.pos, budget);
+            const lockedId = transferTargets[sellId];
+
+            html += `<div class="tw-slot">
+                <div class="tw-slot-header">
+                    <span class="pos-badge ${POS_CONFIG[seller.pos].cls}">${seller.posName}</span>
+                    <span style="font-weight:600;color:var(--color-error);">OUT: ${seller.name}</span>
+                    <span style="font-size:12px;color:var(--text-muted);">£${seller.price.toFixed(1)}m</span>
+                    <span style="margin-left:auto;font-size:12px;color:var(--text-secondary);">Budget: <strong style="color:var(--color-success);">£${budget.toFixed(1)}m</strong></span>
+                    ${lockedId ? `<span class="tw-slot-locked">✓ ${allPlayersById[lockedId]?.name || 'Locked'}</span>` : ''}
+                </div>`;
+
+            if (candidates.length > 0) {
+                candidates.forEach((c, i) => {
+                    const isLocked = lockedId === c.id;
+                    const ppg = (c.totalPoints / Math.max(currentGW - 1, 1)).toFixed(1);
+                    const fx = (c.fixtures || []).slice(0, 3);
+                    html += `<div class="tw-replacement ${isLocked ? 'locked' : ''}" onclick="lockTarget(${sellId}, ${c.id})">
+                        <div class="tw-replacement-rank">${i + 1}</div>
+                        <div class="tw-player-info" style="flex:1;">
+                            <div class="tw-player-name">${c.name}</div>
+                            <div class="tw-player-meta"><span>${c.team}</span><span>£${c.price.toFixed(1)}m</span><span>${c.ownership.toFixed(0)}% owned</span></div>
+                            <div class="tw-player-badges">
+                                ${c.isCaptainPick ? '<span class="tw-badge captain-pick">Captain pick</span>' : ''}
+                                ${c.penOrder === 1 ? '<span class="tw-badge set-piece">Pen taker</span>' : ''}
+                                ${c.minutes / Math.max(currentGW - 1, 1) >= 85 ? '<span class="tw-badge nailed">Nailed</span>' : c.minutes / Math.max(currentGW - 1, 1) < 50 ? '<span class="tw-badge rotation">Rotation</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="tw-player-stats">
+                            <div class="tw-stat"><div class="tw-stat-val">${c.form}</div><div class="tw-stat-label">Form</div></div>
+                            <div class="tw-stat"><div class="tw-stat-val">${ppg}</div><div class="tw-stat-label">PPG</div></div>
+                            <div class="tw-stat"><div class="tw-stat-val" style="color:${c.avgFdr <= 2.5 ? 'var(--color-success)' : c.avgFdr >= 3.8 ? 'var(--color-error)' : 'var(--text-primary)'};">${c.avgFdr.toFixed(1)}</div><div class="tw-stat-label">FDR</div></div>
+                        </div>
+                        <div class="fixture-strip">${fx.map(f => `<span class="fixture-chip fdr-${f.difficulty}" style="font-size:9px;">${f.opponent}</span>`).join('')}</div>
+                        <button class="tw-lock-btn ${isLocked ? 'locked' : ''}" onclick="event.stopPropagation();lockTarget(${sellId}, ${c.id})">${isLocked ? '✓ Locked' : 'Lock'}</button>
+                    </div>`;
+                });
+            } else {
+                html += '<div style="padding:20px;text-align:center;color:var(--text-muted);">No suitable replacements found within budget</div>';
+            }
+            html += '</div>';
+        });
+
+        html += wizardNav('Fixtures', 'Strategy', 'goNext()');
+        panel.innerHTML = html;
+    }
+
+    // ===== TRANSFER WIZARD STEP 4: MACRO STRATEGY =====
+    function renderTW_Step4(panel) {
+        let html = `<div class="panel-header"><div class="panel-title">♟️ Step 4: Macro Strategy</div><div class="panel-desc">Plan chips, count transfers wisely, and check the bigger picture</div></div>`;
+
+        // Transfer advisor summary
+        const lockedTransfers = Object.entries(transferTargets).filter(([sellId, buyId]) => buyId);
+        if (lockedTransfers.length > 0) {
+            html += '<div class="tw-transfer-advisor"><div class="tw-advisor-title">📋 Your Planned Transfers</div>';
+            lockedTransfers.forEach(([sellId, buyId]) => {
+                const seller = allPlayersById[parseInt(sellId)];
+                const buyer = allPlayersById[buyId];
+                if (!seller || !buyer) return;
+                const ppgDelta = ((buyer.totalPoints / Math.max(currentGW - 1, 1)) - (seller.totalPoints / Math.max(currentGW - 1, 1)));
+                html += `<div class="tw-advisor-row">
+                    <span class="out-name">${seller.name} (${seller.team})</span>
+                    <span class="tw-advisor-arrow">→</span>
+                    <span class="in-name">${buyer.name} (${buyer.team})</span>
+                    <span class="tw-points-delta ${ppgDelta >= 0 ? 'positive' : 'negative'}">${ppgDelta >= 0 ? '+' : ''}${ppgDelta.toFixed(1)} ppg</span>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        // Transfer count advice
+        const numTransfers = transferSellList.length;
+        html += '<div class="tw-summary-card"><div class="tw-summary-header">🔢 Transfer Count Advisor</div>';
+        html += '<div class="tw-checklist">';
+        if (numTransfers === 0) {
+            html += '<div class="tw-checklist-item done"><span style="font-size:16px;">💰</span><span>Banking your free transfer gives you 2 FT next week — powerful flexibility</span></div>';
+        } else if (numTransfers === 1) {
+            html += '<div class="tw-checklist-item done"><span style="font-size:16px;">✅</span><span>1 free transfer — no point hit. Good discipline.</span></div>';
+        } else {
+            const hitCost = (numTransfers - 1) * 4;
+            html += `<div class="tw-checklist-item warn"><span style="font-size:16px;">⚠️</span><span>${numTransfers} transfers = <strong>-${hitCost} point hit</strong>. Only worth it if combined expected gain exceeds ${hitCost} pts over 4 GWs.</span></div>`;
+        }
+        html += '</div></div>';
+
+        // Chip strategy toggles
+        html += '<div class="tw-summary-card"><div class="tw-summary-header">🃏 Chip Planning</div>';
+        html += `<div class="tw-strategy-toggle ${wildcardPlanned ? 'active' : ''}" onclick="wildcardPlanned=!wildcardPlanned;renderCurrentStep();">
+            <div class="tw-toggle-switch"></div>
+            <div style="flex:1;"><div style="font-weight:600;font-size:13px;">Wildcard</div><div style="font-size:11px;color:var(--text-secondary);">Reset entire squad — use before a favorable fixture swing</div></div>
+        </div>`;
+        html += `<div class="tw-strategy-toggle ${freeHitPlanned ? 'active' : ''}" onclick="freeHitPlanned=!freeHitPlanned;renderCurrentStep();">
+            <div class="tw-toggle-switch"></div>
+            <div style="flex:1;"><div style="font-weight:600;font-size:13px;">Free Hit</div><div style="font-size:11px;color:var(--text-secondary);">Temporary squad for one GW — ideal for blank/double gameweeks</div></div>
+        </div>`;
+        html += '</div>';
+
+        // BGW/DGW calendar check (simplified)
+        const bgwPlayers = analyzedSquad.filter(p => !p.fixtures || p.fixtures.length === 0 || !p.fixtures.find(f => f.event === currentGW + 1));
+        const dgwPlayers = analyzedSquad.filter(p => {
+            const nextFx = (p.fixtures || []).filter(f => f.event === currentGW + 1);
+            return nextFx.length >= 2;
+        });
+        if (bgwPlayers.length > 0 || dgwPlayers.length > 0) {
+            html += '<div class="tw-summary-card"><div class="tw-summary-header">📅 BGW/DGW Outlook (GW${currentGW + 1})</div>';
+            if (dgwPlayers.length > 0) {
+                html += `<div class="insight-box positive"><div class="insight-title">🎯 ${dgwPlayers.length} player${dgwPlayers.length > 1 ? 's' : ''} with DGW next week</div><div class="insight-text">${dgwPlayers.map(p => p.name).join(', ')}</div></div>`;
+            }
+            if (bgwPlayers.length > 0) {
+                html += `<div class="insight-box warning"><div class="insight-title">⛔ ${bgwPlayers.length} player${bgwPlayers.length > 1 ? 's' : ''} potentially blanking next week</div><div class="insight-text">${bgwPlayers.map(p => p.name).join(', ')}</div></div>`;
+            }
+            html += '</div>';
+        }
+
+        // Summary metrics
+        html += '<div class="tw-summary-card"><div class="tw-summary-header">📊 Transfer Impact Summary</div><div class="tw-summary-grid">';
+        html += `<div class="tw-summary-metric"><div class="tw-summary-metric-label">Transfers</div><div class="tw-summary-metric-val" style="color:var(--color-info);">${numTransfers}</div></div>`;
+        const hitCost = Math.max(0, numTransfers - 1) * 4;
+        html += `<div class="tw-summary-metric"><div class="tw-summary-metric-label">Hit Cost</div><div class="tw-summary-metric-val" style="color:${hitCost > 0 ? 'var(--color-error)' : 'var(--color-success)'};">${hitCost > 0 ? '-' + hitCost : '0'}</div></div>`;
+        const budgetAfter = bankValue + transferSellList.reduce((s, id) => s + (allPlayersById[id]?.price || 0), 0) - Object.values(transferTargets).reduce((s, id) => s + (allPlayersById[id]?.price || 0), 0);
+        html += `<div class="tw-summary-metric"><div class="tw-summary-metric-label">Remaining Budget</div><div class="tw-summary-metric-val" style="color:var(--color-success);">£${budgetAfter.toFixed(1)}m</div></div>`;
+        html += `<div class="tw-summary-metric"><div class="tw-summary-metric-label">Targets Locked</div><div class="tw-summary-metric-val">${lockedTransfers.length}/${transferSellList.length}</div></div>`;
+        html += '</div></div>';
+
+        if (wizardMode === 'full') {
+            html += wizardNav('Targets', 'Continue to Lineup', 'goNext()');
+        } else {
+            html += `<div class="wizard-nav">
+                <button class="btn btn-secondary" onclick="goBack()">← Targets</button>
+                <button class="btn btn-primary" style="padding:12px 32px;" onclick="window.open('https://fantasy.premierleague.com/transfers','_blank')">Apply Transfers on FPL →</button>
+            </div>`;
+        }
+        panel.innerHTML = html;
+    }
+
+    // ===== LINEUP WIZARD STEP 1: ANALYSIS =====
+    function renderLW_Step1(panel) {
         const xiIds=new Set(recommendedXI.map(p=>p.id));
         const groups=[
             {pos:1,label:'Goalkeepers',cls:'gk',icon:'🧤',players:[...analyzedSquad].filter(p=>p.pos===1).sort((a,b)=>b.lineupData.score-a.lineupData.score)},
@@ -926,8 +1618,8 @@
             });
             html+=`</tbody></table></div></div>`;
         });
-        html+=`<div class="wizard-nav"><div></div><button class="btn btn-primary" onclick="goToStep(2)">Pick Starting XI →</button></div>`;
-        document.getElementById('step1Content').innerHTML=html;
+        html += wizardNav('Back', 'Pick Starting XI', 'goNext()');
+        panel.innerHTML=html;
     }
 
     // ===== SWAP FUNCTIONALITY =====
@@ -960,11 +1652,11 @@
         else if(swapSelectedId===pid){swapSelectedId=null;}
         else if(canSwapPlayers(swapSelectedId,pid)){doSwap(swapSelectedId,pid);swapSelectedId=null;}
         else{swapSelectedId=pid;}
-        renderStep2();
+        renderCurrentStep();
     }
 
-    // ===== STEP 2: PITCH VIEW =====
-    function renderStep2() {
+    // ===== LINEUP WIZARD STEP 2: PITCH VIEW =====
+    function renderLW_Step2(panel) {
         const gk=recommendedXI.filter(p=>p.pos===1);
         const defs=recommendedXI.filter(p=>p.pos===2).sort((a,b)=>b.lineupData.score-a.lineupData.score);
         const mids=recommendedXI.filter(p=>p.pos===3).sort((a,b)=>b.lineupData.score-a.lineupData.score);
@@ -1003,12 +1695,12 @@
             </div>
             <div class="bench-section"><div class="bench-title">📋 Bench</div><div class="bench-row">${bp.map(p=>pp(p,true)).join('')}</div></div>
             ${!swapSelectedId?'<div class="swap-hint">Tap any player to start a swap</div>':''}
-            <div class="wizard-nav"><button class="btn btn-secondary" onclick="goToStep(1)">← Analysis</button><button class="btn btn-primary" onclick="goToStep(3)">Choose Captain →</button></div>`;
-        document.getElementById('step2Content').innerHTML=html;
+            ${wizardNav('Analysis', 'Choose Captain', 'goNext()')}`;
+        panel.innerHTML=html;
     }
 
-    // ===== STEP 3: CAPTAIN =====
-    function renderStep3() {
+    // ===== LINEUP WIZARD STEP 3: CAPTAIN =====
+    function renderLW_Step3(panel) {
         const candidates=recommendedXI.filter(p=>p.pos!==1&&p.lineupData.available).sort((a,b)=>b.captainData.score-a.captainData.score);
         const maxS=candidates[0]?.captainData.score||1;
 
@@ -1039,15 +1731,15 @@
             </div>`;
         });
 
-        html+=`</div><div class="wizard-nav"><button class="btn btn-secondary" onclick="goToStep(2)">← Starting XI</button><button class="btn btn-primary" onclick="goToStep(4)">View Summary →</button></div>`;
-        document.getElementById('step3Content').innerHTML=html;
+        html+=`</div>${wizardNav('Starting XI', 'View Summary', 'goNext()')}`;
+        panel.innerHTML=html;
     }
 
-    function setCaptain(id){if(viceCaptainId===id)viceCaptainId=captainId;captainId=id;renderStep3();}
-    function setViceCaptain(id){if(captainId===id)return;viceCaptainId=id;renderStep3();}
+    function setCaptain(id){if(viceCaptainId===id)viceCaptainId=captainId;captainId=id;renderCurrentStep();}
+    function setViceCaptain(id){if(captainId===id)return;viceCaptainId=id;renderCurrentStep();}
 
-    // ===== STEP 4: SUMMARY =====
-    function renderStep4() {
+    // ===== LINEUP WIZARD STEP 4: SUMMARY =====
+    function renderLW_Step4(panel) {
         const captain=analyzedSquad.find(p=>p.id===captainId);
         const vc=analyzedSquad.find(p=>p.id===viceCaptainId);
         const totalScore=recommendedXI.reduce((s,p)=>s+p.lineupData.score,0);
@@ -1085,23 +1777,8 @@
             html+=`<div class="summary-player" style="opacity:0.6;"><div class="summary-player-pos"><span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></div><div class="summary-player-name">${i+1}. ${p.name}</div><div class="summary-player-team">${p.team}</div><div>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${fx.opponent}(${fx.isHome?'H':'A'})</span>`:'-'}</div><div class="summary-player-score pitch-score ${p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low'}">${p.lineupData.score}</div></div>`;
         });
 
-        html+=`</div></div><div style="text-align:center;margin-top:20px;"><button class="btn btn-primary" style="padding:12px 32px;font-size:14px;" onclick="window.open('https://fantasy.premierleague.com/my-team','_blank')">Apply on FPL →</button></div><div class="wizard-nav"><button class="btn btn-secondary" onclick="goToStep(3)">← Captain</button><div></div></div>`;
-        document.getElementById('step4Content').innerHTML=html;
-    }
-
-    // ===== NAVIGATION =====
-    function goToStep(step) {
-        if(step>=2&&analyzedSquad.length===0){updateStatus('Load your team first!','error');return;}
-        document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
-        document.getElementById(`panel-${step}`).classList.add('active');
-        document.querySelectorAll('.wizard-step').forEach((el,i)=>{
-            el.classList.remove('active','completed','disabled');
-            if(i+1<step) el.classList.add('completed');
-            else if(i+1===step) el.classList.add('active');
-            else if(analyzedSquad.length>0){} else el.classList.add('disabled');
-        });
-        if(step===2){swapSelectedId=null;renderStep2();}else if(step===3)renderStep3();else if(step===4)renderStep4();
-        window.scrollTo({top:0,behavior:'smooth'});
+        html+=`</div></div><div style="text-align:center;margin-top:20px;"><button class="btn btn-primary" style="padding:12px 32px;font-size:14px;" onclick="window.open('https://fantasy.premierleague.com/my-team','_blank')">Apply on FPL →</button></div>${wizardNav('Captain', null, null)}`;
+        panel.innerHTML=html;
     }
 
     window.addEventListener('load',()=>{const s=localStorage.getItem('fpl_team_id');if(s)document.getElementById('teamIdInput').value=s;});

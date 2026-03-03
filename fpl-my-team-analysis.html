@@ -56,6 +56,9 @@
         .nav-link:hover { color: var(--text-primary); background: var(--surface-1); }
         .nav-link.active { color: var(--color-myteam); background: rgba(248, 113, 113, 0.1); }
         .nav-link .icon { font-size: 14px; }
+        .nav-link--accent { background: rgba(167, 139, 250, 0.08); border: 1px solid rgba(167, 139, 250, 0.25); }
+        .nav-link--accent:not(.active) { color: #A78BFA; }
+        .mobile-nav-item--accent { color: #A78BFA !important; }
         @media (max-width: 768px) { .nav-links { display: none; } }
 
         .main-content { max-width: 1400px; margin: 0 auto; padding: 16px 24px 100px; }
@@ -1181,7 +1184,7 @@
         <div class="nav-container">
             <a href="index.html" class="nav-logo">⚡ FPL<span>Tools</span></a>
             <div class="nav-links">
-                <a href="fpl-transfer-wizard.html" class="nav-link"><span class="icon">🧙‍♂️</span> Wizard</a>
+                <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent"><span class="icon">🔮</span> FPL Wizard</a>
                 <a href="fpl-my-team-analysis.html" class="nav-link active"><span class="icon">⚽</span> My Team</a>
                 <a href="fpl-players-analysis.html" class="nav-link"><span class="icon">👤</span> Players</a>
                 <a href="fpl-teams-analysis.html" class="nav-link"><span class="icon">📊</span> Teams</a>
@@ -1219,6 +1222,7 @@
             <button class="tab-btn active" onclick="switchTab('team')" id="tabTeam">⚽ Squad Analysis</button>
             <button class="tab-btn" onclick="switchTab('planner')" id="tabPlanner">🗓️ GW Planner</button>
             <button class="tab-btn" onclick="switchTab('transfer')" id="tabTransfer">🔄 Transfer Wizard</button>
+            <button class="tab-btn" onclick="switchTab('lineup')" id="tabLineup">🧙‍♂️ Lineup Wizard</button>
         </div>
 
         <!-- Team Display -->
@@ -1229,6 +1233,9 @@
 
         <!-- Transfer Wizard Display -->
         <div id="transferDisplay" style="display:none;"></div>
+
+        <!-- Lineup Wizard Display -->
+        <div id="lineupDisplay" style="display:none;"></div>
     </main>
 
     <!-- Planner Compare Bar (floating bottom) -->
@@ -1315,7 +1322,7 @@
 
     <!-- Mobile Navigation -->
     <nav class="mobile-nav">
-        <a href="fpl-transfer-wizard.html" class="mobile-nav-item"><span class="icon">🧙‍♂️</span>Wizard</a>
+        <a href="fpl-transfer-wizard.html" class="mobile-nav-item mobile-nav-item--accent"><span class="icon">🔮</span>Wizard</a>
         <a href="fpl-my-team-analysis.html" class="mobile-nav-item active"><span class="icon">⚽</span>My Team</a>
         <a href="fpl-players-analysis.html" class="mobile-nav-item"><span class="icon">👤</span>Players</a>
         <a href="fpl-teams-analysis.html" class="mobile-nav-item"><span class="icon">📊</span>Teams</a>
@@ -2123,6 +2130,17 @@
             const teamHealth = Math.max(0, Math.min(100, Math.round(100 - (100 - rawHealth) * userSettings.sellSensitivity)));
 
             let html = '';
+
+            // FPL Wizard CTA banner
+            html += `<div style="display:flex;align-items:center;gap:16px;padding:14px 20px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:10px;margin-bottom:16px;flex-wrap:wrap;">
+                <div style="font-size:24px;flex-shrink:0;">🔮</div>
+                <div style="flex:1;min-width:200px;">
+                    <div style="font-size:14px;font-weight:700;color:#A78BFA;">New! FPL Wizard</div>
+                    <div style="font-size:12px;color:var(--text-secondary);">Guided decision flow: check fires → evaluate fixtures → find targets → optimize lineup → pick captain</div>
+                </div>
+                <a href="fpl-transfer-wizard.html" style="padding:8px 16px;background:#A78BFA;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;">Try FPL Wizard →</a>
+            </div>`;
+
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars);
 
             // Sell section
@@ -2355,20 +2373,25 @@
         }
 
         // ===== TAB SWITCHING =====
+        let lineupRendered = false;
         function switchTab(tab) {
             const teamDisplay = document.getElementById('teamDisplay');
             const plannerDisplay = document.getElementById('plannerDisplay');
             const transferDisplay = document.getElementById('transferDisplay');
+            const lineupDisplay = document.getElementById('lineupDisplay');
             const tabTeam = document.getElementById('tabTeam');
             const tabPlanner = document.getElementById('tabPlanner');
             const tabTransfer = document.getElementById('tabTransfer');
+            const tabLineup = document.getElementById('tabLineup');
 
             teamDisplay.style.display = 'none';
             plannerDisplay.style.display = 'none';
             transferDisplay.style.display = 'none';
+            lineupDisplay.style.display = 'none';
             tabTeam.classList.remove('active');
             tabPlanner.classList.remove('active');
             tabTransfer.classList.remove('active');
+            tabLineup.classList.remove('active');
 
             if (tab === 'team') {
                 teamDisplay.style.display = '';
@@ -2381,6 +2404,10 @@
                 transferDisplay.style.display = '';
                 tabTransfer.classList.add('active');
                 if (!transferRendered) renderTransferWizard();
+            } else if (tab === 'lineup') {
+                lineupDisplay.style.display = '';
+                tabLineup.classList.add('active');
+                if (!lineupRendered) renderInlineLineupWizard();
             }
         }
 
@@ -4587,6 +4614,135 @@
             }
 
             updateStatus(`${preset.charAt(0).toUpperCase() + preset.slice(1)} settings applied`, 'success');
+        }
+
+        // ===== INLINE LINEUP WIZARD =====
+        function renderInlineLineupWizard() {
+            lineupRendered = true;
+            const container = document.getElementById('lineupDisplay');
+            if (!loaded || !myPicks || myPicks.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:48px;margin-bottom:16px;">⚽</div><div style="font-size:18px;font-weight:600;margin-bottom:8px;">Load Your Team First</div><div style="font-size:14px;color:var(--text-secondary);">Enter your FPL Team ID above to get lineup recommendations.</div></div>';
+                return;
+            }
+
+            // Build lineup scores using transfer wizard's scoring data
+            const squad = myPicks.map(pick => {
+                const p = allPlayersById[pick.element];
+                if (!p) return null;
+                const score = computeQuickLineupScore(p);
+                return { ...p, pickPos: pick.position, onBench: pick.position > 11, isCaptain: pick.is_captain, isViceCaptain: pick.is_vice_captain, lwScore: score };
+            }).filter(Boolean);
+
+            // Find optimal lineup
+            const solution = solveQuickLineup(squad);
+
+            // CTA banner
+            let html = `
+                <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:10px;margin-bottom:20px;">
+                    <div style="font-size:28px;">🔮</div>
+                    <div style="flex:1;">
+                        <div style="font-size:14px;font-weight:700;color:#A78BFA;">Full FPL Wizard</div>
+                        <div style="font-size:12px;color:var(--text-secondary);">For the complete guided experience (transfers + lineup + captain), use the dedicated wizard page.</div>
+                    </div>
+                    <a href="fpl-transfer-wizard.html" style="padding:8px 16px;background:#A78BFA;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;">Open Wizard →</a>
+                </div>`;
+
+            // Quick formation + pitch view
+            html += `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:4px;">⚽ Recommended Lineup — GW${currentGW}</div>`;
+            html += `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Formation: <strong>${solution.formation}</strong> · Based on form, fixtures, and availability</div>`;
+
+            // Pitch
+            const xi = solution.xi;
+            const bench = solution.bench;
+            const posConfig = { 1: { cls: 'gk', icon: '🧤' }, 2: { cls: 'def', icon: '🛡️' }, 3: { cls: 'mid', icon: '🎯' }, 4: { cls: 'fwd', icon: '⚡' } };
+            const gk = xi.filter(p => p.pos === 1);
+            const defs = xi.filter(p => p.pos === 2);
+            const mids = xi.filter(p => p.pos === 3);
+            const fwds = xi.filter(p => p.pos === 4);
+
+            function renderPitchPlayer(p, isBench) {
+                const pc = posConfig[p.pos];
+                const sc = p.lwScore >= 30 ? 'high' : p.lwScore >= 10 ? 'mid' : 'low';
+                return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;${isBench ? 'opacity:0.6;' : ''}">
+                    <div style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:${p.pos === 1 ? 'rgba(252,211,77,0.3)' : p.pos === 2 ? 'rgba(52,211,153,0.3)' : p.pos === 3 ? 'rgba(96,165,250,0.3)' : 'rgba(248,113,113,0.3)'};border:2px solid ${p.pos === 1 ? '#FCD34D' : p.pos === 2 ? '#34D399' : p.pos === 3 ? '#60A5FA' : '#F87171'};">${pc.icon}</div>
+                    <div style="font-size:10px;font-weight:600;text-align:center;color:white;text-shadow:0 1px 3px rgba(0,0,0,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;">${p.web_name}</div>
+                    <div style="font-size:10px;font-weight:700;font-family:var(--font-mono);padding:1px 6px;border-radius:4px;background:rgba(0,0,0,0.5);color:${sc === 'high' ? 'var(--color-success)' : sc === 'mid' ? '#FBBF24' : 'var(--color-error)'};">${p.lwScore}</div>
+                </div>`;
+            }
+
+            html += `<div style="background:linear-gradient(180deg,#1a472a 0%,#1d5031 20%,#1a472a 40%,#1d5031 60%,#1a472a 80%,#1d5031 100%);border-radius:12px;padding:24px 16px;margin-bottom:20px;border:2px solid rgba(74,222,128,0.2);">
+                <div style="display:flex;justify-content:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">${fwds.map(p => renderPitchPlayer(p)).join('')}</div>
+                <div style="display:flex;justify-content:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">${mids.map(p => renderPitchPlayer(p)).join('')}</div>
+                <div style="display:flex;justify-content:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">${defs.map(p => renderPitchPlayer(p)).join('')}</div>
+                <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">${gk.map(p => renderPitchPlayer(p)).join('')}</div>
+            </div>`;
+
+            // Bench
+            html += `<div style="background:var(--surface);border-radius:12px;padding:16px;border:1px solid var(--border);margin-bottom:20px;">
+                <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;text-align:center;">📋 Bench Order</div>
+                <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;">${bench.slice(0, 4).map(p => renderPitchPlayer(p, true)).join('')}</div>
+            </div>`;
+
+            // Captain recommendation
+            const capCandidates = xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore).slice(0, 3);
+            html += `<div style="background:var(--surface);border-radius:12px;padding:16px;border:1px solid var(--border);">
+                <div style="font-size:14px;font-weight:700;margin-bottom:12px;">👑 Captain Picks</div>`;
+            capCandidates.forEach((p, i) => {
+                const fx = teamFixtures[p.team] || [];
+                const nextFx = fx[0];
+                html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;${i > 0 ? 'border-top:1px solid var(--border);' : ''}">
+                    <span style="font-size:16px;">${i === 0 ? '👑' : i === 1 ? '🥈' : '🥉'}</span>
+                    <span style="font-weight:600;flex:1;">${p.web_name}</span>
+                    <span style="font-size:12px;color:var(--text-secondary);">Form ${p.form}</span>
+                    ${nextFx ? `<span class="fixture-chip fdr-${nextFx.difficulty}" style="font-size:10px;">${nextFx.opponent}(${nextFx.isHome ? 'H' : 'A'})</span>` : ''}
+                    <span style="font-family:var(--font-mono);font-weight:700;font-size:13px;color:${p.lwScore >= 30 ? 'var(--color-success)' : 'var(--text-primary)'};">${p.lwScore}</span>
+                </div>`;
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        // Quick lineup scoring — simplified version for inline tab
+        function computeQuickLineupScore(p) {
+            if (p.status === 'i' || p.status === 'u' || p.status === 's') return -100;
+            let score = 0;
+            if (p.status === 'd') score -= 20;
+            // EP
+            score += (parseFloat(p.ep_next) || 0) * 3;
+            // Form
+            score += (parseFloat(p.form) || 0) * 2;
+            // Fixtures
+            const fx = teamFixtures[p.team] || [];
+            if (fx.length > 0) { score += (3 - fx[0].difficulty) * 5; if (fx[0].isHome) score += 2; }
+            // xGI
+            const mins = p.minutes || 0;
+            if (mins > 200) { const xgi90 = ((parseFloat(p.expected_goal_involvements) || 0) / mins) * 90; score += xgi90 * 10; }
+            // Minutes
+            const mpg = mins / Math.max(currentGW - 1, 1);
+            if (mpg >= 85) score += 3;
+            else if (mpg < 45) score -= 5;
+            // PPG
+            score += (p.total_points / Math.max(currentGW - 1, 1)) * 1.5;
+            return Math.round(score);
+        }
+
+        function solveQuickLineup(squad) {
+            const validFormations = [[3,4,3],[3,5,2],[4,3,3],[4,4,2],[4,5,1],[5,3,2],[5,4,1],[5,2,3]];
+            const byPos = { 1: [], 2: [], 3: [], 4: [] };
+            squad.forEach(p => { if (p.lwScore > -100) byPos[p.pos].push(p); });
+            Object.values(byPos).forEach(a => a.sort((a, b) => b.lwScore - a.lwScore));
+            let bestFormation = null, bestScore = -Infinity, bestXI = null;
+            for (const [nD, nM, nF] of validFormations) {
+                if (byPos[1].length < 1 || byPos[2].length < nD || byPos[3].length < nM || byPos[4].length < nF) continue;
+                const xi = [byPos[1][0], ...byPos[2].slice(0, nD), ...byPos[3].slice(0, nM), ...byPos[4].slice(0, nF)];
+                const total = xi.reduce((s, p) => s + p.lwScore, 0);
+                if (total > bestScore) { bestScore = total; bestFormation = `${nD}-${nM}-${nF}`; bestXI = xi; }
+            }
+            if (!bestXI) { const av = squad.filter(p => p.lwScore > -100).sort((a, b) => b.lwScore - a.lwScore); bestXI = av.slice(0, 11); bestFormation = 'N/A'; }
+            const xiIds = new Set(bestXI.map(p => p.id));
+            const bench = squad.filter(p => !xiIds.has(p.id)).sort((a, b) => { if (a.pos === 1 && b.pos !== 1) return 1; if (b.pos === 1 && a.pos !== 1) return -1; return b.lwScore - a.lwScore; });
+            return { xi: bestXI, bench, formation: bestFormation };
         }
 
         // ===== INITIALIZATION =====
