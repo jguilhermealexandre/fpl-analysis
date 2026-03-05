@@ -247,7 +247,7 @@ body {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 4px 10px;
+            padding: 4px 4px 4px 10px;
             background: var(--color-primary-muted);
             border-radius: var(--radius-full);
             font-size: 11px;
@@ -263,25 +263,26 @@ body {
 
         .nav-tid-change {
             font-size: 0;
-            color: var(--text-muted);
+            color: var(--color-primary-text);
+            opacity: 0.5;
             background: none;
             border: none;
+            border-left: 1px solid rgba(16, 185, 129, 0.25);
             cursor: pointer;
-            padding: 4px;
-            border-radius: var(--radius-sm);
+            padding: 2px 4px 2px 6px;
+            margin-left: 2px;
             display: flex;
             align-items: center;
             transition: all 150ms;
         }
 
         .nav-tid-change:hover {
-            color: var(--text-secondary);
-            background: var(--surface-2);
+            opacity: 1;
         }
 
         .nav-tid-change .icon {
-            width: 12px;
-            height: 12px;
+            width: 11px;
+            height: 11px;
         }
 
         @media (max-width: 768px) {
@@ -399,22 +400,17 @@ body {
             text-decoration: underline;
         }
 
-        /* ===== INDEX GRID (2-col when dashboard active) ===== */
+        /* ===== INDEX GRID (always single column) ===== */
         .index-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: var(--space-4);
         }
 
-        .index-grid.has-dashboard {
-            grid-template-columns: 1fr 370px;
-            align-items: start;
-        }
-
-        @media (max-width: 1100px) {
-            .index-grid.has-dashboard {
-                grid-template-columns: 1fr;
-            }
+        /* ===== DASHBOARD STRIP (full-width, above tools) ===== */
+        .dashboard-strip {
+            margin-bottom: var(--space-4);
+            animation: fadeIn 400ms ease-out;
         }
 
         /* ===== FEATURED WIZARD (compact) ===== */
@@ -525,10 +521,6 @@ body {
             gap: var(--space-3);
         }
 
-        .index-grid.has-dashboard .tools-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
         @media (max-width: 1100px) {
             .tools-grid { grid-template-columns: repeat(2, 1fr); }
         }
@@ -589,11 +581,7 @@ body {
             line-height: 1.4;
         }
 
-        /* ===== DASHBOARD (compact, right column) ===== */
-        .dashboard-column {
-            animation: fadeIn 400ms ease-out;
-        }
-
+        /* ===== DASHBOARD STRIP (full-width, collapsible health) ===== */
         .dashboard-card {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
@@ -605,9 +593,8 @@ body {
             display: flex;
             align-items: center;
             gap: var(--space-3);
-            padding: var(--space-3) var(--space-4);
+            padding: var(--space-3) var(--space-5);
             background: var(--surface-0);
-            border-bottom: 1px solid var(--border-subtle);
             flex-wrap: wrap;
         }
 
@@ -616,6 +603,15 @@ body {
             font-size: 15px;
             font-weight: 700;
             color: var(--text-primary);
+        }
+
+        .dashboard-gw-tag {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 2px 8px;
+            background: var(--surface-2);
+            border-radius: var(--radius-full);
             margin-right: auto;
         }
 
@@ -646,23 +642,61 @@ body {
             letter-spacing: 0.5px;
         }
 
-        .dashboard-body {
-            padding: var(--space-3) var(--space-4);
-        }
-
-        .dashboard-health-title {
-            display: flex;
+        .dashboard-health-toggle {
+            display: inline-flex;
             align-items: center;
-            gap: var(--space-2);
-            font-size: 12px;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
             font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: var(--space-3);
+            cursor: pointer;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            background: rgba(16, 185, 129, 0.06);
+            color: var(--color-success);
+            transition: all 150ms;
+            margin-left: var(--space-2);
         }
 
-        .dashboard-health-title .icon {
-            width: 14px;
-            height: 14px;
+        .dashboard-health-toggle:hover {
+            background: rgba(16, 185, 129, 0.12);
+        }
+
+        .dashboard-health-toggle.has-concerns {
+            border-color: rgba(245, 158, 11, 0.25);
+            background: rgba(245, 158, 11, 0.06);
+            color: var(--color-warning);
+        }
+
+        .dashboard-health-toggle.has-concerns:hover {
+            background: rgba(245, 158, 11, 0.12);
+        }
+
+        .dashboard-health-toggle .icon {
+            width: 12px;
+            height: 12px;
+        }
+
+        .dashboard-health-toggle .toggle-chevron {
+            transition: transform 200ms;
+        }
+
+        .dashboard-health-toggle.expanded .toggle-chevron {
+            transform: rotate(180deg);
+        }
+
+        .dashboard-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 300ms ease-out, padding 300ms ease-out;
+            padding: 0 var(--space-5);
+            border-top: 0 solid var(--border-subtle);
+        }
+
+        .dashboard-body.expanded {
+            max-height: 400px;
+            padding: var(--space-3) var(--space-5);
+            border-top: 1px solid var(--border-subtle);
         }
 
         .dashboard-healthy {
@@ -810,13 +844,13 @@ body {
 
         @media (max-width: 768px) {
             .dashboard-manager {
-                flex-direction: column;
-                align-items: flex-start;
                 gap: var(--space-2);
             }
-            .dashboard-manager-name { margin-right: 0; }
+            .dashboard-manager-name { width: 100%; }
+            .dashboard-gw-tag { margin-right: auto; }
             .dashboard-stat { border-left: none; padding: 0; }
             .dashboard-alert-news { display: none; }
+            .dashboard-health-toggle { margin-left: 0; }
         }
     </style>
 </head>
@@ -858,10 +892,10 @@ body {
                     <span class="nav-tid-badge">
                         <i data-lucide="user" class="icon"></i>
                         ID: <span id="teamIdDisplay"></span>
+                        <button class="nav-tid-change" onclick="changeTeamId()" title="Change Team ID">
+                            <i data-lucide="pencil" class="icon"></i>
+                        </button>
                     </span>
-                    <button class="nav-tid-change" onclick="changeTeamId()" title="Change Team ID">
-                        <i data-lucide="pencil" class="icon"></i>
-                    </button>
                 </div>
             </div>
         </div>
@@ -886,10 +920,11 @@ body {
             <div class="onboarding-hint">Find your ID at <a href="https://fantasy.premierleague.com" target="_blank">fantasy.premierleague.com</a> → My Team → URL number</div>
         </div>
 
-        <!-- Index Grid: left col (wizard + tools), right col (dashboard) -->
+        <!-- Dashboard strip (full-width, above tools) -->
+        <div class="dashboard-strip hidden" id="dashboardSection"></div>
+
+        <!-- Tools Grid -->
         <div class="index-grid" id="indexGrid">
-            <!-- Left column: navigation tools -->
-            <div class="index-left">
                 <!-- Featured Wizard -->
                 <section class="featured-section">
                     <div class="section-label">Featured Tool</div>
@@ -951,10 +986,6 @@ body {
                         </div>
                     </div>
                 </section>
-            </div>
-
-            <!-- Right column: dashboard (populated by JS) -->
-            <div class="dashboard-column hidden" id="dashboardSection"></div>
         </div>
     </main>
 
@@ -1020,8 +1051,6 @@ body {
             document.getElementById('teamIdDisplay').textContent = teamId;
             // Hide onboarding
             document.getElementById('onboardingCard').classList.add('hidden');
-            // Activate 2-col grid
-            document.getElementById('indexGrid').classList.add('has-dashboard');
             // Load dashboard
             loadDashboard(teamId);
         }
@@ -1034,9 +1063,8 @@ body {
             document.getElementById('teamIdInput').value = '';
             // Show onboarding
             document.getElementById('onboardingCard').classList.remove('hidden');
-            // Hide dashboard, revert grid
+            // Hide dashboard
             document.getElementById('dashboardSection').classList.add('hidden');
-            document.getElementById('indexGrid').classList.remove('has-dashboard');
             // Focus nav input
             document.getElementById('teamIdInput').focus();
         }
@@ -1045,7 +1073,6 @@ body {
             const section = document.getElementById('dashboardSection');
             section.classList.remove('hidden');
             section.innerHTML = `
-                <div class="section-label">Your Team</div>
                 <div class="dashboard-card">
                     <div class="dashboard-loading">
                         <div class="spinner spinner-sm"></div>
@@ -1128,6 +1155,10 @@ body {
                 }
 
                 const hasConcerns = critical.length > 0 || doubtful.length > 0;
+                const flaggedCount = critical.length + doubtful.length;
+                const toggleClass = hasConcerns ? 'has-concerns' : '';
+                const toggleIcon = hasConcerns ? 'alert-triangle' : 'check-circle';
+                const toggleText = hasConcerns ? `${flaggedCount} flagged` : 'All clear';
                 const ctaHtml = `
                     <div class="dashboard-cta">
                         ${hasConcerns ? `<a href="fpl-transfer-wizard.html" class="btn btn-primary btn-sm"><i data-lucide="wand-2" class="icon"></i> Fix in Wizard</a>` : ''}
@@ -1136,10 +1167,10 @@ body {
                 `;
 
                 section.innerHTML = `
-                    <div class="section-label">Your Team — GW${currentGW}</div>
                     <div class="dashboard-card">
                         <div class="dashboard-manager">
                             <span class="dashboard-manager-name">${managerData.player_first_name} ${managerData.player_last_name}</span>
+                            <span class="dashboard-gw-tag">GW${currentGW}</span>
                             <div class="dashboard-stat">
                                 <span class="dashboard-stat-value">${managerData.summary_overall_rank?.toLocaleString() || '-'}</span>
                                 <span class="dashboard-stat-label">Rank</span>
@@ -1156,12 +1187,13 @@ body {
                                 <span class="dashboard-stat-value">£${bank.toFixed(1)}m</span>
                                 <span class="dashboard-stat-label">Bank</span>
                             </div>
+                            <button class="dashboard-health-toggle ${toggleClass}" id="healthToggle" onclick="toggleHealth()">
+                                <i data-lucide="${toggleIcon}" class="icon"></i>
+                                ${toggleText}
+                                <i data-lucide="chevron-down" class="toggle-chevron icon"></i>
+                            </button>
                         </div>
-                        <div class="dashboard-body">
-                            <div class="dashboard-health-title">
-                                <i data-lucide="activity" class="icon"></i>
-                                Squad Health
-                            </div>
+                        <div class="dashboard-body" id="dashboardBody">
                             ${alertsHtml}
                             ${ctaHtml}
                         </div>
@@ -1179,6 +1211,15 @@ body {
                     </div>
                 `;
                 lucide.createIcons();
+            }
+        }
+
+        function toggleHealth() {
+            const body = document.getElementById('dashboardBody');
+            const toggle = document.getElementById('healthToggle');
+            if (body && toggle) {
+                body.classList.toggle('expanded');
+                toggle.classList.toggle('expanded');
             }
         }
 
