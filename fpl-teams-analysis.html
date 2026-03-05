@@ -267,6 +267,59 @@
         }
 
         /* ===== TEAMS GRID ===== */
+        .rankings-toolbar {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-4);
+            padding: var(--space-3) var(--space-4);
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+        }
+
+        .rankings-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .rankings-pills {
+            display: flex;
+            gap: var(--space-1);
+            background: var(--surface-2);
+            padding: 3px;
+            border-radius: var(--radius-md);
+        }
+
+        .rankings-pill {
+            padding: 6px 12px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 150ms ease-out;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .rankings-pill:hover {
+            color: var(--text-primary);
+            background: var(--surface-3);
+        }
+
+        .rankings-pill.active {
+            background: var(--color-info);
+            color: var(--surface-0);
+        }
+
         .teams-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -1063,18 +1116,29 @@
                 flex-wrap: wrap;
             }
 
-            .search-box {
+            .rankings-toolbar {
+                flex-wrap: wrap;
+            }
+
+            .stats-toolbar-row {
+                flex-wrap: wrap;
+            }
+
+            .stats-group-pills {
+                flex-wrap: wrap;
+            }
+
+            .stats-search-box {
                 width: 100%;
                 margin-left: 0;
-                margin-top: var(--space-3);
             }
 
-            .search-input {
-                width: 100%;
+            .stats-search-input {
+                width: 100% !important;
             }
 
-            .search-input:focus {
-                width: 100%;
+            .stats-search-input:focus {
+                width: 100% !important;
             }
         }
 
@@ -1527,6 +1591,106 @@
             border: 1px solid var(--border-default);
             border-radius: var(--radius-lg);
             overflow: hidden;
+        }
+
+        .stats-compact-toolbar {
+            padding: var(--space-3) var(--space-4);
+            border-bottom: 1px solid var(--border-default);
+            background: var(--surface-0);
+        }
+
+        .stats-toolbar-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            flex-wrap: wrap;
+        }
+
+        .stats-group-pills {
+            display: flex;
+            gap: 2px;
+            background: var(--surface-2);
+            padding: 3px;
+            border-radius: var(--radius-md);
+            flex-wrap: wrap;
+        }
+
+        .stats-group-pill {
+            padding: 5px 10px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 150ms ease-out;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .stats-group-pill:hover {
+            color: var(--text-primary);
+            background: var(--surface-3);
+        }
+
+        .stats-group-pill.active {
+            background: var(--color-info);
+            color: var(--surface-0);
+        }
+
+        .stats-view-pills {
+            display: flex;
+            gap: 2px;
+            background: var(--surface-2);
+            padding: 3px;
+            border-radius: var(--radius-md);
+        }
+
+        .stats-view-pill {
+            padding: 5px 10px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 150ms ease-out;
+            white-space: nowrap;
+        }
+
+        .stats-view-pill:hover {
+            color: var(--text-primary);
+        }
+
+        .stats-view-pill.active {
+            background: var(--surface-3);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .stats-toolbar-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border-default);
+            flex-shrink: 0;
+        }
+
+        .stats-search-box {
+            margin-left: auto;
+        }
+
+        .stats-search-input {
+            width: 160px !important;
+        }
+
+        .stats-search-input:focus {
+            width: 200px !important;
         }
 
         .stats-header {
@@ -2207,15 +2371,10 @@
         <!-- Filter Bar -->
         <div class="filter-bar">
             <div class="filter-tabs">
-                <button class="filter-tab active" data-view="attack">Best for Attack</button>
-                <button class="filter-tab" data-view="defense">Best for Defense</button>
+                <button class="filter-tab active" data-view="rankings"><i data-lucide="trophy" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Team Rankings</button>
                 <button class="filter-tab" data-view="swings">Fixture Swings</button>
                 <button class="filter-tab" data-view="calendar"><i data-lucide="calendar" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Full Calendar</button>
                 <button class="filter-tab" data-view="stats"><i data-lucide="bar-chart-3" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Stats Table</button>
-            </div>
-            <div class="search-box">
-                <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-                <input type="text" class="search-input" placeholder="Search teams..." id="searchInput">
             </div>
         </div>
 
@@ -2256,7 +2415,8 @@
         const PLAYERS_URL = 'data/players-data.json';
         
         let allTeamsData = [];
-        let currentView = 'attack';
+        let currentView = 'rankings';
+        let rankingsSort = 'attack';
         let currentGW = 1;
         window.rawFixturesData = [];
         window.teamXgData = {};      // Per-GW xG/xGC aggregated by team
@@ -2265,7 +2425,6 @@
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', () => {
             initFilters();
-            initSearch();
             loadTeamData();
         });
 
@@ -2277,22 +2436,6 @@
                     currentView = tab.dataset.view;
                     renderCurrentView();
                 });
-            });
-        }
-
-        function initSearch() {
-            const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                filterTeams(query);
-            });
-        }
-
-        function filterTeams(query) {
-            const cards = document.querySelectorAll('.team-card');
-            cards.forEach(card => {
-                const teamName = card.dataset.team.toLowerCase();
-                card.style.display = teamName.includes(query) ? '' : 'none';
             });
         }
 
@@ -3013,24 +3156,36 @@
         }
 
         // ===== RENDERING =====
+        function setRankingsSort(sort) {
+            rankingsSort = sort;
+            renderCurrentView();
+        }
+
         function renderCurrentView() {
-            const grid = document.getElementById('teams-grid');
             const contentArea = document.getElementById('content-area');
 
-            // Reset content area to just the grid
-            contentArea.innerHTML = '<div class="teams-grid" id="teams-grid"></div>';
-            const newGrid = document.getElementById('teams-grid');
-
             switch (currentView) {
-                case 'attack':
-                    const attackSorted = [...allTeamsData].sort((a, b) => b.attackPower - a.attackPower);
-                    newGrid.innerHTML = attackSorted.map((team, i) => createTeamCard(team, i + 1, 'attack')).join('');
+                case 'rankings': {
+                    const sortKey = rankingsSort === 'attack' ? 'attackPower' :
+                                    rankingsSort === 'defense' ? 'defensePower' :
+                                    rankingsSort === 'fixtures' ? 'fixtureScore' : 'formRating';
+                    const highlightMode = rankingsSort === 'defense' ? 'defense' : rankingsSort === 'fixtures' ? 'fixture' : rankingsSort === 'form' ? 'form' : 'attack';
+                    const sorted = [...allTeamsData].sort((a, b) => b[sortKey] - a[sortKey]);
+                    const pillsHtml = `
+                        <div class="rankings-toolbar">
+                            <span class="rankings-label">Sort by:</span>
+                            <div class="rankings-pills">
+                                <button class="rankings-pill ${rankingsSort === 'attack' ? 'active' : ''}" onclick="setRankingsSort('attack')"><i data-lucide="swords" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Attack</button>
+                                <button class="rankings-pill ${rankingsSort === 'defense' ? 'active' : ''}" onclick="setRankingsSort('defense')"><i data-lucide="shield-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Defence</button>
+                                <button class="rankings-pill ${rankingsSort === 'fixtures' ? 'active' : ''}" onclick="setRankingsSort('fixtures')"><i data-lucide="calendar" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fixtures</button>
+                                <button class="rankings-pill ${rankingsSort === 'form' ? 'active' : ''}" onclick="setRankingsSort('form')"><i data-lucide="trending-up" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Form</button>
+                            </div>
+                        </div>
+                    `;
+                    contentArea.innerHTML = pillsHtml + '<div class="teams-grid" id="teams-grid"></div>';
+                    document.getElementById('teams-grid').innerHTML = sorted.map((team, i) => createTeamCard(team, i + 1, highlightMode)).join('');
                     break;
-
-                case 'defense':
-                    const defenseSorted = [...allTeamsData].sort((a, b) => b.defensePower - a.defensePower);
-                    newGrid.innerHTML = defenseSorted.map((team, i) => createTeamCard(team, i + 1, 'defense')).join('');
-                    break;
+                }
 
                 case 'swings':
                     renderFixtureSwings(contentArea);
@@ -3088,6 +3243,8 @@
             // Determine which metric to highlight based on mode
             const highlightATK = mode === 'attack' ? ' highlight' : '';
             const highlightDEF = mode === 'defense' ? ' highlight' : '';
+            const highlightFIX = mode === 'fixture' ? ' highlight' : '';
+            const highlightFORM = mode === 'form' ? ' highlight' : '';
 
             return `
                 <div class="team-card" data-team="${team.name}" onclick="openTeamReport(${team.id})">
@@ -3117,12 +3274,12 @@
                             <div class="power-bar"><div class="power-bar-fill" style="width:${team.defensePower}%"></div></div>
                             <div class="power-value ${team.defensePower >= 60 ? 'good' : team.defensePower < 40 ? 'bad' : ''}">${team.defensePower}</div>
                         </div>
-                        <div class="power-metric fixture">
+                        <div class="power-metric fixture${highlightFIX}">
                             <div class="power-label">Fixtures</div>
                             <div class="power-bar"><div class="power-bar-fill" style="width:${team.fixtureScore}%"></div></div>
                             <div class="power-value ${team.fixtureScore >= 60 ? 'good' : team.fixtureScore < 40 ? 'bad' : ''}">${team.fixtureScore}</div>
                         </div>
-                        <div class="power-metric form-metric">
+                        <div class="power-metric form-metric${highlightFORM}">
                             <div class="power-label">Form</div>
                             <div class="power-bar"><div class="power-bar-fill" style="width:${team.formRating}%"></div></div>
                             <div class="power-value ${team.formRating >= 60 ? 'good' : team.formRating < 40 ? 'bad' : ''}">${team.formRating}</div>
@@ -3281,13 +3438,121 @@
                         </div>
                     </div>
                     
-                    <div class="calendar-analysis" style="margin-top: var(--space-6);">
-                        ${renderUpcomingGoldMines(teamFixtureMap, displayGWs)}
-                    </div>
+                    ${renderTargetableCalendar(teamFixtureMap, easyRuns, displayGWs)}
                 </div>
             `;
 
             container.innerHTML = html;
+        }
+
+        // ===== TARGETABLE PATCHES CALENDAR (in Fixture Swings tab) =====
+        let swingsCalendarColorMode = 'fdr';
+
+        function setSwingsCalendarColor(mode) {
+            swingsCalendarColorMode = mode;
+            renderCurrentView();
+        }
+
+        function renderTargetableCalendar(fixtureMap, easyRuns, allDisplayGWs) {
+            // Filter to only teams that have easy runs
+            const futureRuns = easyRuns.filter(r => r.startGW >= currentGW);
+            const teamIdsWithRuns = [...new Set(futureRuns.map(r => r.teamId))];
+            
+            if (teamIdsWithRuns.length === 0) {
+                return '<div style="padding: var(--space-6); text-align: center; color: var(--text-muted); font-size: 13px;">No targetable fixture patches found in remaining fixtures.</div>';
+            }
+
+            // Use remaining GWs only
+            const displayGWs = allDisplayGWs.filter(gw => gw >= currentGW);
+
+            // Sort teams by their best easy run score (lower = better)
+            const teamsToShow = teamIdsWithRuns.map(tid => {
+                const team = allTeamsData.find(t => t.id === tid);
+                const bestRun = futureRuns.find(r => r.teamId === tid);
+                return { team, bestRun };
+            }).filter(t => t.team).sort((a, b) => a.bestRun.score - b.bestRun.score);
+
+            // Temporarily set calendarColorMode for rendering
+            const savedMode = calendarColorMode;
+            calendarColorMode = swingsCalendarColorMode;
+
+            const colorModeDesc = {
+                fdr: 'Standard FDR difficulty (1-5)',
+                attack: 'Attack FDR — opponent defensive weakness',
+                defense: 'Defense FDR — opponent attacking weakness',
+                cs: 'Clean sheet probability'
+            };
+
+            const calendarRows = teamsToShow.map(({ team, bestRun }) => {
+                const teamEasyRuns = easyRuns.filter(r => r.teamId === team.id);
+                const avgFdr = calculateAvgFDR(fixtureMap[team.id], displayGWs);
+                const avgClass = avgFdr <= 2.5 ? 'good' : avgFdr <= 3.2 ? 'warning' : 'bad';
+
+                return `
+                    <tr>
+                        <td class="team-cell">
+                            <div class="calendar-team">
+                                <img src="${team.badgeUrl}" alt="${team.shortName}" class="calendar-team-badge" onerror="this.style.display='none'">
+                                <span class="calendar-team-name">${team.shortName}</span>
+                                <span class="calendar-team-fdr ${avgClass}">${avgFdr.toFixed(1)}</span>
+                            </div>
+                        </td>
+                        ${displayGWs.map(gw => renderFixtureCell(fixtureMap[team.id][gw], gw, teamEasyRuns, team)).join('')}
+                        <td>
+                            <span class="analysis-team-stat ${avgClass}">${avgFdr.toFixed(1)}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Get legend while still in swings color mode
+            const legendHtml = getCalendarLegend();
+
+            // Restore calendarColorMode
+            calendarColorMode = savedMode;
+
+            return `
+                <div class="calendar-section" style="margin-top: var(--space-6); padding: 0;">
+                    <div class="calendar-header">
+                        <div>
+                            <h2 class="calendar-title" style="font-size: 18px;"><i data-lucide="target" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Targetable Patches Calendar</h2>
+                            <p class="calendar-subtitle">${colorModeDesc[swingsCalendarColorMode]} · Showing ${teamsToShow.length} teams with easy runs</p>
+                        </div>
+                        <div class="calendar-legend" id="swingsCalendarLegend">
+                            ${legendHtml}
+                        </div>
+                    </div>
+
+                    <div class="calendar-controls">
+                        <div class="control-group">
+                            <span class="control-label">Color by:</span>
+                            <button class="calendar-control-btn ${swingsCalendarColorMode === 'fdr' ? 'active' : ''}" onclick="setSwingsCalendarColor('fdr')">FDR</button>
+                            <button class="calendar-control-btn ${swingsCalendarColorMode === 'attack' ? 'active' : ''}" onclick="setSwingsCalendarColor('attack')"><i data-lucide="crosshair" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Attackers</button>
+                            <button class="calendar-control-btn ${swingsCalendarColorMode === 'defense' ? 'active' : ''}" onclick="setSwingsCalendarColor('defense')"><i data-lucide="shield-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Defenders</button>
+                            <button class="calendar-control-btn ${swingsCalendarColorMode === 'cs' ? 'active' : ''}" onclick="setSwingsCalendarColor('cs')"><i data-lucide="hand" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> CS %</button>
+                        </div>
+                    </div>
+
+                    <div class="calendar-container">
+                        <div class="calendar-scroll">
+                            <table class="calendar-table">
+                                <thead>
+                                    <tr>
+                                        <th class="team-header">Team</th>
+                                        ${displayGWs.map(gw => `
+                                            <th class="gw-header ${gw === currentGW ? 'gw-current' : ''}">${gw}</th>
+                                        `).join('')}
+                                        <th class="gw-header" style="background: var(--surface-3);">Avg</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${calendarRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         // ===== FULL SEASON CALENDAR =====
@@ -3652,7 +3917,7 @@
             const cs = `CS: ${fixture.csChance || '?'}%`;
             const oppDef = `Opp Def: ${fixture.oppDefensePower || '?'}`;
             const oppAtt = `Opp Att: ${fixture.oppAttackPower || '?'}`;
-            const btts = fixture.bttsLikely ? '<i data-lucide="flame" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> BTTS Likely' : '';
+            const btts = fixture.bttsLikely ? 'BTTS Likely' : '';
             
             if (calendarColorMode === 'attack') {
                 return `${base}\nAttack FDR: ${fixture.attackFdr} (Opp Def: ${fixture.oppDefensePower})\nStd FDR: ${fixture.fdr} | ${cs}${btts ? '\n' + btts : ''}`;
@@ -3731,7 +3996,9 @@
         // ===== STATS TABLE =====
         let statsSort = { col: 'pts', dir: 'desc' };
         let statsView = 'season'; // 'season', 'last10', or 'last5'
-        let statsCategory = 'overall'; // 'overall', 'attack', 'defense', 'discipline', 'fpl', 'xg', 'homeAway'
+        let statsCategory = 'overall'; // kept for legacy; not used in new all-columns view
+        let statsVisibleGroups = new Set(['overall', 'attack', 'defense', 'discipline', 'fpl', 'xg', 'homeAway']);
+        let statsSearch = '';
 
         function createEmptyStatBucket() {
             return {
@@ -4034,20 +4301,35 @@
             const cats = getStatsColumns();
             const catKeys = Object.keys(cats);
 
+            const groupPillLabels = {
+                overall: 'Overall',
+                attack: '<i data-lucide="swords" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Attack',
+                defense: '<i data-lucide="shield-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Defence',
+                discipline: '<i data-lucide="clipboard-list" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Discipline',
+                fpl: '<i data-lucide="award" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> FPL',
+                xg: '<i data-lucide="trending-up" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> xG',
+                homeAway: '<i data-lucide="home" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> H/A'
+            };
+
             container.innerHTML = `
                 <div class="stats-container">
-                    <div class="stats-header">
-                        <div class="stats-title"><i data-lucide="bar-chart-3" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Team Statistics</div>
-                        <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
-                            <div class="stats-toggle">
+                    <div class="stats-compact-toolbar">
+                        <div class="stats-toolbar-row">
+                            <div class="stats-group-pills">
                                 ${catKeys.map(k => `
-                                    <button class="stats-toggle-btn stats-cat-btn ${statsCategory === k ? 'active' : ''}" data-cat="${k}">${cats[k].groupLabel}</button>
+                                    <button class="stats-group-pill ${statsVisibleGroups.has(k) ? 'active' : ''}" data-group="${k}">${groupPillLabels[k] || cats[k].groupLabel}</button>
                                 `).join('')}
                             </div>
-                            <div class="stats-toggle">
-                                <button class="stats-toggle-btn stats-view-btn ${statsView === 'season' ? 'active' : ''}" data-view="season">Season</button>
-                                <button class="stats-toggle-btn stats-view-btn ${statsView === 'last10' ? 'active' : ''}" data-view="last10">Last 10</button>
-                                <button class="stats-toggle-btn stats-view-btn ${statsView === 'last5' ? 'active' : ''}" data-view="last5">Last 5</button>
+                            <div class="stats-toolbar-divider"></div>
+                            <div class="stats-view-pills">
+                                <button class="stats-view-pill ${statsView === 'season' ? 'active' : ''}" data-view="season">Season</button>
+                                <button class="stats-view-pill ${statsView === 'last10' ? 'active' : ''}" data-view="last10">L10</button>
+                                <button class="stats-view-pill ${statsView === 'last5' ? 'active' : ''}" data-view="last5">L5</button>
+                            </div>
+                            <div class="stats-toolbar-divider"></div>
+                            <div class="search-box stats-search-box">
+                                <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
+                                <input type="text" class="search-input stats-search-input" placeholder="Search teams..." id="statsSearchInput" value="${statsSearch}">
                             </div>
                         </div>
                     </div>
@@ -4060,22 +4342,42 @@
                 </div>
             `;
 
-            // Category toggle handlers
-            document.querySelectorAll('.stats-cat-btn').forEach(btn => {
+            // Group pill toggle handlers
+            document.querySelectorAll('.stats-group-pill').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    statsCategory = btn.dataset.cat;
-                    statsSort = { col: 'pts', dir: 'desc' };
+                    const group = btn.dataset.group;
+                    if (statsVisibleGroups.has(group)) {
+                        if (statsVisibleGroups.size > 1) {
+                            statsVisibleGroups.delete(group);
+                        }
+                    } else {
+                        statsVisibleGroups.add(group);
+                    }
                     renderStatsTable(document.getElementById('content-area'));
                 });
             });
 
-            // View toggle handlers
-            document.querySelectorAll('.stats-view-btn').forEach(btn => {
+            // View pill handlers
+            document.querySelectorAll('.stats-view-pill').forEach(btn => {
                 btn.addEventListener('click', () => {
                     statsView = btn.dataset.view;
                     renderStatsTable(document.getElementById('content-area'));
                 });
             });
+
+            // Search handler
+            const searchInput = document.getElementById('statsSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    statsSearch = e.target.value.toLowerCase();
+                    updateStatsTable(_cachedSeasonStats || calculateSeasonStats());
+                });
+                // Focus back to search position
+                if (statsSearch) {
+                    searchInput.focus();
+                    searchInput.setSelectionRange(statsSearch.length, statsSearch.length);
+                }
+            }
 
             buildStatsTableHeader(cats);
             updateStatsTable(seasonStats);
@@ -4085,20 +4387,27 @@
             const thead = document.getElementById('statsHead');
             if (!thead) return;
 
-            const cat = cats[statsCategory];
-            const cols = cat.cols;
+            // Build headers for all visible groups
+            const visibleCats = Object.keys(cats).filter(k => statsVisibleGroups.has(k));
+            
+            // Group header row
+            let groupHeaders = '<th class="team-col" rowspan="2">Team</th>';
+            // Column header row
+            let colHeaders = '';
+            
+            visibleCats.forEach((catKey, idx) => {
+                const cat = cats[catKey];
+                const dividerClass = idx > 0 ? ' section-divider' : '';
+                groupHeaders += `<th colspan="${cat.cols.length}" class="${cat.groupClass}${dividerClass}">${cat.groupLabel}</th>`;
+                cat.cols.forEach((c, ci) => {
+                    const firstColDivider = (idx > 0 && ci === 0) ? ' section-divider' : '';
+                    colHeaders += `<th data-col="${c.key}" title="${c.title}" class="${firstColDivider}">${c.label}</th>`;
+                });
+            });
 
             thead.innerHTML = `
-                <tr class="col-groups">
-                    <th class="team-col"></th>
-                    <th colspan="${cols.length}" class="${cat.groupClass}">${cat.groupLabel}</th>
-                </tr>
-                <tr>
-                    <th class="team-col">Team</th>
-                    ${cols.map(c => `
-                        <th data-col="${c.key}" title="${c.title}">${c.label}</th>
-                    `).join('')}
-                </tr>
+                <tr class="col-groups">${groupHeaders}</tr>
+                <tr>${colHeaders}</tr>
             `;
 
             // Sort handlers
@@ -4128,8 +4437,14 @@
             if (!tbody) return;
 
             const cats = getStatsColumns();
-            const cat = cats[statsCategory];
-            const cols = cat.cols;
+            // Flatten all visible columns
+            const visibleCats = Object.keys(cats).filter(k => statsVisibleGroups.has(k));
+            const cols = [];
+            const colGroupBoundaries = new Set();
+            visibleCats.forEach((catKey, idx) => {
+                if (idx > 0) colGroupBoundaries.add(cols.length); // mark first col of non-first group
+                cats[catKey].cols.forEach(c => cols.push(c));
+            });
 
             // Convert to flat array with computed values
             let teams = Object.values(seasonStats).map(team => {
@@ -4186,6 +4501,14 @@
                 };
             });
 
+            // Apply search filter
+            if (statsSearch) {
+                teams = teams.filter(t => 
+                    t.name.toLowerCase().includes(statsSearch) || 
+                    t.shortName.toLowerCase().includes(statsSearch)
+                );
+            }
+
             // Sort
             const sortCol = statsSort.col;
             const sortDir = statsSort.dir;
@@ -4240,12 +4563,13 @@
             tbody.innerHTML = teams.map((team, idx) => {
                 const rank = idx + 1;
                 
-                const cells = cols.map(col => {
+                const cells = cols.map((col, colIdx) => {
+                    const dividerClass = colGroupBoundaries.has(colIdx) ? ' section-divider' : '';
                     if (col.key === 'form') {
                         const formDots = (team.form || []).map(r => 
                             `<span class="stats-form-dot ${r}"></span>`
                         ).join('');
-                        return `<td><div style="display:flex;gap:3px;justify-content:center;">${formDots}</div></td>`;
+                        return `<td class="${dividerClass}"><div style="display:flex;gap:3px;justify-content:center;">${formDots}</div></td>`;
                     }
                     
                     let val = team[col.key] ?? 0;
@@ -4262,7 +4586,7 @@
                     const cls = getValueClass(col.key, val, col);
                     const isBold = ['pts', 'gf', 'ga', 'gd', 'bonus', 'bps'].includes(col.key);
                     
-                    return `<td class="stats-value ${cls}">${isBold ? '<strong>' : ''}${display}${isBold ? '</strong>' : ''}</td>`;
+                    return `<td class="stats-value ${cls}${dividerClass}">${isBold ? '<strong>' : ''}${display}${isBold ? '</strong>' : ''}</td>`;
                 }).join('');
 
                 return `
