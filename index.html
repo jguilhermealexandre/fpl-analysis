@@ -289,22 +289,95 @@ body {
             .nav-team-id { display: none; }
         }
 
-        /* ===== COMPACT HERO ===== */
-        .hero {
-            padding: var(--space-4) 0 var(--space-3);
-            margin-bottom: var(--space-3);
-            display: flex;
-            align-items: baseline;
-            gap: var(--space-3);
+        /* ===== TOOL ACCENT COLORS ===== */
+        :root {
+            --color-wizard: #8B5CF6;
+            --color-wizard-muted: rgba(139, 92, 246, 0.10);
+            --color-wizard-glow: rgba(139, 92, 246, 0.20);
+            --color-wizard-text: #5B21B6;
+            --color-myteam: #F43F5E;
+            --color-myteam-muted: rgba(244, 63, 94, 0.10);
+            --color-myteam-glow: rgba(244, 63, 94, 0.18);
+            --color-myteam-text: #9F1239;
+            --color-players: #3B82F6;
+            --color-players-muted: rgba(59, 130, 246, 0.10);
+            --color-players-glow: rgba(59, 130, 246, 0.18);
+            --color-players-text: #1E40AF;
+            --color-teams: #F59E0B;
+            --color-teams-muted: rgba(245, 158, 11, 0.10);
+            --color-teams-glow: rgba(245, 158, 11, 0.18);
+            --color-teams-text: #92400E;
+            --color-rivals: #6366F1;
+            --color-rivals-muted: rgba(99, 102, 241, 0.10);
+            --color-rivals-glow: rgba(99, 102, 241, 0.18);
+            --color-rivals-text: #3730A3;
+        }
+
+        /* ===== HERO BANNER ===== */
+        .hero-banner {
+            position: relative;
+            background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 30%, #FFFFFF 70%, #EFF6FF 100%);
+            border-bottom: 1px solid var(--border-default);
+            overflow: hidden;
+        }
+
+        .hero-banner::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle at 1px 1px, rgba(16, 185, 129, 0.07) 1px, transparent 0);
+            background-size: 24px 24px;
+            pointer-events: none;
+        }
+
+        .hero-banner::after {
+            content: '';
+            position: absolute;
+            top: -60%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero-inner {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 56px 24px 48px;
+            text-align: center;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 14px;
+            background: var(--color-primary-muted);
+            border: 1px solid rgba(16, 185, 129, 0.20);
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-primary-text);
+            margin-bottom: 20px;
+        }
+
+        .hero-badge .icon {
+            width: 14px;
+            height: 14px;
         }
 
         .hero-title {
             font-family: var(--font-display);
-            font-size: 24px;
+            font-size: 42px;
             font-weight: 700;
             color: var(--text-primary);
-            letter-spacing: -0.5px;
-            white-space: nowrap;
+            letter-spacing: -1px;
+            line-height: 1.15;
+            margin-bottom: 16px;
         }
 
         .hero-title .highlight {
@@ -312,56 +385,125 @@ body {
         }
 
         .hero-subtitle {
-            font-size: 13px;
-            color: var(--text-muted);
+            font-size: 17px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 560px;
+            margin: 0 auto 28px;
         }
 
+        .hero-stats {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .hero-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .hero-stat-pill .icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        .hero-stat-pill .icon.green { color: var(--color-primary); }
+        .hero-stat-pill .icon.blue { color: var(--color-players); }
+        .hero-stat-pill .icon.amber { color: var(--color-teams); }
+        .hero-stat-pill .icon.purple { color: var(--color-wizard); }
+
         @media (max-width: 768px) {
-            .hero { flex-direction: column; gap: var(--space-1); }
-            .hero-title { font-size: 20px; }
-            .hero-subtitle { font-size: 12px; }
+            .hero-inner { padding: 36px 20px 32px; }
+            .hero-title { font-size: 28px; letter-spacing: -0.5px; }
+            .hero-subtitle { font-size: 15px; margin-bottom: 20px; }
+            .hero-stat-pill { font-size: 11px; padding: 5px 10px; }
         }
 
         /* ===== ONBOARDING (first-time user) ===== */
         .onboarding-card {
-            background: var(--surface-0);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-            padding: var(--space-6) var(--space-8);
+            background: linear-gradient(135deg, #F0FDF4, #ECFDF5);
+            border: 1px solid rgba(16, 185, 129, 0.20);
+            border-radius: var(--radius-xl);
+            padding: 32px 40px;
             text-align: center;
-            margin-bottom: var(--space-4);
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .onboarding-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-primary), #34D399, var(--color-primary));
+        }
+
+        .onboarding-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--color-primary-muted);
+            border: 2px solid rgba(16, 185, 129, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            color: var(--color-primary);
+        }
+
+        .onboarding-icon .icon {
+            width: 24px;
+            height: 24px;
         }
 
         .onboarding-title {
             font-family: var(--font-display);
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: var(--space-2);
+            margin-bottom: 8px;
         }
 
         .onboarding-subtitle {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-bottom: var(--space-4);
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            max-width: 420px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.5;
         }
 
         .onboarding-form {
             display: flex;
             align-items: center;
             gap: var(--space-2);
-            max-width: 320px;
+            max-width: 340px;
             margin: 0 auto;
             background: var(--surface-1);
             border: 1px solid var(--border-default);
             border-radius: var(--radius-full);
             padding: 4px 4px 4px var(--space-4);
             transition: all 200ms ease-out;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
 
         .onboarding-form:focus-within {
             border-color: var(--color-primary);
-            box-shadow: 0 0 0 3px var(--color-primary-muted);
+            box-shadow: 0 0 0 3px var(--color-primary-muted), 0 2px 8px rgba(0,0,0,0.06);
         }
 
         .onboarding-form input {
@@ -386,25 +528,118 @@ body {
         }
 
         .onboarding-hint {
-            margin-top: var(--space-2);
-            font-size: 11px;
+            margin-top: 10px;
+            font-size: 12px;
             color: var(--text-muted);
         }
 
         .onboarding-hint a {
             color: var(--color-primary);
             text-decoration: none;
+            font-weight: 500;
         }
 
         .onboarding-hint a:hover {
             text-decoration: underline;
         }
 
+        /* ===== "HOW IT WORKS" STRIP ===== */
+        .how-it-works {
+            padding: 40px 24px;
+            background: var(--surface-0);
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .how-it-works-inner {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .how-it-works-label {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 24px;
+        }
+
+        .steps-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 0;
+        }
+
+        .step-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            flex: 0 0 160px;
+            text-align: center;
+        }
+
+        .step-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            position: relative;
+        }
+
+        .step-circle .icon {
+            width: 22px;
+            height: 22px;
+        }
+
+        .step-circle--green { background: var(--color-primary-muted); color: var(--color-primary); border: 2px solid rgba(16, 185, 129, 0.20); }
+        .step-circle--blue { background: var(--color-players-muted); color: var(--color-players); border: 2px solid rgba(59, 130, 246, 0.20); }
+        .step-circle--purple { background: var(--color-wizard-muted); color: var(--color-wizard); border: 2px solid rgba(139, 92, 246, 0.20); }
+
+        .step-label {
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .step-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .step-connector {
+            flex: 0 0 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: 14px;
+        }
+
+        .step-connector-line {
+            width: 100%;
+            height: 2px;
+            background: repeating-linear-gradient(90deg, var(--surface-4) 0 6px, transparent 6px 12px);
+        }
+
+        @media (max-width: 600px) {
+            .steps-row { flex-direction: column; align-items: center; gap: 8px; }
+            .step-connector { flex: 0 0 auto; padding-top: 0; transform: rotate(90deg); width: 40px; }
+            .step-item { flex: 0 0 auto; }
+        }
+
         /* ===== INDEX GRID (always single column) ===== */
         .index-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: var(--space-4);
+            gap: 24px;
         }
 
         /* ===== DASHBOARD STRIP (full-width, above tools) ===== */
@@ -413,47 +648,73 @@ body {
             animation: fadeIn 400ms ease-out;
         }
 
-        /* ===== FEATURED WIZARD (compact) ===== */
+        /* ===== FEATURED WIZARD — PREMIUM SHOWCASE ===== */
         .featured-section {
-            margin-bottom: var(--space-3);
+            margin-bottom: 8px;
         }
 
         .wizard-card {
-            background: var(--surface-0);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-            padding: var(--space-4) var(--space-5);
+            background: linear-gradient(135deg, #7C3AED, #6366F1, #8B5CF6);
+            border: none;
+            border-radius: var(--radius-xl);
+            padding: 32px 36px;
             cursor: pointer;
-            transition: all 150ms ease-out;
+            transition: all 200ms ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wizard-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 0);
+            background-size: 20px 20px;
+            pointer-events: none;
+        }
+
+        .wizard-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
         }
 
         .wizard-card:hover {
-            border-color: var(--color-primary);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(124, 58, 237, 0.30);
         }
 
         .wizard-content {
             display: flex;
             align-items: center;
-            gap: var(--space-4);
+            gap: 24px;
+            position: relative;
+            z-index: 1;
         }
 
         .wizard-icon {
-            width: 48px;
-            height: 48px;
-            background: var(--color-primary-muted);
-            border-radius: var(--radius-md);
+            width: 64px;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.20);
+            border-radius: var(--radius-lg);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--color-primary);
+            color: #fff;
             flex-shrink: 0;
+            animation: wizardPulse 3s ease-in-out infinite;
         }
 
         .wizard-icon .icon {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
         }
 
         .wizard-info {
@@ -464,16 +725,17 @@ body {
         .wizard-tag {
             display: inline-flex;
             align-items: center;
-            gap: var(--space-1);
-            padding: 2px var(--space-2);
-            background: var(--color-primary-muted);
-            border-radius: var(--radius-sm);
-            font-size: 9px;
+            gap: 4px;
+            padding: 3px 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.20);
+            border-radius: var(--radius-full);
+            font-size: 10px;
             font-weight: 600;
-            color: var(--color-primary-text);
+            color: rgba(255, 255, 255, 0.90);
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            margin-bottom: var(--space-1);
+            margin-bottom: 8px;
         }
 
         .wizard-tag .icon {
@@ -483,20 +745,56 @@ body {
 
         .wizard-title {
             font-family: var(--font-display);
-            font-size: 18px;
+            font-size: 22px;
             font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 2px;
+            color: #fff;
+            margin-bottom: 6px;
         }
 
         .wizard-desc {
-            color: var(--text-muted);
-            font-size: 12px;
-            line-height: 1.4;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 12px;
         }
+
+        .wizard-steps {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .wizard-step-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            background: rgba(255, 255, 255, 0.10);
+            border-radius: var(--radius-full);
+            font-size: 10px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.70);
+        }
+
+        .wizard-step-dot .icon { width: 10px; height: 10px; }
 
         .wizard-cta {
             flex-shrink: 0;
+        }
+
+        .wizard-cta .btn {
+            background: #fff;
+            color: #7C3AED;
+            font-weight: 700;
+            padding: 10px 22px;
+            font-size: 14px;
+            border-radius: var(--radius-md);
+        }
+
+        .wizard-cta .btn:hover {
+            background: #F5F3FF;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
         }
 
         .wizard-cta .btn .icon {
@@ -504,81 +802,167 @@ body {
             height: 14px;
         }
 
+        @keyframes wizardPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.15); }
+            50% { box-shadow: 0 0 0 8px rgba(255,255,255,0); }
+        }
+
         @media (max-width: 600px) {
+            .wizard-card { padding: 24px 20px; }
             .wizard-content { flex-wrap: wrap; }
             .wizard-cta { width: 100%; }
             .wizard-cta .btn { width: 100%; }
+            .wizard-steps { flex-wrap: wrap; }
         }
 
-        /* ===== TOOLS GRID (compact) ===== */
+        /* ===== TOOLS SECTION — RICH FEATURE CARDS ===== */
         .tools-section {
-            margin-bottom: var(--space-4);
+            margin-bottom: 8px;
         }
 
         .tools-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: var(--space-3);
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
         }
 
-        @media (max-width: 1100px) {
-            .tools-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             .tools-grid { grid-template-columns: 1fr; }
         }
 
         .tool-card {
-            background: var(--surface-0);
+            background: var(--surface-1);
             border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-            padding: var(--space-4);
+            border-radius: var(--radius-xl);
+            padding: 24px;
             cursor: pointer;
-            transition: all 150ms ease-out;
+            transition: all 200ms ease-out;
+            position: relative;
+            overflow: hidden;
         }
 
-        .tool-card:hover {
-            border-color: var(--color-primary);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            width: 4px;
+            border-radius: 4px 0 0 4px;
+            transition: width 200ms ease-out;
+        }
+
+        .tool-card--myteam::before { background: var(--color-myteam); }
+        .tool-card--players::before { background: var(--color-players); }
+        .tool-card--teams::before { background: var(--color-teams); }
+        .tool-card--rivals::before { background: var(--color-rivals); }
+
+        .tool-card:hover { transform: translateY(-3px); }
+        .tool-card--myteam:hover { border-color: var(--color-myteam); box-shadow: 0 8px 30px var(--color-myteam-glow); }
+        .tool-card--players:hover { border-color: var(--color-players); box-shadow: 0 8px 30px var(--color-players-glow); }
+        .tool-card--teams:hover { border-color: var(--color-teams); box-shadow: 0 8px 30px var(--color-teams-glow); }
+        .tool-card--rivals:hover { border-color: var(--color-rivals); box-shadow: 0 8px 30px var(--color-rivals-glow); }
+
+        .tool-card-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 12px;
         }
 
         .tool-icon {
-            width: 36px;
-            height: 36px;
-            background: var(--color-primary-muted);
-            border-radius: var(--radius-sm);
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-lg);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: var(--space-3);
-            color: var(--color-primary);
-            transition: all 150ms ease-out;
+            flex-shrink: 0;
+            transition: all 200ms ease-out;
         }
 
-        .tool-icon .icon {
-            width: 18px;
-            height: 18px;
-        }
+        .tool-icon .icon { width: 22px; height: 22px; }
 
-        .tool-card:hover .tool-icon {
-            background: var(--color-primary);
-            color: #fff;
-        }
+        .tool-icon--myteam { background: var(--color-myteam-muted); color: var(--color-myteam); }
+        .tool-icon--players { background: var(--color-players-muted); color: var(--color-players); }
+        .tool-icon--teams { background: var(--color-teams-muted); color: var(--color-teams); }
+        .tool-icon--rivals { background: var(--color-rivals-muted); color: var(--color-rivals); }
+
+        .tool-card--myteam:hover .tool-icon--myteam { background: var(--color-myteam); color: #fff; }
+        .tool-card--players:hover .tool-icon--players { background: var(--color-players); color: #fff; }
+        .tool-card--teams:hover .tool-icon--teams { background: var(--color-teams); color: #fff; }
+        .tool-card--rivals:hover .tool-icon--rivals { background: var(--color-rivals); color: #fff; }
 
         .tool-title {
             font-family: var(--font-display);
-            font-size: 15px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 2px;
         }
 
         .tool-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 14px;
+        }
+
+        .tool-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .tool-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .tool-tag .icon { width: 12px; height: 12px; }
+
+        .tool-tag--myteam { background: var(--color-myteam-muted); color: var(--color-myteam-text); }
+        .tool-tag--players { background: var(--color-players-muted); color: var(--color-players-text); }
+        .tool-tag--teams { background: var(--color-teams-muted); color: var(--color-teams-text); }
+        .tool-tag--rivals { background: var(--color-rivals-muted); color: var(--color-rivals-text); }
+
+        /* ===== FOOTER ===== */
+        .site-footer {
+            margin-top: 32px;
+            padding: 24px;
+            border-top: 1px solid var(--border-default);
+            text-align: center;
+        }
+
+        .footer-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .footer-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             font-size: 12px;
             color: var(--text-muted);
-            line-height: 1.4;
+        }
+
+        .footer-pill .icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        .footer-divider {
+            width: 1px;
+            height: 14px;
+            background: var(--border-default);
         }
 
         /* ===== DASHBOARD STRIP (full-width, collapsible health) ===== */
@@ -901,23 +1285,83 @@ body {
         </div>
     </nav>
 
+    <!-- Hero Banner -->
+    <section class="hero-banner">
+        <div class="hero-inner">
+            <div class="hero-badge">
+                <i data-lucide="zap" class="icon"></i> Fantasy Premier League Analysis Suite
+            </div>
+            <h1 class="hero-title">Your FPL<br><span class="highlight">Command Center</span></h1>
+            <p class="hero-subtitle">
+                Five powerful tools to analyze your squad, scout players, evaluate fixtures, and outsmart your mini-league rivals — all powered by live FPL data.
+            </p>
+            <div class="hero-stats">
+                <span class="hero-stat-pill">
+                    <i data-lucide="users" class="icon green"></i> 500+ Players Tracked
+                </span>
+                <span class="hero-stat-pill">
+                    <i data-lucide="shield" class="icon amber"></i> 20 Teams Analyzed
+                </span>
+                <span class="hero-stat-pill">
+                    <i data-lucide="activity" class="icon blue"></i> Live GW Data
+                </span>
+                <span class="hero-stat-pill">
+                    <i data-lucide="layout-grid" class="icon purple"></i> 5 Powerful Tools
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="how-it-works-inner">
+            <div class="how-it-works-label">How It Works</div>
+            <div class="steps-row">
+                <div class="step-item">
+                    <div class="step-circle step-circle--green">
+                        <i data-lucide="log-in" class="icon"></i>
+                    </div>
+                    <div class="step-label">Enter Team ID</div>
+                    <div class="step-desc">Connect your FPL squad in one click</div>
+                </div>
+                <div class="step-connector"><div class="step-connector-line"></div></div>
+                <div class="step-item">
+                    <div class="step-circle step-circle--blue">
+                        <i data-lucide="search" class="icon"></i>
+                    </div>
+                    <div class="step-label">Explore Tools</div>
+                    <div class="step-desc">Analyze players, teams, fixtures & rivals</div>
+                </div>
+                <div class="step-connector"><div class="step-connector-line"></div></div>
+                <div class="step-item">
+                    <div class="step-circle step-circle--purple">
+                        <i data-lucide="trophy" class="icon"></i>
+                    </div>
+                    <div class="step-label">Climb the Ranks</div>
+                    <div class="step-desc">Make data-driven decisions every GW</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Main Content -->
     <main class="main-content">
-        <!-- Compact Hero -->
-        <section class="hero">
-            <h1 class="hero-title">Make <span class="highlight">Smarter</span> FPL Decisions</h1>
-            <p class="hero-subtitle">Team ratings, player stats, fixture analysis & transfer recommendations</p>
-        </section>
 
         <!-- Onboarding card (first-time users only, hidden when team loaded) -->
         <div class="onboarding-card" id="onboardingCard">
-            <div class="onboarding-title">Connect your FPL team</div>
+            <div class="onboarding-icon">
+                <i data-lucide="link" class="icon"></i>
+            </div>
+            <div class="onboarding-title">Connect Your FPL Team</div>
             <div class="onboarding-subtitle">Enter your Team ID to unlock personalized squad analysis, injury alerts, and smart transfer recommendations.</div>
             <div class="onboarding-form">
                 <input type="text" id="onboardingInput" placeholder="Enter your Team ID" inputmode="numeric">
                 <button class="btn btn-primary btn-sm" onclick="submitFromOnboarding()">Load</button>
             </div>
-            <div class="onboarding-hint">Find your ID at <a href="https://fantasy.premierleague.com" target="_blank">fantasy.premierleague.com</a> → My Team → URL number</div>
+            <div class="onboarding-hint">
+                <i data-lucide="info" style="width:12px;height:12px;display:inline;vertical-align:-2px;margin-right:2px;color:var(--text-muted)"></i>
+                Find your ID at <a href="https://fantasy.premierleague.com" target="_blank">fantasy.premierleague.com</a> → My Team → URL number
+            </div>
         </div>
 
         <!-- Dashboard strip (full-width, above tools) -->
@@ -937,13 +1381,20 @@ body {
                                 <div class="wizard-tag">
                                     <i data-lucide="sparkles" class="icon"></i> Guided Experience
                                 </div>
-                                <h2 class="wizard-title">FPL Wizard</h2>
+                                <h2 class="wizard-title">FPL Transfer Wizard</h2>
                                 <p class="wizard-desc">
-                                    Complete GW decision flow: injuries → fixtures → targets → lineup → captain
+                                    Your complete Gameweek decision engine. Walk through a guided 5-step flow that checks injuries, evaluates fixtures, recommends transfers, optimizes your lineup, and picks the best captain.
                                 </p>
+                                <div class="wizard-steps">
+                                    <span class="wizard-step-dot"><i data-lucide="heart-pulse" class="icon"></i> Injuries</span>
+                                    <span class="wizard-step-dot"><i data-lucide="calendar" class="icon"></i> Fixtures</span>
+                                    <span class="wizard-step-dot"><i data-lucide="arrow-left-right" class="icon"></i> Transfers</span>
+                                    <span class="wizard-step-dot"><i data-lucide="list-ordered" class="icon"></i> Lineup</span>
+                                    <span class="wizard-step-dot"><i data-lucide="crown" class="icon"></i> Captain</span>
+                                </div>
                             </div>
                             <div class="wizard-cta">
-                                <button class="btn btn-primary btn-sm">
+                                <button class="btn">
                                     Start Wizard
                                     <i data-lucide="arrow-right" class="icon"></i>
                                 </button>
@@ -954,39 +1405,91 @@ body {
 
                 <!-- Individual Tools -->
                 <section class="tools-section">
-                    <div class="section-label">Individual Tools</div>
+                    <div class="section-label">Analysis Tools</div>
                     <div class="tools-grid">
-                        <div class="tool-card" onclick="window.location.href='fpl-my-team-analysis.html'">
-                            <div class="tool-icon">
-                                <i data-lucide="users" class="icon"></i>
+                        <!-- My Team -->
+                        <div class="tool-card tool-card--myteam" onclick="window.location.href='fpl-my-team-analysis.html'">
+                            <div class="tool-card-header">
+                                <div class="tool-icon tool-icon--myteam">
+                                    <i data-lucide="users" class="icon"></i>
+                                </div>
+                                <h3 class="tool-title">My Team Analysis</h3>
                             </div>
-                            <h3 class="tool-title">My Team</h3>
-                            <p class="tool-desc">Sell/hold ratings, injury flags, and fixture outlook for your 15 players.</p>
+                            <p class="tool-desc">Get a comprehensive breakdown of your 15-player squad. See sell/hold/star verdicts for each player, check injury flags and availability status, and review upcoming fixture difficulty to plan your transfers.</p>
+                            <div class="tool-tags">
+                                <span class="tool-tag tool-tag--myteam"><i data-lucide="heart-pulse" class="icon"></i> Injury Alerts</span>
+                                <span class="tool-tag tool-tag--myteam"><i data-lucide="thumbs-up" class="icon"></i> Sell/Hold Ratings</span>
+                                <span class="tool-tag tool-tag--myteam"><i data-lucide="calendar" class="icon"></i> Fixture Outlook</span>
+                            </div>
                         </div>
-                        <div class="tool-card" onclick="window.location.href='fpl-players-analysis.html'">
-                            <div class="tool-icon">
-                                <i data-lucide="user-search" class="icon"></i>
+
+                        <!-- Players -->
+                        <div class="tool-card tool-card--players" onclick="window.location.href='fpl-players-analysis.html'">
+                            <div class="tool-card-header">
+                                <div class="tool-icon tool-icon--players">
+                                    <i data-lucide="user-search" class="icon"></i>
+                                </div>
+                                <h3 class="tool-title">Player Explorer</h3>
                             </div>
-                            <h3 class="tool-title">Players</h3>
-                            <p class="tool-desc">Live stats, xG/xA metrics, form trends, and side-by-side comparisons.</p>
+                            <p class="tool-desc">Search and filter across 500+ Premier League players. View live stats including goals, assists, xG, xA, bonus points, and form trends. Compare players side-by-side to find the best value picks.</p>
+                            <div class="tool-tags">
+                                <span class="tool-tag tool-tag--players"><i data-lucide="line-chart" class="icon"></i> xG/xA Metrics</span>
+                                <span class="tool-tag tool-tag--players"><i data-lucide="trending-up" class="icon"></i> Form Trends</span>
+                                <span class="tool-tag tool-tag--players"><i data-lucide="columns" class="icon"></i> Compare Players</span>
+                            </div>
                         </div>
-                        <div class="tool-card" onclick="window.location.href='fpl-teams-analysis.html'">
-                            <div class="tool-icon">
-                                <i data-lucide="bar-chart-3" class="icon"></i>
+
+                        <!-- Teams -->
+                        <div class="tool-card tool-card--teams" onclick="window.location.href='fpl-teams-analysis.html'">
+                            <div class="tool-card-header">
+                                <div class="tool-icon tool-icon--teams">
+                                    <i data-lucide="bar-chart-3" class="icon"></i>
+                                </div>
+                                <h3 class="tool-title">Team Ratings</h3>
                             </div>
-                            <h3 class="tool-title">Teams</h3>
-                            <p class="tool-desc">Fixture difficulty, clean sheet odds, attack/defense ratings.</p>
+                            <p class="tool-desc">Evaluate all 20 Premier League teams with fixture difficulty ratings, clean sheet probability, and attack/defense strength scores. Identify which teams have the best upcoming runs of fixtures.</p>
+                            <div class="tool-tags">
+                                <span class="tool-tag tool-tag--teams"><i data-lucide="target" class="icon"></i> FDR Analysis</span>
+                                <span class="tool-tag tool-tag--teams"><i data-lucide="shield" class="icon"></i> Clean Sheets</span>
+                                <span class="tool-tag tool-tag--teams"><i data-lucide="swords" class="icon"></i> ATK/DEF Ratings</span>
+                            </div>
                         </div>
-                        <div class="tool-card" onclick="window.location.href='fpl-league-rivals.html'">
-                            <div class="tool-icon">
-                                <i data-lucide="trophy" class="icon"></i>
+
+                        <!-- Rivals -->
+                        <div class="tool-card tool-card--rivals" onclick="window.location.href='fpl-league-rivals.html'">
+                            <div class="tool-card-header">
+                                <div class="tool-icon tool-icon--rivals">
+                                    <i data-lucide="trophy" class="icon"></i>
+                                </div>
+                                <h3 class="tool-title">League Rivals</h3>
                             </div>
-                            <h3 class="tool-title">Rivals</h3>
-                            <p class="tool-desc">Compare mini-league rivals, find differentials and ownership gaps.</p>
+                            <p class="tool-desc">Spy on your mini-league competitors. Compare squads head-to-head, discover differentials that could swing your rank, and identify ownership gaps to exploit in the race to the top.</p>
+                            <div class="tool-tags">
+                                <span class="tool-tag tool-tag--rivals"><i data-lucide="git-compare" class="icon"></i> Squad Compare</span>
+                                <span class="tool-tag tool-tag--rivals"><i data-lucide="eye" class="icon"></i> Differentials</span>
+                                <span class="tool-tag tool-tag--rivals"><i data-lucide="percent" class="icon"></i> Ownership Gaps</span>
+                            </div>
                         </div>
                     </div>
                 </section>
         </div>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+            <div class="footer-inner">
+                <span class="footer-pill">
+                    <i data-lucide="database" class="icon"></i> Powered by Official FPL API
+                </span>
+                <span class="footer-divider"></span>
+                <span class="footer-pill">
+                    <i data-lucide="refresh-cw" class="icon"></i> Data auto-refreshed daily
+                </span>
+                <span class="footer-divider"></span>
+                <span class="footer-pill">
+                    <i data-lucide="code-2" class="icon"></i> Built for FPL managers
+                </span>
+            </div>
+        </footer>
     </main>
 
     <!-- Mobile Navigation -->
