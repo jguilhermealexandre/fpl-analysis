@@ -1434,17 +1434,28 @@
         .fixture-cell.easy-run-start {
             border-top-left-radius: 12px;
             border-bottom-left-radius: 12px;
-            box-shadow: inset 2px 0 0 var(--color-success);
+            box-shadow: inset 3px 0 0 var(--color-success), inset 0 2px 0 var(--color-success), inset 0 -2px 0 var(--color-success);
+            background-image: linear-gradient(90deg, rgba(74, 222, 128, 0.12) 0%, transparent 100%);
         }
 
         .fixture-cell.easy-run-end {
             border-top-right-radius: 12px;
             border-bottom-right-radius: 12px;
-            box-shadow: inset -2px 0 0 var(--color-success);
+            box-shadow: inset -3px 0 0 var(--color-success), inset 0 2px 0 var(--color-success), inset 0 -2px 0 var(--color-success);
+            background-image: linear-gradient(270deg, rgba(74, 222, 128, 0.12) 0%, transparent 100%);
         }
 
         .fixture-cell.easy-run-middle {
             box-shadow: inset 0 2px 0 var(--color-success), inset 0 -2px 0 var(--color-success);
+            background-image: linear-gradient(180deg, rgba(74, 222, 128, 0.08) 0%, rgba(74, 222, 128, 0.04) 50%, rgba(74, 222, 128, 0.08) 100%);
+        }
+
+        /* Dim non-easy-run cells in targetable calendar */
+        .targetable-calendar .fixture-cell:not(.easy-run-start):not(.easy-run-middle):not(.easy-run-end) {
+            opacity: 0.3;
+        }
+        .targetable-calendar .fixture-cell:not(.easy-run-start):not(.easy-run-middle):not(.easy-run-end):hover {
+            opacity: 0.7;
         }
 
         /* BTTS marker in calendar */
@@ -3320,8 +3331,8 @@
             window._swingsData = fixtureSwingTeams;
             window._teamFixtureMap = teamFixtureMap;
 
-            // Filter to future runs only
-            const futureRuns = easyRuns.filter(r => r.startGW >= currentGW);
+            // Filter to future runs only — PREMIUM & GREAT tiers only (avgFdr ≤ 2.5)
+            const futureRuns = easyRuns.filter(r => r.startGW >= currentGW && (r.tier === 'premium' || r.tier === 'great'));
             const improvingSwings = fixtureSwingTeams.filter(s => s.direction === 'improving');
             const worseningSwings = fixtureSwingTeams.filter(s => s.direction === 'worsening');
 
@@ -3333,6 +3344,7 @@
 
             const html = `
                 <div class="swing-section">
+                    ${renderUpcomingGoldMines(teamFixtureMap, displayGWs)}
                     <div class="swings-layout">
                         <!-- Easy Fixture Runs Panel -->
                         <div class="swings-panel">
@@ -3454,8 +3466,8 @@
         }
 
         function renderTargetableCalendar(fixtureMap, easyRuns, allDisplayGWs) {
-            // Filter to only teams that have easy runs
-            const futureRuns = easyRuns.filter(r => r.startGW >= currentGW);
+            // Filter to only teams with PREMIUM or GREAT easy runs (avgFdr ≤ 2.5)
+            const futureRuns = easyRuns.filter(r => r.startGW >= currentGW && (r.tier === 'premium' || r.tier === 'great'));
             const teamIdsWithRuns = [...new Set(futureRuns.map(r => r.teamId))];
             
             if (teamIdsWithRuns.length === 0) {
@@ -3512,11 +3524,11 @@
             calendarColorMode = savedMode;
 
             return `
-                <div class="calendar-section" style="margin-top: var(--space-6); padding: 0;">
+                <div class="calendar-section targetable-calendar" style="margin-top: var(--space-6); padding: 0;">
                     <div class="calendar-header">
                         <div>
                             <h2 class="calendar-title" style="font-size: 18px;"><i data-lucide="target" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Targetable Patches Calendar</h2>
-                            <p class="calendar-subtitle">${colorModeDesc[swingsCalendarColorMode]} · Showing ${teamsToShow.length} teams with easy runs</p>
+                            <p class="calendar-subtitle">${colorModeDesc[swingsCalendarColorMode]} · Showing ${teamsToShow.length} teams with premium & great patches</p>
                         </div>
                         <div class="calendar-legend" id="swingsCalendarLegend">
                             ${legendHtml}
