@@ -35,7 +35,8 @@
         }
 
         body {
-            background: var(--surface-bg);
+            background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 30%, #FFFFFF 70%, #EFF6FF 100%);
+            background-attachment: fixed;
             color: var(--text-primary);
             font-family: 'Inter', -apple-system, sans-serif;
             font-size: 14px;
@@ -143,9 +144,10 @@
             gap: 4px;
             margin-left: auto;
             padding: 3px;
-            background: var(--surface-1);
+            background: var(--surface-2);
             border-radius: 7px;
             border: 1px solid var(--border-default);
+            flex-shrink: 0;
         }
         .pos-pill {
             padding: 4px 10px;
@@ -2632,6 +2634,30 @@
         .tab .shortlist-badge:empty { display: none; }
         /* Make cards position relative for star overlay */
         .route-card, .rec-card, .rising-card { position: relative; }
+
+        /* ===== ACCESSIBILITY: Minimum font sizes & contrast ===== */
+        .tab { font-size: 13px; }
+        .page-subtitle { font-size: 13px; color: var(--text-secondary); }
+        .tab-description-inner { font-size: 12px; }
+        .pos-pill { font-size: 12px; color: var(--text-secondary); }
+        .pos-pill:hover { color: var(--text-primary); }
+        .rec-category-tab { font-size: 12px; color: var(--text-secondary); }
+        .rec-category-tab:hover { color: var(--text-primary); }
+        .rec-stat-label { font-size: 10px; color: var(--text-secondary); }
+        .rec-card-fdr .fdr-label { font-size: 10px; color: var(--text-secondary); }
+        .rec-card-swing { font-size: 10px; }
+        .route-card-rank { font-size: 12px; }
+        .route-card-meta { font-size: 12px; color: var(--text-secondary); }
+        .route-bar-detail { font-size: 11px; color: var(--text-secondary); }
+        .route-bar-icon { font-size: 12px; }
+        .route-score-label { font-size: 11px; color: var(--text-secondary); }
+        .section-label { font-size: 12px; }
+        .filter-group-label { font-size: 12px; color: var(--text-secondary); }
+        .table-info { font-size: 12px; color: var(--text-secondary); }
+        .rising-stat-label { font-size: 11px; color: var(--text-secondary); }
+        .rising-fixture-opp { font-size: 12px; }
+        .compact-mode .player-name { font-size: 12px; }
+        .compact-mode .player-team { font-size: 10px; }
     </style>
 </head>
 <body>
@@ -2789,12 +2815,6 @@
             <button class="tab" data-position="CHARTS" data-desc="Interactive scatter plots to visually identify value picks, underperformers, regression candidates, and differentials."><i data-lucide="bar-chart-3" style="width:14px;height:14px;display:inline;"></i> Charts</button>
             <button class="tab" data-position="ROUTES" data-desc="Players with the most diverse ways to score FPL points. More routes = more reliable returns." data-has-pos="true"><i data-lucide="git-branch" style="width:14px;height:14px;display:inline;"></i> Routes to Points</button>
             <button class="tab" data-position="ALL" data-desc="Full stats table for all players — sortable, filterable by position, with shortlist support." data-has-pos="false"><i data-lucide="clipboard-list" style="width:14px;height:14px;display:inline;"></i> All Players</button>
-            <div class="pos-pills" id="posPills">
-                <button class="pos-pill active" data-pos="GK" onclick="switchGlobalPosition('GK', this)">GK</button>
-                <button class="pos-pill" data-pos="DEF" onclick="switchGlobalPosition('DEF', this)">DEF</button>
-                <button class="pos-pill" data-pos="MID" onclick="switchGlobalPosition('MID', this)">MID</button>
-                <button class="pos-pill" data-pos="FWD" onclick="switchGlobalPosition('FWD', this)">FWD</button>
-            </div>
         </div>
     </div>
 
@@ -2802,6 +2822,12 @@
         <div class="tab-description-inner">
             <span class="tab-desc-icon"><i data-lucide="lightbulb" style="width:16px;height:16px;"></i></span>
             <span class="tab-desc-text">Position-specific recommendations split by budget, premium, and differential tiers using form, fixtures, and value.</span>
+            <div class="pos-pills" id="posPills">
+                <button class="pos-pill active" data-pos="GK" onclick="switchGlobalPosition('GK', this)">GK</button>
+                <button class="pos-pill" data-pos="DEF" onclick="switchGlobalPosition('DEF', this)">DEF</button>
+                <button class="pos-pill" data-pos="MID" onclick="switchGlobalPosition('MID', this)">MID</button>
+                <button class="pos-pill" data-pos="FWD" onclick="switchGlobalPosition('FWD', this)">FWD</button>
+            </div>
         </div>
     </div>
 

@@ -49,7 +49,7 @@
             --position-gk: #D97706; --position-def: #059669; --position-mid: #2563EB; --position-fwd: #DC2626;
         }
 
-        body { font-family: var(--font-body); background: var(--surface-bg); color: var(--text-primary); line-height: 1.5; font-size: 14px; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        body { font-family: var(--font-body); background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 30%, #FFFFFF 70%, #EFF6FF 100%); background-attachment: fixed; color: var(--text-primary); line-height: 1.5; font-size: 14px; min-height: 100vh; -webkit-font-smoothing: antialiased; }
 
         /* NAV */
         .top-nav { background: var(--surface-0); border-bottom: 1px solid var(--border-default); position: sticky; top: 0; z-index: 100; }
@@ -826,7 +826,7 @@
         .tab-bar.visible { display: flex; }
         .tab-btn { flex: 1; padding: 10px 16px; border: none; border-radius: 8px; background: transparent; color: var(--text-secondary); font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .tab-btn:hover { color: var(--text-primary); background: rgba(0,0,0,0.04); }
-        .tab-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+        .tab-btn.active { background: var(--color-primary); color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,0.3); }
 
         /* ===== TRANSFER WIZARD ===== */
         .tw-container { padding: 0; }
@@ -4632,14 +4632,14 @@
         function renderInlineLineupWizard() {
             lineupRendered = true;
             const container = document.getElementById('lineupDisplay');
-            if (!loaded || !myPicks || myPicks.length === 0) {
+            if (!picksData || !picksData.picks || picksData.picks.length === 0) {
                 container.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:48px;margin-bottom:16px;"><i data-lucide="users" style="width:48px;height:48px;"></i></div><div style="font-size:18px;font-weight:600;margin-bottom:8px;">Load Your Team First</div><div style="font-size:14px;color:var(--text-secondary);">Enter your FPL Team ID above to get lineup recommendations.</div></div>';
                 if (typeof lucide !== 'undefined') lucide.createIcons();
                 return;
             }
 
             // Build lineup scores using transfer wizard's scoring data
-            const squad = myPicks.map(pick => {
+            const squad = picksData.picks.map(pick => {
                 const p = allPlayersById[pick.element];
                 if (!p) return null;
                 const score = computeQuickLineupScore(p);
