@@ -79,7 +79,7 @@
         /* STICKY SUB-NAV TABS */
         .tabs-container { display: none; background: var(--surface-0); border-bottom: 1px solid var(--border-default); position: sticky; top: 56px; z-index: 99; }
         .tabs-container.visible { display: block; }
-        .tabs { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; gap: 2px; overflow-x: auto; align-items: center; justify-content: center; }
+        .tabs { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; gap: 2px; overflow-x: auto; align-items: center; }
         .tab { padding: 6px 12px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-family: var(--font-body); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 150ms; }
         .tab:hover { color: var(--text-primary); border-bottom-color: var(--border-emphasis); }
         .tab.active { color: var(--color-success); border-bottom-color: var(--color-success); }
@@ -415,6 +415,67 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 8px;
+        }
+
+        /* ===== SQUAD VERDICT LIST (compact rows) ===== */
+        .squad-verdict-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .squad-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .squad-row:hover { background: var(--surface-2); transform: translateX(2px); }
+        .squad-row.sell { border-left: 3px solid var(--verdict-sell); }
+        .squad-row.monitor { border-left: 3px solid var(--verdict-monitor); }
+        .squad-row.hold { border-left: 3px solid var(--verdict-hold); }
+        .squad-row.star { border-left: 3px solid var(--verdict-star); }
+        .squad-row-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 160px;
+            flex-shrink: 0;
+        }
+        .squad-row-name {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.3;
+        }
+        .squad-row-stats {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 1;
+            justify-content: flex-end;
+        }
+        .squad-row-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            min-width: 44px;
+        }
+        .squad-row-fixtures {
+            display: flex;
+            gap: 3px;
+        }
+        .squad-row-verdict {
+            flex-shrink: 0;
+        }
+        @media (max-width: 768px) {
+            .squad-row { flex-wrap: wrap; gap: 8px; }
+            .squad-row-stats { flex-wrap: wrap; gap: 8px; }
+            .squad-row-fixtures { display: none; }
         }
 
         /* ===== DETAIL PANEL (Slide-out) ===== */
@@ -1283,11 +1344,24 @@
         <!-- Header Row -->
         <div class="header-row">
             <h1 class="page-title"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
-            
-            <div class="team-input-row">
-                <input type="text" id="teamIdInput" class="team-id-input" placeholder="Team ID">
-                <button class="btn btn-primary" id="loadTeamBtn" onclick="loadTeamById()">Load Team</button>
-                <button class="btn btn-secondary" onclick="openSettings()"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
+            <button class="btn btn-secondary" onclick="openSettings()" style="margin-left:auto;"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
+        </div>
+        <!-- Hidden input used by loadTeamById() -->
+        <input type="hidden" id="teamIdInput">
+
+        <!-- Landing Page (shown when no team ID is cached) -->
+        <div id="landingPage" style="display:none;">
+            <div style="text-align:center;padding:80px 20px;max-width:480px;margin:0 auto;">
+                <div style="width:72px;height:72px;border-radius:50%;background:var(--color-primary-muted);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
+                    <i data-lucide="users" style="width:36px;height:36px;color:var(--color-primary);"></i>
+                </div>
+                <h2 style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-bottom:8px;">Welcome to My Team Analysis</h2>
+                <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:24px;">Get squad verdicts, gameweek planning, transfer suggestions, and lineup recommendations — all personalized for your FPL team.</p>
+                <div style="padding:16px 20px;background:var(--surface-1);border:1px solid var(--border-default);border-radius:12px;display:inline-flex;align-items:center;gap:12px;">
+                    <i data-lucide="arrow-up-right" style="width:20px;height:20px;color:var(--color-primary);flex-shrink:0;"></i>
+                    <span style="font-size:13px;color:var(--text-secondary);">Enter your <strong style="color:var(--text-primary);">Team ID</strong> in the top navigation bar to get started</span>
+                </div>
+                <p style="font-size:12px;color:var(--text-muted);margin-top:16px;">Find your Team ID in your FPL URL: fantasy.premierleague.com/entry/<strong>XXXXXX</strong>/event/...</p>
             </div>
         </div>
 
@@ -1300,7 +1374,7 @@
         </div>
 
         <!-- Status -->
-        <div class="status" id="status">Enter your FPL Team ID to get started</div>
+        <div class="status" id="status" style="display:none;"></div>
 
         <!-- Team Display -->
         <div id="teamDisplay"></div>
@@ -1745,8 +1819,9 @@
             const teamId = document.getElementById('teamIdInput').value.trim();
             if (!teamId || isNaN(teamId)) { updateStatus('Please enter a valid Team ID', 'error'); return; }
 
-            const btn = document.getElementById('loadTeamBtn');
-            btn.disabled = true; btn.textContent = 'Loading...';
+            // Hide landing page, show status
+            document.getElementById('landingPage').style.display = 'none';
+            document.getElementById('status').style.display = '';
             showLoading(true, 'Loading FPL data...');
 
             try {
@@ -1848,6 +1923,7 @@
                 plannerSelectedGW = null;
                 plannerSwapSource = null;
                 transferRendered = false;
+                lineupRendered = false;
                 transferState = { step: 1, sellPlayers: [], packages: [], selections: {}, budget: 0, candidateCache: {} };
                 document.getElementById('tabBar').classList.add('visible');
                 if (window._pendingTab) { switchTab(window._pendingTab); window._pendingTab = null; }
@@ -1855,7 +1931,6 @@
                 console.error('Error loading team:', error);
                 updateStatus(error.message || 'Failed to load team', 'error');
             } finally {
-                btn.disabled = false; btn.textContent = 'Load Team';
                 showLoading(false);
             }
         }
@@ -2363,76 +2438,40 @@
                     <span class="verdict-count">${items.length} player${items.length > 1 ? 's' : ''}</span>
                     <span class="verdict-toggle" id="${type}-section-toggle">\u25bc</span>
                 </div>
-                ${useFullCards
-                    ? `<div class="players-grid" id="${type}-section">${items.map(a => renderPlayerCard(a)).join('')}</div>`
-                    : `<div class="hold-grid" id="${type}-section">${items.map(a => renderHoldCard(a)).join('')}</div>`
-                }
+                <div class="squad-verdict-list" id="${type}-section">
+                    ${items.map(a => renderCompactRow(a)).join('')}
+                </div>
             </div>`;
         }
 
-        function renderPlayerCard(analysis) {
+        function renderCompactRow(analysis) {
             const { player, verdict, verdictReason, keyMetric, fixtures } = analysis;
             const posConfig = POSITION_CONFIG[player.position];
-            const formPct = Math.min((player.form / 10) * 100, 100);
             const formClass = player.form >= posConfig.formMedian + 1.5 ? 'star' : player.form >= posConfig.formMedian + 0.5 ? 'good' : player.form < posConfig.formMedian - 0.5 ? 'bad' : 'warning';
-            const fixtureChips = fixtures.slice(0, 5).map(f => `
-                <div class="fixture-chip fdr-${f.difficulty}">
-                    <span class="fixture-team">${f.opponent}</span>
-                    <span class="fixture-venue">${f.isHome ? 'H' : 'A'}</span>
-                </div>`).join('');
+            const fixtureChips = fixtures.slice(0, 5).map(f => `<span class="fixture-chip fdr-${f.difficulty}" style="padding:2px 4px;font-size:9px;border-radius:3px;"><span class="fixture-team" style="font-size:9px;">${f.opponent}</span></span>`).join('');
 
             return `
-            <div class="player-card ${verdict}" onclick="openDetailPanel(${player.id})">
-                <div class="card-top">
-                    <div class="player-info">
-                        <div class="player-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${player.name}${(() => { const sw = fixtureSwingData[player.teamId]; return sw ? `<span class="swing-badge ${sw.direction}" title="Fixtures ${sw.direction} from GW${sw.swingGW}">${sw.direction === 'improving' ? '\u25b2' : '\u25bc'}</span>` : ''; })()}</div>
-                        <div class="player-meta">
-                            <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
-                            <span>${player.team}</span>
-                            <span>\u00a3${player.price.toFixed(1)}m</span>
-                            ${player.onBench ? '<span class="on-bench-tag">Bench</span>' : ''}
-                        </div>
-                    </div>
-                    <div class="verdict-chip ${verdict}">${verdict === 'star' ? '\u2605 Star' : verdict}</div>
-                </div>
-                <div class="verdict-reason">${verdictReason}</div>
-                <div class="form-bar-container">
-                    <div class="form-bar-label"><span>Form</span><span>${player.form.toFixed(1)}</span></div>
-                    <div class="form-bar"><div class="form-bar-fill ${formClass}" style="width:${formPct}%"></div></div>
-                </div>
-                <div class="key-metrics">
-                    ${Object.values(keyMetric).map(m => `
-                        <div class="metric-box">
-                            <div class="metric-label">${m.label}</div>
-                            <div class="metric-value ${m.status}">${m.value}</div>
-                        </div>`).join('')}
-                </div>
-                <div class="fixture-strip">${fixtureChips}</div>
-            </div>`;
-        }
-
-        function renderHoldCard(analysis) {
-            const { player, verdict, keyMetric } = analysis;
-            const posConfig = POSITION_CONFIG[player.position];
-            return `
-            <div class="hold-card ${verdict === 'star' ? 'star' : 'hold-v'}" onclick="openDetailPanel(${player.id})">
-                <div class="hold-player-info">
-                    <div class="player-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${player.name}</div>
-                    <div class="player-meta">
-                        <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
-                        ${player.team} \u00b7 \u00a3${player.price.toFixed(1)}m
-                        ${player.onBench ? ' <span class="on-bench-tag">Bench</span>' : ''}
+            <div class="squad-row ${verdict}" onclick="openDetailPanel(${player.id})">
+                <div class="squad-row-main">
+                    <span class="position-badge ${posConfig.class}" style="width:28px;text-align:center;">${posConfig.short}</span>
+                    <div class="squad-row-name">
+                        <span style="font-weight:600;font-size:13px;">${player.isCaptain ? '\ud83d\udc51 ' : ''}${player.name}</span>
+                        <span style="font-size:11px;color:var(--text-muted);">${player.team} \u00b7 \u00a3${player.price.toFixed(1)}m${player.onBench ? ' \u00b7 Bench' : ''}</span>
                     </div>
                 </div>
-                <div class="hold-stats">
-                    <div class="hold-stat">
-                        <div class="val ${verdict === 'star' ? 'star' : 'good'}">${keyMetric.primary.value}</div>
-                        <div class="lbl">Form</div>
+                <div class="squad-row-stats">
+                    <div class="squad-row-stat">
+                        <span style="font-size:10px;color:var(--text-muted);">Form</span>
+                        <span class="metric-value ${formClass}" style="font-size:13px;">${player.form.toFixed(1)}</span>
                     </div>
-                    <div class="hold-stat">
-                        <div class="val ${keyMetric.tertiary.status}">${keyMetric.tertiary.value}</div>
-                        <div class="lbl">${keyMetric.tertiary.label}</div>
+                    <div class="squad-row-stat">
+                        <span style="font-size:10px;color:var(--text-muted);">${keyMetric.secondary?.label || keyMetric.tertiary?.label || 'PPG'}</span>
+                        <span class="metric-value ${keyMetric.secondary?.status || keyMetric.tertiary?.status || 'neutral'}" style="font-size:13px;">${keyMetric.secondary?.value || keyMetric.tertiary?.value || player.ppg.toFixed(1)}</span>
                     </div>
+                    <div class="squad-row-fixtures">${fixtureChips}</div>
+                </div>
+                <div class="squad-row-verdict">
+                    <div class="verdict-chip ${verdict}" style="font-size:10px;padding:3px 8px;">${verdict === 'star' ? '\u2605' : verdict}</div>
                 </div>
             </div>`;
         }
@@ -3226,7 +3265,23 @@
             const gwNumbers = plannerGWNumbers;
 
             let html = '';
-            html += `<div class="planner-intro"><span><i data-lucide="calendar" style="width:20px;height:20px;"></i></span> Plan your lineup for each gameweek. Click players on the pitch or use the ↕ button in the table to swap between starting XI and bench. Each GW has its own independent lineup.</div>`;
+
+            // View toggle: Overview / Detailed
+            html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                <button class="planner-view-btn" id="plannerViewOverview" onclick="switchPlannerView('overview')" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border-default);background:var(--color-primary);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">
+                    <i data-lucide="grid-3x3" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Fixture Overview
+                </button>
+                <button class="planner-view-btn" id="plannerViewDetailed" onclick="switchPlannerView('detailed')" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border-default);background:var(--surface-1);color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;">
+                    <i data-lucide="table-2" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Detailed Planner
+                </button>
+            </div>`;
+
+            // Overview view — compact fixture matrix for all squad players
+            html += `<div id="plannerOverviewView">${renderPlannerOverview(gwNumbers)}</div>`;
+
+            // Detailed view — existing pitch + table
+            html += `<div id="plannerDetailedView" style="display:none;">`;
+            html += `<div class="planner-intro"><span><i data-lucide="calendar" style="width:20px;height:20px;"></i></span> Plan your lineup for each gameweek. Click players on the pitch or use the ↕ button in the table to swap between starting XI and bench.</div>`;
 
             // GW Toolbar
             html += `<div class="planner-gw-toolbar" id="plannerGWToolbar">${renderPlannerToolbarInner()}</div>`;
@@ -3256,8 +3311,127 @@
 
             // Team context section
             html += renderPlannerTeamContext();
+            html += `</div>`;
 
             container.innerHTML = html;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function switchPlannerView(view) {
+            const overview = document.getElementById('plannerOverviewView');
+            const detailed = document.getElementById('plannerDetailedView');
+            const btnOverview = document.getElementById('plannerViewOverview');
+            const btnDetailed = document.getElementById('plannerViewDetailed');
+            if (view === 'overview') {
+                overview.style.display = '';
+                detailed.style.display = 'none';
+                btnOverview.style.background = 'var(--color-primary)';
+                btnOverview.style.color = '#fff';
+                btnDetailed.style.background = 'var(--surface-1)';
+                btnDetailed.style.color = 'var(--text-secondary)';
+            } else {
+                overview.style.display = 'none';
+                detailed.style.display = '';
+                btnDetailed.style.background = 'var(--color-primary)';
+                btnDetailed.style.color = '#fff';
+                btnOverview.style.background = 'var(--surface-1)';
+                btnOverview.style.color = 'var(--text-secondary)';
+            }
+        }
+
+        function renderPlannerOverview(gwNumbers) {
+            const starters = selectedPlayers.filter(p => !p.onBench).sort((a, b) => a.position - b.position || a.pickPosition - b.pickPosition);
+            const bench = selectedPlayers.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
+
+            let html = `<div style="overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--border-default);background:var(--surface-1);">`;
+            html += `<table style="width:100%;border-collapse:collapse;min-width:600px;">`;
+
+            // Header
+            html += `<thead><tr>`;
+            html += `<th style="position:sticky;left:0;background:var(--surface-2);z-index:3;padding:8px 12px;text-align:left;font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);min-width:160px;border-bottom:1px solid var(--border-emphasis);">Player</th>`;
+            html += `<th style="padding:6px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border-emphasis);width:50px;">Form</th>`;
+            html += `<th style="padding:6px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border-emphasis);width:50px;">PPG</th>`;
+            gwNumbers.forEach(gw => {
+                html += `<th style="padding:6px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border-emphasis);width:60px;">GW${gw}</th>`;
+            });
+            html += `<th style="padding:6px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border-emphasis);width:50px;">Avg FDR</th>`;
+            html += `</tr></thead>`;
+
+            html += `<tbody>`;
+
+            const renderOverviewRow = (p, isBench) => {
+                const posConfig = POSITION_CONFIG[p.position];
+                const fixtures = teamFixtures6[p.teamId] || [];
+                const formClass = p.form >= (posConfig?.formMedian || 3) + 1 ? 'color:var(--color-success)' : p.form < (posConfig?.formMedian || 3) - 0.5 ? 'color:var(--color-error)' : 'color:var(--text-primary)';
+                const ppgClass = p.ppg >= 5 ? 'color:var(--color-success)' : p.ppg < 3 ? 'color:var(--color-error)' : 'color:var(--text-primary)';
+
+                // Calculate avg FDR for upcoming fixtures
+                const gwFixtures = gwNumbers.map(gw => fixtures.find(f => f.event === gw)).filter(Boolean);
+                const avgFdr = gwFixtures.length > 0 ? (gwFixtures.reduce((s, f) => s + (f.difficulty || 3), 0) / gwFixtures.length).toFixed(1) : '-';
+                const avgFdrColor = avgFdr !== '-' ? (parseFloat(avgFdr) <= 2.5 ? 'color:var(--color-success)' : parseFloat(avgFdr) >= 3.5 ? 'color:var(--color-error)' : 'color:var(--text-primary)') : '';
+
+                let row = `<tr style="background:var(--surface-1);transition:background 0.15s;${isBench ? 'opacity:0.55;' : ''}" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface-1)'">`;
+                row += `<td style="position:sticky;left:0;background:inherit;z-index:1;padding:6px 12px;border-bottom:1px solid var(--border-subtle);">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span class="position-badge ${posConfig?.class || 'mid'}" style="width:28px;text-align:center;font-size:10px;">${posConfig?.short || '?'}</span>
+                        <div>
+                            <div style="font-weight:600;font-size:12px;cursor:pointer;" onclick="openDetailPanel(${p.id})">${p.isCaptain ? '👑 ' : ''}${p.name}</div>
+                            <div style="font-size:10px;color:var(--text-muted);">${p.team} · £${p.price.toFixed(1)}m${isBench ? ' · Bench' : ''}</div>
+                        </div>
+                    </div>
+                </td>`;
+                row += `<td style="text-align:center;padding:6px;border-bottom:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:0.8rem;font-weight:600;${formClass};">${p.form.toFixed(1)}</td>`;
+                row += `<td style="text-align:center;padding:6px;border-bottom:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:0.8rem;font-weight:600;${ppgClass};">${p.ppg.toFixed(1)}</td>`;
+
+                gwNumbers.forEach(gw => {
+                    const fix = fixtures.find(f => f.event === gw);
+                    if (fix) {
+                        const fdrClass = `fdr-${fix.difficulty || 3}`;
+                        row += `<td style="padding:4px 2px;text-align:center;border-bottom:1px solid var(--border-subtle);"><div class="planner-fdr-cell ${fdrClass}" style="border-radius:6px;padding:4px 3px;font-size:0.7rem;"><span class="fdr-opp">${fix.opponent || '?'}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div></td>`;
+                    } else {
+                        row += `<td style="padding:4px 2px;text-align:center;border-bottom:1px solid var(--border-subtle);"><div class="planner-fdr-cell" style="background:var(--surface-3);color:var(--text-muted);border-radius:6px;padding:4px 3px;">-</div></td>`;
+                    }
+                });
+
+                row += `<td style="text-align:center;padding:6px;border-bottom:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:0.8rem;font-weight:700;${avgFdrColor};">${avgFdr}</td>`;
+                row += `</tr>`;
+                return row;
+            };
+
+            // Position groups
+            const posGroups = [
+                { pos: 1, label: 'Goalkeepers', color: 'var(--position-gk)' },
+                { pos: 2, label: 'Defenders', color: 'var(--position-def)' },
+                { pos: 3, label: 'Midfielders', color: 'var(--position-mid)' },
+                { pos: 4, label: 'Forwards', color: 'var(--position-fwd)' }
+            ];
+
+            posGroups.forEach(({ pos, label, color }) => {
+                const players = starters.filter(p => p.position === pos);
+                if (players.length === 0) return;
+                const totalCols = 3 + gwNumbers.length + 1;
+                html += `<tr><td colspan="${totalCols}" style="background:var(--surface-0);padding:6px 12px;font-family:var(--font-display);font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${color};border-bottom:2px solid var(--border-emphasis);">${label}</td></tr>`;
+                players.forEach(p => { html += renderOverviewRow(p, false); });
+            });
+
+            if (bench.length > 0) {
+                const totalCols = 3 + gwNumbers.length + 1;
+                html += `<tr><td colspan="${totalCols}" style="background:var(--surface-0);padding:8px 12px;font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;border-top:2px solid var(--border-emphasis);border-bottom:1px solid var(--border-default);">Bench</td></tr>`;
+                bench.forEach(p => { html += renderOverviewRow(p, true); });
+            }
+
+            html += `</tbody></table></div>`;
+
+            // FDR Legend
+            html += `<div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;font-size:12px;color:var(--text-secondary);">
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-1);"></span> FDR 1</span>
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-2);"></span> FDR 2</span>
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-3);"></span> FDR 3</span>
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-4);"></span> FDR 4</span>
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-5);"></span> FDR 5</span>
+            </div>`;
+
+            return html;
         }
 
         function renderPlannerRow(player, gwNumbers, isBench) {
@@ -4898,11 +5072,6 @@
         document.getElementById('navTeamIdInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') submitTeamIdNav();
         });
-
-        // Enter key to load team
-        document.getElementById('teamIdInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') loadTeamById();
-        });
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>lucide.createIcons();</script>
@@ -4916,6 +5085,9 @@
                 if (input) input.value = savedTeamId;
                 activateTeamBadge(savedTeamId);
                 loadTeamById();
+            } else {
+                // No team ID cached — show landing page
+                document.getElementById('landingPage').style.display = '';
             }
         } catch(e) {
             console.warn('Team ID auto-load error:', e);

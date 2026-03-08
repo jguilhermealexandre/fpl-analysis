@@ -177,7 +177,6 @@
             gap: 2px;
             overflow-x: auto;
             align-items: center;
-            justify-content: center;
         }
         .tab {
             padding: 6px 12px;
@@ -221,6 +220,9 @@
         }
         .pos-pill:hover { color: var(--text-primary); background: var(--surface-2); }
         .pos-pill.active { color: var(--color-success); background: rgba(74, 222, 128, 0.12); }
+        .cat-pill.active.budget { color: var(--color-success); background: rgba(74, 222, 128, 0.12); }
+        .cat-pill.active.premium { color: var(--color-warning); background: rgba(251, 191, 36, 0.12); }
+        .cat-pill.active.differential { color: var(--color-info); background: rgba(96, 165, 250, 0.12); }
         .pos-pills.hidden { display: none; }
 
         /* CONTENT */
@@ -419,9 +421,9 @@
         .sub-tab-panel { display: none; }
         .sub-tab-panel.active { display: block; }
 
-        /* Rec category tabs (Budget/Premium/Differential) */
+        /* Rec category tabs (Budget/Premium/Differential) — hidden, controlled by global cat pills */
         .rec-category-tabs {
-            display: flex;
+            display: none;
             gap: 4px;
             margin-bottom: 12px;
             padding: 3px;
@@ -2416,6 +2418,7 @@
             gap: 8px;
             font-size: 11px;
             color: var(--text-secondary);
+            flex-wrap: wrap;
         }
         .tab-desc-icon {
             font-size: 12px;
@@ -2907,6 +2910,11 @@
                 <button class="pos-pill" data-pos="MID" onclick="switchGlobalPosition('MID', this)">MID</button>
                 <button class="pos-pill" data-pos="FWD" onclick="switchGlobalPosition('FWD', this)">FWD</button>
             </div>
+            <div class="pos-pills" id="catPills" style="margin-left:0;">
+                <button class="pos-pill cat-pill active budget" data-cat="budget" onclick="switchGlobalCategory('budget', this)"><i data-lucide="coins" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Budget</button>
+                <button class="pos-pill cat-pill premium" data-cat="premium" onclick="switchGlobalCategory('premium', this)"><i data-lucide="star" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Premium</button>
+                <button class="pos-pill cat-pill differential" data-cat="differential" onclick="switchGlobalCategory('differential', this)"><i data-lucide="gem" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Differentials</button>
+            </div>
         </div>
     </div>
 
@@ -3035,6 +3043,12 @@
             if (posPills) {
                 const hasPos = tab.dataset.hasPos === 'true';
                 posPills.classList.toggle('hidden', !hasPos);
+            }
+
+            // Show/hide category pills (only on Recommendations tab)
+            const catPills = document.getElementById('catPills');
+            if (catPills) {
+                catPills.style.display = (pos === 'RECOMMENDATIONS') ? '' : 'none';
             }
 
             // Update hash
@@ -4318,6 +4332,30 @@
             document.querySelectorAll(`[id^="recCat-${pos}-"]`).forEach(p => p.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById(`recCat-${pos}-${category}`)?.classList.add('active');
+            // Sync global category pills
+            syncGlobalCatPills(category);
+        }
+
+        function switchGlobalCategory(category, btn) {
+            // Update global category pills
+            document.querySelectorAll('#catPills .cat-pill').forEach(p => p.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            // Apply to all positions
+            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+                window._activeRecCat[pos] = category;
+                document.querySelectorAll(`#recCatTabs-${pos} .rec-category-tab`).forEach(t => t.classList.remove('active'));
+                document.querySelectorAll(`[id^="recCat-${pos}-"]`).forEach(p => p.classList.remove('active'));
+                const posBtn = document.querySelector(`#recCatTabs-${pos} .rec-category-tab.${category}`);
+                if (posBtn) posBtn.classList.add('active');
+                document.getElementById(`recCat-${pos}-${category}`)?.classList.add('active');
+            });
+        }
+
+        function syncGlobalCatPills(category) {
+            document.querySelectorAll('#catPills .cat-pill').forEach(p => p.classList.remove('active'));
+            const pill = document.querySelector(`#catPills .cat-pill[data-cat="${category}"]`);
+            if (pill) pill.classList.add('active');
         }
 
         // ============================================
@@ -4335,6 +4373,9 @@
             // Switch Recommendations panel
             document.querySelectorAll('[id^="rec-panel-"]').forEach(p => p.classList.remove('active'));
             document.getElementById('rec-panel-' + pos)?.classList.add('active');
+
+            // Sync global category pills to this position's active category
+            syncGlobalCatPills(window._activeRecCat?.[pos] || 'budget');
 
             // Switch Routes panel
             document.querySelectorAll('[id^="routes-panel-"]').forEach(p => p.classList.remove('active'));

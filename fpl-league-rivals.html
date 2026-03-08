@@ -393,7 +393,6 @@
             gap: 2px;
             overflow-x: auto;
             align-items: center;
-            justify-content: center;
         }
 
         .tab {
@@ -872,7 +871,10 @@
             <div class="input-grid">
                 <div class="input-group">
                     <label>League ID</label>
-                    <input type="text" id="leagueIdInput" placeholder="e.g. 12345">
+                    <div style="display:flex;gap:6px;">
+                        <input type="text" id="leagueIdInput" placeholder="e.g. 12345" style="flex:1;">
+                        <button class="secondary-btn" id="clearLeagueBtn" onclick="clearCachedLeagueId()" style="display:none;padding:8px 12px;font-size:11px;background:var(--surface-2);border:1px solid var(--border-default);border-radius:8px;cursor:pointer;color:var(--text-secondary);white-space:nowrap;" title="Clear saved league ID">✕</button>
+                    </div>
                     <div class="input-help">Find it in your league URL: /leagues/12345/standings</div>
                 </div>
                 <div class="input-group">
@@ -1097,6 +1099,10 @@
             showStatus('Fetching league data...', 'loading');
             
             try {
+                // Cache league ID
+                localStorage.setItem('fpl_league_id', leagueId);
+                updateClearLeagueBtn();
+                
                 // Fetch league standings via Cloudflare Worker
                 const res = await fetch(`${WORKER_URL}/api/leagues-classic/${leagueId}/standings/`);
                 if (!res.ok) throw new Error('League not found');
@@ -1425,6 +1431,21 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
         
+        function clearCachedLeagueId() {
+            localStorage.removeItem('fpl_league_id');
+            document.getElementById('leagueIdInput').value = '';
+            document.getElementById('clearLeagueBtn').style.display = 'none';
+        }
+
+        function updateClearLeagueBtn() {
+            const btn = document.getElementById('clearLeagueBtn');
+            if (localStorage.getItem('fpl_league_id')) {
+                btn.style.display = '';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
         // ===== TABS =====
         function showTab(tabName) {
             document.querySelectorAll('.tabs-container .tab').forEach(t => t.classList.remove('active'));
@@ -1459,7 +1480,22 @@
         // Enter key handlers
         document.getElementById('leagueIdInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadLeague(); });
         
-        window.addEventListener('load', init);
+        window.addEventListener('load', async () => {
+            await init();
+            
+            // Auto-fill team ID from cached navbar value
+            const savedTeamId = localStorage.getItem('fpl_team_id');
+            if (savedTeamId) {
+                document.getElementById('yourTeamIdInput').value = savedTeamId;
+            }
+            
+            // Auto-fill league ID from cache
+            const savedLeagueId = localStorage.getItem('fpl_league_id');
+            if (savedLeagueId) {
+                document.getElementById('leagueIdInput').value = savedLeagueId;
+            }
+            updateClearLeagueBtn();
+        });
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>lucide.createIcons();</script>
