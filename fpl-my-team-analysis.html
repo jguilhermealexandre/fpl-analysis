@@ -79,7 +79,7 @@
         /* STICKY SUB-NAV TABS */
         .tabs-container { display: none; background: var(--surface-0); border-bottom: 1px solid var(--border-default); position: sticky; top: 56px; z-index: 99; }
         .tabs-container.visible { display: block; }
-        .tabs { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; gap: 2px; overflow-x: auto; align-items: center; }
+        .tabs { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; gap: 2px; overflow-x: auto; align-items: center; justify-content: center; }
         .tab { padding: 6px 12px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-family: var(--font-body); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 150ms; }
         .tab:hover { color: var(--text-primary); border-bottom-color: var(--border-emphasis); }
         .tab.active { color: var(--color-success); border-bottom-color: var(--color-success); }
@@ -4853,14 +4853,13 @@
             premiumHarshness: 1.0
         };
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Load saved settings — merge with defaults so missing/old keys don't produce NaN
+        // Load saved settings immediately (IIFE)
+        (function() {
             const savedSettings = localStorage.getItem('fpl_analysis_settings');
             if (savedSettings) {
                 try {
                     const parsed = JSON.parse(savedSettings);
                     userSettings = { ...DEFAULT_SETTINGS, ...parsed };
-                    // Validate all numeric settings — fall back to defaults if corrupted
                     for (const key of Object.keys(DEFAULT_SETTINGS)) {
                         if (typeof userSettings[key] !== 'number' || isNaN(userSettings[key])) {
                             userSettings[key] = DEFAULT_SETTINGS[key];
@@ -4871,16 +4870,7 @@
                     userSettings = { ...DEFAULT_SETTINGS };
                 }
             }
-
-            // Load saved team ID
-            const savedTeamId = localStorage.getItem('fpl_team_id');
-            if (savedTeamId) {
-                document.getElementById('teamIdInput').value = savedTeamId;
-                activateTeamBadge(savedTeamId);
-                // Auto-load the team immediately
-                loadTeamById();
-            }
-        });
+        })();
 
         function activateTeamBadge(teamId) {
             document.getElementById('navTidInput').classList.add('hidden');
@@ -4915,5 +4905,21 @@
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>lucide.createIcons();</script>
+    <script>
+    // Isolated team ID auto-load — runs independently of main script
+    (function() {
+        try {
+            var savedTeamId = localStorage.getItem('fpl_team_id');
+            if (savedTeamId) {
+                var input = document.getElementById('teamIdInput');
+                if (input) input.value = savedTeamId;
+                activateTeamBadge(savedTeamId);
+                loadTeamById();
+            }
+        } catch(e) {
+            console.warn('Team ID auto-load error:', e);
+        }
+    })();
+    </script>
 </body>
 </html>

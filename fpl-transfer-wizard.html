@@ -1871,15 +1871,8 @@
         panel.innerHTML=html;
     }
 
-    document.addEventListener('DOMContentLoaded',()=>{
-        const s=localStorage.getItem('fpl_team_id');
-        if(s){
-            document.getElementById('teamIdInput').value=s;
-            activateTeamBadge(s);
-            // Auto-load the team immediately
-            loadTeamById();
-        }
-    });
+    // Load saved team ID immediately (handled in separate script below)
+    
     function activateTeamBadge(teamId) {
         document.getElementById('navTidInput').classList.add('hidden');
         document.getElementById('navTidBadge').classList.remove('hidden');
@@ -1914,6 +1907,22 @@
             const origFunc = _origRender;
             window.renderWizardLanding = function() { origFunc.apply(this, arguments); lucide.createIcons(); };
         }
+    </script>
+    <script>
+    // Isolated team ID auto-load — runs independently of main script
+    (function() {
+        try {
+            var savedTeamId = localStorage.getItem('fpl_team_id');
+            if (savedTeamId) {
+                var input = document.getElementById('teamIdInput');
+                if (input) input.value = savedTeamId;
+                activateTeamBadge(savedTeamId);
+                loadTeamById();
+            }
+        } catch(e) {
+            console.warn('Team ID auto-load error:', e);
+        }
+    })();
     </script>
 </body>
 </html>
