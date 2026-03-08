@@ -79,10 +79,24 @@
         /* STICKY SUB-NAV TABS */
         .tabs-container { display: none; background: var(--surface-0); border-bottom: 1px solid var(--border-default); position: sticky; top: 56px; z-index: 99; }
         .tabs-container.visible { display: block; }
-        .tabs { max-width: 1400px; margin: 0 auto; padding: 8px 24px; display: flex; gap: 6px; overflow-x: auto; align-items: center; }
-        .tab { padding: 7px 14px; background: transparent; border: none; color: var(--text-secondary); font-family: var(--font-body); font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 7px; white-space: nowrap; transition: all 150ms; display: flex; align-items: center; gap: 6px; }
-        .tab:hover { color: var(--text-primary); background: var(--surface-1); }
-        .tab.active { color: var(--color-success); background: rgba(74, 222, 128, 0.1); }
+        .tabs { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; gap: 2px; overflow-x: auto; align-items: center; }
+        .tab { padding: 6px 12px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-family: var(--font-body); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 150ms; }
+        .tab:hover { color: var(--text-primary); border-bottom-color: var(--border-emphasis); }
+        .tab.active { color: var(--color-success); border-bottom-color: var(--color-success); }
+
+        /* NAV TEAM ID WIDGET */
+        .nav-team-id { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+        .nav-tid-form { display: flex; align-items: center; gap: 3px; background: var(--surface-2); border: 1px solid var(--border-default); border-radius: 9999px; padding: 2px 3px 2px 10px; transition: all 200ms; }
+        .nav-tid-form:focus-within { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-muted); }
+        .nav-tid-form input { border: none; background: transparent; font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); outline: none; width: 72px; }
+        .nav-tid-form input::placeholder { color: var(--text-muted); font-family: var(--font-body); font-size: 11px; }
+        .nav-tid-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 10px; background: var(--color-primary-muted); border-radius: 9999px; font-size: 11px; font-weight: 600; color: var(--color-primary-text); white-space: nowrap; }
+        .nav-tid-badge .icon { width: 12px; height: 12px; }
+        .nav-tid-change { font-size: 0; color: var(--color-primary-text); opacity: 0.5; background: none; border: none; border-left: 1px solid rgba(16,185,129,0.25); cursor: pointer; padding: 2px 4px 2px 6px; margin-left: 2px; display: flex; align-items: center; transition: all 150ms; }
+        .nav-tid-change:hover { opacity: 1; }
+        .nav-tid-change .icon { width: 11px; height: 11px; }
+        .hidden { display: none !important; }
+        @media (max-width: 768px) { .nav-team-id { display: none; } }
 
         .main-content { max-width: 1400px; margin: 0 auto; padding: 16px 24px 100px; }
         .header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -1234,16 +1248,33 @@
                     </div>
                 </div>
             </div>
+            <div class="nav-team-id" id="navTeamId">
+                <div id="navTidInput">
+                    <div class="nav-tid-form">
+                        <input type="text" id="navTeamIdInput" placeholder="Team ID" inputmode="numeric">
+                        <button class="btn btn-primary" onclick="submitTeamIdNav()" style="padding:3px 10px;font-size:11px;border-radius:9999px;">Go</button>
+                    </div>
+                </div>
+                <div id="navTidBadge" class="hidden">
+                    <span class="nav-tid-badge">
+                        <i data-lucide="user" class="icon"></i>
+                        ID: <span id="teamIdDisplay"></span>
+                        <button class="nav-tid-change" onclick="changeTeamIdNav()" title="Change Team ID">
+                            <i data-lucide="pencil" class="icon"></i>
+                        </button>
+                    </span>
+                </div>
+            </div>
         </div>
     </nav>
 
     <!-- Sub-Nav Tabs (hidden until data loads) -->
     <div class="tabs-container" id="tabBar">
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('team')" id="tabTeam"><i data-lucide="users" style="width:14px;height:14px;"></i> Squad Analysis</button>
-            <button class="tab" onclick="switchTab('planner')" id="tabPlanner"><i data-lucide="calendar" style="width:14px;height:14px;"></i> GW Planner</button>
-            <button class="tab" onclick="switchTab('transfer')" id="tabTransfer"><i data-lucide="repeat" style="width:14px;height:14px;"></i> Transfer Wizard</button>
-            <button class="tab" onclick="switchTab('lineup')" id="tabLineup"><i data-lucide="wand-2" style="width:14px;height:14px;"></i> Lineup Wizard</button>
+            <button class="tab active" onclick="switchTab('team')" id="tabTeam">Squad Analysis</button>
+            <button class="tab" onclick="switchTab('planner')" id="tabPlanner">GW Planner</button>
+            <button class="tab" onclick="switchTab('transfer')" id="tabTransfer">Transfer Wizard</button>
+            <button class="tab" onclick="switchTab('lineup')" id="tabLineup">Lineup Wizard</button>
         </div>
     </div>
 
@@ -1807,6 +1838,7 @@
                 document.getElementById('bankValue').textContent = `£${(picksData.entry_history?.bank / 10 || 0).toFixed(1)}m`;
 
                 localStorage.setItem('fpl_team_id', teamId);
+                activateTeamBadge(teamId);
                 showLoading(true, 'Running analysis...');
                 analyzeTeam();
 
@@ -4844,9 +4876,36 @@
             const savedTeamId = localStorage.getItem('fpl_team_id');
             if (savedTeamId) {
                 document.getElementById('teamIdInput').value = savedTeamId;
+                activateTeamBadge(savedTeamId);
                 // Auto-load the team immediately
                 loadTeamById();
             }
+        });
+
+        function activateTeamBadge(teamId) {
+            document.getElementById('navTidInput').classList.add('hidden');
+            document.getElementById('navTidBadge').classList.remove('hidden');
+            document.getElementById('teamIdDisplay').textContent = teamId;
+        }
+        function submitTeamIdNav() {
+            const input = document.getElementById('navTeamIdInput');
+            const teamId = input.value.trim();
+            if (!teamId || isNaN(teamId)) return;
+            localStorage.setItem('fpl_team_id', teamId);
+            document.getElementById('teamIdInput').value = teamId;
+            activateTeamBadge(teamId);
+            loadTeamById();
+        }
+        function changeTeamIdNav() {
+            localStorage.removeItem('fpl_team_id');
+            document.getElementById('navTidInput').classList.remove('hidden');
+            document.getElementById('navTidBadge').classList.add('hidden');
+            document.getElementById('teamIdInput').value = '';
+            document.getElementById('navTeamIdInput').value = '';
+            document.getElementById('navTeamIdInput').focus();
+        }
+        document.getElementById('navTeamIdInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitTeamIdNav();
         });
 
         // Enter key to load team

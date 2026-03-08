@@ -74,7 +74,19 @@
         .dropdown-item:hover { color: var(--color-primary); background: rgba(16, 185, 129, 0.08); }
         .dropdown-item .dd-icon { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-muted); }
         .dropdown-item:hover .dd-icon { color: var(--color-primary); }
-        @media (max-width: 768px) { .nav-links { display: none; } }
+        /* NAV TEAM ID WIDGET */
+        .nav-team-id { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+        .nav-tid-form { display: flex; align-items: center; gap: 3px; background: var(--surface-2); border: 1px solid var(--border-default); border-radius: 9999px; padding: 2px 3px 2px 10px; transition: all 200ms; }
+        .nav-tid-form:focus-within { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-muted); }
+        .nav-tid-form input { border: none; background: transparent; font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); outline: none; width: 72px; }
+        .nav-tid-form input::placeholder { color: var(--text-muted); font-family: var(--font-body); font-size: 11px; }
+        .nav-tid-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 10px; background: var(--color-primary-muted); border-radius: 9999px; font-size: 11px; font-weight: 600; color: var(--color-primary-text); white-space: nowrap; }
+        .nav-tid-badge .icon { width: 12px; height: 12px; }
+        .nav-tid-change { font-size: 0; color: var(--color-primary-text); opacity: 0.5; background: none; border: none; border-left: 1px solid rgba(16,185,129,0.25); cursor: pointer; padding: 2px 4px 2px 6px; margin-left: 2px; display: flex; align-items: center; transition: all 150ms; }
+        .nav-tid-change:hover { opacity: 1; }
+        .nav-tid-change .icon { width: 11px; height: 11px; }
+        .hidden { display: none !important; }
+        @media (max-width: 768px) { .nav-links { display: none; } .nav-team-id { display: none; } }
 
         .main-content { max-width: 1400px; margin: 0 auto; padding: 16px 24px 100px; }
         .header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -460,6 +472,23 @@
                     <a href="fpl-league-rivals.html#matrix" class="dropdown-item"><i data-lucide="grid" class="dd-icon"></i> Ownership Matrix</a>
                     <a href="fpl-league-rivals.html#rivals" class="dropdown-item"><i data-lucide="swords" class="dd-icon"></i> Rival Comparison</a>
                 </div>
+            </div>
+        </div>
+        <div class="nav-team-id" id="navTeamId">
+            <div id="navTidInput">
+                <div class="nav-tid-form">
+                    <input type="text" id="navTeamIdInput" placeholder="Team ID" inputmode="numeric">
+                    <button class="btn btn-primary" onclick="submitTeamIdNav()" style="padding:3px 10px;font-size:11px;border-radius:9999px;">Go</button>
+                </div>
+            </div>
+            <div id="navTidBadge" class="hidden">
+                <span class="nav-tid-badge">
+                    <i data-lucide="user" class="icon"></i>
+                    ID: <span id="teamIdDisplay"></span>
+                    <button class="nav-tid-change" onclick="changeTeamIdNav()" title="Change Team ID">
+                        <i data-lucide="pencil" class="icon"></i>
+                    </button>
+                </span>
             </div>
         </div>
     </div></nav>
@@ -1078,6 +1107,7 @@
             document.getElementById('bankDisplay').textContent=`£${bankValue.toFixed(1)}m`;
             document.getElementById('gwDisplay').textContent=`GW${currentGW}`;
             localStorage.setItem('fpl_team_id',teamId);
+            activateTeamBadge(teamId);
             // Pre-compute analysis for lineup wizard steps
             showLoading(true,'Running lineup optimization...');
             analyzedSquad=mySquad.map(p=>({...p,lineupData:computeLineupScore(p)}));
@@ -1845,10 +1875,34 @@
         const s=localStorage.getItem('fpl_team_id');
         if(s){
             document.getElementById('teamIdInput').value=s;
+            activateTeamBadge(s);
             // Auto-load the team immediately
             loadTeamById();
         }
     });
+    function activateTeamBadge(teamId) {
+        document.getElementById('navTidInput').classList.add('hidden');
+        document.getElementById('navTidBadge').classList.remove('hidden');
+        document.getElementById('teamIdDisplay').textContent = teamId;
+    }
+    function submitTeamIdNav() {
+        const input = document.getElementById('navTeamIdInput');
+        const teamId = input.value.trim();
+        if (!teamId || isNaN(teamId)) return;
+        localStorage.setItem('fpl_team_id', teamId);
+        document.getElementById('teamIdInput').value = teamId;
+        activateTeamBadge(teamId);
+        loadTeamById();
+    }
+    function changeTeamIdNav() {
+        localStorage.removeItem('fpl_team_id');
+        document.getElementById('navTidInput').classList.remove('hidden');
+        document.getElementById('navTidBadge').classList.add('hidden');
+        document.getElementById('teamIdInput').value = '';
+        document.getElementById('navTeamIdInput').value = '';
+        document.getElementById('navTeamIdInput').focus();
+    }
+    document.getElementById('navTeamIdInput').addEventListener('keypress',e=>{if(e.key==='Enter')submitTeamIdNav();});
     document.getElementById('teamIdInput').addEventListener('keypress',e=>{if(e.key==='Enter')loadTeamById();});
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
