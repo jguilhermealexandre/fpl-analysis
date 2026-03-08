@@ -67,7 +67,8 @@
         }
 
         body {
-            background: var(--surface-bg);
+            background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 30%, #FFFFFF 70%, #EFF6FF 100%);
+            background-attachment: fixed;
             color: var(--text-primary);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 14px;
@@ -87,16 +88,16 @@
         .nav-container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 var(--space-4);
+            padding: 0 24px;
             display: flex;
             align-items: center;
-            height: 48px;
-            gap: var(--space-6);
+            height: 56px;
+            gap: 32px;
         }
 
         .nav-logo {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 700;
             color: var(--text-primary);
             text-decoration: none;
@@ -139,17 +140,109 @@
 
         .nav-link--accent { background: rgba(167, 139, 250, 0.08); border: 1px solid rgba(167, 139, 250, 0.25); }
         .nav-link--accent:not(.active) { color: #A78BFA; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
 
-        .nav-link .icon {
-            width: 16px;
-            height: 16px;
+        .nav-link .icon { width: 16px; height: 16px; flex-shrink: 0; }
+        .logo-icon { width: 20px; height: 20px; color: var(--color-primary); }
+
+        /* NAV DROPDOWNS */
+        .nav-dropdown { position: relative; display: flex; }
+        .nav-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            min-width: 200px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
+            padding: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 150ms ease-out, transform 150ms ease-out;
+            z-index: 200;
         }
-
-        .logo-icon {
-            width: 20px;
-            height: 20px;
+        .nav-dropdown:hover .nav-dropdown-menu,
+        .nav-dropdown-menu:hover {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+        .nav-dropdown::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            right: 0;
+            height: 8px;
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 7px;
+            transition: all 120ms;
+            white-space: nowrap;
+        }
+        .dropdown-item:hover {
             color: var(--color-primary);
+            background: rgba(16, 185, 129, 0.08);
         }
+        .dropdown-item .dd-icon { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-muted); }
+        .dropdown-item:hover .dd-icon { color: var(--color-primary); }
+
+        /* ===== PAGE HEADER ===== */
+        .page-header {
+            background: var(--surface-1);
+            border-bottom: 1px solid var(--border-default);
+            padding: 10px 24px;
+        }
+        .page-header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ===== TABS (Sticky Sub-Nav) ===== */
+        .tabs-container {
+            background: var(--surface-0);
+            border-bottom: 1px solid var(--border-default);
+            position: sticky;
+            top: 56px;
+            z-index: 99;
+        }
+        .tabs {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 8px 24px;
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            align-items: center;
+        }
+        .tab {
+            padding: 7px 14px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 7px;
+            white-space: nowrap;
+            transition: all 150ms;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tab:hover { color: var(--text-primary); background: var(--surface-1); }
+        .tab.active { color: var(--color-success); background: rgba(74, 222, 128, 0.1); }
 
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -158,24 +251,13 @@
             padding: var(--space-4);
         }
 
-        /* ===== PAGE HEADER ===== */
-        .page-header {
-            margin-bottom: var(--space-4);
-        }
-
         .page-title {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-1);
+            margin-bottom: 2px;
         }
-
-        .page-subtitle {
-            color: var(--text-muted);
-            font-size: 13px;
-        }
-
+        .page-subtitle { color: var(--text-muted); font-size: 12px; }
         .gw-badge {
             display: inline-flex;
             align-items: center;
@@ -187,46 +269,6 @@
             font-weight: 600;
             color: var(--color-info);
             margin-left: var(--space-3);
-        }
-
-        /* ===== FILTER TABS ===== */
-        .filter-bar {
-            display: flex;
-            align-items: center;
-            gap: var(--space-3);
-            margin-bottom: var(--space-4);
-            padding-bottom: var(--space-3);
-            border-bottom: 1px solid var(--border-subtle);
-        }
-
-        .filter-tabs {
-            display: flex;
-            gap: 2px;
-            background: var(--surface-1);
-            padding: 3px;
-            border-radius: var(--radius-md);
-        }
-
-        .filter-tab {
-            padding: 6px 12px;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-family: inherit;
-            font-size: 12px;
-            font-weight: 500;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all 150ms ease-out;
-        }
-
-        .filter-tab:hover {
-            color: var(--text-primary);
-        }
-
-        .filter-tab.active {
-            background: var(--surface-3);
-            color: var(--text-primary);
         }
 
         .search-box {
@@ -2326,6 +2368,36 @@
             color: var(--color-success);
             background: rgba(74, 222, 128, 0.1);
         }
+
+        /* ===== ACCESSIBILITY: Minimum font sizes & contrast ===== */
+        .fdr-badge { font-size: 10px; }
+        .fdr-badge .opp { font-size: 11px; }
+        .form-label { font-size: 10px; color: var(--text-secondary); }
+        .form-letter { font-size: 11px; }
+        .xg-badge { font-size: 10px; }
+        .report-stat-label { font-size: 11px; color: var(--text-secondary); }
+        .report-bar-label { font-size: 12px; }
+        .report-venue-stat { font-size: 12px; }
+        .report-form-opp { font-size: 10px; color: var(--text-secondary); }
+        .report-form-score { font-size: 11px; }
+        .report-fdr-cs { font-size: 10px; color: var(--text-secondary); }
+        .report-fdr-venue { font-size: 10px; }
+        .report-fdr-opp { font-size: 12px; }
+        .team-tag { font-size: 10px; }
+        .cs-badge { font-size: 10px; }
+        .venue-bar-label { font-size: 11px; color: var(--text-secondary); }
+        .venue-bar-value { font-size: 11px; }
+        .venue-bar-marker { font-size: 10px; }
+        .insight-tag { font-size: 11px; }
+        .fdr-avg { font-size: 11px; color: var(--text-secondary); }
+        .swing-timing { font-size: 11px; }
+        .signal-tag { font-size: 11px; }
+        .calendar-table th { font-size: 11px; }
+        .calendar-team-fdr { font-size: 11px; color: var(--text-secondary); }
+        .fixture-cell { font-size: 10px; }
+        .stats-group-pill, .stats-view-pill { font-size: 12px; }
+        .stats-mini { font-size: 11px; color: var(--text-secondary); }
+        .stats-section-header { font-size: 12px !important; }
     </style>
 </head>
 <body>
@@ -2345,50 +2417,71 @@
             </a>
             <div class="nav-links">
                 <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent">
-                    <i data-lucide="wand-2" class="icon"></i>
-                    <span>FPL Wizard</span>
+                    <i data-lucide="wand-2" class="icon"></i> FPL Wizard
                 </a>
-                <a href="fpl-my-team-analysis.html" class="nav-link">
-                    <i data-lucide="users" class="icon"></i>
-                    <span>My Team</span>
-                </a>
-                <a href="fpl-players-analysis.html" class="nav-link">
-                    <i data-lucide="user-search" class="icon"></i>
-                    <span>Players</span>
-                </a>
+                <div class="nav-dropdown">
+                    <a href="fpl-my-team-analysis.html" class="nav-link">
+                        <i data-lucide="users" class="icon"></i> My Team
+                    </a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-my-team-analysis.html#squad" class="dropdown-item"><i data-lucide="users" class="dd-icon"></i> Squad Analysis</a>
+                        <a href="fpl-my-team-analysis.html#planner" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> GW Planner</a>
+                        <a href="fpl-my-team-analysis.html#transfer" class="dropdown-item"><i data-lucide="repeat" class="dd-icon"></i> Transfer Wizard</a>
+                        <a href="fpl-my-team-analysis.html#lineup" class="dropdown-item"><i data-lucide="wand-2" class="dd-icon"></i> Lineup Wizard</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-players-analysis.html" class="nav-link">
+                        <i data-lucide="user-search" class="icon"></i> Players
+                    </a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-players-analysis.html#recommendations" class="dropdown-item"><i data-lucide="star" class="dd-icon"></i> Recommendations</a>
+                        <a href="fpl-players-analysis.html#rising" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Rising Form</a>
+                        <a href="fpl-players-analysis.html#charts" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Charts</a>
+                        <a href="fpl-players-analysis.html#routes" class="dropdown-item"><i data-lucide="git-branch" class="dd-icon"></i> Routes to Points</a>
+                        <a href="fpl-players-analysis.html#all" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> All Players</a>
+                    </div>
+                </div>
                 <a href="fpl-teams-analysis.html" class="nav-link active">
-                    <i data-lucide="bar-chart-3" class="icon"></i>
-                    <span>Teams</span>
+                    <i data-lucide="bar-chart-3" class="icon"></i> Teams
                 </a>
-                <a href="fpl-league-rivals.html" class="nav-link">
-                    <i data-lucide="trophy" class="icon"></i>
-                    <span>Rivals</span>
-                </a>
+                <div class="nav-dropdown">
+                    <a href="fpl-league-rivals.html" class="nav-link">
+                        <i data-lucide="trophy" class="icon"></i> Rivals
+                    </a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-league-rivals.html#insights" class="dropdown-item"><i data-lucide="lightbulb" class="dd-icon"></i> Key Insights</a>
+                        <a href="fpl-league-rivals.html#matrix" class="dropdown-item"><i data-lucide="grid" class="dd-icon"></i> Ownership Matrix</a>
+                        <a href="fpl-league-rivals.html#rivals" class="dropdown-item"><i data-lucide="swords" class="dd-icon"></i> Rival Comparison</a>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <!-- Page Header -->
-        <header class="page-header">
+    <!-- Page Header -->
+    <header class="page-header">
+        <div class="page-header-inner">
             <h1 class="page-title">
                 Teams Analysis
                 <span class="gw-badge" id="currentGW">Loading...</span>
             </h1>
             <p class="page-subtitle">Fixture difficulty, form trends, and attack/defense ratings for all 20 Premier League teams</p>
-        </header>
-
-        <!-- Filter Bar -->
-        <div class="filter-bar">
-            <div class="filter-tabs">
-                <button class="filter-tab active" data-view="rankings"><i data-lucide="trophy" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Team Rankings</button>
-                <button class="filter-tab" data-view="swings">Fixture Swings</button>
-                <button class="filter-tab" data-view="calendar"><i data-lucide="calendar" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Full Calendar</button>
-                <button class="filter-tab" data-view="stats"><i data-lucide="bar-chart-3" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Stats Table</button>
-            </div>
         </div>
+    </header>
 
+    <!-- Sub-Nav Tabs -->
+    <div class="tabs-container">
+        <div class="tabs" id="viewTabs">
+            <button class="tab active" data-view="rankings"><i data-lucide="trophy" style="width:14px;height:14px;"></i> Team Rankings</button>
+            <button class="tab" data-view="swings"><i data-lucide="trending-up" style="width:14px;height:14px;"></i> Fixture Swings</button>
+            <button class="tab" data-view="calendar"><i data-lucide="calendar" style="width:14px;height:14px;"></i> Full Calendar</button>
+            <button class="tab" data-view="stats"><i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i> Stats Table</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
         <!-- Content Area -->
         <div id="content-area">
             <div class="teams-grid" id="teams-grid">
@@ -2433,18 +2526,27 @@
         window.teamXgData = {};      // Per-GW xG/xGC aggregated by team
         window.playerElements = [];  // Raw bootstrap elements (for season xG)
 
+        // Hash routing
+        const HASH_TO_VIEW = { 'rankings': 'rankings', 'swings': 'swings', 'calendar': 'calendar', 'stats': 'stats' };
+
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', () => {
             initFilters();
             loadTeamData();
+            // Activate tab from URL hash
+            const hash = window.location.hash.replace('#', '');
+            if (HASH_TO_VIEW[hash]) {
+                currentView = hash;
+            }
         });
 
         function initFilters() {
-            document.querySelectorAll('.filter-tab').forEach(tab => {
+            document.querySelectorAll('.tabs-container .tab').forEach(tab => {
                 tab.addEventListener('click', () => {
-                    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tabs-container .tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
                     currentView = tab.dataset.view;
+                    history.replaceState(null, '', '#' + currentView);
                     renderCurrentView();
                 });
             });
@@ -3174,6 +3276,10 @@
 
         function renderCurrentView() {
             const contentArea = document.getElementById('content-area');
+            // Sync tab active state
+            document.querySelectorAll('.tabs-container .tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.view === currentView);
+            });
 
             switch (currentView) {
                 case 'rankings': {

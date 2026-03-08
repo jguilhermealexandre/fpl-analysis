@@ -53,11 +53,11 @@
 
         /* NAV */
         .top-nav { background: var(--surface-0); border-bottom: 1px solid var(--border-default); position: sticky; top: 0; z-index: 100; }
-        .nav-container { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; height: 48px; gap: 32px; }
-        .nav-logo { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-primary); text-decoration: none; }
+        .nav-container { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 32px; }
+        .nav-logo { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
         .nav-logo span { color: var(--color-success); }
         .nav-links { display: flex; gap: 4px; }
-        .nav-link { display: flex; align-items: center; gap: 6px; padding: 6px 12px; color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 500; border-radius: var(--radius-sm); transition: all 0.15s; }
+        .nav-link { display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 500; border-radius: 8px; transition: all 150ms; }
         .nav-link:hover { color: var(--text-primary); background: var(--surface-1); }
         .nav-link.active { color: var(--color-primary); background: var(--color-primary-muted); }
         .nav-link .icon { width: 16px; height: 16px; flex-shrink: 0; }
@@ -65,6 +65,24 @@
         .nav-link--accent:not(.active) { color: #A78BFA; }
         .mobile-nav-item--accent { color: #A78BFA !important; }
         @media (max-width: 768px) { .nav-links { display: none; } }
+
+        /* NAV DROPDOWNS */
+        .nav-dropdown { position: relative; display: flex; }
+        .nav-dropdown-menu { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%) translateY(4px); min-width: 200px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06); padding: 6px; opacity: 0; pointer-events: none; transition: opacity 150ms ease-out, transform 150ms ease-out; z-index: 200; }
+        .nav-dropdown:hover .nav-dropdown-menu, .nav-dropdown-menu:hover { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+        .nav-dropdown::after { content: ''; position: absolute; bottom: -8px; left: 0; right: 0; height: 8px; }
+        .dropdown-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--text-secondary); text-decoration: none; font-size: 12px; font-weight: 500; border-radius: 7px; transition: all 120ms; white-space: nowrap; }
+        .dropdown-item:hover { color: var(--color-primary); background: rgba(16, 185, 129, 0.08); }
+        .dropdown-item .dd-icon { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-muted); }
+        .dropdown-item:hover .dd-icon { color: var(--color-primary); }
+
+        /* STICKY SUB-NAV TABS */
+        .tabs-container { display: none; background: var(--surface-0); border-bottom: 1px solid var(--border-default); position: sticky; top: 56px; z-index: 99; }
+        .tabs-container.visible { display: block; }
+        .tabs { max-width: 1400px; margin: 0 auto; padding: 8px 24px; display: flex; gap: 6px; overflow-x: auto; align-items: center; }
+        .tab { padding: 7px 14px; background: transparent; border: none; color: var(--text-secondary); font-family: var(--font-body); font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 7px; white-space: nowrap; transition: all 150ms; display: flex; align-items: center; gap: 6px; }
+        .tab:hover { color: var(--text-primary); background: var(--surface-1); }
+        .tab.active { color: var(--color-success); background: rgba(74, 222, 128, 0.1); }
 
         .main-content { max-width: 1400px; margin: 0 auto; padding: 16px 24px 100px; }
         .header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -821,12 +839,7 @@
         .player-card.star:hover { box-shadow: 0 8px 24px rgba(139,92,246,0.12); }
         .player-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
 
-        /* ===== TAB BAR ===== */
-        .tab-bar { display: none; gap: 4px; margin-bottom: 16px; background: var(--surface); border-radius: 10px; padding: 4px; border: 1px solid var(--border); }
-        .tab-bar.visible { display: flex; }
-        .tab-btn { flex: 1; padding: 10px 16px; border: none; border-radius: 8px; background: transparent; color: var(--text-secondary); font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .tab-btn:hover { color: var(--text-primary); background: rgba(0,0,0,0.04); }
-        .tab-btn.active { background: var(--color-primary); color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,0.3); }
+        /* ===== TAB BAR (removed - using .tabs-container now) ===== */
 
         /* ===== TRANSFER WIZARD ===== */
         .tw-container { padding: 0; }
@@ -1193,12 +1206,46 @@
             <div class="nav-links">
                 <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent"><i data-lucide="wand-2" class="icon"></i> FPL Wizard</a>
                 <a href="fpl-my-team-analysis.html" class="nav-link active"><i data-lucide="users" class="icon"></i> My Team</a>
-                <a href="fpl-players-analysis.html" class="nav-link"><i data-lucide="user-search" class="icon"></i> Players</a>
-                <a href="fpl-teams-analysis.html" class="nav-link"><i data-lucide="bar-chart-3" class="icon"></i> Teams</a>
-                <a href="fpl-league-rivals.html" class="nav-link"><i data-lucide="trophy" class="icon"></i> Rivals</a>
+                <div class="nav-dropdown">
+                    <a href="fpl-players-analysis.html" class="nav-link"><i data-lucide="user-search" class="icon"></i> Players</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-players-analysis.html#recommendations" class="dropdown-item"><i data-lucide="star" class="dd-icon"></i> Recommendations</a>
+                        <a href="fpl-players-analysis.html#rising" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Rising Form</a>
+                        <a href="fpl-players-analysis.html#charts" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Charts</a>
+                        <a href="fpl-players-analysis.html#routes" class="dropdown-item"><i data-lucide="git-branch" class="dd-icon"></i> Routes to Points</a>
+                        <a href="fpl-players-analysis.html#all" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> All Players</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-teams-analysis.html" class="nav-link"><i data-lucide="bar-chart-3" class="icon"></i> Teams</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-teams-analysis.html#rankings" class="dropdown-item"><i data-lucide="trophy" class="dd-icon"></i> Team Rankings</a>
+                        <a href="fpl-teams-analysis.html#swings" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Fixture Swings</a>
+                        <a href="fpl-teams-analysis.html#calendar" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> Full Calendar</a>
+                        <a href="fpl-teams-analysis.html#stats" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Stats Table</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-league-rivals.html" class="nav-link"><i data-lucide="trophy" class="icon"></i> Rivals</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-league-rivals.html#insights" class="dropdown-item"><i data-lucide="lightbulb" class="dd-icon"></i> Key Insights</a>
+                        <a href="fpl-league-rivals.html#matrix" class="dropdown-item"><i data-lucide="grid" class="dd-icon"></i> Ownership Matrix</a>
+                        <a href="fpl-league-rivals.html#rivals" class="dropdown-item"><i data-lucide="swords" class="dd-icon"></i> Rival Comparison</a>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
+
+    <!-- Sub-Nav Tabs (hidden until data loads) -->
+    <div class="tabs-container" id="tabBar">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('team')" id="tabTeam"><i data-lucide="users" style="width:14px;height:14px;"></i> Squad Analysis</button>
+            <button class="tab" onclick="switchTab('planner')" id="tabPlanner"><i data-lucide="calendar" style="width:14px;height:14px;"></i> GW Planner</button>
+            <button class="tab" onclick="switchTab('transfer')" id="tabTransfer"><i data-lucide="repeat" style="width:14px;height:14px;"></i> Transfer Wizard</button>
+            <button class="tab" onclick="switchTab('lineup')" id="tabLineup"><i data-lucide="wand-2" style="width:14px;height:14px;"></i> Lineup Wizard</button>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -1223,14 +1270,6 @@
 
         <!-- Status -->
         <div class="status" id="status">Enter your FPL Team ID to get started</div>
-
-        <!-- Tab Bar (hidden until data loads) -->
-        <div class="tab-bar" id="tabBar">
-            <button class="tab-btn active" onclick="switchTab('team')" id="tabTeam"><i data-lucide="users" style="width:14px;height:14px;"></i> Squad Analysis</button>
-            <button class="tab-btn" onclick="switchTab('planner')" id="tabPlanner"><i data-lucide="calendar" style="width:14px;height:14px;"></i> GW Planner</button>
-            <button class="tab-btn" onclick="switchTab('transfer')" id="tabTransfer"><i data-lucide="repeat" style="width:14px;height:14px;"></i> Transfer Wizard</button>
-            <button class="tab-btn" onclick="switchTab('lineup')" id="tabLineup"><i data-lucide="wand-2" style="width:14px;height:14px;"></i> Lineup Wizard</button>
-        </div>
 
         <!-- Team Display -->
         <div id="teamDisplay"></div>
@@ -1778,7 +1817,7 @@
                 plannerSwapSource = null;
                 transferRendered = false;
                 transferState = { step: 1, sellPlayers: [], packages: [], selections: {}, budget: 0, candidateCache: {} };
-                document.getElementById('tabBar').classList.add('visible');
+                document.getElementById('tabBar').classList.add('visible');\n                if (window._pendingTab) { switchTab(window._pendingTab); window._pendingTab = null; }
             } catch (error) {
                 console.error('Error loading team:', error);
                 updateStatus(error.message || 'Failed to load team', 'error');
@@ -2401,6 +2440,9 @@
             tabTransfer.classList.remove('active');
             tabLineup.classList.remove('active');
 
+            const hashMap = { team: 'squad', planner: 'planner', transfer: 'transfer', lineup: 'lineup' };
+            history.replaceState(null, '', '#' + (hashMap[tab] || tab));
+
             if (tab === 'team') {
                 teamDisplay.style.display = '';
                 tabTeam.classList.add('active');
@@ -2418,6 +2460,16 @@
                 if (!lineupRendered) renderInlineLineupWizard();
             }
         }
+
+        // Activate tab from hash on load
+        (function() {
+            const hashToTab = { squad: 'team', planner: 'planner', transfer: 'transfer', lineup: 'lineup' };
+            const hash = window.location.hash.replace('#', '');
+            if (hashToTab[hash]) {
+                // Defer until after data loads — store desired tab
+                window._pendingTab = hashToTab[hash];
+            }
+        })();
 
         // ===== DETAIL PANEL =====
         function openDetailPanel(playerId) {

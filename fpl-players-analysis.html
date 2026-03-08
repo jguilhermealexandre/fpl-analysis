@@ -89,6 +89,59 @@
         .nav-link.active { color: var(--color-primary); background: var(--color-primary-muted); }
         .nav-link--accent { background: rgba(167, 139, 250, 0.08); border: 1px solid rgba(167, 139, 250, 0.25); }
         .nav-link--accent:not(.active) { color: #A78BFA; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+
+        /* NAV DROPDOWNS */
+        .nav-dropdown { position: relative; display: flex; }
+        .nav-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            min-width: 200px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
+            padding: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 150ms ease-out, transform 150ms ease-out;
+            z-index: 200;
+        }
+        .nav-dropdown:hover .nav-dropdown-menu,
+        .nav-dropdown-menu:hover {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+        .nav-dropdown::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            right: 0;
+            height: 8px;
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 7px;
+            transition: all 120ms;
+            white-space: nowrap;
+        }
+        .dropdown-item:hover {
+            color: var(--color-primary);
+            background: rgba(16, 185, 129, 0.08);
+        }
+        .dropdown-item .dd-icon { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-muted); }
+        .dropdown-item:hover .dd-icon { color: var(--color-primary); }
 
         /* HEADER */
         .page-header {
@@ -112,6 +165,9 @@
         .tabs-container {
             background: var(--surface-0);
             border-bottom: 1px solid var(--border-default);
+            position: sticky;
+            top: 56px;
+            z-index: 99;
         }
         .tabs {
             max-width: 1400px;
@@ -2792,10 +2848,33 @@
             <a href="index.html" class="nav-logo"><i data-lucide="zap" class="logo-icon"></i> FPL<span>Tools</span></a>
             <div class="nav-links">
                 <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent"><i data-lucide="wand-2" class="icon"></i> FPL Wizard</a>
-                <a href="fpl-my-team-analysis.html" class="nav-link"><i data-lucide="users" class="icon"></i> My Team</a>
+                <div class="nav-dropdown">
+                    <a href="fpl-my-team-analysis.html" class="nav-link"><i data-lucide="users" class="icon"></i> My Team</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-my-team-analysis.html#squad" class="dropdown-item"><i data-lucide="users" class="dd-icon"></i> Squad Analysis</a>
+                        <a href="fpl-my-team-analysis.html#planner" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> GW Planner</a>
+                        <a href="fpl-my-team-analysis.html#transfer" class="dropdown-item"><i data-lucide="repeat" class="dd-icon"></i> Transfer Wizard</a>
+                        <a href="fpl-my-team-analysis.html#lineup" class="dropdown-item"><i data-lucide="wand-2" class="dd-icon"></i> Lineup Wizard</a>
+                    </div>
+                </div>
                 <a href="fpl-players-analysis.html" class="nav-link active"><i data-lucide="user-search" class="icon"></i> Players</a>
-                <a href="fpl-teams-analysis.html" class="nav-link"><i data-lucide="bar-chart-3" class="icon"></i> Teams</a>
-                <a href="fpl-league-rivals.html" class="nav-link"><i data-lucide="trophy" class="icon"></i> Rivals</a>
+                <div class="nav-dropdown">
+                    <a href="fpl-teams-analysis.html" class="nav-link"><i data-lucide="bar-chart-3" class="icon"></i> Teams</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-teams-analysis.html#rankings" class="dropdown-item"><i data-lucide="trophy" class="dd-icon"></i> Team Rankings</a>
+                        <a href="fpl-teams-analysis.html#swings" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Fixture Swings</a>
+                        <a href="fpl-teams-analysis.html#calendar" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> Full Calendar</a>
+                        <a href="fpl-teams-analysis.html#stats" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Stats Table</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-league-rivals.html" class="nav-link"><i data-lucide="trophy" class="icon"></i> Rivals</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-league-rivals.html#insights" class="dropdown-item"><i data-lucide="lightbulb" class="dd-icon"></i> Key Insights</a>
+                        <a href="fpl-league-rivals.html#matrix" class="dropdown-item"><i data-lucide="grid" class="dd-icon"></i> Ownership Matrix</a>
+                        <a href="fpl-league-rivals.html#rivals" class="dropdown-item"><i data-lucide="swords" class="dd-icon"></i> Rival Comparison</a>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -2924,32 +3003,58 @@
         // ============================================
         // TAB NAVIGATION
         // ============================================
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                
-                const pos = tab.dataset.position;
-                currentPosition = pos;
-                
-                document.querySelectorAll('.position-section').forEach(s => s.classList.remove('active'));
-                document.getElementById(`section-${pos}`)?.classList.add('active');
+        // Hash-to-tab mapping
+        const HASH_TO_TAB = {
+            'recommendations': 'RECOMMENDATIONS',
+            'rising': 'RISING',
+            'charts': 'CHARTS',
+            'routes': 'ROUTES',
+            'all': 'ALL'
+        };
+        const TAB_TO_HASH = Object.fromEntries(Object.entries(HASH_TO_TAB).map(([k,v]) => [v,k]));
 
-                // Update tab description
-                const desc = tab.dataset.desc;
-                const descEl = document.getElementById('tabDescription');
-                if (descEl && desc) {
-                    descEl.querySelector('.tab-desc-text').textContent = desc;
-                }
+        function activateTab(tab) {
+            document.querySelectorAll('.tabs-container .tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            const pos = tab.dataset.position;
+            currentPosition = pos;
+            
+            document.querySelectorAll('.position-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`section-${pos}`)?.classList.add('active');
 
-                // Show/hide position pills based on tab
-                const posPills = document.getElementById('posPills');
-                if (posPills) {
-                    const hasPos = tab.dataset.hasPos === 'true';
-                    posPills.classList.toggle('hidden', !hasPos);
-                }
-            });
+            // Update tab description
+            const desc = tab.dataset.desc;
+            const descEl = document.getElementById('tabDescription');
+            if (descEl && desc) {
+                descEl.querySelector('.tab-desc-text').textContent = desc;
+            }
+
+            // Show/hide position pills based on tab
+            const posPills = document.getElementById('posPills');
+            if (posPills) {
+                const hasPos = tab.dataset.hasPos === 'true';
+                posPills.classList.toggle('hidden', !hasPos);
+            }
+
+            // Update hash
+            const hash = TAB_TO_HASH[pos];
+            if (hash) history.replaceState(null, '', '#' + hash);
+        }
+
+        document.querySelectorAll('.tabs-container .tab').forEach(tab => {
+            tab.addEventListener('click', () => activateTab(tab));
         });
+
+        // Activate tab from URL hash on load
+        (function() {
+            const hash = window.location.hash.replace('#', '');
+            const tabPos = HASH_TO_TAB[hash];
+            if (tabPos) {
+                const tab = document.querySelector(`.tabs-container .tab[data-position="${tabPos}"]`);
+                if (tab) activateTab(tab);
+            }
+        })();
 
         // ============================================
         // LOADING
