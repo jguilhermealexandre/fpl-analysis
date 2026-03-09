@@ -945,15 +945,23 @@
     <!-- Main Content -->
     <main class="main-content">
         <!-- Page Header -->
-        <header class="page-header">
+        <header class="page-header" id="pageHeader">
             <h1 class="page-title">
                 <i data-lucide="trophy" style="width:28px;height:28px;color:var(--color-primary);"></i> League Rivals Analysis
             </h1>
-            <p class="page-subtitle">Compare your team against league rivals to find ownership gaps and differentials</p>
         </header>
 
+        <!-- Compact Edit Bar (shown after analysis) -->
+        <div id="editLeagueBar" style="display:none;margin-bottom:var(--space-4);padding:var(--space-3) var(--space-4);background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);align-items:center;gap:var(--space-3);font-size:13px;flex-wrap:wrap;">
+            <i data-lucide="trophy" style="width:16px;height:16px;color:var(--color-primary);flex-shrink:0;"></i>
+            <span id="editLeagueLabel" style="font-weight:600;"></span>
+            <span style="color:var(--text-muted);">·</span>
+            <span id="editTeamLabel" style="color:var(--text-secondary);"></span>
+            <button onclick="showInputSection()" style="margin-left:auto;padding:4px 12px;background:var(--surface-2);border:1px solid var(--border-default);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;color:var(--text-secondary);font-family:inherit;font-weight:500;">Change</button>
+        </div>
+
         <!-- Input Section -->
-        <div class="input-section">
+        <div class="input-section" id="inputSection">
             <div class="input-grid">
                 <div class="input-group">
                     <label>League ID</label>
@@ -992,38 +1000,38 @@
 
         <!-- Results Container -->
         <div id="resultsContainer" style="display: none;">
-            <!-- Summary Cards -->
-            <div class="summary-grid" id="summaryGrid">
-                <div class="summary-card danger">
-                    <div class="summary-icon"><i data-lucide="alert-triangle" style="width:24px;height:24px;"></i></div>
-                    <div class="summary-value" id="missingCount">0</div>
-                    <div class="summary-label">Missing Templates</div>
-                </div>
-                <div class="summary-card opportunity">
-                    <div class="summary-icon"><i data-lucide="swords" style="width:24px;height:24px;"></i></div>
-                    <div class="summary-value" id="diffCount">0</div>
-                    <div class="summary-label">Your Differentials</div>
-                </div>
-                <div class="summary-card info">
-                    <div class="summary-icon"><i data-lucide="bar-chart-3" style="width:24px;height:24px;"></i></div>
-                    <div class="summary-value" id="similarityPct">0%</div>
-                    <div class="summary-label">Template Match</div>
-                </div>
-                <div class="summary-card warning">
-                    <div class="summary-icon"><i data-lucide="crosshair" style="width:24px;height:24px;"></i></div>
-                    <div class="summary-value" id="uniqueCount">0</div>
-                    <div class="summary-label">Only You Own</div>
-                </div>
-            </div>
-
-            <!-- Action Required Box -->
-            <div class="action-box" id="actionBox" style="display: none;">
-                <h3><i data-lucide="alert-triangle" style="width:18px;height:18px;display:inline;"></i> Priority Transfers</h3>
-                <div id="actionItems"></div>
-            </div>
-
             <!-- Tab: Insights -->
             <div class="tab-content active" id="tab-insights">
+                <!-- Summary Cards -->
+                <div class="summary-grid" id="summaryGrid">
+                    <div class="summary-card danger">
+                        <div class="summary-icon"><i data-lucide="alert-triangle" style="width:24px;height:24px;"></i></div>
+                        <div class="summary-value" id="missingCount">0</div>
+                        <div class="summary-label">Missing Templates</div>
+                    </div>
+                    <div class="summary-card opportunity">
+                        <div class="summary-icon"><i data-lucide="swords" style="width:24px;height:24px;"></i></div>
+                        <div class="summary-value" id="diffCount">0</div>
+                        <div class="summary-label">Your Differentials</div>
+                    </div>
+                    <div class="summary-card info">
+                        <div class="summary-icon"><i data-lucide="bar-chart-3" style="width:24px;height:24px;"></i></div>
+                        <div class="summary-value" id="similarityPct">0%</div>
+                        <div class="summary-label">Template Match</div>
+                    </div>
+                    <div class="summary-card warning">
+                        <div class="summary-icon"><i data-lucide="crosshair" style="width:24px;height:24px;"></i></div>
+                        <div class="summary-value" id="uniqueCount">0</div>
+                        <div class="summary-label">Only You Own</div>
+                    </div>
+                </div>
+
+                <!-- Action Required Box -->
+                <div class="action-box" id="actionBox" style="display: none;">
+                    <h3><i data-lucide="alert-triangle" style="width:18px;height:18px;display:inline;"></i> Priority Transfers</h3>
+                    <div id="actionItems"></div>
+                </div>
+
                 <!-- Missing Templates -->
                 <div class="players-section" id="missingSection">
                     <div class="section-header">
@@ -1467,7 +1475,15 @@
                 renderLeagueRace();
                 renderSquadStrength();
                 
-                showStatus('Analysis complete!', 'success');
+                // Collapse input section and show compact edit bar
+                document.getElementById('inputSection').style.display = 'none';
+                document.getElementById('pageHeader').style.display = 'none';
+                document.getElementById('statusBar').style.display = 'none';
+                const myManager = managerPicks[myTeamId]?.manager;
+                document.getElementById('editLeagueLabel').textContent = leagueData.league.name;
+                document.getElementById('editTeamLabel').textContent = myManager ? `${myManager.player_name} (${myManager.entry_name})` : '';
+                document.getElementById('editLeagueBar').style.display = 'flex';
+                
                 if (typeof lucide !== 'undefined') lucide.createIcons();
                 
             } catch (err) {
@@ -1692,6 +1708,12 @@
             localStorage.removeItem('fpl_league_id');
             document.getElementById('leagueIdInput').value = '';
             document.getElementById('clearLeagueBtn').style.display = 'none';
+        }
+
+        function showInputSection() {
+            document.getElementById('inputSection').style.display = '';
+            document.getElementById('pageHeader').style.display = '';
+            document.getElementById('editLeagueBar').style.display = 'none';
         }
 
         function updateClearLeagueBtn() {
