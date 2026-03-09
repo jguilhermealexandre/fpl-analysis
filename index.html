@@ -1400,6 +1400,24 @@ body {
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* ===== NEWS STRIP ===== */
+        .news-strip { background: var(--surface-0); border-bottom: 1px solid var(--border-default); padding: 6px 0; overflow: hidden; }
+        .news-strip-track { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; gap: 12px; overflow-x: auto; align-items: center; scrollbar-width: none; -ms-overflow-style: none; }
+        .news-strip-track::-webkit-scrollbar { display: none; }
+        .news-strip-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); white-space: nowrap; padding-right: 4px; border-right: 1px solid var(--border-default); margin-right: 4px; }
+        .news-strip-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; background: var(--surface-2); border: 1px solid var(--border-default); border-radius: 9999px; font-size: 11px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; transition: all 150ms; }
+        .news-strip-item:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
+        .news-strip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .news-strip-dot.dot-injury { background: #EF4444; }
+        .news-strip-dot.dot-price { background: #F59E0B; }
+        .news-strip-dot.dot-transfer { background: #22C55E; }
+        .news-strip-dot.dot-form { background: #3B82F6; }
+        .news-strip-dot.dot-external { background: #8B5CF6; }
+        @media (max-width: 768px) {
+            .news-strip-track { padding: 0 16px; gap: 8px; }
+            .news-strip-item { font-size: 10.5px; padding: 2px 8px; }
+        }
     </style>
 </head>
 <body>
@@ -1492,6 +1510,11 @@ body {
             Loading squad...
         </div>
         <div class="ticker-track" id="tickerTrack" style="display:none;"></div>
+    </div>
+
+    <!-- News Strip (shown when team is loaded) -->
+    <div class="news-strip hidden" id="newsStrip">
+        <div class="news-strip-track" id="newsStripTrack"></div>
     </div>
 
     <!-- Hero Banner -->
@@ -1869,6 +1892,7 @@ body {
             document.getElementById('teamIdInput').value = '';
             document.getElementById('onboardingCard').classList.remove('hidden');
             document.getElementById('tickerBar').classList.add('hidden');
+            document.getElementById('newsStrip').classList.add('hidden');
             // Swap hero: show generic, hide personalized
             document.getElementById('heroGeneric').classList.remove('hidden');
             document.getElementById('heroMockup').classList.remove('hidden');
@@ -2180,6 +2204,68 @@ body {
             lucide.createIcons();
         }
 
+        // ===== NEWS STRIP =====
+        function renderNewsStrip(allPlayers, squad) {
+            const strip = document.getElementById('newsStrip');
+            const track = document.getElementById('newsStripTrack');
+            const squadIds = new Set(squad.map(p => p.id));
+            const items = [];
+
+            // Injury/status items (squad first)
+            allPlayers.forEach(p => {
+                if (p.news && p.news.trim()) {
+                    const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : '';
+                    items.push({
+                        cat: 'injury', text: `${p.name}: ${p.news}${chance}`,
+                        isSquad: squadIds.has(p.id), weight: squadIds.has(p.id) ? 100 : 40
+                    });
+                }
+            });
+
+            // Price changes
+            allPlayers.forEach(p => {
+                if (p.costChangeEvent && p.costChangeEvent !== 0) {
+                    const dir = p.costChangeEvent > 0 ? '\u2191' : '\u2193';
+                    const abs = Math.abs(p.costChangeEvent / 10).toFixed(1);
+                    items.push({
+                        cat: 'price', text: `${p.name} ${dir} \u00A3${abs}m`,
+                        isSquad: squadIds.has(p.id), weight: squadIds.has(p.id) ? 80 : 25
+                    });
+                }
+            });
+
+            // Form highlights (squad only)
+            squad.forEach(p => {
+                if (p.form >= 7.0) items.push({ cat: 'form', text: `${p.name} on fire (${p.form.toFixed(1)})`, isSquad: true, weight: 60 });
+                else if (p.form <= 2.0 && p.minutes > 300) items.push({ cat: 'form', text: `${p.name} cold streak (${p.form.toFixed(1)})`, isSquad: true, weight: 55 });
+            });
+
+            // Transfer surges
+            allPlayers.forEach(p => {
+                const net = p.transfersIn - p.transfersOut;
+                if (Math.abs(net) >= 80000) {
+                    const dir = net > 0 ? 'in' : 'out';
+                    items.push({
+                        cat: 'transfer', text: `${p.name}: ${Math.abs(net).toLocaleString()} net ${dir}`,
+                        isSquad: squadIds.has(p.id), weight: squadIds.has(p.id) ? 70 : 15
+                    });
+                }
+            });
+
+            items.sort((a, b) => b.weight - a.weight);
+            const top = items.slice(0, 8);
+
+            if (!top.length) { strip.classList.add('hidden'); return; }
+
+            track.innerHTML = `<span class="news-strip-label">\ud83d\udcf0 NEWS</span>` +
+                top.map(i => {
+                    const d = document.createElement('div'); d.textContent = i.text;
+                    return `<span class="news-strip-item"><span class="news-strip-dot dot-${i.cat}"></span>${d.innerHTML}</span>`;
+                }).join('');
+
+            strip.classList.remove('hidden');
+        }
+
         // ===== LOAD TICKER (main data loader) =====
         async function loadTicker(teamId) {
             const tickerBar = document.getElementById('tickerBar');
@@ -2218,8 +2304,9 @@ body {
                     form: parseFloat(p.form) || 0, points: p.total_points,
                     ppg: parseFloat(p.points_per_game) || 0,
                     ownership: parseFloat(p.selected_by_percent) || 0,
-                    status: p.status, news: p.news,
+                    status: p.status, news: p.news, newsAdded: p.news_added || null,
                     chanceNextRound: p.chance_of_playing_next_round,
+                    costChangeEvent: p.cost_change_event || 0,
                     minutes: p.minutes, starts: p.starts || 0,
                     goals: p.goals_scored, assists: p.assists,
                     cleanSheets: p.clean_sheets,
@@ -2269,6 +2356,8 @@ body {
                     bank.toFixed(1),
                     flagged.length
                 );
+
+                renderNewsStrip(allPlayers, squad);
             } catch (err) {
                 console.error('Ticker load error:', err);
                 tickerLoading.innerHTML = `<span style="color:var(--color-error);font-size:12px;">Could not load team data</span>`;
