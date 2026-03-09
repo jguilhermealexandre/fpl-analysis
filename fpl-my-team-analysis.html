@@ -1308,38 +1308,85 @@
         }
 
         /* ===== NEWS TAB ===== */
-        .news-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+        .news-container { max-width: 960px; margin: 0 auto; padding: 24px; }
         .news-filter-bar { display: flex; gap: 6px; padding: 4px; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-bottom: 20px; overflow-x: auto; }
         .news-filter-btn { padding: 6px 14px; font-size: 12px; font-weight: 500; color: var(--text-secondary); background: transparent; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all 150ms; white-space: nowrap; }
         .news-filter-btn:hover { color: var(--text-primary); background: var(--surface-1); }
         .news-filter-btn.active { color: var(--color-primary); background: var(--surface-1); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .news-section { margin-bottom: 28px; }
-        .news-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .news-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
         .news-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-default); }
-        .news-card { padding: 14px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 6px; transition: all 150ms; position: relative; }
-        .news-card:hover { border-color: var(--border-emphasis); background: var(--surface-2); }
-        .news-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        .news-card-category { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
-        .news-card-category.cat-injury { background: rgba(248,113,113,0.1); color: #EF4444; }
-        .news-card-category.cat-price { background: rgba(245,158,11,0.1); color: #D97706; }
-        .news-card-category.cat-transfer { background: rgba(74,222,128,0.1); color: #22C55E; }
+        .news-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+        /* Hero card */
+        .news-card-hero { grid-column: 1 / -1; display: flex; gap: 0; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; transition: transform 200ms, box-shadow 200ms; position: relative; }
+        .news-card-hero:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.12); }
+        .news-card-hero .news-card-graphic { width: 280px; min-height: 180px; flex-shrink: 0; }
+        .news-card-hero .news-card-content { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; }
+        .news-card-hero .news-card-headline { font-size: 18px; font-weight: 800; line-height: 1.35; margin-bottom: 8px; -webkit-line-clamp: 3; }
+        .news-card-hero .news-card-detail { font-size: 13px; -webkit-line-clamp: 3; }
+        .news-card-hero .news-card-footer { margin-top: auto; }
+        .news-card-hero.is-squad { border: 2px solid rgba(245,158,11,0.5); box-shadow: 0 0 20px rgba(245,158,11,0.1); }
+
+        /* Standard card */
+        .news-card { display: flex; flex-direction: column; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; transition: transform 200ms, box-shadow 200ms; position: relative; }
+        .news-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+        .news-card.is-squad { border: 2px solid rgba(245,158,11,0.5); box-shadow: 0 0 12px rgba(245,158,11,0.08); }
+
+        /* Programmatic graphic */
+        .news-card-graphic { height: 110px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .news-card-graphic-bg { position: absolute; inset: 0; opacity: 0.12; }
+        .news-card-graphic-icon { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .news-card-graphic-icon svg { width: 32px; height: 32px; stroke-width: 1.8; }
+        .news-card-hero .news-card-graphic-icon svg { width: 40px; height: 40px; }
+        .news-card-graphic-kit { font-size: 28px; font-weight: 900; opacity: 0.55; font-family: var(--font-mono); }
+        .news-card-hero .news-card-graphic-kit { font-size: 36px; }
+        .news-card-graphic-team { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; opacity: 0.65; }
+
+        /* Card content */
+        .news-card-content { padding: 14px 16px; display: flex; flex-direction: column; flex: 1; }
+        .news-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .news-card-category { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+        .news-card-category.cat-injury { background: rgba(239,68,68,0.15); color: #EF4444; }
+        .news-card-category.cat-price { background: rgba(59,130,246,0.12); color: #3B82F6; }
+        .news-card-category.cat-transfer { background: rgba(16,185,129,0.12); color: #10B981; }
         .news-card-category.cat-external { background: rgba(139,92,246,0.1); color: #8B5CF6; }
-        .news-card-category.cat-bbc { background: rgba(187,29,29,0.1); color: #BB1D1D; }
-        .news-card-category.cat-pl { background: rgba(56,0,106,0.1); color: #38006A; }
-        .news-card-time { font-size: 10.5px; color: var(--text-muted); margin-left: auto; }
-        .news-card-headline { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.45; margin-bottom: 4px; }
-        .news-card-detail { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+        .news-card-category.cat-bbc { background: rgba(187,29,29,0.12); color: #BB1D1D; }
+        .news-card-category.cat-pl { background: rgba(56,0,106,0.12); color: #38006A; }
+        .news-card-squad-badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; background: rgba(245,158,11,0.15); color: #D97706; }
+        .news-card-time { font-size: 10.5px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+        .news-card-headline { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.4; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .news-card-detail { font-size: 12px; color: var(--text-secondary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .news-card-link { color: var(--text-primary); text-decoration: none; }
         .news-card-link:hover { color: var(--color-info); }
-        .news-card-squad { position: absolute; top: 12px; right: 14px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 2px 6px; border-radius: 4px; background: rgba(16,185,129,0.1); color: var(--color-success); }
+
+        /* Data footer */
+        .news-card-footer { display: flex; align-items: center; gap: 0; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-default); flex-wrap: wrap; }
+        .news-card-stat { font-size: 10.5px; color: var(--text-muted); padding: 0 8px; border-right: 1px solid var(--border-default); white-space: nowrap; line-height: 1; }
+        .news-card-stat:first-child { padding-left: 0; }
+        .news-card-stat:last-of-type { border-right: none; }
+        .news-card-stat strong { color: var(--text-primary); font-weight: 600; }
+
+        /* CTA button */
+        .news-card-cta { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 10.5px; font-weight: 600; color: var(--color-primary); background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-sm); text-decoration: none; transition: all 150ms; white-space: nowrap; cursor: pointer; }
+        .news-card-cta:hover { background: rgba(99,102,241,0.15); border-color: var(--color-primary); }
+        .news-card-cta svg { width: 12px; height: 12px; }
+
         .news-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
         .news-loading { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         @media (max-width: 768px) {
             .news-container { padding: 16px; }
+            .news-grid { grid-template-columns: 1fr; gap: 10px; }
+            .news-card-hero { flex-direction: column; }
+            .news-card-hero .news-card-graphic { width: 100%; min-height: 120px; }
+            .news-card-hero .news-card-content { padding: 16px; }
+            .news-card-hero .news-card-headline { font-size: 16px; }
             .news-filter-bar { gap: 4px; padding: 3px; }
             .news-filter-btn { padding: 5px 10px; font-size: 11px; }
-            .news-card { padding: 12px 14px; }
+            .news-card-graphic { height: 90px; }
             .news-card-headline { font-size: 13px; }
+            .news-card-footer { gap: 4px; }
+            .news-card-cta { margin-left: 0; margin-top: 6px; }
         }
     </style>
 </head>
@@ -2799,7 +2846,71 @@
                 external: externalItems.length
             };
 
-            function renderCard(item) {
+            // Team color map (PL team_id → [primary, secondary])
+            const TEAM_COLORS = {
+                1:['#EF0107','#FFFFFF'],2:['#670E36','#95BFE5'],3:['#0057B8','#FFFFFF'],
+                4:['#e30613','#FFFFFF'],5:['#6C1D45','#99D6EA'],6:['#003399','#FFFFFF'],
+                7:['#1B458F','#FFFFFF'],8:['#274488','#FFFFFF'],9:['#A7A5A6','#FFFFFF'],
+                10:['#003090','#FFD700'],11:['#C8102E','#FFFFFF'],12:['#6CABDD','#1C2C5B'],
+                13:['#DA291C','#FBE122'],14:['#241F20','#FFFFFF'],15:['#EE2737','#FFFFFF'],
+                16:['#034694','#FFFFFF'],17:['#132257','#FFFFFF'],18:['#7A263A','#FDB913'],
+                19:['#D71920','#FFFFFF'],20:['#FBEE23','#1F1F1F']
+            };
+
+            const CAT_ICONS = {
+                injury: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M8 6h8M5 10h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M12 14v4M10 16h4"/></svg>',
+                price: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+                transfer: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
+                external: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M18 10h-8"/></svg>'
+            };
+
+            function getNextFixture(player) {
+                if (!player || !player.fixtures || !player.fixtures.length) return null;
+                const f = player.fixtures[0];
+                return f ? `${f.opponent} (${f.isHome ? 'H' : 'A'})` : null;
+            }
+
+            function getCTAForCategory(item) {
+                const posShort = POSITION_CONFIG[item.player?.position]?.short || '';
+                if (item.category === 'injury' && item.player) {
+                    const maxPrice = Math.ceil(item.player.price + 0.5);
+                    return { label: 'View Replacements', href: `fpl-players-analysis.html#all?pos=${posShort}&max=${maxPrice}` };
+                }
+                if (item.category === 'price') return { label: 'Price Trends', href: 'fpl-players-analysis.html#all?sort=price' };
+                if (item.category === 'transfer') return { label: 'Transfer Trends', href: 'fpl-players-analysis.html#all?sort=transfers' };
+                return null;
+            }
+
+            function buildGraphic(item) {
+                const p = item.player;
+                const colors = TEAM_COLORS[p?.teamId] || ['#6366F1','#FFFFFF'];
+                const iconSVG = CAT_ICONS[item.category] || CAT_ICONS.external;
+                const kitNum = p ? (p.id % 30 + 1) : '';
+                const teamName = p ? escHTML(p.team) : '';
+                return `<div class="news-card-graphic" style="background:${colors[0]};color:${colors[1]}">
+                    <div class="news-card-graphic-bg" style="background:radial-gradient(circle at 30% 40%,${colors[1]} 0%,transparent 70%)"></div>
+                    <div class="news-card-graphic-icon">
+                        ${iconSVG}
+                        ${kitNum ? `<span class="news-card-graphic-kit">${kitNum}</span>` : ''}
+                        ${teamName ? `<span class="news-card-graphic-team">${teamName}</span>` : ''}
+                    </div>
+                </div>`;
+            }
+
+            function buildFooter(item) {
+                const p = item.player;
+                if (!p) return '';
+                const stats = [];
+                stats.push(`<span class="news-card-stat">\u00A3<strong>${p.price.toFixed(1)}m</strong></span>`);
+                stats.push(`<span class="news-card-stat"><strong>${p.ownership}%</strong> owned</span>`);
+                const nf = getNextFixture(p);
+                if (nf) stats.push(`<span class="news-card-stat">Next: <strong>${escHTML(nf)}</strong></span>`);
+                const cta = getCTAForCategory(item);
+                if (cta) stats.push(`<a class="news-card-cta" href="${escHTML(cta.href)}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg> ${escHTML(cta.label)}</a>`);
+                return `<div class="news-card-footer">${stats.join('')}</div>`;
+            }
+
+            function renderCard(item, isHero) {
                 const badgeCat = item.badge || item.category;
                 const badgeLabel = item.badge === 'bbc' ? 'BBC Sport' : item.badge === 'pl' ? 'Premier League' : escHTML(item.categoryLabel || item.category);
                 const safeHeadline = escHTML(item.headline);
@@ -2808,21 +2919,31 @@
                 const headlineHTML = isValidLink
                     ? `<a href="${escHTML(item.link)}" target="_blank" rel="noopener noreferrer" class="news-card-link">${safeHeadline}</a>`
                     : safeHeadline;
-                const squadBadge = item.isSquad ? `<span class="news-card-squad">Your Squad</span>` : '';
-                return `<div class="news-card">
-                    ${squadBadge}
-                    <div class="news-card-top">
-                        <span class="news-card-category cat-${escHTML(badgeCat)}">${badgeLabel}</span>
-                        ${item.timestamp ? `<span class="news-card-time">${timeAgo(item.timestamp)}</span>` : ''}
+                const squadBadge = item.isSquad ? `<span class="news-card-squad-badge">\ud83d\udea8 In Your XI</span>` : '';
+                const squadClass = item.isSquad ? ' is-squad' : '';
+                const cardClass = isHero ? `news-card-hero${squadClass}` : `news-card${squadClass}`;
+                const graphic = item.category !== 'external' ? buildGraphic(item) : '';
+                const footer = item.category !== 'external' ? buildFooter(item) : '';
+
+                return `<div class="${cardClass}">
+                    ${graphic}
+                    <div class="news-card-content">
+                        <div class="news-card-top">
+                            <span class="news-card-category cat-${escHTML(badgeCat)}">${badgeLabel}</span>
+                            ${squadBadge}
+                            ${item.timestamp ? `<span class="news-card-time">${timeAgo(item.timestamp)}</span>` : ''}
+                        </div>
+                        <div class="news-card-headline">${headlineHTML}</div>
+                        <div class="news-card-detail">${safeDetail}</div>
+                        ${footer}
                     </div>
-                    <div class="news-card-headline">${headlineHTML}</div>
-                    <div class="news-card-detail">${safeDetail}</div>
                 </div>`;
             }
 
             function renderSection(title, items) {
                 if (!items.length) return `<div class="news-section"><div class="news-section-title">${title}</div><div class="news-empty">No news in this category</div></div>`;
-                return `<div class="news-section"><div class="news-section-title">${title}</div>${items.map(renderCard).join('')}</div>`;
+                const cards = items.map((item, i) => renderCard(item, i === 0)).join('');
+                return `<div class="news-section"><div class="news-section-title">${title}</div><div class="news-grid">${cards}</div></div>`;
             }
 
             function renderFiltered(filter) {
