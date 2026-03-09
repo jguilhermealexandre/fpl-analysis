@@ -664,52 +664,318 @@ body {
             color: var(--color-primary-text);
         }
 
-        .hero-stat-cards {
+        /* --- Compact Stats Bar --- */
+        .hero-stats-bar {
             display: flex;
-            align-items: stretch;
+            align-items: center;
             justify-content: center;
-            gap: 12px;
-            margin-bottom: 24px;
+            gap: 6px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
         }
 
-        .hero-stat-card {
+        .hero-stat-pill-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 14px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .hero-stat-pill-item .hspi-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .hero-stat-pill-item .hspi-val {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        /* --- Dashboard Grid --- */
+        .hero-dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        /* --- Squad Panel --- */
+        .hero-squad-panel {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
             border-radius: var(--radius-lg);
-            padding: 14px 20px;
-            min-width: 120px;
-            text-align: center;
-            border-top: 3px solid var(--border-default);
-            transition: all 200ms ease-out;
+            padding: 14px 16px 10px;
+            overflow: hidden;
         }
 
-        .hero-stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-        }
-
-        .hero-stat-card--rank { border-top-color: var(--color-primary); }
-        .hero-stat-card--total { border-top-color: var(--color-info); }
-        .hero-stat-card--gw { border-top-color: var(--color-wizard); }
-        .hero-stat-card--bank { border-top-color: var(--color-teams); }
-        .hero-stat-card--flagged { border-top-color: var(--color-error); }
-
-        .hero-sc-value {
-            font-family: var(--font-display);
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--text-primary);
-            line-height: 1.2;
-        }
-
-        .hero-sc-label {
+        .hsp-title {
             font-size: 11px;
-            font-weight: 500;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             color: var(--text-muted);
-            margin-top: 2px;
+            margin-bottom: 8px;
         }
 
+        .hsp-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 12px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .hsp-row:last-child { border-bottom: none; }
+
+        .hsp-row.hsp-bench { opacity: 0.55; }
+
+        .hsp-bench-sep {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 0;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+        }
+
+        .hsp-bench-sep::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-default);
+        }
+
+        .hsp-pos {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            padding: 2px 0;
+            border-radius: var(--radius-sm);
+            font-size: 9px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .hsp-pos.gk  { background: rgba(252,211,77,0.2); color: #D97706; }
+        .hsp-pos.def { background: rgba(52,211,153,0.2); color: #059669; }
+        .hsp-pos.mid { background: rgba(96,165,250,0.2); color: #2563EB; }
+        .hsp-pos.fwd { background: rgba(248,113,113,0.2); color: #DC2626; }
+
+        .hsp-name {
+            flex: 1;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+
+        .hsp-team {
+            font-size: 10px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .hsp-captain {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--color-teams);
+            flex-shrink: 0;
+        }
+
+        .hsp-status-icon {
+            width: 12px; height: 12px;
+            flex-shrink: 0;
+        }
+
+        .hsp-status-icon.injured { color: var(--color-error); }
+        .hsp-status-icon.doubtful { color: #F59E0B; }
+
+        .hsp-verdict-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .hsp-verdict-dot.star    { background: #8B5CF6; }
+        .hsp-verdict-dot.hold    { background: #10B981; }
+        .hsp-verdict-dot.monitor { background: #F59E0B; }
+        .hsp-verdict-dot.sell    { background: #EF4444; }
+
+        /* --- Intel Panel --- */
+        .hero-intel-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .hip-section {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 14px 16px;
+        }
+
+        .hip-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        /* Alerts */
+        .hip-alert {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            margin-bottom: 6px;
+            border-radius: var(--radius-md);
+            font-size: 12px;
+            border-left: 3px solid var(--border-default);
+        }
+
+        .hip-alert:last-child { margin-bottom: 0; }
+        .hip-alert.sell    { border-left-color: #EF4444; background: rgba(239,68,68,0.04); }
+        .hip-alert.monitor { border-left-color: #F59E0B; background: rgba(245,158,11,0.04); }
+
+        .hip-alert-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        .hip-alert-concern {
+            color: var(--text-muted);
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hip-alert-chip {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            flex-shrink: 0;
+        }
+
+        .hip-alert-chip.sell    { background: rgba(239,68,68,0.12); color: #EF4444; }
+        .hip-alert-chip.monitor { background: rgba(245,158,11,0.12); color: #D97706; }
+
+        .hip-all-clear {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            background: rgba(16,185,129,0.06);
+            color: var(--color-primary);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .hip-all-clear .icon { width: 16px; height: 16px; }
+
+        .hip-more-link {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--color-info);
+            text-decoration: none;
+        }
+
+        .hip-more-link:hover { text-decoration: underline; }
+
+        /* Verdict Summary */
+        .hip-verdict-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .hip-verdict-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .hip-verdict-pill.star    { background: rgba(139,92,246,0.10); color: #8B5CF6; }
+        .hip-verdict-pill.hold    { background: rgba(16,185,129,0.10); color: #10B981; }
+        .hip-verdict-pill.monitor { background: rgba(245,158,11,0.10); color: #D97706; }
+        .hip-verdict-pill.sell    { background: rgba(239,68,68,0.10); color: #EF4444; }
+
+        .hip-verdict-pill .hvp-count {
+            font-family: var(--font-display);
+            font-size: 14px;
+        }
+
+        /* Fixtures */
+        .hip-fix-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 0;
+            font-size: 11px;
+        }
+
+        .hip-fix-name {
+            width: 70px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 0;
+        }
+
+        .hip-fdr-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-size: 9px;
+            font-weight: 700;
+            min-width: 28px;
+        }
+
+        .hip-fdr-chip.fdr-1 { background: rgba(74,222,128,0.22); color: #059669; }
+        .hip-fdr-chip.fdr-2 { background: rgba(134,239,172,0.22); color: #059669; }
+        .hip-fdr-chip.fdr-3 { background: rgba(156,163,175,0.18); color: #6B7280; }
+        .hip-fdr-chip.fdr-4 { background: rgba(251,146,60,0.22); color: #C2410C; }
+        .hip-fdr-chip.fdr-5 { background: rgba(239,68,68,0.22); color: #DC2626; }
+
+        /* --- Quick Actions (kept) --- */
         .hero-quick-actions {
             display: flex;
             align-items: center;
@@ -723,11 +989,18 @@ body {
             height: 14px;
         }
 
+        @media (max-width: 768px) {
+            .hero-dashboard { grid-template-columns: 1fr; }
+        }
+
         @media (max-width: 600px) {
             .hero-greeting-text { font-size: 22px; }
-            .hero-stat-cards { gap: 8px; }
-            .hero-stat-card { min-width: 100px; padding: 10px 14px; }
-            .hero-sc-value { font-size: 18px; }
+            .hero-stats-bar { gap: 4px; }
+            .hero-stat-pill-item { padding: 4px 10px; font-size: 11px; }
+            .hero-stat-pill-item .hspi-val { font-size: 12px; }
+            .hsp-row { font-size: 11px; gap: 6px; }
+            .hsp-pos { width: 24px; font-size: 8px; }
+            .hip-fix-name { width: 56px; }
         }
 
         /* ===== ONBOARDING (first-time user) ===== */
@@ -1602,27 +1875,10 @@ body {
                     <div class="hero-greeting-text">Welcome back, <span id="heroManagerName">Manager</span></div>
                     <div class="hero-greeting-gw" id="heroGwBadge">GW1</div>
                 </div>
-                <div class="hero-stat-cards" id="heroStatCards">
-                    <div class="hero-stat-card hero-stat-card--rank">
-                        <div class="hero-sc-value" id="heroRank">—</div>
-                        <div class="hero-sc-label">Overall Rank</div>
-                    </div>
-                    <div class="hero-stat-card hero-stat-card--total">
-                        <div class="hero-sc-value" id="heroTotal">—</div>
-                        <div class="hero-sc-label">Total Points</div>
-                    </div>
-                    <div class="hero-stat-card hero-stat-card--gw">
-                        <div class="hero-sc-value" id="heroGwPts">—</div>
-                        <div class="hero-sc-label">GW Points</div>
-                    </div>
-                    <div class="hero-stat-card hero-stat-card--bank">
-                        <div class="hero-sc-value" id="heroBank">—</div>
-                        <div class="hero-sc-label">In the Bank</div>
-                    </div>
-                    <div class="hero-stat-card hero-stat-card--flagged">
-                        <div class="hero-sc-value" id="heroFlagged">—</div>
-                        <div class="hero-sc-label">Flagged</div>
-                    </div>
+                <div class="hero-stats-bar" id="heroStatsBar"></div>
+                <div class="hero-dashboard" id="heroDashboard">
+                    <div class="hero-squad-panel" id="heroSquadPanel"></div>
+                    <div class="hero-intel-panel" id="heroIntelPanel"></div>
                 </div>
                 <div class="hero-quick-actions">
                     <a href="fpl-transfer-wizard.html" class="btn btn-primary btn-sm"><i data-lucide="wand-2" class="icon"></i> Open Wizard</a>
@@ -2190,22 +2446,111 @@ body {
         }
 
         // ===== PERSONALIZED HERO STATS =====
-        function renderHeroStats(firstName, currentGW, rank, totalPoints, gwPoints, bank, flaggedCount) {
+        function renderHeroStats({ firstName, currentGW, rank, totalPoints, gwPoints, bank, squad, analysisResults, flagged }) {
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
             el('heroManagerName', firstName);
             el('heroGwBadge', 'GW' + currentGW);
-            el('heroRank', rank);
-            el('heroTotal', totalPoints);
-            el('heroGwPts', gwPoints);
-            el('heroBank', '\u00A3' + bank + 'm');
-            el('heroFlagged', flaggedCount);
 
-            // Color flagged card based on count
-            const flaggedCard = document.querySelector('.hero-stat-card--flagged .hero-sc-value');
-            if (flaggedCard) {
-                flaggedCard.style.color = flaggedCount > 0 ? 'var(--color-error)' : 'var(--color-success)';
+            const posShort = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posClass = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
+            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+
+            // --- Compact Stats Bar ---
+            const statItems = [
+                { label: 'Rank', value: rank, color: '#10B981' },
+                { label: 'Total', value: totalPoints, color: '#3B82F6' },
+                { label: 'GW', value: gwPoints, color: '#8B5CF6' },
+                { label: 'Bank', value: '\u00A3' + bank + 'm', color: '#F59E0B' },
+                { label: 'Flagged', value: flagged.length, color: '#EF4444' }
+            ];
+            document.getElementById('heroStatsBar').innerHTML = statItems.map(s =>
+                `<span class="hero-stat-pill-item"><span class="hspi-dot" style="background:${s.color}"></span>${esc(s.label)} <span class="hspi-val">${esc(String(s.value))}</span></span>`
+            ).join('');
+
+            // --- Squad Panel ---
+            const starters = squad.filter(p => p.pickPosition <= 11);
+            const bench = squad.filter(p => p.pickPosition >= 12);
+            const verdictMap = {};
+            analysisResults.forEach((a, i) => { if (squad[i]) verdictMap[squad[i].id] = a; });
+
+            function playerRow(p, isBench) {
+                const pc = posClass[p.position] || 'mid';
+                const ps = posShort[p.position] || 'MID';
+                const a = verdictMap[p.id];
+                const verdict = a ? a.verdict : 'hold';
+                let badges = '';
+                if (p.isCaptain) badges += '<span class="hsp-captain">C</span>';
+                else if (p.isViceCaptain) badges += '<span class="hsp-captain">V</span>';
+                let statusIcon = '';
+                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                    statusIcon = '<i data-lucide="circle-x" class="hsp-status-icon injured"></i>';
+                } else if (p.status === 'd') {
+                    statusIcon = '<i data-lucide="alert-triangle" class="hsp-status-icon doubtful"></i>';
+                }
+                return `<div class="hsp-row${isBench ? ' hsp-bench' : ''}">
+                    <span class="hsp-pos ${pc}">${ps}</span>
+                    <span class="hsp-name">${esc(p.name)}</span>
+                    <span class="hsp-team">${esc(p.team)}</span>
+                    ${badges}${statusIcon}
+                    <span class="hsp-verdict-dot ${verdict}"></span>
+                </div>`;
             }
 
+            let squadHtml = '<div class="hsp-title">Starting XI</div>';
+            starters.forEach(p => { squadHtml += playerRow(p, false); });
+            squadHtml += '<div class="hsp-bench-sep">Bench</div>';
+            bench.forEach(p => { squadHtml += playerRow(p, true); });
+            document.getElementById('heroSquadPanel').innerHTML = squadHtml;
+
+            // --- Intel Panel ---
+            let intelHtml = '';
+
+            // 1. Alerts
+            intelHtml += '<div class="hip-section"><div class="hip-title">Alerts</div>';
+            if (flagged.length === 0) {
+                intelHtml += '<div class="hip-all-clear"><i data-lucide="check-circle" class="icon"></i> All Clear \u2014 no action needed</div>';
+            } else {
+                const showMax = 4;
+                const visible = flagged.slice(0, showMax);
+                visible.forEach(a => {
+                    intelHtml += `<div class="hip-alert ${a.verdict}">
+                        <span class="hip-alert-name">${esc(a.name)}</span>
+                        <span class="hip-alert-concern">${esc(a.topConcern || '')}</span>
+                        <span class="hip-alert-chip ${a.verdict}">${a.verdict}</span>
+                    </div>`;
+                });
+                if (flagged.length > showMax) {
+                    intelHtml += `<a href="fpl-my-team-analysis.html" class="hip-more-link">+${flagged.length - showMax} more \u2192</a>`;
+                }
+            }
+            intelHtml += '</div>';
+
+            // 2. Verdict Summary
+            const counts = { star: 0, hold: 0, monitor: 0, sell: 0 };
+            analysisResults.forEach(a => { if (counts[a.verdict] !== undefined) counts[a.verdict]++; });
+            intelHtml += '<div class="hip-section"><div class="hip-title">Squad Health</div><div class="hip-verdict-bar">';
+            [['star','Star'],['hold','Hold'],['monitor','Monitor'],['sell','Sell']].forEach(([k,label]) => {
+                if (counts[k] > 0) {
+                    intelHtml += `<span class="hip-verdict-pill ${k}"><span class="hvp-count">${counts[k]}</span> ${label}</span>`;
+                }
+            });
+            intelHtml += '</div></div>';
+
+            // 3. Fixture Outlook (starters only, next 3)
+            intelHtml += '<div class="hip-section"><div class="hip-title">Next Fixtures</div>';
+            starters.forEach(p => {
+                const fixes = (p.fixtures || []).slice(0, 3);
+                if (!fixes.length) return;
+                intelHtml += `<div class="hip-fix-row"><span class="hip-fix-name">${esc(p.name)}</span>`;
+                fixes.forEach(f => {
+                    const fdr = Math.max(1, Math.min(5, f.difficulty || 3));
+                    intelHtml += `<span class="hip-fdr-chip fdr-${fdr}">${esc(f.opponent)}${f.isHome ? '' : ' (A)'}</span>`;
+                });
+                intelHtml += '</div>';
+            });
+            intelHtml += '</div>';
+
+            document.getElementById('heroIntelPanel').innerHTML = intelHtml;
             lucide.createIcons();
         }
 
@@ -2331,11 +2676,11 @@ body {
                 const posAvg = computePositionAverages(allPlayers);
                 const teamAnalysis = computeTeamScores(bootData.teams, fixturesData);
 
-                // Build squad from picks
+                // Build squad from picks (merge pick-level fields)
                 const squad = picksData.picks.map(pick => {
                     const p = playersById[pick.element];
                     if (!p) return null;
-                    return p;
+                    return { ...p, isCaptain: pick.is_captain, isViceCaptain: pick.is_vice_captain, multiplier: pick.multiplier, pickPosition: pick.position };
                 }).filter(Boolean);
 
                 // Run analysis on each squad player
@@ -2356,15 +2701,17 @@ body {
                     flagged
                 );
 
-                renderHeroStats(
-                    `${managerData.player_first_name}`,
+                renderHeroStats({
+                    firstName: managerData.player_first_name,
                     currentGW,
-                    managerData.summary_overall_rank?.toLocaleString() || '-',
-                    managerData.summary_overall_points?.toLocaleString() || '-',
+                    rank: managerData.summary_overall_rank?.toLocaleString() || '-',
+                    totalPoints: managerData.summary_overall_points?.toLocaleString() || '-',
                     gwPoints,
-                    bank.toFixed(1),
-                    flagged.length
-                );
+                    bank: bank.toFixed(1),
+                    squad,
+                    analysisResults,
+                    flagged
+                });
 
                 renderNewsStrip(allPlayers, squad);
             } catch (err) {
