@@ -916,6 +916,41 @@
 
         /* ===== TAB BAR (removed - using .tabs-container now) ===== */
 
+        /* ===== TRANSFER MARKET ===== */
+        .tm-section { margin-bottom: 24px; }
+        .tm-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle); }
+        .tm-section-header h2 { font-family: var(--font-display); font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .tm-section-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+        .tm-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--surface-1); border-radius: 10px; overflow: hidden; border: 1px solid var(--border-default); }
+        .tm-table th, .tm-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border-subtle); }
+        .tm-table th { background: var(--surface-2); font-weight: 600; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; white-space: nowrap; user-select: none; }
+        .tm-table th:hover { color: var(--text-primary); }
+        .tm-table tr:hover td { background: var(--surface-0); }
+        .tm-table .tm-name { font-weight: 600; }
+        .tm-table .tm-meta { font-size: 11px; color: var(--text-muted); }
+        .tm-price-change { font-family: var(--font-display); font-weight: 600; font-size: 12px; }
+        .tm-price-change.up { color: var(--color-success); }
+        .tm-price-change.down { color: var(--color-error); }
+        .tm-price-change.flat { color: var(--text-muted); }
+        .tm-pressure-bar { width: 60px; height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+        .tm-pressure-fill { height: 100%; border-radius: 3px; }
+        .tm-pressure-fill.rising { background: var(--color-success); }
+        .tm-pressure-fill.falling { background: var(--color-error); }
+        .tm-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+        .tm-badge.rise { background: rgba(16,185,129,0.12); color: var(--color-success); }
+        .tm-badge.fall { background: rgba(239,68,68,0.12); color: var(--color-error); }
+        .tm-badge.stable { background: var(--surface-2); color: var(--text-muted); }
+        .tm-badge.in-squad { background: rgba(59,130,246,0.12); color: var(--color-info); }
+        .tm-summary-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .tm-summary-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: 10px; padding: 16px; text-align: center; }
+        .tm-summary-card .tm-sc-value { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin-bottom: 2px; }
+        .tm-summary-card .tm-sc-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .tm-pos-filter { display: flex; gap: 4px; margin-bottom: 12px; }
+        .tm-pos-btn { padding: 4px 10px; border: 1px solid var(--border-default); background: var(--surface-1); border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; color: var(--text-secondary); font-family: inherit; }
+        .tm-pos-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+        .tm-squad-row { background: rgba(59,130,246,0.04); }
+        @media (max-width: 768px) { .tm-summary-cards { grid-template-columns: repeat(2, 1fr); } .tm-table { font-size: 11px; } }
+
         /* ===== TRANSFER WIZARD ===== */
         .tw-container { padding: 0; }
         .tw-intro { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); }
@@ -1336,6 +1371,7 @@
     <div class="tabs-container" id="tabBar">
         <div class="tabs">
             <button class="tab active" onclick="switchTab('team')" id="tabTeam">Squad Analysis</button>
+            <button class="tab" onclick="switchTab('transfers')" id="tabTransfers">Transfers</button>
             <button class="tab" onclick="switchTab('planner')" id="tabPlanner">GW Planner</button>
             <button class="tab" onclick="switchTab('transfer')" id="tabTransfer">Transfer Wizard</button>
             <button class="tab" onclick="switchTab('lineup')" id="tabLineup">Lineup Wizard</button>
@@ -1381,6 +1417,9 @@
 
         <!-- Team Display -->
         <div id="teamDisplay"></div>
+
+        <!-- Transfer Market Display -->
+        <div id="transferMarketDisplay" style="display:none;"></div>
 
         <!-- Gameweek Planner Display -->
         <div id="plannerDisplay" style="display:none;"></div>
@@ -1458,14 +1497,14 @@
             <div class="detail-body">
                 <div class="detail-section">
                     <div class="detail-section-title">Strategy Presets</div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <button class="card-btn" onclick="applyPreset('aggressive')" style="justify-content: flex-start; text-align: left; padding: 12px;">
+                    <div id="presetButtons" style="display: flex; flex-direction: column; gap: 8px;">
+                        <button class="card-btn" id="presetAggressive" onclick="applyPreset('aggressive')" style="justify-content: flex-start; text-align: left; padding: 12px;">
                             <i data-lucide="flame" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> <strong>Aggressive</strong> - Quick sell triggers
                         </button>
-                        <button class="card-btn primary" onclick="applyPreset('balanced')" style="justify-content: flex-start; text-align: left; padding: 12px;">
+                        <button class="card-btn" id="presetBalanced" onclick="applyPreset('balanced')" style="justify-content: flex-start; text-align: left; padding: 12px;">
                             <i data-lucide="scale" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> <strong>Balanced</strong> - Default settings
                         </button>
-                        <button class="card-btn" onclick="applyPreset('patient')" style="justify-content: flex-start; text-align: left; padding: 12px;">
+                        <button class="card-btn" id="presetPatient" onclick="applyPreset('patient')" style="justify-content: flex-start; text-align: left; padding: 12px;">
                             <i data-lucide="clock" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> <strong>Patient</strong> - Hold through dips
                         </button>
                     </div>
@@ -1536,6 +1575,9 @@
             minutesThreshold: 60,   // minutes per game to worry
             premiumHarshness: 1.0   // extra scrutiny on expensive players
         };
+        let activePreset = 'balanced';
+        let totalFplPlayers = 11000000; // default, updated from bootstrap
+        let transferMarketRendered = false;
 
         // ===== UTILITY FUNCTIONS =====
         async function fetchWithProxy(url) {
@@ -1872,12 +1914,18 @@
                     saves: p.saves || 0,
                     transfersIn: p.transfers_in_event || 0,
                     transfersOut: p.transfers_out_event || 0,
+                    transfersInTotal: p.transfers_in || 0,
+                    transfersOutTotal: p.transfers_out || 0,
+                    costChangeEvent: p.cost_change_event || 0,
+                    costChangeStart: p.cost_change_start || 0,
                     epNext: parseFloat(p.ep_next) || 0,
                     dreamteamCount: p.dreamteam_count || 0,
                     valueForm: parseFloat(p.value_form) || 0,
                     valueSeason: parseFloat(p.value_season) || 0,
                     fixtures: teamFixtures[p.team] || []
                 }));
+
+                totalFplPlayers = bootData.total_players || 11000000;
 
                 allPlayersById = {};
                 allPlayers.forEach(p => allPlayersById[p.id] = p);
@@ -2283,8 +2331,7 @@
             const starterHealth = starters.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(starters.length, 1);
             const benchHealth = bench.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(bench.length, 1);
             const rawHealth = Math.round(starterHealth * 0.85 + benchHealth * 0.15);
-            // Aggressive mode (higher sensitivity) should lower health; patient mode should raise it
-            const teamHealth = Math.max(0, Math.min(100, Math.round(100 - (100 - rawHealth) * userSettings.sellSensitivity)));
+            const teamHealth = Math.max(0, Math.min(100, rawHealth));
 
             let html = '';
 
@@ -2498,29 +2545,37 @@
         let lineupRendered = false;
         function switchTab(tab) {
             const teamDisplay = document.getElementById('teamDisplay');
+            const transferMarketDisplay = document.getElementById('transferMarketDisplay');
             const plannerDisplay = document.getElementById('plannerDisplay');
             const transferDisplay = document.getElementById('transferDisplay');
             const lineupDisplay = document.getElementById('lineupDisplay');
             const tabTeam = document.getElementById('tabTeam');
+            const tabTransfers = document.getElementById('tabTransfers');
             const tabPlanner = document.getElementById('tabPlanner');
             const tabTransfer = document.getElementById('tabTransfer');
             const tabLineup = document.getElementById('tabLineup');
 
             teamDisplay.style.display = 'none';
+            transferMarketDisplay.style.display = 'none';
             plannerDisplay.style.display = 'none';
             transferDisplay.style.display = 'none';
             lineupDisplay.style.display = 'none';
             tabTeam.classList.remove('active');
+            tabTransfers.classList.remove('active');
             tabPlanner.classList.remove('active');
             tabTransfer.classList.remove('active');
             tabLineup.classList.remove('active');
 
-            const hashMap = { team: 'squad', planner: 'planner', transfer: 'transfer', lineup: 'lineup' };
+            const hashMap = { team: 'squad', transfers: 'transfers', planner: 'planner', transfer: 'transfer', lineup: 'lineup' };
             history.replaceState(null, '', '#' + (hashMap[tab] || tab));
 
             if (tab === 'team') {
                 teamDisplay.style.display = '';
                 tabTeam.classList.add('active');
+            } else if (tab === 'transfers') {
+                transferMarketDisplay.style.display = '';
+                tabTransfers.classList.add('active');
+                if (!transferMarketRendered) renderTransferMarket();
             } else if (tab === 'planner') {
                 plannerDisplay.style.display = '';
                 tabPlanner.classList.add('active');
@@ -2538,7 +2593,7 @@
 
         // Activate tab from hash on load
         (function() {
-            const hashToTab = { squad: 'team', planner: 'planner', transfer: 'transfer', lineup: 'lineup' };
+            const hashToTab = { squad: 'team', transfers: 'transfers', planner: 'planner', transfer: 'transfer', lineup: 'lineup' };
             const hash = window.location.hash.replace('#', '');
             if (hashToTab[hash]) {
                 // Defer until after data loads — store desired tab
@@ -4863,6 +4918,11 @@
 
         // ===== SETTINGS =====
         function openSettings() {
+            // Highlight active preset button
+            ['Aggressive','Balanced','Patient'].forEach(name => {
+                const btn = document.getElementById('preset' + name);
+                btn.classList.toggle('primary', activePreset === name.toLowerCase());
+            });
             document.getElementById('settingsOverlay').classList.add('show');
         }
 
@@ -4880,7 +4940,9 @@
                 userSettings = { sellSensitivity: 0.7, fixtureWeight: 0.6, formWeight: 0.8, valueWeight: 0.8, minutesThreshold: 50, premiumHarshness: 0.7 };
             }
 
+            activePreset = preset;
             localStorage.setItem('fpl_analysis_settings', JSON.stringify(userSettings));
+            localStorage.setItem('fpl_active_preset', preset);
             closeSettings();
             
             if (selectedPlayers.length > 0) {
@@ -4888,6 +4950,202 @@
             }
 
             updateStatus(`${preset.charAt(0).toUpperCase() + preset.slice(1)} settings applied`, 'success');
+        }
+
+        // ===== TRANSFER MARKET =====
+        let tmPosFilter = 'all';
+        let tmSquadSort = { col: 'pressure', asc: false };
+        let tmRisingSort = { col: 'netTransfers', asc: false };
+        let tmFallingSort = { col: 'netTransfers', asc: true };
+
+        function getTransferPressure(player) {
+            const owners = Math.max(totalFplPlayers * (player.ownership / 100), 1);
+            const net = player.transfersIn - player.transfersOut;
+            return net / owners;
+        }
+
+        function getPressureLabel(pressure) {
+            if (pressure > 0.04) return { text: 'Hot', cls: 'rise' };
+            if (pressure > 0.015) return { text: 'Rising', cls: 'rise' };
+            if (pressure < -0.04) return { text: 'Dropping', cls: 'fall' };
+            if (pressure < -0.015) return { text: 'Cooling', cls: 'fall' };
+            return { text: 'Stable', cls: 'stable' };
+        }
+
+        function renderTransferMarket() {
+            transferMarketRendered = true;
+            const container = document.getElementById('transferMarketDisplay');
+
+            if (allPlayers.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:48px;margin-bottom:16px;"><i data-lucide="trending-up" style="width:48px;height:48px;color:var(--color-primary);"></i></div><div style="font-size:18px;font-weight:600;margin-bottom:8px;">Loading Transfer Market...</div><div style="font-size:14px;color:var(--text-secondary);">Data is still loading. Please wait.</div></div>';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            // Compute pressure for all players
+            const playersWithPressure = allPlayers.filter(p => p.ownership > 0.5 && p.minutes > 0).map(p => ({
+                ...p,
+                netTransfers: p.transfersIn - p.transfersOut,
+                pressure: getTransferPressure(p),
+                priceChangeGW: (p.costChangeEvent || 0) / 10,
+                priceChangeSeason: (p.costChangeStart || 0) / 10,
+                posName: ['','GK','DEF','MID','FWD'][p.position] || '?'
+            }));
+
+            // Identify squad players
+            const squadIds = new Set(selectedPlayers.map(p => p.id));
+
+            // Filter by position
+            const filterPlayers = (list) => tmPosFilter === 'all' ? list : list.filter(p => p.position === parseInt(tmPosFilter));
+
+            // Summary stats
+            const risingCount = playersWithPressure.filter(p => p.priceChangeGW > 0).length;
+            const fallingCount = playersWithPressure.filter(p => p.priceChangeGW < 0).length;
+            const squadRising = playersWithPressure.filter(p => squadIds.has(p.id) && p.pressure > 0.015).length;
+            const squadFalling = playersWithPressure.filter(p => squadIds.has(p.id) && p.pressure < -0.015).length;
+
+            let html = '';
+
+            // Summary cards
+            html += `<div class="tm-summary-cards">
+                <div class="tm-summary-card"><div class="tm-sc-value" style="color:var(--color-success);">${risingCount}</div><div class="tm-sc-label">Rose This GW</div></div>
+                <div class="tm-summary-card"><div class="tm-sc-value" style="color:var(--color-error);">${fallingCount}</div><div class="tm-sc-label">Fell This GW</div></div>
+                <div class="tm-summary-card"><div class="tm-sc-value" style="color:var(--color-success);">${squadRising}</div><div class="tm-sc-label">Your Squad Rising</div></div>
+                <div class="tm-summary-card"><div class="tm-sc-value" style="color:var(--color-error);">${squadFalling}</div><div class="tm-sc-label">Your Squad Falling</div></div>
+            </div>`;
+
+            // Position filter
+            html += `<div class="tm-pos-filter">
+                <button class="tm-pos-btn ${tmPosFilter === 'all' ? 'active' : ''}" onclick="tmFilterPos('all')">All</button>
+                <button class="tm-pos-btn ${tmPosFilter === '1' ? 'active' : ''}" onclick="tmFilterPos('1')">GK</button>
+                <button class="tm-pos-btn ${tmPosFilter === '2' ? 'active' : ''}" onclick="tmFilterPos('2')">DEF</button>
+                <button class="tm-pos-btn ${tmPosFilter === '3' ? 'active' : ''}" onclick="tmFilterPos('3')">MID</button>
+                <button class="tm-pos-btn ${tmPosFilter === '4' ? 'active' : ''}" onclick="tmFilterPos('4')">FWD</button>
+            </div>`;
+
+            // Section 1: Your Squad Price Watch
+            if (selectedPlayers.length > 0) {
+                const squadPressure = playersWithPressure.filter(p => squadIds.has(p.id));
+                const filtered = filterPlayers(squadPressure);
+                tmSortList(filtered, tmSquadSort);
+
+                html += `<div class="tm-section">
+                    <div class="tm-section-header"><h2><i data-lucide="shield" style="width:18px;height:18px;display:inline;"></i> Your Squad Price Watch</h2></div>
+                    <p class="tm-section-desc">Transfer activity and price pressure for your current squad. High activity may indicate upcoming price changes.</p>
+                    <div style="overflow-x:auto;">
+                    <table class="tm-table">
+                        <thead><tr>
+                            <th onclick="tmSort('squad','name')">Player</th>
+                            <th onclick="tmSort('squad','price')">Price</th>
+                            <th onclick="tmSort('squad','priceChangeSeason')">Season Δ</th>
+                            <th onclick="tmSort('squad','priceChangeGW')">GW Δ</th>
+                            <th onclick="tmSort('squad','netTransfers')">Net Transfers</th>
+                            <th onclick="tmSort('squad','pressure')">Pressure</th>
+                        </tr></thead>
+                        <tbody>${filtered.map(p => renderTmRow(p, false)).join('')}</tbody>
+                    </table>
+                    </div>
+                </div>`;
+            }
+
+            // Section 2: Rising Players
+            const rising = filterPlayers(playersWithPressure.filter(p => p.netTransfers > 0));
+            tmSortList(rising, tmRisingSort);
+            const topRising = rising.slice(0, 25);
+
+            html += `<div class="tm-section">
+                <div class="tm-section-header"><h2 style="color:var(--color-success);"><i data-lucide="trending-up" style="width:18px;height:18px;display:inline;"></i> Rising Players</h2></div>
+                <p class="tm-section-desc">Players with highest positive transfer activity this gameweek. May rise in price soon.</p>
+                <div style="overflow-x:auto;">
+                <table class="tm-table">
+                    <thead><tr>
+                        <th onclick="tmSort('rising','name')">Player</th>
+                        <th onclick="tmSort('rising','price')">Price</th>
+                        <th onclick="tmSort('rising','priceChangeSeason')">Season Δ</th>
+                        <th onclick="tmSort('rising','priceChangeGW')">GW Δ</th>
+                        <th onclick="tmSort('rising','ownership')">Own%</th>
+                        <th onclick="tmSort('rising','netTransfers')">Net Transfers</th>
+                        <th onclick="tmSort('rising','pressure')">Pressure</th>
+                    </tr></thead>
+                    <tbody>${topRising.map(p => renderTmRow(p, true, squadIds)).join('')}</tbody>
+                </table>
+                </div>
+            </div>`;
+
+            // Section 3: Falling Players
+            const falling = filterPlayers(playersWithPressure.filter(p => p.netTransfers < 0));
+            tmSortList(falling, tmFallingSort);
+            const topFalling = falling.slice(0, 25);
+
+            html += `<div class="tm-section">
+                <div class="tm-section-header"><h2 style="color:var(--color-error);"><i data-lucide="trending-down" style="width:18px;height:18px;display:inline;"></i> Falling Players</h2></div>
+                <p class="tm-section-desc">Players with highest negative transfer activity. May drop in price. Watch out if they're in your squad.</p>
+                <div style="overflow-x:auto;">
+                <table class="tm-table">
+                    <thead><tr>
+                        <th onclick="tmSort('falling','name')">Player</th>
+                        <th onclick="tmSort('falling','price')">Price</th>
+                        <th onclick="tmSort('falling','priceChangeSeason')">Season Δ</th>
+                        <th onclick="tmSort('falling','priceChangeGW')">GW Δ</th>
+                        <th onclick="tmSort('falling','ownership')">Own%</th>
+                        <th onclick="tmSort('falling','netTransfers')">Net Transfers</th>
+                        <th onclick="tmSort('falling','pressure')">Pressure</th>
+                    </tr></thead>
+                    <tbody>${topFalling.map(p => renderTmRow(p, true, squadIds)).join('')}</tbody>
+                </table>
+                </div>
+            </div>`;
+
+            container.innerHTML = html;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function renderTmRow(p, showOwnership, squadIds) {
+            const pressureLabel = getPressureLabel(p.pressure);
+            const pressurePct = Math.min(Math.abs(p.pressure) * 500, 100);
+            const isInSquad = squadIds && squadIds.has(p.id);
+            const seasonCls = p.priceChangeSeason > 0 ? 'up' : p.priceChangeSeason < 0 ? 'down' : 'flat';
+            const gwCls = p.priceChangeGW > 0 ? 'up' : p.priceChangeGW < 0 ? 'down' : 'flat';
+            const netStr = p.netTransfers > 0 ? `+${p.netTransfers.toLocaleString()}` : p.netTransfers.toLocaleString();
+            const pressureDir = p.pressure >= 0 ? 'rising' : 'falling';
+
+            return `<tr class="${isInSquad ? 'tm-squad-row' : ''}">
+                <td><span class="tm-name">${p.name}</span>${isInSquad ? ' <span class="tm-badge in-squad">Squad</span>' : ''}<br><span class="tm-meta">${p.team} · ${p.posName}</span></td>
+                <td>£${p.price.toFixed(1)}m</td>
+                <td><span class="tm-price-change ${seasonCls}">${p.priceChangeSeason > 0 ? '+' : ''}${p.priceChangeSeason.toFixed(1)}</span></td>
+                <td><span class="tm-price-change ${gwCls}">${p.priceChangeGW > 0 ? '+' : ''}${p.priceChangeGW.toFixed(1)}</span></td>
+                ${showOwnership ? `<td>${p.ownership.toFixed(1)}%</td>` : ''}
+                <td style="white-space:nowrap;">${netStr}</td>
+                <td><div class="tm-pressure-bar"><div class="tm-pressure-fill ${pressureDir}" style="width:${pressurePct}%;"></div></div><span class="tm-badge ${pressureLabel.cls}">${pressureLabel.text}</span></td>
+            </tr>`;
+        }
+
+        function tmFilterPos(pos) {
+            tmPosFilter = pos;
+            transferMarketRendered = false;
+            renderTransferMarket();
+        }
+
+        function tmSort(section, col) {
+            const sortState = section === 'squad' ? tmSquadSort : section === 'rising' ? tmRisingSort : tmFallingSort;
+            if (sortState.col === col) {
+                sortState.asc = !sortState.asc;
+            } else {
+                sortState.col = col;
+                sortState.asc = col === 'name';
+            }
+            transferMarketRendered = false;
+            renderTransferMarket();
+        }
+
+        function tmSortList(list, sortState) {
+            const { col, asc } = sortState;
+            list.sort((a, b) => {
+                let va = a[col], vb = b[col];
+                if (col === 'name') { va = va || ''; vb = vb || ''; return asc ? va.localeCompare(vb) : vb.localeCompare(va); }
+                va = va || 0; vb = vb || 0;
+                return asc ? va - vb : vb - va;
+            });
         }
 
         // ===== INLINE LINEUP WIZARD =====
@@ -5047,6 +5305,10 @@
                     console.warn('Invalid saved settings, using defaults');
                     userSettings = { ...DEFAULT_SETTINGS };
                 }
+            }
+            const savedPreset = localStorage.getItem('fpl_active_preset');
+            if (savedPreset && ['aggressive','balanced','patient'].includes(savedPreset)) {
+                activePreset = savedPreset;
             }
         })();
 
