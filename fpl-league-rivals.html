@@ -853,7 +853,6 @@
         .pos-compare-card .pos-icon { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; margin-bottom: var(--space-2); }
         .pos-compare-bar { height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; margin-top: var(--space-2); }
         .pos-compare-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
-        .h2h-panel { margin-top: var(--space-6); padding-top: var(--space-6); border-top: 1px solid var(--border-default); }
         .matrix-cell.captain { background: #F59E0B; color: #000; font-weight: 700; }
         .matrix-cell.benched { background: var(--surface-3); color: var(--text-muted); font-style: italic; }
 
@@ -924,9 +923,19 @@
                         <a href="fpl-teams-analysis.html#stats" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Stats Table</a>
                     </div>
                 </div>
-                <a href="fpl-league-rivals.html" class="nav-link active">
-                    <i data-lucide="trophy" class="icon"></i> Rivals
-                </a>
+                <div class="nav-dropdown">
+                    <a href="fpl-league-rivals.html" class="nav-link active">
+                        <i data-lucide="trophy" class="icon"></i> Rivals
+                    </a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-league-rivals.html#insights" class="dropdown-item"><i data-lucide="lightbulb" class="dd-icon"></i> Insights</a>
+                        <a href="fpl-league-rivals.html#captain" class="dropdown-item"><i data-lucide="crown" class="dd-icon"></i> Captain Race</a>
+                        <a href="fpl-league-rivals.html#race" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> League Race</a>
+                        <a href="fpl-league-rivals.html#strength" class="dropdown-item"><i data-lucide="shield" class="dd-icon"></i> Squad Strength</a>
+                        <a href="fpl-league-rivals.html#matrix" class="dropdown-item"><i data-lucide="grid-3x3" class="dd-icon"></i> Matrix</a>
+                        <a href="fpl-league-rivals.html#h2h" class="dropdown-item"><i data-lucide="swords" class="dd-icon"></i> Head-to-Head</a>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -939,6 +948,7 @@
             <button class="tab" onclick="showTab('race')" disabled>League Race</button>
             <button class="tab" onclick="showTab('strength')" disabled>Squad Strength</button>
             <button class="tab" onclick="showTab('matrix')" disabled>Matrix</button>
+            <button class="tab" onclick="showTab('h2h')" disabled>Head-to-Head</button>
         </div>
     </div>
 
@@ -1164,21 +1174,22 @@
                     </div>
                 </div>
 
-                <!-- Head-to-Head (merged from Rivals tab) -->
-                <div class="h2h-panel">
-                    <div class="section-header">
-                        <h2><i data-lucide="swords" style="width:20px;height:20px;display:inline;"></i> Head-to-Head Comparison</h2>
-                    </div>
-                    <div class="matrix-controls">
-                        <div class="matrix-filter">
-                            <label>Compare with:</label>
-                            <select id="rivalSelect" onchange="renderRivalComparison()">
-                                <option value="">-- Select a rival --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="rivalComparison"></div>
+            </div>
+
+            <!-- Tab: Head-to-Head -->
+            <div class="tab-content" id="tab-h2h">
+                <div class="section-header">
+                    <h2><i data-lucide="swords" style="width:20px;height:20px;display:inline;"></i> Head-to-Head Comparison</h2>
                 </div>
+                <div class="matrix-controls">
+                    <div class="matrix-filter">
+                        <label>Compare with:</label>
+                        <select id="rivalSelect" onchange="renderRivalComparison()">
+                            <option value="">-- Select a rival --</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="rivalComparison"></div>
             </div>
         </div>
 
@@ -1716,6 +1727,23 @@
             document.getElementById('editLeagueBar').style.display = 'none';
         }
 
+        function autoSelectLeader() {
+            const rivalSelect = document.getElementById('rivalSelect');
+            if (rivalSelect.value) return; // already selected
+            let leaderId = null, leaderPts = -1;
+            Object.keys(managerHistory).forEach(id => {
+                if (String(id) === String(myTeamId)) return;
+                const hist = managerHistory[id]?.current || [];
+                const total = hist.length > 0 ? hist[hist.length - 1].total_points : 0;
+                if (total > leaderPts) { leaderPts = total; leaderId = id; }
+            });
+            if (!leaderId && window.rivalIds?.length > 0) leaderId = window.rivalIds[0];
+            if (leaderId) {
+                rivalSelect.value = leaderId;
+                renderRivalComparison();
+            }
+        }
+
         function updateClearLeagueBtn() {
             const btn = document.getElementById('clearLeagueBtn');
             if (localStorage.getItem('fpl_league_id')) {
@@ -1735,13 +1763,14 @@
             
             history.replaceState(null, '', '#' + tabName);
             if (tabName === 'matrix') renderMatrix();
+            if (tabName === 'h2h') autoSelectLeader();
             if (tabName === 'race' && raceChart) raceChart.resize();
         }
 
         function enableTabs() {
             document.querySelectorAll('.tabs-container .tab').forEach(t => t.disabled = false);
             const hash = window.location.hash.replace('#', '');
-            if (['insights', 'captain', 'race', 'strength', 'matrix'].includes(hash)) {
+            if (['insights', 'captain', 'race', 'strength', 'matrix', 'h2h'].includes(hash)) {
                 showTab(hash);
             }
         }
