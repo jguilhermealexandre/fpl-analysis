@@ -1402,9 +1402,9 @@ body {
         }
 
         /* ===== NEWS STRIP ===== */
-        .news-strip { background: var(--surface-0); border-bottom: 1px solid var(--border-default); padding: 6px 0; overflow: hidden; }
-        .news-strip-track { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; gap: 12px; overflow-x: auto; align-items: center; scrollbar-width: none; -ms-overflow-style: none; }
-        .news-strip-track::-webkit-scrollbar { display: none; }
+        .news-strip { background: var(--surface-0); border-bottom: 1px solid var(--border-default); overflow: hidden; height: 32px; display: flex; align-items: center; }
+        .news-strip-track { display: flex; width: max-content; gap: 12px; align-items: center; animation: news-scroll 30s linear infinite; }
+        .news-strip:hover .news-strip-track { animation-play-state: paused; }
         .news-strip-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); white-space: nowrap; padding-right: 4px; border-right: 1px solid var(--border-default); margin-right: 4px; }
         .news-strip-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; background: var(--surface-2); border: 1px solid var(--border-default); border-radius: 9999px; font-size: 11px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; transition: all 150ms; }
         .news-strip-item:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
@@ -1415,8 +1415,12 @@ body {
         .news-strip-dot.dot-form { background: #3B82F6; }
         .news-strip-dot.dot-external { background: #8B5CF6; }
         @media (max-width: 768px) {
-            .news-strip-track { padding: 0 16px; gap: 8px; }
+            .news-strip-track { gap: 8px; }
             .news-strip-item { font-size: 10.5px; padding: 2px 8px; }
+        }
+        @keyframes news-scroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
         }
     </style>
 </head>
@@ -1438,6 +1442,7 @@ body {
                     <div class="nav-dropdown-menu">
                         <a href="fpl-my-team-analysis.html#squad" class="dropdown-item"><i data-lucide="users" class="dd-icon"></i> Squad Analysis</a>
                         <a href="fpl-my-team-analysis.html#transfers" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Transfers</a>
+                        <a href="fpl-my-team-analysis.html#news" class="dropdown-item"><i data-lucide="newspaper" class="dd-icon"></i> News</a>
                         <a href="fpl-my-team-analysis.html#planner" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> GW Planner</a>
                         <a href="fpl-my-team-analysis.html#transfer" class="dropdown-item"><i data-lucide="repeat" class="dd-icon"></i> Transfer Wizard</a>
                         <a href="fpl-my-team-analysis.html#lineup" class="dropdown-item"><i data-lucide="wand-2" class="dd-icon"></i> Lineup Wizard</a>
@@ -2257,13 +2262,23 @@ body {
 
             if (!top.length) { strip.classList.add('hidden'); return; }
 
-            track.innerHTML = `<span class="news-strip-label">\ud83d\udcf0 NEWS</span>` +
+            const contentHtml = `<span class="news-strip-content"><span class="news-strip-label">\ud83d\udcf0 NEWS</span>` +
                 top.map(i => {
                     const d = document.createElement('div'); d.textContent = i.text;
                     return `<span class="news-strip-item"><span class="news-strip-dot dot-${i.cat}"></span>${d.innerHTML}</span>`;
-                }).join('');
+                }).join('') + `</span>`;
 
+            track.innerHTML = contentHtml + contentHtml;
             strip.classList.remove('hidden');
+
+            requestAnimationFrame(() => {
+                const contentEl = track.querySelector('.news-strip-content');
+                if (contentEl) {
+                    const w = contentEl.offsetWidth;
+                    const duration = Math.max(15, w / 70);
+                    track.style.animationDuration = duration + 's';
+                }
+            });
         }
 
         // ===== LOAD TICKER (main data loader) =====
