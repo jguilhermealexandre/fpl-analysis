@@ -664,41 +664,221 @@ body {
             color: var(--color-primary-text);
         }
 
-        /* --- Compact Stats Bar --- */
-        .hero-stats-bar {
+        /* --- Command Cards Grid (replaces stats bar) --- */
+        .hero-cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .hero-cmd-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 14px 16px 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-cmd-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+        }
+
+        .hero-cmd-card--status::before  { background: #3B82F6; }
+        .hero-cmd-card--market::before  { background: #F59E0B; }
+        .hero-cmd-card--health::before  { background: #10B981; }
+        .hero-cmd-card--deadline::before { background: #8B5CF6; }
+
+        .hcc-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .hcc-icon {
+            width: 28px; height: 28px;
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .hero-stat-pill-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 14px;
-            background: var(--surface-1);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-full);
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            white-space: nowrap;
-        }
-
-        .hero-stat-pill-item .hspi-dot {
-            width: 7px; height: 7px;
-            border-radius: 50%;
             flex-shrink: 0;
         }
 
-        .hero-stat-pill-item .hspi-val {
-            font-family: var(--font-display);
+        .hcc-icon .icon { width: 14px; height: 14px; }
+
+        .hcc-icon--status  { background: rgba(59,130,246,0.10); color: #3B82F6; }
+        .hcc-icon--market  { background: rgba(245,158,11,0.10); color: #F59E0B; }
+        .hcc-icon--health  { background: rgba(16,185,129,0.10); color: #10B981; }
+        .hcc-icon--deadline { background: rgba(139,92,246,0.10); color: #8B5CF6; }
+
+        .hcc-label {
+            font-size: 10px;
             font-weight: 700;
-            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .hcc-primary {
+            font-family: var(--font-display);
+            font-size: 16px;
+            font-weight: 700;
             color: var(--text-primary);
+            margin-bottom: 2px;
+            line-height: 1.3;
+        }
+
+        .hcc-primary .hcc-diff {
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+
+        .hcc-diff.positive { color: #10B981; }
+        .hcc-diff.negative { color: #EF4444; }
+        .hcc-diff.neutral  { color: var(--text-muted); }
+
+        .hcc-secondary {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            margin-bottom: 2px;
+        }
+
+        .hcc-secondary .hcc-gamify {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .hcc-alert-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            margin-top: 6px;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .hcc-alert-row.price-drop {
+            background: rgba(239,68,68,0.05);
+            border-left: 2px solid #EF4444;
+            color: #DC2626;
+        }
+
+        .hcc-alert-row.price-rise {
+            background: rgba(16,185,129,0.05);
+            border-left: 2px solid #10B981;
+            color: #059669;
+        }
+
+        .hcc-alert-row.calm {
+            background: rgba(16,185,129,0.05);
+            color: var(--color-primary);
+        }
+
+        .hcc-health-score {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .hcc-score-num {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .hcc-score-num.score-good { color: #10B981; }
+        .hcc-score-num.score-ok   { color: #F59E0B; }
+        .hcc-score-num.score-bad  { color: #EF4444; }
+
+        .hcc-score-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: var(--text-muted);
+            line-height: 1.3;
+        }
+
+        .hcc-deductions {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .hcc-deduction-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 4px;
+        }
+
+        .hcc-deduction-item .icon { width: 12px; height: 12px; flex-shrink: 0; margin-top: 1px; }
+
+        .hcc-countdown {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .hcc-countdown.urgent { color: #EF4444; }
+        .hcc-countdown.soon   { color: #F59E0B; }
+
+        .hcc-fdr-outlook {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        .hcc-fdr-outlook.fdr-easy   { background: rgba(16,185,129,0.10); color: #059669; }
+        .hcc-fdr-outlook.fdr-medium { background: rgba(245,158,11,0.10); color: #D97706; }
+        .hcc-fdr-outlook.fdr-hard   { background: rgba(239,68,68,0.10);  color: #DC2626; }
+
+        /* --- Verdict pills (reused in health card) --- */
+        .hip-verdict-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .hip-verdict-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: var(--radius-full);
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .hip-verdict-pill.star    { background: rgba(139,92,246,0.10); color: #8B5CF6; }
+        .hip-verdict-pill.hold    { background: rgba(16,185,129,0.10); color: #10B981; }
+        .hip-verdict-pill.monitor { background: rgba(245,158,11,0.10); color: #D97706; }
+        .hip-verdict-pill.sell    { background: rgba(239,68,68,0.10); color: #EF4444; }
+
+        .hip-verdict-pill .hvp-count {
+            font-family: var(--font-display);
+            font-size: 12px;
         }
 
         /* --- Dashboard Grid --- */
@@ -911,34 +1091,6 @@ body {
 
         .hip-more-link:hover { text-decoration: underline; }
 
-        /* Verdict Summary */
-        .hip-verdict-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .hip-verdict-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 10px;
-            border-radius: var(--radius-full);
-            font-size: 11px;
-            font-weight: 700;
-        }
-
-        .hip-verdict-pill.star    { background: rgba(139,92,246,0.10); color: #8B5CF6; }
-        .hip-verdict-pill.hold    { background: rgba(16,185,129,0.10); color: #10B981; }
-        .hip-verdict-pill.monitor { background: rgba(245,158,11,0.10); color: #D97706; }
-        .hip-verdict-pill.sell    { background: rgba(239,68,68,0.10); color: #EF4444; }
-
-        .hip-verdict-pill .hvp-count {
-            font-family: var(--font-display);
-            font-size: 14px;
-        }
-
         /* Fixtures */
         .hip-fix-row {
             display: flex;
@@ -989,18 +1141,118 @@ body {
             height: 14px;
         }
 
+        /* --- Control Centre Briefing --- */
+        .cc-briefing {
+            max-width: 1400px;
+            margin: 0 auto 24px;
+            padding: 0 var(--space-6);
+        }
+
+        .cc-briefing.hidden { display: none; }
+
+        .cc-briefing-inner {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-xl);
+            padding: 20px 24px 16px;
+        }
+
+        .cc-briefing-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .cc-briefing-header .icon {
+            width: 18px; height: 18px;
+            color: var(--color-primary);
+        }
+
+        .cc-briefing-title {
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .cc-briefing-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .cc-brief-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-left: 3px solid var(--border-default);
+            transition: background 150ms;
+        }
+
+        .cc-brief-item:hover { background: var(--surface-2); }
+
+        .cc-brief-item .cc-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            width: 20px;
+            text-align: center;
+        }
+
+        .cc-brief-item .cc-cat {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            flex-shrink: 0;
+            min-width: 60px;
+        }
+
+        .cc-brief-item .cc-text {
+            flex: 1;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .cc-brief-item .cc-arrow {
+            color: var(--text-muted);
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .cc-brief-item.cc-injury   { border-left-color: #EF4444; }
+        .cc-brief-item.cc-captain  { border-left-color: #F59E0B; }
+        .cc-brief-item.cc-price    { border-left-color: #8B5CF6; }
+        .cc-brief-item.cc-transfer { border-left-color: #3B82F6; }
+        .cc-brief-item.cc-clear    { border-left-color: #10B981; }
+
+        .cc-brief-item.cc-injury .cc-cat   { color: #EF4444; }
+        .cc-brief-item.cc-captain .cc-cat  { color: #D97706; }
+        .cc-brief-item.cc-price .cc-cat    { color: #8B5CF6; }
+        .cc-brief-item.cc-transfer .cc-cat { color: #3B82F6; }
+        .cc-brief-item.cc-clear .cc-cat    { color: #10B981; }
+
         @media (max-width: 768px) {
+            .hero-cards-grid { grid-template-columns: 1fr; }
             .hero-dashboard { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 600px) {
             .hero-greeting-text { font-size: 22px; }
-            .hero-stats-bar { gap: 4px; }
-            .hero-stat-pill-item { padding: 4px 10px; font-size: 11px; }
-            .hero-stat-pill-item .hspi-val { font-size: 12px; }
+            .hero-cards-grid { gap: 8px; }
+            .hcc-primary { font-size: 14px; }
+            .hcc-score-num { font-size: 22px; }
             .hsp-row { font-size: 11px; gap: 6px; }
             .hsp-pos { width: 24px; font-size: 8px; }
             .hip-fix-name { width: 56px; }
+            .cc-briefing { padding: 0 var(--space-4); }
+            .cc-briefing-inner { padding: 16px; }
+            .cc-brief-item { padding: 8px 10px; font-size: 12px; }
         }
 
         /* ===== ONBOARDING (first-time user) ===== */
@@ -1875,7 +2127,7 @@ body {
                     <div class="hero-greeting-text">Welcome back, <span id="heroManagerName">Manager</span></div>
                     <div class="hero-greeting-gw" id="heroGwBadge">GW1</div>
                 </div>
-                <div class="hero-stats-bar" id="heroStatsBar"></div>
+                <div class="hero-cards-grid" id="heroCardsGrid"></div>
                 <div class="hero-dashboard" id="heroDashboard">
                     <div class="hero-squad-panel" id="heroSquadPanel"></div>
                     <div class="hero-intel-panel" id="heroIntelPanel"></div>
@@ -1922,6 +2174,17 @@ body {
             </div>
         </div>
     </section>
+
+    <!-- Control Centre Briefing (logged-in only) -->
+    <div class="cc-briefing hidden" id="ccBriefing">
+        <div class="cc-briefing-inner">
+            <div class="cc-briefing-header">
+                <i data-lucide="radio" class="icon"></i>
+                <div class="cc-briefing-title">Control Centre Briefing</div>
+            </div>
+            <div class="cc-briefing-items" id="ccBriefingItems"></div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -2154,11 +2417,13 @@ body {
             document.getElementById('onboardingCard').classList.remove('hidden');
             document.getElementById('tickerBar').classList.add('hidden');
             document.getElementById('newsStrip').classList.add('hidden');
+            document.getElementById('ccBriefing').classList.add('hidden');
             // Swap hero: show generic, hide personalized
             document.getElementById('heroGeneric').classList.remove('hidden');
             document.getElementById('heroMockup').classList.remove('hidden');
             document.getElementById('heroPersonalized').classList.add('hidden');
             document.getElementById('howItWorks').classList.remove('hidden');
+            if (deadlineInterval) { clearInterval(deadlineInterval); deadlineInterval = null; }
             document.getElementById('teamIdInput').focus();
         }
 
@@ -2446,7 +2711,9 @@ body {
         }
 
         // ===== PERSONALIZED HERO STATS =====
-        function renderHeroStats({ firstName, currentGW, rank, totalPoints, gwPoints, bank, squad, analysisResults, flagged }) {
+        function renderHeroStats({ firstName, currentGW, rank, totalPoints, gwPoints, bank, squad, analysisResults, flagged,
+                                   avgManagerTotal, pointsDiff, nextBracket, deadlineTime, deadlineGW, avgFDR,
+                                   priceDropRisk, priceRiseTargets, healthScore, healthDeductions, captainRec }) {
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
             el('heroManagerName', firstName);
             el('heroGwBadge', 'GW' + currentGW);
@@ -2455,17 +2722,110 @@ body {
             const posClass = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
 
-            // --- Compact Stats Bar ---
-            const statItems = [
-                { label: 'Rank', value: rank, color: '#10B981' },
-                { label: 'Total', value: totalPoints, color: '#3B82F6' },
-                { label: 'GW', value: gwPoints, color: '#8B5CF6' },
-                { label: 'Bank', value: '\u00A3' + bank + 'm', color: '#F59E0B' },
-                { label: 'Flagged', value: flagged.length, color: '#EF4444' }
-            ];
-            document.getElementById('heroStatsBar').innerHTML = statItems.map(s =>
-                `<span class="hero-stat-pill-item"><span class="hspi-dot" style="background:${s.color}"></span>${esc(s.label)} <span class="hspi-val">${esc(String(s.value))}</span></span>`
-            ).join('');
+            // ===== 4 COMMAND CARDS =====
+            let cardsHtml = '';
+
+            // CARD 1: STATUS (Rank + Points consolidated)
+            const diffSign = pointsDiff >= 0 ? '+' : '';
+            const diffClass = pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : 'neutral';
+            const rankDisplay = rank ? rank.toLocaleString() : '-';
+            let rankLine = `Rank: ${rankDisplay}`;
+            if (nextBracket) {
+                const formatBracket = n => n >= 1000000 ? (n/1000000) + 'M' : n >= 1000 ? (n/1000) + 'k' : n;
+                rankLine = `Rank: ${rankDisplay}`;
+            }
+            cardsHtml += `<div class="hero-cmd-card hero-cmd-card--status">
+                <div class="hcc-header"><div class="hcc-icon hcc-icon--status"><i data-lucide="bar-chart-2" class="icon"></i></div><span class="hcc-label">Status</span></div>
+                <div class="hcc-primary">${totalPoints ? totalPoints.toLocaleString() : '-'} pts<span class="hcc-diff ${diffClass}">${diffSign}${pointsDiff} vs avg</span></div>
+                <div class="hcc-secondary">${rankLine} &middot; GW ${gwPoints} pts</div>
+                ${nextBracket ? `<div class="hcc-secondary"><span class="hcc-gamify">${(rank - nextBracket).toLocaleString()} places to Top ${nextBracket >= 1000000 ? (nextBracket/1000000)+'M' : nextBracket >= 1000 ? (nextBracket/1000)+'k' : nextBracket}</span></div>` : ''}
+            </div>`;
+
+            // CARD 2: MARKET WATCH (Bank + price alerts)
+            let marketAlerts = '';
+            if (priceDropRisk.length === 0 && priceRiseTargets.length === 0) {
+                marketAlerts = '<div class="hcc-alert-row calm">\u2705 No price alerts</div>';
+            } else {
+                priceDropRisk.forEach(p => {
+                    const net = (p.transfersOut - p.transfersIn);
+                    marketAlerts += `<div class="hcc-alert-row price-drop">\uD83D\uDEA8 ${esc(p.name)} at risk of dropping (${Math.round(net/1000)}k net out)</div>`;
+                });
+                priceRiseTargets.forEach(p => {
+                    marketAlerts += `<div class="hcc-alert-row price-rise">\uD83D\uDCC8 ${esc(p.name)} rising (\u00A3${p.price.toFixed(1)}m)</div>`;
+                });
+            }
+            cardsHtml += `<div class="hero-cmd-card hero-cmd-card--market">
+                <div class="hcc-header"><div class="hcc-icon hcc-icon--market"><i data-lucide="trending-up" class="icon"></i></div><span class="hcc-label">Market Watch</span></div>
+                <div class="hcc-primary">\u00A3${bank}m <span style="font-size:12px;font-weight:500;color:var(--text-secondary)">in the bank</span></div>
+                ${marketAlerts}
+            </div>`;
+
+            // CARD 3: SQUAD HEALTH (score + deductions)
+            const scoreClass = healthScore >= 70 ? 'score-good' : healthScore >= 45 ? 'score-ok' : 'score-bad';
+            const counts = { star: 0, hold: 0, monitor: 0, sell: 0 };
+            analysisResults.forEach(a => { if (counts[a.verdict] !== undefined) counts[a.verdict]++; });
+            let deductionsHtml = '';
+            healthDeductions.slice(0, 3).forEach(d => {
+                deductionsHtml += `<div class="hcc-deduction-item"><i data-lucide="${d.icon}" class="icon" style="color:${d.color}"></i> ${esc(d.text)}</div>`;
+            });
+            if (healthDeductions.length === 0) {
+                deductionsHtml = '<div class="hcc-deduction-item" style="color:var(--color-primary)">\u2705 Squad is in great shape</div>';
+            }
+            let verdictBar = '<div class="hip-verdict-bar">';
+            [['star','Star'],['hold','Hold'],['monitor','Monitor'],['sell','Sell']].forEach(([k,label]) => {
+                if (counts[k] > 0) verdictBar += `<span class="hip-verdict-pill ${k}"><span class="hvp-count">${counts[k]}</span> ${label}</span>`;
+            });
+            verdictBar += '</div>';
+            cardsHtml += `<div class="hero-cmd-card hero-cmd-card--health">
+                <div class="hcc-header"><div class="hcc-icon hcc-icon--health"><i data-lucide="heart-pulse" class="icon"></i></div><span class="hcc-label">Squad Health</span></div>
+                <div class="hcc-health-score"><span class="hcc-score-num ${scoreClass}">${healthScore}</span><span class="hcc-score-label">out of<br>100</span></div>
+                <div class="hcc-deductions">${deductionsHtml}</div>
+                ${verdictBar}
+            </div>`;
+
+            // CARD 4: DEADLINE & OUTLOOK
+            let deadlineHtml = '';
+            if (deadlineTime) {
+                const dlDate = new Date(deadlineTime);
+                const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+                const dlDay = dayNames[dlDate.getUTCDay()];
+                const dlHour = String(dlDate.getUTCHours()).padStart(2, '0');
+                const dlMin = String(dlDate.getUTCMinutes()).padStart(2, '0');
+                deadlineHtml = `<div class="hcc-secondary">GW${deadlineGW} \u2014 ${dlDay} ${dlHour}:${dlMin} UTC</div>
+                    <div class="hcc-countdown" id="deadlineCountdown"></div>`;
+
+                // Start countdown
+                if (deadlineInterval) clearInterval(deadlineInterval);
+                function updateCountdown() {
+                    const now = Date.now();
+                    const diff = dlDate.getTime() - now;
+                    const cdEl = document.getElementById('deadlineCountdown');
+                    if (!cdEl) return;
+                    if (diff <= 0) { cdEl.textContent = 'LOCKED'; cdEl.className = 'hcc-countdown urgent'; return; }
+                    const days = Math.floor(diff / 86400000);
+                    const hrs = Math.floor((diff % 86400000) / 3600000);
+                    const mins = Math.floor((diff % 3600000) / 60000);
+                    let text = '';
+                    if (days > 0) text = `${days}d ${hrs}h ${mins}m left`;
+                    else if (hrs > 0) text = `${hrs}h ${mins}m left`;
+                    else text = `${mins}m left`;
+                    cdEl.textContent = text;
+                    cdEl.className = 'hcc-countdown' + (diff < 7200000 ? ' urgent' : diff < 86400000 ? ' soon' : '');
+                }
+                updateCountdown();
+                deadlineInterval = setInterval(updateCountdown, 60000);
+            } else {
+                deadlineHtml = '<div class="hcc-secondary">No upcoming deadline</div>';
+            }
+            const fdrLabel = avgFDR <= 2.5 ? 'Easy' : avgFDR <= 3.5 ? 'Medium' : 'Hard';
+            const fdrClass = avgFDR <= 2.5 ? 'fdr-easy' : avgFDR <= 3.5 ? 'fdr-medium' : 'fdr-hard';
+            cardsHtml += `<div class="hero-cmd-card hero-cmd-card--deadline">
+                <div class="hcc-header"><div class="hcc-icon hcc-icon--deadline"><i data-lucide="clock" class="icon"></i></div><span class="hcc-label">Deadline</span></div>
+                ${deadlineHtml}
+                <div class="hcc-fdr-outlook ${fdrClass}">Next 3 GWs: ${fdrLabel} (FDR ${avgFDR.toFixed(1)})</div>
+            </div>`;
+
+            document.getElementById('heroCardsGrid').innerHTML = cardsHtml;
 
             // --- Squad Panel ---
             const starters = squad.filter(p => p.pickPosition <= 11);
@@ -2502,7 +2862,7 @@ body {
             bench.forEach(p => { squadHtml += playerRow(p, true); });
             document.getElementById('heroSquadPanel').innerHTML = squadHtml;
 
-            // --- Intel Panel ---
+            // --- Intel Panel (Alerts + Fixtures) ---
             let intelHtml = '';
 
             // 1. Alerts
@@ -2525,18 +2885,7 @@ body {
             }
             intelHtml += '</div>';
 
-            // 2. Verdict Summary
-            const counts = { star: 0, hold: 0, monitor: 0, sell: 0 };
-            analysisResults.forEach(a => { if (counts[a.verdict] !== undefined) counts[a.verdict]++; });
-            intelHtml += '<div class="hip-section"><div class="hip-title">Squad Health</div><div class="hip-verdict-bar">';
-            [['star','Star'],['hold','Hold'],['monitor','Monitor'],['sell','Sell']].forEach(([k,label]) => {
-                if (counts[k] > 0) {
-                    intelHtml += `<span class="hip-verdict-pill ${k}"><span class="hvp-count">${counts[k]}</span> ${label}</span>`;
-                }
-            });
-            intelHtml += '</div></div>';
-
-            // 3. Fixture Outlook (starters only, next 3)
+            // 2. Fixture Outlook (starters only, next 3)
             intelHtml += '<div class="hip-section"><div class="hip-title">Next Fixtures</div>';
             starters.forEach(p => {
                 const fixes = (p.fixtures || []).slice(0, 3);
@@ -2551,6 +2900,76 @@ body {
             intelHtml += '</div>';
 
             document.getElementById('heroIntelPanel').innerHTML = intelHtml;
+            lucide.createIcons();
+        }
+
+        // ===== CONTROL CENTRE BRIEFING =====
+        function renderBriefing({ flagged, captainRec, priceDropRisk, analysisResults, squad }) {
+            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+            const briefingEl = document.getElementById('ccBriefing');
+            const itemsEl = document.getElementById('ccBriefingItems');
+            const items = [];
+
+            // Injury alerts
+            const injured = squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's' || p.status === 'd');
+            injured.forEach(p => {
+                const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance of playing)` : '';
+                const statusLabel = p.status === 'd' ? 'flagged' : 'unavailable';
+                items.push({
+                    cls: 'cc-injury', icon: '\u26A0\uFE0F', cat: 'Injury',
+                    text: `${p.name} is ${statusLabel}${chance}`,
+                    href: 'fpl-my-team-analysis.html'
+                });
+            });
+
+            // Captain recommendation
+            if (captainRec) {
+                items.push({
+                    cls: 'cc-captain', icon: '\uD83D\uDC51', cat: 'Captain',
+                    text: `Recommended: ${captainRec.name} (Form ${captainRec.form}, vs ${captainRec.opponent})`,
+                    href: 'fpl-transfer-wizard.html'
+                });
+            }
+
+            // Price alerts
+            priceDropRisk.forEach(p => {
+                items.push({
+                    cls: 'cc-price', icon: '\uD83D\uDCC9', cat: 'Price',
+                    text: `${p.name} at risk of price drop`,
+                    href: 'fpl-my-team-analysis.html#transfers'
+                });
+            });
+
+            // Top transfer target (highest sell-rated)
+            const topSell = flagged.find(a => a.verdict === 'sell');
+            if (topSell) {
+                items.push({
+                    cls: 'cc-transfer', icon: '\uD83D\uDD04', cat: 'Transfer',
+                    text: `Priority: sell ${topSell.name} \u2014 ${topSell.topConcern || 'Poor outlook'}`,
+                    href: 'fpl-my-team-analysis.html#transfers'
+                });
+            }
+
+            // All clear fallback
+            if (items.length === 0) {
+                items.push({
+                    cls: 'cc-clear', icon: '\u2705', cat: 'Status',
+                    text: 'All clear \u2014 your squad looks good. No urgent actions needed.',
+                    href: ''
+                });
+            }
+
+            // Render (max 5)
+            itemsEl.innerHTML = items.slice(0, 5).map(it =>
+                `<a class="cc-brief-item ${it.cls}" href="${it.href || '#'}">
+                    <span class="cc-icon">${it.icon}</span>
+                    <span class="cc-cat">${esc(it.cat)}</span>
+                    <span class="cc-text">${esc(it.text)}</span>
+                    ${it.href ? '<span class="cc-arrow">\u2192</span>' : ''}
+                </a>`
+            ).join('');
+
+            briefingEl.classList.remove('hidden');
             lucide.createIcons();
         }
 
@@ -2621,6 +3040,7 @@ body {
         }
 
         // ===== LOAD TICKER (main data loader) =====
+        let deadlineInterval = null;
         async function loadTicker(teamId) {
             const tickerBar = document.getElementById('tickerBar');
             const tickerLoading = document.getElementById('tickerLoading');
@@ -2640,6 +3060,7 @@ body {
 
                 const managerData = await mgrRes.json();
                 const currEvent = bootData.events.find(e => e.is_current);
+                const nextEvent = bootData.events.find(e => e.is_next);
                 const currentGW = currEvent ? currEvent.id : 1;
 
                 const picksRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`);
@@ -2690,12 +3111,90 @@ body {
 
                 const bank = (picksData.entry_history?.bank || 0) / 10;
                 const gwPoints = picksData.entry_history?.points || 0;
+                const totalPointsRaw = managerData.summary_overall_points || 0;
+                const rankRaw = managerData.summary_overall_rank || 0;
+
+                // --- NEW: Cumulative average manager score ---
+                const finishedEvents = bootData.events.filter(e => e.finished);
+                const avgManagerTotal = finishedEvents.reduce((s, e) => s + (e.average_entry_score || 0), 0);
+                const pointsDiff = totalPointsRaw - avgManagerTotal;
+
+                // --- NEW: Gamified rank target ---
+                const rankBrackets = [1000, 5000, 10000, 50000, 100000, 250000, 500000, 1000000];
+                let nextBracket = null;
+                for (const b of rankBrackets) {
+                    if (rankRaw > b) { nextBracket = b; break; }
+                }
+
+                // --- NEW: Deadline info from next event ---
+                const deadlineTime = nextEvent ? nextEvent.deadline_time : (currEvent ? currEvent.deadline_time : null);
+                const deadlineGW = nextEvent ? nextEvent.id : currentGW;
+
+                // --- NEW: Squad avg FDR for next 3 GWs ---
+                const starters = squad.filter(p => p.pickPosition <= 11);
+                let avgFDR = 3.0;
+                const fdrValues = [];
+                starters.forEach(p => {
+                    const fixes = (p.fixtures || []).slice(0, 3);
+                    fixes.forEach(f => fdrValues.push(f.difficulty || 3));
+                });
+                if (fdrValues.length > 0) {
+                    avgFDR = fdrValues.reduce((s, v) => s + v, 0) / fdrValues.length;
+                }
+
+                // --- NEW: Market watch - price risk players ---
+                const squadIds = new Set(squad.map(p => p.id));
+                const priceDropRisk = allPlayers
+                    .filter(p => squadIds.has(p.id) && (p.transfersOut - p.transfersIn) > 50000)
+                    .sort((a, b) => (b.transfersOut - b.transfersIn) - (a.transfersOut - a.transfersIn))
+                    .slice(0, 2);
+                const priceRiseTargets = allPlayers
+                    .filter(p => !squadIds.has(p.id) && (p.transfersIn - p.transfersOut) > 80000 && p.ownership > 5)
+                    .sort((a, b) => (b.transfersIn - b.transfersOut) - (a.transfersIn - a.transfersOut))
+                    .slice(0, 1);
+
+                // --- NEW: Squad health score (0-100) ---
+                const verdictWeights = { star: 100, hold: 80, monitor: 40, sell: 10 };
+                const starterResults = analysisResults.filter((_, i) => squad[i]?.pickPosition <= 11);
+                const benchResults = analysisResults.filter((_, i) => squad[i]?.pickPosition >= 12);
+                const starterScore = starterResults.length > 0 ? starterResults.reduce((s, a) => s + (verdictWeights[a.verdict] || 50), 0) / starterResults.length : 50;
+                const benchScore = benchResults.length > 0 ? benchResults.reduce((s, a) => s + (verdictWeights[a.verdict] || 50), 0) / benchResults.length : 50;
+                const healthScore = Math.round(starterScore * 0.8 + benchScore * 0.2);
+
+                // Health deductions explanation
+                const healthDeductions = [];
+                const injuredCount = squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's').length;
+                const doubtfulCount = squad.filter(p => p.status === 'd').length;
+                if (injuredCount > 0) healthDeductions.push({ icon: 'circle-x', text: `${injuredCount} unavailable player${injuredCount > 1 ? 's' : ''}`, color: '#EF4444' });
+                if (doubtfulCount > 0) healthDeductions.push({ icon: 'alert-triangle', text: `${doubtfulCount} doubtful player${doubtfulCount > 1 ? 's' : ''}`, color: '#F59E0B' });
+                const sellCount = analysisResults.filter(a => a.verdict === 'sell').length;
+                if (sellCount > 0) healthDeductions.push({ icon: 'trending-down', text: `${sellCount} rated Sell`, color: '#EF4444' });
+                const toughFixStarters = starters.filter(p => {
+                    const f = (p.fixtures || [])[0];
+                    return f && f.difficulty >= 4;
+                });
+                if (toughFixStarters.length >= 3) healthDeductions.push({ icon: 'calendar-x', text: `${toughFixStarters.length} starters face tough fixtures`, color: '#F59E0B' });
+
+                // --- NEW: Captain recommendation (highest form × inverse FDR among starters) ---
+                let captainRec = null;
+                let bestCaptainScore = -1;
+                starters.forEach(p => {
+                    const nextFix = (p.fixtures || [])[0];
+                    const fdr = nextFix ? nextFix.difficulty : 3;
+                    const fdrMult = { 1: 1.5, 2: 1.25, 3: 1.0, 4: 0.75, 5: 0.5 }[fdr] || 1.0;
+                    const score = p.form * fdrMult;
+                    if (score > bestCaptainScore && p.status !== 'i' && p.status !== 'u' && p.status !== 's') {
+                        bestCaptainScore = score;
+                        const oppName = nextFix ? `${nextFix.opponent}${nextFix.isHome ? '' : ' (A)'}` : '';
+                        captainRec = { name: p.name, form: p.form, opponent: oppName, xP: (p.form * fdrMult).toFixed(1) };
+                    }
+                });
 
                 renderTicker(
                     `${managerData.player_first_name} ${managerData.player_last_name}`,
                     currentGW,
-                    managerData.summary_overall_rank?.toLocaleString() || '-',
-                    managerData.summary_overall_points?.toLocaleString() || '-',
+                    rankRaw ? rankRaw.toLocaleString() : '-',
+                    totalPointsRaw ? totalPointsRaw.toLocaleString() : '-',
                     gwPoints,
                     bank.toFixed(1),
                     flagged
@@ -2704,14 +3203,27 @@ body {
                 renderHeroStats({
                     firstName: managerData.player_first_name,
                     currentGW,
-                    rank: managerData.summary_overall_rank?.toLocaleString() || '-',
-                    totalPoints: managerData.summary_overall_points?.toLocaleString() || '-',
+                    rank: rankRaw,
+                    totalPoints: totalPointsRaw,
                     gwPoints,
                     bank: bank.toFixed(1),
                     squad,
                     analysisResults,
-                    flagged
+                    flagged,
+                    avgManagerTotal,
+                    pointsDiff,
+                    nextBracket,
+                    deadlineTime,
+                    deadlineGW,
+                    avgFDR,
+                    priceDropRisk,
+                    priceRiseTargets,
+                    healthScore,
+                    healthDeductions,
+                    captainRec
                 });
+
+                renderBriefing({ flagged, captainRec, priceDropRisk, analysisResults, squad });
 
                 renderNewsStrip(allPlayers, squad);
             } catch (err) {
