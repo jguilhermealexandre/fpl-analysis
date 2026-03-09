@@ -1316,37 +1316,30 @@
         .news-section { margin-bottom: 28px; }
         .news-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .news-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-default); }
-        .news-card { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: var(--surface-1); border: 1px solid var(--border-default); border-left: 3px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 8px; transition: all 150ms; }
+        .news-card { padding: 14px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 6px; transition: all 150ms; position: relative; }
         .news-card:hover { border-color: var(--border-emphasis); background: var(--surface-2); }
-        .news-card.cat-injury { border-left-color: var(--color-error); }
-        .news-card.cat-price { border-left-color: #F59E0B; }
-        .news-card.cat-transfer { border-left-color: var(--color-success); }
-        .news-card.cat-form { border-left-color: var(--color-info); }
-        .news-card.cat-external { border-left-color: #8B5CF6; }
-        .news-card-icon { font-size: 18px; flex-shrink: 0; width: 28px; text-align: center; padding-top: 1px; }
-        .news-card-body { flex: 1; min-width: 0; }
-        .news-card-headline { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; line-height: 1.4; }
-        .news-card-detail { font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; }
-        .news-card-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
-        .news-badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 9999px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
-        .news-badge.badge-injury { background: rgba(248,113,113,0.12); color: #EF4444; }
-        .news-badge.badge-price { background: rgba(245,158,11,0.12); color: #D97706; }
-        .news-badge.badge-transfer { background: rgba(74,222,128,0.12); color: #22C55E; }
-        .news-badge.badge-form { background: rgba(96,165,250,0.12); color: #3B82F6; }
-        .news-badge.badge-external { background: rgba(139,92,246,0.12); color: #8B5CF6; }
-        .news-badge.badge-bbc { background: rgba(187,29,29,0.12); color: #BB1D1D; }
-        .news-badge.badge-pl { background: rgba(56,0,106,0.12); color: #38006A; }
-        .news-timestamp { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; }
-        .news-card-link { color: var(--color-info); text-decoration: none; font-weight: 600; }
-        .news-card-link:hover { text-decoration: underline; }
+        .news-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .news-card-category { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+        .news-card-category.cat-injury { background: rgba(248,113,113,0.1); color: #EF4444; }
+        .news-card-category.cat-price { background: rgba(245,158,11,0.1); color: #D97706; }
+        .news-card-category.cat-transfer { background: rgba(74,222,128,0.1); color: #22C55E; }
+        .news-card-category.cat-external { background: rgba(139,92,246,0.1); color: #8B5CF6; }
+        .news-card-category.cat-bbc { background: rgba(187,29,29,0.1); color: #BB1D1D; }
+        .news-card-category.cat-pl { background: rgba(56,0,106,0.1); color: #38006A; }
+        .news-card-time { font-size: 10.5px; color: var(--text-muted); margin-left: auto; }
+        .news-card-headline { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.45; margin-bottom: 4px; }
+        .news-card-detail { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+        .news-card-link { color: var(--text-primary); text-decoration: none; }
+        .news-card-link:hover { color: var(--color-info); }
+        .news-card-squad { position: absolute; top: 12px; right: 14px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 2px 6px; border-radius: 4px; background: rgba(16,185,129,0.1); color: var(--color-success); }
         .news-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
         .news-loading { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         @media (max-width: 768px) {
             .news-container { padding: 16px; }
             .news-filter-bar { gap: 4px; padding: 3px; }
             .news-filter-btn { padding: 5px 10px; font-size: 11px; }
-            .news-card { padding: 10px 12px; gap: 10px; }
-            .news-card-headline { font-size: 12.5px; }
+            .news-card { padding: 12px 14px; }
+            .news-card-headline { font-size: 13px; }
         }
     </style>
 </head>
@@ -2693,14 +2686,15 @@
             const items = [];
             const squadSet = new Set(squadIds);
             const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
             // INJURY / STATUS news
             players.forEach(p => {
                 if (p.news && p.news.trim()) {
-                    const statusIcons = { i: '\u{1F3E5}', d: '\u{1F914}', u: '\u{1F6AB}', s: '\u{1F7E5}' };
+                    if (p.newsAdded && new Date(p.newsAdded).getTime() < thirtyDaysAgo) return;
                     const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance)` : '';
                     items.push({
-                        category: 'injury', icon: statusIcons[p.status] || '\u{2139}\u{FE0F}',
+                        category: 'injury', categoryLabel: 'Injury',
                         headline: `${p.name} — ${p.news}${chance}`,
                         detail: `${p.team} \u00B7 ${posNames[p.position] || ''} \u00B7 \u00A3${p.price.toFixed(1)}m`,
                         player: p, isSquad: squadSet.has(p.id),
@@ -2715,7 +2709,7 @@
                     const dir = p.costChangeEvent > 0 ? '\u2191' : '\u2193';
                     const abs = Math.abs(p.costChangeEvent / 10).toFixed(1);
                     items.push({
-                        category: 'price', icon: p.costChangeEvent > 0 ? '\ud83d\udcc8' : '\ud83d\udcc9',
+                        category: 'price', categoryLabel: 'Price',
                         headline: `${p.name} ${dir} \u00A3${abs}m this gameweek`,
                         detail: `Now \u00A3${p.price.toFixed(1)}m \u00B7 ${p.team} \u00B7 ${p.ownership}% owned`,
                         player: p, isSquad: squadSet.has(p.id),
@@ -2730,34 +2724,12 @@
                 const net = p.transfersIn - p.transfersOut;
                 if (Math.abs(net) >= transferThreshold) {
                     const dir = net > 0 ? 'in' : 'out';
-                    const emoji = net > 0 ? '\ud83d\udce5' : '\ud83d\udce4';
                     items.push({
-                        category: 'transfer', icon: emoji,
+                        category: 'transfer', categoryLabel: 'Transfer',
                         headline: `${p.name} sees ${Math.abs(net).toLocaleString()} net transfers ${dir}`,
                         detail: `${p.transfersIn.toLocaleString()} in / ${p.transfersOut.toLocaleString()} out \u00B7 ${p.team}`,
                         player: p, isSquad: squadSet.has(p.id),
                         timestamp: null, sortWeight: squadSet.has(p.id) ? 70 : 20
-                    });
-                }
-            });
-
-            // FORM news
-            players.forEach(p => {
-                if (p.form >= 7.0) {
-                    items.push({
-                        category: 'form', icon: '\ud83d\udd25',
-                        headline: `${p.name} on fire \u2014 form: ${p.form.toFixed(1)}`,
-                        detail: `${p.points} pts \u00B7 ${p.team} \u00B7 ${posNames[p.position] || ''}`,
-                        player: p, isSquad: squadSet.has(p.id),
-                        timestamp: null, sortWeight: squadSet.has(p.id) ? 60 : 15
-                    });
-                } else if (p.form <= 2.0 && p.minutes > 300) {
-                    items.push({
-                        category: 'form', icon: '\u{1F9CA}',
-                        headline: `${p.name} ice cold \u2014 form: ${p.form.toFixed(1)}`,
-                        detail: `${p.points} pts \u00B7 ${p.team} \u00B7 ${posNames[p.position] || ''}`,
-                        player: p, isSquad: squadSet.has(p.id),
-                        timestamp: null, sortWeight: squadSet.has(p.id) ? 60 : 10
                     });
                 }
             });
@@ -2786,7 +2758,7 @@
                     if (data.status !== 'ok' || !data.items) continue;
                     data.items.slice(0, 8).forEach(article => {
                         items.push({
-                            category: 'external', icon: '\ud83d\udcf0',
+                            category: 'external', categoryLabel: feed.source,
                             headline: article.title,
                             link: article.link,
                             thumbnail: article.thumbnail || article.enclosure?.link || null,
@@ -2824,30 +2796,27 @@
                 injury: fplItems.filter(i => i.category === 'injury').length,
                 price: fplItems.filter(i => i.category === 'price').length,
                 transfer: fplItems.filter(i => i.category === 'transfer').length,
-                form: fplItems.filter(i => i.category === 'form').length,
                 external: externalItems.length
             };
 
             function renderCard(item) {
-                const catClass = `cat-${escHTML(item.category)}`;
-                const badgeClass = item.badge ? `badge-${escHTML(item.badge)}` : `badge-${escHTML(item.category)}`;
-                const badgeLabel = item.badge === 'bbc' ? 'BBC' : item.badge === 'pl' ? 'PL' : escHTML(item.category.charAt(0).toUpperCase() + item.category.slice(1));
+                const badgeCat = item.badge || item.category;
+                const badgeLabel = item.badge === 'bbc' ? 'BBC Sport' : item.badge === 'pl' ? 'Premier League' : escHTML(item.categoryLabel || item.category);
                 const safeHeadline = escHTML(item.headline);
                 const safeDetail = escHTML(item.detail || '');
                 const isValidLink = item.link && /^https?:\/\//i.test(item.link);
                 const headlineHTML = isValidLink
                     ? `<a href="${escHTML(item.link)}" target="_blank" rel="noopener noreferrer" class="news-card-link">${safeHeadline}</a>`
                     : safeHeadline;
-                return `<div class="news-card ${catClass}">
-                    <div class="news-card-icon">${item.icon}</div>
-                    <div class="news-card-body">
-                        <div class="news-card-headline">${headlineHTML}</div>
-                        <div class="news-card-detail">${safeDetail}</div>
-                        <div class="news-card-meta">
-                            <span class="news-badge ${badgeClass}">${badgeLabel}</span>
-                            ${item.timestamp ? `<span class="news-timestamp">${timeAgo(item.timestamp)}</span>` : ''}
-                        </div>
+                const squadBadge = item.isSquad ? `<span class="news-card-squad">Your Squad</span>` : '';
+                return `<div class="news-card">
+                    ${squadBadge}
+                    <div class="news-card-top">
+                        <span class="news-card-category cat-${escHTML(badgeCat)}">${badgeLabel}</span>
+                        ${item.timestamp ? `<span class="news-card-time">${timeAgo(item.timestamp)}</span>` : ''}
                     </div>
+                    <div class="news-card-headline">${headlineHTML}</div>
+                    <div class="news-card-detail">${safeDetail}</div>
                 </div>`;
             }
 
@@ -2870,7 +2839,7 @@
                     html += renderSection('\ud83d\udcf0 External News', externalItems);
                 } else {
                     const catItems = fplItems.filter(i => i.category === filter);
-                    const catTitlesSafe = { injury: '\ud83c\udfe5 Injuries & Availability', price: '\ud83d\udcb0 Price Changes', transfer: '\ud83d\udce6 Transfer Activity', form: '\ud83d\udd25 Form Watch' };
+                    const catTitlesSafe = { injury: '\ud83c\udfe5 Injuries & Availability', price: '\ud83d\udcb0 Price Changes', transfer: '\ud83d\udce6 Transfer Activity' };
                     html += renderSection(catTitlesSafe[filter] || filter, catItems);
                 }
                 if (!html) html = '<div class="news-empty">No news items found</div>';
@@ -2883,7 +2852,6 @@
                 <button class="news-filter-btn" data-filter="injury">Injuries (${filterCounts.injury})</button>
                 <button class="news-filter-btn" data-filter="price">Prices (${filterCounts.price})</button>
                 <button class="news-filter-btn" data-filter="transfer">Transfers (${filterCounts.transfer})</button>
-                <button class="news-filter-btn" data-filter="form">Form (${filterCounts.form})</button>
                 <button class="news-filter-btn" data-filter="external">External (${filterCounts.external})</button>
             </div>`;
 

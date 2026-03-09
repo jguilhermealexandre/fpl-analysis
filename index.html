@@ -1405,6 +1405,7 @@ body {
         .news-strip { background: var(--surface-0); border-bottom: 1px solid var(--border-default); overflow: hidden; height: 32px; display: flex; align-items: center; }
         .news-strip-track { display: flex; width: max-content; gap: 12px; align-items: center; animation: news-scroll 30s linear infinite; }
         .news-strip:hover .news-strip-track { animation-play-state: paused; }
+        .news-strip-content { display: inline-flex; align-items: center; gap: 12px; padding: 0 12px; }
         .news-strip-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); white-space: nowrap; padding-right: 4px; border-right: 1px solid var(--border-default); margin-right: 4px; }
         .news-strip-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; background: var(--surface-2); border: 1px solid var(--border-default); border-radius: 9999px; font-size: 11px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; transition: all 150ms; }
         .news-strip-item:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
@@ -1412,7 +1413,6 @@ body {
         .news-strip-dot.dot-injury { background: #EF4444; }
         .news-strip-dot.dot-price { background: #F59E0B; }
         .news-strip-dot.dot-transfer { background: #22C55E; }
-        .news-strip-dot.dot-form { background: #3B82F6; }
         .news-strip-dot.dot-external { background: #8B5CF6; }
         @media (max-width: 768px) {
             .news-strip-track { gap: 8px; }
@@ -2237,12 +2237,6 @@ body {
                         isSquad: squadIds.has(p.id), weight: squadIds.has(p.id) ? 80 : 25
                     });
                 }
-            });
-
-            // Form highlights (squad only)
-            squad.forEach(p => {
-                if (p.form >= 7.0) items.push({ cat: 'form', text: `${p.name} on fire (${p.form.toFixed(1)})`, isSquad: true, weight: 60 });
-                else if (p.form <= 2.0 && p.minutes > 300) items.push({ cat: 'form', text: `${p.name} cold streak (${p.form.toFixed(1)})`, isSquad: true, weight: 55 });
             });
 
             // Transfer surges
