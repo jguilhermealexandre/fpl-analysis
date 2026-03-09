@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>League Rivals | FPL Analysis</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -773,17 +774,100 @@
             font-size: 14px;
         }
 
+        /* ===== CAPTAIN RACE ===== */
+        .captain-hero { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-6); text-align: center; }
+        .captain-hero-name { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2); }
+        .captain-hero-meta { font-size: 13px; color: var(--text-muted); margin-bottom: var(--space-4); }
+        .captain-badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 700; text-transform: uppercase; background: #F59E0B; color: #000; }
+        .captain-badge.vc { background: var(--surface-3); color: var(--text-secondary); }
+        .bench-badge { display: inline-block; padding: 2px 6px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 600; background: var(--surface-3); color: var(--text-muted); }
+        .captain-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface-1); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-default); }
+        .captain-table th, .captain-table td { padding: var(--space-3) var(--space-4); text-align: left; border-bottom: 1px solid var(--border-subtle); }
+        .captain-table th { background: var(--surface-2); font-weight: 600; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .captain-table tr:hover td { background: var(--surface-0); }
+        .captain-table tr.you-row { background: rgba(59, 130, 246, 0.05); }
+        .eo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); }
+        .eo-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); transition: all 150ms; }
+        .eo-card:hover { transform: translateY(-2px); border-color: var(--border-emphasis); }
+        .eo-card.your-edge { border-left: 3px solid var(--color-success); }
+        .eo-card.rival-edge { border-left: 3px solid var(--color-error); }
+        .eo-bars { margin-top: var(--space-3); }
+        .eo-bar-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); font-size: 11px; }
+        .eo-bar-label { width: 80px; color: var(--text-muted); flex-shrink: 0; }
+        .eo-bar-track { flex: 1; height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
+        .eo-bar-fill { height: 100%; border-radius: 3px; }
+        .eo-bar-value { width: 40px; text-align: right; font-weight: 600; font-family: 'Space Grotesk', sans-serif; font-size: 12px; }
+
+        /* ===== LEAGUE RACE ===== */
+        .chart-container { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-6); position: relative; height: 380px; }
+        .chart-toggle { position: absolute; top: var(--space-4); right: var(--space-4); display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius-md); padding: 2px; z-index: 2; }
+        .chart-toggle button { padding: 4px 12px; border: none; background: transparent; border-radius: var(--radius-sm); font-family: inherit; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all 150ms; }
+        .chart-toggle button.active { background: var(--surface-1); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .momentum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); }
+        .momentum-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); }
+        .momentum-card .mc-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-2); }
+        .momentum-card .mc-value { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; }
+        .momentum-card .mc-desc { font-size: 12px; color: var(--text-muted); margin-top: var(--space-1); }
+        .league-mini-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--surface-1); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-default); }
+        .league-mini-table th, .league-mini-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--border-subtle); }
+        .league-mini-table th { background: var(--surface-2); font-weight: 600; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .league-mini-table tr:hover td { background: var(--surface-0); }
+        .league-mini-table tr.you-row { background: rgba(59, 130, 246, 0.05); }
+        .sparkline-container { display: inline-flex; align-items: flex-end; gap: 1px; height: 20px; vertical-align: middle; }
+        .sparkline-bar { width: 4px; border-radius: 1px; background: var(--color-primary); min-height: 2px; }
+
+        /* ===== SQUAD STRENGTH ===== */
+        .strength-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); }
+        .strength-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); transition: all 150ms; }
+        .strength-card:hover { transform: translateY(-2px); }
+        .strength-card.you-card { border: 2px solid var(--color-info); }
+        .strength-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); }
+        .strength-card-name { font-weight: 600; font-size: 14px; }
+        .strength-card-fdr { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; }
+        .fdr-chip { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; border-radius: 4px; font-size: 10px; font-weight: 600; color: #fff; }
+        .fdr-chip.fdr-1 { background: var(--fdr-1); color: #000; }
+        .fdr-chip.fdr-2 { background: var(--fdr-2); color: #000; }
+        .fdr-chip.fdr-3 { background: var(--fdr-3); }
+        .fdr-chip.fdr-4 { background: var(--fdr-4); }
+        .fdr-chip.fdr-5 { background: var(--fdr-5); }
+        .fdr-strip { display: flex; gap: 3px; }
+        .chip-played-badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 700; text-transform: uppercase; background: #A78BFA; color: #fff; }
+        .pitch-container { background: linear-gradient(180deg, #2d8a4e 0%, #256d3b 100%); border-radius: var(--radius-lg); padding: var(--space-6) var(--space-4); margin-bottom: var(--space-6); position: relative; overflow: hidden; min-height: 380px; }
+        .pitch-container::before { content: ''; position: absolute; top: 50%; left: 10%; right: 10%; border-top: 1px solid rgba(255,255,255,0.15); }
+        .pitch-container::after { content: ''; position: absolute; top: calc(50% - 60px); left: calc(50% - 60px); width: 120px; height: 120px; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; }
+        .pitch-row { display: flex; justify-content: center; gap: var(--space-4); margin-bottom: var(--space-4); position: relative; z-index: 1; }
+        .pitch-player { text-align: center; min-width: 70px; }
+        .pitch-player-circle { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-1); font-size: 11px; font-weight: 700; color: #fff; border: 2px solid rgba(255,255,255,0.5); }
+        .pitch-player-circle.gk { background: var(--position-gk); }
+        .pitch-player-circle.def { background: var(--position-def); }
+        .pitch-player-circle.mid { background: var(--position-mid); }
+        .pitch-player-circle.fwd { background: var(--position-fwd); }
+        .pitch-player-circle.you-have { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.5); }
+        .pitch-player-circle.you-missing { border-color: rgba(255,255,255,0.2); opacity: 0.7; }
+        .pitch-player-name { font-size: 10px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .pitch-player-own { font-size: 9px; color: rgba(255,255,255,0.7); }
+        .pitch-label { text-align: center; color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 600; margin-bottom: var(--space-6); text-transform: uppercase; letter-spacing: 1px; }
+        .pos-comparison { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+        @media (max-width: 600px) { .pos-comparison { grid-template-columns: repeat(2, 1fr); } }
+        .pos-compare-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; }
+        .pos-compare-card .pos-icon { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; margin-bottom: var(--space-2); }
+        .pos-compare-bar { height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; margin-top: var(--space-2); }
+        .pos-compare-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+        .h2h-panel { margin-top: var(--space-6); padding-top: var(--space-6); border-top: 1px solid var(--border-default); }
+        .matrix-cell.captain { background: #F59E0B; color: #000; font-weight: 700; }
+        .matrix-cell.benched { background: var(--surface-3); color: var(--text-muted); font-style: italic; }
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
             .nav-container { padding: 0 var(--space-4); }
             .main-content { padding: var(--space-4); }
             .player-grid { grid-template-columns: 1fr; }
-            .matrix-table th.rotate {
-                writing-mode: horizontal-tb;
-                transform: none;
-                height: auto;
-                font-size: 8px;
-            }
+            .matrix-table th.rotate { writing-mode: horizontal-tb; transform: none; height: auto; font-size: 8px; }
+            .chart-container { height: 280px; }
+            .pos-comparison { grid-template-columns: repeat(2, 1fr); }
+            .pitch-player { min-width: 55px; }
+            .pitch-player-circle { width: 36px; height: 36px; font-size: 9px; }
+            .strength-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -850,9 +934,11 @@
     <!-- Sub-Nav Tabs (disabled until data loads) -->
     <div class="tabs-container" id="rivalsTabsContainer">
         <div class="tabs">
-            <button class="tab active" onclick="showTab('insights')" disabled>Key Insights</button>
-            <button class="tab" onclick="showTab('matrix')" disabled>Ownership Matrix</button>
-            <button class="tab" onclick="showTab('rivals')" disabled>Rival Comparison</button>
+            <button class="tab active" onclick="showTab('insights')" disabled>Insights</button>
+            <button class="tab" onclick="showTab('captain')" disabled>Captain Race</button>
+            <button class="tab" onclick="showTab('race')" disabled>League Race</button>
+            <button class="tab" onclick="showTab('strength')" disabled>Squad Strength</button>
+            <button class="tab" onclick="showTab('matrix')" disabled>Matrix</button>
         </div>
     </div>
 
@@ -959,13 +1045,88 @@
                 </div>
             </div>
 
+            <!-- Tab: Captain Race -->
+            <div class="tab-content" id="tab-captain">
+                <div class="section-header">
+                    <h2 style="color: var(--color-warning);"><i data-lucide="crown" style="width:20px;height:20px;display:inline;"></i> Captain Consensus</h2>
+                </div>
+                <div class="captain-hero" id="captainHero"></div>
+
+                <div class="section-header" style="margin-top:var(--space-6);">
+                    <h2><i data-lucide="users" style="width:20px;height:20px;display:inline;"></i> Captain Choices</h2>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="captain-table">
+                        <thead><tr><th>Manager</th><th>Captain</th><th>Vice Captain</th><th style="text-align:center;">Form</th><th style="text-align:center;">Total Pts</th></tr></thead>
+                        <tbody id="captainTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="section-header" style="margin-top:var(--space-6);">
+                    <h2><i data-lucide="bar-chart-3" style="width:20px;height:20px;display:inline;"></i> Effective Ownership</h2>
+                </div>
+                <p class="section-desc">Captain counts as 2× ownership, TC as 3×. Green border = your EO advantage. Red = rival advantage.</p>
+                <div class="eo-grid" id="eoGrid"></div>
+            </div>
+
+            <!-- Tab: League Race -->
+            <div class="tab-content" id="tab-race">
+                <div class="section-header">
+                    <h2><i data-lucide="trending-up" style="width:20px;height:20px;display:inline;"></i> Momentum</h2>
+                </div>
+                <div class="momentum-grid" id="momentumGrid"></div>
+
+                <div class="section-header">
+                    <h2><i data-lucide="line-chart" style="width:20px;height:20px;display:inline;"></i> Points Progression</h2>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-toggle">
+                        <button class="active" data-mode="absolute" onclick="toggleChartMode('absolute')">Total Points</button>
+                        <button data-mode="gap" onclick="toggleChartMode('gap')">Gap to Leader</button>
+                    </div>
+                    <canvas id="raceChart"></canvas>
+                </div>
+
+                <div class="section-header">
+                    <h2><i data-lucide="table" style="width:20px;height:20px;display:inline;"></i> League Table</h2>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="league-mini-table">
+                        <thead><tr><th>#</th><th>Manager</th><th style="text-align:center;">GW</th><th style="text-align:center;">Total</th><th style="text-align:center;">Transfers</th><th style="text-align:center;">Hits</th><th style="text-align:center;">Value</th><th style="text-align:center;">Last 6</th><th>Chips</th></tr></thead>
+                        <tbody id="leagueTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Squad Strength -->
+            <div class="tab-content" id="tab-strength">
+                <div class="section-header">
+                    <h2><i data-lucide="shield" style="width:20px;height:20px;display:inline;"></i> Position Comparison</h2>
+                </div>
+                <p class="section-desc">Your starting XI total points per position vs rival average.</p>
+                <div class="pos-comparison" id="posComparison"></div>
+
+                <div class="section-header">
+                    <h2 style="color:var(--color-success);"><i data-lucide="target" style="width:20px;height:20px;display:inline;"></i> Most Popular XI</h2>
+                </div>
+                <p class="section-desc">The template team built from the most-started players across all managers.</p>
+                <div class="pitch-container" id="templatePitch"></div>
+
+                <div class="section-header">
+                    <h2><i data-lucide="calendar" style="width:20px;height:20px;display:inline;"></i> Fixture Difficulty Ranking</h2>
+                </div>
+                <p class="section-desc">Average FDR of each manager's starting XI for the next 3 gameweeks. Lower = easier run.</p>
+                <div class="strength-grid" id="strengthGrid"></div>
+            </div>
+
             <!-- Tab: Matrix -->
             <div class="tab-content" id="tab-matrix">
                 <div class="matrix-section">
                     <div class="section-header">
-                        <h2><i data-lucide="bar-chart-3" style="width:20px;height:20px;display:inline;"></i> Full Ownership Matrix</h2>
+                        <h2><i data-lucide="grid-3x3" style="width:20px;height:20px;display:inline;"></i> Full Ownership Matrix</h2>
                     </div>
-                    
+                    <p class="section-desc">✓ = starts, C = captains, B = benched. Your column: blue = own, red = missing.</p>
+
                     <div class="matrix-controls">
                         <div class="matrix-filter">
                             <label>Position:</label>
@@ -986,7 +1147,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="matrix-container">
                         <table class="matrix-table" id="matrixTable">
                             <thead id="matrixHead"></thead>
@@ -994,24 +1155,22 @@
                         </table>
                     </div>
                 </div>
-            </div>
 
-            <!-- Tab: Rivals -->
-            <div class="tab-content" id="tab-rivals">
-                <div class="section-header">
-                    <h2><i data-lucide="users" style="width:20px;height:20px;display:inline;"></i> Head-to-Head Comparison</h2>
-                </div>
-                
-                <div class="matrix-controls">
-                    <div class="matrix-filter">
-                        <label>Compare with:</label>
-                        <select id="rivalSelect" onchange="renderRivalComparison()">
-                            <option value="">-- Select a rival --</option>
-                        </select>
+                <!-- Head-to-Head (merged from Rivals tab) -->
+                <div class="h2h-panel">
+                    <div class="section-header">
+                        <h2><i data-lucide="swords" style="width:20px;height:20px;display:inline;"></i> Head-to-Head Comparison</h2>
                     </div>
+                    <div class="matrix-controls">
+                        <div class="matrix-filter">
+                            <label>Compare with:</label>
+                            <select id="rivalSelect" onchange="renderRivalComparison()">
+                                <option value="">-- Select a rival --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="rivalComparison"></div>
                 </div>
-                
-                <div id="rivalComparison"></div>
             </div>
         </div>
 
@@ -1031,30 +1190,40 @@
         let leagueData = null;
         let managers = [];
         let managerPicks = {};
+        let managerHistory = {};
         let myTeamId = null;
         let myPicks = new Set();
+        let myStarters = new Set();
         let currentGW = 1;
+        let fixtures = [];
+        let teamFixtures = {};
+        let raceChart = null;
         
         // ===== CONFIGURATION =====
-        // Local pre-fetched data (updated daily via GitHub Actions)
         const BOOTSTRAP_URL = 'data/bootstrap-static.json';
-        
-        // Cloudflare Worker URL for dynamic API calls (league data, manager picks)
-        // SETUP: Deploy fpl-proxy-worker.js to Cloudflare Workers and paste your URL here
+        const FIXTURES_URL = 'data/fixtures.json';
         const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
         
         const POS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+        const POS_COLORS = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+        const POS_CLASS = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
         const MAX_MANAGERS = 15;
+        const CHART_COLORS = [
+            '#3B82F6','#EF4444','#10B981','#F59E0B','#8B5CF6',
+            '#EC4899','#14B8A6','#F97316','#6366F1','#84CC16',
+            '#06B6D4','#E11D48','#A3E635','#FB923C','#C084FC'
+        ];
         
         // ===== INIT =====
         async function init() {
             try {
-                // Load bootstrap from local pre-fetched data (no CORS needed!)
-                const res = await fetch(BOOTSTRAP_URL);
-                if (!res.ok) throw new Error('Failed to load bootstrap data');
-                const data = await res.json();
+                const [bootstrapRes, fixturesRes] = await Promise.all([
+                    fetch(BOOTSTRAP_URL),
+                    fetch(FIXTURES_URL)
+                ]);
+                if (!bootstrapRes.ok) throw new Error('Failed to load bootstrap data');
+                const data = await bootstrapRes.json();
                 
-                // Store players
                 allPlayers = data.elements.map(p => ({
                     id: p.id,
                     name: p.web_name,
@@ -1064,25 +1233,38 @@
                     posName: POS[p.element_type],
                     price: p.now_cost / 10,
                     pts: p.total_points,
-                    form: p.form,
+                    form: parseFloat(p.form) || 0,
                     own: p.selected_by_percent
                 }));
                 
                 allPlayersById = {};
                 allPlayers.forEach(p => allPlayersById[p.id] = p);
                 
-                // Teams
                 data.teams.forEach(t => teams[t.id] = t);
-                
-                // Current GW
                 currentGW = data.events.find(e => e.is_current)?.id || 1;
                 
-                console.log(`Loaded ${allPlayers.length} players, current GW: ${currentGW}`);
+                if (fixturesRes.ok) {
+                    fixtures = await fixturesRes.json();
+                    buildTeamFixtures();
+                }
                 
+                console.log(`Loaded ${allPlayers.length} players, current GW: ${currentGW}`);
             } catch (err) {
                 console.error('Init error:', err);
                 showStatus('Failed to load player data. Please refresh the page.', 'error');
             }
+        }
+        
+        function buildTeamFixtures() {
+            teamFixtures = {};
+            const upcoming = fixtures.filter(f => !f.finished && f.event > 0);
+            upcoming.forEach(f => {
+                if (!teamFixtures[f.team_h]) teamFixtures[f.team_h] = [];
+                if (!teamFixtures[f.team_a]) teamFixtures[f.team_a] = [];
+                teamFixtures[f.team_h].push({ opponent: f.team_a, opponentName: teams[f.team_a]?.short_name || '???', fdr: f.team_h_difficulty, home: true, gw: f.event });
+                teamFixtures[f.team_a].push({ opponent: f.team_h, opponentName: teams[f.team_h]?.short_name || '???', fdr: f.team_a_difficulty, home: false, gw: f.event });
+            });
+            Object.values(teamFixtures).forEach(arr => arr.sort((a, b) => a.gw - b.gw));
         }
         
         // ===== LOAD LEAGUE =====
@@ -1152,68 +1334,103 @@
             const btn = document.getElementById('analyzeBtn');
             btn.disabled = true;
             btn.textContent = 'Analyzing...';
-            showStatus('Fetching team picks...', 'loading');
+            showStatus('Fetching picks & history...', 'loading');
             
             try {
-                // Fetch picks for all managers
                 managerPicks = {};
+                managerHistory = {};
                 let loaded = 0;
                 
-                for (const m of managers) {
-                    try {
-                        const res = await fetch(`${WORKER_URL}/api/entry/${m.entry}/event/${currentGW}/picks/`);
-                        if (res.ok) {
-                            const data = await res.json();
-                            managerPicks[m.entry] = {
-                                manager: m,
-                                picks: data.picks.map(p => p.element)
-                            };
-                        }
-                    } catch (e) {
-                        console.warn(`Failed to load picks for ${m.entry}`);
-                    }
-                    
-                    loaded++;
-                    showStatus(`Loading picks... ${loaded}/${managers.length}`, 'loading');
+                // Fetch picks and history in parallel batches
+                const batchSize = 5;
+                for (let i = 0; i < managers.length; i += batchSize) {
+                    const batch = managers.slice(i, i + batchSize);
+                    await Promise.all(batch.map(async (m) => {
+                        try {
+                            const res = await fetch(`${WORKER_URL}/api/entry/${m.entry}/event/${currentGW}/picks/`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                managerPicks[m.entry] = {
+                                    manager: m,
+                                    picks: data.picks.map(p => p.element),
+                                    fullPicks: data.picks,
+                                    captain: data.picks.find(p => p.is_captain)?.element,
+                                    viceCaptain: data.picks.find(p => p.is_vice_captain)?.element,
+                                    starters: data.picks.filter(p => p.position <= 11).map(p => p.element),
+                                    bench: data.picks.filter(p => p.position > 11).map(p => p.element),
+                                    activeChip: data.active_chip
+                                };
+                            }
+                        } catch (e) { console.warn(`Failed picks for ${m.entry}`); }
+                        
+                        try {
+                            const res = await fetch(`${WORKER_URL}/api/entry/${m.entry}/history/`);
+                            if (res.ok) { managerHistory[m.entry] = await res.json(); }
+                        } catch (e) { console.warn(`Failed history for ${m.entry}`); }
+                        
+                        loaded++;
+                        showStatus(`Loading data... ${loaded}/${managers.length}`, 'loading');
+                    }));
                 }
                 
-                // Calculate stats
                 myPicks = new Set(managerPicks[myTeamId]?.picks || []);
+                myStarters = new Set(managerPicks[myTeamId]?.starters || []);
                 
-                // Build ownership map
                 const rivalIds = Object.keys(managerPicks).filter(id => id != myTeamId);
                 const rivalCount = rivalIds.length;
+                const allIds = Object.keys(managerPicks);
                 
+                // Build ownership map with captain/bench/EO data
                 const playerOwnership = allPlayers.map(p => {
-                    let count = 0;
+                    let count = 0, starterCount = 0, captainCount = 0;
                     rivalIds.forEach(id => {
-                        if (managerPicks[id].picks.includes(p.id)) count++;
+                        const mp = managerPicks[id];
+                        if (mp.picks.includes(p.id)) {
+                            count++;
+                            if (mp.starters.includes(p.id)) starterCount++;
+                            if (mp.captain === p.id) captainCount++;
+                        }
                     });
+                    const youCaptain = managerPicks[myTeamId]?.captain === p.id;
+                    
+                    // Effective ownership
+                    let eoSum = 0;
+                    allIds.forEach(id => {
+                        const mp = managerPicks[id];
+                        if (mp.captain === p.id) {
+                            eoSum += (mp.activeChip === '3xc' ? 3 : 2);
+                        } else if (mp.starters.includes(p.id)) {
+                            eoSum += 1;
+                        }
+                    });
+                    
+                    let yourEo = 0;
+                    if (managerPicks[myTeamId]?.captain === p.id) {
+                        yourEo = managerPicks[myTeamId]?.activeChip === '3xc' ? 300 : 200;
+                    } else if (myStarters.has(p.id)) {
+                        yourEo = 100;
+                    }
+                    
                     return {
                         player: p,
-                        count,
+                        count, starterCount, captainCount,
                         pct: rivalCount > 0 ? Math.round((count / rivalCount) * 100) : 0,
-                        youOwn: myPicks.has(p.id)
+                        starterPct: rivalCount > 0 ? Math.round((starterCount / rivalCount) * 100) : 0,
+                        youOwn: myPicks.has(p.id),
+                        youStart: myStarters.has(p.id),
+                        youCaptain,
+                        eo: Math.round((eoSum / allIds.length) * 100),
+                        yourEo
                     };
                 }).filter(p => p.pct > 0 || p.youOwn);
                 
                 // Find insights
-                const missingTemplates = playerOwnership
-                    .filter(p => p.pct >= 50 && !p.youOwn)
-                    .sort((a, b) => b.pct - a.pct);
-                
-                const yourDifferentials = playerOwnership
-                    .filter(p => p.youOwn && p.pct < 30)
-                    .sort((a, b) => a.pct - b.pct);
-                
-                const onlyYouOwn = playerOwnership
-                    .filter(p => p.youOwn && p.pct === 0);
-                
+                const missingTemplates = playerOwnership.filter(p => p.pct >= 50 && !p.youOwn).sort((a, b) => b.pct - a.pct);
+                const yourDifferentials = playerOwnership.filter(p => p.youOwn && p.pct < 30).sort((a, b) => a.pct - b.pct);
+                const onlyYouOwn = playerOwnership.filter(p => p.youOwn && p.pct === 0);
                 const templatePlayers = playerOwnership.filter(p => p.pct >= 50);
                 const yourTemplateCount = templatePlayers.filter(p => p.youOwn).length;
-                const similarityPct = templatePlayers.length > 0 
-                    ? Math.round((yourTemplateCount / templatePlayers.length) * 100) 
-                    : 0;
+                const similarityPct = templatePlayers.length > 0 ? Math.round((yourTemplateCount / templatePlayers.length) * 100) : 0;
                 
                 // Update summary cards
                 document.getElementById('missingCount').textContent = missingTemplates.length;
@@ -1221,28 +1438,8 @@
                 document.getElementById('similarityPct').textContent = similarityPct + '%';
                 document.getElementById('uniqueCount').textContent = onlyYouOwn.length;
                 
-                // Render grids
-                document.getElementById('missingCountLabel').textContent = `${missingTemplates.length} players`;
-                document.getElementById('missingGrid').innerHTML = missingTemplates.map(p => renderPlayerCard(p, 'danger')).join('');
-                
-                document.getElementById('diffCountLabel').textContent = `${yourDifferentials.length} players`;
-                document.getElementById('diffGrid').innerHTML = yourDifferentials.map(p => renderPlayerCard(p, 'opportunity')).join('');
-                
-                // Action box
-                if (missingTemplates.length > 0) {
-                    document.getElementById('actionBox').style.display = 'block';
-                    document.getElementById('actionItems').innerHTML = missingTemplates.slice(0, 3).map((p, i) => `
-                        <div class="action-item">
-                            <div class="action-priority">${i + 1}</div>
-                            <div class="action-text">
-                                <strong>Consider ${p.player.name}</strong><br>
-                                <span>${p.pct}% of rivals own this ${p.player.posName} (£${p.player.price.toFixed(1)}m)</span>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    document.getElementById('actionBox').style.display = 'none';
-                }
+                // Render insights tab
+                renderInsights(missingTemplates, yourDifferentials);
                 
                 // Populate rival select
                 const rivalSelect = document.getElementById('rivalSelect');
@@ -1255,16 +1452,21 @@
                     rivalSelect.appendChild(opt);
                 });
                 
-                // Store data for matrix
+                // Store data for other tabs
                 window.playerOwnership = playerOwnership;
                 window.rivalIds = rivalIds;
+                window.missingTemplates = missingTemplates;
                 
-                // Show results
+                // Show results and render all tabs
                 document.getElementById('emptyState').style.display = 'none';
                 document.getElementById('resultsContainer').style.display = 'block';
                 enableTabs();
                 
                 renderMatrix();
+                renderCaptainRace();
+                renderLeagueRace();
+                renderSquadStrength();
+                
                 showStatus('Analysis complete!', 'success');
                 if (typeof lucide !== 'undefined') lucide.createIcons();
                 
@@ -1276,8 +1478,32 @@
             }
         }
         
+        function renderInsights(missingTemplates, yourDifferentials) {
+            document.getElementById('missingCountLabel').textContent = `${missingTemplates.length} players`;
+            document.getElementById('missingGrid').innerHTML = missingTemplates.map(p => renderPlayerCard(p, 'danger')).join('');
+            document.getElementById('diffCountLabel').textContent = `${yourDifferentials.length} players`;
+            document.getElementById('diffGrid').innerHTML = yourDifferentials.map(p => renderPlayerCard(p, 'opportunity')).join('');
+            
+            if (missingTemplates.length > 0) {
+                document.getElementById('actionBox').style.display = 'block';
+                document.getElementById('actionItems').innerHTML = missingTemplates.slice(0, 3).map((p, i) => `
+                    <div class="action-item">
+                        <div class="action-priority">${i + 1}</div>
+                        <div class="action-text">
+                            <strong>Consider ${p.player.name}</strong><br>
+                            <span>${p.pct}% of rivals own this ${p.player.posName} (£${p.player.price.toFixed(1)}m)${p.captainCount > 0 ? ' · ⓒ captained by ' + p.captainCount : ''}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('actionBox').style.display = 'none';
+            }
+        }
+        
         function renderPlayerCard(p, type) {
             const barClass = p.pct >= 70 ? 'high' : p.pct >= 40 ? 'medium' : 'low';
+            const captainInfo = p.captainCount > 0 ? `<span class="captain-badge">ⓒ ${p.captainCount}</span>` : '';
+            const starterInfo = p.starterPct < p.pct ? `<div class="eo-bar-row" style="margin-top:4px;"><span class="eo-bar-label">Started by</span><div class="eo-bar-track"><div class="eo-bar-fill" style="width:${p.starterPct}%;background:var(--color-info);"></div></div><span class="eo-bar-value" style="color:var(--color-info);">${p.starterPct}%</span></div>` : '';
             
             return `
                 <div class="player-card ${type}">
@@ -1286,6 +1512,7 @@
                             <div class="player-name">
                                 ${p.player.name}
                                 ${p.youOwn ? '<span class="you-badge">You Own</span>' : '<span class="missing-badge">Missing</span>'}
+                                ${captainInfo}
                             </div>
                             <div class="player-meta">${p.player.teamName} • ${p.player.posName}</div>
                         </div>
@@ -1299,6 +1526,7 @@
                         <div class="ownership-bar">
                             <div class="ownership-bar-fill ${barClass}" style="width: ${p.pct}%;"></div>
                         </div>
+                        ${starterInfo}
                     </div>
                     <div class="player-stats">
                         <div class="player-stat">Form: <span class="player-stat-value">${p.player.form}</span></div>
@@ -1309,7 +1537,7 @@
             `;
         }
         
-        // ===== MATRIX =====
+        // ===== MATRIX (enhanced with captain/bench indicators) =====
         function renderMatrix() {
             if (!window.playerOwnership) return;
             
@@ -1318,25 +1546,18 @@
             
             let players = window.playerOwnership;
             
-            // Position filter
             if (posFilter !== 'all') {
                 players = players.filter(p => p.player.pos === parseInt(posFilter));
             }
-            
-            // Show filter
             if (showFilter === 'owned') {
                 players = players.filter(p => p.count > 0 || p.youOwn);
             } else if (showFilter === 'popular') {
                 players = players.filter(p => p.pct >= 50 || p.youOwn);
             }
             
-            // Sort by ownership
             players.sort((a, b) => b.pct - a.pct);
-            
-            // Limit to top 50 for performance
             players = players.slice(0, 50);
             
-            // Build header
             const rivals = window.rivalIds.map(id => managerPicks[id].manager);
             
             let headHtml = '<tr><th class="player-col">Player</th><th>You</th><th>%</th>';
@@ -1347,19 +1568,40 @@
             headHtml += '</tr>';
             document.getElementById('matrixHead').innerHTML = headHtml;
             
-            // Build body
             let bodyHtml = '';
             players.forEach(p => {
                 const pctClass = p.pct >= 70 ? 'high' : p.pct >= 40 ? 'medium' : 'low';
                 
+                // Your cell with captain/bench distinction
+                let youCell;
+                if (p.youCaptain) {
+                    youCell = '<span class="matrix-cell captain">C</span>';
+                } else if (p.youOwn && myStarters.has(p.player.id)) {
+                    youCell = '<span class="matrix-cell you-owned">✓</span>';
+                } else if (p.youOwn) {
+                    youCell = '<span class="matrix-cell benched">B</span>';
+                } else {
+                    youCell = '<span class="matrix-cell you-missing">✗</span>';
+                }
+                
                 bodyHtml += '<tr>';
                 bodyHtml += `<td class="player-cell">${p.player.name} <span class="pos">${p.player.posName}</span></td>`;
-                bodyHtml += `<td><span class="matrix-cell ${p.youOwn ? 'you-owned' : 'you-missing'}">${p.youOwn ? '✓' : '✗'}</span></td>`;
+                bodyHtml += `<td>${youCell}</td>`;
                 bodyHtml += `<td><span class="ownership-pct ${pctClass}">${p.pct}%</span></td>`;
                 
                 rivals.forEach(r => {
-                    const hasPlayer = managerPicks[r.entry].picks.includes(p.player.id);
-                    bodyHtml += `<td><span class="matrix-cell ${hasPlayer ? 'owned' : 'not-owned'}">${hasPlayer ? '✓' : ''}</span></td>`;
+                    const mp = managerPicks[r.entry];
+                    const isCaptain = mp.captain === p.player.id;
+                    const isStarter = mp.starters?.includes(p.player.id);
+                    const isBenched = mp.bench?.includes(p.player.id);
+                    
+                    let cellClass, cellText;
+                    if (isCaptain) { cellClass = 'captain'; cellText = 'C'; }
+                    else if (isStarter) { cellClass = 'owned'; cellText = '✓'; }
+                    else if (isBenched) { cellClass = 'benched'; cellText = 'B'; }
+                    else { cellClass = 'not-owned'; cellText = ''; }
+                    
+                    bodyHtml += `<td><span class="matrix-cell ${cellClass}">${cellText}</span></td>`;
                 });
                 
                 bodyHtml += '</tr>';
@@ -1368,7 +1610,7 @@
             document.getElementById('matrixBody').innerHTML = bodyHtml;
         }
         
-        // ===== RIVAL COMPARISON =====
+        // ===== RIVAL H2H COMPARISON =====
         function renderRivalComparison() {
             const rivalId = document.getElementById('rivalSelect').value;
             const container = document.getElementById('rivalComparison');
@@ -1378,51 +1620,66 @@
                 return;
             }
             
-            const rivalPicks = new Set(managerPicks[rivalId].picks);
-            const rivalManager = managerPicks[rivalId].manager;
+            const rivalMp = managerPicks[rivalId];
+            const rivalPicks = new Set(rivalMp.picks);
+            const rivalStarters = new Set(rivalMp.starters || []);
+            const rivalManager = rivalMp.manager;
             
-            // Find differences
             const onlyYou = [...myPicks].filter(id => !rivalPicks.has(id)).map(id => allPlayersById[id]).filter(p => p);
             const onlyRival = [...rivalPicks].filter(id => !myPicks.has(id)).map(id => allPlayersById[id]).filter(p => p);
             const shared = [...myPicks].filter(id => rivalPicks.has(id)).map(id => allPlayersById[id]).filter(p => p);
             
+            const myCap = allPlayersById[managerPicks[myTeamId]?.captain];
+            const rivalCap = allPlayersById[rivalMp.captain];
+            
             let html = `
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-top: var(--space-4);">
                     <div class="summary-card opportunity">
-                        <div class="summary-icon"><i data-lucide="swords" style="width:20px;height:20px;"></i></div>
                         <div class="summary-value">${onlyYou.length}</div>
                         <div class="summary-label">Only You Own</div>
                     </div>
                     <div class="summary-card info">
-                        <div class="summary-icon"><i data-lucide="handshake" style="width:20px;height:20px;"></i></div>
                         <div class="summary-value">${shared.length}</div>
                         <div class="summary-label">Shared Players</div>
                     </div>
                     <div class="summary-card danger">
-                        <div class="summary-icon"><i data-lucide="eye" style="width:20px;height:20px;"></i></div>
                         <div class="summary-value">${onlyRival.length}</div>
                         <div class="summary-label">Only ${rivalManager.player_name.split(' ')[0]} Owns</div>
                     </div>
                 </div>
                 
+                ${myCap || rivalCap ? `
+                <div style="display:flex;gap:var(--space-4);margin-top:var(--space-4);justify-content:center;">
+                    <div style="background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);text-align:center;">
+                        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">Your Captain</div>
+                        <div style="font-weight:600;">👑 ${myCap?.name || '?'}</div>
+                    </div>
+                    <div style="background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);text-align:center;">
+                        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">${rivalManager.player_name.split(' ')[0]}'s Captain</div>
+                        <div style="font-weight:600;">👑 ${rivalCap?.name || '?'}</div>
+                    </div>
+                </div>` : ''}
+                
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-top: var(--space-6);">
                     <div>
-                        <h4 style="color: var(--color-success); margin-bottom: var(--space-4); font-family: 'Space Grotesk', sans-serif;"><i data-lucide="swords" style="width:16px;height:16px;display:inline;"></i> Your Differentials vs ${rivalManager.player_name.split(' ')[0]}</h4>
-                        ${onlyYou.map(p => `
-                            <div style="display: flex; justify-content: space-between; padding: var(--space-3); background: var(--surface-1); border-radius: var(--radius-md); margin-bottom: var(--space-2); border: 1px solid var(--border-default);">
-                                <span>${p.name} <span style="color: var(--text-muted); font-size: 11px;">${p.posName}</span></span>
-                                <span style="color: var(--color-success); font-weight: 600;">£${p.price.toFixed(1)}m</span>
-                            </div>
-                        `).join('')}
+                        <h4 style="color: var(--color-success); margin-bottom: var(--space-4); font-family: 'Space Grotesk', sans-serif;">Your Differentials</h4>
+                        ${onlyYou.map(p => {
+                            const isBenched = !myStarters.has(p.id);
+                            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-3);background:var(--surface-1);border-radius:var(--radius-md);margin-bottom:var(--space-2);border:1px solid var(--border-default);">
+                                <span>${p.name} <span style="color:var(--text-muted);font-size:11px;">${p.posName}</span>${isBenched ? ' <span class="bench-badge">Bench</span>' : ''}</span>
+                                <span style="color:var(--color-success);font-weight:600;">£${p.price.toFixed(1)}m</span>
+                            </div>`;
+                        }).join('')}
                     </div>
                     <div>
-                        <h4 style="color: var(--color-error); margin-bottom: var(--space-4); font-family: 'Space Grotesk', sans-serif;"><i data-lucide="eye" style="width:16px;height:16px;display:inline;"></i> ${rivalManager.player_name.split(' ')[0]}'s Differentials</h4>
-                        ${onlyRival.map(p => `
-                            <div style="display: flex; justify-content: space-between; padding: var(--space-3); background: var(--surface-1); border-radius: var(--radius-md); margin-bottom: var(--space-2); border: 1px solid var(--border-default);">
-                                <span>${p.name} <span style="color: var(--text-muted); font-size: 11px;">${p.posName}</span></span>
-                                <span style="color: var(--color-warning); font-weight: 600;">£${p.price.toFixed(1)}m</span>
-                            </div>
-                        `).join('')}
+                        <h4 style="color: var(--color-error); margin-bottom: var(--space-4); font-family: 'Space Grotesk', sans-serif;">${rivalManager.player_name.split(' ')[0]}'s Differentials</h4>
+                        ${onlyRival.map(p => {
+                            const isBenched = !rivalStarters.has(p.id);
+                            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-3);background:var(--surface-1);border-radius:var(--radius-md);margin-bottom:var(--space-2);border:1px solid var(--border-default);">
+                                <span>${p.name} <span style="color:var(--text-muted);font-size:11px;">${p.posName}</span>${isBenched ? ' <span class="bench-badge">Bench</span>' : ''}</span>
+                                <span style="color:var(--color-warning);font-weight:600;">£${p.price.toFixed(1)}m</span>
+                            </div>`;
+                        }).join('')}
                     </div>
                 </div>
             `;
@@ -1456,15 +1713,425 @@
             
             history.replaceState(null, '', '#' + tabName);
             if (tabName === 'matrix') renderMatrix();
+            if (tabName === 'race' && raceChart) raceChart.resize();
         }
 
         function enableTabs() {
             document.querySelectorAll('.tabs-container .tab').forEach(t => t.disabled = false);
-            // Activate tab from hash
             const hash = window.location.hash.replace('#', '');
-            if (['insights', 'matrix', 'rivals'].includes(hash)) {
+            if (['insights', 'captain', 'race', 'strength', 'matrix'].includes(hash)) {
                 showTab(hash);
             }
+        }
+        
+        // ===== CAPTAIN RACE =====
+        function renderCaptainRace() {
+            const allIds = Object.keys(managerPicks);
+            
+            // Captain consensus
+            const captainCounts = {};
+            allIds.forEach(id => {
+                const cap = managerPicks[id].captain;
+                if (cap) captainCounts[cap] = (captainCounts[cap] || 0) + 1;
+            });
+            
+            const topCaptain = Object.entries(captainCounts).sort((a, b) => b[1] - a[1])[0];
+            const topCapPlayer = topCaptain ? allPlayersById[topCaptain[0]] : null;
+            const topCapCount = topCaptain ? topCaptain[1] : 0;
+            const myCaptain = managerPicks[myTeamId]?.captain;
+            const myCaptainPlayer = myCaptain ? allPlayersById[myCaptain] : null;
+            const youMatchedPopular = myCaptain == topCaptain?.[0];
+            
+            const heroEl = document.getElementById('captainHero');
+            if (topCapPlayer) {
+                heroEl.innerHTML = `
+                    <div style="font-size:32px;margin-bottom:var(--space-2);">👑</div>
+                    <div class="captain-hero-name">${topCapPlayer.name}</div>
+                    <div class="captain-hero-meta">${topCapPlayer.teamName} • ${topCapPlayer.posName} • £${topCapPlayer.price.toFixed(1)}m</div>
+                    <div style="margin-top:var(--space-3);font-size:13px;">
+                        <strong>${topCapCount} of ${allIds.length}</strong> managers captained this player
+                        ${youMatchedPopular 
+                            ? '<span style="color:var(--color-info);margin-left:8px;">— You matched the consensus</span>' 
+                            : myCaptainPlayer 
+                                ? `<span style="color:var(--color-warning);margin-left:8px;">— You went differential with <strong>${myCaptainPlayer.name}</strong></span>` 
+                                : ''}
+                    </div>`;
+            }
+            
+            // Captain table
+            const tableBody = document.getElementById('captainTableBody');
+            let rows = '';
+            allIds.forEach(id => {
+                const mp = managerPicks[id];
+                const capPlayer = allPlayersById[mp.captain];
+                const vcPlayer = allPlayersById[mp.viceCaptain];
+                const isYou = id == myTeamId;
+                const chipLabel = mp.activeChip ? `<span class="chip-played-badge">${mp.activeChip}</span>` : '';
+                
+                rows += `<tr class="${isYou ? 'you-row' : ''}">
+                    <td>${isYou ? '<strong>⭐ ' + mp.manager.player_name + '</strong>' : mp.manager.player_name} ${chipLabel}</td>
+                    <td><strong>${capPlayer?.name || '?'}</strong> <span style="color:var(--text-muted);font-size:11px;">${capPlayer?.teamName || ''} ${capPlayer?.posName || ''}</span></td>
+                    <td>${vcPlayer?.name || '?'} <span style="color:var(--text-muted);font-size:11px;">${vcPlayer?.posName || ''}</span></td>
+                    <td style="text-align:center;">${capPlayer?.form || '-'}</td>
+                    <td style="text-align:center;">${capPlayer?.pts || '-'}</td>
+                </tr>`;
+            });
+            tableBody.innerHTML = rows;
+            
+            // EO cards
+            const eoPlayers = window.playerOwnership
+                .filter(p => p.eo > 0)
+                .sort((a, b) => b.eo - a.eo)
+                .slice(0, 12);
+            
+            const eoGrid = document.getElementById('eoGrid');
+            eoGrid.innerHTML = eoPlayers.map(p => {
+                const edgeClass = p.yourEo > p.eo ? 'your-edge' : p.yourEo < p.eo ? 'rival-edge' : '';
+                const maxEo = Math.max(p.eo, p.yourEo, 100);
+                return `
+                    <div class="eo-card ${edgeClass}">
+                        <div class="player-top">
+                            <div>
+                                <div class="player-name">${p.player.name} ${p.youCaptain ? '<span class="captain-badge">ⓒ YOUR CAP</span>' : p.youOwn ? '<span class="you-badge">You Own</span>' : '<span class="missing-badge">Missing</span>'}</div>
+                                <div class="player-meta">${p.player.teamName} • ${p.player.posName}</div>
+                            </div>
+                        </div>
+                        <div class="eo-bars">
+                            <div class="eo-bar-row">
+                                <span class="eo-bar-label">Your EO</span>
+                                <div class="eo-bar-track"><div class="eo-bar-fill" style="width:${(p.yourEo/maxEo)*100}%;background:var(--color-info);"></div></div>
+                                <span class="eo-bar-value" style="color:var(--color-info);">${p.yourEo}%</span>
+                            </div>
+                            <div class="eo-bar-row">
+                                <span class="eo-bar-label">League EO</span>
+                                <div class="eo-bar-track"><div class="eo-bar-fill" style="width:${(p.eo/maxEo)*100}%;background:var(--color-warning);"></div></div>
+                                <span class="eo-bar-value" style="color:var(--color-warning);">${p.eo}%</span>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+        
+        // ===== LEAGUE RACE =====
+        function renderLeagueRace() {
+            renderMomentum();
+            renderPointsChart('absolute');
+            renderLeagueTable();
+        }
+        
+        function renderMomentum() {
+            const myHistory = managerHistory[myTeamId]?.current || [];
+            if (myHistory.length === 0) {
+                document.getElementById('momentumGrid').innerHTML = '<p style="color:var(--text-muted);">No history data available.</p>';
+                return;
+            }
+            
+            let leaderId = myTeamId, leaderTotal = 0;
+            Object.keys(managerHistory).forEach(id => {
+                const hist = managerHistory[id]?.current || [];
+                const last = hist[hist.length - 1];
+                if (last && last.total_points > leaderTotal) { leaderTotal = last.total_points; leaderId = id; }
+            });
+            
+            const myLast = myHistory[myHistory.length - 1];
+            const myTotal = myLast?.total_points || 0;
+            const gapToLeader = leaderTotal - myTotal;
+            const leaderName = managerPicks[leaderId]?.manager?.player_name || 'Leader';
+            
+            const last3 = myHistory.slice(-3);
+            const myAvg3 = last3.length > 0 ? Math.round(last3.reduce((s, g) => s + g.points, 0) / last3.length) : 0;
+            
+            let best3 = { name: '', avg: 0, id: '' };
+            Object.keys(managerHistory).forEach(id => {
+                const hist = managerHistory[id]?.current || [];
+                const l3 = hist.slice(-3);
+                if (l3.length > 0) {
+                    const avg = Math.round(l3.reduce((s, g) => s + g.points, 0) / l3.length);
+                    const name = managerPicks[id]?.manager?.player_name || '?';
+                    if (avg > best3.avg) best3 = { name, avg, id };
+                }
+            });
+            
+            const myLast3Pts = last3.reduce((s, g) => s + g.points, 0);
+            const leaderLast3 = (managerHistory[leaderId]?.current || []).slice(-3);
+            const leaderLast3Pts = leaderLast3.reduce((s, g) => s + g.points, 0);
+            const delta3 = myLast3Pts - leaderLast3Pts;
+            
+            const myChips = managerHistory[myTeamId]?.chips || [];
+            
+            document.getElementById('momentumGrid').innerHTML = `
+                <div class="momentum-card">
+                    <div class="mc-title">Gap to Leader</div>
+                    <div class="mc-value" style="color:${gapToLeader === 0 ? 'var(--color-success)' : gapToLeader <= 20 ? 'var(--color-warning)' : 'var(--color-error)'};">${gapToLeader === 0 ? '🥇 You lead!' : gapToLeader + ' pts behind'}</div>
+                    <div class="mc-desc">${gapToLeader > 0 ? leaderName + ' leads with ' + leaderTotal + ' pts' : 'You have ' + myTotal + ' pts'}</div>
+                </div>
+                <div class="momentum-card">
+                    <div class="mc-title">Last 3 GW Trend</div>
+                    <div class="mc-value" style="color:${delta3 >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">${delta3 >= 0 ? '+' : ''}${delta3} pts</div>
+                    <div class="mc-desc">${delta3 >= 0 ? 'Gaining on' : 'Losing to'} ${leaderId == myTeamId ? 'the pack' : leaderName} (your avg: ${myAvg3}/gw)</div>
+                </div>
+                <div class="momentum-card">
+                    <div class="mc-title">Hottest Manager (L3)</div>
+                    <div class="mc-value" style="color:var(--color-warning);">${best3.name.split(' ')[0]}</div>
+                    <div class="mc-desc">${best3.avg} pts/gw over last 3 GWs${best3.id == myTeamId ? ' — That\'s you! 🔥' : ''}</div>
+                </div>
+                <div class="momentum-card">
+                    <div class="mc-title">Your Chips Used</div>
+                    <div class="mc-value" style="color:var(--color-info);">${myChips.length}/4</div>
+                    <div class="mc-desc">${myChips.map(c => c.name).join(', ') || 'No chips played yet'}</div>
+                </div>`;
+        }
+        
+        function renderPointsChart(mode) {
+            const canvas = document.getElementById('raceChart');
+            if (!canvas) return;
+            
+            const allIds = Object.keys(managerHistory);
+            if (allIds.length === 0) return;
+            
+            const maxGW = Math.max(...allIds.map(id => (managerHistory[id]?.current || []).length));
+            const labels = Array.from({length: maxGW}, (_, i) => `GW${i + 1}`);
+            
+            let leaderByGW = [];
+            if (mode === 'gap') {
+                for (let gw = 0; gw < maxGW; gw++) {
+                    let maxPts = 0;
+                    allIds.forEach(id => {
+                        const pts = managerHistory[id]?.current?.[gw]?.total_points || 0;
+                        if (pts > maxPts) maxPts = pts;
+                    });
+                    leaderByGW.push(maxPts);
+                }
+            }
+            
+            const datasets = [];
+            allIds.forEach((id, idx) => {
+                const hist = managerHistory[id]?.current || [];
+                const name = managerPicks[id]?.manager?.player_name || 'Manager';
+                const isYou = id == myTeamId;
+                const color = isYou ? '#3B82F6' : CHART_COLORS[idx % CHART_COLORS.length];
+                
+                const data = hist.map((gw, i) => mode === 'gap' ? leaderByGW[i] - gw.total_points : gw.total_points);
+                
+                datasets.push({
+                    label: isYou ? '⭐ ' + name : name,
+                    data,
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    borderWidth: isYou ? 3 : 1.5,
+                    pointRadius: isYou ? 3 : 0,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    order: isYou ? 0 : 1
+                });
+            });
+            
+            if (raceChart) raceChart.destroy();
+            
+            raceChart = new Chart(canvas, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } },
+                        tooltip: { backgroundColor: '#1F2937', titleFont: { size: 12 }, bodyFont: { size: 11 }, padding: 8, cornerRadius: 6 }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                        y: { reverse: mode === 'gap', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 10 } }, title: { display: true, text: mode === 'gap' ? 'Points Behind Leader' : 'Total Points', font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+        
+        function toggleChartMode(mode) {
+            document.querySelectorAll('.chart-toggle button').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.chart-toggle button[data-mode="${mode}"]`).classList.add('active');
+            renderPointsChart(mode);
+        }
+        
+        function renderLeagueTable() {
+            const tbody = document.getElementById('leagueTableBody');
+            if (!tbody) return;
+            
+            const rows = [];
+            Object.keys(managerPicks).forEach(id => {
+                const mp = managerPicks[id];
+                const hist = managerHistory[id]?.current || [];
+                const chips = managerHistory[id]?.chips || [];
+                const last = hist[hist.length - 1];
+                const lastGwPts = last?.points || 0;
+                const totalPts = last?.total_points || mp.manager.total;
+                const totalTransfers = hist.reduce((s, g) => s + (g.event_transfers || 0), 0);
+                const totalHits = hist.reduce((s, g) => s + (g.event_transfers_cost || 0), 0);
+                const teamValue = last ? (last.value + last.bank) / 10 : 0;
+                const last6 = hist.slice(-6).map(g => g.points);
+                
+                rows.push({ id, name: mp.manager.player_name, teamName: mp.manager.entry_name, rank: mp.manager.rank, lastGwPts, totalPts, totalTransfers, totalHits, teamValue, last6, chips });
+            });
+            
+            rows.sort((a, b) => b.totalPts - a.totalPts);
+            
+            tbody.innerHTML = rows.map((r, i) => {
+                const isYou = r.id == myTeamId;
+                const maxPts = Math.max(...r.last6, 1);
+                const sparkline = r.last6.map(pts => 
+                    `<div class="sparkline-bar" style="height:${Math.max(2, (pts/maxPts)*20)}px;${pts >= 60 ? 'background:var(--color-success);' : pts <= 30 ? 'background:var(--color-error);' : ''}"></div>`
+                ).join('');
+                const chipBadges = r.chips.map(c => `<span class="chip-played-badge" title="GW${c.event}">${c.name}</span>`).join(' ');
+                
+                return `<tr class="${isYou ? 'you-row' : ''}">
+                    <td style="font-weight:600;">${i + 1}</td>
+                    <td>${isYou ? '⭐ ' : ''}${r.name}<br><span style="font-size:10px;color:var(--text-muted);">${r.teamName}</span></td>
+                    <td style="text-align:center;font-weight:600;">${r.lastGwPts}</td>
+                    <td style="text-align:center;font-weight:700;font-family:'Space Grotesk',sans-serif;">${r.totalPts}</td>
+                    <td style="text-align:center;">${r.totalTransfers}</td>
+                    <td style="text-align:center;color:${r.totalHits > 0 ? 'var(--color-error)' : 'var(--text-muted)'};">${r.totalHits > 0 ? '-' + r.totalHits : '0'}</td>
+                    <td style="text-align:center;">${r.teamValue > 0 ? '£' + r.teamValue.toFixed(1) + 'm' : '-'}</td>
+                    <td style="text-align:center;"><div class="sparkline-container">${sparkline}</div></td>
+                    <td>${chipBadges}</td>
+                </tr>`;
+            }).join('');
+        }
+        
+        // ===== SQUAD STRENGTH =====
+        function renderSquadStrength() {
+            renderPositionComparison();
+            renderTemplateXI();
+            renderFixtureDifficulty();
+        }
+        
+        function renderFixtureDifficulty() {
+            const container = document.getElementById('strengthGrid');
+            if (!container) return;
+            
+            const allIds = Object.keys(managerPicks);
+            const cards = [];
+            
+            allIds.forEach(id => {
+                const mp = managerPicks[id];
+                const starters = mp.starters || [];
+                let totalFdr = 0, fdrCount = 0;
+                
+                starters.forEach(pid => {
+                    const player = allPlayersById[pid];
+                    if (!player) return;
+                    const tfix = teamFixtures[player.team] || [];
+                    tfix.slice(0, 3).forEach(f => { totalFdr += f.fdr; fdrCount++; });
+                });
+                
+                const avgFdr = fdrCount > 0 ? (totalFdr / fdrCount).toFixed(2) : '?';
+                const avgFdrNum = parseFloat(avgFdr) || 3;
+                
+                cards.push({ id, name: mp.manager.player_name, teamName: mp.manager.entry_name, avgFdr: avgFdrNum, avgFdrDisplay: avgFdr, isYou: id == myTeamId });
+            });
+            
+            cards.sort((a, b) => a.avgFdr - b.avgFdr);
+            
+            container.innerHTML = cards.map((c, i) => {
+                const fdrColor = c.avgFdr <= 2.5 ? 'var(--color-success)' : c.avgFdr <= 3.2 ? 'var(--color-warning)' : 'var(--color-error)';
+                return `
+                    <div class="strength-card ${c.isYou ? 'you-card' : ''}">
+                        <div class="strength-card-header">
+                            <div>
+                                <div class="strength-card-name">${c.isYou ? '⭐ ' : ''}${c.name}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">${c.teamName} · Rank #${i + 1} easiest</div>
+                            </div>
+                            <div class="strength-card-fdr" style="color:${fdrColor};">${c.avgFdrDisplay}</div>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-muted);margin-bottom:var(--space-2);">Avg FDR next 3 GWs</div>
+                        <div class="ownership-bar"><div class="ownership-bar-fill" style="width:${((5 - c.avgFdr) / 4) * 100}%;background:${fdrColor};"></div></div>
+                    </div>`;
+            }).join('');
+        }
+        
+        function renderTemplateXI() {
+            const container = document.getElementById('templatePitch');
+            if (!container) return;
+            
+            const ownership = window.playerOwnership || [];
+            const allManagerIds = Object.keys(managerPicks);
+            
+            const byPos = { 1: [], 2: [], 3: [], 4: [] };
+            ownership.forEach(p => {
+                let startCount = 0;
+                allManagerIds.forEach(id => { if (managerPicks[id]?.starters?.includes(p.player.id)) startCount++; });
+                byPos[p.player.pos].push({ ...p, startCount });
+            });
+            Object.values(byPos).forEach(arr => arr.sort((a, b) => b.startCount - a.startCount));
+            
+            const formations = [[3,4,3],[3,5,2],[4,4,2],[4,3,3],[4,5,1],[5,3,2],[5,4,1]];
+            let bestFormation = [3,4,3], bestScore = 0;
+            formations.forEach(([d, m, f]) => {
+                const score = byPos[2].slice(0, d).reduce((s, p) => s + p.startCount, 0) +
+                    byPos[3].slice(0, m).reduce((s, p) => s + p.startCount, 0) +
+                    byPos[4].slice(0, f).reduce((s, p) => s + p.startCount, 0);
+                if (score > bestScore) { bestScore = score; bestFormation = [d, m, f]; }
+            });
+            
+            const [numDef, numMid, numFwd] = bestFormation;
+            const templateGK = byPos[1].slice(0, 1);
+            const templateDEF = byPos[2].slice(0, numDef);
+            const templateMID = byPos[3].slice(0, numMid);
+            const templateFWD = byPos[4].slice(0, numFwd);
+            const templateAll = [...templateGK, ...templateDEF, ...templateMID, ...templateFWD];
+            const youHaveCount = templateAll.filter(p => p.youOwn).length;
+            
+            function renderRow(players, posClass) {
+                return `<div class="pitch-row">${players.map(p => `
+                    <div class="pitch-player">
+                        <div class="pitch-player-circle ${posClass} ${p.youOwn ? 'you-have' : 'you-missing'}">${p.player.posName}</div>
+                        <div class="pitch-player-name">${p.player.name}</div>
+                        <div class="pitch-player-own">${p.startCount}/${allManagerIds.length} start</div>
+                    </div>`).join('')}</div>`;
+            }
+            
+            container.innerHTML = `
+                <div class="pitch-label">Most Popular XI (${bestFormation.join('-')}) · You have ${youHaveCount}/11</div>
+                ${renderRow(templateFWD, 'fwd')}
+                ${renderRow(templateMID, 'mid')}
+                ${renderRow(templateDEF, 'def')}
+                ${renderRow(templateGK, 'gk')}
+            `;
+        }
+        
+        function renderPositionComparison() {
+            const container = document.getElementById('posComparison');
+            if (!container) return;
+            
+            const allManagerIds = Object.keys(managerPicks);
+            const posData = { 1: { label: 'GK', color: POS_COLORS[1] }, 2: { label: 'DEF', color: POS_COLORS[2] }, 3: { label: 'MID', color: POS_COLORS[3] }, 4: { label: 'FWD', color: POS_COLORS[4] } };
+            
+            [1, 2, 3, 4].forEach(pos => {
+                let myTotal = 0, rivalTotal = 0, rivalCount = 0;
+                allManagerIds.forEach(id => {
+                    const starters = managerPicks[id]?.starters || [];
+                    const posPts = starters.map(pid => allPlayersById[pid]).filter(p => p && p.pos === pos).reduce((s, p) => s + p.pts, 0);
+                    if (id == myTeamId) { myTotal = posPts; } else { rivalTotal += posPts; rivalCount++; }
+                });
+                const rivalAvg = rivalCount > 0 ? Math.round(rivalTotal / rivalCount) : 0;
+                posData[pos].myPts = myTotal;
+                posData[pos].rivalAvg = rivalAvg;
+                posData[pos].diff = myTotal - rivalAvg;
+            });
+            
+            const maxPts = Math.max(...Object.values(posData).map(d => Math.max(d.myPts, d.rivalAvg)), 1);
+            
+            container.innerHTML = [1, 2, 3, 4].map(pos => {
+                const d = posData[pos];
+                const better = d.diff >= 0;
+                return `
+                    <div class="pos-compare-card">
+                        <div class="pos-icon" style="background:${d.color};">${d.label}</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-2);">Your starters: <strong style="color:var(--text-primary);">${d.myPts} pts</strong></div>
+                        <div style="font-size:11px;color:var(--text-muted);">Rival avg: ${d.rivalAvg} pts</div>
+                        <div class="pos-compare-bar"><div class="pos-compare-fill" style="width:${(d.myPts/maxPts)*100}%;background:${d.color};"></div></div>
+                        <div style="font-size:11px;margin-top:var(--space-2);color:${better ? 'var(--color-success)' : 'var(--color-error)'};">${better ? '+' : ''}${d.diff} vs avg</div>
+                    </div>`;
+            }).join('');
         }
         
         // ===== HELPERS =====
