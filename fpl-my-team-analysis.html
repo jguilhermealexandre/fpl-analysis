@@ -1348,6 +1348,11 @@
 
         .draft-pitch-new-badge { position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); background: var(--color-success); color: #fff; font-size: 0.5rem; font-weight: 700; padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
 
+        .draft-pitch-transfer-btn { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--color-primary); color: #fff; border: 1.5px solid var(--surface-1); font-size: 0.55rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; z-index: 3; line-height: 1; }
+        .planner-pitch-player:hover .draft-pitch-transfer-btn { opacity: 1; }
+        .draft-pitch-transfer-btn:hover { background: var(--color-success); transform: scale(1.15); }
+        @media (max-width: 768px) { .draft-pitch-transfer-btn { opacity: 1; width: 20px; height: 20px; font-size: 0.6rem; } }
+
         .draft-chip-overlay { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: var(--color-primary); color: #fff; font-size: 0.7rem; font-weight: 800; padding: 4px 14px; border-radius: 20px; z-index: 2; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
 
         .draft-ft-input { width: 36px; text-align: center; padding: 2px 4px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--surface-0); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; }
@@ -4431,11 +4436,11 @@
 
             const bank = (picksData?.entry_history?.bank || 0) / 10;
 
-            // Detect used chips from managerHistory
-            const usedChips = [];
+            // Detect used chips from managerHistory (with GW for half-season tracking)
+            const usedChipRecords = [];
             if (managerHistory && managerHistory.chips) {
                 managerHistory.chips.forEach(c => {
-                    if (c.name) usedChips.push(c.name.toLowerCase().replace(/\s+/g, ''));
+                    if (c.name) usedChipRecords.push({ name: c.name.toLowerCase().replace(/\s+/g, ''), event: c.event || 0 });
                 });
             }
 
@@ -4448,7 +4453,7 @@
                 lineups: {},      // {gw: [{...playerObj, onBench, isCaptain, isVice}]}
                 bank: bank,
                 startingFT: 1,
-                usedChips: usedChips,
+                usedChips: usedChipRecords,
                 teamId: localStorage.getItem('fpl_team_id') || '',
                 savedAt: null
             };
@@ -4601,7 +4606,11 @@
         }
 
         function isDraftChipAvailable(chipName) {
-            // Check if chip is already used in real FPL
+            // 2025/26 season: each chip can be used once per half (GW1-19 = first half, GW20-38 = second half)
+            const HALF_CUTOFF = 20;
+            const draftGW = draftState.selectedGW;
+            const draftHalf = draftGW >= HALF_CUTOFF ? 2 : 1;
+
             const mapped = {
                 'wildcard': ['wildcard', '2nd_wildcard'],
                 'benchboost': ['bboost', 'benchboost'],
@@ -4609,17 +4618,19 @@
                 'triplecaptain': ['3xc', 'triplecaptain', 'triple_captain']
             };
             const aliases = mapped[chipName] || [chipName];
-            const usedInReal = aliases.some(a => draftState.usedChips.includes(a));
-            if (usedInReal) return false;
 
-            // Check if already assigned to a GW in draft
-            const assignedGWs = Object.entries(draftState.chips)
-                .filter(([g, c]) => c === chipName)
-                .map(([g]) => parseInt(g));
+            // Check if chip was already used in real FPL in the SAME half
+            const usedInSameHalf = draftState.usedChips.some(c =>
+                aliases.includes(c.name) && (c.event >= HALF_CUTOFF ? 2 : 1) === draftHalf
+            );
+            if (usedInSameHalf) return false;
 
-            // Wildcard: allow 1 usage in draft
-            if (chipName === 'wildcard') return assignedGWs.length === 0;
-            return assignedGWs.length === 0;
+            // Check if already assigned to a GW in the same half in draft
+            const assignedInSameHalf = Object.entries(draftState.chips)
+                .filter(([g, c]) => c === chipName && (parseInt(g) >= HALF_CUTOFF ? 2 : 1) === draftHalf)
+                .length;
+
+            return assignedInSameHalf === 0;
         }
 
         function activateDraftChip(chip) {
@@ -5207,6 +5218,7 @@
                 }
                 if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
                 if (p.isTransferIn) node += `<span class="draft-pitch-new-badge">NEW</span>`;
+                node += `<button class="draft-pitch-transfer-btn" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" title="Transfer ${p.name}">↔</button>`;
                 node += `</div>`;
                 // FDR chip
                 if (fix) {
@@ -5242,7 +5254,7 @@
                 const src = lineup.find(p => p.id === draftSwapSource);
                 html += `<div class="planner-lineup-hint"><span>👆</span> ${src ? src.name : 'Player'} selected — click an eligible player to swap.</div>`;
             } else {
-                html += `<div class="planner-lineup-hint"><span>💡</span> Click a player on the pitch to swap with bench. Right-click or use table buttons for captain/transfers.</div>`;
+                html += `<div class="planner-lineup-hint"><span>💡</span> Click a player to swap with bench. Use the <strong>↔</strong> button (hover on pitch, or in table) to make a transfer.</div>`;
             }
 
             return html;
@@ -5336,6 +5348,7 @@
 
             // Action buttons (transfer + captain)
             row += `<td style="white-space:nowrap;">`;
+            row += `<button class="planner-swap-btn" onclick="openDraftTransferPanel(${player.id})" title="Transfer ${player.name}" style="font-size:0.6rem;width:22px;height:22px;">↔</button> `;
             if (!player.onBench) {
                 row += `<button class="planner-swap-btn" onclick="setDraftCaptain(${player.id})" title="Set as captain" style="font-size:0.6rem;width:22px;height:22px;${player.isCaptain ? 'background:var(--color-captain);color:#000;border-color:var(--color-captain);' : ''}">C</button> `;
                 row += `<button class="planner-swap-btn" onclick="setDraftViceCaptain(${player.id})" title="Set as vice-captain" style="font-size:0.6rem;width:22px;height:22px;${player.isVice ? 'background:var(--text-muted);color:#fff;border-color:var(--text-muted);' : ''}">V</button>`;
