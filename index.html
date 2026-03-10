@@ -2975,8 +2975,46 @@ body {
             lucide.createIcons();
         }
 
+        // ===== EXTERNAL NEWS =====
+        let externalNewsCache = null, externalNewsFetchedAt = 0;
+        async function fetchExternalNews() {
+            const now = Date.now();
+            if (externalNewsCache && (now - externalNewsFetchedAt) < 30 * 60 * 1000) {
+                return externalNewsCache;
+            }
+            const feeds = [
+                { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport' },
+                { url: 'https://www.premierleague.com/news.rss', source: 'Premier League' },
+                { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports' },
+                { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian' }
+            ];
+            const items = [];
+            for (const feed of feeds) {
+                try {
+                    const rssUrl = encodeURIComponent(feed.url);
+                    const resp = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`);
+                    if (!resp.ok) continue;
+                    const data = await resp.json();
+                    if (data.status !== 'ok' || !data.items) continue;
+                    data.items.slice(0, 5).forEach(article => {
+                        items.push({
+                            cat: 'external',
+                            text: `${article.title} — ${feed.source}`,
+                            isSquad: false,
+                            weight: 20
+                        });
+                    });
+                } catch (e) {
+                    console.warn(`Failed to fetch ${feed.source} RSS:`, e);
+                }
+            }
+            externalNewsCache = items;
+            externalNewsFetchedAt = now;
+            return items;
+        }
+
         // ===== NEWS STRIP =====
-        function renderNewsStrip(allPlayers, squad) {
+        function renderNewsStrip(allPlayers, squad, externalItems) {
             const strip = document.getElementById('newsStrip');
             const track = document.getElementById('newsStripTrack');
             const squadIds = new Set(squad.map(p => p.id));
@@ -3018,9 +3056,14 @@ body {
             });
 
             items.sort((a, b) => b.weight - a.weight);
-            const top = items.slice(0, 8);
+            const top = items.slice(0, 10);
 
             if (!top.length) { strip.classList.add('hidden'); return; }
+
+            // Add external PL headlines after FPL items
+            if (externalItems && externalItems.length) {
+                top.push(...externalItems.slice(0, Math.max(0, 12 - top.length)));
+            }
 
             const contentHtml = `<span class="news-strip-content"><span class="news-strip-label">\ud83d\udcf0 NEWS</span>` +
                 top.map(i => {
@@ -3227,7 +3270,12 @@ body {
 
                 renderBriefing({ flagged, captainRec, priceDropRisk, analysisResults, squad });
 
-                renderNewsStrip(allPlayers, squad);
+                // Fetch external news (non-blocking) and render strip
+                fetchExternalNews().then(externalItems => {
+                    renderNewsStrip(allPlayers, squad, externalItems);
+                }).catch(() => {
+                    renderNewsStrip(allPlayers, squad, []);
+                });
             } catch (err) {
                 console.error('Ticker load error:', err);
                 tickerLoading.innerHTML = `<span style="color:var(--color-error);font-size:12px;">Could not load team data</span>`;

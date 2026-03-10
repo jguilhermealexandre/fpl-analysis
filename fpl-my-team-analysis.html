@@ -1353,6 +1353,8 @@
         .news-card-category.cat-external { background: rgba(139,92,246,0.1); color: #8B5CF6; }
         .news-card-category.cat-bbc { background: rgba(187,29,29,0.12); color: #BB1D1D; }
         .news-card-category.cat-pl { background: rgba(56,0,106,0.12); color: #38006A; }
+        .news-card-category.cat-sky { background: rgba(0,98,178,0.12); color: #0062B2; }
+        .news-card-category.cat-guardian { background: rgba(5,81,126,0.12); color: #05517E; }
         .news-card-squad-badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; background: rgba(245,158,11,0.15); color: #D97706; }
         .news-card-time { font-size: 10.5px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
         .news-card-headline { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.4; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -2792,8 +2794,10 @@
                 return externalNewsCache;
             }
             const feeds = [
-                { url: 'https://feeds.bbci.co.uk/sport/football/rss.xml', source: 'BBC Sport', badge: 'bbc' },
-                { url: 'https://www.premierleague.com/news.rss', source: 'Premier League', badge: 'pl' }
+                { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport', badge: 'bbc' },
+                { url: 'https://www.premierleague.com/news.rss', source: 'Premier League', badge: 'pl' },
+                { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', badge: 'sky' },
+                { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian', badge: 'guardian' }
             ];
             const items = [];
             for (const feed of feeds) {
@@ -5613,7 +5617,7 @@
             html += `<div style="background:var(--surface);border-radius:12px;padding:16px;border:1px solid var(--border);">
                 <div style="font-size:14px;font-weight:700;margin-bottom:12px;"><i data-lucide="crown" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> Captain Picks</div>`;
             capCandidates.forEach((p, i) => {
-                const fx = teamFixtures[p.team] || [];
+                const fx = p.fixtures || [];
                 const nextFx = fx[0];
                 html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;${i > 0 ? 'border-top:1px solid var(--border);' : ''}">
                     <span style="font-size:16px;">${i === 0 ? '<i data-lucide="crown" style="width:16px;height:16px;color:#F59E0B;"></i>' : i === 1 ? '<i data-lucide="medal" style="width:16px;height:16px;color:#9CA3AF;"></i>' : '<i data-lucide="medal" style="width:16px;height:16px;color:#D97706;"></i>'}</span>
@@ -5635,21 +5639,21 @@
             let score = 0;
             if (p.status === 'd') score -= 20;
             // EP
-            score += (parseFloat(p.ep_next) || 0) * 3;
+            score += (p.epNext || 0) * 3;
             // Form
             score += (parseFloat(p.form) || 0) * 2;
             // Fixtures
-            const fx = teamFixtures[p.team] || [];
+            const fx = p.fixtures || [];
             if (fx.length > 0) { score += (3 - fx[0].difficulty) * 5; if (fx[0].isHome) score += 2; }
             // xGI
             const mins = p.minutes || 0;
-            if (mins > 200) { const xgi90 = ((parseFloat(p.expected_goal_involvements) || 0) / mins) * 90; score += xgi90 * 10; }
+            if (mins > 200) { const xgi90 = (p.xGI / mins) * 90; score += xgi90 * 10; }
             // Minutes
             const mpg = mins / Math.max(currentGW - 1, 1);
             if (mpg >= 85) score += 3;
             else if (mpg < 45) score -= 5;
             // PPG
-            score += (p.total_points / Math.max(currentGW - 1, 1)) * 1.5;
+            score += (p.points / Math.max(currentGW - 1, 1)) * 1.5;
             return Math.round(score);
         }
 
