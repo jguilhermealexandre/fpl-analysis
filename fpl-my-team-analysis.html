@@ -472,6 +472,14 @@
         .squad-row-verdict {
             flex-shrink: 0;
         }
+        .squad-row-rec {
+            width: 100%;
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding: 4px 8px 4px 40px;
+            line-height: 1.4;
+            font-style: italic;
+        }
         @media (max-width: 768px) {
             .squad-row { flex-wrap: wrap; gap: 8px; }
             .squad-row-stats { flex-wrap: wrap; gap: 8px; }
@@ -808,6 +816,28 @@
         .health-ring-track { fill: none; stroke: var(--surface-3); stroke-width: 10; }
         .health-ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1), stroke 0.3s; }
         .health-sublabel { font-size: 12px; color: var(--text-secondary); text-align: center; font-weight: 600; }
+        .health-factors { display: flex; flex-direction: column; gap: 4px; width: 100%; margin: 4px 0 8px; }
+        .health-factor { font-size: 11px; padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px; }
+        .health-factor.positive { color: #4ADE80; background: rgba(74,222,128,0.08); }
+        .health-factor.negative { color: #F87171; background: rgba(248,113,113,0.08); }
+        .health-factor.warning { color: #FBBF24; background: rgba(251,191,36,0.08); }
+
+        /* ===== SQUAD ALERTS PANEL ===== */
+        .squad-alerts-panel { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; animation: fadeInUp 0.4s ease; }
+        .squad-alerts-header { padding: 14px 16px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); border-bottom: 1px solid var(--border-default); display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .squad-alerts-header:hover { color: var(--text-secondary); }
+        .squad-alerts-body { padding: 0; }
+        .squad-alert-item { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle, var(--border-default)); transition: background 150ms; }
+        .squad-alert-item:last-child { border-bottom: none; }
+        .squad-alert-item:hover { background: var(--surface-2); }
+        .squad-alert-status { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; font-weight: 800; }
+        .squad-alert-status.status-injured { background: rgba(239,68,68,0.15); color: #EF4444; }
+        .squad-alert-status.status-doubt { background: rgba(245,158,11,0.15); color: #D97706; }
+        .squad-alert-status.status-ok { background: rgba(16,185,129,0.12); color: #10B981; }
+        .squad-alert-info { flex: 1; min-width: 0; }
+        .squad-alert-name { font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+        .squad-alert-detail { font-size: 10.5px; color: var(--text-secondary); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .squad-alert-chance { font-size: 10px; font-weight: 700; margin-top: 3px; }
 
         /* ===== PITCH ===== */
         .pitch-container { background: linear-gradient(180deg, #14472a 0%, #1a5c36 30%, #1a5c36 70%, #14472a 100%); border-radius: var(--radius-lg); padding: 16px 12px 12px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
@@ -1366,8 +1396,6 @@
 
         /* ===== NEWS TAB ===== */
         .news-container { max-width: 1060px; margin: 0 auto; padding: 24px; }
-        .news-layout { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; }
-        .news-main { min-width: 0; }
         .news-filter-bar { display: flex; gap: 6px; padding: 5px; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-bottom: 24px; overflow-x: auto; }
         .news-filter-btn { padding: 7px 16px; font-size: 12px; font-weight: 500; color: var(--text-secondary); background: transparent; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all 150ms; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
         .news-filter-btn:hover { color: var(--text-primary); background: var(--surface-1); }
@@ -1446,29 +1474,8 @@
         .news-card-cta:hover { gap: 6px; color: var(--color-info); }
         .news-card-cta svg { width: 13px; height: 13px; }
 
-        /* Squad alerts sidebar */
-        .news-sidebar { position: sticky; top: 80px; }
-        .news-sidebar-panel { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
-        .news-sidebar-header { padding: 14px 16px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); border-bottom: 1px solid var(--border-default); display: flex; align-items: center; gap: 6px; }
-        .news-sidebar-body { padding: 0; }
-        .news-alert-item { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle, var(--border-default)); transition: background 150ms; }
-        .news-alert-item:last-child { border-bottom: none; }
-        .news-alert-item:hover { background: var(--surface-2); }
-        .news-alert-status { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; font-weight: 800; }
-        .news-alert-status.status-injured { background: rgba(239,68,68,0.15); color: #EF4444; }
-        .news-alert-status.status-doubt { background: rgba(245,158,11,0.15); color: #D97706; }
-        .news-alert-status.status-ok { background: rgba(16,185,129,0.12); color: #10B981; }
-        .news-alert-info { flex: 1; min-width: 0; }
-        .news-alert-name { font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
-        .news-alert-detail { font-size: 10.5px; color: var(--text-secondary); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .news-alert-chance { font-size: 10px; font-weight: 700; margin-top: 3px; }
-
         .news-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
         .news-loading { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        @media (max-width: 900px) {
-            .news-layout { grid-template-columns: 1fr; }
-            .news-sidebar { position: static; }
-        }
         @media (max-width: 768px) {
             .news-container { padding: 16px; }
             .news-grid { grid-template-columns: 1fr; gap: 12px; }
@@ -2250,36 +2257,43 @@
             const isBudget = player.price <= 5.5;
             const ta = teamAnalysis[player.teamId]; // Team analysis data
 
+            // Asymmetric sensitivity: penalties amplified in aggressive mode, bonuses dampened (and vice-versa for patient)
+            const sensAdj = (raw, ...weights) => {
+                const w = weights.reduce((a, b) => a * b, 1);
+                const s = raw >= 0 ? userSettings.sellSensitivity : (2 - userSettings.sellSensitivity);
+                return raw * s * w;
+            };
+
             // 1. AVAILABILITY (Critical — overrides baseline)
             if (player.status === 'i' || player.status === 'u' || player.status === 's') {
-                sellRating += 40 * userSettings.sellSensitivity;
+                sellRating += sensAdj(40);
                 const statusText = player.status === 'i' ? 'Injured' : player.status === 'u' ? 'Unavailable' : 'Suspended';
                 concerns.push({ type: 'critical', title: statusText, text: player.news || 'Check team news for updates' });
                 reasons.push(`${statusText} — cannot play`);
             } else if (player.status === 'd') {
                 const chance = player.chanceNextRound;
                 const penalty = chance !== null ? Math.round((100 - chance) * 0.4) : 22;
-                sellRating += penalty * userSettings.sellSensitivity;
+                sellRating += sensAdj(penalty);
                 concerns.push({ type: 'warning', title: 'Doubtful', text: `${chance !== null ? chance + '% chance' : '75% chance'} of playing. ${player.news || ''}` });
                 if (penalty >= 18) reasons.push('Significant injury doubt');
             }
 
-            // 2. FORM (Continuous — position-adjusted, more aggressive)
+            // 2. FORM (Continuous — position-adjusted, asymmetric sensitivity)
             const formDelta = player.form - posConfig.formMedian;
             // Linear: each 1.0 of formDelta = ~10 points; capped at ±30
             const rawFormPenalty = Math.max(-30, Math.min(30, Math.round(-formDelta * 10)));
-            const formPenalty = rawFormPenalty * userSettings.formWeight * userSettings.sellSensitivity;
+            const formPenalty = sensAdj(rawFormPenalty, userSettings.formWeight);
             sellRating += formPenalty;
 
             if (formDelta <= -1.5) {
-                concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${player.form.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian}` });
+                concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${player.form.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian} — consider selling before price drops` });
                 reasons.push('Form collapsed');
             } else if (formDelta <= -0.5) {
-                concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${player.form.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian}` });
+                concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${player.form.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian} — monitor next 2 GWs` });
             } else if (formDelta >= 2.5) {
-                positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${player.form.toFixed(1)} — top tier for ${posConfig.short}s` });
+                positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${player.form.toFixed(1)} — top 5% of ${posConfig.short}s. Strong captain option` });
             } else if (formDelta >= 1.0) {
-                positives.push({ type: 'positive', title: 'Good Form', text: `Form ${player.form.toFixed(1)} — above average` });
+                positives.push({ type: 'positive', title: 'Good Form', text: `Form ${player.form.toFixed(1)} — above ${posConfig.short} average, keep starting` });
             }
 
             // 3. FIXTURES (Continuous — near fixtures weighted more)
@@ -2295,9 +2309,9 @@
                 });
                 avgFDR = weightedSum / totalWeight;
             }
-            // Linear: FDR 3 is neutral, each 1.0 away = ~14 points (was 12)
+            // Linear: FDR 3 is neutral, each 1.0 away = ~14 points
             const rawFixPenalty = Math.max(-22, Math.min(22, Math.round((avgFDR - 3.0) * 14)));
-            sellRating += rawFixPenalty * userSettings.fixtureWeight * userSettings.sellSensitivity;
+            sellRating += sensAdj(rawFixPenalty, userSettings.fixtureWeight);
 
             if (avgFDR >= 3.8) {
                 concerns.push({ type: 'warning', title: 'Tough Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)} — difficult run ahead` });
@@ -2329,7 +2343,7 @@
                 });
                 if (oppTotalWeight > 0) {
                     opponentAdjustment = Math.round(Math.max(-10, Math.min(12, (oppWeightedScore / oppTotalWeight) * 8)));
-                    sellRating += opponentAdjustment * userSettings.fixtureWeight * userSettings.sellSensitivity;
+                    sellRating += sensAdj(opponentAdjustment, userSettings.fixtureWeight);
 
                     if (opponentAdjustment >= 5) {
                         const label = player.position <= 2 ? 'Strong Attacking Opponents' : 'Strong Defensive Opponents';
@@ -2348,16 +2362,16 @@
             else if (minsPerGame < 75) { minsPenalty = Math.round(5 - (minsPerGame - 60) * (7 / 15)); }
             else if (minsPerGame >= 85) { minsPenalty = -6; }
             else { minsPenalty = -2; }
-            sellRating += minsPenalty * userSettings.sellSensitivity;
+            sellRating += sensAdj(minsPenalty);
             player.minsPerGame = minsPerGame;
 
             if (minsPerGame < 45) {
-                concerns.push({ type: 'critical', title: 'Rotation Risk', text: `Only ${minsPerGame.toFixed(0)} mins/game (${player.starts} starts in ${gamesPlayed} GWs)` });
+                concerns.push({ type: 'critical', title: 'Rotation Risk', text: `Only ${minsPerGame.toFixed(0)} mins/game (${player.starts} starts in ${gamesPlayed} GWs) — consider benching or selling` });
                 reasons.push('Not starting regularly');
             } else if (minsPerGame < 65) {
-                concerns.push({ type: 'warning', title: 'Reduced Minutes', text: `${minsPerGame.toFixed(0)} mins/game — rotation concern` });
+                concerns.push({ type: 'warning', title: 'Reduced Minutes', text: `${minsPerGame.toFixed(0)} mins/game — rotation risk, bench for tough fixtures` });
             } else if (minsPerGame >= 85) {
-                positives.push({ type: 'positive', title: 'Nailed On', text: `${minsPerGame.toFixed(0)} mins/game — consistent starter` });
+                positives.push({ type: 'positive', title: 'Nailed On', text: `${minsPerGame.toFixed(0)} mins/game — guaranteed starter, no rotation worry` });
             }
 
             // 5. VALUE FOR MONEY (Continuous — more aggressive, especially for premiums)
@@ -2371,14 +2385,14 @@
             let rawValuePenalty = Math.max(-15, Math.min(22, Math.round(-valueSignal)));
             if (isPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.5);
             else if (isMidPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.2);
-            sellRating += rawValuePenalty * userSettings.valueWeight * userSettings.sellSensitivity;
+            sellRating += sensAdj(rawValuePenalty, userSettings.valueWeight);
 
             if (isPremium && player.form < posConfig.formMedian) {
-                sellRating += 5 * userSettings.sellSensitivity; // Extra premium penalty
-                concerns.push({ type: 'critical', title: 'Premium Underperforming', text: `£${player.price.toFixed(1)}m price tag not justified (${ppm.toFixed(1)} pts/£m vs avg ${posAvg.ppm.toFixed(1)}) — funds tied up` });
+                sellRating += sensAdj(5); // Extra premium penalty
+                concerns.push({ type: 'critical', title: 'Premium Underperforming', text: `£${player.price.toFixed(1)}m price tag not justified (${ppm.toFixed(1)} pts/£m vs avg ${posAvg.ppm.toFixed(1)}) — sell to free up funds for better options` });
                 if (!reasons.length) reasons.push('Premium not delivering');
             } else if (isMidPremium && player.form < posConfig.formMedian - 0.5) {
-                concerns.push({ type: 'warning', title: 'Mid-Premium Underperforming', text: `£${player.price.toFixed(1)}m with poor form — consider downgrade` });
+                concerns.push({ type: 'warning', title: 'Mid-Premium Underperforming', text: `£${player.price.toFixed(1)}m with poor form — downgrade to fund upgrades elsewhere` });
             } else if (ppmDelta > 3) {
                 positives.push({ type: 'positive', title: 'Great Value', text: `${ppm.toFixed(1)} pts/£m — well above ${posConfig.short} average (${posAvg.ppm.toFixed(1)})` });
             }
@@ -2392,7 +2406,7 @@
 
                 // Continuous: xGI/90 below 0.30 is a concern, above 0.50 is great
                 const xGPenalty = Math.max(-15, Math.min(18, Math.round((0.35 - xGIPer90) * 35)));
-                sellRating += xGPenalty * userSettings.sellSensitivity;
+                sellRating += sensAdj(xGPenalty);
 
                 if (xGIPer90 < 0.20) {
                     concerns.push({ type: 'warning', title: 'Low Underlying Stats', text: `${xGIPer90.toFixed(2)} xGI/90 — not creating enough chances` });
@@ -2403,18 +2417,18 @@
                 }
 
                 if (overperformance > 2.0) {
-                    sellRating += Math.round(Math.min(12, overperformance * 2.5)) * userSettings.sellSensitivity;
-                    concerns.push({ type: 'warning', title: 'Overperforming xG', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — regression likely (+${overperformance.toFixed(1)})` });
+                    sellRating += sensAdj(Math.round(Math.min(12, overperformance * 2.5)));
+                    concerns.push({ type: 'warning', title: 'Overperforming xG', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — regression risk, consider selling high (+${overperformance.toFixed(1)})` });
                 } else if (overperformance < -2.5) {
-                    sellRating -= Math.round(Math.min(8, Math.abs(overperformance) * 1.5));
-                    positives.push({ type: 'positive', title: 'Due Returns', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — unlucky, due a haul (${overperformance.toFixed(1)})` });
+                    sellRating += sensAdj(-Math.round(Math.min(8, Math.abs(overperformance) * 1.5)));
+                    positives.push({ type: 'positive', title: 'Due Returns', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — unlucky, due a haul — hold and be patient (${overperformance.toFixed(1)})` });
                 }
             } else if (player.position <= 2 && player.minutes >= 270) {
                 const csRate = player.cleanSheets / gamesPlayed;
                 player.csRate = csRate;
                 // Continuous: CS rate below 20% adds penalty, above 35% gives bonus (wider range)
                 const csPenalty = Math.max(-10, Math.min(14, Math.round((0.28 - csRate) * 35)));
-                sellRating += csPenalty;
+                sellRating += sensAdj(csPenalty);
 
                 if (csRate >= 0.40) {
                     positives.push({ type: 'positive', title: 'CS Machine', text: `${(csRate * 100).toFixed(0)}% clean sheet rate` });
@@ -2437,8 +2451,8 @@
             const netTransfers = player.transfersIn - player.transfersOut;
             player.netTransfers = netTransfers;
             if (netTransfers < -20000) {
-                sellRating += 4 * userSettings.sellSensitivity;
-                concerns.push({ type: 'info', title: 'Mass Selling', text: `${(netTransfers / 1000).toFixed(0)}k net transfers — price drop imminent` });
+                sellRating += sensAdj(4);
+                concerns.push({ type: 'info', title: 'Mass Selling', text: `${(netTransfers / 1000).toFixed(0)}k net transfers — sell now before price drops further` });
             }
 
             // 8. TEAM CONTEXT (from team analysis — attack, defence, form scoring)
@@ -2446,7 +2460,7 @@
                 // Team form: poor team form = harder for all players to return
                 const teamFormDelta = (ta.formRating - 50) / 50; // -1 to +1
                 const teamFormPenalty = Math.round(teamFormDelta * -8); // bad form → +8, good form → -8
-                sellRating += teamFormPenalty * userSettings.sellSensitivity;
+                sellRating += sensAdj(teamFormPenalty);
 
                 if (ta.formRating < 30) {
                     concerns.push({ type: 'warning', title: 'Team in Poor Form', text: `${player.team} form rating ${ta.formRating}/100 — team struggling (W${ta.wins} D${ta.draws} L${ta.losses} last 5)` });
@@ -2459,7 +2473,7 @@
                 if (player.position >= 3) {
                     const attDelta = (ta.attackPower - 50) / 50;
                     const teamAttPenalty = Math.round(attDelta * -8);
-                    sellRating += teamAttPenalty * userSettings.sellSensitivity;
+                    sellRating += sensAdj(teamAttPenalty);
 
                     if (ta.attackPower < 35) {
                         concerns.push({ type: 'warning', title: 'Weak Team Attack', text: `${player.team} attack power ${ta.attackPower}/100 — limited goal threat (${ta.avgGoals.toFixed(1)} goals/game)` });
@@ -2472,7 +2486,7 @@
                 if (player.position <= 2) {
                     const defDelta = (ta.defensePower - 50) / 50;
                     const teamDefPenalty = Math.round(defDelta * -8);
-                    sellRating += teamDefPenalty * userSettings.sellSensitivity;
+                    sellRating += sensAdj(teamDefPenalty);
 
                     if (ta.defensePower < 35) {
                         concerns.push({ type: 'warning', title: 'Weak Team Defence', text: `${player.team} defence power ${ta.defensePower}/100 — hard to keep clean sheets (${ta.avgConceded.toFixed(1)} conceded/game)` });
@@ -2483,34 +2497,44 @@
 
                 // Team fixture score impacts all players
                 if (ta.fixtureScore < 30) {
-                    sellRating += 4 * userSettings.fixtureWeight * userSettings.sellSensitivity;
+                    sellRating += sensAdj(4, userSettings.fixtureWeight);
                     concerns.push({ type: 'info', title: 'Poor Team Fixture Score', text: `${player.team} fixture score ${ta.fixtureScore}/100 — tough schedule ahead` });
                 } else if (ta.fixtureScore >= 70) {
-                    sellRating -= 3 * userSettings.fixtureWeight;
-                    positives.push({ type: 'positive', title: 'Great Team Fixture Score', text: `${player.team} fixture score ${ta.fixtureScore}/100 — favourable run` });
+                    sellRating += sensAdj(-3, userSettings.fixtureWeight);
+                    positives.push({ type: 'positive', title: 'Great Team Fixture Score', text: `${player.team} fixture score ${ta.fixtureScore}/100 — favourable run, hold players` });
                 }
             }
 
             sellRating = Math.max(0, Math.min(100, Math.round(sellRating)));
 
             // VERDICT (tighter thresholds — more active flagging)
-            let verdict, verdictReason;
+            let verdict, verdictReason, recommendation;
+            const nextFix = (player.fixtures || [])[0];
+            const nextOpp = nextFix ? nextFix.opponent : '';
+            const nextGW = nextFix ? nextFix.event : currentGW + 1;
+
             if (sellRating >= 55) {
                 verdict = 'sell';
                 verdictReason = reasons[0] || 'Multiple red flags — prioritize transfer';
+                const priceRisk = (player.netTransfers || 0) < -10000 ? ' Price drop risk.' : '';
+                recommendation = `Transfer out before GW${nextGW}.${priceRisk} ${concerns.length > 0 ? concerns[0].text : ''}`;
             } else if (sellRating >= 38) {
                 verdict = 'monitor';
                 verdictReason = reasons[0] || 'Some concerns — monitor closely';
+                const fixNote = avgFDR <= 2.8 ? ' Fixtures improve soon — hold for now.' : avgFDR >= 3.5 ? ' Tough fixtures ahead — consider selling.' : '';
+                recommendation = `Reassess after GW${nextGW}.${fixNote}`;
             } else if (sellRating <= 20 && player.form >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
                 verdict = 'star';
                 verdictReason = positives.length > 0 ? positives[0].text : 'Top performer — team cornerstone';
+                recommendation = `Captain candidate GW${nextGW}${nextOpp ? ` vs ${nextOpp}` : ''}. Lock in and don't overthink.`;
             } else {
                 verdict = 'hold';
                 verdictReason = positives.length > 0 ? positives[0].text : 'Performing as expected';
+                recommendation = `Keep starting. Reliable performer${avgFDR <= 3.0 ? ' with decent fixtures ahead' : ''}.`;
             }
 
             const keyMetric = buildKeyMetrics(player, posConfig, minsPerGame, avgFDR);
-            return { player, sellRating, verdict, verdictReason, concerns, positives, keyMetric, fixtures: fixtures.slice(0, 5) };
+            return { player, sellRating, verdict, verdictReason, recommendation, concerns, positives, keyMetric, fixtures: fixtures.slice(0, 5) };
         }
 
         function buildKeyMetrics(player, posConfig, minsPerGame, avgFDR) {
@@ -2541,13 +2565,57 @@
             const stars = analysisResults.filter(a => a.verdict === 'star');
             const holds = analysisResults.filter(a => a.verdict === 'hold');
 
-            // Calculate team health score
+            // Calculate team health score (multi-factor)
             const starters = analysisResults.filter(a => !a.player.onBench);
             const bench = analysisResults.filter(a => a.player.onBench);
-            const starterHealth = starters.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(starters.length, 1);
-            const benchHealth = bench.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(bench.length, 1);
-            const rawHealth = Math.round(starterHealth * 0.85 + benchHealth * 0.15);
-            const teamHealth = Math.max(0, Math.min(100, rawHealth));
+            const starterAvg = starters.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(starters.length, 1);
+            const benchAvg = bench.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(bench.length, 1);
+            let healthScore = starterAvg * 0.80 + benchAvg * 0.20;
+            const healthFactors = [];
+
+            // Penalty: injured/unavailable starters
+            const injuredStarters = starters.filter(a => a.player.status === 'i' || a.player.status === 'u' || a.player.status === 's');
+            if (injuredStarters.length) {
+                healthScore -= injuredStarters.length * 5;
+                healthFactors.push({ icon: '🚨', text: `${injuredStarters.length} starter${injuredStarters.length > 1 ? 's' : ''} unavailable`, impact: 'negative' });
+            }
+            // Penalty: doubtful starters
+            const doubtfulStarters = starters.filter(a => a.player.status === 'd');
+            if (doubtfulStarters.length) {
+                healthScore -= doubtfulStarters.length * 2;
+                healthFactors.push({ icon: '❓', text: `${doubtfulStarters.length} starter${doubtfulStarters.length > 1 ? 's' : ''} doubtful`, impact: 'negative' });
+            }
+            // Captain reliability
+            const capAnalysis = starters.find(a => a.player.isCaptain);
+            if (capAnalysis) {
+                if (capAnalysis.verdict === 'star') {
+                    healthScore += 3;
+                    healthFactors.push({ icon: '👑', text: `Captain ${capAnalysis.player.name} is a Star performer`, impact: 'positive' });
+                } else if (capAnalysis.verdict === 'sell') {
+                    healthScore -= 5;
+                    healthFactors.push({ icon: '👑', text: `Captain ${capAnalysis.player.name} flagged to Sell`, impact: 'negative' });
+                } else if (capAnalysis.verdict === 'monitor') {
+                    healthScore -= 2;
+                    healthFactors.push({ icon: '👑', text: `Captain ${capAnalysis.player.name} needs monitoring`, impact: 'warning' });
+                }
+            }
+            // Position depth: >50% of starters at a position flagged sell
+            [2, 3, 4].forEach(pos => {
+                const posStarters = starters.filter(a => a.player.position === pos);
+                const posSells = posStarters.filter(a => a.verdict === 'sell');
+                if (posStarters.length >= 2 && posSells.length > posStarters.length / 2) {
+                    healthScore -= 3;
+                    const posName = POSITION_CONFIG[pos]?.short || 'POS';
+                    healthFactors.push({ icon: '⚠️', text: `${posName} depth: ${posSells.length}/${posStarters.length} flagged to sell`, impact: 'negative' });
+                }
+            });
+            // Positive: lots of stars
+            if (stars.length >= 3) {
+                healthScore += 2;
+                healthFactors.push({ icon: '⭐', text: `${stars.length} Star performers in squad`, impact: 'positive' });
+            }
+
+            const teamHealth = Math.max(0, Math.min(100, Math.round(healthScore)));
 
             let html = '';
 
@@ -2561,7 +2629,8 @@
                 <a href="fpl-transfer-wizard.html" style="padding:8px 16px;background:#A78BFA;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;">Try FPL Wizard →</a>
             </div>`;
 
-            html += renderTeamOverview(teamHealth, sells, monitors, holds, stars);
+            html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthFactors);
+            html += renderSquadAlertsPanel();
 
             // Sell section
             if (sells.length > 0) {
@@ -2592,7 +2661,47 @@
             });
         }
 
-        function renderTeamOverview(health, sells, monitors, holds, stars) {
+        function renderSquadAlertsPanel() {
+            const squadPlayers = selectedPlayers || [];
+            const alerts = squadPlayers.filter(p => p.news && p.news.trim()).sort((a, b) => {
+                const aChance = a.chanceNextRound ?? 100;
+                const bChance = b.chanceNextRound ?? 100;
+                return aChance - bChance;
+            });
+            if (!alerts.length) return '';
+            let html = `<div class="squad-alerts-panel">`;
+            html += `<div class="squad-alerts-header" onclick="toggleSection('squad-alerts-body')">`;
+            html += `<span style="display:flex;align-items:center;gap:6px;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Squad Alerts (${alerts.length})</span>`;
+            html += `<span class="verdict-toggle" id="squad-alerts-body-toggle">▼</span></div>`;
+            html += `<div class="squad-alerts-body" id="squad-alerts-body">`;
+            alerts.forEach(p => {
+                const chance = p.chanceNextRound;
+                let statusClass = 'status-ok';
+                let statusIcon = '\u2713';
+                if (chance !== null && chance !== undefined) {
+                    if (chance === 0) { statusClass = 'status-injured'; statusIcon = '\u2717'; }
+                    else if (chance <= 50) { statusClass = 'status-injured'; statusIcon = '!'; }
+                    else if (chance <= 75) { statusClass = 'status-doubt'; statusIcon = '?'; }
+                } else if (p.status === 'i' || p.status === 'u') {
+                    statusClass = 'status-injured'; statusIcon = '\u2717';
+                } else if (p.status === 'd') {
+                    statusClass = 'status-doubt'; statusIcon = '?';
+                }
+                const chanceText = chance !== null && chance !== undefined ? `<div class="squad-alert-chance" style="color:${chance <= 25 ? '#EF4444' : chance <= 75 ? '#D97706' : '#10B981'};">${chance}% chance of playing</div>` : '';
+                html += `<div class="squad-alert-item">
+                    <div class="squad-alert-status ${statusClass}">${statusIcon}</div>
+                    <div class="squad-alert-info">
+                        <div class="squad-alert-name">${escHTML(p.name)} <span style="font-weight:400;color:var(--text-muted);">${escHTML(p.team)}</span></div>
+                        <div class="squad-alert-detail">${escHTML(p.news)}</div>
+                        ${chanceText}
+                    </div>
+                </div>`;
+            });
+            html += `</div></div>`;
+            return html;
+        }
+
+        function renderTeamOverview(health, sells, monitors, holds, stars, healthFactors) {
             const circumference = 2 * Math.PI * 54;
             const healthColor = health >= 75 ? 'var(--verdict-hold)' : health >= 50 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
             const healthText = health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape' : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed';
@@ -2639,6 +2748,7 @@
                         </svg>
                     </div>
                     <div class="health-sublabel">${healthText}</div>
+                    ${healthFactors && healthFactors.length ? `<div class="health-factors">${healthFactors.map(f => `<div class="health-factor ${f.impact}">${f.icon} ${f.text}</div>`).join('')}</div>` : ''}
                     <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
                         ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">\u25cf ${sells.length} Sell</span>` : ''}
                         ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">\u25cf ${monitors.length} Monitor</span>` : ''}
@@ -2711,7 +2821,7 @@
         }
 
         function renderCompactRow(analysis) {
-            const { player, verdict, verdictReason, keyMetric, fixtures } = analysis;
+            const { player, verdict, verdictReason, recommendation, keyMetric, fixtures } = analysis;
             const posConfig = POSITION_CONFIG[player.position];
             const formClass = player.form >= posConfig.formMedian + 1.5 ? 'star' : player.form >= posConfig.formMedian + 0.5 ? 'good' : player.form < posConfig.formMedian - 0.5 ? 'bad' : 'warning';
             const fixtureChips = fixtures.slice(0, 5).map(f => `<span class="fixture-chip fdr-${f.difficulty}" style="padding:2px 4px;font-size:9px;border-radius:3px;"><span class="fixture-team" style="font-size:9px;">${f.opponent}</span></span>`).join('');
@@ -3145,45 +3255,6 @@
                 return html;
             }
 
-            // Squad alerts sidebar
-            function renderSquadAlertsSidebar() {
-                const squadPlayers = selectedPlayers || [];
-                const alerts = squadPlayers.filter(p => p.news && p.news.trim()).sort((a, b) => {
-                    const aChance = a.chanceNextRound ?? 100;
-                    const bChance = b.chanceNextRound ?? 100;
-                    return aChance - bChance;
-                });
-                if (!alerts.length) return '';
-                let html = `<div class="news-sidebar"><div class="news-sidebar-panel">`;
-                html += `<div class="news-sidebar-header"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Squad Alerts (${alerts.length})</div>`;
-                html += `<div class="news-sidebar-body">`;
-                alerts.forEach(p => {
-                    const chance = p.chanceNextRound;
-                    let statusClass = 'status-ok';
-                    let statusIcon = '\u2713';
-                    if (chance !== null && chance !== undefined) {
-                        if (chance === 0) { statusClass = 'status-injured'; statusIcon = '\u2717'; }
-                        else if (chance <= 50) { statusClass = 'status-injured'; statusIcon = '!'; }
-                        else if (chance <= 75) { statusClass = 'status-doubt'; statusIcon = '?'; }
-                    } else if (p.status === 'i' || p.status === 'u') {
-                        statusClass = 'status-injured'; statusIcon = '\u2717';
-                    } else if (p.status === 'd') {
-                        statusClass = 'status-doubt'; statusIcon = '?';
-                    }
-                    const chanceText = chance !== null && chance !== undefined ? `<div class="news-alert-chance" style="color:${chance <= 25 ? '#EF4444' : chance <= 75 ? '#D97706' : '#10B981'};">${chance}% chance of playing</div>` : '';
-                    html += `<div class="news-alert-item">
-                        <div class="news-alert-status ${statusClass}">${statusIcon}</div>
-                        <div class="news-alert-info">
-                            <div class="news-alert-name">${escHTML(p.name)} <span style="font-weight:400;color:var(--text-muted);">${escHTML(p.team)}</span></div>
-                            <div class="news-alert-detail">${escHTML(p.news)}</div>
-                            ${chanceText}
-                        </div>
-                    </div>`;
-                });
-                html += `</div></div></div>`;
-                return html;
-            }
-
             const filtersHTML = `<div class="news-filter-bar" id="newsFilterBar">
                 <button class="news-filter-btn active" data-filter="all"><span class="filter-icon">\ud83d\udcf0</span> All (${filterCounts.all})</button>
                 <button class="news-filter-btn" data-filter="squad"><span class="filter-icon">\u26a1</span> Squad (${filterCounts.squad})</button>
@@ -3193,14 +3264,9 @@
                 <button class="news-filter-btn" data-filter="external"><span class="filter-icon">\ud83c\udf10</span> External (${filterCounts.external})</button>
             </div>`;
 
-            const sidebarHTML = renderSquadAlertsSidebar();
-
             container.innerHTML = `<div class="news-container">
                 ${filtersHTML}
-                <div class="news-layout">
-                    <div class="news-main" id="newsContent">${renderFiltered('all')}</div>
-                    ${sidebarHTML}
-                </div>
+                <div id="newsContent">${renderFiltered('all')}</div>
             </div>`;
 
             // Filter click handlers
@@ -3219,7 +3285,7 @@
         function openDetailPanel(playerId) {
             const analysis = analysisResults.find(a => a.player.id === playerId);
             if (!analysis) return;
-            const { player, verdict, verdictReason, concerns, positives, sellRating, keyMetric, fixtures } = analysis;
+            const { player, verdict, verdictReason, recommendation, concerns, positives, sellRating, keyMetric, fixtures } = analysis;
             const posConfig = POSITION_CONFIG[player.position];
             const gamesPlayed = Math.max(currentGW - 1, 1);
             const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
@@ -3239,6 +3305,7 @@
                     <div class="verdict-chip ${verdict}" style="font-size:13px;padding:6px 14px;">${verdict === 'star' ? '\u2605 STAR' : verdict.toUpperCase()}</div>
                     <div style="font-size:14px;color:var(--text-secondary);flex:1;">${verdictReason}</div>
                 </div>
+                ${recommendation ? `<div style="font-size:12px;color:var(--text-secondary);padding:8px 12px;background:rgba(167,139,250,0.06);border-radius:6px;margin-bottom:6px;border-left:3px solid var(--verdict-${verdict});"><strong>Recommendation:</strong> ${recommendation}</div>` : ''}
                 <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100</div>
             </div>`;
 
