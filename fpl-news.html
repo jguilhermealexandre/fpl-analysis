@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PL News Hub - FPL Tools</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --surface-bg: #FFFFFF;
+            --surface-0: #F9FAFB;
+            --surface-1: #FFFFFF;
+            --surface-2: #F3F4F6;
+            --surface-3: #E5E7EB;
+            --surface-4: #D1D5DB;
+            --color-primary: #10B981;
+            --color-primary-hover: #059669;
+            --color-primary-muted: rgba(16, 185, 129, 0.10);
+            --color-primary-glow: rgba(16, 185, 129, 0.20);
+            --color-primary-text: #065F46;
+            --text-primary: #111827;
+            --text-secondary: #4B5563;
+            --text-muted: #9CA3AF;
+            --border-subtle: rgba(0, 0, 0, 0.04);
+            --border-default: rgba(0, 0, 0, 0.08);
+            --border-emphasis: rgba(0, 0, 0, 0.15);
+            --color-success: #10B981;
+            --color-error: #EF4444;
+            --color-warning: #F59E0B;
+            --color-info: #3B82F6;
+            --font-display: 'Space Grotesk', system-ui, sans-serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px;
+        }
+
+        body { font-family: var(--font-body); background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 30%, #FFFFFF 70%, #EFF6FF 100%); background-attachment: fixed; color: var(--text-primary); line-height: 1.5; font-size: 14px; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+        /* ===== NAV ===== */
+        .top-nav { background: var(--surface-0); border-bottom: 1px solid var(--border-default); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 32px; }
+        .nav-logo { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+        .nav-logo span { color: var(--color-success); }
+        .nav-links { display: flex; gap: 4px; }
+        .nav-link { display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 500; border-radius: 8px; transition: all 150ms; }
+        .nav-link:hover { color: var(--text-primary); background: var(--surface-1); }
+        .nav-link.active { color: var(--color-primary); background: var(--color-primary-muted); }
+        .nav-link .icon { width: 16px; height: 16px; flex-shrink: 0; }
+        .nav-link--accent { background: rgba(167, 139, 250, 0.08); border: 1px solid rgba(167, 139, 250, 0.25); }
+        .nav-link--accent:not(.active) { color: #A78BFA; }
+        .mobile-nav-item--accent { color: #A78BFA !important; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+        .nav-dropdown { position: relative; display: flex; }
+        .nav-dropdown-menu { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%) translateY(4px); min-width: 200px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06); padding: 6px; opacity: 0; pointer-events: none; transition: opacity 150ms ease-out, transform 150ms ease-out; z-index: 200; }
+        .nav-dropdown:hover .nav-dropdown-menu, .nav-dropdown-menu:hover { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+        .nav-dropdown::after { content: ''; position: absolute; bottom: -8px; left: 0; right: 0; height: 8px; }
+        .dropdown-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--text-secondary); text-decoration: none; font-size: 12px; font-weight: 500; border-radius: 7px; transition: all 120ms; white-space: nowrap; }
+        .dropdown-item:hover { color: var(--color-primary); background: rgba(16, 185, 129, 0.08); }
+        .dropdown-item .dd-icon { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-muted); }
+        .dropdown-item:hover .dd-icon { color: var(--color-primary); }
+        .hidden { display: none !important; }
+
+        /* ===== PAGE HEADER ===== */
+        .news-page-header {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 24px 0;
+        }
+        .news-page-title {
+            font-family: var(--font-display);
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .news-page-title .icon { width: 24px; height: 24px; color: var(--color-primary); }
+        .news-page-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* ===== HERO ARTICLE ===== */
+        .news-hero {
+            max-width: 1400px;
+            margin: 20px auto 0;
+            padding: 0 24px;
+        }
+        .news-hero-card {
+            position: relative;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            min-height: 340px;
+            display: flex;
+            align-items: flex-end;
+            background: #1a1a2e;
+            cursor: pointer;
+            transition: transform 200ms, box-shadow 200ms;
+        }
+        .news-hero-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+        }
+        .news-hero-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+        }
+        .news-hero-fallback {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 0;
+        }
+        .news-hero-fallback svg { width: 80px; height: 80px; opacity: 0.15; stroke: #fff; }
+        .news-hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.1) 100%);
+            z-index: 1;
+        }
+        .news-hero-content {
+            position: relative;
+            z-index: 2;
+            padding: 32px;
+            width: 100%;
+        }
+        .news-hero-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .news-hero-headline {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.3;
+            max-width: 700px;
+            margin-bottom: 8px;
+        }
+        .news-hero-headline a { color: #fff; text-decoration: none; }
+        .news-hero-headline a:hover { text-decoration: underline; }
+        .news-hero-time {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+        }
+        .news-hero-crests {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .news-hero-crests img {
+            width: 28px;
+            height: 28px;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+        }
+
+        /* ===== FILTER BAR ===== */
+        .news-filters {
+            max-width: 1400px;
+            margin: 20px auto 0;
+            padding: 0 24px;
+        }
+        .news-filter-bar {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding: 4px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+        }
+        .news-filter-btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: var(--radius-md);
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: var(--font-body);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms;
+            white-space: nowrap;
+        }
+        .news-filter-btn:hover { color: var(--text-primary); background: var(--surface-2); }
+        .news-filter-btn.active { color: #fff; background: var(--color-primary); }
+
+        /* ===== TAG PILLS ===== */
+        .news-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .news-tag-press { background: rgba(245,158,11,0.15); color: #D97706; }
+        .news-tag-injury { background: rgba(239,68,68,0.15); color: #EF4444; }
+        .news-tag-transfers { background: rgba(59,130,246,0.12); color: #3B82F6; }
+        .news-tag-startingxi { background: rgba(16,185,129,0.12); color: #10B981; }
+        .news-tag-suspension { background: rgba(139,92,246,0.12); color: #8B5CF6; }
+
+        /* ===== SOURCE BADGES ===== */
+        .source-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .source-badge.cat-bbc { background: rgba(187,29,29,0.12); color: #BB1D1D; }
+        .source-badge.cat-pl { background: rgba(56,0,106,0.12); color: #38006A; }
+        .source-badge.cat-sky { background: rgba(0,98,178,0.12); color: #0062B2; }
+        .source-badge.cat-guardian { background: rgba(5,81,126,0.12); color: #05517E; }
+
+        /* ===== ARTICLE GRID ===== */
+        .news-grid-section {
+            max-width: 1400px;
+            margin: 20px auto 0;
+            padding: 0 24px;
+        }
+        .nhg-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .nhg-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: transform 200ms, box-shadow 200ms;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+        .nhg-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+        }
+        .nhg-card-thumb {
+            height: 180px;
+            overflow: hidden;
+            position: relative;
+            background: var(--surface-2);
+        }
+        .nhg-card-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 300ms;
+        }
+        .nhg-card:hover .nhg-card-thumb img {
+            transform: scale(1.05);
+        }
+        .nhg-card-thumb-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .nhg-card-thumb-fallback svg { width: 40px; height: 40px; opacity: 0.3; }
+        .nhg-card-body {
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        .nhg-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .nhg-card-crests {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            margin-left: auto;
+        }
+        .nhg-card-crests img {
+            width: 20px;
+            height: 20px;
+        }
+        .nhg-card-headline {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        .nhg-card-headline a {
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+        .nhg-card-headline a:hover { color: var(--color-info); }
+        .nhg-card-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: auto;
+        }
+
+        /* ===== EMPTY / LOADING ===== */
+        .news-loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .news-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .spinner { width: 32px; height: 32px; border: 3px solid var(--surface-3); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== FPL ALERTS SECTION ===== */
+        .news-alerts-section {
+            max-width: 1400px;
+            margin: 32px auto 0;
+            padding: 0 24px;
+        }
+        .news-alerts-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .news-alerts-title {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .news-alerts-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .nha-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .nha-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            transition: all 150ms;
+        }
+        .nha-card:hover { background: var(--surface-2); transform: translateX(2px); }
+        .nha-card.is-squad { border-left: 3px solid var(--color-warning); }
+        .nha-crest { width: 24px; height: 24px; flex-shrink: 0; }
+        .nha-cat {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+        .nha-cat.cat-injury { background: rgba(239,68,68,0.12); color: #EF4444; }
+        .nha-cat.cat-price { background: rgba(59,130,246,0.12); color: #3B82F6; }
+        .nha-cat.cat-transfer { background: rgba(16,185,129,0.12); color: #10B981; }
+        .nha-info { flex: 1; min-width: 0; }
+        .nha-headline {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .nha-detail {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .nha-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--color-primary);
+            background: var(--color-primary-muted);
+            border: 1px solid rgba(16,185,129,0.2);
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            transition: all 150ms;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .nha-cta:hover { background: rgba(16,185,129,0.15); border-color: var(--color-primary); }
+        .nha-cta svg { width: 10px; height: 10px; }
+        .nha-show-more {
+            display: block;
+            margin: 12px auto 0;
+            padding: 8px 24px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms;
+        }
+        .nha-show-more:hover { background: var(--surface-3); color: var(--text-primary); }
+
+        /* ===== FOOTER ===== */
+        .site-footer {
+            max-width: 1400px;
+            margin: 40px auto 0;
+            padding: 20px 24px 100px;
+            text-align: center;
+        }
+        .footer-inner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .footer-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+        .footer-pill .icon { width: 12px; height: 12px; }
+        .footer-divider {
+            width: 1px;
+            height: 12px;
+            background: var(--border-default);
+        }
+
+        /* ===== MOBILE NAV ===== */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--surface-0);
+            border-top: 1px solid var(--border-default);
+            padding: 8px 0;
+            z-index: 100;
+        }
+        @media (max-width: 768px) {
+            .mobile-nav { display: flex; justify-content: space-around; }
+            .main-content { padding-bottom: 80px; }
+        }
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 4px 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 9px;
+        }
+        .mobile-nav-item.active { color: var(--color-primary); }
+        .mobile-nav-item .icon { width: 20px; height: 20px; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .nhg-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .news-page-header { padding: 16px 16px 0; }
+            .news-hero { padding: 0 16px; }
+            .news-hero-card { min-height: 260px; }
+            .news-hero-content { padding: 20px; }
+            .news-hero-headline { font-size: 20px; }
+            .news-filters { padding: 0 16px; }
+            .news-filter-bar { gap: 4px; padding: 3px; }
+            .news-filter-btn { padding: 5px 10px; font-size: 11px; }
+            .news-grid-section { padding: 0 16px; }
+            .nhg-grid { grid-template-columns: 1fr; gap: 12px; }
+            .nhg-card-thumb { height: 160px; }
+            .news-alerts-section { padding: 0 16px; }
+            .nha-grid { grid-template-columns: 1fr; }
+            .site-footer { padding: 20px 16px 100px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo"><i data-lucide="zap" style="color:var(--color-primary);width:20px;height:20px;"></i> FPL<span>Tools</span></a>
+            <div class="nav-links">
+                <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent"><i data-lucide="wand-2" class="icon"></i> FPL Wizard</a>
+                <a href="fpl-news.html" class="nav-link active"><i data-lucide="newspaper" class="icon"></i> News</a>
+                <div class="nav-dropdown">
+                    <a href="fpl-my-team-analysis.html" class="nav-link"><i data-lucide="users" class="icon"></i> My Team</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-my-team-analysis.html#squad" class="dropdown-item"><i data-lucide="users" class="dd-icon"></i> Squad Analysis</a>
+                        <a href="fpl-my-team-analysis.html#transfers" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Transfers</a>
+                        <a href="fpl-my-team-analysis.html#news" class="dropdown-item"><i data-lucide="newspaper" class="dd-icon"></i> News</a>
+                        <a href="fpl-my-team-analysis.html#planner" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> GW Planner</a>
+                        <a href="fpl-my-team-analysis.html#transfer" class="dropdown-item"><i data-lucide="repeat" class="dd-icon"></i> Transfer Wizard</a>
+                        <a href="fpl-my-team-analysis.html#lineup" class="dropdown-item"><i data-lucide="wand-2" class="dd-icon"></i> Lineup Wizard</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-players-analysis.html" class="nav-link"><i data-lucide="user-search" class="icon"></i> Players</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-players-analysis.html#recommendations" class="dropdown-item"><i data-lucide="star" class="dd-icon"></i> Recommendations</a>
+                        <a href="fpl-players-analysis.html#rising" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Rising Form</a>
+                        <a href="fpl-players-analysis.html#charts" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Charts</a>
+                        <a href="fpl-players-analysis.html#routes" class="dropdown-item"><i data-lucide="git-branch" class="dd-icon"></i> Routes to Points</a>
+                        <a href="fpl-players-analysis.html#all" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> All Players</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-teams-analysis.html" class="nav-link"><i data-lucide="bar-chart-3" class="icon"></i> Teams</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-teams-analysis.html#rankings" class="dropdown-item"><i data-lucide="trophy" class="dd-icon"></i> Team Rankings</a>
+                        <a href="fpl-teams-analysis.html#swings" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Fixture Swings</a>
+                        <a href="fpl-teams-analysis.html#calendar" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> Full Calendar</a>
+                        <a href="fpl-teams-analysis.html#stats" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Stats Table</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-league-rivals.html" class="nav-link"><i data-lucide="trophy" class="icon"></i> Rivals</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-league-rivals.html#insights" class="dropdown-item"><i data-lucide="lightbulb" class="dd-icon"></i> Insights</a>
+                        <a href="fpl-league-rivals.html#captain" class="dropdown-item"><i data-lucide="crown" class="dd-icon"></i> Captain Race</a>
+                        <a href="fpl-league-rivals.html#race" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> League Race</a>
+                        <a href="fpl-league-rivals.html#strength" class="dropdown-item"><i data-lucide="shield" class="dd-icon"></i> Squad Strength</a>
+                        <a href="fpl-league-rivals.html#matrix" class="dropdown-item"><i data-lucide="grid-3x3" class="dd-icon"></i> Matrix</a>
+                        <a href="fpl-league-rivals.html#h2h" class="dropdown-item"><i data-lucide="swords" class="dd-icon"></i> Head-to-Head</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="news-page-header">
+        <div class="news-page-title"><i data-lucide="newspaper" class="icon"></i> PL News Hub</div>
+        <div class="news-page-sub">Press conferences, injuries, transfers &amp; team news from across the Premier League</div>
+    </div>
+
+    <!-- Hero Article -->
+    <div class="news-hero" id="newsHero">
+        <div class="news-loading"><div class="spinner"></div> Loading news...</div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="news-filters hidden" id="newsFilters"></div>
+
+    <!-- Article Grid -->
+    <div class="news-grid-section" id="newsGrid"></div>
+
+    <!-- FPL Alerts -->
+    <div class="news-alerts-section hidden" id="newsAlerts"></div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span class="footer-pill"><i data-lucide="database" class="icon"></i> Official FPL API</span>
+            <span class="footer-divider"></span>
+            <span class="footer-pill"><i data-lucide="refresh-cw" class="icon"></i> Updated daily</span>
+            <span class="footer-divider"></span>
+            <span class="footer-pill"><i data-lucide="code-2" class="icon"></i> Free &amp; open source</span>
+        </div>
+    </footer>
+
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav">
+        <a href="fpl-transfer-wizard.html" class="mobile-nav-item mobile-nav-item--accent"><i data-lucide="wand-2" class="icon"></i>Wizard</a>
+        <a href="fpl-news.html" class="mobile-nav-item active"><i data-lucide="newspaper" class="icon"></i>News</a>
+        <a href="fpl-my-team-analysis.html" class="mobile-nav-item"><i data-lucide="users" class="icon"></i>My Team</a>
+        <a href="fpl-players-analysis.html" class="mobile-nav-item"><i data-lucide="user-search" class="icon"></i>Players</a>
+        <a href="fpl-teams-analysis.html" class="mobile-nav-item"><i data-lucide="bar-chart-3" class="icon"></i>Teams</a>
+        <a href="fpl-league-rivals.html" class="mobile-nav-item"><i data-lucide="trophy" class="icon"></i>Rivals</a>
+    </nav>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        lucide.createIcons();
+
+        // ===== UTILITIES =====
+        function timeAgo(dateStr) {
+            if (!dateStr) return '';
+            const diff = Date.now() - new Date(dateStr).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            const days = Math.floor(hrs / 24);
+            return `${days}d ago`;
+        }
+
+        function escHTML(str) {
+            const d = document.createElement('div');
+            d.textContent = str || '';
+            return d.innerHTML;
+        }
+
+        // ===== TEAM DATA =====
+        let teamsMap = {};  // id → { id, code, name, short_name }
+        let teamLookup = {}; // lowercase name/alias → team object
+        let allPlayers = [];
+        let squadIds = new Set();
+
+        const TEAM_ALIASES = {
+            'man city': 'manchester city', 'man utd': 'manchester united', 'man united': 'manchester united',
+            'spurs': 'tottenham', 'wolves': 'wolverhampton', 'brighton': 'brighton and hove albion',
+            'west ham': 'west ham united', 'palace': 'crystal palace', 'forest': 'nottingham forest',
+            "nott'm forest": 'nottingham forest', 'newcastle': 'newcastle united',
+            'leicester': 'leicester city', 'ipswich': 'ipswich town', 'bournemouth': 'afc bournemouth',
+            'brentford': 'brentford', 'fulham': 'fulham', 'everton': 'everton',
+            'aston villa': 'aston villa', 'villa': 'aston villa', 'arsenal': 'arsenal',
+            'chelsea': 'chelsea', 'liverpool': 'liverpool', 'southampton': 'southampton'
+        };
+
+        function buildTeamLookup(teams) {
+            teams.forEach(t => {
+                teamsMap[t.id] = t;
+                const nameLower = t.name.toLowerCase();
+                teamLookup[nameLower] = t;
+                teamLookup[t.short_name.toLowerCase()] = t;
+                // Single-word from full name (e.g. "Arsenal", "Liverpool", "Chelsea")
+                nameLower.split(' ').forEach(w => {
+                    if (w.length >= 4 && !['city', 'town', 'united', 'and', 'hove', 'albion', 'ham'].includes(w)) {
+                        if (!teamLookup[w]) teamLookup[w] = t;
+                    }
+                });
+            });
+            // Add aliases
+            Object.entries(TEAM_ALIASES).forEach(([alias, canonical]) => {
+                const t = teamLookup[canonical];
+                if (t) teamLookup[alias] = t;
+            });
+        }
+
+        function matchTeams(headline) {
+            if (!headline) return [];
+            const text = headline.toLowerCase();
+            const matched = new Set();
+            const results = [];
+            // Check multi-word aliases first (longer matches first)
+            const allKeys = Object.keys(teamLookup).sort((a, b) => b.length - a.length);
+            for (const key of allKeys) {
+                if (text.includes(key)) {
+                    const t = teamLookup[key];
+                    if (!matched.has(t.id)) {
+                        matched.add(t.id);
+                        results.push(t);
+                        if (results.length >= 2) break;
+                    }
+                }
+            }
+            return results;
+        }
+
+        function getBadgeUrl(teamCode) {
+            return `https://resources.premierleague.com/premierleague/badges/70/t${teamCode}.png`;
+        }
+
+        // ===== FPL RELEVANCE TAGGER =====
+        const TAG_RULES = [
+            { tag: 'press', label: '#PressConference', cls: 'news-tag-press', keywords: ['press conference', 'presser', 'pre-match', 'post-match', 'pre match', 'post match', 'speaking to media', 'media duties'] },
+            { tag: 'injury', label: '#Injury', cls: 'news-tag-injury', keywords: ['injury', 'injured', 'ruled out', 'sideline', 'doubt', 'fitness', 'scan', 'surgery', 'hamstring', 'knee', 'ankle', 'muscle', 'ligament', 'setback', 'blow'] },
+            { tag: 'transfers', label: '#Transfers', cls: 'news-tag-transfers', keywords: ['transfer', 'sign', 'signing', 'bid', 'deal', 'move', 'loan', 'contract', 'release clause', 'fee'] },
+            { tag: 'startingxi', label: '#StartingXI', cls: 'news-tag-startingxi', keywords: ['lineup', 'starting', 'team news', 'confirmed xi', 'team sheet', 'line-up', 'line up'] },
+            { tag: 'suspension', label: '#Suspension', cls: 'news-tag-suspension', keywords: ['suspended', 'ban', 'red card', 'yellow card', 'accumulation', 'sent off'] }
+        ];
+
+        function tagArticle(headline) {
+            if (!headline) return [];
+            const text = headline.toLowerCase();
+            const tags = [];
+            for (const rule of TAG_RULES) {
+                if (rule.keywords.some(kw => text.includes(kw))) {
+                    tags.push(rule);
+                    if (tags.length >= 2) break;
+                }
+            }
+            return tags;
+        }
+
+        // ===== HEADLINE VALIDATION =====
+        const DEAD_HEADLINES = ['find out more here', 'read more', 'click here', 'learn more', 'watch now', 'full story'];
+        function isValidHeadline(title) {
+            if (!title || title.trim().length < 10) return false;
+            const lower = title.trim().toLowerCase();
+            return !DEAD_HEADLINES.some(d => lower === d || lower.startsWith(d));
+        }
+
+        // ===== RSS FETCH =====
+        let externalNewsCache = null, externalNewsFetchedAt = 0;
+
+        async function fetchExternalNews() {
+            const now = Date.now();
+            if (externalNewsCache && (now - externalNewsFetchedAt) < 30 * 60 * 1000) {
+                return externalNewsCache;
+            }
+            const feeds = [
+                { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport', badge: 'bbc' },
+                { url: 'https://www.premierleague.com/news.rss', source: 'Premier League', badge: 'pl' },
+                { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', badge: 'sky' },
+                { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian', badge: 'guardian' }
+            ];
+            const items = [];
+            for (const feed of feeds) {
+                try {
+                    const rssUrl = encodeURIComponent(feed.url);
+                    const resp = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`);
+                    if (!resp.ok) continue;
+                    const data = await resp.json();
+                    if (data.status !== 'ok' || !data.items) continue;
+                    data.items.slice(0, 12).forEach(article => {
+                        if (!isValidHeadline(article.title)) return;
+                        const thumbnail = article.thumbnail || article.enclosure?.link || null;
+                        const teams = matchTeams(article.title);
+                        const tags = tagArticle(article.title);
+                        items.push({
+                            headline: article.title,
+                            link: article.link,
+                            thumbnail,
+                            source: feed.source,
+                            badge: feed.badge,
+                            timestamp: article.pubDate,
+                            teams,
+                            tags
+                        });
+                    });
+                } catch (e) {
+                    console.warn(`Failed to fetch ${feed.source} RSS:`, e);
+                }
+            }
+            // Sort by recency
+            items.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+            externalNewsCache = items;
+            externalNewsFetchedAt = now;
+            return items;
+        }
+
+        // ===== FPL ALERTS =====
+        function generateAlerts(players) {
+            const items = [];
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+            players.forEach(p => {
+                if (p.news && p.news.trim()) {
+                    if (p.newsAdded && new Date(p.newsAdded).getTime() < thirtyDaysAgo) return;
+                    const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance)` : '';
+                    items.push({
+                        category: 'injury',
+                        headline: `${p.name} \u2014 ${p.news}${chance}`,
+                        detail: `${p.team} \u00B7 ${posNames[p.position] || ''} \u00B7 \u00A3${p.price.toFixed(1)}m`,
+                        player: p,
+                        isSquad: squadIds.has(p.id),
+                        sortWeight: squadIds.has(p.id) ? 100 : 50
+                    });
+                }
+            });
+
+            players.forEach(p => {
+                if (p.costChangeEvent !== 0) {
+                    const dir = p.costChangeEvent > 0 ? '\u2191' : '\u2193';
+                    const abs = Math.abs(p.costChangeEvent / 10).toFixed(1);
+                    items.push({
+                        category: 'price',
+                        headline: `${p.name} ${dir} \u00A3${abs}m this gameweek`,
+                        detail: `Now \u00A3${p.price.toFixed(1)}m \u00B7 ${p.team} \u00B7 ${p.ownership}% owned`,
+                        player: p,
+                        isSquad: squadIds.has(p.id),
+                        sortWeight: squadIds.has(p.id) ? 80 : 30
+                    });
+                }
+            });
+
+            const transferThreshold = 50000;
+            players.forEach(p => {
+                const net = p.transfersIn - p.transfersOut;
+                if (Math.abs(net) >= transferThreshold) {
+                    const dir = net > 0 ? 'in' : 'out';
+                    items.push({
+                        category: 'transfer',
+                        headline: `${p.name} sees ${Math.abs(net).toLocaleString()} net transfers ${dir}`,
+                        detail: `${p.transfersIn.toLocaleString()} in / ${p.transfersOut.toLocaleString()} out \u00B7 ${p.team}`,
+                        player: p,
+                        isSquad: squadIds.has(p.id),
+                        sortWeight: squadIds.has(p.id) ? 70 : 20
+                    });
+                }
+            });
+
+            items.sort((a, b) => b.sortWeight - a.sortWeight);
+            return items;
+        }
+
+        // ===== RENDERING =====
+        const SOURCE_COLORS = {
+            bbc: '#BB1D1D', pl: '#38006A', sky: '#0062B2', guardian: '#05517E'
+        };
+
+        const NEWSPAPER_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M18 10h-8"/></svg>';
+
+        function renderHero(article) {
+            const container = document.getElementById('newsHero');
+            if (!article) {
+                container.innerHTML = '';
+                return;
+            }
+            const safeHeadline = escHTML(article.headline);
+            const isValidLink = article.link && /^https?:\/\//i.test(article.link);
+            const headlineLink = isValidLink
+                ? `<a href="${escHTML(article.link)}" target="_blank" rel="noopener noreferrer">${safeHeadline}</a>`
+                : safeHeadline;
+
+            const sourceColor = SOURCE_COLORS[article.badge] || '#6366F1';
+            const imgHTML = article.thumbnail
+                ? `<img class="news-hero-img" src="${escHTML(article.thumbnail)}" alt="" loading="eager" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                   <div class="news-hero-fallback" style="display:none;background:${sourceColor}">${NEWSPAPER_SVG}</div>`
+                : `<div class="news-hero-fallback" style="display:flex;background:${sourceColor}">${NEWSPAPER_SVG}</div>`;
+
+            const crestsHTML = article.teams.length
+                ? `<div class="news-hero-crests">${article.teams.map(t => `<img src="${getBadgeUrl(t.code)}" alt="${escHTML(t.short_name)}" title="${escHTML(t.name)}">`).join('')}</div>`
+                : '';
+
+            const tagsHTML = article.tags.map(t => `<span class="news-tag ${t.cls}">${t.label}</span>`).join('');
+
+            container.innerHTML = `<a class="news-hero-card" href="${isValidLink ? escHTML(article.link) : '#'}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+                ${imgHTML}
+                <div class="news-hero-overlay"></div>
+                <div class="news-hero-content">
+                    <div class="news-hero-meta">
+                        <span class="source-badge cat-${escHTML(article.badge)}">${escHTML(article.source)}</span>
+                        ${tagsHTML}
+                        ${crestsHTML}
+                    </div>
+                    <div class="news-hero-headline">${safeHeadline}</div>
+                    ${article.timestamp ? `<div class="news-hero-time">${timeAgo(article.timestamp)}</div>` : ''}
+                </div>
+            </a>`;
+        }
+
+        function renderGrid(articles, filter) {
+            const container = document.getElementById('newsGrid');
+            let filtered = articles;
+
+            if (filter && filter !== 'all') {
+                if (['bbc', 'pl', 'sky', 'guardian'].includes(filter)) {
+                    filtered = articles.filter(a => a.badge === filter);
+                } else {
+                    filtered = articles.filter(a => a.tags.some(t => t.tag === filter));
+                }
+            }
+
+            if (!filtered.length) {
+                container.innerHTML = '<div class="news-empty">No articles match this filter</div>';
+                return;
+            }
+
+            const cards = filtered.map(article => {
+                const safeHeadline = escHTML(article.headline);
+                const isValidLink = article.link && /^https?:\/\//i.test(article.link);
+                const sourceColor = SOURCE_COLORS[article.badge] || '#6366F1';
+
+                const thumbHTML = article.thumbnail
+                    ? `<div class="nhg-card-thumb">
+                        <img src="${escHTML(article.thumbnail)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'nhg-card-thumb-fallback\\' style=\\'background:${sourceColor}\\'>${NEWSPAPER_SVG}</div>'">
+                       </div>`
+                    : `<div class="nhg-card-thumb">
+                        <div class="nhg-card-thumb-fallback" style="background:${sourceColor}">${NEWSPAPER_SVG}</div>
+                       </div>`;
+
+                const crestsHTML = article.teams.length
+                    ? `<div class="nhg-card-crests">${article.teams.map(t => `<img src="${getBadgeUrl(t.code)}" alt="${escHTML(t.short_name)}" title="${escHTML(t.name)}">`).join('')}</div>`
+                    : '';
+
+                const tagsHTML = article.tags.map(t => `<span class="news-tag ${t.cls}">${t.label}</span>`).join('');
+
+                const headlineHTML = isValidLink
+                    ? `<a href="${escHTML(article.link)}" target="_blank" rel="noopener noreferrer">${safeHeadline}</a>`
+                    : safeHeadline;
+
+                return `<div class="nhg-card" onclick="if(event.target.tagName!=='A'){const a=this.querySelector('a');if(a)window.open(a.href,'_blank')}">
+                    ${thumbHTML}
+                    <div class="nhg-card-body">
+                        <div class="nhg-card-meta">
+                            <span class="source-badge cat-${escHTML(article.badge)}">${escHTML(article.source)}</span>
+                            ${tagsHTML}
+                            ${crestsHTML}
+                        </div>
+                        <div class="nhg-card-headline">${headlineHTML}</div>
+                        ${article.timestamp ? `<div class="nhg-card-time">${timeAgo(article.timestamp)}</div>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+
+            container.innerHTML = `<div class="nhg-grid">${cards}</div>`;
+        }
+
+        function renderFilters(articles) {
+            const filtersContainer = document.getElementById('newsFilters');
+            // Count tags
+            const tagCounts = {};
+            TAG_RULES.forEach(r => { tagCounts[r.tag] = 0; });
+            const sourceCounts = { bbc: 0, pl: 0, sky: 0, guardian: 0 };
+            articles.forEach(a => {
+                a.tags.forEach(t => { tagCounts[t.tag] = (tagCounts[t.tag] || 0) + 1; });
+                sourceCounts[a.badge] = (sourceCounts[a.badge] || 0) + 1;
+            });
+
+            let btns = `<button class="news-filter-btn active" data-filter="all">All (${articles.length})</button>`;
+            TAG_RULES.forEach(r => {
+                if (tagCounts[r.tag] > 0) {
+                    btns += `<button class="news-filter-btn" data-filter="${r.tag}">${r.label} (${tagCounts[r.tag]})</button>`;
+                }
+            });
+            // Source filters
+            const sourceLabels = { bbc: 'BBC', pl: 'PL', sky: 'Sky', guardian: 'Guardian' };
+            Object.entries(sourceCounts).forEach(([key, count]) => {
+                if (count > 0) {
+                    btns += `<button class="news-filter-btn" data-filter="${key}">${sourceLabels[key]} (${count})</button>`;
+                }
+            });
+
+            filtersContainer.innerHTML = `<div class="news-filter-bar">${btns}</div>`;
+            filtersContainer.classList.remove('hidden');
+
+            // Click handlers
+            filtersContainer.querySelectorAll('.news-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filtersContainer.querySelectorAll('.news-filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderGrid(articles, btn.dataset.filter);
+                });
+            });
+        }
+
+        function renderAlerts(alertItems) {
+            const container = document.getElementById('newsAlerts');
+            if (!alertItems.length) return;
+
+            const INITIAL_SHOW = 12;
+            const showAll = alertItems.length <= INITIAL_SHOW;
+            const visibleItems = showAll ? alertItems : alertItems.slice(0, INITIAL_SHOW);
+
+            const catLabels = { injury: 'Injury', price: 'Price', transfer: 'Transfer' };
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+
+            function buildAlertCard(item) {
+                const p = item.player;
+                const teamObj = p ? teamsMap[p.teamId] : null;
+                const crestHTML = teamObj
+                    ? `<img class="nha-crest" src="${getBadgeUrl(teamObj.code)}" alt="${escHTML(teamObj.short_name)}">`
+                    : '';
+                const squadClass = item.isSquad ? ' is-squad' : '';
+
+                let ctaHTML = '';
+                if (item.category === 'injury' && p) {
+                    const pos = posNames[p.position] || '';
+                    const maxPrice = Math.ceil(p.price + 0.5);
+                    ctaHTML = `<a class="nha-cta" href="fpl-players-analysis.html#all?pos=${pos}&max=${maxPrice}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Replacements</a>`;
+                } else if (item.category === 'price') {
+                    ctaHTML = `<a class="nha-cta" href="fpl-players-analysis.html#all?sort=price"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Trends</a>`;
+                } else if (item.category === 'transfer') {
+                    ctaHTML = `<a class="nha-cta" href="fpl-players-analysis.html#all?sort=transfers"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Activity</a>`;
+                }
+
+                return `<div class="nha-card${squadClass}">
+                    ${crestHTML}
+                    <span class="nha-cat cat-${item.category}">${catLabels[item.category] || ''}</span>
+                    <div class="nha-info">
+                        <div class="nha-headline">${escHTML(item.headline)}</div>
+                        <div class="nha-detail">${escHTML(item.detail)}</div>
+                    </div>
+                    ${ctaHTML}
+                </div>`;
+            }
+
+            const cardsHTML = visibleItems.map(buildAlertCard).join('');
+            const showMoreHTML = !showAll
+                ? `<button class="nha-show-more" id="nhaShowMore">Show all ${alertItems.length} alerts</button>`
+                : '';
+
+            container.innerHTML = `
+                <div class="news-alerts-header">
+                    <div>
+                        <div class="news-alerts-title">\u26A1 FPL Alerts</div>
+                        <div class="news-alerts-sub">Injuries, price changes &amp; transfer activity across the Premier League</div>
+                    </div>
+                </div>
+                <div class="nha-grid" id="nhaGrid">${cardsHTML}</div>
+                ${showMoreHTML}`;
+            container.classList.remove('hidden');
+
+            if (!showAll) {
+                document.getElementById('nhaShowMore').addEventListener('click', () => {
+                    document.getElementById('nhaGrid').innerHTML = alertItems.map(buildAlertCard).join('');
+                    document.getElementById('nhaShowMore').remove();
+                });
+            }
+        }
+
+        // ===== INIT =====
+        async function init() {
+            try {
+                // Load team/player data and external news in parallel
+                const [bootData, newsItems] = await Promise.all([
+                    fetch('data/bootstrap-static.json').then(r => { if (!r.ok) throw new Error('Data load failed'); return r.json(); }),
+                    fetchExternalNews()
+                ]);
+
+                // Build team lookup
+                buildTeamLookup(bootData.teams);
+
+                // Build players
+                const teams = {};
+                bootData.teams.forEach(t => { teams[t.id] = t; });
+                allPlayers = bootData.elements.map(p => ({
+                    id: p.id,
+                    name: p.web_name,
+                    team: teams[p.team]?.short_name || 'N/A',
+                    teamId: p.team,
+                    position: p.element_type,
+                    price: p.now_cost / 10,
+                    form: parseFloat(p.form) || 0,
+                    points: p.total_points,
+                    ownership: parseFloat(p.selected_by_percent) || 0,
+                    status: p.status,
+                    news: p.news,
+                    newsAdded: p.news_added || null,
+                    chanceNextRound: p.chance_of_playing_next_round,
+                    minutes: p.minutes,
+                    costChangeEvent: p.cost_change_event || 0,
+                    transfersIn: p.transfers_in_event || 0,
+                    transfersOut: p.transfers_out_event || 0
+                }));
+
+                // Check if user has a team loaded
+                const savedTeamId = localStorage.getItem('fpl_team_id');
+                if (savedTeamId) {
+                    try {
+                        const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
+                        const currEvent = bootData.events.find(e => e.is_current);
+                        const currentGW = currEvent ? currEvent.id : 1;
+                        const picksRes = await fetch(`${WORKER_URL}/api/entry/${encodeURIComponent(savedTeamId)}/event/${currentGW}/picks/`);
+                        if (picksRes.ok) {
+                            const picksData = await picksRes.json();
+                            (picksData.picks || []).forEach(pk => squadIds.add(pk.element));
+                        }
+                    } catch (e) {
+                        console.warn('Could not load squad for highlighting:', e);
+                    }
+                }
+
+                // Re-tag articles with squad boost (enriched with team match data already from fetch)
+                // Render
+                const heroArticle = newsItems[0] || null;
+                const gridArticles = newsItems.slice(1);
+
+                renderHero(heroArticle);
+                if (gridArticles.length) {
+                    renderFilters(gridArticles);
+                    renderGrid(gridArticles, 'all');
+                }
+
+                // FPL Alerts
+                const alertItems = generateAlerts(allPlayers);
+                if (alertItems.length) {
+                    renderAlerts(alertItems);
+                }
+
+            } catch (err) {
+                console.error('News hub init error:', err);
+                document.getElementById('newsHero').innerHTML = `<div class="news-loading" style="color:var(--color-error)">Failed to load news. Please try again later.</div>`;
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

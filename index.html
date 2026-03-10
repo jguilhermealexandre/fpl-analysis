@@ -667,7 +667,7 @@ body {
         /* --- Command Cards Grid (replaces stats bar) --- */
         .hero-cards-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 12px;
             margin-bottom: 20px;
             text-align: left;
@@ -690,7 +690,6 @@ body {
         }
 
         .hero-cmd-card--status::before  { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
-        .hero-cmd-card--market::before  { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
         .hero-cmd-card--health::before  { background: linear-gradient(90deg, #10B981, #34D399); }
         .hero-cmd-card--deadline::before { background: linear-gradient(90deg, #8B5CF6, #A78BFA); }
 
@@ -713,7 +712,6 @@ body {
         .hcc-icon .icon { width: 14px; height: 14px; }
 
         .hcc-icon--status  { background: rgba(59,130,246,0.10); color: #3B82F6; }
-        .hcc-icon--market  { background: rgba(245,158,11,0.10); color: #F59E0B; }
         .hcc-icon--health  { background: rgba(16,185,129,0.10); color: #10B981; }
         .hcc-icon--deadline { background: rgba(139,92,246,0.10); color: #8B5CF6; }
 
@@ -1143,105 +1141,192 @@ body {
             height: 14px;
         }
 
-        /* --- Control Centre Briefing --- */
-        .cc-briefing {
-            max-width: 1400px;
-            margin: 0 auto 24px;
-            padding: 0 var(--space-6);
+        /* --- GW Action Centre --- */
+        .gw-action-centre {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 16px 18px 14px;
+            margin-bottom: 20px;
         }
 
-        .cc-briefing.hidden { display: none; }
+        .gw-action-centre.hidden { display: none; }
 
-        .cc-briefing-inner {
-            background: var(--surface-0);
-            border: none;
-            border-radius: var(--radius-xl);
-            padding: 20px 24px 16px;
-        }
-
-        .cc-briefing-header {
+        .gac-header {
             display: flex;
             align-items: center;
             gap: 8px;
             margin-bottom: 14px;
         }
 
-        .cc-briefing-header .icon {
-            width: 18px; height: 18px;
-            color: var(--color-primary);
+        .gac-header-icon {
+            width: 28px; height: 28px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(245,158,11,0.10);
+            color: #F59E0B;
+            flex-shrink: 0;
         }
 
-        .cc-briefing-title {
+        .gac-header-icon .icon { width: 14px; height: 14px; }
+
+        .gac-title {
             font-family: var(--font-display);
             font-size: 14px;
             font-weight: 700;
             color: var(--text-primary);
+            flex: 1;
         }
 
-        .cc-briefing-items {
+        .gac-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .gac-items {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
-        .cc-brief-item {
+        .gac-item {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 11px 16px;
+            padding: 10px 14px;
             border-radius: var(--radius-md);
-            font-size: 13px;
-            color: var(--text-secondary);
-            text-decoration: none;
             border-left: 3px solid var(--border-default);
-            transition: all 150ms;
+            transition: background 150ms;
         }
 
-        .cc-brief-item:hover { filter: brightness(0.97); }
+        .gac-item:hover { filter: brightness(0.97); }
 
-        .cc-brief-item .cc-icon {
-            font-size: 16px;
-            flex-shrink: 0;
-            width: 20px;
-            text-align: center;
-        }
+        .gac-item.gac-critical { background: rgba(239,68,68,0.04); border-left-color: #EF4444; }
+        .gac-item.gac-warning  { background: rgba(245,158,11,0.04); border-left-color: #F59E0B; }
+        .gac-item.gac-info     { background: rgba(59,130,246,0.04); border-left-color: #3B82F6; }
+        .gac-item.gac-success  { background: rgba(16,185,129,0.04); border-left-color: #10B981; }
+        .gac-item.gac-purple   { background: rgba(139,92,246,0.04); border-left-color: #8B5CF6; }
 
-        .cc-brief-item .cc-cat {
-            font-size: 10px;
+        .gac-urgency {
+            font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.04em;
+            padding: 3px 8px;
+            border-radius: var(--radius-full);
             flex-shrink: 0;
-            min-width: 60px;
+            white-space: nowrap;
+            min-width: 72px;
+            text-align: center;
         }
 
-        .cc-brief-item .cc-text {
+        .gac-urgency.u-injury   { background: rgba(239,68,68,0.12); color: #EF4444; }
+        .gac-urgency.u-doubtful { background: rgba(245,158,11,0.12); color: #D97706; }
+        .gac-urgency.u-price    { background: rgba(239,68,68,0.12); color: #DC2626; }
+        .gac-urgency.u-form     { background: rgba(245,158,11,0.12); color: #D97706; }
+        .gac-urgency.u-captain  { background: rgba(139,92,246,0.12); color: #8B5CF6; }
+        .gac-urgency.u-rise     { background: rgba(16,185,129,0.12); color: #059669; }
+        .gac-urgency.u-clear    { background: rgba(16,185,129,0.12); color: #10B981; }
+
+        .gac-detail {
             flex: 1;
-            font-weight: 500;
+            min-width: 0;
+        }
+
+        .gac-player {
+            font-size: 13px;
+            font-weight: 600;
             color: var(--text-primary);
         }
 
-        .cc-brief-item .cc-arrow {
+        .gac-issue {
+            font-size: 11px;
             color: var(--text-muted);
-            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .gac-actions {
+            display: flex;
+            gap: 6px;
             flex-shrink: 0;
         }
 
-        .cc-brief-item.cc-injury   { background: rgba(239,68,68,0.04); border-left-color: #EF4444; }
-        .cc-brief-item.cc-captain  { background: rgba(245,158,11,0.04); border-left-color: #F59E0B; }
-        .cc-brief-item.cc-price    { background: rgba(139,92,246,0.04); border-left-color: #8B5CF6; }
-        .cc-brief-item.cc-transfer { background: rgba(59,130,246,0.04); border-left-color: #3B82F6; }
-        .cc-brief-item.cc-clear    { background: rgba(16,185,129,0.04); border-left-color: #10B981; }
+        .gac-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 10px;
+            border-radius: var(--radius-full);
+            font-size: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: all 150ms;
+            border: none;
+            cursor: pointer;
+        }
 
-        .cc-brief-item.cc-injury .cc-cat   { color: #EF4444; }
-        .cc-brief-item.cc-captain .cc-cat  { color: #D97706; }
-        .cc-brief-item.cc-price .cc-cat    { color: #8B5CF6; }
-        .cc-brief-item.cc-transfer .cc-cat { color: #3B82F6; }
-        .cc-brief-item.cc-clear .cc-cat    { color: #10B981; }
+        .gac-btn .icon { width: 11px; height: 11px; }
+
+        .gac-btn-primary {
+            background: var(--color-primary);
+            color: #fff;
+        }
+
+        .gac-btn-primary:hover { filter: brightness(1.1); }
+
+        .gac-btn-secondary {
+            background: var(--surface-2);
+            color: var(--text-secondary);
+        }
+
+        .gac-btn-secondary:hover { background: var(--surface-3); }
+
+        /* Wizard CTA inside hero */
+        .gac-wizard-cta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, rgba(76,29,149,0.08), rgba(55,48,163,0.08));
+            border: 1px solid rgba(139,92,246,0.2);
+            border-radius: var(--radius-lg);
+            margin-bottom: 20px;
+        }
+
+        .gac-wizard-cta.hidden { display: none; }
+
+        .gac-wizard-cta-text {
+            flex: 1;
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .gac-wizard-cta-text strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .gac-wizard-cta .btn {
+            flex-shrink: 0;
+            background: #7C3AED;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .gac-wizard-cta .btn:hover { background: #6D28D9; }
 
         @media (max-width: 768px) {
             .hero-cards-grid { grid-template-columns: 1fr; }
             .hero-dashboard { grid-template-columns: 1fr; }
+            .gac-item { flex-wrap: wrap; }
+            .gac-actions { width: 100%; justify-content: flex-end; }
         }
 
         @media (max-width: 600px) {
@@ -1252,9 +1337,9 @@ body {
             .hsp-row { font-size: 11px; gap: 6px; }
             .hsp-pos { width: 24px; font-size: 8px; }
             .hip-fix-name { width: 56px; }
-            .cc-briefing { padding: 0 var(--space-4); }
-            .cc-briefing-inner { padding: 16px; }
-            .cc-brief-item { padding: 8px 10px; font-size: 12px; }
+            .gac-urgency { min-width: 60px; font-size: 8px; padding: 2px 6px; }
+            .gac-btn { font-size: 9px; padding: 4px 8px; }
+            .gac-wizard-cta { flex-direction: column; text-align: center; gap: 10px; padding: 12px 16px; }
         }
 
         /* ===== ONBOARDING (first-time user) ===== */
@@ -1466,6 +1551,108 @@ body {
             display: grid;
             grid-template-columns: 1fr;
             gap: 24px;
+        }
+
+        /* ===== LATEST HEADLINES WIDGET ===== */
+        .headlines-widget {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+        .headlines-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .headlines-title {
+            font-family: var(--font-display);
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .headlines-title .icon { width: 16px; height: 16px; color: var(--color-primary); }
+        .headlines-view-all {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--color-primary);
+            background: var(--color-primary-muted);
+            border: 1px solid rgba(16,185,129,0.2);
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            transition: all 150ms;
+        }
+        .headlines-view-all:hover { background: rgba(16,185,129,0.15); border-color: var(--color-primary); }
+        .headlines-view-all .icon { width: 12px; height: 12px; }
+        .headlines-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .hl-item {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
+            padding: 8px;
+            border-radius: var(--radius-md);
+            transition: background 150ms;
+        }
+        .hl-item:hover { background: var(--surface-2); }
+        .hl-thumb {
+            width: 80px;
+            height: 56px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--surface-2);
+        }
+        .hl-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .hl-thumb-fallback {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .hl-thumb-fallback svg { width: 20px; height: 20px; opacity: 0.3; }
+        .hl-body { flex: 1; min-width: 0; }
+        .hl-headline {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .hl-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 3px;
+        }
+        .hl-source {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .hl-source.cat-bbc { color: #BB1D1D; }
+        .hl-source.cat-pl { color: #38006A; }
+        .hl-source.cat-sky { color: #0062B2; }
+        .hl-source.cat-guardian { color: #05517E; }
+        .hl-time { font-size: 10px; color: var(--text-muted); }
+        .hl-crests { display: flex; gap: 3px; margin-left: auto; }
+        .hl-crests img { width: 16px; height: 16px; }
+        @media (max-width: 600px) {
+            .hl-thumb { width: 64px; height: 48px; }
         }
 
         /* ===== TICKER SUB-NAV BAR ===== */
@@ -1962,6 +2149,9 @@ body {
                 <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent">
                     <i data-lucide="wand-2" class="icon"></i> FPL Wizard
                 </a>
+                <a href="fpl-news.html" class="nav-link">
+                    <i data-lucide="newspaper" class="icon"></i> News
+                </a>
                 <div class="nav-dropdown">
                     <a href="fpl-my-team-analysis.html" class="nav-link">
                         <i data-lucide="users" class="icon"></i> My Team
@@ -2134,6 +2324,8 @@ body {
                     <div class="hero-squad-panel" id="heroSquadPanel"></div>
                     <div class="hero-intel-panel" id="heroIntelPanel"></div>
                 </div>
+                <div class="gw-action-centre hidden" id="gwActionCentre"></div>
+                <div class="gac-wizard-cta hidden" id="gwWizardCta"></div>
                 <div class="hero-quick-actions">
                     <a href="fpl-transfer-wizard.html" class="btn btn-primary btn-sm"><i data-lucide="wand-2" class="icon"></i> Open Wizard</a>
                     <a href="fpl-my-team-analysis.html" class="btn btn-secondary btn-sm"><i data-lucide="users" class="icon"></i> View Squad</a>
@@ -2176,17 +2368,6 @@ body {
             </div>
         </div>
     </section>
-
-    <!-- Control Centre Briefing (logged-in only) -->
-    <div class="cc-briefing hidden" id="ccBriefing">
-        <div class="cc-briefing-inner">
-            <div class="cc-briefing-header">
-                <i data-lucide="radio" class="icon"></i>
-                <div class="cc-briefing-title">Control Centre Briefing</div>
-            </div>
-            <div class="cc-briefing-items" id="ccBriefingItems"></div>
-        </div>
-    </div>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -2242,6 +2423,15 @@ body {
                             </div>
                         </div>
                     </div>
+                </section>
+
+                <!-- Latest Headlines -->
+                <section class="headlines-widget hidden" id="headlinesWidget">
+                    <div class="headlines-header">
+                        <div class="headlines-title"><i data-lucide="newspaper" class="icon"></i> Latest Headlines</div>
+                        <a href="fpl-news.html" class="headlines-view-all">View All News <i data-lucide="arrow-right" class="icon"></i></a>
+                    </div>
+                    <div class="headlines-list" id="headlinesList"></div>
                 </section>
 
                 <!-- Individual Tools -->
@@ -2343,6 +2533,10 @@ body {
             <i data-lucide="wand-2" class="icon"></i>
             Wizard
         </a>
+        <a href="fpl-news.html" class="mobile-nav-item">
+            <i data-lucide="newspaper" class="icon"></i>
+            News
+        </a>
         <a href="fpl-my-team-analysis.html" class="mobile-nav-item">
             <i data-lucide="users" class="icon"></i>
             My Team
@@ -2419,7 +2613,9 @@ body {
             document.getElementById('onboardingCard').classList.remove('hidden');
             document.getElementById('tickerBar').classList.add('hidden');
             document.getElementById('newsStrip').classList.add('hidden');
-            document.getElementById('ccBriefing').classList.add('hidden');
+            document.getElementById('gwActionCentre').classList.add('hidden');
+            document.getElementById('gwWizardCta').classList.add('hidden');
+            document.getElementById('headlinesWidget').classList.add('hidden');
             // Swap hero: show generic, hide personalized
             document.getElementById('heroGeneric').classList.remove('hidden');
             document.getElementById('heroMockup').classList.remove('hidden');
@@ -2724,7 +2920,7 @@ body {
             const posClass = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
 
-            // ===== 4 COMMAND CARDS =====
+            // ===== 3 COMMAND CARDS =====
             let cardsHtml = '';
 
             // CARD 1: STATUS (Rank + Points consolidated)
@@ -2732,37 +2928,14 @@ body {
             const diffClass = pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : 'neutral';
             const rankDisplay = rank ? rank.toLocaleString() : '-';
             let rankLine = `Rank: ${rankDisplay}`;
-            if (nextBracket) {
-                const formatBracket = n => n >= 1000000 ? (n/1000000) + 'M' : n >= 1000 ? (n/1000) + 'k' : n;
-                rankLine = `Rank: ${rankDisplay}`;
-            }
             cardsHtml += `<div class="hero-cmd-card hero-cmd-card--status">
                 <div class="hcc-header"><div class="hcc-icon hcc-icon--status"><i data-lucide="bar-chart-2" class="icon"></i></div><span class="hcc-label">Status</span></div>
                 <div class="hcc-primary">${totalPoints ? totalPoints.toLocaleString() : '-'} pts<span class="hcc-diff ${diffClass}">${diffSign}${pointsDiff} vs avg</span></div>
-                <div class="hcc-secondary">${rankLine} &middot; GW ${gwPoints} pts</div>
+                <div class="hcc-secondary">${rankLine} &middot; GW ${gwPoints} pts &middot; \u00A3${bank}m ITB</div>
                 ${nextBracket ? `<div class="hcc-secondary"><span class="hcc-gamify">${(rank - nextBracket).toLocaleString()} places to Top ${nextBracket >= 1000000 ? (nextBracket/1000000)+'M' : nextBracket >= 1000 ? (nextBracket/1000)+'k' : nextBracket}</span></div>` : ''}
             </div>`;
 
-            // CARD 2: MARKET WATCH (Bank + price alerts)
-            let marketAlerts = '';
-            if (priceDropRisk.length === 0 && priceRiseTargets.length === 0) {
-                marketAlerts = '<div class="hcc-alert-row calm">\u2705 No price alerts</div>';
-            } else {
-                priceDropRisk.forEach(p => {
-                    const net = (p.transfersOut - p.transfersIn);
-                    marketAlerts += `<div class="hcc-alert-row price-drop">\uD83D\uDEA8 ${esc(p.name)} at risk of dropping (${Math.round(net/1000)}k net out)</div>`;
-                });
-                priceRiseTargets.forEach(p => {
-                    marketAlerts += `<div class="hcc-alert-row price-rise">\uD83D\uDCC8 ${esc(p.name)} rising (\u00A3${p.price.toFixed(1)}m)</div>`;
-                });
-            }
-            cardsHtml += `<div class="hero-cmd-card hero-cmd-card--market">
-                <div class="hcc-header"><div class="hcc-icon hcc-icon--market"><i data-lucide="trending-up" class="icon"></i></div><span class="hcc-label">Market Watch</span></div>
-                <div class="hcc-primary">\u00A3${bank}m <span style="font-size:12px;font-weight:500;color:var(--text-secondary)">in the bank</span></div>
-                ${marketAlerts}
-            </div>`;
-
-            // CARD 3: SQUAD HEALTH (score + deductions)
+            // CARD 2: SQUAD HEALTH (score + deductions)
             const scoreClass = healthScore >= 70 ? 'score-good' : healthScore >= 45 ? 'score-ok' : 'score-bad';
             const counts = { star: 0, hold: 0, monitor: 0, sell: 0 };
             analysisResults.forEach(a => { if (counts[a.verdict] !== undefined) counts[a.verdict]++; });
@@ -2864,30 +3037,10 @@ body {
             bench.forEach(p => { squadHtml += playerRow(p, true); });
             document.getElementById('heroSquadPanel').innerHTML = squadHtml;
 
-            // --- Intel Panel (Alerts + Fixtures) ---
+            // --- Intel Panel (Fixtures only — alerts moved to Action Centre) ---
             let intelHtml = '';
 
-            // 1. Alerts
-            intelHtml += '<div class="hip-section"><div class="hip-title">Alerts</div>';
-            if (flagged.length === 0) {
-                intelHtml += '<div class="hip-all-clear"><i data-lucide="check-circle" class="icon"></i> All Clear \u2014 no action needed</div>';
-            } else {
-                const showMax = 4;
-                const visible = flagged.slice(0, showMax);
-                visible.forEach(a => {
-                    intelHtml += `<div class="hip-alert ${a.verdict}">
-                        <span class="hip-alert-name">${esc(a.name)}</span>
-                        <span class="hip-alert-concern">${esc(a.topConcern || '')}</span>
-                        <span class="hip-alert-chip ${a.verdict}">${a.verdict}</span>
-                    </div>`;
-                });
-                if (flagged.length > showMax) {
-                    intelHtml += `<a href="fpl-my-team-analysis.html" class="hip-more-link">+${flagged.length - showMax} more \u2192</a>`;
-                }
-            }
-            intelHtml += '</div>';
-
-            // 2. Fixture Outlook (starters only, next 3)
+            // Fixture Outlook (starters only, next 3)
             intelHtml += '<div class="hip-section"><div class="hip-title">Next Fixtures</div>';
             starters.forEach(p => {
                 const fixes = (p.fixtures || []).slice(0, 3);
@@ -2905,73 +3058,148 @@ body {
             lucide.createIcons();
         }
 
-        // ===== CONTROL CENTRE BRIEFING =====
-        function renderBriefing({ flagged, captainRec, priceDropRisk, analysisResults, squad }) {
+        // ===== GW ACTION CENTRE =====
+        function renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank, allPlayers }) {
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
-            const briefingEl = document.getElementById('ccBriefing');
-            const itemsEl = document.getElementById('ccBriefingItems');
+            const posShort = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const container = document.getElementById('gwActionCentre');
+            const ctaEl = document.getElementById('gwWizardCta');
             const items = [];
 
-            // Injury alerts
-            const injured = squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's' || p.status === 'd');
-            injured.forEach(p => {
-                const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance of playing)` : '';
-                const statusLabel = p.status === 'd' ? 'flagged' : 'unavailable';
+            // 1. INJURIES (unavailable)
+            squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's').forEach(p => {
+                const pos = posMap[p.position] || 'MID';
+                const maxPrice = Math.ceil(p.price + 0.5);
                 items.push({
-                    cls: 'cc-injury', icon: '\u26A0\uFE0F', cat: 'Injury',
-                    text: `${p.name} is ${statusLabel}${chance}`,
-                    href: 'fpl-my-team-analysis.html'
+                    cls: 'gac-critical', urgCls: 'u-injury', urgLabel: '\uD83D\uDEA8 Injury',
+                    player: p.name, issue: p.news || 'Unavailable',
+                    actions: [
+                        { label: '\uD83D\uDD0D Find Replacements', href: `fpl-players-analysis.html#all?pos=${pos}&max=${maxPrice}`, primary: true },
+                        { label: '\uD83D\uDCCB View Squad', href: 'fpl-my-team-analysis.html', primary: false }
+                    ]
                 });
             });
 
-            // Captain recommendation
+            // 2. DOUBTFUL
+            squad.filter(p => p.status === 'd').forEach(p => {
+                const pos = posMap[p.position] || 'MID';
+                const maxPrice = Math.ceil(p.price + 0.5);
+                const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance)` : '';
+                items.push({
+                    cls: 'gac-warning', urgCls: 'u-doubtful', urgLabel: '\u26A0\uFE0F Doubtful',
+                    player: p.name, issue: (p.news || 'Flagged') + chance,
+                    actions: [
+                        { label: '\uD83D\uDD0D Find Replacements', href: `fpl-players-analysis.html#all?pos=${pos}&max=${maxPrice}`, primary: true },
+                        { label: '\uD83D\uDCCB View Squad', href: 'fpl-my-team-analysis.html', primary: false }
+                    ]
+                });
+            });
+
+            // 3. PRICE DROPS (squad players at risk)
+            priceDropRisk.forEach(p => {
+                const net = Math.round((p.transfersOut - p.transfersIn) / 1000);
+                items.push({
+                    cls: 'gac-critical', urgCls: 'u-price', urgLabel: '\uD83D\uDCC9 Price Drop',
+                    player: p.name, issue: `${net}k net transfers out \u2014 price drop likely`,
+                    actions: [
+                        { label: '\uD83D\uDCCA View Options', href: 'fpl-my-team-analysis.html#transfers', primary: true }
+                    ]
+                });
+            });
+
+            // 4. POOR FORM (sell-rated, non-injured)
+            const sellPlayers = flagged.filter(a => a.verdict === 'sell' && !squad.find(p => p.id === a.id && (p.status === 'i' || p.status === 'u' || p.status === 's')));
+            sellPlayers.slice(0, 3).forEach(a => {
+                const p = squad.find(sp => sp.id === a.id) || allPlayers.find(ap => ap.id === a.id);
+                const pos = p ? posMap[p.position] || 'MID' : 'MID';
+                items.push({
+                    cls: 'gac-warning', urgCls: 'u-form', urgLabel: '\u26A0\uFE0F Poor Form',
+                    player: a.name, issue: a.topConcern || 'Rated SELL',
+                    actions: [
+                        { label: `\uD83D\uDD0D Compare ${pos}s`, href: `fpl-players-analysis.html#all?pos=${pos}`, primary: true },
+                        { label: '\uD83D\uDCCB View Squad', href: 'fpl-my-team-analysis.html', primary: false }
+                    ]
+                });
+            });
+
+            // 5. CAPTAIN
             if (captainRec) {
                 items.push({
-                    cls: 'cc-captain', icon: '\uD83D\uDC51', cat: 'Captain',
-                    text: `Recommended: ${captainRec.name} (Form ${captainRec.form}, vs ${captainRec.opponent})`,
-                    href: 'fpl-transfer-wizard.html'
+                    cls: 'gac-purple', urgCls: 'u-captain', urgLabel: '\uD83D\uDC51 Captain',
+                    player: captainRec.name, issue: `Form ${captainRec.form} vs ${captainRec.opponent}`,
+                    actions: [
+                        { label: '\u00A9\uFE0F Set in Wizard', href: 'fpl-transfer-wizard.html', primary: true },
+                        { label: '\uD83D\uDD04 Alternatives', href: 'fpl-my-team-analysis.html#lineup', primary: false }
+                    ]
                 });
             }
 
-            // Price alerts
-            priceDropRisk.forEach(p => {
+            // 6. PRICE RISES (targets not in squad)
+            priceRiseTargets.forEach(p => {
                 items.push({
-                    cls: 'cc-price', icon: '\uD83D\uDCC9', cat: 'Price',
-                    text: `${p.name} at risk of price drop`,
-                    href: 'fpl-my-team-analysis.html#transfers'
+                    cls: 'gac-success', urgCls: 'u-rise', urgLabel: '\uD83D\uDCC8 Rising',
+                    player: p.name, issue: `\u00A3${p.price.toFixed(1)}m \u2014 trending up`,
+                    actions: [
+                        { label: '\uD83D\uDCCA Scout Player', href: 'fpl-players-analysis.html#all?sort=form', primary: true }
+                    ]
                 });
             });
 
-            // Top transfer target (highest sell-rated)
-            const topSell = flagged.find(a => a.verdict === 'sell');
-            if (topSell) {
-                items.push({
-                    cls: 'cc-transfer', icon: '\uD83D\uDD04', cat: 'Transfer',
-                    text: `Priority: sell ${topSell.name} \u2014 ${topSell.topConcern || 'Poor outlook'}`,
-                    href: 'fpl-my-team-analysis.html#transfers'
-                });
-            }
-
-            // All clear fallback
+            // ALL CLEAR fallback
             if (items.length === 0) {
                 items.push({
-                    cls: 'cc-clear', icon: '\u2705', cat: 'Status',
-                    text: 'All clear \u2014 your squad looks good. No urgent actions needed.',
-                    href: ''
+                    cls: 'gac-success', urgCls: 'u-clear', urgLabel: '\u2705 All Clear',
+                    player: 'No issues', issue: 'Your squad looks great \u2014 no urgent actions needed.',
+                    actions: []
                 });
             }
 
-            // Render (max 5)
-            itemsEl.innerHTML = items.slice(0, 5).map(it =>
-                `<a class="cc-brief-item ${it.cls}" href="${it.href || '#'}">
-                    <span class="cc-icon">${it.icon}</span>
-                    <span class="cc-cat">${esc(it.cat)}</span>
-                    <span class="cc-text">${esc(it.text)}</span>
-                    ${it.href ? '<span class="cc-arrow">\u2192</span>' : ''}
-                </a>`
-            ).join('');
+            // Count flags for header
+            const flagCount = squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's' || p.status === 'd').length;
+            const actionCount = items.filter(i => i.urgCls !== 'u-clear').length;
+            const subtitle = actionCount > 0 ? `${actionCount} item${actionCount !== 1 ? 's' : ''} need${actionCount === 1 ? 's' : ''} attention` : 'All clear';
 
-            briefingEl.classList.remove('hidden');
+            let html = `<div class="gac-header">
+                <div class="gac-header-icon"><i data-lucide="zap" class="icon"></i></div>
+                <div class="gac-title">GW${currentGW} Action Centre</div>
+                <div class="gac-subtitle">${subtitle}</div>
+            </div>
+            <div class="gac-items">`;
+
+            items.slice(0, 8).forEach(item => {
+                let actionsHtml = '';
+                item.actions.forEach(a => {
+                    const btnClass = a.primary ? 'gac-btn gac-btn-primary' : 'gac-btn gac-btn-secondary';
+                    actionsHtml += `<a href="${esc(a.href)}" class="${btnClass}">${a.label}</a>`;
+                });
+                html += `<div class="gac-item ${item.cls}">
+                    <span class="gac-urgency ${item.urgCls}">${item.urgLabel}</span>
+                    <div class="gac-detail">
+                        <div class="gac-player">${esc(item.player)}</div>
+                        <div class="gac-issue">${esc(item.issue)}</div>
+                    </div>
+                    <div class="gac-actions">${actionsHtml}</div>
+                </div>`;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+            container.classList.remove('hidden');
+
+            // Wizard CTA banner
+            if (actionCount > 0) {
+                const bankDisplay = parseFloat(bank).toFixed(1);
+                ctaEl.innerHTML = `
+                    <div class="gac-wizard-cta-text">
+                        <strong>You have ${flagCount} flag${flagCount !== 1 ? 's' : ''} and \u00A3${bankDisplay}m in the bank.</strong> Let\u2019s prep your squad for GW${currentGW}.
+                    </div>
+                    <a href="fpl-transfer-wizard.html" class="btn btn-sm">Start GW${currentGW} Wizard \u2192</a>`;
+                ctaEl.classList.remove('hidden');
+            } else {
+                ctaEl.classList.add('hidden');
+            }
+
             lucide.createIcons();
         }
 
@@ -2983,10 +3211,10 @@ body {
                 return externalNewsCache;
             }
             const feeds = [
-                { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport' },
-                { url: 'https://www.premierleague.com/news.rss', source: 'Premier League' },
-                { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports' },
-                { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian' }
+                { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport', badge: 'bbc' },
+                { url: 'https://www.premierleague.com/news.rss', source: 'Premier League', badge: 'pl' },
+                { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', badge: 'sky' },
+                { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian', badge: 'guardian' }
             ];
             const items = [];
             for (const feed of feeds) {
@@ -2997,9 +3225,17 @@ body {
                     const data = await resp.json();
                     if (data.status !== 'ok' || !data.items) continue;
                     data.items.slice(0, 5).forEach(article => {
+                        const title = article.title || '';
+                        if (title.trim().length < 10) return;
                         items.push({
                             cat: 'external',
-                            text: `${article.title} — ${feed.source}`,
+                            text: `${title} — ${feed.source}`,
+                            headline: title,
+                            link: article.link,
+                            thumbnail: article.thumbnail || article.enclosure?.link || null,
+                            source: feed.source,
+                            badge: feed.badge,
+                            timestamp: article.pubDate,
                             isSquad: false,
                             weight: 20
                         });
@@ -3011,6 +3247,83 @@ body {
             externalNewsCache = items;
             externalNewsFetchedAt = now;
             return items;
+        }
+
+        // ===== HEADLINES WIDGET =====
+        function renderHeadlinesWidget(externalItems, bootTeams) {
+            const widget = document.getElementById('headlinesWidget');
+            const list = document.getElementById('headlinesList');
+            if (!externalItems || !externalItems.length) return;
+
+            // Build quick team lookup for matching
+            const teamByName = {};
+            (bootTeams || []).forEach(t => {
+                teamByName[t.name.toLowerCase()] = t;
+                teamByName[t.short_name.toLowerCase()] = t;
+                t.name.toLowerCase().split(' ').forEach(w => {
+                    if (w.length >= 4 && !['city','town','united','and','hove','albion','ham'].includes(w)) {
+                        if (!teamByName[w]) teamByName[w] = t;
+                    }
+                });
+            });
+            const aliases = {'man city':'manchester city','man utd':'manchester united','spurs':'tottenham','wolves':'wolverhampton','palace':'crystal palace','forest':'nottingham forest','villa':'aston villa','bournemouth':'afc bournemouth'};
+            Object.entries(aliases).forEach(([a,c]) => { if (teamByName[c]) teamByName[a] = teamByName[c]; });
+
+            function matchTeamsHL(headline) {
+                if (!headline) return [];
+                const text = headline.toLowerCase();
+                const matched = new Set(), results = [];
+                const keys = Object.keys(teamByName).sort((a,b) => b.length - a.length);
+                for (const key of keys) {
+                    if (text.includes(key)) {
+                        const t = teamByName[key];
+                        if (!matched.has(t.id)) { matched.add(t.id); results.push(t); if (results.length >= 2) break; }
+                    }
+                }
+                return results;
+            }
+
+            function badgeUrl(code) { return `https://resources.premierleague.com/premierleague/badges/70/t${code}.png`; }
+
+            const top3 = externalItems.filter(i => i.headline && i.headline.trim().length >= 10).slice(0, 3);
+            if (!top3.length) return;
+
+            const escH = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+            const newspaperSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M18 10h-8"/></svg>';
+            const sourceColors = { bbc: '#BB1D1D', pl: '#38006A', sky: '#0062B2', guardian: '#05517E' };
+
+            function tAgo(ds) {
+                if (!ds) return '';
+                const diff = Date.now() - new Date(ds).getTime();
+                const m = Math.floor(diff/60000);
+                if (m < 1) return 'just now'; if (m < 60) return m+'m ago';
+                const h = Math.floor(m/60); if (h < 24) return h+'h ago';
+                return Math.floor(h/24)+'d ago';
+            }
+
+            list.innerHTML = top3.map(item => {
+                const teams = matchTeamsHL(item.headline);
+                const crestsHTML = teams.length ? `<div class="hl-crests">${teams.map(t=>`<img src="${badgeUrl(t.code)}" alt="${escH(t.short_name)}">`).join('')}</div>` : '';
+                const sc = sourceColors[item.badge] || '#6366F1';
+                const validLink = item.link && /^https?:\/\//i.test(item.link);
+                const href = validLink ? escH(item.link) : '#';
+                const thumbHTML = item.thumbnail
+                    ? `<div class="hl-thumb"><img src="${escH(item.thumbnail)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=hl-thumb-fallback style=background:${sc}>${newspaperSVG}</div>'"></div>`
+                    : `<div class="hl-thumb"><div class="hl-thumb-fallback" style="background:${sc}">${newspaperSVG}</div></div>`;
+                return `<a class="hl-item" href="${href}" target="_blank" rel="noopener noreferrer">
+                    ${thumbHTML}
+                    <div class="hl-body">
+                        <div class="hl-headline">${escH(item.headline)}</div>
+                        <div class="hl-meta">
+                            <span class="hl-source cat-${escH(item.badge)}">${escH(item.source)}</span>
+                            <span class="hl-time">${tAgo(item.timestamp)}</span>
+                            ${crestsHTML}
+                        </div>
+                    </div>
+                </a>`;
+            }).join('');
+
+            widget.classList.remove('hidden');
         }
 
         // ===== NEWS STRIP =====
@@ -3268,11 +3581,12 @@ body {
                     captainRec
                 });
 
-                renderBriefing({ flagged, captainRec, priceDropRisk, analysisResults, squad });
+                renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank: bank.toFixed(1), allPlayers });
 
-                // Fetch external news (non-blocking) and render strip
+                // Fetch external news (non-blocking) and render strip + headlines
                 fetchExternalNews().then(externalItems => {
                     renderNewsStrip(allPlayers, squad, externalItems);
+                    renderHeadlinesWidget(externalItems, bootData.teams);
                 }).catch(() => {
                     renderNewsStrip(allPlayers, squad, []);
                 });
