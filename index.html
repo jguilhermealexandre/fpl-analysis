@@ -2146,6 +2146,76 @@ body {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
+
+        /* ===== PRICE TICKER BAR (stock market style) ===== */
+        .price-ticker-bar {
+            background: linear-gradient(90deg, rgba(16,185,129,0.04) 0%, var(--surface-1) 15%, var(--surface-1) 85%, rgba(239,68,68,0.04) 100%);
+            border-bottom: 1px solid var(--border-default);
+            overflow: hidden;
+            height: 30px;
+            display: flex;
+            align-items: center;
+        }
+        .price-ticker-bar.hidden { display: none !important; }
+        .price-ticker-label {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            padding: 0 10px;
+            border-right: 1px solid var(--border-default);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .price-ticker-track {
+            display: flex;
+            width: max-content;
+            animation: price-ticker-scroll linear infinite;
+        }
+        .price-ticker-bar:hover .price-ticker-track {
+            animation-play-state: paused;
+        }
+        .price-ticker-content {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            white-space: nowrap;
+        }
+        .pticker-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 16px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            font-weight: 600;
+        }
+        .pticker-name { font-family: var(--font-display); font-weight: 700; font-size: 10px; }
+        .pticker-price { font-size: 11px; }
+        .pticker-arrow { font-size: 9px; }
+        .pticker-item.bull { color: #10B981; }
+        .pticker-item.bear { color: #EF4444; }
+        .pticker-item.stable { color: var(--text-muted); }
+        .pticker-sep {
+            color: var(--border-emphasis);
+            font-size: 8px;
+            padding: 0;
+            user-select: none;
+            opacity: 0.4;
+        }
+        .pticker-squad { color: #F59E0B; font-size: 9px; }
+        @keyframes price-ticker-scroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+        @media (max-width: 768px) {
+            .price-ticker-bar { height: 26px; }
+            .pticker-item { font-size: 10px; padding: 0 12px; }
+        }
     </style>
 </head>
 <body>
@@ -2248,6 +2318,12 @@ body {
     <!-- News Strip (shown when team is loaded) -->
     <div class="news-strip hidden" id="newsStrip">
         <div class="news-strip-track" id="newsStripTrack"></div>
+    </div>
+
+    <!-- Price Ticker (stock market style, shown when team is loaded) -->
+    <div class="price-ticker-bar hidden" id="priceTickerBar">
+        <div class="price-ticker-label"><span style="width:5px;height:5px;border-radius:50%;background:#10B981;animation:pricePulse 1.5s ease-in-out infinite;display:inline-block;"></span> MARKET</div>
+        <div class="price-ticker-track" id="priceTickerTrack"></div>
     </div>
 
     <!-- Hero Banner -->
@@ -3443,6 +3519,63 @@ body {
             });
         }
 
+        // ===== PRICE TICKER (stock market scrolling strip) =====
+        function renderPriceTicker(allPlayers, squad) {
+            const bar = document.getElementById('priceTickerBar');
+            const track = document.getElementById('priceTickerTrack');
+            if (!bar || !track) return;
+            const squadIds = new Set(squad.map(p => p.id));
+            const totalFpl = 11000000;
+            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+
+            const withPressure = allPlayers.map(p => {
+                const owners = Math.max(totalFpl * (p.ownership / 100), 1);
+                const net = p.transfersIn - p.transfersOut;
+                return { ...p, pressure: net / owners, net, inSquad: squadIds.has(p.id) };
+            });
+
+            const fallers = withPressure.filter(p => p.pressure < -0.015 || (p.costChangeEvent && p.costChangeEvent < 0))
+                .sort((a, b) => a.pressure - b.pressure).slice(0, 10);
+            const risers = withPressure.filter(p => p.pressure > 0.015 || (p.costChangeEvent && p.costChangeEvent > 0))
+                .sort((a, b) => b.pressure - a.pressure).slice(0, 10);
+
+            const movers = [];
+            const maxLen = Math.max(fallers.length, risers.length);
+            for (let i = 0; i < maxLen; i++) {
+                if (i < risers.length) movers.push(risers[i]);
+                if (i < fallers.length) movers.push(fallers[i]);
+            }
+            if (movers.length === 0) return;
+
+            const items = movers.map(p => {
+                const cls = p.pressure > 0.015 ? 'bull' : p.pressure < -0.015 ? 'bear' : 'stable';
+                const arrow = cls === 'bull' ? '▲' : cls === 'bear' ? '▼' : '–';
+                const netK = Math.round(Math.abs(p.net) / 1000);
+                const sign = p.net > 0 ? '+' : '-';
+                const gwChange = (p.costChangeEvent || 0) / 10;
+                const gwText = gwChange !== 0 ? ` (${gwChange > 0 ? '+' : ''}${gwChange.toFixed(1)})` : '';
+                const squadBadge = p.inSquad ? ' <span class="pticker-squad">★</span>' : '';
+                return `<span class="pticker-item ${cls}">
+                    <span class="pticker-name">${esc(p.name)}${squadBadge}</span>
+                    <span class="pticker-price">£${p.price.toFixed(1)}m${gwText}</span>
+                    <span class="pticker-arrow">${arrow} ${sign}${netK}k</span>
+                </span><span class="pticker-sep">│</span>`;
+            }).join('');
+
+            const contentHtml = `<span class="price-ticker-content">${items}</span>`;
+            track.innerHTML = contentHtml + contentHtml;
+            bar.classList.remove('hidden');
+
+            requestAnimationFrame(() => {
+                const contentEl = track.querySelector('.price-ticker-content');
+                if (contentEl) {
+                    const w = contentEl.offsetWidth;
+                    const duration = Math.max(10, w / 120);
+                    track.style.animationDuration = duration + 's';
+                }
+            });
+        }
+
         // ===== LOAD TICKER (main data loader) =====
         let deadlineInterval = null;
         async function loadTicker(teamId) {
@@ -3628,6 +3761,7 @@ body {
                 });
 
                 renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank: bank.toFixed(1), allPlayers });
+                renderPriceTicker(allPlayers, squad);
 
                 // Fetch external news (non-blocking) and render strip + headlines
                 fetchExternalNews().then(externalItems => {
