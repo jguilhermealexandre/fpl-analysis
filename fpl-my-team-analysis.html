@@ -1486,6 +1486,32 @@
             .draft-meta-row { margin-left: 0; }
         }
 
+        /* ===== MANAGER'S NOTEPAD ===== */
+        .planner-layout-wrapper { display: flex; gap: 0; overflow-x: hidden; position: relative; }
+        .planner-layout-wrapper .planner-pitch-wrap { flex: 1; min-width: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .notepad-toggle-tab { position: absolute; right: 0; top: 80px; z-index: 5; display: flex; align-items: center; gap: 4px; writing-mode: vertical-rl; text-orientation: mixed; padding: 10px 5px; background: var(--surface-2); border: 1px solid var(--border-default); border-right: none; border-radius: var(--radius-md) 0 0 var(--radius-md); cursor: pointer; color: var(--text-secondary); font-size: 0.7rem; font-weight: 600; font-family: var(--font-display); letter-spacing: 0.5px; transition: all 0.2s; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
+        .notepad-toggle-tab:hover { color: var(--color-primary); background: var(--surface-1); }
+        .notepad-toggle-tab .notepad-tab-icon { writing-mode: horizontal-tb; display: flex; }
+        .notepad-toggle-tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+        .notepad-panel { width: 320px; flex-shrink: 0; transform: translateX(0); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity: 1; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); display: flex; flex-direction: column; margin-left: 16px; overflow: hidden; }
+        .notepad-panel.collapsed { width: 0; opacity: 0; margin-left: 0; padding: 0; border-color: transparent; pointer-events: none; }
+        .notepad-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border-default); flex-shrink: 0; }
+        .notepad-header-title { font-size: 0.78rem; font-weight: 700; color: var(--text-primary); font-family: var(--font-display); flex: 1; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .notepad-save-status { font-size: 0.65rem; color: var(--color-success); font-weight: 600; opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
+        .notepad-save-status.visible { opacity: 1; }
+        .notepad-close-btn { width: 24px; height: 24px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); background: var(--surface-2); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; transition: all 0.2s; flex-shrink: 0; }
+        .notepad-close-btn:hover { color: var(--color-error); border-color: var(--color-error); }
+        .notepad-gw-label { font-size: 0.6rem; color: var(--text-muted); font-family: var(--font-mono); font-weight: 600; background: var(--surface-2); padding: 2px 6px; border-radius: var(--radius-sm); white-space: nowrap; }
+        .notepad-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        #fpl-notes-area { width: 100%; flex: 1; min-height: 200px; resize: none; border: none; outline: none; background: transparent; color: var(--text-primary); font-family: var(--font-body); font-size: 0.8rem; line-height: 1.6; padding: 12px 14px; box-sizing: border-box; }
+        #fpl-notes-area::placeholder { color: var(--text-muted); font-style: italic; }
+        @media (max-width: 768px) {
+            .planner-layout-wrapper { flex-direction: column; }
+            .notepad-toggle-tab { position: static; writing-mode: horizontal-tb; border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-bottom: 8px; padding: 8px 14px; box-shadow: none; align-self: flex-end; }
+            .notepad-panel { width: 100% !important; margin-left: 0; }
+            .notepad-panel.collapsed { width: 0 !important; height: 0; margin: 0; }
+        }
+
         /* ===== NEWS TAB ===== */
         .news-container { max-width: 1060px; margin: 0 auto; padding: 24px; }
         .news-filter-bar { display: flex; gap: 6px; padding: 5px; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-bottom: 24px; overflow-x: auto; }
@@ -5080,8 +5106,21 @@
             // Chip selector row
             html += `<div id="draftChipRow" style="margin-bottom:12px;">${renderDraftChipRow()}</div>`;
 
-            // Pitch view
+            // Pitch view + Notepad layout wrapper
+            const notepadOpen = localStorage.getItem('fpl_notepad_open') === 'true';
+            html += `<div class="planner-layout-wrapper">`;
             html += `<div class="planner-pitch-wrap" id="draftPitchArea">${renderDraftPitchHTML()}</div>`;
+            html += `<button class="notepad-toggle-tab${notepadOpen ? ' active' : ''}" onclick="toggleNotepad()" title="Manager's Notepad"><span class="notepad-tab-icon"><i data-lucide="pen-line" style="width:14px;height:14px;"></i></span>Notes</button>`;
+            html += `<aside id="gw-notepad-panel" class="notepad-panel${notepadOpen ? '' : ' collapsed'}">`;
+            html += `<div class="notepad-header">`;
+            html += `<div class="notepad-header-title"><i data-lucide="notebook-pen" style="width:14px;height:14px;"></i> Manager's Notepad</div>`;
+            html += `<span class="notepad-gw-label" id="notepadGwLabel">GW${draftState.selectedGW}</span>`;
+            html += `<span class="notepad-save-status" id="notepadSaveStatus">✓ Saved</span>`;
+            html += `<button class="notepad-close-btn" onclick="toggleNotepad()" title="Close notepad">✕</button>`;
+            html += `</div>`;
+            html += `<div class="notepad-body"><textarea id="fpl-notes-area" placeholder="Jot down your GW plans, transfer targets, captaincy thoughts..."></textarea></div>`;
+            html += `</aside>`;
+            html += `</div>`;
 
             // Team Context — H2H matchup cards for unique teams in squad
             const draftSquad = getDraftSquad(draftState.selectedGW);
@@ -5122,6 +5161,7 @@
 
             container.innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            initNotepad();
         }
 
         function renderDraftToolbar() {
@@ -5433,6 +5473,50 @@
             if (saveInd && draftState.savedAt) saveInd.textContent = `Last saved: ${new Date(draftState.savedAt).toLocaleTimeString()}`;
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            loadNotepadNotes();
+        }
+
+        // ===== MANAGER'S NOTEPAD ENGINE =====
+        let notepadDebounceTimer = null;
+
+        function toggleNotepad() {
+            const panel = document.getElementById('gw-notepad-panel');
+            const tab = document.querySelector('.notepad-toggle-tab');
+            if (!panel) return;
+            const isCollapsed = panel.classList.toggle('collapsed');
+            if (tab) tab.classList.toggle('active', !isCollapsed);
+            localStorage.setItem('fpl_notepad_open', isCollapsed ? 'false' : 'true');
+        }
+
+        function initNotepad() {
+            const textarea = document.getElementById('fpl-notes-area');
+            if (!textarea) return;
+            loadNotepadNotes();
+            textarea.addEventListener('input', function() {
+                clearTimeout(notepadDebounceTimer);
+                notepadDebounceTimer = setTimeout(() => saveNotepadNotes(), 1000);
+            });
+        }
+
+        function loadNotepadNotes() {
+            const textarea = document.getElementById('fpl-notes-area');
+            const gwLabel = document.getElementById('notepadGwLabel');
+            if (!textarea || !draftState) return;
+            const key = `fpl_notes_${draftState.teamId}_gw${draftState.selectedGW}`;
+            textarea.value = localStorage.getItem(key) || '';
+            if (gwLabel) gwLabel.textContent = `GW${draftState.selectedGW}`;
+        }
+
+        function saveNotepadNotes() {
+            const textarea = document.getElementById('fpl-notes-area');
+            if (!textarea || !draftState) return;
+            const key = `fpl_notes_${draftState.teamId}_gw${draftState.selectedGW}`;
+            localStorage.setItem(key, textarea.value);
+            const status = document.getElementById('notepadSaveStatus');
+            if (status) {
+                status.classList.add('visible');
+                setTimeout(() => status.classList.remove('visible'), 2000);
+            }
         }
 
         // ===== TRANSFER WIZARD ENGINE =====
