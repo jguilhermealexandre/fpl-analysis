@@ -807,12 +807,21 @@
             .team-overview { grid-template-columns: 1fr; }
             .health-ring-container { flex-direction: row; padding: 16px; gap: 16px; }
             .health-ring svg { width: 80px; height: 80px; }
+            .market-watch-panel { flex-direction: row; flex-wrap: wrap; padding: 12px; }
         }
 
         /* ===== TEAM OVERVIEW ===== */
-        .team-overview { display: grid; grid-template-columns: 200px 1fr; gap: 20px; margin-bottom: 24px; animation: fadeInUp 0.5s ease; }
-        .health-ring-container { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
-        .health-ring svg { width: 130px; height: 130px; }
+        .team-overview { display: grid; grid-template-columns: 180px 1fr 180px; gap: 16px; margin-bottom: 24px; animation: fadeInUp 0.5s ease; }
+        .health-ring-container { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
+        .health-ring svg { width: 110px; height: 110px; }
+        .market-watch-panel { display: flex; flex-direction: column; gap: 0; padding: 14px 12px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); font-size: 11px; }
+        .market-watch-panel .mw-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+        .market-watch-panel .mw-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+        .market-watch-panel .mw-arrow { font-size: 10px; }
+        .market-watch-panel .mw-name { font-size: 11px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .market-watch-panel .mw-price { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); }
+        .market-watch-panel .mw-net { font-size: 10px; font-family: var(--font-mono); }
+        .market-watch-panel .mw-empty { font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px 0; }
         .health-ring-track { fill: none; stroke: var(--surface-3); stroke-width: 10; }
         .health-ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1), stroke 0.3s; }
         .health-sublabel { font-size: 12px; color: var(--text-secondary); text-align: center; font-weight: 600; }
@@ -3086,28 +3095,6 @@
                         ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">\u2605 ${stars.length} Star</span>` : ''}
                         <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">\u25cf ${holds.length} Hold</span>
                     </div>
-                    ${(() => {
-                        const falling = analysisResults.filter(a => getPressure(a.player) < -0.015);
-                        const rising = analysisResults.filter(a => getPressure(a.player) > 0.015);
-                        if (!falling.length && !rising.length) return '';
-                        const row = (a, dir) => {
-                            const p = a.player;
-                            const net = (p.transfersIn||0) - (p.transfersOut||0);
-                            const arrow = dir === 'fall' ? '\u25bc' : '\u25b2';
-                            const col = dir === 'fall' ? 'var(--verdict-sell)' : '#16a34a';
-                            return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;">
-                                <span style="color:${col};font-size:10px;">${arrow}</span>
-                                <span style="font-size:11px;font-weight:600;flex:1;">${escHTML(p.name)}</span>
-                                <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);">\u00a3${p.price}m</span>
-                                <span style="font-size:10px;font-family:var(--font-mono);color:${col};">${net > 0 ? '+' : ''}${(net/1000).toFixed(0)}k</span>
-                            </div>`;
-                        };
-                        return `<div style="margin-top:12px;padding:10px 12px;background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);width:100%;">
-                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">\ud83d\udcc8 Market Watch</div>
-                            ${falling.map(a => row(a,'fall')).join('')}
-                            ${rising.map(a => row(a,'rise')).join('')}
-                        </div>`;
-                    })()}
                 </div>
                 <div class="pitch-container">
                     <div class="pitch-rows">
@@ -3121,6 +3108,27 @@
                         </div>
                     </div>
                 </div>
+                ${(() => {
+                    const falling = analysisResults.filter(a => getPressure(a.player) < -0.015);
+                    const rising = analysisResults.filter(a => getPressure(a.player) > 0.015);
+                    const mwRow = (a, dir) => {
+                        const p = a.player;
+                        const net = (p.transfersIn||0) - (p.transfersOut||0);
+                        const arrow = dir === 'fall' ? '\u25bc' : '\u25b2';
+                        const col = dir === 'fall' ? 'var(--verdict-sell)' : '#16a34a';
+                        return `<div class="mw-row">
+                            <span class="mw-arrow" style="color:${col}">${arrow}</span>
+                            <span class="mw-name">${escHTML(p.name)}</span>
+                            <span class="mw-price">\u00a3${p.price}m</span>
+                            <span class="mw-net" style="color:${col}">${net > 0 ? '+' : ''}${(net/1000).toFixed(0)}k</span>
+                        </div>`;
+                    };
+                    const rows = falling.map(a => mwRow(a,'fall')).join('') + rising.map(a => mwRow(a,'rise')).join('');
+                    return `<div class="market-watch-panel">
+                        <div class="mw-header">\ud83d\udcc8 Market Watch</div>
+                        ${rows || '<div class="mw-empty">All prices stable</div>'}
+                    </div>`;
+                })()}
             </div>`;
         }
 

@@ -2132,9 +2132,10 @@ body {
         .news-strip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
         .news-strip-dot.dot-injury { background: #EF4444; }
         .news-strip-dot.dot-price { background: #F59E0B; }
+        .news-strip-dot.dot-price-up { background: #22C55E; }
+        .news-strip-dot.dot-price-down { background: #EF4444; }
         .news-strip-dot.dot-transfer { background: #22C55E; }
         .news-strip-dot.dot-transfer-out { background: #EF4444; }
-        .news-strip-dot.dot-external { background: #8B5CF6; }
         @media (max-width: 768px) {
             .news-strip-track { gap: 8px; }
             .news-strip-item { font-size: 10.5px; padding: 2px 8px; }
@@ -2414,6 +2415,13 @@ body {
                 </div>
                 <div class="gw-action-centre hidden" id="gwActionCentre"></div>
                 <div class="gac-wizard-cta hidden" id="gwWizardCta"></div>
+                <section class="headlines-widget hidden" id="headlinesWidget">
+                    <div class="headlines-header">
+                        <div class="headlines-title"><i data-lucide="newspaper" class="icon"></i> Latest Headlines</div>
+                        <a href="fpl-news.html" class="headlines-view-all">View All News <i data-lucide="arrow-right" class="icon"></i></a>
+                    </div>
+                    <div class="headlines-list" id="headlinesList"></div>
+                </section>
                 <div class="hero-quick-actions">
                     <a href="fpl-transfer-wizard.html" class="btn btn-primary btn-sm"><i data-lucide="wand-2" class="icon"></i> Open Wizard</a>
                     <a href="fpl-my-team-analysis.html" class="btn btn-secondary btn-sm"><i data-lucide="users" class="icon"></i> View Squad</a>
@@ -2511,15 +2519,6 @@ body {
                             </div>
                         </div>
                     </div>
-                </section>
-
-                <!-- Latest Headlines -->
-                <section class="headlines-widget hidden" id="headlinesWidget">
-                    <div class="headlines-header">
-                        <div class="headlines-title"><i data-lucide="newspaper" class="icon"></i> Latest Headlines</div>
-                        <a href="fpl-news.html" class="headlines-view-all">View All News <i data-lucide="arrow-right" class="icon"></i></a>
-                    </div>
-                    <div class="headlines-list" id="headlinesList"></div>
                 </section>
 
                 <!-- Individual Tools -->
@@ -2823,7 +2822,7 @@ body {
             return teamFixtures;
         }
 
-        function analyzePlayerForTicker(player, posAvg, teamAnalysis, currentGW) {
+        function analyzePlayerForTicker(player, posAvg, teamAnalysis, currentGW, settings) {
             let sellRating = 40;
             let topConcern = '';
             const posConfig = POSITION_CONFIG[player.position];
@@ -2833,22 +2832,29 @@ body {
             const isMidPremium = player.price >= 7.5;
             const ta = teamAnalysis[player.teamId];
 
+            // Asymmetric sensitivity: penalties amplified in aggressive mode, bonuses dampened (and vice-versa for patient)
+            const sensAdj = (raw, ...weights) => {
+                const w = weights.reduce((a, b) => a * b, 1);
+                const s = raw >= 0 ? settings.sellSensitivity : (2 - settings.sellSensitivity);
+                return raw * s * w;
+            };
+
             // 1. AVAILABILITY
             if (player.status === 'i' || player.status === 'u' || player.status === 's') {
-                sellRating += 40;
+                sellRating += sensAdj(40);
                 const statusText = player.status === 'i' ? 'Injured' : player.status === 'u' ? 'Unavailable' : 'Suspended';
                 topConcern = statusText;
             } else if (player.status === 'd') {
                 const chance = player.chanceNextRound;
                 const penalty = chance !== null ? Math.round((100 - chance) * 0.4) : 22;
-                sellRating += penalty;
+                sellRating += sensAdj(penalty);
                 topConcern = 'Doubtful';
             }
 
             // 2. FORM
             const formDelta = player.form - posConfig.formMedian;
             const rawFormPenalty = Math.max(-30, Math.min(30, Math.round(-formDelta * 10)));
-            sellRating += rawFormPenalty;
+            sellRating += sensAdj(rawFormPenalty, settings.formWeight);
             if (!topConcern && formDelta <= -1.5) topConcern = 'Poor Form';
             else if (!topConcern && formDelta <= -0.5) topConcern = 'Below Avg Form';
 
@@ -2862,7 +2868,7 @@ body {
                 avgFDR = ws / tw;
             }
             const rawFixPenalty = Math.max(-22, Math.min(22, Math.round((avgFDR - 3.0) * 14)));
-            sellRating += rawFixPenalty;
+            sellRating += sensAdj(rawFixPenalty, settings.fixtureWeight);
             if (!topConcern && avgFDR >= 3.8) topConcern = 'Tough Fixtures';
 
             // 3b. OPPONENT QUALITY
@@ -2875,7 +2881,7 @@ body {
                     oppWS += ((player.position <= 2 ? (oppTA.attackPower - 50) : (oppTA.defensePower - 50)) / 50) * w;
                     oppTW += w;
                 });
-                if (oppTW > 0) { sellRating += Math.round(Math.max(-10, Math.min(12, (oppWS / oppTW) * 8))); }
+                if (oppTW > 0) { sellRating += sensAdj(Math.round(Math.max(-10, Math.min(12, (oppWS / oppTW) * 8))), settings.fixtureWeight); }
             }
 
             // 4. MINUTES & ROTATION
@@ -2885,7 +2891,7 @@ body {
             else if (minsPerGame < 75) minsPenalty = Math.round(5 - (minsPerGame - 60) * (7 / 15));
             else if (minsPerGame >= 85) minsPenalty = -6;
             else minsPenalty = -2;
-            sellRating += minsPenalty;
+            sellRating += sensAdj(minsPenalty);
             if (!topConcern && minsPerGame < 45) topConcern = 'Rotation Risk';
             else if (!topConcern && minsPerGame < 65) topConcern = 'Low Minutes';
 
@@ -2896,11 +2902,11 @@ body {
             const ppgDelta = player.ppg - pAvg.ppg;
             const valueSignal = (ppmDelta * 0.6) + (ppgDelta * 2.5);
             let rawValuePenalty = Math.max(-15, Math.min(22, Math.round(-valueSignal)));
-            if (isPremium) rawValuePenalty = Math.round(rawValuePenalty * 1.5);
+            if (isPremium) rawValuePenalty = Math.round(rawValuePenalty * settings.premiumHarshness);
             else if (isMidPremium) rawValuePenalty = Math.round(rawValuePenalty * 1.2);
-            sellRating += rawValuePenalty;
+            sellRating += sensAdj(rawValuePenalty, settings.valueWeight);
             if (isPremium && player.form < posConfig.formMedian) {
-                sellRating += 5;
+                sellRating += sensAdj(5);
                 if (!topConcern) topConcern = 'Premium Underperforming';
             }
 
@@ -2908,31 +2914,31 @@ body {
             if (player.position >= 3 && player.minutes >= 270) {
                 const xGIPer90 = (player.xGI / player.minutes) * 90;
                 const xGPenalty = Math.max(-15, Math.min(18, Math.round((0.35 - xGIPer90) * 35)));
-                sellRating += xGPenalty;
+                sellRating += sensAdj(xGPenalty);
                 if (!topConcern && xGIPer90 < 0.20) topConcern = 'Low xGI';
                 const actualGI = player.goals + player.assists;
                 const overperf = actualGI - player.xGI;
-                if (overperf > 2.0) { sellRating += Math.round(Math.min(12, overperf * 2.5)); if (!topConcern) topConcern = 'Overperforming xG'; }
+                if (overperf > 2.0) { sellRating += sensAdj(Math.round(Math.min(12, overperf * 2.5))); if (!topConcern) topConcern = 'Overperforming xG'; }
             } else if (player.position <= 2 && player.minutes >= 270) {
                 const csRate = player.cleanSheets / gamesPlayed;
                 const csPenalty = Math.max(-10, Math.min(14, Math.round((0.28 - csRate) * 35)));
-                sellRating += csPenalty;
+                sellRating += sensAdj(csPenalty);
                 if (!topConcern && csRate <= 0.18 && player.price > 5.5) topConcern = 'Few Clean Sheets';
             }
 
             // 7. OWNERSHIP URGENCY
-            if (player.ownership > 20 && sellRating > 45) { sellRating += 5; }
+            if (player.ownership > 20 && sellRating > 45) { sellRating += sensAdj(5); }
             const netTransfers = player.transfersIn - player.transfersOut;
-            if (netTransfers < -20000) { sellRating += 4; }
+            if (netTransfers < -20000) { sellRating += sensAdj(4); }
 
             // 8. TEAM CONTEXT
             if (ta) {
                 const teamFormDelta = (ta.formRating - 50) / 50;
-                sellRating += Math.round(teamFormDelta * -8);
+                sellRating += sensAdj(Math.round(teamFormDelta * -8));
                 if (!topConcern && ta.formRating < 30) topConcern = 'Team Poor Form';
-                if (player.position >= 3) { sellRating += Math.round(((ta.attackPower - 50) / 50) * -8); if (!topConcern && ta.attackPower < 35) topConcern = 'Weak Team Attack'; }
-                if (player.position <= 2) { sellRating += Math.round(((ta.defensePower - 50) / 50) * -8); if (!topConcern && ta.defensePower < 35) topConcern = 'Weak Team Defence'; }
-                if (ta.fixtureScore < 30) { sellRating += 4; if (!topConcern) topConcern = 'Tough Team Fixtures'; }
+                if (player.position >= 3) { sellRating += sensAdj(Math.round(((ta.attackPower - 50) / 50) * -8)); if (!topConcern && ta.attackPower < 35) topConcern = 'Weak Team Attack'; }
+                if (player.position <= 2) { sellRating += sensAdj(Math.round(((ta.defensePower - 50) / 50) * -8)); if (!topConcern && ta.defensePower < 35) topConcern = 'Weak Team Defence'; }
+                if (ta.fixtureScore < 30) { sellRating += sensAdj(4, settings.fixtureWeight); if (!topConcern) topConcern = 'Tough Team Fixtures'; }
             }
 
             sellRating = Math.max(0, Math.min(100, Math.round(sellRating)));
@@ -3068,15 +3074,16 @@ body {
                     const days = Math.floor(diff / 86400000);
                     const hrs = Math.floor((diff % 86400000) / 3600000);
                     const mins = Math.floor((diff % 3600000) / 60000);
+                    const secs = Math.floor((diff % 60000) / 1000);
                     let text = '';
-                    if (days > 0) text = `${days}d ${hrs}h ${mins}m left`;
-                    else if (hrs > 0) text = `${hrs}h ${mins}m left`;
-                    else text = `${mins}m left`;
+                    if (days > 0) text = `${days}d ${hrs}h ${mins}m ${secs}s`;
+                    else if (hrs > 0) text = `${hrs}h ${mins}m ${secs}s`;
+                    else text = `${mins}m ${secs}s`;
                     cdEl.textContent = text;
                     cdEl.className = 'hcc-countdown' + (diff < 7200000 ? ' urgent' : diff < 86400000 ? ' soon' : '');
                 }
                 updateCountdown();
-                deadlineInterval = setInterval(updateCountdown, 60000);
+                deadlineInterval = setInterval(updateCountdown, 1000);
             } else {
                 deadlineHtml = '<div class="hcc-secondary">No upcoming deadline</div>';
             }
@@ -3473,7 +3480,7 @@ body {
                     const dir = p.costChangeEvent > 0 ? '\u2191' : '\u2193';
                     const abs = Math.abs(p.costChangeEvent / 10).toFixed(1);
                     items.push({
-                        cat: 'price', text: `${p.name} ${dir} \u00A3${abs}m`,
+                        cat: p.costChangeEvent > 0 ? 'price-up' : 'price-down', text: `${p.name} ${dir} \u00A3${abs}m`,
                         isSquad: squadIds.has(p.id), weight: squadIds.has(p.id) ? 80 : 25
                     });
                 }
@@ -3495,11 +3502,6 @@ body {
             const top = items.slice(0, 10);
 
             if (!top.length) { strip.classList.add('hidden'); return; }
-
-            // Add external PL headlines after FPL items
-            if (externalItems && externalItems.length) {
-                top.push(...externalItems.slice(0, Math.max(0, 12 - top.length)));
-            }
 
             const contentHtml = `<span class="news-strip-content"><span class="news-strip-label">\ud83d\udcf0 NEWS</span>` +
                 top.map(i => {
@@ -3642,8 +3644,17 @@ body {
                     return { ...p, isCaptain: pick.is_captain, isViceCaptain: pick.is_vice_captain, multiplier: pick.multiplier, pickPosition: pick.position };
                 }).filter(Boolean);
 
+                // Load sensitivity preset from squad analysis settings
+                const savedPreset = localStorage.getItem('fpl_active_preset') || 'balanced';
+                const presetMap = {
+                    aggressive: { sellSensitivity: 1.3, fixtureWeight: 1.4, formWeight: 1.2, valueWeight: 1.3, minutesThreshold: 70, premiumHarshness: 1.3 },
+                    balanced:   { sellSensitivity: 1.0, fixtureWeight: 1.0, formWeight: 1.0, valueWeight: 1.0, minutesThreshold: 60, premiumHarshness: 1.0 },
+                    patient:    { sellSensitivity: 0.7, fixtureWeight: 0.6, formWeight: 0.8, valueWeight: 0.8, minutesThreshold: 50, premiumHarshness: 0.7 }
+                };
+                const analysisSettings = presetMap[savedPreset] || presetMap.balanced;
+
                 // Run analysis on each squad player
-                const analysisResults = squad.map(p => analyzePlayerForTicker(p, posAvg, teamAnalysis, currentGW));
+                const analysisResults = squad.map(p => analyzePlayerForTicker(p, posAvg, teamAnalysis, currentGW, analysisSettings));
                 const flagged = analysisResults.filter((a, i) => {
                     if (a.verdict === 'sell' || a.verdict === 'monitor') return true;
                     const p = squad[i];
@@ -3696,13 +3707,36 @@ body {
                     .sort((a, b) => (b.transfersIn - b.transfersOut) - (a.transfersIn - a.transfersOut))
                     .slice(0, 1);
 
-                // --- NEW: Squad health score (0-100) ---
-                const verdictWeights = { star: 100, hold: 80, monitor: 40, sell: 10 };
+                // --- Squad health score (aligned with squad analysis) ---
                 const starterResults = analysisResults.filter((_, i) => squad[i]?.pickPosition <= 11);
                 const benchResults = analysisResults.filter((_, i) => squad[i]?.pickPosition >= 12);
-                const starterScore = starterResults.length > 0 ? starterResults.reduce((s, a) => s + (verdictWeights[a.verdict] || 50), 0) / starterResults.length : 50;
-                const benchScore = benchResults.length > 0 ? benchResults.reduce((s, a) => s + (verdictWeights[a.verdict] || 50), 0) / benchResults.length : 50;
-                const healthScore = Math.round(starterScore * 0.8 + benchScore * 0.2);
+                const starterAvg = starterResults.length > 0 ? starterResults.reduce((s, a) => s + (100 - a.sellRating), 0) / starterResults.length : 50;
+                const benchAvg = benchResults.length > 0 ? benchResults.reduce((s, a) => s + (100 - a.sellRating), 0) / benchResults.length : 50;
+                let healthScoreRaw = starterAvg * 0.80 + benchAvg * 0.20;
+
+                // Modifiers (matching squad analysis)
+                const injuredStarters = starterResults.filter((_, i) => { const p = squad.filter(sq => sq.pickPosition <= 11)[i]; return p && (p.status === 'i' || p.status === 'u' || p.status === 's'); });
+                if (injuredStarters.length) healthScoreRaw -= injuredStarters.length * 5;
+                const doubtfulStarters = starterResults.filter((_, i) => { const p = squad.filter(sq => sq.pickPosition <= 11)[i]; return p && p.status === 'd'; });
+                if (doubtfulStarters.length) healthScoreRaw -= doubtfulStarters.length * 2;
+                const capPlayer = squad.find(p => p.isCaptain);
+                if (capPlayer) {
+                    const capAnalysis = analysisResults[squad.indexOf(capPlayer)];
+                    if (capAnalysis) {
+                        if (capAnalysis.verdict === 'star') healthScoreRaw += 3;
+                        else if (capAnalysis.verdict === 'sell') healthScoreRaw -= 5;
+                        else if (capAnalysis.verdict === 'monitor') healthScoreRaw -= 2;
+                    }
+                }
+                [2, 3, 4].forEach(pos => {
+                    const posStarterIdxs = squad.map((p, i) => p.pickPosition <= 11 && p.position === pos ? i : -1).filter(i => i >= 0);
+                    const posSells = posStarterIdxs.filter(i => analysisResults[i]?.verdict === 'sell');
+                    if (posStarterIdxs.length >= 2 && posSells.length > posStarterIdxs.length / 2) healthScoreRaw -= 3;
+                });
+                const starCount = analysisResults.filter(a => a.verdict === 'star').length;
+                if (starCount >= 3) healthScoreRaw += 2;
+
+                const healthScore = Math.max(0, Math.min(100, Math.round(healthScoreRaw)));
 
                 // Health deductions explanation
                 const healthDeductions = [];
