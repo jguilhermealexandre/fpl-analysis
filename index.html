@@ -2133,6 +2133,7 @@ body {
         .news-strip-dot.dot-injury { background: #EF4444; }
         .news-strip-dot.dot-price { background: #F59E0B; }
         .news-strip-dot.dot-transfer { background: #22C55E; }
+        .news-strip-dot.dot-transfer-out { background: #EF4444; }
         .news-strip-dot.dot-external { background: #8B5CF6; }
         @media (max-width: 768px) {
             .news-strip-track { gap: 8px; }
@@ -3484,7 +3485,7 @@ body {
                 if (Math.abs(net) >= 80000) {
                     const dir = net > 0 ? 'in' : 'out';
                     items.push({
-                        cat: 'transfer', text: `${p.name}: ${Math.abs(net).toLocaleString()} net ${dir}`,
+                        cat: net < 0 ? 'transfer-out' : 'transfer', text: `${p.name}: ${Math.abs(net).toLocaleString()} net ${dir}`,
                         isSquad: squadIds.has(p.id), weight: squadIds.has(p.id) ? 70 : 15
                     });
                 }
@@ -3534,10 +3535,10 @@ body {
                 return { ...p, pressure: net / owners, net, inSquad: squadIds.has(p.id) };
             });
 
-            const fallers = withPressure.filter(p => p.pressure < -0.015 || (p.costChangeEvent && p.costChangeEvent < 0))
-                .sort((a, b) => a.pressure - b.pressure).slice(0, 10);
-            const risers = withPressure.filter(p => p.pressure > 0.015 || (p.costChangeEvent && p.costChangeEvent > 0))
-                .sort((a, b) => b.pressure - a.pressure).slice(0, 10);
+            const fallers = withPressure.filter(p => p.net < -20000)
+                .sort((a, b) => a.net - b.net);
+            const risers = withPressure.filter(p => p.net > 20000)
+                .sort((a, b) => b.net - a.net);
 
             const movers = [];
             const maxLen = Math.max(fallers.length, risers.length);
@@ -3570,7 +3571,7 @@ body {
                 const contentEl = track.querySelector('.price-ticker-content');
                 if (contentEl) {
                     const w = contentEl.offsetWidth;
-                    const duration = Math.max(10, w / 120);
+                    const duration = Math.max(20, w / 55);
                     track.style.animationDuration = duration + 's';
                 }
             });
@@ -3643,7 +3644,12 @@ body {
 
                 // Run analysis on each squad player
                 const analysisResults = squad.map(p => analyzePlayerForTicker(p, posAvg, teamAnalysis, currentGW));
-                const flagged = analysisResults.filter(a => a.verdict === 'sell' || a.verdict === 'monitor');
+                const flagged = analysisResults.filter((a, i) => {
+                    if (a.verdict === 'sell' || a.verdict === 'monitor') return true;
+                    const p = squad[i];
+                    if (p && (p.status === 'i' || p.status === 'u' || p.status === 's' || p.status === 'd')) return true;
+                    return false;
+                });
                 flagged.sort((a, b) => b.sellRating - a.sellRating);
 
                 const bank = (picksData.entry_history?.bank || 0) / 10;
