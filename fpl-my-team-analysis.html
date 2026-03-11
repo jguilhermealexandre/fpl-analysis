@@ -1143,7 +1143,119 @@
         .tw-compare-table .better { color: var(--color-success); }
         .tw-compare-table .worse { color: var(--color-error); }
 
-        /* ===== GAMEWEEK PLANNER ===== */
+        /* ===== LINEUP WIZARD ===== */
+        .lw-container { padding: 0; }
+        .lw-intro { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); }
+        .lw-intro span { font-size: 1.2rem; }
+        .lw-steps { display: flex; gap: 2px; margin-bottom: 20px; padding: 4px; background: var(--surface-1); border-radius: var(--radius-lg); border: 1px solid var(--border-default); }
+        .lw-step { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 8px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; background: transparent; border: none; color: var(--text-muted); font-family: var(--font-body); font-size: 12px; font-weight: 600; }
+        .lw-step:hover:not(.disabled) { background: rgba(255,255,255,0.04); color: var(--text-secondary); }
+        .lw-step.active { background: #A78BFA; color: #fff; box-shadow: 0 2px 8px rgba(167,139,250,0.3); }
+        .lw-step.completed { color: var(--color-success); }
+        .lw-step.disabled { cursor: not-allowed; opacity: 0.4; }
+        .lw-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
+        .lw-step.active .lw-step-num { background: rgba(255,255,255,0.2); }
+        .lw-step.completed .lw-step-num { background: var(--color-success); color: #000; }
+        @media (max-width: 600px) { .lw-step span.lw-step-label { display: none; } }
+        .lw-panel { display: none; }
+        .lw-panel.active { display: block; }
+        .lw-squad-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+        .lw-player-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; position: relative; }
+        .lw-player-card:hover { border-color: var(--border-emphasis); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .lw-player-card.available { border-color: rgba(74,222,128,0.3); }
+        .lw-player-card.excluded { border-color: rgba(248,113,113,0.3); opacity: 0.55; }
+        .lw-player-card.excluded .lw-toggle { background: var(--color-error); border-color: var(--color-error); color: #fff; }
+        .lw-toggle { width: 20px; height: 20px; border: 2px solid var(--border-emphasis); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; font-size: 12px; background: var(--color-success); border-color: var(--color-success); color: #fff; }
+        .lw-player-card.excluded .lw-toggle { background: var(--color-error); border-color: var(--color-error); }
+        .lw-info { flex: 1; min-width: 0; }
+        .lw-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lw-meta { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .lw-stats { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+        .lw-stat { text-align: center; }
+        .lw-stat-val { font-size: 13px; font-weight: 700; font-family: var(--font-mono); }
+        .lw-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+        .lw-summary-bar { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 16px; flex-wrap: wrap; }
+        .lw-summary-item { display: flex; flex-direction: column; gap: 2px; }
+        .lw-summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
+        .lw-summary-value { font-size: 16px; font-weight: 700; font-family: var(--font-mono); }
+        .lw-pitch { background: linear-gradient(180deg,#1a472a 0%,#1d5031 20%,#1a472a 40%,#1d5031 60%,#1a472a 80%,#1d5031 100%); border-radius: 12px; padding: 24px 16px; margin-bottom: 20px; border: 2px solid rgba(74,222,128,0.2); }
+        .lw-pitch-row { display: flex; justify-content: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .lw-pitch-row:last-child { margin-bottom: 0; }
+        .lw-pitch-player { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 72px; max-width: 90px; cursor: pointer; transition: all 0.15s; padding: 4px; border-radius: 8px; }
+        .lw-pitch-player:hover { background: rgba(255,255,255,0.08); }
+        .lw-pitch-player.swap-source { background: rgba(96,165,250,0.25); box-shadow: 0 0 0 2px #60A5FA; border-radius: 8px; }
+        .lw-pitch-player.swap-target { background: rgba(245,158,11,0.2); box-shadow: 0 0 0 2px #F59E0B; border-radius: 8px; }
+        .lw-pitch-player.bench { opacity: 0.6; }
+        .lw-pitch-node { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+        .lw-pitch-name { font-size: 10px; font-weight: 600; text-align: center; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+        .lw-pitch-score { font-size: 10px; font-weight: 700; font-family: var(--font-mono); padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,0.3); }
+        .lw-bench-section { background: var(--surface-1); border-radius: 12px; padding: 16px; border: 1px solid var(--border-default); margin-bottom: 20px; }
+        .lw-bench-header { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; text-align: center; }
+        .lw-bench-row { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+        .lw-swap-hint { text-align: center; padding: 8px; font-size: 12px; color: #F59E0B; font-weight: 600; margin-bottom: 8px; background: rgba(245,158,11,0.08); border-radius: 8px; border: 1px dashed rgba(245,158,11,0.3); }
+        .lw-captain-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; margin-bottom: 8px; }
+        .lw-captain-card:hover { border-color: var(--border-emphasis); transform: translateY(-1px); }
+        .lw-captain-card.selected-captain { border-color: #F59E0B; background: rgba(245,158,11,0.08); box-shadow: 0 0 0 1px #F59E0B; }
+        .lw-captain-card.selected-vc { border-color: #9CA3AF; background: rgba(156,163,175,0.08); box-shadow: 0 0 0 1px #9CA3AF; }
+        .lw-captain-rank { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; }
+        .lw-captain-info { flex: 1; min-width: 0; }
+        .lw-captain-name { font-weight: 600; font-size: 13px; }
+        .lw-captain-meta { font-size: 11px; color: var(--text-secondary); display: flex; gap: 8px; flex-wrap: wrap; }
+        .lw-captain-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .lw-cap-btn { padding: 4px 10px; border: 1px solid var(--border-default); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); background: transparent; color: var(--text-secondary); }
+        .lw-cap-btn:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
+        .lw-cap-btn.active-c { background: #F59E0B; border-color: #F59E0B; color: #000; }
+        .lw-cap-btn.active-vc { background: #9CA3AF; border-color: #9CA3AF; color: #000; }
+        .lw-final-section { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 16px; }
+        .lw-final-header { font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .lw-change-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--border-subtle); }
+        .lw-change-row:last-child { border-bottom: none; }
+        .lw-change-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
+        .lw-change-badge.promoted { background: rgba(74,222,128,0.12); color: var(--color-success); }
+        .lw-change-badge.benched { background: rgba(248,113,113,0.12); color: var(--color-error); }
+        .lw-change-badge.captain { background: rgba(245,158,11,0.12); color: #F59E0B; }
+
+        /* ===== FDR & SHARED STYLES ===== */
+        .planner-fdr-cell { border-radius: var(--radius-sm); padding: 4px 3px; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; line-height: 1.2; text-align: center; color: #000; }
+        .planner-fdr-cell .fdr-opp { font-size: 0.62rem; font-weight: 600; display: block; }
+        .planner-fdr-cell .fdr-ha { font-size: 0.5rem; font-weight: 400; opacity: 0.7; }
+        .fdr-1 { background: var(--fdr-1); }
+        .fdr-2 { background: var(--fdr-2); }
+        .fdr-3 { background: var(--fdr-3); }
+        .fdr-4 { background: var(--fdr-4); color: #fff; }
+        .fdr-5 { background: var(--fdr-5); color: #fff; }
+
+        /* Search panel (shared by Draft & Transfer Wizard) */
+        .planner-search-wrap { position: relative; margin-bottom: 16px; }
+        .planner-search-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-0); color: var(--text-primary); font-family: var(--font-body); font-size: 0.85rem; outline: none; }
+        .planner-search-input:focus { border-color: var(--color-info); box-shadow: 0 0 0 2px rgba(96,165,250,0.2); }
+        .planner-search-input::placeholder { color: var(--text-muted); }
+        .planner-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-1); border: 1px solid var(--border-emphasis); border-radius: var(--radius-md); max-height: 240px; overflow-y: auto; z-index: 10; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+        .planner-search-dropdown.show { display: block; }
+        .planner-search-item { padding: 8px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); font-size: 0.8rem; }
+        .planner-search-item:hover { background: var(--surface-3); }
+        .planner-search-item-name { font-weight: 600; color: var(--text-primary); }
+        .planner-search-item-meta { font-size: 0.7rem; color: var(--text-muted); }
+
+        /* Transfer comparison styles (shared) */
+        .transfer-vs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 16px; }
+        .transfer-vs-col { padding: 12px; text-align: center; }
+        .transfer-vs-col:first-child { border-right: 1px solid var(--border-subtle); }
+        .transfer-vs-name { font-family: var(--font-display); font-size: 0.9rem; font-weight: 700; margin-bottom: 2px; }
+        .transfer-vs-meta { font-size: 0.7rem; color: var(--text-secondary); }
+        .transfer-vs-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .transfer-fdr-strip { display: flex; gap: 3px; justify-content: center; margin: 8px 0; }
+        .transfer-fdr-badge { border-radius: 4px; padding: 3px 5px; font-family: var(--font-mono); font-size: 0.6rem; font-weight: 700; text-align: center; min-width: 36px; color: #000; }
+        .transfer-fdr-badge.fdr-4, .transfer-fdr-badge.fdr-5 { color: #fff; }
+        .transfer-stat-table { width: 100%; border-collapse: collapse; }
+        .transfer-stat-table td { padding: 5px 8px; font-size: 0.78rem; border-bottom: 1px solid var(--border-subtle); }
+        .transfer-stat-table .stat-label { color: var(--text-secondary); text-align: left; width: 35%; }
+        .transfer-stat-table .stat-val { text-align: center; font-family: var(--font-mono); font-weight: 600; width: 32.5%; }
+        .transfer-stat-table .stat-val.better { color: var(--color-success); background: rgba(74,222,128,0.06); }
+        .transfer-stat-table .stat-val.worse { color: var(--color-error); background: rgba(248,113,113,0.06); }
+        .transfer-section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-info); margin: 12px 0 6px; padding: 4px 0; border-bottom: 1px solid rgba(96,165,250,0.15); }
+
+        /* Intro banner */
         .planner-intro { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); }
         .planner-intro span { font-size: 1.2rem; }
 
@@ -1189,39 +1301,25 @@
         .planner-trend.down { color: var(--color-error); }
         .planner-trend.flat { color: var(--text-muted); }
 
-        /* FDR cells */
+        /* FDR column width */
         .planner-fdr { width: 58px; min-width: 58px; padding: 4px 2px !important; }
-        .planner-fdr-cell { border-radius: var(--radius-sm); padding: 4px 3px; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; line-height: 1.2; text-align: center; color: #000; }
-        .planner-fdr-cell .fdr-opp { font-size: 0.62rem; font-weight: 600; display: block; }
-        .planner-fdr-cell .fdr-ha { font-size: 0.5rem; font-weight: 400; opacity: 0.7; }
-        .fdr-1 { background: var(--fdr-1); }
-        .fdr-2 { background: var(--fdr-2); }
-        .fdr-3 { background: var(--fdr-3); }
-        .fdr-4 { background: var(--fdr-4); color: #fff; }
-        .fdr-5 { background: var(--fdr-5); color: #fff; }
 
-        /* Compare checkbox */
-        .planner-compare-cb { width: 16px; height: 16px; accent-color: var(--color-info); cursor: pointer; flex-shrink: 0; }
-
-        /* Season / L6 column group headers */
+        /* Column group headers */
         .planner-col-group { font-size: 0.6rem; padding: 2px 4px !important; color: var(--text-muted); border-bottom: none !important; }
         .planner-col-season { background: rgba(96,165,250,0.06) !important; }
         .planner-col-recent { background: rgba(74,222,128,0.06) !important; }
 
-        /* ===== PLANNER LINEUP BUILDER ===== */
-        .planner-gw-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-        .planner-gw-pills { display: flex; gap: 4px; flex-wrap: wrap; }
-        .planner-gw-pill { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; font-family: var(--font-mono); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-        .planner-gw-pill:hover { border-color: var(--color-info); color: var(--color-info); background: rgba(96,165,250,0.08); }
-        .planner-gw-pill.active { background: var(--color-info); color: #fff; border-color: var(--color-info); box-shadow: 0 2px 8px rgba(96,165,250,0.3); }
-        .planner-gw-pill.modified::after { content: '●'; margin-left: 4px; font-size: 0.5rem; color: var(--color-warning); vertical-align: super; }
-        .planner-gw-pill.active.modified::after { color: #fff; }
+        /* Formation label */
         .planner-formation-label { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; color: var(--text-primary); padding: 4px 12px; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-left: 4px; }
-        .planner-toolbar-actions { display: flex; gap: 6px; margin-left: auto; }
+
+        /* Reset button */
         .planner-reset-btn { padding: 5px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .planner-reset-btn:hover { border-color: var(--color-error); color: var(--color-error); background: rgba(239,68,68,0.06); }
 
-        /* Planner Pitch View */
+        /* Transfer panel */
+        .planner-transfer-panel { max-width: 520px; }
+
+        /* Pitch View */
         .planner-pitch-wrap { margin-bottom: 16px; }
         .planner-pitch-container { background: linear-gradient(180deg, #14472a 0%, #1a5c36 30%, #1a5c36 70%, #14472a 100%); border-radius: var(--radius-lg); padding: 20px 12px 12px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
         .planner-pitch-container::before { content: ''; position: absolute; top: 50%; left: 8%; right: 8%; height: 1px; background: rgba(255,255,255,0.10); }
@@ -1253,7 +1351,7 @@
         .planner-pitch-player.swap-ineligible { opacity: 0.3; cursor: not-allowed; }
         @keyframes plannerSwapPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(252,211,77,0.4); } 50% { box-shadow: 0 0 12px 4px rgba(252,211,77,0.25); } }
 
-        /* Swap column in planner table */
+        /* Swap column in table */
         .planner-swap-btn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border-default); background: var(--surface-2); color: var(--text-muted); font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .planner-swap-btn:hover { border-color: var(--color-info); color: var(--color-info); background: rgba(96,165,250,0.1); }
         .planner-swap-btn.swap-active { border-color: var(--color-captain); color: var(--color-captain); background: rgba(252,211,77,0.12); animation: plannerSwapPulse 1.2s ease-in-out infinite; }
@@ -1266,89 +1364,69 @@
         .planner-lineup-hint { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(96,165,250,0.06); border: 1px solid rgba(96,165,250,0.15); border-radius: var(--radius-md); margin-bottom: 12px; font-size: 0.75rem; color: var(--text-secondary); }
         .planner-lineup-hint span { font-size: 1rem; }
 
-        /* ===== PLANNER COMPARE BAR ===== */
-        .planner-compare-bar { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(120px); display: flex; align-items: center; gap: 12px; background: var(--surface-1); border: 1px solid var(--border-emphasis); border-radius: var(--radius-xl); padding: 8px 16px; z-index: 200; box-shadow: 0 8px 32px rgba(0,0,0,0.1); transition: transform 0.3s ease; max-width: 95vw; }
-        .planner-compare-bar.show { transform: translateX(-50%) translateY(0); }
-        .planner-compare-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-        .planner-compare-chip { display: flex; align-items: center; gap: 4px; background: var(--surface-3); border: 1px solid var(--border-default); border-radius: 20px; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; color: var(--text-primary); }
-        .planner-compare-chip .chip-remove { cursor: pointer; color: var(--text-muted); font-size: 0.85rem; margin-left: 2px; }
-        .planner-compare-chip .chip-remove:hover { color: var(--color-error); }
-        .planner-compare-actions { display: flex; gap: 6px; }
-        .planner-compare-clear { background: none; border: 1px solid var(--border-default); color: var(--text-secondary); font-size: 0.75rem; padding: 6px 12px; border-radius: var(--radius-md); cursor: pointer; }
-        .planner-compare-clear:hover { border-color: var(--color-error); color: var(--color-error); }
-        .planner-compare-btn { background: var(--color-info); border: none; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 6px 16px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; }
-        .planner-compare-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .planner-compare-btn:not(:disabled):hover { background: #3B82F6; transform: translateY(-1px); }
+        /* ===== H2H MATCHUP CARDS ===== */
+        .h2h-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+        .h2h-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); }
+        .h2h-header-teams { font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+        .h2h-header-meta { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--text-muted); }
+        .h2h-venue { font-size: 0.62rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+        .h2h-venue-home { background: rgba(74,222,128,0.12); color: var(--color-success); }
+        .h2h-venue-away { background: rgba(248,113,113,0.12); color: var(--color-error); }
 
-        /* ===== PLANNER COMPARE MODAL ===== */
-        .planner-compare-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 300; display: none; justify-content: center; align-items: flex-start; padding: 20px; overflow-y: auto; }
-        .planner-compare-modal.show { display: flex; }
-        .planner-compare-modal-content { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-xl); width: 100%; max-width: 1000px; overflow: hidden; animation: fadeInUp 0.3s; }
-        .planner-compare-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border-default); background: var(--surface-2); }
-        .planner-compare-modal-header h2 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; }
-        .planner-compare-modal-body { padding: 16px; overflow-x: auto; }
+        .h2h-body { padding: 12px 14px; }
 
-        /* Compare modal table */
-        .cmp-header-row { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border-default); padding-bottom: 12px; }
-        .cmp-player-col { flex: 1; text-align: center; padding: 8px; min-width: 140px; }
-        .cmp-player-name { font-family: var(--font-display); font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
-        .cmp-player-meta { font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; }
-        .cmp-group { margin-bottom: 16px; }
-        .cmp-group-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--color-info); padding: 6px 10px; background: rgba(96,165,250,0.08); border-radius: var(--radius-sm); margin-bottom: 6px; }
-        .cmp-row { display: flex; align-items: center; padding: 6px 10px; border-radius: var(--radius-sm); }
-        .cmp-row:nth-child(even) { background: rgba(0,0,0,0.02); }
-        .cmp-row-label { width: 120px; flex-shrink: 0; font-size: 0.75rem; color: var(--text-secondary); }
-        .cmp-row-values { display: flex; flex: 1; gap: 0; }
-        .cmp-val { flex: 1; text-align: center; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; color: var(--text-primary); min-width: 100px; }
-        .cmp-val.best { color: var(--color-success); background: rgba(74,222,128,0.08); border-radius: var(--radius-sm); padding: 2px 6px; }
+        /* Power comparison grid */
+        .h2h-power-grid { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 12px; }
+        .h2h-power-row { display: grid; grid-template-columns: 90px 1fr 44px 8px 44px 1fr 90px; align-items: center; gap: 0; font-size: 0.75rem; }
+        .h2h-power-label { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+        .h2h-power-label-r { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; text-align: right; }
+        .h2h-power-bar { height: 6px; border-radius: 3px; }
+        .h2h-power-bar-l { direction: rtl; }
+        .h2h-power-bar-l .h2h-power-bar-fill { border-radius: 3px; float: right; }
+        .h2h-power-bar-r .h2h-power-bar-fill { border-radius: 3px; }
+        .h2h-power-bar-fill { height: 100%; min-width: 2px; transition: width 0.4s ease; }
+        .h2h-power-val { font-family: var(--font-mono); font-weight: 700; font-size: 0.8rem; text-align: center; padding: 2px 4px; border-radius: var(--radius-sm); min-width: 36px; }
+        .h2h-vs { text-align: center; font-size: 0.6rem; color: var(--text-muted); font-weight: 700; }
 
-        /* FDR comparison in modal */
-        .cmp-fdr-section { margin-bottom: 16px; }
-        .cmp-fdr-row { display: flex; gap: 0; }
-        .cmp-fdr-col { flex: 1; display: flex; gap: 3px; justify-content: center; padding: 4px; min-width: 140px; }
-        .cmp-fdr-badge { border-radius: var(--radius-sm); padding: 3px 5px; font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700; text-align: center; min-width: 42px; color: #000; }
-        .cmp-fdr-badge.fdr-4, .cmp-fdr-badge.fdr-5 { color: #fff; }
+        .h2h-tl-green { color: var(--color-success); }
+        .h2h-tl-amber { color: var(--text-secondary); }
+        .h2h-tl-red { color: var(--color-error); }
+        .h2h-bg-green { background: var(--color-success); }
+        .h2h-bg-amber { background: var(--text-secondary); }
+        .h2h-bg-red { background: var(--color-error); }
 
-        /* ===== PLANNER TRANSFER PANEL ===== */
-        .planner-transfer-panel { max-width: 520px; }
-        .planner-search-wrap { position: relative; margin-bottom: 16px; }
-        .planner-search-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-0); color: var(--text-primary); font-family: var(--font-body); font-size: 0.85rem; outline: none; }
-        .planner-search-input:focus { border-color: var(--color-info); box-shadow: 0 0 0 2px rgba(96,165,250,0.2); }
-        .planner-search-input::placeholder { color: var(--text-muted); }
-        .planner-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface-1); border: 1px solid var(--border-emphasis); border-radius: var(--radius-md); max-height: 240px; overflow-y: auto; z-index: 10; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-        .planner-search-dropdown.show { display: block; }
-        .planner-search-item { padding: 8px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); font-size: 0.8rem; }
-        .planner-search-item:hover { background: var(--surface-3); }
-        .planner-search-item-name { font-weight: 600; color: var(--text-primary); }
-        .planner-search-item-meta { font-size: 0.7rem; color: var(--text-muted); }
+        /* Tug-of-war xG bars */
+        .h2h-xg-section { margin-bottom: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); }
+        .h2h-xg-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
+        .h2h-xg-row { margin-bottom: 8px; }
+        .h2h-xg-labels { display: flex; justify-content: space-between; font-size: 0.68rem; margin-bottom: 3px; }
+        .h2h-xg-labels span:first-child { font-weight: 600; color: var(--text-primary); }
+        .h2h-xg-labels span:last-child { font-weight: 600; color: var(--text-primary); }
+        .h2h-xg-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--surface-3); }
+        .h2h-xg-bar-left { height: 100%; transition: width 0.4s ease; border-radius: 5px 0 0 5px; }
+        .h2h-xg-bar-right { height: 100%; transition: width 0.4s ease; border-radius: 0 5px 5px 0; }
+        .h2h-xg-stat-label { font-size: 0.6rem; color: var(--text-muted); text-align: center; margin-top: 1px; }
 
-        /* Side-by-side comparison in transfer panel */
-        .transfer-vs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 16px; }
-        .transfer-vs-col { padding: 12px; text-align: center; }
-        .transfer-vs-col:first-child { border-right: 1px solid var(--border-subtle); }
-        .transfer-vs-name { font-family: var(--font-display); font-size: 0.9rem; font-weight: 700; margin-bottom: 2px; }
-        .transfer-vs-meta { font-size: 0.7rem; color: var(--text-secondary); }
-        .transfer-vs-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px; }
-        .transfer-fdr-strip { display: flex; gap: 3px; justify-content: center; margin: 8px 0; }
-        .transfer-fdr-badge { border-radius: 4px; padding: 3px 5px; font-family: var(--font-mono); font-size: 0.6rem; font-weight: 700; text-align: center; min-width: 36px; color: #000; }
-        .transfer-fdr-badge.fdr-4, .transfer-fdr-badge.fdr-5 { color: #fff; }
-        .transfer-stat-table { width: 100%; border-collapse: collapse; }
-        .transfer-stat-table td { padding: 5px 8px; font-size: 0.78rem; border-bottom: 1px solid var(--border-subtle); }
-        .transfer-stat-table .stat-label { color: var(--text-secondary); text-align: left; width: 35%; }
-        .transfer-stat-table .stat-val { text-align: center; font-family: var(--font-mono); font-weight: 600; width: 32.5%; }
-        .transfer-stat-table .stat-val.better { color: var(--color-success); background: rgba(74,222,128,0.06); }
-        .transfer-stat-table .stat-val.worse { color: var(--color-error); background: rgba(248,113,113,0.06); }
-        .transfer-section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-info); margin: 12px 0 6px; padding: 4px 0; border-bottom: 1px solid rgba(96,165,250,0.15); }
-        .transfer-add-compare { display: flex; gap: 6px; margin-top: 12px; }
-        .transfer-add-compare button { flex: 1; padding: 8px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-2); color: var(--text-primary); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .transfer-add-compare button:hover { border-color: var(--color-info); color: var(--color-info); }
+        /* CS% row */
+        .h2h-cs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; padding: 8px 0; border-top: 1px solid var(--border-subtle); }
+        .h2h-cs-item { text-align: center; }
+        .h2h-cs-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-muted); margin-bottom: 2px; }
+        .h2h-cs-val { font-family: var(--font-mono); font-weight: 700; font-size: 0.82rem; }
 
-        /* Responsive: planner on mobile */
-        @media (max-width: 768px) {
-            .planner-compare-bar { bottom: 56px; }
-            .planner-transfer-panel { max-width: 100%; }
-            .cmp-row-label { width: 80px; font-size: 0.68rem; }
-            .cmp-val { font-size: 0.72rem; min-width: 80px; }
+        /* FPL Verdict */
+        .h2h-verdict { padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); border-left: 3px solid var(--color-info); }
+        .h2h-verdict-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-info); margin-bottom: 4px; }
+        .h2h-verdict-text { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; }
+        .h2h-verdict-tag { display: inline-block; font-size: 0.6rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-right: 4px; }
+        .h2h-verdict-tag.attacking { background: rgba(74,222,128,0.12); color: var(--color-success); }
+        .h2h-verdict-tag.defending { background: rgba(96,165,250,0.12); color: var(--color-info); }
+        .h2h-verdict-tag.tricky { background: rgba(245,158,11,0.12); color: #F59E0B; }
+        .h2h-verdict-tag.tough { background: rgba(248,113,113,0.12); color: var(--color-error); }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .h2h-power-row { grid-template-columns: 70px 1fr 36px 6px 36px 1fr 70px; font-size: 0.7rem; }
+            .h2h-power-label, .h2h-power-label-r { font-size: 0.58rem; }
         }
 
         /* ===== GW DRAFT ===== */
@@ -1696,7 +1774,6 @@
                         <a href="fpl-my-team-analysis.html#squad" class="dropdown-item"><i data-lucide="users" class="dd-icon"></i> Squad Analysis</a>
                         <a href="fpl-my-team-analysis.html#transfers" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Transfers</a>
                         <a href="fpl-my-team-analysis.html#news" class="dropdown-item"><i data-lucide="newspaper" class="dd-icon"></i> News</a>
-                        <a href="fpl-my-team-analysis.html#planner" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> GW Planner</a>
                         <a href="fpl-my-team-analysis.html#draft" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> GW Draft</a>
                         <a href="fpl-my-team-analysis.html#transfer" class="dropdown-item"><i data-lucide="repeat" class="dd-icon"></i> Transfer Wizard</a>
                         <a href="fpl-my-team-analysis.html#lineup" class="dropdown-item"><i data-lucide="wand-2" class="dd-icon"></i> Lineup Wizard</a>
@@ -1759,7 +1836,6 @@
             <button class="tab active" onclick="switchTab('team')" id="tabTeam">Squad Analysis</button>
             <button class="tab" onclick="switchTab('transfers')" id="tabTransfers">Transfers</button>
             <button class="tab" onclick="switchTab('news')" id="tabNews">News</button>
-            <button class="tab" onclick="switchTab('planner')" id="tabPlanner">GW Planner</button>
             <button class="tab" onclick="switchTab('draft')" id="tabDraft">GW Draft</button>
             <button class="tab" onclick="switchTab('transfer')" id="tabTransfer">Transfer Wizard</button>
             <button class="tab" onclick="switchTab('lineup')" id="tabLineup">Lineup Wizard</button>
@@ -1771,7 +1847,7 @@
         <!-- Header Row -->
         <div class="header-row">
             <h1 class="page-title"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
-            <button class="btn btn-secondary" onclick="openSettings()" style="margin-left:auto;"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
+            <button class="btn btn-secondary" id="settingsBtn" onclick="openSettings()" style="margin-left:auto;"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
         </div>
         <!-- Hidden input used by loadTeamById() -->
         <input type="hidden" id="teamIdInput">
@@ -1812,9 +1888,6 @@
         <!-- News Display -->
         <div id="newsDisplay" style="display:none;"></div>
 
-        <!-- Gameweek Planner Display -->
-        <div id="plannerDisplay" style="display:none;"></div>
-
         <!-- Transfer Wizard Display -->
         <div id="transferDisplay" style="display:none;"></div>
 
@@ -1824,40 +1897,6 @@
         <!-- Lineup Wizard Display -->
         <div id="lineupDisplay" style="display:none;"></div>
     </main>
-
-    <!-- Planner Compare Bar (floating bottom) -->
-    <div class="planner-compare-bar" id="plannerCompareBar">
-        <div class="planner-compare-chips" id="plannerCompareChips"></div>
-        <div class="planner-compare-actions">
-            <button class="planner-compare-clear" onclick="clearPlannerCompare()">Clear</button>
-            <button class="planner-compare-btn" id="plannerCompareBtn" onclick="showPlannerCompareModal()" disabled>Compare <span id="plannerCompareCount">0</span></button>
-        </div>
-    </div>
-
-    <!-- Planner Compare Modal (full-screen) -->
-    <div class="planner-compare-modal" id="plannerCompareModal">
-        <div class="planner-compare-modal-content">
-            <div class="planner-compare-modal-header">
-                <h2><i data-lucide="scale" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Player Comparison</h2>
-                <button class="detail-close" onclick="closePlannerCompareModal()">&times;</button>
-            </div>
-            <div class="planner-compare-modal-body" id="plannerCompareModalBody"></div>
-        </div>
-    </div>
-
-    <!-- Planner Transfer Panel (slide-out) -->
-    <div class="detail-overlay" id="plannerTransferOverlay" onclick="closePlannerTransferPanel(event)">
-        <div class="detail-panel planner-transfer-panel" id="plannerTransferPanel">
-            <div class="detail-header">
-                <div>
-                    <div class="player-name" id="plannerTransferTitle">Transfer Comparison</div>
-                    <div class="player-meta" id="plannerTransferMeta">-</div>
-                </div>
-                <button class="detail-close" onclick="closePlannerTransferPanel()">&times;</button>
-            </div>
-            <div class="detail-body" id="plannerTransferBody"></div>
-        </div>
-    </div>
 
     <!-- Draft Transfer Panel (slide-out) -->
     <div class="detail-overlay" id="draftTransferOverlay" onclick="closeDraftTransferPanel(event)">
@@ -1953,14 +1992,25 @@
         let allFixtures = [];     // All fixtures from fixtures.json
         let managerHistory = null; // Manager history from /api/entry/{id}/history/
 
-        // Gameweek Planner state
+        // Shared state for Draft & analysis
         let playersDetailData = null; // Full players-data.json with per-GW history
         let teamXgData = {};          // Team-level xG aggregated from player history
         let teamFixtures6 = {};       // Next 6 fixtures per team (extended from teamFixtures)
-        let plannerCompareList = [];   // Players selected for multi-compare (max 4)
-        let plannerReplacementTarget = null; // Current player being evaluated for transfer
-        let plannerRendered = false;   // Lazy rendering flag
         let transferRendered = false;  // Transfer wizard lazy rendering flag
+        let lineupState = {
+            step: 1,
+            squad: [],             // all 15 players with scores
+            excluded: new Set(),   // manually excluded player IDs
+            xi: [],                // current starting XI
+            bench: [],             // current bench
+            formation: '',         // current formation string
+            swapSource: null,      // player ID selected for swap (first click)
+            captain: null,         // captain player ID
+            viceCaptain: null,     // vice-captain player ID
+            originalXIIds: new Set(),    // original starting XI IDs from FPL
+            originalCaptain: null,       // original captain ID
+            originalVC: null             // original vice-captain ID
+        };
         let transferState = {
             step: 1,
             sellPlayers: [],       // selected players to sell
@@ -1969,12 +2019,6 @@
             budget: 0,             // total budget (sell prices + bank)
             candidateCache: {}     // position -> scored candidates
         };
-
-        // Per-GW Lineup Builder state
-        let plannerLineups = {};       // Per-GW lineups: { gwNumber: [...players with onBench flags] }
-        let plannerGWNumbers = [];     // Array of upcoming GW numbers (up to 6)
-        let plannerSelectedGW = null;  // Currently selected GW number for pitch view
-        let plannerSwapSource = null;  // Player ID currently selected for swapping (first click)
 
         let userSettings = {
             sellSensitivity: 1.0,   // multiplier for sell rating (>1 = aggressive, <1 = patient)
@@ -2344,8 +2388,8 @@
                 buildFixtureSwingData(bootData.teams, fixturesData);
                 seasonStats = calculateBasicSeasonStats(bootData.teams, fixturesData);
 
-                // Build team xG data for planner
-                buildPlannerTeamXgData(bootData.elements);
+                // Build team xG data for draft & analysis
+                buildTeamXgData(bootData.elements);
                 console.log('[xG] Team xG data built for', Object.keys(teamXgData).length, 'teams');
 
                 // Fetch manager + picks + history in parallel
@@ -2378,11 +2422,6 @@
                 showLoading(true, 'Running analysis...');
                 analyzeTeam();
 
-                plannerRendered = false;
-                plannerCompareList = [];
-                plannerLineups = {};
-                plannerSelectedGW = null;
-                plannerSwapSource = null;
                 transferRendered = false;
                 lineupRendered = false;
                 draftTabRendered = false;
@@ -2808,16 +2847,6 @@
 
             let html = '';
 
-            // FPL Wizard CTA banner
-            html += `<div style="display:flex;align-items:center;gap:16px;padding:14px 20px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:10px;margin-bottom:16px;flex-wrap:wrap;">
-                <div style="font-size:24px;flex-shrink:0;"><i data-lucide="wand-2" style="width:24px;height:24px;color:#A78BFA;"></i></div>
-                <div style="flex:1;min-width:200px;">
-                    <div style="font-size:14px;font-weight:700;color:#A78BFA;">New! FPL Wizard</div>
-                    <div style="font-size:12px;color:var(--text-secondary);">Guided decision flow: check fires → evaluate fixtures → find targets → optimize lineup → pick captain</div>
-                </div>
-                <a href="fpl-transfer-wizard.html" style="padding:8px 16px;background:#A78BFA;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;">Try FPL Wizard →</a>
-            </div>`;
-
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthFactors);
             html += renderSquadAlertsPanel();
             html += renderPriceAlerts();
@@ -3236,14 +3265,12 @@
             const teamDisplay = document.getElementById('teamDisplay');
             const transferMarketDisplay = document.getElementById('transferMarketDisplay');
             const newsDisplay = document.getElementById('newsDisplay');
-            const plannerDisplay = document.getElementById('plannerDisplay');
             const transferDisplay = document.getElementById('transferDisplay');
             const lineupDisplay = document.getElementById('lineupDisplay');
             const draftDisplay = document.getElementById('draftDisplay');
             const tabTeam = document.getElementById('tabTeam');
             const tabTransfers = document.getElementById('tabTransfers');
             const tabNews = document.getElementById('tabNews');
-            const tabPlanner = document.getElementById('tabPlanner');
             const tabTransfer = document.getElementById('tabTransfer');
             const tabLineup = document.getElementById('tabLineup');
             const tabDraft = document.getElementById('tabDraft');
@@ -3251,20 +3278,20 @@
             teamDisplay.style.display = 'none';
             transferMarketDisplay.style.display = 'none';
             newsDisplay.style.display = 'none';
-            plannerDisplay.style.display = 'none';
             transferDisplay.style.display = 'none';
             lineupDisplay.style.display = 'none';
             draftDisplay.style.display = 'none';
             tabTeam.classList.remove('active');
             tabTransfers.classList.remove('active');
             tabNews.classList.remove('active');
-            tabPlanner.classList.remove('active');
             tabTransfer.classList.remove('active');
             tabLineup.classList.remove('active');
             tabDraft.classList.remove('active');
 
-            const hashMap = { team: 'squad', transfers: 'transfers', news: 'news', planner: 'planner', draft: 'draft', transfer: 'transfer', lineup: 'lineup' };
+            const hashMap = { team: 'squad', transfers: 'transfers', news: 'news', draft: 'draft', transfer: 'transfer', lineup: 'lineup' };
             history.replaceState(null, '', '#' + (hashMap[tab] || tab));
+
+            document.getElementById('settingsBtn').style.display = (tab === 'team') ? '' : 'none';
 
             if (tab === 'team') {
                 teamDisplay.style.display = '';
@@ -3277,10 +3304,6 @@
                 newsDisplay.style.display = '';
                 tabNews.classList.add('active');
                 if (!newsRendered) renderNewsTab();
-            } else if (tab === 'planner') {
-                plannerDisplay.style.display = '';
-                tabPlanner.classList.add('active');
-                if (!plannerRendered) renderGameweekPlanner();
             } else if (tab === 'transfer') {
                 transferDisplay.style.display = '';
                 tabTransfer.classList.add('active');
@@ -3298,7 +3321,7 @@
 
         // Activate tab from hash on load
         (function() {
-            const hashToTab = { squad: 'team', transfers: 'transfers', news: 'news', planner: 'planner', draft: 'draft', squadplanner: 'draft', transfer: 'transfer', lineup: 'lineup' };
+            const hashToTab = { squad: 'team', transfers: 'transfers', news: 'news', draft: 'draft', squadplanner: 'draft', transfer: 'transfer', lineup: 'lineup' };
             const hash = window.location.hash.replace('#', '');
             if (hashToTab[hash]) {
                 // Defer until after data loads — store desired tab
@@ -3957,10 +3980,10 @@
             return candidates.slice(0, count);
         }
 
-        // ===== GAMEWEEK PLANNER ENGINE =====
+        // ===== TEAM XG ENGINE =====
 
         // Build team-level xG data from player history (ported from teams-analysis)
-        function buildPlannerTeamXgData(bootstrapElements) {
+        function buildTeamXgData(bootstrapElements) {
             teamXgData = {};
             Object.keys(teams).forEach(tid => {
                 teamXgData[tid] = {
@@ -4179,32 +4202,6 @@
             return value >= t[0] ? 'good' : value <= t[1] ? 'poor' : 'avg';
         }
 
-        // ===== PER-GW LINEUP BUILDER =====
-
-        function initPlannerLineups() {
-            // Determine next 6 GW numbers
-            plannerGWNumbers = [];
-            const upcoming = allFixtures.filter(f => !f.finished && f.event !== null).map(f => f.event);
-            const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
-            for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) plannerGWNumbers.push(uniqueGWs[i]);
-            if (plannerGWNumbers.length === 0) for (let i = currentGW + 1; i <= Math.min(currentGW + 6, 38); i++) plannerGWNumbers.push(i);
-
-            // Initialize per-GW lineups as deep copies of selectedPlayers
-            plannerLineups = {};
-            plannerGWNumbers.forEach(gw => {
-                plannerLineups[gw] = selectedPlayers.map(p => ({ ...p }));
-            });
-            plannerSelectedGW = plannerGWNumbers[0] || null;
-            plannerSwapSource = null;
-        }
-
-        function getPlannerLineup(gw) {
-            if (!plannerLineups[gw]) {
-                plannerLineups[gw] = selectedPlayers.map(p => ({ ...p }));
-            }
-            return plannerLineups[gw];
-        }
-
         function getFormation(lineup) {
             const starters = lineup.filter(p => !p.onBench);
             const def = starters.filter(p => p.position === 2).length;
@@ -4223,436 +4220,6 @@
             return gk === 1 && def >= 3 && mid >= 2 && fwd >= 1;
         }
 
-        function isGWModified(gw) {
-            const lineup = plannerLineups[gw];
-            if (!lineup) return false;
-            return lineup.some(p => {
-                const orig = selectedPlayers.find(op => op.id === p.id);
-                return orig && orig.onBench !== p.onBench;
-            });
-        }
-
-        function canSwap(sourceId, targetId, gw) {
-            const lineup = getPlannerLineup(gw);
-            const source = lineup.find(p => p.id === sourceId);
-            const target = lineup.find(p => p.id === targetId);
-            if (!source || !target) return false;
-            // Both on bench: allow reordering bench priority
-            if (source.onBench && target.onBench) return true;
-            // Both starters: not supported
-            if (!source.onBench && !target.onBench) return false;
-            // Starter ↔ bench: validate formation
-            const simLineup = lineup.map(p => {
-                if (p.id === sourceId) return { ...p, onBench: target.onBench };
-                if (p.id === targetId) return { ...p, onBench: source.onBench };
-                return p;
-            });
-            return isValidFormation(simLineup);
-        }
-
-        function performSwap(sourceId, targetId) {
-            const gw = plannerSelectedGW;
-            const lineup = getPlannerLineup(gw);
-            const source = lineup.find(p => p.id === sourceId);
-            const target = lineup.find(p => p.id === targetId);
-            if (!source || !target) return;
-            if (source.onBench && target.onBench) {
-                // Bench-to-bench: swap pickPosition (auto-sub priority)
-                const srcPos = source.pickPosition;
-                source.pickPosition = target.pickPosition;
-                target.pickPosition = srcPos;
-            } else {
-                // Starter ↔ bench: swap onBench flag
-                const srcBench = source.onBench;
-                source.onBench = target.onBench;
-                target.onBench = srcBench;
-            }
-            plannerSwapSource = null;
-            rerenderPlannerView();
-        }
-
-        function selectPlannerSwapSource(playerId) {
-            if (plannerSwapSource === playerId) {
-                // Deselect
-                plannerSwapSource = null;
-            } else {
-                plannerSwapSource = playerId;
-            }
-            rerenderPlannerView();
-        }
-
-        function handlePlannerPitchClick(playerId) {
-            if (plannerSwapSource === null) {
-                // First click — select this player as swap source
-                selectPlannerSwapSource(playerId);
-            } else if (plannerSwapSource === playerId) {
-                // Clicked same player — deselect
-                plannerSwapSource = null;
-                rerenderPlannerView();
-            } else {
-                // Second click — attempt swap
-                if (canSwap(plannerSwapSource, playerId, plannerSelectedGW)) {
-                    performSwap(plannerSwapSource, playerId);
-                } else {
-                    // Clicked an ineligible target — just switch source to this player
-                    selectPlannerSwapSource(playerId);
-                }
-            }
-        }
-
-        function handlePlannerTableSwapClick(playerId) {
-            handlePlannerPitchClick(playerId);
-        }
-
-        function switchPlannerGW(gw) {
-            plannerSelectedGW = gw;
-            plannerSwapSource = null;
-            rerenderPlannerView();
-        }
-
-        function resetPlannerGW(gw) {
-            plannerLineups[gw] = selectedPlayers.map(p => ({ ...p }));
-            plannerSwapSource = null;
-            if (plannerSelectedGW === gw) rerenderPlannerView();
-        }
-
-        function resetAllPlannerGWs() {
-            plannerGWNumbers.forEach(gw => {
-                plannerLineups[gw] = selectedPlayers.map(p => ({ ...p }));
-            });
-            plannerSwapSource = null;
-            rerenderPlannerView();
-        }
-
-        function rerenderPlannerView() {
-            // Re-render just the pitch and table body, keeping container intact
-            const pitchArea = document.getElementById('plannerPitchArea');
-            if (pitchArea) pitchArea.innerHTML = renderPlannerPitchHTML();
-
-            const toolbar = document.getElementById('plannerGWToolbar');
-            if (toolbar) toolbar.innerHTML = renderPlannerToolbarInner();
-
-            const tbody = document.querySelector('#plannerTableBody');
-            if (tbody) tbody.innerHTML = renderPlannerTableBody();
-        }
-
-        function renderPlannerToolbarInner() {
-            const gw = plannerSelectedGW;
-            const lineup = getPlannerLineup(gw);
-            const formation = getFormation(lineup);
-            let html = '';
-            html += `<div class="planner-gw-pills">`;
-            plannerGWNumbers.forEach(g => {
-                const active = g === gw ? 'active' : '';
-                const modified = isGWModified(g) ? 'modified' : '';
-                html += `<button class="planner-gw-pill ${active} ${modified}" onclick="switchPlannerGW(${g})">GW${g}</button>`;
-            });
-            html += `</div>`;
-            html += `<div class="planner-formation-label">${formation}</div>`;
-            html += `<div class="planner-toolbar-actions">`;
-            if (isGWModified(gw)) {
-                html += `<button class="planner-reset-btn" onclick="resetPlannerGW(${gw})" title="Reset this GW to original lineup">↩ Reset GW${gw}</button>`;
-            }
-            const anyModified = plannerGWNumbers.some(g => isGWModified(g));
-            if (anyModified) {
-                html += `<button class="planner-reset-btn" onclick="resetAllPlannerGWs()" title="Reset all GWs to original lineup">↩ Reset All</button>`;
-            }
-            html += `</div>`;
-            return html;
-        }
-
-        function renderPlannerPitchHTML() {
-            const gw = plannerSelectedGW;
-            if (!gw) return '';
-            const lineup = getPlannerLineup(gw);
-            const starters = lineup.filter(p => !p.onBench);
-            const bench = lineup.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
-
-            const gks = starters.filter(p => p.position === 1);
-            const defs = starters.filter(p => p.position === 2);
-            const mids = starters.filter(p => p.position === 3);
-            const fwds = starters.filter(p => p.position === 4);
-
-            const renderNode = (p, isBenchPlayer) => {
-                const posClass = `pos-${POSITION_CONFIG[p.position]?.class || 'mid'}`;
-                const fixtures = teamFixtures6[p.teamId] || [];
-                const fix = fixtures.find(f => f.event === gw);
-                const injured = p.status === 'i' || p.status === 'u';
-
-                // Determine swap state
-                let swapClass = '';
-                if (plannerSwapSource === p.id) {
-                    swapClass = 'swap-selected';
-                } else if (plannerSwapSource !== null) {
-                    if (canSwap(plannerSwapSource, p.id, gw)) {
-                        swapClass = 'swap-target';
-                    } else {
-                        swapClass = 'swap-ineligible';
-                    }
-                }
-
-                let node = `<div class="planner-pitch-player ${swapClass}" onclick="handlePlannerPitchClick(${p.id})" title="${p.name} — ${POSITION_CONFIG[p.position]?.short || ''} · ${p.team}${fix ? ` · ${fix.opponent} (${fix.isHome ? 'H' : 'A'})` : ''}">`;
-                node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}">`;
-                node += p.team;
-                if (p.isCaptain) node += `<span class="planner-pitch-captain">C</span>`;
-                if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
-                node += `</div>`;
-                // FDR chip
-                if (fix) {
-                    const fdrClass = `fdr-${fix.difficulty || 3}`;
-                    node += `<div class="planner-fdr-chip ${fdrClass}">${fix.opponent || '?'}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
-                } else {
-                    node += `<div class="planner-fdr-chip" style="background:var(--surface-3);color:var(--text-muted);">-</div>`;
-                }
-                node += `<div class="planner-pitch-player-name">${p.name}</div>`;
-                node += `</div>`;
-                return node;
-            };
-
-            let html = `<div class="planner-pitch-container">`;
-            html += `<div class="planner-pitch-rows">`;
-            html += `<div class="planner-pitch-row">${fwds.map(p => renderNode(p, false)).join('')}</div>`;
-            html += `<div class="planner-pitch-row">${mids.map(p => renderNode(p, false)).join('')}</div>`;
-            html += `<div class="planner-pitch-row">${defs.map(p => renderNode(p, false)).join('')}</div>`;
-            html += `<div class="planner-pitch-row">${gks.map(p => renderNode(p, false)).join('')}</div>`;
-            html += `<div class="planner-pitch-row planner-bench-row">`;
-            html += `<div class="planner-bench-tag">Bench</div>`;
-            html += bench.map(p => renderNode(p, true)).join('');
-            html += `</div>`;
-            html += `</div></div>`;
-
-            // Hint text
-            if (plannerSwapSource !== null) {
-                const src = lineup.find(p => p.id === plannerSwapSource);
-                html += `<div class="planner-lineup-hint"><span><i data-lucide="pointer" style="width:16px;height:16px;"></i></span> ${src ? src.name : 'Player'} selected — click an eligible player to swap. Click same player to cancel.</div>`;
-            } else {
-                html += `<div class="planner-lineup-hint"><span><i data-lucide="lightbulb" style="width:16px;height:16px;"></i></span> Click any player on the pitch to swap between starting XI and bench, or reorder bench priority. Each GW has its own independent lineup.</div>`;
-            }
-
-            return html;
-        }
-
-        function renderPlannerTableBody() {
-            const gw = plannerSelectedGW;
-            const lineup = getPlannerLineup(gw);
-            const gwNumbers = plannerGWNumbers;
-            const starters = lineup.filter(p => !p.onBench).sort((a, b) => a.position - b.position || a.pickPosition - b.pickPosition);
-            const bench = lineup.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
-
-            const posGroups = [
-                { pos: 1, label: 'Goalkeepers', cls: 'pos-gk' },
-                { pos: 2, label: 'Defenders', cls: 'pos-def' },
-                { pos: 3, label: 'Midfielders', cls: 'pos-mid' },
-                { pos: 4, label: 'Forwards', cls: 'pos-fwd' }
-            ];
-
-            const totalCols = 1 + 6 + gwNumbers.length + 1 + 1; // +1 for swap col
-            let html = '';
-            posGroups.forEach(({ pos, label, cls }) => {
-                const groupPlayers = starters.filter(p => p.position === pos);
-                if (groupPlayers.length === 0) return;
-                html += `<tr class="planner-pos-header ${cls}"><td colspan="${totalCols}">${label}</td></tr>`;
-                groupPlayers.forEach(p => { html += renderPlannerRow(p, gwNumbers, false); });
-            });
-
-            if (bench.length > 0) {
-                html += `<tr class="planner-bench-header"><td colspan="${totalCols}">Bench</td></tr>`;
-                bench.forEach(p => { html += renderPlannerRow(p, gwNumbers, true); });
-            }
-            return html;
-        }
-
-        // ===== RENDER GAMEWEEK PLANNER =====
-        function renderGameweekPlanner() {
-            plannerRendered = true;
-            const container = document.getElementById('plannerDisplay');
-            if (!selectedPlayers || selectedPlayers.length === 0) {
-                container.innerHTML = '<div class="chip-empty-msg">Load your team to see the Gameweek Planner.</div>';
-                return;
-            }
-
-            // Initialize per-GW lineups (still needed for GW numbers)
-            initPlannerLineups();
-            const gwNumbers = plannerGWNumbers;
-
-            let html = '';
-
-            // Fixture Overview only
-            html += renderPlannerOverview(gwNumbers);
-
-            // Team context with opponent H2H
-            html += renderPlannerTeamContext();
-
-            container.innerHTML = html;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        function renderPlannerOverview(gwNumbers) {
-            const starters = selectedPlayers.filter(p => !p.onBench).sort((a, b) => a.position - b.position || a.pickPosition - b.pickPosition);
-            const bench = selectedPlayers.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
-
-            let html = `<div style="overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--border-default);background:var(--surface-1);">`;
-            html += `<table style="width:100%;border-collapse:collapse;min-width:600px;">`;
-
-            // Header
-            html += `<thead><tr>`;
-            html += `<th style="position:sticky;left:0;background:var(--surface-2);z-index:3;padding:8px 12px;text-align:left;font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);min-width:160px;border-bottom:1px solid var(--border-emphasis);">Player</th>`;
-            html += `<th style="padding:6px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border-emphasis);width:50px;">Form</th>`;
-            html += `<th style="padding:6px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border-emphasis);width:50px;">PPG</th>`;
-            gwNumbers.forEach(gw => {
-                html += `<th style="padding:6px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border-emphasis);width:60px;">GW${gw}</th>`;
-            });
-            html += `<th style="padding:6px;text-align:center;font-size:0.7rem;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border-emphasis);width:50px;">Avg FDR</th>`;
-            html += `</tr></thead>`;
-
-            html += `<tbody>`;
-
-            const renderOverviewRow = (p, isBench) => {
-                const posConfig = POSITION_CONFIG[p.position];
-                const fixtures = teamFixtures6[p.teamId] || [];
-                const formClass = p.form >= (posConfig?.formMedian || 3) + 1 ? 'color:var(--color-success)' : p.form < (posConfig?.formMedian || 3) - 0.5 ? 'color:var(--color-error)' : 'color:var(--text-primary)';
-                const ppgClass = p.ppg >= 5 ? 'color:var(--color-success)' : p.ppg < 3 ? 'color:var(--color-error)' : 'color:var(--text-primary)';
-
-                // Calculate avg FDR for upcoming fixtures
-                const gwFixtures = gwNumbers.map(gw => fixtures.find(f => f.event === gw)).filter(Boolean);
-                const avgFdr = gwFixtures.length > 0 ? (gwFixtures.reduce((s, f) => s + (f.difficulty || 3), 0) / gwFixtures.length).toFixed(1) : '-';
-                const avgFdrColor = avgFdr !== '-' ? (parseFloat(avgFdr) <= 2.5 ? 'color:var(--color-success)' : parseFloat(avgFdr) >= 3.5 ? 'color:var(--color-error)' : 'color:var(--text-primary)') : '';
-
-                let row = `<tr style="background:var(--surface-1);transition:background 0.15s;${isBench ? 'opacity:0.55;' : ''}" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface-1)'">`;
-                row += `<td style="position:sticky;left:0;background:inherit;z-index:1;padding:6px 12px;border-bottom:1px solid var(--border-subtle);">
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <span class="position-badge ${posConfig?.class || 'mid'}" style="width:28px;text-align:center;font-size:10px;">${posConfig?.short || '?'}</span>
-                        <div>
-                            <div style="font-weight:600;font-size:12px;cursor:pointer;" onclick="openDetailPanel(${p.id})">${p.isCaptain ? '👑 ' : ''}${p.name}</div>
-                            <div style="font-size:10px;color:var(--text-muted);">${p.team} · £${p.price.toFixed(1)}m${isBench ? ' · Bench' : ''}</div>
-                        </div>
-                    </div>
-                </td>`;
-                row += `<td style="text-align:center;padding:6px;border-bottom:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:0.8rem;font-weight:600;${formClass};">${p.form.toFixed(1)}</td>`;
-                row += `<td style="text-align:center;padding:6px;border-bottom:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:0.8rem;font-weight:600;${ppgClass};">${p.ppg.toFixed(1)}</td>`;
-
-                gwNumbers.forEach(gw => {
-                    const fix = fixtures.find(f => f.event === gw);
-                    if (fix) {
-                        const fdrClass = `fdr-${fix.difficulty || 3}`;
-                        row += `<td style="padding:4px 2px;text-align:center;border-bottom:1px solid var(--border-subtle);"><div class="planner-fdr-cell ${fdrClass}" style="border-radius:6px;padding:4px 3px;font-size:0.7rem;"><span class="fdr-opp">${fix.opponent || '?'}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div></td>`;
-                    } else {
-                        row += `<td style="padding:4px 2px;text-align:center;border-bottom:1px solid var(--border-subtle);"><div class="planner-fdr-cell" style="background:var(--surface-3);color:var(--text-muted);border-radius:6px;padding:4px 3px;">-</div></td>`;
-                    }
-                });
-
-                row += `<td style="text-align:center;padding:6px;border-bottom:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:0.8rem;font-weight:700;${avgFdrColor};">${avgFdr}</td>`;
-                row += `</tr>`;
-                return row;
-            };
-
-            // Position groups
-            const posGroups = [
-                { pos: 1, label: 'Goalkeepers', color: 'var(--position-gk)' },
-                { pos: 2, label: 'Defenders', color: 'var(--position-def)' },
-                { pos: 3, label: 'Midfielders', color: 'var(--position-mid)' },
-                { pos: 4, label: 'Forwards', color: 'var(--position-fwd)' }
-            ];
-
-            posGroups.forEach(({ pos, label, color }) => {
-                const players = starters.filter(p => p.position === pos);
-                if (players.length === 0) return;
-                const totalCols = 3 + gwNumbers.length + 1;
-                html += `<tr><td colspan="${totalCols}" style="background:var(--surface-0);padding:6px 12px;font-family:var(--font-display);font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${color};border-bottom:2px solid var(--border-emphasis);">${label}</td></tr>`;
-                players.forEach(p => { html += renderOverviewRow(p, false); });
-            });
-
-            if (bench.length > 0) {
-                const totalCols = 3 + gwNumbers.length + 1;
-                html += `<tr><td colspan="${totalCols}" style="background:var(--surface-0);padding:8px 12px;font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;border-top:2px solid var(--border-emphasis);border-bottom:1px solid var(--border-default);">Bench</td></tr>`;
-                bench.forEach(p => { html += renderOverviewRow(p, true); });
-            }
-
-            html += `</tbody></table></div>`;
-
-            // FDR Legend
-            html += `<div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;font-size:12px;color:var(--text-secondary);">
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-1);"></span> FDR 1</span>
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-2);"></span> FDR 2</span>
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-3);"></span> FDR 3</span>
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-4);"></span> FDR 4</span>
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--fdr-5);"></span> FDR 5</span>
-            </div>`;
-
-            return html;
-        }
-
-        function renderPlannerRow(player, gwNumbers, isBench) {
-            const seasonStats = getPlayerSeasonPer90(player);
-            const recentStats = getPlayerRecentStats(player.id, 6);
-            const posStats = getPositionStats(player, seasonStats, recentStats);
-            const fixtures = teamFixtures6[player.teamId] || [];
-
-            // Determine swap classes for this row
-            let rowSwapClass = '';
-            if (plannerSwapSource === player.id) {
-                rowSwapClass = 'planner-swap-highlight';
-            } else if (plannerSwapSource !== null) {
-                if (canSwap(plannerSwapSource, player.id, plannerSelectedGW)) {
-                    rowSwapClass = 'planner-swap-highlight';
-                } else {
-                    rowSwapClass = 'planner-swap-ineligible';
-                }
-            }
-
-            let row = `<tr class="${isBench ? 'bench-row' : ''} ${rowSwapClass}" data-player-id="${player.id}">`;
-
-            // Player name cell
-            const captain = player.isCaptain ? '<span class="planner-captain-badge">C</span> ' : player.isVice ? '<span class="planner-captain-badge">©</span> ' : '';
-            const statusIcon = player.status === 'i' ? '<i data-lucide="heart-crack" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> ' : player.status === 'd' ? '<i data-lucide="alert-triangle" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> ' : '';
-            // Show if this player was moved from their original position
-            const orig = selectedPlayers.find(op => op.id === player.id);
-            const movedBadge = (orig && orig.onBench !== player.onBench) ? `<span style="font-size:0.6rem;color:var(--color-warning);" title="Moved from ${orig.onBench ? 'bench' : 'starting XI'}">★</span> ` : '';
-            row += `<td><div class="planner-player">
-                <div>
-                    ${movedBadge}${captain}${statusIcon}<span class="planner-player-name" onclick="openPlannerTransferPanel(${player.id})">${player.name}</span>
-                    <div><span class="planner-player-team">${player.team}</span> <span class="planner-player-price">£${player.price.toFixed(1)}m</span></div>
-                </div>
-            </div></td>`;
-
-            // Season stats (3 columns)
-            posStats.forEach(stat => {
-                const rating = rateStat(stat.sVal, stat.label, player.position);
-                row += `<td><div class="planner-stat-group"><span class="planner-stat-label">${stat.label}</span><span class="planner-stat ${rating}">${stat.season}</span></div></td>`;
-            });
-
-            // Recent stats (3 columns) with trend arrows
-            posStats.forEach(stat => {
-                const rating = rateStat(stat.rVal, stat.label, player.position);
-                const trend = getTrend(stat.sVal, stat.rVal, stat.higherBetter);
-                row += `<td><div class="planner-stat-group"><span class="planner-stat-label">${stat.label}</span><span class="planner-stat ${rating}">${stat.recent}${trend.icon ? `<span class="planner-trend ${trend.cls}">${trend.icon}</span>` : ''}</span></div></td>`;
-            });
-
-            // FDR cells for next 6 GWs
-            gwNumbers.forEach(gw => {
-                const fix = fixtures.find(f => f.event === gw);
-                if (fix) {
-                    const fdrClass = `fdr-${fix.difficulty || 3}`;
-                    row += `<td class="planner-fdr"><div class="planner-fdr-cell ${fdrClass}"><span class="fdr-opp">${fix.opponent || '?'}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div></td>`;
-                } else {
-                    row += `<td class="planner-fdr"><div class="planner-fdr-cell" style="background:var(--surface-3);color:var(--text-muted);">-</div></td>`;
-                }
-            });
-
-            // Swap button
-            const isSwapSource = plannerSwapSource === player.id;
-            const isSwapTarget = plannerSwapSource !== null && canSwap(plannerSwapSource, player.id, plannerSelectedGW);
-            const swapBtnClass = isSwapSource ? 'swap-active' : '';
-            row += `<td><button class="planner-swap-btn ${swapBtnClass}" onclick="handlePlannerTableSwapClick(${player.id})" title="${isSwapSource ? 'Cancel swap' : isSwapTarget ? 'Swap with selected player' : 'Select for swap'}">↕</button></td>`;
-
-            // Compare checkbox
-            const checked = plannerCompareList.includes(player.id) ? 'checked' : '';
-            row += `<td><input type="checkbox" class="planner-compare-cb" ${checked} onchange="togglePlannerCompare(${player.id})" title="Add to comparison"></td>`;
-
-            row += `</tr>`;
-            return row;
-        }
-
         function renderTeamContextCard(tid, showOpponent) {
             const team = teams[tid];
             if (!team) return '';
@@ -4660,511 +4227,190 @@
             const sXg = getTeamSeasonXg(tid);
             const rXg = getTeamXgWindow(tid, 6);
             const ss = seasonStats[tid];
-            const homeCSPct = ss && ss.homeP > 0 ? Math.round((ss.homeCS / ss.homeP) * 100) : null;
-            const awayCSPct = ss && ss.awayP > 0 ? Math.round((ss.awayCS / ss.awayP) * 100) : null;
 
-            function statCell(label, value, color) {
-                return `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.58rem;text-transform:uppercase;letter-spacing:0.3px;">${label}</div><div style="font-family:var(--font-mono);font-weight:700;font-size:0.78rem;color:${color || 'var(--text-primary)'};">${value}</div></div>`;
-            }
-            function powerColor(v) { return v > 60 ? 'var(--color-success)' : v < 40 ? 'var(--color-error)' : 'var(--text-secondary)'; }
-
-            let html = `<div style="background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:14px;overflow:hidden;">`;
-            html += `<div style="font-family:var(--font-display);font-weight:700;font-size:0.85rem;margin-bottom:10px;display:flex;align-items:center;gap:6px;">${team.short_name || team.name}</div>`;
-
-            // Overall ATK/DEF row
-            html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;margin-bottom:8px;">`;
-            if (ta) {
-                html += statCell('ATK', ta.attackPower, powerColor(ta.attackPower));
-                html += statCell('DEF', ta.defensePower, powerColor(ta.defensePower));
-            }
-            html += `</div>`;
-
-            // Home / Away splits
-            if (ta) {
-                html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:0.68rem;margin-bottom:8px;padding:6px 0;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle);">`;
-                html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.55rem;">🏠 HOME</div>`;
-                html += `<div style="font-family:var(--font-mono);font-size:0.68rem;">ATK <strong style="color:${powerColor(ta.attackPowerHome)}">${ta.attackPowerHome}</strong> · DEF <strong style="color:${powerColor(ta.defensePowerHome)}">${ta.defensePowerHome}</strong></div>`;
-                if (homeCSPct !== null) html += `<div style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-muted);">CS ${homeCSPct}%</div>`;
-                html += `</div>`;
-                html += `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.55rem;">✈️ AWAY</div>`;
-                html += `<div style="font-family:var(--font-mono);font-size:0.68rem;">ATK <strong style="color:${powerColor(ta.attackPowerAway)}">${ta.attackPowerAway}</strong> · DEF <strong style="color:${powerColor(ta.defensePowerAway)}">${ta.defensePowerAway}</strong></div>`;
-                if (awayCSPct !== null) html += `<div style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-muted);">CS ${awayCSPct}%</div>`;
-                html += `</div>`;
-                html += `</div>`;
-            }
-
-            // xG stats
-            html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;margin-bottom:6px;">`;
-            if (sXg) {
-                html += statCell('xG/g', sXg.xGpg.toFixed(2), '');
-                html += statCell('xGC/g', sXg.xGCpg.toFixed(2), '');
-            }
-            if (rXg) {
-                html += statCell('xG/g (L6)', rXg.xGpg.toFixed(2), rXg.xGpg > (sXg?.xGpg || 0) ? 'var(--color-success)' : 'var(--color-error)');
-                html += statCell('xGC/g (L6)', rXg.xGCpg.toFixed(2), rXg.xGCpg < (sXg?.xGCpg || 0) ? 'var(--color-success)' : 'var(--color-error)');
-            }
-            html += `</div>`;
-
-            // CS% + Form
-            if (ss) {
-                html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;">`;
-                html += statCell('CS%', ss.csPercent + '%', '');
-                html += statCell('Form', ss.last5Form?.join('') || '-', '');
-                html += `</div>`;
-            }
-
-            // Opponent H2H section
-            if (showOpponent) {
-                const fixtures = teamFixtures6[tid] || [];
-                const nextFix = fixtures[0];
-                if (nextFix && nextFix.opponentId) {
-                    const oppId = nextFix.opponentId;
-                    const oppTeam = teams[oppId];
-                    const oppTa = teamAnalysis[oppId];
-                    const oppSXg = getTeamSeasonXg(oppId);
-                    const oppSS = seasonStats[oppId];
-                    const oppHomeCSPct = oppSS && oppSS.homeP > 0 ? Math.round((oppSS.homeCS / oppSS.homeP) * 100) : null;
-                    const oppAwayCSPct = oppSS && oppSS.awayP > 0 ? Math.round((oppSS.awayCS / oppSS.awayP) * 100) : null;
-                    const isHome = nextFix.isHome;
-                    const venue = isHome ? '🏠 HOME' : '✈️ AWAY';
-
-                    html += `<div style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border-emphasis);">`;
-                    html += `<div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);margin-bottom:6px;display:flex;align-items:center;gap:4px;">⚔️ vs ${oppTeam?.short_name || nextFix.opponent} <span class="fixture-chip fdr-${nextFix.difficulty}" style="font-size:0.6rem;padding:1px 6px;">${venue}</span></div>`;
-
-                    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:0.68rem;">`;
-                    if (oppTa) {
-                        // Show opponent's relevant stats for this venue
-                        const oppAtkLabel = isHome ? 'ATK (A)' : 'ATK (H)';
-                        const oppDefLabel = isHome ? 'DEF (A)' : 'DEF (H)';
-                        const oppAtk = isHome ? oppTa.attackPowerAway : oppTa.attackPowerHome;
-                        const oppDef = isHome ? oppTa.defensePowerAway : oppTa.defensePowerHome;
-                        html += statCell(oppAtkLabel, oppAtk, powerColor(oppAtk));
-                        html += statCell(oppDefLabel, oppDef, powerColor(oppDef));
-                    }
-                    if (oppSXg) {
-                        html += statCell('xG/g', oppSXg.xGpg.toFixed(2), '');
-                        html += statCell('xGC/g', oppSXg.xGCpg.toFixed(2), '');
-                    }
-                    if (oppSS) {
-                        const oppCSPctRelevant = isHome ? oppAwayCSPct : oppHomeCSPct;
-                        html += statCell('CS%', (oppCSPctRelevant !== null ? oppCSPctRelevant + '%' : '-'), '');
-                        html += statCell('Form', oppSS.last5Form?.join('') || '-', '');
-                    }
-                    html += `</div></div>`;
+            // Without opponent, render a minimal stat card
+            if (!showOpponent) {
+                const homeCSPct = ss && ss.homeP > 0 ? Math.round((ss.homeCS / ss.homeP) * 100) : null;
+                const awayCSPct = ss && ss.awayP > 0 ? Math.round((ss.awayCS / ss.awayP) * 100) : null;
+                function sc(label, value, color) {
+                    return `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.58rem;text-transform:uppercase;letter-spacing:0.3px;">${label}</div><div style="font-family:var(--font-mono);font-weight:700;font-size:0.78rem;color:${color || 'var(--text-primary)'};">${value}</div></div>`;
                 }
+                function pw(v) { return v > 60 ? 'var(--color-success)' : v < 40 ? 'var(--color-error)' : 'var(--text-secondary)'; }
+                let html = `<div class="h2h-card"><div class="h2h-header"><div class="h2h-header-teams">${team.short_name || team.name}</div></div><div class="h2h-body">`;
+                html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;margin-bottom:8px;">`;
+                if (ta) { html += sc('ATK', ta.attackPower, pw(ta.attackPower)); html += sc('DEF', ta.defensePower, pw(ta.defensePower)); }
+                html += `</div>`;
+                if (sXg) { html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;">` + sc('xG/g', sXg.xGpg.toFixed(2), '') + sc('xGC/g', sXg.xGCpg.toFixed(2), '') + `</div>`; }
+                html += `</div></div>`;
+                return html;
             }
 
-            html += `</div>`;
-            return html;
-        }
+            // H2H matchup card
+            const fixtures = teamFixtures6[tid] || [];
+            const nextFix = fixtures[0];
+            if (!nextFix || !nextFix.opponentId) return '';
 
-        function renderPlannerTeamContext() {
-            const teamIds = [...new Set(selectedPlayers.map(p => p.teamId))];
-            let html = `<div style="margin-top:16px;"><div class="transfer-section-title" style="margin-bottom:10px;">🏟️ Team Context — Attack & Defence with Opponent H2H</div>`;
-            html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;">`;
-            teamIds.forEach(tid => { html += renderTeamContextCard(tid, true); });
-            html += `</div></div>`;
-            return html;
-        }
+            const oppId = nextFix.opponentId;
+            const oppTeam = teams[oppId];
+            const oppTa = teamAnalysis[oppId];
+            const oppSXg = getTeamSeasonXg(oppId);
+            const oppRXg = getTeamXgWindow(oppId, 6);
+            const oppSS = seasonStats[oppId];
+            const isHome = nextFix.isHome;
 
-        // ===== PLANNER TRANSFER PANEL (slide-out 1:1) =====
-        function openPlannerTransferPanel(playerId) {
-            plannerReplacementTarget = allPlayersById[playerId];
-            if (!plannerReplacementTarget) return;
+            // Traffic light grading
+            function tl(v) { return v > 60 ? 'green' : v < 40 ? 'red' : 'amber'; }
+            function tlInv(v) { return v < 40 ? 'green' : v > 60 ? 'red' : 'amber'; }
 
-            const player = selectedPlayers.find(p => p.id === playerId) || plannerReplacementTarget;
-            const posConfig = POSITION_CONFIG[player.position];
-
-            document.getElementById('plannerTransferTitle').textContent = `${player.name}`;
-            document.getElementById('plannerTransferMeta').innerHTML = `<span class="position-badge ${posConfig.class}">${posConfig.short}</span> ${player.team} · £${player.price.toFixed(1)}m`;
-
-            let html = '';
-
-            // Current player stats
-            const seasonStats = getPlayerSeasonPer90(player);
-            const recentStats = getPlayerRecentStats(player.id, 6);
-            const posStats = getPositionStats(player, seasonStats, recentStats);
-
-            html += `<div class="detail-section">
-                <div class="detail-section-title"><i data-lucide="bar-chart-3" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Current Player</div>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
-                    ${posStats.map(s => `<div style="text-align:center;background:var(--surface-0);padding:6px;border-radius:var(--radius-sm);">
-                        <div style="font-size:0.6rem;color:var(--text-muted);">${s.label}</div>
-                        <div style="font-family:var(--font-mono);font-weight:700;font-size:0.85rem;">${s.season}</div>
-                        <div style="font-size:0.6rem;color:var(--text-muted);">L6: ${s.recent}</div>
-                    </div>`).join('')}
-                </div>
-                <div class="transfer-section-title">Upcoming Fixtures</div>
-                <div class="transfer-fdr-strip">
-                    ${(teamFixtures6[player.teamId] || []).map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${f.opponent}${f.isHome ? '(H)' : '(A)'}</div>`).join('')}
-                </div>
-            </div>`;
-
-            // Search for replacement
-            html += `<div class="detail-section">
-                <div class="detail-section-title"><i data-lucide="search" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Find Replacement</div>
-                <div class="planner-search-wrap">
-                    <input type="text" class="planner-search-input" id="plannerSearchInput" placeholder="Search ${posConfig.name}s by name..." oninput="filterPlannerSearch()" onfocus="filterPlannerSearch()">
-                    <div class="planner-search-dropdown" id="plannerSearchDropdown"></div>
-                </div>
-            </div>`;
-
-            // Comparison area (populated when a replacement is selected)
-            html += `<div id="plannerTransferComparison"></div>`;
-
-            // Quick suggestions
-            const suggestions = findReplacements(player, 8);
-            if (suggestions.length > 0) {
-                html += `<div class="detail-section">
-                    <div class="detail-section-title"><i data-lucide="zap" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Top Suggestions</div>
-                    ${suggestions.map(r => `<div class="planner-search-item" onclick="selectPlannerReplacement(${r.id})" style="cursor:pointer;background:var(--surface-0);border-radius:var(--radius-sm);margin-bottom:4px;">
-                        <div>
-                            <span class="planner-search-item-name">${r.name}</span>
-                            <span class="planner-search-item-meta">${r.team} · £${r.price.toFixed(1)}m · ${r.form} form</span>
-                        </div>
-                    </div>`).join('')}
+            // Power comparison row helper
+            function powerRow(label, myVal, oppVal, invertGrade) {
+                const myGrade = invertGrade ? tlInv(myVal) : tl(myVal);
+                const oppGrade = invertGrade ? tlInv(oppVal) : tl(oppVal);
+                const myPct = Math.min(Math.round(myVal), 100);
+                const oppPct = Math.min(Math.round(oppVal), 100);
+                return `<div class="h2h-power-row">
+                    <div class="h2h-power-label">${label}</div>
+                    <div class="h2h-power-bar h2h-power-bar-l"><div class="h2h-power-bar-fill h2h-bg-${myGrade}" style="width:${myPct}%;"></div></div>
+                    <div class="h2h-power-val h2h-tl-${myGrade}">${myVal}</div>
+                    <div class="h2h-vs">v</div>
+                    <div class="h2h-power-val h2h-tl-${oppGrade}">${oppVal}</div>
+                    <div class="h2h-power-bar h2h-power-bar-r"><div class="h2h-power-bar-fill h2h-bg-${oppGrade}" style="width:${oppPct}%;"></div></div>
+                    <div class="h2h-power-label-r">${label}</div>
                 </div>`;
             }
 
-            document.getElementById('plannerTransferBody').innerHTML = html;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-            document.getElementById('plannerTransferOverlay').classList.add('show');
-        }
-
-        function closePlannerTransferPanel(event) {
-            if (event && event.target !== event.currentTarget) return;
-            document.getElementById('plannerTransferOverlay').classList.remove('show');
-            plannerReplacementTarget = null;
-        }
-
-        function filterPlannerSearch() {
-            const input = document.getElementById('plannerSearchInput');
-            const dropdown = document.getElementById('plannerSearchDropdown');
-            const query = input.value.trim().toLowerCase();
-
-            if (query.length < 2) { dropdown.classList.remove('show'); return; }
-
-            const pos = plannerReplacementTarget?.position;
-            const results = allPlayers
-                .filter(p => p.position === pos && p.name.toLowerCase().includes(query) && p.id !== plannerReplacementTarget?.id && p.minutes > 0)
-                .sort((a, b) => b.form - a.form)
-                .slice(0, 12);
-
-            if (results.length === 0) {
-                dropdown.innerHTML = '<div class="planner-search-item" style="color:var(--text-muted);">No players found</div>';
-            } else {
-                dropdown.innerHTML = results.map(p => `<div class="planner-search-item" onclick="selectPlannerReplacement(${p.id})">
-                    <div><span class="planner-search-item-name">${p.name}</span></div>
-                    <span class="planner-search-item-meta">${p.team} · £${p.price.toFixed(1)}m · ${p.form} form</span>
-                </div>`).join('');
+            // xG tug-of-war bar helper
+            function xgBar(label, myVal, oppVal, lowerIsBetter) {
+                const total = myVal + oppVal || 1;
+                const myPct = Math.round((myVal / total) * 100);
+                const oppPct = 100 - myPct;
+                let myColor, oppColor;
+                if (lowerIsBetter) {
+                    myColor = myVal <= oppVal ? 'var(--color-success)' : 'var(--color-error)';
+                    oppColor = oppVal <= myVal ? 'var(--color-success)' : 'var(--color-error)';
+                } else {
+                    myColor = myVal >= oppVal ? 'var(--color-success)' : 'var(--color-error)';
+                    oppColor = oppVal >= myVal ? 'var(--color-success)' : 'var(--color-error)';
+                }
+                return `<div class="h2h-xg-row">
+                    <div class="h2h-xg-labels"><span>${myVal.toFixed(2)}</span><span>${oppVal.toFixed(2)}</span></div>
+                    <div class="h2h-xg-bar">
+                        <div class="h2h-xg-bar-left" style="width:${myPct}%;background:${myColor};"></div>
+                        <div class="h2h-xg-bar-right" style="width:${oppPct}%;background:${oppColor};"></div>
+                    </div>
+                    <div class="h2h-xg-stat-label">${label}</div>
+                </div>`;
             }
-            dropdown.classList.add('show');
-        }
 
-        function selectPlannerReplacement(replacementId) {
-            const dropdown = document.getElementById('plannerSearchDropdown');
-            if (dropdown) dropdown.classList.remove('show');
+            // Generate verdict
+            function buildVerdict() {
+                const tags = [];
+                const lines = [];
+                const myAtk = isHome ? (ta?.attackPowerHome || 50) : (ta?.attackPowerAway || 50);
+                const myDef = isHome ? (ta?.defensePowerHome || 50) : (ta?.defensePowerAway || 50);
+                const oppAtk = isHome ? (oppTa?.attackPowerAway || 50) : (oppTa?.attackPowerHome || 50);
+                const oppDef = isHome ? (oppTa?.defensePowerAway || 50) : (oppTa?.defensePowerHome || 50);
 
-            const current = plannerReplacementTarget;
-            const replacement = allPlayersById[replacementId];
-            if (!current || !replacement) return;
+                // Attacking assessment
+                if (oppDef < 40) {
+                    tags.push('<span class="h2h-verdict-tag attacking">ATTACKING</span>');
+                    lines.push(`Opponent\'s ${isHome ? 'away' : 'home'} defence is weak (${oppDef}). Target attackers and captain picks.`);
+                } else if (oppDef < 55 && myAtk > 55) {
+                    tags.push('<span class="h2h-verdict-tag attacking">ATTACKING</span>');
+                    lines.push(`Good attacking fixture. Your ${isHome ? 'home' : 'away'} attack (${myAtk}) should find opportunities.`);
+                }
 
-            const cSeason = getPlayerSeasonPer90(current);
-            const cRecent = getPlayerRecentStats(current.id, 6);
-            const rSeason = getPlayerSeasonPer90(replacement);
-            const rRecent = getPlayerRecentStats(replacement.id, 6);
-            const cPosStats = getPositionStats(current, cSeason, cRecent);
-            const rPosStats = getPositionStats(replacement, rSeason, rRecent);
+                // Defensive assessment
+                if (oppAtk < 40) {
+                    tags.push('<span class="h2h-verdict-tag defending">CLEAN SHEET</span>');
+                    lines.push(`High clean sheet potential — opponent\'s ${isHome ? 'away' : 'home'} attack is poor (${oppAtk}).`);
+                } else if (oppAtk > 65) {
+                    lines.push(`Opponent has strong ${isHome ? 'away' : 'home'} attack (${oppAtk}). Clean sheet unlikely.`);
+                }
 
-            const cFix = teamFixtures6[current.teamId] || [];
-            const rFix = teamFixtures6[replacement.teamId] || [];
+                // Tricky / tough
+                if (oppDef > 65 && oppAtk > 55) {
+                    tags.push('<span class="h2h-verdict-tag tough">TOUGH</span>');
+                    lines.push('Tough fixture — consider benching weaker assets.');
+                } else if (oppDef > 55 && myAtk < 45) {
+                    tags.push('<span class="h2h-verdict-tag tricky">TRICKY</span>');
+                    lines.push('Your attack may struggle here. Manage expectations.');
+                }
 
-            let html = `<div class="detail-section">
-                <div class="detail-section-title">⚔️ Side-by-Side Comparison</div>
-                <div class="transfer-vs">
-                    <div class="transfer-vs-col">
-                        <div class="transfer-vs-label">Current</div>
-                        <div class="transfer-vs-name" style="color:var(--color-error);">${current.name}</div>
-                        <div class="transfer-vs-meta">${current.team} · £${current.price.toFixed(1)}m</div>
-                        <div class="transfer-fdr-strip">${cFix.map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${f.opponent}</div>`).join('')}</div>
-                    </div>
-                    <div class="transfer-vs-col">
-                        <div class="transfer-vs-label">Replacement</div>
-                        <div class="transfer-vs-name" style="color:var(--color-success);">${replacement.name}</div>
-                        <div class="transfer-vs-meta">${replacement.team} · £${replacement.price.toFixed(1)}m</div>
-                        <div class="transfer-fdr-strip">${rFix.map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${f.opponent}</div>`).join('')}</div>
-                    </div>
-                </div>
+                // xG context
+                if (sXg && oppSXg) {
+                    if (sXg.xGpg > oppSXg.xGCpg * 1.3) {
+                        lines.push(`xG advantage: your ${sXg.xGpg.toFixed(2)} xG/g exceeds their ${oppSXg.xGCpg.toFixed(2)} xGC/g.`);
+                    }
+                }
 
-                <div class="transfer-section-title">Season Stats</div>
-                <table class="transfer-stat-table">
-                    <tr><td class="stat-label">Points</td><td class="stat-val ${current.points > replacement.points ? 'better' : current.points < replacement.points ? 'worse' : ''}">${current.points}</td><td class="stat-val ${replacement.points > current.points ? 'better' : replacement.points < current.points ? 'worse' : ''}">${replacement.points}</td></tr>
-                    <tr><td class="stat-label">Form</td><td class="stat-val ${current.form > replacement.form ? 'better' : current.form < replacement.form ? 'worse' : ''}">${current.form.toFixed(1)}</td><td class="stat-val ${replacement.form > current.form ? 'better' : replacement.form < current.form ? 'worse' : ''}">${replacement.form.toFixed(1)}</td></tr>
-                    <tr><td class="stat-label">PPG</td><td class="stat-val ${current.ppg > replacement.ppg ? 'better' : current.ppg < replacement.ppg ? 'worse' : ''}">${current.ppg.toFixed(2)}</td><td class="stat-val ${replacement.ppg > current.ppg ? 'better' : replacement.ppg < current.ppg ? 'worse' : ''}">${replacement.ppg.toFixed(2)}</td></tr>
-                    ${cPosStats.map((s, i) => {
-                        const rS = rPosStats[i];
-                        const cBetter = s.higherBetter ? s.sVal > rS.sVal : s.sVal < rS.sVal;
-                        const rBetter = s.higherBetter ? rS.sVal > s.sVal : rS.sVal < s.sVal;
-                        return `<tr><td class="stat-label">${s.label} (Season)</td><td class="stat-val ${cBetter ? 'better' : rBetter ? 'worse' : ''}">${s.season}</td><td class="stat-val ${rBetter ? 'better' : cBetter ? 'worse' : ''}">${rS.season}</td></tr>`;
-                    }).join('')}
-                </table>
+                if (tags.length === 0 && lines.length === 0) {
+                    tags.push('<span class="h2h-verdict-tag tricky">BALANCED</span>');
+                    lines.push('Evenly matched fixture. Keep your strongest lineup and avoid unnecessary risks.');
+                }
 
-                <div class="transfer-section-title">Last 6 GWs</div>
-                <table class="transfer-stat-table">
-                    <tr><td class="stat-label">PPG</td><td class="stat-val ${(cRecent?.ppg||0) > (rRecent?.ppg||0) ? 'better' : (cRecent?.ppg||0) < (rRecent?.ppg||0) ? 'worse' : ''}">${(cRecent?.ppg||0).toFixed(2)}</td><td class="stat-val ${(rRecent?.ppg||0) > (cRecent?.ppg||0) ? 'better' : (rRecent?.ppg||0) < (cRecent?.ppg||0) ? 'worse' : ''}">${(rRecent?.ppg||0).toFixed(2)}</td></tr>
-                    ${cPosStats.map((s, i) => {
-                        const rS = rPosStats[i];
-                        const cBetter = s.higherBetter ? s.rVal > rS.rVal : s.rVal < rS.rVal;
-                        const rBetter = s.higherBetter ? rS.rVal > s.rVal : rS.rVal < s.rVal;
-                        return `<tr><td class="stat-label">${s.label} (L6)</td><td class="stat-val ${cBetter ? 'better' : rBetter ? 'worse' : ''}">${s.recent}</td><td class="stat-val ${rBetter ? 'better' : cBetter ? 'worse' : ''}">${rS.recent}</td></tr>`;
-                    }).join('')}
-                </table>
+                return `<div class="h2h-verdict">
+                    <div class="h2h-verdict-title">💡 FPL Verdict</div>
+                    <div class="h2h-verdict-text">${tags.join('')} ${lines.join(' ')}</div>
+                </div>`;
+            }
 
-                ${(() => {
-                    const cTA = teamAnalysis[current.teamId];
-                    const rTA = teamAnalysis[replacement.teamId];
-                    if (!cTA || !rTA) return '';
-                    const atkLabel = current.position >= 3 ? 'ATK Power' : 'DEF Power';
-                    const cPow = current.position >= 3 ? cTA.attackPower : cTA.defensePower;
-                    const rPow = replacement.position >= 3 ? rTA.attackPower : rTA.defensePower;
-                    return `<div class="transfer-section-title">Team Context</div>
-                    <table class="transfer-stat-table">
-                        <tr><td class="stat-label">${atkLabel}</td><td class="stat-val ${cPow > rPow ? 'better' : cPow < rPow ? 'worse' : ''}">${cPow}</td><td class="stat-val ${rPow > cPow ? 'better' : rPow < cPow ? 'worse' : ''}">${rPow}</td></tr>
-                        <tr><td class="stat-label">Form Rating</td><td class="stat-val ${cTA.formRating > rTA.formRating ? 'better' : 'worse'}">${cTA.formRating}</td><td class="stat-val ${rTA.formRating > cTA.formRating ? 'better' : 'worse'}">${rTA.formRating}</td></tr>
-                        <tr><td class="stat-label">Fixture Score</td><td class="stat-val ${cTA.fixtureScore > rTA.fixtureScore ? 'better' : 'worse'}">${cTA.fixtureScore}</td><td class="stat-val ${rTA.fixtureScore > cTA.fixtureScore ? 'better' : 'worse'}">${rTA.fixtureScore}</td></tr>
-                    </table>`;
-                })()}
+            // === Build H2H card ===
+            let html = `<div class="h2h-card">`;
 
-                <div class="transfer-add-compare">
-                    <button onclick="addToPlannerCompare(${current.id})"><i data-lucide="scale" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Compare ${current.name}</button>
-                    <button onclick="addToPlannerCompare(${replacement.id})"><i data-lucide="scale" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Compare ${replacement.name}</button>
+            // Header
+            const venueClass = isHome ? 'h2h-venue-home' : 'h2h-venue-away';
+            const venueText = isHome ? 'HOME' : 'AWAY';
+            html += `<div class="h2h-header">
+                <div class="h2h-header-teams">⚔️ ${team.short_name || team.name} vs ${oppTeam?.short_name || nextFix.opponent}</div>
+                <div class="h2h-header-meta">
+                    <span class="h2h-venue ${venueClass}">${venueText}</span>
+                    <span class="planner-fdr-cell fdr-${nextFix.difficulty}" style="padding:2px 6px;font-size:0.6rem;">FDR ${nextFix.difficulty}</span>
                 </div>
             </div>`;
 
-            document.getElementById('plannerTransferComparison').innerHTML = html;
-        }
+            html += `<div class="h2h-body">`;
 
-        // ===== PLANNER MULTI-COMPARE =====
-        function togglePlannerCompare(playerId) {
-            const idx = plannerCompareList.indexOf(playerId);
-            if (idx >= 0) {
-                plannerCompareList.splice(idx, 1);
-            } else {
-                if (plannerCompareList.length >= 4) {
-                    updateStatus('Maximum 4 players for comparison', 'error');
-                    // Uncheck the checkbox
-                    const cb = document.querySelector(`.planner-compare-cb[onchange="togglePlannerCompare(${playerId})"]`);
-                    if (cb) cb.checked = false;
-                    return;
+            // Power grid — venue-specific
+            const myAtkV = isHome ? (ta?.attackPowerHome || 50) : (ta?.attackPowerAway || 50);
+            const myDefV = isHome ? (ta?.defensePowerHome || 50) : (ta?.defensePowerAway || 50);
+            const oppAtkV = isHome ? (oppTa?.attackPowerAway || 50) : (oppTa?.attackPowerHome || 50);
+            const oppDefV = isHome ? (oppTa?.defensePowerAway || 50) : (oppTa?.defensePowerHome || 50);
+
+            html += `<div class="h2h-power-grid">`;
+            html += powerRow('ATK', ta?.attackPower || 50, oppTa?.attackPower || 50, false);
+            html += powerRow('DEF', ta?.defensePower || 50, oppTa?.defensePower || 50, false);
+            html += powerRow(`ATK ${isHome ? '(H)' : '(A)'}`, myAtkV, oppAtkV, false);
+            html += powerRow(`DEF ${isHome ? '(H)' : '(A)'}`, myDefV, oppDefV, false);
+            html += `</div>`;
+
+            // xG tug-of-war
+            if (sXg && oppSXg) {
+                html += `<div class="h2h-xg-section">`;
+                html += `<div class="h2h-xg-title">⚡ Expected Goals Comparison</div>`;
+                html += xgBar('xG per game (season)', sXg.xGpg, oppSXg.xGpg, false);
+                html += xgBar('xGC per game (season)', sXg.xGCpg, oppSXg.xGCpg, true);
+                if (rXg && oppRXg) {
+                    html += xgBar('xG per game (last 6)', rXg.xGpg, oppRXg.xGpg, false);
+                    html += xgBar('xGC per game (last 6)', rXg.xGCpg, oppRXg.xGCpg, true);
                 }
-                plannerCompareList.push(playerId);
-            }
-            updatePlannerCompareBar();
-        }
-
-        function addToPlannerCompare(playerId) {
-            if (plannerCompareList.includes(playerId)) return;
-            if (plannerCompareList.length >= 4) {
-                updateStatus('Maximum 4 players for comparison', 'error');
-                return;
-            }
-            plannerCompareList.push(playerId);
-            updatePlannerCompareBar();
-            // Update checkboxes in table
-            const cb = document.querySelector(`.planner-compare-cb[onchange="togglePlannerCompare(${playerId})"]`);
-            if (cb) cb.checked = true;
-        }
-
-        function removePlannerCompare(playerId) {
-            plannerCompareList = plannerCompareList.filter(id => id !== playerId);
-            updatePlannerCompareBar();
-            const cb = document.querySelector(`.planner-compare-cb[onchange="togglePlannerCompare(${playerId})"]`);
-            if (cb) cb.checked = false;
-        }
-
-        function clearPlannerCompare() {
-            plannerCompareList = [];
-            updatePlannerCompareBar();
-            document.querySelectorAll('.planner-compare-cb').forEach(cb => cb.checked = false);
-        }
-
-        function updatePlannerCompareBar() {
-            const bar = document.getElementById('plannerCompareBar');
-            const chips = document.getElementById('plannerCompareChips');
-            const btn = document.getElementById('plannerCompareBtn');
-            const count = document.getElementById('plannerCompareCount');
-
-            if (plannerCompareList.length === 0) {
-                bar.classList.remove('show');
-                return;
+                html += `</div>`;
             }
 
-            bar.classList.add('show');
-            count.textContent = plannerCompareList.length;
-            btn.disabled = plannerCompareList.length < 2;
+            // CS%
+            const myCSPct = isHome ? (ss && ss.homeP > 0 ? Math.round((ss.homeCS / ss.homeP) * 100) : null) : (ss && ss.awayP > 0 ? Math.round((ss.awayCS / ss.awayP) * 100) : null);
+            const oppCSPct = isHome ? (oppSS && oppSS.awayP > 0 ? Math.round((oppSS.awayCS / oppSS.awayP) * 100) : null) : (oppSS && oppSS.homeP > 0 ? Math.round((oppSS.homeCS / oppSS.homeP) * 100) : null);
+            if (myCSPct !== null || oppCSPct !== null) {
+                html += `<div class="h2h-cs-row">`;
+                html += `<div class="h2h-cs-item"><div class="h2h-cs-label">${team.short_name} CS% (${isHome ? 'H' : 'A'})</div><div class="h2h-cs-val">${myCSPct !== null ? myCSPct + '%' : '-'}</div></div>`;
+                html += `<div class="h2h-cs-item"><div class="h2h-cs-label">${oppTeam?.short_name || nextFix.opponent} CS% (${isHome ? 'A' : 'H'})</div><div class="h2h-cs-val">${oppCSPct !== null ? oppCSPct + '%' : '-'}</div></div>`;
+                html += `</div>`;
+            }
 
-            chips.innerHTML = plannerCompareList.map(id => {
-                const p = allPlayersById[id];
-                return p ? `<div class="planner-compare-chip">${p.name} <span class="chip-remove" onclick="removePlannerCompare(${id})">×</span></div>` : '';
-            }).join('');
-        }
+            // Verdict
+            html += buildVerdict();
 
-        function showPlannerCompareModal() {
-            if (plannerCompareList.length < 2) return;
-            const players = plannerCompareList.map(id => allPlayersById[id]).filter(Boolean);
-            const modal = document.getElementById('plannerCompareModal');
-            const body = document.getElementById('plannerCompareModalBody');
-
-            let html = '';
-
-            // Player header row
-            html += `<div class="cmp-header-row">`;
-            players.forEach(p => {
-                const posConfig = POSITION_CONFIG[p.position];
-                html += `<div class="cmp-player-col">
-                    <div class="cmp-player-name">${p.name}</div>
-                    <div class="cmp-player-meta"><span class="position-badge ${posConfig.class}" style="font-size:0.65rem;padding:1px 6px;">${posConfig.short}</span> ${p.team} · £${p.price.toFixed(1)}m</div>
-                </div>`;
-            });
-            html += `</div>`;
-
-            // FDR Calendar section
-            html += `<div class="cmp-group"><div class="cmp-group-title"><i data-lucide="calendar" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Next 6 Fixtures (FDR)</div>`;
-            html += `<div class="cmp-fdr-row">`;
-            players.forEach(p => {
-                const fix = teamFixtures6[p.teamId] || [];
-                html += `<div class="cmp-fdr-col">${fix.map(f => `<div class="cmp-fdr-badge fdr-${f.difficulty || 3}">${f.opponent}<br><span style="font-size:0.5rem;">${f.isHome ? 'H' : 'A'}</span></div>`).join('')}</div>`;
-            });
             html += `</div></div>`;
-
-            // Build stats for each player
-            const allSeasonStats = players.map(p => getPlayerSeasonPer90(p));
-            const allRecentStats = players.map(p => getPlayerRecentStats(p.id, 6));
-
-            // Overview group
-            const overviewStats = [
-                { label: 'Price', key: 'price', lowerBetter: true },
-                { label: 'Ownership', key: 'ownership' },
-                { label: 'Form', key: 'form' },
-                { label: 'Total Points', key: 'points' },
-                { label: 'PPG', key: 'ppg' },
-                { label: 'Minutes', key: 'minutes' }
-            ];
-            html += renderCmpGroup('Overview', overviewStats, players, null, null);
-
-            // Season position-specific stats
-            const posStatDefs = getCompareStatDefs(players);
-            html += `<div class="cmp-group"><div class="cmp-group-title"><i data-lucide="bar-chart-3" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Season Stats (Per 90)</div>`;
-            posStatDefs.forEach(sd => {
-                const values = allSeasonStats.map(s => s ? (s[sd.key] ?? 0) : 0);
-                const bestIdx = sd.lowerBetter ? values.indexOf(Math.min(...values)) : values.indexOf(Math.max(...values));
-                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
-                values.forEach((v, i) => {
-                    const fmt = sd.pct ? v.toFixed(0) + '%' : v.toFixed(2);
-                    html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${fmt}</div>`;
-                });
-                html += `</div></div>`;
-            });
-            html += `</div>`;
-
-            // Last 6 GWs stats
-            html += `<div class="cmp-group"><div class="cmp-group-title"><i data-lucide="flame" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Last 6 GWs (Per 90)</div>`;
-            posStatDefs.forEach(sd => {
-                const values = allRecentStats.map(s => s ? (s[sd.key] ?? 0) : 0);
-                const bestIdx = sd.lowerBetter ? values.indexOf(Math.min(...values)) : values.indexOf(Math.max(...values));
-                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
-                values.forEach((v, i) => {
-                    const fmt = sd.pct ? v.toFixed(0) + '%' : v.toFixed(2);
-                    html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${fmt}</div>`;
-                });
-                html += `</div></div>`;
-            });
-            // Also add raw totals for L6
-            const l6Totals = [
-                { label: 'Points (L6)', key: 'points' },
-                { label: 'Goals (L6)', key: 'goals' },
-                { label: 'Assists (L6)', key: 'assists' },
-                { label: 'Bonus (L6)', key: 'bonus' }
-            ];
-            l6Totals.forEach(sd => {
-                const values = allRecentStats.map(s => s ? (s[sd.key] ?? 0) : 0);
-                const bestIdx = values.indexOf(Math.max(...values));
-                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
-                values.forEach((v, i) => { html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : v}</div>`; });
-                html += `</div></div>`;
-            });
-            html += `</div>`;
-
-            // Team context group
-            html += `<div class="cmp-group"><div class="cmp-group-title">🏟️ Team Context</div>`;
-            const teamCtxStats = [
-                { label: 'ATK Power', get: (p) => teamAnalysis[p.teamId]?.attackPower || 0 },
-                { label: 'DEF Power', get: (p) => teamAnalysis[p.teamId]?.defensePower || 0 },
-                { label: 'Form Rating', get: (p) => teamAnalysis[p.teamId]?.formRating || 0 },
-                { label: 'Fixture Score', get: (p) => teamAnalysis[p.teamId]?.fixtureScore || 0 },
-                { label: 'Team xG/g', get: (p) => getTeamSeasonXg(p.teamId)?.xGpg || 0 },
-                { label: 'Team xGC/g', get: (p) => getTeamSeasonXg(p.teamId)?.xGCpg || 0, lowerBetter: true }
-            ];
-            teamCtxStats.forEach(sd => {
-                const values = players.map(p => sd.get(p));
-                const bestIdx = sd.lowerBetter ? values.indexOf(Math.min(...values)) : values.indexOf(Math.max(...values));
-                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
-                values.forEach((v, i) => { html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${typeof v === 'number' ? v.toFixed(v >= 10 ? 0 : 2) : v}</div>`; });
-                html += `</div></div>`;
-            });
-            html += `</div>`;
-
-            body.innerHTML = html;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-            modal.classList.add('show');
-        }
-
-        function closePlannerCompareModal() {
-            document.getElementById('plannerCompareModal').classList.remove('show');
-        }
-
-        function getCompareStatDefs(players) {
-            // Build union of position-relevant per-90 stats
-            const hasPos = new Set(players.map(p => p.position));
-            const stats = [];
-
-            if (hasPos.has(1)) { // GK
-                stats.push({ label: 'Save %', key: 'savePct', pct: true });
-            }
-            if (hasPos.has(1) || hasPos.has(2)) { // GK or DEF
-                stats.push({ label: 'xGC/90', key: 'xGCPer90', lowerBetter: true });
-                stats.push({ label: 'CS%', key: 'csPercent', pct: true });
-            }
-            if (hasPos.has(2) || hasPos.has(3) || hasPos.has(4)) { // DEF/MID/FWD
-                stats.push({ label: 'xGI/90', key: 'xGIPer90' });
-            }
-            if (hasPos.has(3) || hasPos.has(4)) { // MID/FWD
-                stats.push({ label: 'xG/90', key: 'xGPer90' });
-                stats.push({ label: 'xA/90', key: 'xAPer90' });
-            }
-
-            // Deduplicate
-            const seen = new Set();
-            return stats.filter(s => { if (seen.has(s.key)) return false; seen.add(s.key); return true; });
-        }
-
-        function renderCmpGroup(title, statDefs, players) {
-            let html = `<div class="cmp-group"><div class="cmp-group-title">${title}</div>`;
-            statDefs.forEach(sd => {
-                const values = players.map(p => {
-                    if (sd.key === 'price') return p.price;
-                    if (sd.key === 'ownership') return p.ownership;
-                    return p[sd.key] ?? 0;
-                });
-                const bestIdx = sd.lowerBetter ? values.indexOf(Math.min(...values)) : values.indexOf(Math.max(...values));
-                html += `<div class="cmp-row"><div class="cmp-row-label">${sd.label}</div><div class="cmp-row-values">`;
-                values.forEach((v, i) => {
-                    const fmt = sd.key === 'price' ? `£${v.toFixed(1)}m` : sd.key === 'ownership' ? `${v.toFixed(1)}%` : (typeof v === 'number' ? (v >= 100 ? v : v.toFixed(1)) : v);
-                    html += `<div class="cmp-val ${i === bestIdx ? 'best' : ''}">${fmt}</div>`;
-                });
-                html += `</div></div>`;
-            });
-            html += `</div>`;
             return html;
         }
 
@@ -5836,6 +5082,19 @@
 
             // Pitch view
             html += `<div class="planner-pitch-wrap" id="draftPitchArea">${renderDraftPitchHTML()}</div>`;
+
+            // Team Context — H2H matchup cards for unique teams in squad
+            const draftSquad = getDraftSquad(draftState.selectedGW);
+            const uniqueTeamIds = [...new Set(draftSquad.map(p => p.teamId))].filter(tid => teamFixtures6[tid] && teamFixtures6[tid].length > 0);
+            if (uniqueTeamIds.length > 0) {
+                html += `<div style="margin-bottom:16px;">`;
+                html += `<div style="font-family:var(--font-display);font-weight:700;font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('draftTeamContext').style.display = document.getElementById('draftTeamContext').style.display === 'none' ? 'grid' : 'none'; this.querySelector('span').textContent = document.getElementById('draftTeamContext').style.display === 'none' ? '▸' : '▾';">⚔️ Matchup Context <span>▾</span></div>`;
+                html += `<div id="draftTeamContext" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:10px;">`;
+                uniqueTeamIds.forEach(tid => {
+                    html += renderTeamContextCard(tid, true);
+                });
+                html += `</div></div>`;
+            }
 
             // Squad table
             html += `<div class="planner-table-wrap"><table class="planner-table">`;
@@ -7443,7 +6702,8 @@
             });
         }
 
-        // ===== INLINE LINEUP WIZARD =====
+        // ===== LINEUP WIZARD ENGINE (3-Step Interactive) =====
+
         function renderInlineLineupWizard() {
             lineupRendered = true;
             const container = document.getElementById('lineupDisplay');
@@ -7453,7 +6713,7 @@
                 return;
             }
 
-            // Build lineup scores using transfer wizard's scoring data
+            // Build squad with scores
             const squad = picksData.picks.map(pick => {
                 const p = allPlayersById[pick.element];
                 if (!p) return null;
@@ -7461,82 +6721,560 @@
                 return { ...p, pos: p.position, web_name: p.name, pickPos: pick.position, onBench: pick.position > 11, isCaptain: pick.is_captain, isViceCaptain: pick.is_vice_captain, lwScore: score };
             }).filter(Boolean);
 
-            // Find optimal lineup
-            const solution = solveQuickLineup(squad);
+            // Initialize lineup state
+            lineupState.squad = squad;
+            lineupState.excluded = new Set();
+            lineupState.swapSource = null;
+            lineupState.captain = null;
+            lineupState.viceCaptain = null;
+            lineupState.step = 1;
 
-            // CTA banner
-            let html = `
-                <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:10px;margin-bottom:20px;">
-                    <div style="font-size:28px;"><i data-lucide="wand-2" style="width:28px;height:28px;color:#A78BFA;"></i></div>
-                    <div style="flex:1;">
-                        <div style="font-size:14px;font-weight:700;color:#A78BFA;">Full FPL Wizard</div>
-                        <div style="font-size:12px;color:var(--text-secondary);">For the complete guided experience (transfers + lineup + captain), use the dedicated wizard page.</div>
+            // Track originals for comparison
+            lineupState.originalXIIds = new Set(squad.filter(p => !p.onBench).map(p => p.id));
+            lineupState.originalCaptain = squad.find(p => p.isCaptain)?.id || null;
+            lineupState.originalVC = squad.find(p => p.isViceCaptain)?.id || null;
+
+            // Auto-exclude unavailable players
+            squad.forEach(p => {
+                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                    lineupState.excluded.add(p.id);
+                }
+            });
+
+            container.innerHTML = `
+                <div class="lw-container">
+                    <div class="lw-intro">
+                        <span><i data-lucide="wand-2" style="width:20px;height:20px;"></i></span>
+                        <div>Build your optimal GW${currentGW} lineup. Review availability, set your best XI, then pick your captain.</div>
                     </div>
-                    <a href="fpl-transfer-wizard.html" style="padding:8px 16px;background:#A78BFA;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;">Open Wizard →</a>
-                </div>`;
+                    <div class="lw-steps" id="lwSteps">
+                        <button class="lw-step active" onclick="goToLineupStep(1)">
+                            <div class="lw-step-num">1</div>
+                            <span class="lw-step-label"><i data-lucide="clipboard-check" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Squad Review</span>
+                        </button>
+                        <button class="lw-step disabled" onclick="goToLineupStep(2)">
+                            <div class="lw-step-num">2</div>
+                            <span class="lw-step-label"><i data-lucide="layout-grid" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Set Lineup</span>
+                        </button>
+                        <button class="lw-step disabled" onclick="goToLineupStep(3)">
+                            <div class="lw-step-num">3</div>
+                            <span class="lw-step-label"><i data-lucide="crown" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Captain & Summary</span>
+                        </button>
+                    </div>
+                    <div class="lw-panel active" id="lwPanel1"></div>
+                    <div class="lw-panel" id="lwPanel2"></div>
+                    <div class="lw-panel" id="lwPanel3"></div>
+                </div>
+            `;
 
-            // Quick formation + pitch view
-            html += `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:4px;"><i data-lucide="users" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Recommended Lineup — GW${currentGW}</div>`;
-            html += `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Formation: <strong>${solution.formation}</strong> · Based on form, fixtures, and availability</div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            renderLineupStep1();
+        }
 
-            // Pitch
-            const xi = solution.xi;
-            const bench = solution.bench;
-            const posConfig = { 1: { cls: 'gk', icon: 'GK' }, 2: { cls: 'def', icon: 'DEF' }, 3: { cls: 'mid', icon: 'MID' }, 4: { cls: 'fwd', icon: 'FWD' } };
+        // Step navigation
+        function goToLineupStep(step) {
+            if (step >= 2) {
+                const available = lineupState.squad.filter(p => !lineupState.excluded.has(p.id));
+                if (available.length < 11) return;
+            }
+            if (step >= 3 && (!lineupState.xi || lineupState.xi.length < 11)) return;
+
+            lineupState.step = step;
+
+            document.querySelectorAll('.lw-step').forEach((el, i) => {
+                el.classList.remove('active', 'completed', 'disabled');
+                if (i + 1 === step) el.classList.add('active');
+                else if (i + 1 < step) el.classList.add('completed');
+                else el.classList.add('disabled');
+            });
+
+            document.querySelectorAll('.lw-panel').forEach((el, i) => {
+                el.classList.toggle('active', i + 1 === step);
+            });
+
+            if (step === 1) renderLineupStep1();
+            else if (step === 2) renderLineupStep2();
+            else if (step === 3) renderLineupStep3();
+        }
+
+        // ── STEP 1: Squad Review ──
+        function renderLineupStep1() {
+            const panel = document.getElementById('lwPanel1');
+            const squad = lineupState.squad;
+            const excluded = lineupState.excluded;
+            const available = squad.filter(p => !excluded.has(p.id));
+            const flagged = squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's' || p.status === 'd');
+
+            // Summary bar
+            let html = `<div class="lw-summary-bar">
+                <div class="lw-summary-item"><div class="lw-summary-label">Available</div><div class="lw-summary-value" style="color:var(--color-success);">${available.length}</div></div>
+                <div style="width:1px;height:32px;background:var(--border-default);"></div>
+                <div class="lw-summary-item"><div class="lw-summary-label">Excluded</div><div class="lw-summary-value" style="color:${excluded.size > 0 ? 'var(--color-error)' : 'var(--text-muted)'};">${excluded.size}</div></div>
+                <div style="width:1px;height:32px;background:var(--border-default);"></div>
+                <div class="lw-summary-item"><div class="lw-summary-label">Flagged</div><div class="lw-summary-value" style="color:${flagged.length > 0 ? '#F59E0B' : 'var(--text-muted)'};">${flagged.length}</div></div>
+                <div style="flex:1;"></div>
+                <div style="font-size:11px;color:var(--text-secondary);">Click a player to toggle availability</div>
+            </div>`;
+
+            // Starting XI group
+            const starters = squad.filter(p => !p.onBench).sort((a, b) => a.pos - b.pos || b.lwScore - a.lwScore);
+            const benchPlayers = squad.filter(p => p.onBench).sort((a, b) => a.pickPos - b.pickPos);
+
+            html += `<div style="margin-bottom:16px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:700;margin-bottom:8px;padding-left:4px;"><i data-lucide="users" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Current Starting XI</div>`;
+            html += `<div class="lw-squad-grid">`;
+            starters.forEach(p => { html += renderLWPlayerCard(p); });
+            html += `</div></div>`;
+
+            html += `<div style="margin-bottom:16px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:700;margin-bottom:8px;padding-left:4px;"><i data-lucide="clipboard-list" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Bench</div>`;
+            html += `<div class="lw-squad-grid">`;
+            benchPlayers.forEach(p => { html += renderLWPlayerCard(p); });
+            html += `</div></div>`;
+
+            // Action
+            html += `<div class="tw-actions">
+                <button class="tw-btn tw-btn-primary" onclick="goToLineupStep(2)" ${available.length < 11 ? 'disabled title="Need at least 11 available players"' : ''}>
+                    <i data-lucide="wand-2" style="width:14px;height:14px;"></i> Find Best Lineup →
+                </button>
+            </div>`;
+
+            panel.innerHTML = html;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function renderLWPlayerCard(p) {
+            const isExcluded = lineupState.excluded.has(p.id);
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+            const fx = p.fixtures || [];
+            const nextFx = fx[0];
+            const statusIcon = p.status === 'i' ? '🏥' : p.status === 'u' ? '❌' : p.status === 's' ? '🟥' : p.status === 'd' ? '⚠️' : '';
+
+            return `<div class="lw-player-card ${isExcluded ? 'excluded' : 'available'}" onclick="toggleLWExclude(${p.id})">
+                <div class="lw-toggle">${isExcluded ? '✗' : '✓'}</div>
+                <div style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                <div class="lw-info">
+                    <div class="lw-name">${statusIcon} ${p.web_name}</div>
+                    <div class="lw-meta">
+                        <span>${p.team} · £${p.price.toFixed(1)}m</span>
+                        ${nextFx ? `<span class="fixture-chip fdr-${nextFx.difficulty}" style="font-size:10px;padding:1px 5px;">${nextFx.opponent}(${nextFx.isHome ? 'H' : 'A'})</span>` : ''}
+                        ${p.status === 'd' ? '<span style="color:#F59E0B;font-size:10px;">Doubtful</span>' : ''}
+                        ${p.status === 'i' ? '<span style="color:var(--color-error);font-size:10px;">Injured</span>' : ''}
+                    </div>
+                </div>
+                <div class="lw-stats">
+                    <div class="lw-stat"><div class="lw-stat-val">${p.form}</div><div class="lw-stat-label">Form</div></div>
+                    <div class="lw-stat"><div class="lw-stat-val">${p.ppg.toFixed(1)}</div><div class="lw-stat-label">PPG</div></div>
+                    <div class="lw-stat"><div class="lw-stat-val" style="color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'}">${p.lwScore}</div><div class="lw-stat-label">Score</div></div>
+                </div>
+            </div>`;
+        }
+
+        function toggleLWExclude(playerId) {
+            if (lineupState.excluded.has(playerId)) {
+                lineupState.excluded.delete(playerId);
+            } else {
+                lineupState.excluded.add(playerId);
+            }
+            renderLineupStep1();
+        }
+
+        // ── STEP 2: Set Lineup (Pitch + Swaps) ──
+        function renderLineupStep2() {
+            const panel = document.getElementById('lwPanel2');
+            lineupState.swapSource = null;
+
+            // Recalculate scores excluding unavailable
+            const available = lineupState.squad.filter(p => !lineupState.excluded.has(p.id));
+            available.forEach(p => { p.lwScore = computeQuickLineupScore(p); });
+            // Set excluded players to -100
+            lineupState.squad.filter(p => lineupState.excluded.has(p.id)).forEach(p => { p.lwScore = -100; });
+
+            // Solve optimal lineup from available pool
+            const solution = solveQuickLineup(available);
+            lineupState.xi = [...solution.xi];
+            lineupState.bench = [...solution.bench];
+            lineupState.formation = solution.formation;
+
+            renderLineupStep2Content();
+        }
+
+        function renderLineupStep2Content() {
+            const panel = document.getElementById('lwPanel2');
+            const xi = lineupState.xi;
+            const bench = lineupState.bench;
+            const formation = lineupState.formation;
+            const totalScore = xi.reduce((s, p) => s + p.lwScore, 0);
+
             const gk = xi.filter(p => p.pos === 1);
             const defs = xi.filter(p => p.pos === 2);
             const mids = xi.filter(p => p.pos === 3);
             const fwds = xi.filter(p => p.pos === 4);
 
-            function renderPitchPlayer(p, isBench) {
-                const pc = posConfig[p.pos];
-                const sc = p.lwScore >= 30 ? 'high' : p.lwScore >= 10 ? 'mid' : 'low';
-                return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;${isBench ? 'opacity:0.6;' : ''}">
-                    <div style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:${p.pos === 1 ? 'rgba(217,119,6,0.2)' : p.pos === 2 ? 'rgba(5,150,105,0.2)' : p.pos === 3 ? 'rgba(37,99,235,0.2)' : 'rgba(220,38,38,0.2)'};border:2px solid ${p.pos === 1 ? '#D97706' : p.pos === 2 ? '#059669' : p.pos === 3 ? '#2563EB' : '#DC2626'};color:${p.pos === 1 ? '#D97706' : p.pos === 2 ? '#059669' : p.pos === 3 ? '#2563EB' : '#DC2626'};">${pc.icon}</div>
-                    <div style="font-size:10px;font-weight:600;text-align:center;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;">${p.web_name}</div>
-                    <div style="font-size:10px;font-weight:700;font-family:var(--font-mono);padding:1px 6px;border-radius:4px;background:var(--surface-2);color:${sc === 'high' ? 'var(--color-success)' : sc === 'mid' ? '#F59E0B' : 'var(--color-error)'};">${p.lwScore}</div>
-                </div>`;
+            let html = `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:4px;"><i data-lucide="layout-grid" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Optimal Lineup — GW${currentGW}</div>`;
+            html += `<div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex-wrap:wrap;">
+                <span>Formation: <strong style="color:var(--text-primary);">${formation}</strong></span>
+                <span>·</span>
+                <span>Total Score: <strong style="color:var(--color-success);font-family:var(--font-mono);">${totalScore}</strong></span>
+                <span>·</span>
+                <span style="font-size:11px;">Click a player to select, then click another to swap</span>
+            </div>`;
+
+            // Swap hint
+            if (lineupState.swapSource) {
+                const src = lineupState.squad.find(p => p.id === lineupState.swapSource);
+                html += `<div class="lw-swap-hint"><i data-lucide="repeat" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Swapping: ${src?.web_name || '?'} — Click another player to complete swap, or click again to cancel</div>`;
             }
 
-            html += `<div style="background:linear-gradient(180deg,#1a472a 0%,#1d5031 20%,#1a472a 40%,#1d5031 60%,#1a472a 80%,#1d5031 100%);border-radius:12px;padding:24px 16px;margin-bottom:20px;border:2px solid rgba(74,222,128,0.2);">
-                <div style="display:flex;justify-content:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">${fwds.map(p => renderPitchPlayer(p)).join('')}</div>
-                <div style="display:flex;justify-content:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">${mids.map(p => renderPitchPlayer(p)).join('')}</div>
-                <div style="display:flex;justify-content:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">${defs.map(p => renderPitchPlayer(p)).join('')}</div>
-                <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">${gk.map(p => renderPitchPlayer(p)).join('')}</div>
-            </div>`;
+            // Pitch
+            html += `<div class="lw-pitch">`;
+            html += `<div class="lw-pitch-row">${fwds.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
+            html += `<div class="lw-pitch-row">${mids.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
+            html += `<div class="lw-pitch-row">${defs.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
+            html += `<div class="lw-pitch-row">${gk.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
+            html += `</div>`;
 
             // Bench
-            html += `<div style="background:var(--surface);border-radius:12px;padding:16px;border:1px solid var(--border);margin-bottom:20px;">
-                <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;text-align:center;"><i data-lucide="clipboard-list" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Bench Order</div>
-                <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;">${bench.slice(0, 4).map(p => renderPitchPlayer(p, true)).join('')}</div>
-            </div>`;
+            html += `<div class="lw-bench-section">`;
+            html += `<div class="lw-bench-header"><i data-lucide="clipboard-list" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Bench Order</div>`;
+            html += `<div class="lw-bench-row">${bench.map((p, i) => renderLWPitchPlayer(p, true, i + 1)).join('')}</div>`;
+            html += `</div>`;
 
-            // Captain recommendation
-            const capCandidates = xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore).slice(0, 3);
-            html += `<div style="background:var(--surface);border-radius:12px;padding:16px;border:1px solid var(--border);">
-                <div style="font-size:14px;font-weight:700;margin-bottom:12px;"><i data-lucide="crown" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> Captain Picks</div>`;
-            capCandidates.forEach((p, i) => {
-                const fx = p.fixtures || [];
-                const nextFx = fx[0];
-                html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;${i > 0 ? 'border-top:1px solid var(--border);' : ''}">
-                    <span style="font-size:16px;">${i === 0 ? '<i data-lucide="crown" style="width:16px;height:16px;color:#F59E0B;"></i>' : i === 1 ? '<i data-lucide="medal" style="width:16px;height:16px;color:#9CA3AF;"></i>' : '<i data-lucide="medal" style="width:16px;height:16px;color:#D97706;"></i>'}</span>
+            // Team Context — H2H matchup cards
+            const lwUniqueTeams = [...new Set(lineupState.squad.map(p => p.teamId))].filter(tid => teamFixtures6[tid] && teamFixtures6[tid].length > 0);
+            if (lwUniqueTeams.length > 0) {
+                html += `<div style="margin-bottom:16px;">`;
+                html += `<div style="font-family:var(--font-display);font-weight:700;font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('lwTeamContext').style.display = document.getElementById('lwTeamContext').style.display === 'none' ? 'grid' : 'none'; this.querySelector('span').textContent = document.getElementById('lwTeamContext').style.display === 'none' ? '▸' : '▾';">⚔️ Matchup Context <span>▾</span></div>`;
+                html += `<div id="lwTeamContext" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:10px;">`;
+                lwUniqueTeams.forEach(tid => { html += renderTeamContextCard(tid, true); });
+                html += `</div></div>`;
+            }
+
+            // Score table
+            html += `<div style="background:var(--surface-1);border-radius:12px;padding:16px;border:1px solid var(--border-default);margin-bottom:20px;">`;
+            html += `<div style="font-size:13px;font-weight:700;margin-bottom:12px;"><i data-lucide="bar-chart-3" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Score Breakdown</div>`;
+            html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;">`;
+            [...xi].sort((a, b) => b.lwScore - a.lwScore).forEach((p, i) => {
+                const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+                const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+                const fx = p.fixtures?.[0];
+                html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface-2);border-radius:6px;font-size:12px;">
+                    <span style="width:16px;font-weight:700;color:var(--text-muted);font-family:var(--font-mono);">${i + 1}</span>
+                    <span style="color:${posColors[p.pos]};font-weight:700;font-size:10px;">${posNames[p.pos]}</span>
                     <span style="font-weight:600;flex:1;">${p.web_name}</span>
-                    <span style="font-size:12px;color:var(--text-secondary);">Form ${p.form}</span>
-                    ${nextFx ? `<span class="fixture-chip fdr-${nextFx.difficulty}" style="font-size:10px;">${nextFx.opponent}(${nextFx.isHome ? 'H' : 'A'})</span>` : ''}
-                    <span style="font-family:var(--font-mono);font-weight:700;font-size:13px;color:${p.lwScore >= 30 ? 'var(--color-success)' : 'var(--text-primary)'};">${p.lwScore}</span>
+                    ${fx ? `<span class="fixture-chip fdr-${fx.difficulty}" style="font-size:9px;padding:1px 4px;">${fx.opponent}</span>` : ''}
+                    <span style="font-family:var(--font-mono);font-weight:700;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'}">${p.lwScore}</span>
                 </div>`;
             });
-            html += '</div>';
-
-            // Team context cards for squad teams
-            const lwTeamIds = [...new Set(squad.map(p => p.teamId))];
-            html += `<div style="margin-top:20px;"><div style="font-size:14px;font-weight:700;margin-bottom:12px;"><i data-lucide="bar-chart-3" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> Team Context</div>`;
-            html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">`;
-            lwTeamIds.forEach(tid => { html += renderTeamContextCard(tid, true); });
             html += `</div></div>`;
 
-            container.innerHTML = html;
+            // Actions
+            html += `<div class="tw-actions">
+                <button class="tw-btn tw-btn-back" onclick="goToLineupStep(1)"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back</button>
+                <button class="tw-btn tw-btn-secondary" onclick="resetLineupToOptimal()"><i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> Reset to Optimal</button>
+                <button class="tw-btn tw-btn-primary" onclick="goToLineupStep(3)"><i data-lucide="crown" style="width:14px;height:14px;"></i> Pick Captain →</button>
+            </div>`;
+
+            panel.innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function renderLWPitchPlayer(p, isBench, benchOrder) {
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+            const bg = { 1: 'rgba(217,119,6,0.2)', 2: 'rgba(5,150,105,0.2)', 3: 'rgba(37,99,235,0.2)', 4: 'rgba(220,38,38,0.2)' };
+            const sc = p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)';
+            const isSwapSource = lineupState.swapSource === p.id;
+            const isSwapTarget = lineupState.swapSource && lineupState.swapSource !== p.id;
+            const cls = isBench ? 'bench' : '';
+            const swapCls = isSwapSource ? 'swap-source' : isSwapTarget ? 'swap-target' : '';
+
+            return `<div class="lw-pitch-player ${cls} ${swapCls}" onclick="handleLWSwapClick(${p.id})" title="${p.web_name} · Score: ${p.lwScore}">
+                ${benchOrder ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${benchOrder}</div>` : ''}
+                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                <div class="lw-pitch-name">${p.web_name}</div>
+                <div class="lw-pitch-score" style="color:${sc};">${p.lwScore}</div>
+            </div>`;
+        }
+
+        function handleLWSwapClick(playerId) {
+            if (!lineupState.swapSource) {
+                // First click: select source
+                lineupState.swapSource = playerId;
+                renderLineupStep2Content();
+                return;
+            }
+
+            if (lineupState.swapSource === playerId) {
+                // Clicked same player: cancel swap
+                lineupState.swapSource = null;
+                renderLineupStep2Content();
+                return;
+            }
+
+            // Second click: attempt swap
+            const srcId = lineupState.swapSource;
+            const tgtId = playerId;
+            lineupState.swapSource = null;
+
+            const xiIds = new Set(lineupState.xi.map(p => p.id));
+            const benchIds = new Set(lineupState.bench.map(p => p.id));
+            const srcInXI = xiIds.has(srcId);
+            const tgtInXI = xiIds.has(tgtId);
+
+            // Find player objects
+            const allPool = [...lineupState.xi, ...lineupState.bench];
+            const srcPlayer = allPool.find(p => p.id === srcId);
+            const tgtPlayer = allPool.find(p => p.id === tgtId);
+            if (!srcPlayer || !tgtPlayer) return;
+
+            // Perform swap
+            let newXI, newBench;
+            if (srcInXI && tgtInXI) {
+                // Both in XI: just swap positions (no formation change)
+                newXI = lineupState.xi;
+                newBench = lineupState.bench;
+            } else if (!srcInXI && !tgtInXI) {
+                // Both on bench: swap bench order
+                newXI = lineupState.xi;
+                newBench = lineupState.bench;
+                const si = newBench.findIndex(p => p.id === srcId);
+                const ti = newBench.findIndex(p => p.id === tgtId);
+                [newBench[si], newBench[ti]] = [newBench[ti], newBench[si]];
+            } else {
+                // One in XI, one on bench: validate formation
+                const xiPlayer = srcInXI ? srcPlayer : tgtPlayer;
+                const benchPlayer = srcInXI ? tgtPlayer : srcPlayer;
+
+                // Build new XI with swap
+                newXI = lineupState.xi.map(p => p.id === xiPlayer.id ? benchPlayer : p);
+                newBench = lineupState.bench.map(p => p.id === benchPlayer.id ? xiPlayer : p);
+
+                // Check formation validity
+                if (!isValidLWFormation(newXI)) {
+                    // Invalid swap — revert
+                    renderLineupStep2Content();
+                    return;
+                }
+            }
+
+            lineupState.xi = newXI;
+            lineupState.bench = newBench;
+            lineupState.formation = getFormationString(lineupState.xi);
+            renderLineupStep2Content();
+        }
+
+        function isValidLWFormation(xi) {
+            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            xi.forEach(p => { counts[p.pos] = (counts[p.pos] || 0) + 1; });
+            if (counts[1] !== 1) return false;
+            if (counts[2] < 3 || counts[2] > 5) return false;
+            if (counts[3] < 2 || counts[3] > 5) return false;
+            if (counts[4] < 1 || counts[4] > 3) return false;
+            if (counts[2] + counts[3] + counts[4] !== 10) return false;
+            return true;
+        }
+
+        function getFormationString(xi) {
+            const counts = { 2: 0, 3: 0, 4: 0 };
+            xi.forEach(p => { if (p.pos >= 2) counts[p.pos]++; });
+            return `${counts[2]}-${counts[3]}-${counts[4]}`;
+        }
+
+        function resetLineupToOptimal() {
+            const available = lineupState.squad.filter(p => !lineupState.excluded.has(p.id));
+            available.forEach(p => { p.lwScore = computeQuickLineupScore(p); });
+            const solution = solveQuickLineup(available);
+            lineupState.xi = [...solution.xi];
+            lineupState.bench = [...solution.bench];
+            lineupState.formation = solution.formation;
+            lineupState.swapSource = null;
+            renderLineupStep2Content();
+        }
+
+        // ── STEP 3: Captain & Summary ──
+        function renderLineupStep3() {
+            const panel = document.getElementById('lwPanel3');
+            const xi = lineupState.xi;
+
+            // Auto-pick captain if not set
+            if (!lineupState.captain) {
+                const candidates = xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore);
+                lineupState.captain = candidates[0]?.id || xi[0]?.id;
+                lineupState.viceCaptain = candidates[1]?.id || xi[1]?.id;
+            }
+
+            renderLineupStep3Content();
+        }
+
+        function renderLineupStep3Content() {
+            const panel = document.getElementById('lwPanel3');
+            const xi = lineupState.xi;
+            const bench = lineupState.bench;
+
+            // Captain candidates — top outfield players by score
+            const capCandidates = xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore).slice(0, 5);
+
+            let html = `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:16px;"><i data-lucide="crown" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Captain Selection</div>`;
+            html += `<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Pick your captain (2x points) and vice-captain (backup). Ranked by lineup score.</div>`;
+
+            capCandidates.forEach((p, i) => {
+                const isCap = lineupState.captain === p.id;
+                const isVC = lineupState.viceCaptain === p.id;
+                const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+                const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+                const fx = p.fixtures?.[0];
+                const recent = getPlayerRecentStats(p.id, 5);
+                const xgi = recent ? recent.xGIPer90.toFixed(2) : (p.minutes > 0 ? ((p.xGI / p.minutes) * 90).toFixed(2) : '0.00');
+
+                html += `<div class="lw-captain-card ${isCap ? 'selected-captain' : isVC ? 'selected-vc' : ''}">
+                    <div class="lw-captain-rank" style="background:${i === 0 ? 'rgba(245,158,11,0.15);color:#F59E0B' : i === 1 ? 'rgba(156,163,175,0.15);color:#9CA3AF' : i === 2 ? 'rgba(217,119,6,0.15);color:#D97706' : 'var(--surface-3);color:var(--text-muted)'}">${i + 1}</div>
+                    <div style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                    <div class="lw-captain-info">
+                        <div class="lw-captain-name">${p.web_name}</div>
+                        <div class="lw-captain-meta">
+                            <span>${p.team}</span>
+                            <span>Form ${p.form}</span>
+                            <span>xGI/90 ${xgi}</span>
+                            ${fx ? `<span class="fixture-chip fdr-${fx.difficulty}" style="font-size:10px;padding:1px 5px;">${fx.opponent}(${fx.isHome ? 'H' : 'A'})</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="font-family:var(--font-mono);font-weight:700;font-size:14px;color:${p.lwScore >= 30 ? 'var(--color-success)' : 'var(--text-primary)'}">${p.lwScore}</div>
+                    <div class="lw-captain-actions">
+                        <button class="lw-cap-btn ${isCap ? 'active-c' : ''}" onclick="event.stopPropagation();setLWCaptain(${p.id})">C</button>
+                        <button class="lw-cap-btn ${isVC ? 'active-vc' : ''}" onclick="event.stopPropagation();setLWViceCaptain(${p.id})">VC</button>
+                    </div>
+                </div>`;
+            });
+
+            // ── Final Summary ──
+            html += `<div style="margin-top:24px;font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:16px;"><i data-lucide="check-circle" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Recommended Lineup Summary</div>`;
+
+            // Formation + captain display
+            const capPlayer = lineupState.squad.find(p => p.id === lineupState.captain);
+            const vcPlayer = lineupState.squad.find(p => p.id === lineupState.viceCaptain);
+            html += `<div class="lw-final-section">
+                <div style="display:flex;gap:24px;flex-wrap:wrap;">
+                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Formation</span><div style="font-size:24px;font-weight:700;font-family:var(--font-mono);">${lineupState.formation}</div></div>
+                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Captain</span><div style="font-size:16px;font-weight:700;color:#F59E0B;"><i data-lucide="crown" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> ${capPlayer?.web_name || '-'}</div></div>
+                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Vice-Captain</span><div style="font-size:16px;font-weight:700;color:#9CA3AF;">${vcPlayer?.web_name || '-'}</div></div>
+                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Total Score</span><div style="font-size:24px;font-weight:700;font-family:var(--font-mono);color:var(--color-success);">${xi.reduce((s, p) => s + p.lwScore, 0)}</div></div>
+                </div>
+            </div>`;
+
+            // Mini pitch
+            const gk = xi.filter(p => p.pos === 1);
+            const defs = xi.filter(p => p.pos === 2);
+            const mids = xi.filter(p => p.pos === 3);
+            const fwds = xi.filter(p => p.pos === 4);
+
+            html += `<div class="lw-pitch" style="margin-bottom:16px;">`;
+            html += `<div class="lw-pitch-row">${fwds.map(p => renderLWSummaryPitchPlayer(p)).join('')}</div>`;
+            html += `<div class="lw-pitch-row">${mids.map(p => renderLWSummaryPitchPlayer(p)).join('')}</div>`;
+            html += `<div class="lw-pitch-row">${defs.map(p => renderLWSummaryPitchPlayer(p)).join('')}</div>`;
+            html += `<div class="lw-pitch-row">${gk.map(p => renderLWSummaryPitchPlayer(p)).join('')}</div>`;
+            html += `</div>`;
+
+            // Bench
+            html += `<div class="lw-bench-section" style="margin-bottom:16px;">`;
+            html += `<div class="lw-bench-header"><i data-lucide="clipboard-list" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Bench Order</div>`;
+            html += `<div class="lw-bench-row">${bench.map((p, i) => {
+                const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+                const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+                return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;opacity:0.6;position:relative;">
+                    <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${i + 1}</div>
+                    <div class="lw-pitch-node" style="background:rgba(0,0,0,0.2);border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                    <div class="lw-pitch-name">${p.web_name}</div>
+                </div>`;
+            }).join('')}</div>`;
+            html += `</div>`;
+
+            // Vs current: show changes
+            html += renderLWChanges();
+
+            // Actions
+            html += `<div class="tw-actions">
+                <button class="tw-btn tw-btn-back" onclick="goToLineupStep(2)"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Edit Lineup</button>
+                <button class="tw-btn tw-btn-secondary" onclick="goToLineupStep(1)"><i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> Start Over</button>
+            </div>`;
+
+            panel.innerHTML = html;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function renderLWSummaryPitchPlayer(p) {
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+            const bg = { 1: 'rgba(217,119,6,0.2)', 2: 'rgba(5,150,105,0.2)', 3: 'rgba(37,99,235,0.2)', 4: 'rgba(220,38,38,0.2)' };
+            const isCap = lineupState.captain === p.id;
+            const isVC = lineupState.viceCaptain === p.id;
+
+            return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;position:relative;">
+                ${isCap ? '<div style="position:absolute;top:-6px;right:-2px;font-size:12px;"><i data-lucide="crown" style="width:12px;height:12px;color:#F59E0B;"></i></div>' : ''}
+                ${isVC ? '<div style="position:absolute;top:-6px;right:-2px;font-size:10px;color:#9CA3AF;font-weight:700;">VC</div>' : ''}
+                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};${isCap ? 'box-shadow:0 0 8px rgba(245,158,11,0.5);' : ''}">${posNames[p.pos]}</div>
+                <div class="lw-pitch-name">${p.web_name}</div>
+            </div>`;
+        }
+
+        function renderLWChanges() {
+            const xi = lineupState.xi;
+            const xiIds = new Set(xi.map(p => p.id));
+            const origIds = lineupState.originalXIIds;
+            const changes = [];
+
+            // Players promoted from bench to XI
+            xi.forEach(p => {
+                if (!origIds.has(p.id)) {
+                    changes.push({ player: p, type: 'promoted', label: 'Promoted to XI' });
+                }
+            });
+
+            // Players moved to bench from XI
+            lineupState.bench.forEach(p => {
+                if (origIds.has(p.id)) {
+                    changes.push({ player: p, type: 'benched', label: 'Moved to bench' });
+                }
+            });
+
+            // Captain changes
+            if (lineupState.captain !== lineupState.originalCaptain) {
+                const capP = lineupState.squad.find(p => p.id === lineupState.captain);
+                if (capP) changes.push({ player: capP, type: 'captain', label: 'New Captain' });
+            }
+            if (lineupState.viceCaptain !== lineupState.originalVC) {
+                const vcP = lineupState.squad.find(p => p.id === lineupState.viceCaptain);
+                if (vcP) changes.push({ player: vcP, type: 'captain', label: 'New Vice-Captain' });
+            }
+
+            if (changes.length === 0) {
+                return `<div class="lw-final-section"><div class="lw-final-header"><i data-lucide="check-circle" style="width:16px;height:16px;color:var(--color-success);"></i> No Changes</div><div style="font-size:12px;color:var(--text-secondary);">Your current FPL lineup matches the optimal recommendation.</div></div>`;
+            }
+
+            let html = `<div class="lw-final-section"><div class="lw-final-header"><i data-lucide="git-compare" style="width:16px;height:16px;color:#A78BFA;"></i> Changes vs Current FPL Lineup (${changes.length})</div>`;
+            changes.forEach(c => {
+                const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+                html += `<div class="lw-change-row">
+                    <span class="lw-change-badge ${c.type}">${c.type === 'promoted' ? '↑ IN' : c.type === 'benched' ? '↓ OUT' : '👑'}</span>
+                    <span style="font-weight:600;">${c.player.web_name}</span>
+                    <span style="font-size:11px;color:var(--text-muted);">${posNames[c.player.pos]} · ${c.player.team}</span>
+                    <span style="flex:1;"></span>
+                    <span style="font-size:11px;color:var(--text-secondary);">${c.label}</span>
+                </div>`;
+            });
+            html += `</div>`;
+            return html;
+        }
+
+        function setLWCaptain(playerId) {
+            if (lineupState.viceCaptain === playerId) lineupState.viceCaptain = lineupState.captain;
+            lineupState.captain = playerId;
+            renderLineupStep3Content();
+        }
+
+        function setLWViceCaptain(playerId) {
+            if (lineupState.captain === playerId) lineupState.captain = lineupState.viceCaptain;
+            lineupState.viceCaptain = playerId;
+            renderLineupStep3Content();
         }
 
         // Quick lineup scoring — simplified version for inline tab
