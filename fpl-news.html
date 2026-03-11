@@ -815,12 +815,17 @@
                     if (!resp.ok) continue;
                     const data = await resp.json();
                     if (data.status !== 'ok' || !data.items) continue;
+                    const plTeams = ['arsenal','aston villa','bournemouth','brentford','brighton','burnley','chelsea','crystal palace','everton','fulham','ipswich','leicester','liverpool','luton','man city','manchester city','man utd','manchester united','newcastle','nott\'m forest','nottingham forest','sheffield','southampton','spurs','tottenham','west ham','wolves','wolverhampton'];
+                    const plKeywords = ['premier league','fpl','gameweek','epl','prem','pl table','top four','relegation','var ','offside','penalty','clean sheet'];
                     data.items.slice(0, 12).forEach(article => {
                         if (!isValidHeadline(article.title)) return;
+                        const rawDesc = article.description ? article.description.replace(/<[^>]*>/g, '') : '';
+                        const textToCheck = ((article.title || '') + ' ' + rawDesc).toLowerCase();
+                        const isPL = plTeams.some(t => textToCheck.includes(t)) || plKeywords.some(k => textToCheck.includes(k));
+                        if (!isPL) return;
                         const thumbnail = article.thumbnail || article.enclosure?.link || null;
                         const teams = matchTeams(article.title);
                         const tags = tagArticle(article.title);
-                        const rawDesc = article.description ? article.description.replace(/<[^>]*>/g, '') : '';
                         items.push({
                             headline: article.title,
                             link: article.link,
