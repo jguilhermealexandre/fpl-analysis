@@ -857,6 +857,11 @@
         .pitch-player-node.star { border-color: var(--verdict-star); box-shadow: 0 0 16px rgba(167,139,250,0.5); }
         .pitch-player-node.injured { opacity: 0.5; }
         .captain-badge { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: var(--color-captain); border-radius: 50%; font-size: 9px; font-weight: 800; color: #1a1a1a; display: flex; align-items: center; justify-content: center; border: 1.5px solid rgba(0,0,0,0.3); }
+        .pitch-injury-badge { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); background: var(--verdict-sell); color: #fff; font-size: 7px; font-weight: 800; padding: 1px 4px; border-radius: 6px; white-space: nowrap; line-height: 1.2; border: 1px solid rgba(0,0,0,0.3); z-index: 2; }
+        .pitch-injury-badge.doubt { background: var(--verdict-monitor); }
+        .pitch-market-badge { position: absolute; top: -4px; left: -6px; width: 14px; height: 14px; border-radius: 50%; font-size: 8px; font-weight: 900; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,0.3); z-index: 2; line-height: 1; }
+        .pitch-market-badge.rising { background: #16a34a; color: #fff; }
+        .pitch-market-badge.falling { background: var(--verdict-sell); color: #fff; }
         .pitch-player-name { font-size: 10px; color: rgba(255,255,255,0.85); font-weight: 600; text-align: center; max-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
         .pitch-player-pts { font-size: 9px; color: rgba(255,255,255,0.5); font-family: var(--font-mono); }
 
@@ -2998,6 +3003,29 @@
             const mids = startersSorted.filter(a => a.player.position === 3);
             const fwds = startersSorted.filter(a => a.player.position === 4);
 
+            const totalFpl = 11000000;
+            const getPressure = (p) => {
+                const owners = totalFpl * ((p.ownership || 0) / 100);
+                if (!owners) return 0;
+                return ((p.transfersIn || 0) - (p.transfersOut || 0)) / owners;
+            };
+
+            const injuryBadge = (p) => {
+                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                    return `<span class="pitch-injury-badge">OUT</span>`;
+                }
+                if (p.status === 'd' && p.chanceNextRound != null && p.chanceNextRound < 100) {
+                    return `<span class="pitch-injury-badge doubt">${p.chanceNextRound}%</span>`;
+                }
+                return '';
+            };
+            const marketBadge = (p) => {
+                const pr = getPressure(p);
+                if (pr > 0.015) return `<span class="pitch-market-badge rising">&#9650;</span>`;
+                if (pr < -0.015) return `<span class="pitch-market-badge falling">&#9660;</span>`;
+                return '';
+            };
+
             const pitchNode = (a) => {
                 const p = a.player;
                 const injured = p.status === 'i' || p.status === 'u';
@@ -3006,6 +3034,8 @@
                         ${p.team}
                         ${p.isCaptain ? '<span class="captain-badge">C</span>' : ''}
                         ${p.isVice ? '<span class="captain-badge" style="background:var(--text-muted);color:white;">V</span>' : ''}
+                        ${injuryBadge(p)}
+                        ${marketBadge(p)}
                     </div>
                     <div class="pitch-player-name">${p.name}</div>
                     <div class="pitch-player-pts">${p.form}</div>
@@ -3013,8 +3043,13 @@
             };
             const benchNode = (a) => {
                 const p = a.player;
+                const injured = p.status === 'i' || p.status === 'u';
                 return `<div class="pitch-player" onclick="openDetailPanel(${p.id})" style="opacity:0.7;">
-                    <div class="pitch-player-node ${a.verdict}" style="width:36px;height:36px;font-size:9px;">${p.team}</div>
+                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="width:36px;height:36px;font-size:9px;">
+                        ${p.team}
+                        ${injuryBadge(p)}
+                        ${marketBadge(p)}
+                    </div>
                     <div class="pitch-player-name">${p.name}</div>
                 </div>`;
             };
@@ -3040,6 +3075,28 @@
                         ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">\u2605 ${stars.length} Star</span>` : ''}
                         <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">\u25cf ${holds.length} Hold</span>
                     </div>
+                    ${(() => {
+                        const falling = analysisResults.filter(a => getPressure(a.player) < -0.015);
+                        const rising = analysisResults.filter(a => getPressure(a.player) > 0.015);
+                        if (!falling.length && !rising.length) return '';
+                        const row = (a, dir) => {
+                            const p = a.player;
+                            const net = (p.transfersIn||0) - (p.transfersOut||0);
+                            const arrow = dir === 'fall' ? '\u25bc' : '\u25b2';
+                            const col = dir === 'fall' ? 'var(--verdict-sell)' : '#16a34a';
+                            return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;">
+                                <span style="color:${col};font-size:10px;">${arrow}</span>
+                                <span style="font-size:11px;font-weight:600;flex:1;">${escHTML(p.name)}</span>
+                                <span style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);">\u00a3${p.price}m</span>
+                                <span style="font-size:10px;font-family:var(--font-mono);color:${col};">${net > 0 ? '+' : ''}${(net/1000).toFixed(0)}k</span>
+                            </div>`;
+                        };
+                        return `<div style="margin-top:12px;padding:10px 12px;background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);width:100%;">
+                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">\ud83d\udcc8 Market Watch</div>
+                            ${falling.map(a => row(a,'fall')).join('')}
+                            ${rising.map(a => row(a,'rise')).join('')}
+                        </div>`;
+                    })()}
                 </div>
                 <div class="pitch-container">
                     <div class="pitch-rows">
