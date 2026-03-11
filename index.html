@@ -667,7 +667,7 @@ body {
         /* --- Command Cards Grid (replaces stats bar) --- */
         .hero-cards-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 12px;
             margin-bottom: 20px;
             text-align: left;
@@ -714,6 +714,8 @@ body {
         .hcc-icon--status  { background: rgba(59,130,246,0.10); color: #3B82F6; }
         .hcc-icon--health  { background: rgba(16,185,129,0.10); color: #10B981; }
         .hcc-icon--deadline { background: rgba(139,92,246,0.10); color: #8B5CF6; }
+        .hcc-icon--market  { background: rgba(245,158,11,0.10); color: #F59E0B; }
+        .hero-cmd-card--market .hcc-header { display: flex; align-items: center; gap: 6px; }
 
         .hcc-label {
             font-size: 10px;
@@ -1321,6 +1323,10 @@ body {
         }
 
         .gac-wizard-cta .btn:hover { background: #6D28D9; }
+
+        @media (max-width: 1024px) {
+            .hero-cards-grid { grid-template-columns: repeat(2, 1fr); }
+        }
 
         @media (max-width: 768px) {
             .hero-cards-grid { grid-template-columns: 1fr; }
@@ -2136,6 +2142,10 @@ body {
             from { transform: translateX(0); }
             to { transform: translateX(-50%); }
         }
+        @keyframes pricePulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
     </style>
 </head>
 <body>
@@ -2161,7 +2171,7 @@ body {
                         <a href="fpl-my-team-analysis.html#transfers" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Transfers</a>
                         <a href="fpl-my-team-analysis.html#news" class="dropdown-item"><i data-lucide="newspaper" class="dd-icon"></i> News</a>
                         <a href="fpl-my-team-analysis.html#planner" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> GW Planner</a>
-                        <a href="fpl-my-team-analysis.html#squadplanner" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> GW Squad Planner</a>
+                        <a href="fpl-my-team-analysis.html#draft" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> GW Draft</a>
                         <a href="fpl-my-team-analysis.html#transfer" class="dropdown-item"><i data-lucide="repeat" class="dd-icon"></i> Transfer Wizard</a>
                         <a href="fpl-my-team-analysis.html#lineup" class="dropdown-item"><i data-lucide="wand-2" class="dd-icon"></i> Lineup Wizard</a>
                     </div>
@@ -2999,6 +3009,41 @@ body {
                 <div class="hcc-header"><div class="hcc-icon hcc-icon--deadline"><i data-lucide="clock" class="icon"></i></div><span class="hcc-label">Deadline</span></div>
                 ${deadlineHtml}
                 <div class="hcc-fdr-outlook ${fdrClass}">Next 3 GWs: ${fdrLabel} (FDR ${avgFDR.toFixed(1)})</div>
+            </div>`;
+
+            // CARD 4: MARKET WATCH (price alerts — stock market style)
+            const dropCount = priceDropRisk.length;
+            const riseCount = priceRiseTargets.length;
+            let marketHtml = '';
+            // Ticker-style rows for drops
+            priceDropRisk.slice(0, 3).forEach(p => {
+                const netK = Math.round((p.transfersOut - p.transfersIn) / 1000);
+                marketHtml += `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;">
+                    <span style="color:#EF4444;font-weight:700;font-size:10px;">▼</span>
+                    <span style="font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</span>
+                    <span style="font-family:var(--font-mono);font-size:10px;color:#EF4444;">£${p.price.toFixed(1)}m</span>
+                    <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);">${netK}k out</span>
+                </div>`;
+            });
+            // Ticker-style rows for rises
+            priceRiseTargets.slice(0, 2).forEach(p => {
+                const netK = Math.round((p.transfersIn - p.transfersOut) / 1000);
+                marketHtml += `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;">
+                    <span style="color:#10B981;font-weight:700;font-size:10px;">▲</span>
+                    <span style="font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</span>
+                    <span style="font-family:var(--font-mono);font-size:10px;color:#10B981;">£${p.price.toFixed(1)}m</span>
+                    <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);">+${netK}k in</span>
+                </div>`;
+            });
+            if (dropCount === 0 && riseCount === 0) {
+                marketHtml = `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">All prices stable</div>`;
+            }
+            const marketSignal = dropCount > 0 ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:#10B981;background:rgba(16,185,129,0.1);padding:1px 6px;border-radius:3px;"><span style="width:5px;height:5px;border-radius:50%;background:#10B981;animation:pricePulse 1.5s ease-in-out infinite;"></span>LIVE</span>` : '';
+            cardsHtml += `<div class="hero-cmd-card hero-cmd-card--market">
+                <div class="hcc-header"><div class="hcc-icon hcc-icon--market"><i data-lucide="trending-up" class="icon"></i></div><span class="hcc-label">Market Watch</span>${marketSignal}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">${dropCount} at risk · ${riseCount} rising</div>
+                ${marketHtml}
+                <a href="fpl-my-team-analysis.html#squad" style="display:block;text-align:center;font-size:11px;color:var(--color-primary);text-decoration:none;margin-top:6px;font-weight:600;">View Price Watch →</a>
             </div>`;
 
             document.getElementById('heroCardsGrid').innerHTML = cardsHtml;
