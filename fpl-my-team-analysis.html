@@ -1406,8 +1406,17 @@
         .news-filter-btn:hover { color: var(--text-primary); background: var(--surface-1); }
         .news-filter-btn.active { color: var(--color-primary); background: var(--surface-1); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
         .news-filter-btn .filter-icon { font-size: 13px; line-height: 1; }
+        .news-filter-btn .btn-icon { display: inline-flex; align-items: center; }
+        .news-filter-btn .btn-icon svg { width: 14px; height: 14px; stroke-width: 2; }
+        .news-filter-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+        .news-filter-top-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .news-sub-bar { margin-bottom: 0; }
+        .news-team-select { padding: 7px 30px 7px 12px; font-size: 12px; font-weight: 500; color: var(--text-primary); background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-sm); cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 12px; min-width: 140px; }
+        .news-team-select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
+        .news-count { opacity: 0.6; font-weight: 400; }
         .news-section { margin-bottom: 32px; }
         .news-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .news-section-title svg { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
         .news-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-default); }
         .news-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 
@@ -1491,6 +1500,8 @@
             .news-card-hero .news-card-headline { font-size: 18px; }
             .news-filter-bar { gap: 4px; padding: 3px; }
             .news-filter-btn { padding: 5px 10px; font-size: 11px; }
+            .news-filter-top-row { gap: 6px; }
+            .news-team-select { min-width: 120px; font-size: 11px; }
             .news-card-graphic { height: 100px; }
             .news-card-headline { font-size: 14px; }
             .news-card-footer { gap: 4px; }
@@ -3435,16 +3446,29 @@
                 });
             });
 
-            const allItems = [...fplItems, ...externalItems];
-            const squadItems = allItems.filter(i => i.isSquad);
-            const leagueItems = [...fplItems.filter(i => !i.isSquad), ...externalItems.filter(i => !i.isSquad)];
+            // Tag external items with team IDs for team filtering
+            const teamNameMap = {};
+            Object.values(teams).forEach(t => {
+                teamNameMap[t.name.toLowerCase()] = t.id;
+                teamNameMap[t.short_name.toLowerCase()] = t.id;
+            });
+            externalItems.forEach(item => {
+                const text = ((item.headline || '') + ' ' + (item.detail || '')).toLowerCase();
+                item.matchedTeamIds = [];
+                for (const [name, tid] of Object.entries(teamNameMap)) {
+                    if (text.includes(name) && !item.matchedTeamIds.includes(tid)) {
+                        item.matchedTeamIds.push(tid);
+                    }
+                }
+            });
 
             const filterCounts = {
-                all: allItems.length, squad: squadItems.length,
+                external: externalItems.length,
+                squad: fplItems.filter(i => i.isSquad).length,
+                all: fplItems.length,
                 injury: fplItems.filter(i => i.category === 'injury').length,
                 price: fplItems.filter(i => i.category === 'price').length,
-                transfer: fplItems.filter(i => i.category === 'transfer').length,
-                external: externalItems.length
+                transfer: fplItems.filter(i => i.category === 'transfer').length
             };
 
             // Team color map (PL team_id → [primary, secondary])
@@ -3462,7 +3486,9 @@
                 injury: '<svg class="cat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M8 6h8M5 10h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M12 14v4M10 16h4"/></svg>',
                 price: '<svg class="cat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
                 transfer: '<svg class="cat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
-                external: '<svg class="cat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M18 10h-8"/></svg>'
+                external: '<svg class="cat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M18 10h-8"/></svg>',
+                squad: '<svg class="cat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
+                all: '<svg class="cat-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>'
             };
 
             function getNextFixture(player) {
@@ -3578,48 +3604,132 @@
                 return `<div class="news-section"><div class="news-section-title">${title}</div><div class="news-grid">${cards}</div></div>`;
             }
 
-            function renderFiltered(filter) {
-                let html = '';
-                if (filter === 'all' || filter === 'squad') {
-                    if (squadItems.length) html += renderSection('\ud83c\udfa5 Your Squad', squadItems);
-                }
-                if (filter === 'all') {
-                    html += renderSection('\ud83c\udf10 Around the League', leagueItems);
-                } else if (filter === 'squad') {
-                    // already shown
-                } else if (filter === 'external') {
-                    html += renderSection('\ud83d\udcf0 External News', externalItems);
+            function renderFiltered(primaryFilter, subFilter, teamId) {
+                let items = [];
+                let sectionTitle = '';
+
+                if (primaryFilter === 'external') {
+                    items = [...externalItems];
+                    sectionTitle = CAT_ICONS.external + ' External News';
                 } else {
-                    const catItems = fplItems.filter(i => i.category === filter);
-                    const catTitlesSafe = { injury: '\ud83c\udfe5 Injuries & Availability', price: '\ud83d\udcb0 Price Changes', transfer: '\ud83d\udce6 Transfer Activity' };
-                    html += renderSection(catTitlesSafe[filter] || filter, catItems);
+                    const scope = primaryFilter === 'squad'
+                        ? fplItems.filter(i => i.isSquad)
+                        : fplItems;
+                    if (subFilter && subFilter !== 'all') {
+                        items = scope.filter(i => i.category === subFilter);
+                        const subTitles = {
+                            injury: CAT_ICONS.injury + ' Injuries & Availability',
+                            price: CAT_ICONS.price + ' Price Changes',
+                            transfer: CAT_ICONS.transfer + ' Transfer Activity'
+                        };
+                        sectionTitle = subTitles[subFilter] || subFilter;
+                    } else {
+                        items = [...scope];
+                        sectionTitle = primaryFilter === 'squad'
+                            ? CAT_ICONS.squad + ' Your Squad'
+                            : CAT_ICONS.all + ' All Players';
+                    }
                 }
-                if (!html) html = '<div class="news-empty">No news items found</div>';
-                return html;
+
+                // Apply team filter
+                if (teamId && teamId !== 'all') {
+                    const tid = parseInt(teamId);
+                    items = items.filter(i => {
+                        if (i.player && i.player.teamId === tid) return true;
+                        if (i.matchedTeamIds && i.matchedTeamIds.includes(tid)) return true;
+                        return false;
+                    });
+                }
+
+                return renderSection(sectionTitle, items);
             }
 
-            const filtersHTML = `<div class="news-filter-bar" id="newsFilterBar">
-                <button class="news-filter-btn active" data-filter="all"><span class="filter-icon">\ud83d\udcf0</span> All (${filterCounts.all})</button>
-                <button class="news-filter-btn" data-filter="squad"><span class="filter-icon">\u26a1</span> Squad (${filterCounts.squad})</button>
-                <button class="news-filter-btn" data-filter="injury"><span class="filter-icon">\ud83d\udea8</span> Injuries (${filterCounts.injury})</button>
-                <button class="news-filter-btn" data-filter="price"><span class="filter-icon">\ud83d\udcb0</span> Prices (${filterCounts.price})</button>
-                <button class="news-filter-btn" data-filter="transfer"><span class="filter-icon">\ud83d\udd04</span> Transfers (${filterCounts.transfer})</button>
-                <button class="news-filter-btn" data-filter="external"><span class="filter-icon">\ud83c\udf10</span> External (${filterCounts.external})</button>
+            // Build team select options
+            const teamOptions = Object.values(teams)
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(t => `<option value="${t.id}">${escHTML(t.name)}</option>`)
+                .join('');
+
+            const filtersHTML = `<div class="news-filter-group" id="newsFilterGroup">
+                <div class="news-filter-top-row">
+                    <div class="news-filter-bar" id="newsFilterBar">
+                        <button class="news-filter-btn active" data-filter="external"><span class="btn-icon">${CAT_ICONS.external}</span> External <span class="news-count">(${filterCounts.external})</span></button>
+                        <button class="news-filter-btn" data-filter="squad"><span class="btn-icon">${CAT_ICONS.squad}</span> Squad <span class="news-count">(${filterCounts.squad})</span></button>
+                        <button class="news-filter-btn" data-filter="all"><span class="btn-icon">${CAT_ICONS.all}</span> All <span class="news-count">(${filterCounts.all})</span></button>
+                    </div>
+                    <select class="news-team-select" id="newsTeamSelect">
+                        <option value="all">All Teams</option>
+                        ${teamOptions}
+                    </select>
+                </div>
+                <div class="news-filter-bar news-sub-bar" id="newsSubBar" style="display:none">
+                    <button class="news-filter-btn active" data-sub="all"><span class="btn-icon">${CAT_ICONS.all}</span> All</button>
+                    <button class="news-filter-btn" data-sub="injury"><span class="btn-icon">${CAT_ICONS.injury}</span> Injuries <span class="news-count">(${filterCounts.injury})</span></button>
+                    <button class="news-filter-btn" data-sub="price"><span class="btn-icon">${CAT_ICONS.price}</span> Prices <span class="news-count">(${filterCounts.price})</span></button>
+                    <button class="news-filter-btn" data-sub="transfer"><span class="btn-icon">${CAT_ICONS.transfer}</span> Transfers <span class="news-count">(${filterCounts.transfer})</span></button>
+                </div>
             </div>`;
 
             container.innerHTML = `<div class="news-container">
                 ${filtersHTML}
-                <div id="newsContent">${renderFiltered('all')}</div>
+                <div id="newsContent">${renderFiltered('external', null, 'all')}</div>
             </div>`;
 
-            // Filter click handlers
-            container.querySelectorAll('.news-filter-btn').forEach(btn => {
+            // Filter state
+            let currentPrimary = 'external';
+            let currentSub = 'all';
+
+            function updateSubCounts(primary) {
+                const scope = primary === 'squad' ? fplItems.filter(i => i.isSquad) : fplItems;
+                const subBar = document.getElementById('newsSubBar');
+                if (!subBar) return;
+                subBar.querySelectorAll('[data-sub]').forEach(btn => {
+                    const sub = btn.dataset.sub;
+                    if (sub === 'all') return;
+                    const count = scope.filter(i => i.category === sub).length;
+                    const countEl = btn.querySelector('.news-count');
+                    if (countEl) countEl.textContent = `(${count})`;
+                });
+            }
+
+            function applyFilters() {
+                const teamId = document.getElementById('newsTeamSelect').value;
+                document.getElementById('newsContent').innerHTML = renderFiltered(currentPrimary, currentSub, teamId);
+            }
+
+            // Primary filter click handlers
+            container.querySelectorAll('#newsFilterBar .news-filter-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    container.querySelectorAll('.news-filter-btn').forEach(b => b.classList.remove('active'));
+                    container.querySelectorAll('#newsFilterBar .news-filter-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    document.getElementById('newsContent').innerHTML = renderFiltered(btn.dataset.filter);
+                    currentPrimary = btn.dataset.filter;
+                    const subBar = document.getElementById('newsSubBar');
+                    if (currentPrimary === 'external') {
+                        subBar.style.display = 'none';
+                        currentSub = 'all';
+                    } else {
+                        subBar.style.display = '';
+                        updateSubCounts(currentPrimary);
+                        subBar.querySelectorAll('.news-filter-btn').forEach(b => b.classList.remove('active'));
+                        subBar.querySelector('[data-sub="all"]').classList.add('active');
+                        currentSub = 'all';
+                    }
+                    applyFilters();
                 });
             });
+
+            // Sub filter click handlers
+            container.querySelectorAll('#newsSubBar .news-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    container.querySelectorAll('#newsSubBar .news-filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentSub = btn.dataset.sub;
+                    applyFilters();
+                });
+            });
+
+            // Team select handler
+            document.getElementById('newsTeamSelect').addEventListener('change', applyFilters);
 
             newsRendered = true;
         }
