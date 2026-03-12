@@ -982,7 +982,7 @@
                     <label>League ID</label>
                     <div style="display:flex;gap:6px;">
                         <input type="text" id="leagueIdInput" placeholder="e.g. 12345" style="flex:1;">
-                        <button class="secondary-btn" id="clearLeagueBtn" onclick="clearCachedLeagueId()" style="display:none;padding:8px 12px;font-size:11px;background:var(--surface-2);border:1px solid var(--border-default);border-radius:8px;cursor:pointer;color:var(--text-secondary);white-space:nowrap;" title="Clear saved league ID">✕</button>
+                        <button class="secondary-btn" id="clearLeagueBtn" onclick="clearCachedLeagueId()" style="display:none;padding:8px 12px;font-size:11px;background:var(--surface-2);border:1px solid var(--border-default);border-radius:8px;cursor:pointer;color:var(--text-secondary);white-space:nowrap;" title="Clear saved league ID" aria-label="Clear saved league ID">✕</button>
                     </div>
                     <div class="input-help">Find it in your league URL: /leagues/12345/standings</div>
                 </div>
@@ -1080,7 +1080,7 @@
                 </div>
                 <div style="overflow-x:auto;">
                     <table class="captain-table">
-                        <thead><tr><th>Manager</th><th>Captain</th><th>Vice Captain</th><th style="text-align:center;">Form</th><th style="text-align:center;">Total Pts</th></tr></thead>
+                        <thead><tr><th>Manager</th><th>Captain</th><th>Vice Captain</th><th style="text-align:center;" title="Average points per match over the last 4 gameweeks">Form</th><th style="text-align:center;" title="Total FPL points scored this season">Total Pts</th></tr></thead>
                         <tbody id="captainTableBody"></tbody>
                     </table>
                 </div>
@@ -1088,7 +1088,7 @@
                 <div class="section-header" style="margin-top:var(--space-6);">
                     <h2><i data-lucide="bar-chart-3" style="width:20px;height:20px;display:inline;"></i> Effective Ownership</h2>
                 </div>
-                <p class="section-desc">Captain counts as 2× ownership, TC as 3×. Green border = your EO advantage. Red = rival advantage.</p>
+                <p class="section-desc">Captain counts as 2× ownership, <abbr title="Triple Captain — chip that makes your captain earn 3× points for one gameweek">TC</abbr> as 3×. Green border = your <abbr title="Effective Ownership — weighted ownership accounting for captain (2×) and Triple Captain (3×) multipliers">EO</abbr> advantage. Red = rival advantage.</p>
                 <div class="eo-grid" id="eoGrid"></div>
             </div>
 
@@ -1115,7 +1115,7 @@
                 </div>
                 <div style="overflow-x:auto;">
                     <table class="league-mini-table">
-                        <thead><tr><th>#</th><th>Manager</th><th style="text-align:center;">GW</th><th style="text-align:center;">Total</th><th style="text-align:center;">Transfers</th><th style="text-align:center;">Hits</th><th style="text-align:center;">Value</th><th style="text-align:center;">Last 6</th><th>Chips</th></tr></thead>
+                        <thead><tr><th>#</th><th>Manager</th><th style="text-align:center;" title="Points scored in the most recent gameweek">GW</th><th style="text-align:center;" title="Total FPL points scored this season">Total</th><th style="text-align:center;">Transfers</th><th style="text-align:center;" title="Transfer penalty points — each extra transfer beyond free transfers costs -4 pts">Hits</th><th style="text-align:center;">Value</th><th style="text-align:center;" title="Points trend over the last 6 gameweeks (sparkline)">Last 6</th><th title="Special one-time abilities used this season (Wildcard, Free Hit, Bench Boost, Triple Captain)">Chips</th></tr></thead>
                         <tbody id="leagueTableBody"></tbody>
                     </table>
                 </div>
@@ -1138,7 +1138,7 @@
                 <div class="section-header">
                     <h2><i data-lucide="calendar" style="width:20px;height:20px;display:inline;"></i> Fixture Difficulty Ranking</h2>
                 </div>
-                <p class="section-desc">Average FDR of each manager's starting XI for the next 3 gameweeks. Lower = easier run.</p>
+                <p class="section-desc">Average <abbr title="Fixture Difficulty Rating — 1 (easiest) to 5 (hardest) based on opponent strength">FDR</abbr> of each manager's starting XI for the next 3 gameweeks. Lower = easier run.</p>
                 <div class="strength-grid" id="strengthGrid"></div>
             </div>
 
@@ -1561,8 +1561,8 @@
                         ${starterInfo}
                     </div>
                     <div class="player-stats">
-                        <div class="player-stat">Form: <span class="player-stat-value">${p.player.form}</span></div>
-                        <div class="player-stat">Pts: <span class="player-stat-value">${p.player.pts}</span></div>
+                        <div class="player-stat"><abbr title="Average points per match over the last 4 gameweeks">Form</abbr>: <span class="player-stat-value">${p.player.form}</span></div>
+                        <div class="player-stat"><abbr title="Total FPL points scored this season">Pts</abbr>: <span class="player-stat-value">${p.player.pts}</span></div>
                         <div class="player-stat">Global: <span class="player-stat-value">${p.player.own}%</span></div>
                     </div>
                 </div>
@@ -1922,12 +1922,12 @@
                     <div class="mc-desc">${gapToLeader > 0 ? leaderName + ' leads with ' + leaderTotal + ' pts' : 'You have ' + myTotal + ' pts'}</div>
                 </div>
                 <div class="momentum-card">
-                    <div class="mc-title">Last 3 GW Trend</div>
+                    <div class="mc-title">Last 3 <abbr title="Gameweek — a weekly period in the FPL season">GW</abbr> Trend</div>
                     <div class="mc-value" style="color:${delta3 >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">${delta3 >= 0 ? '+' : ''}${delta3} pts</div>
                     <div class="mc-desc">${delta3 >= 0 ? 'Gaining on' : 'Losing to'} ${leaderId == myTeamId ? 'the pack' : leaderName} (your avg: ${myAvg3}/gw)</div>
                 </div>
                 <div class="momentum-card">
-                    <div class="mc-title">Hottest Manager (L3)</div>
+                    <div class="mc-title">Hottest Manager (<abbr title="Last 3 gameweeks">L3</abbr>)</div>
                     <div class="mc-value" style="color:var(--color-warning);">${best3.name.split(' ')[0]}</div>
                     <div class="mc-desc">${best3.avg} pts/gw over last 3 GWs${best3.id == myTeamId ? ' — That\'s you! 🔥' : ''}</div>
                 </div>
