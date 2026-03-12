@@ -664,6 +664,22 @@ body {
             color: var(--color-primary-text);
         }
 
+        .hero-deadline-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 14px;
+            background: var(--color-primary-muted);
+            border: 1px solid rgba(16,185,129,0.20);
+            border-radius: var(--radius-full);
+            font-family: var(--font-display);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--color-primary-text);
+        }
+        .hero-deadline-badge .icon { width: 14px; height: 14px; }
+        .hero-deadline-badge.hidden { display: none; }
+
         /* --- Command Cards Grid (replaces stats bar) --- */
         .hero-cards-grid {
             display: grid;
@@ -886,10 +902,20 @@ body {
         /* --- Dashboard Grid --- */
         .hero-dashboard {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 24px;
             margin-bottom: 20px;
             text-align: left;
+            align-items: start;
+        }
+
+        .dashboard-main { min-width: 0; }
+
+        .dashboard-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-width: 0;
         }
 
         /* --- Squad Panel --- */
@@ -942,6 +968,27 @@ body {
             height: 1px;
             background: var(--border-default);
         }
+
+        .hsp-position-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0 2px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .hsp-position-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-default);
+        }
+        .hsp-position-header.gk  { color: #D97706; }
+        .hsp-position-header.def { color: #059669; }
+        .hsp-position-header.mid { color: #2563EB; }
+        .hsp-position-header.fwd { color: #DC2626; }
 
         .hsp-pos {
             display: inline-flex;
@@ -1149,7 +1196,6 @@ body {
             border: 1px solid var(--border-default);
             border-radius: var(--radius-lg);
             padding: 16px 18px 14px;
-            margin-bottom: 20px;
         }
 
         .gw-action-centre.hidden { display: none; }
@@ -1298,7 +1344,6 @@ body {
             background: linear-gradient(135deg, rgba(76,29,149,0.08), rgba(55,48,163,0.08));
             border: 1px solid rgba(139,92,246,0.2);
             border-radius: var(--radius-lg);
-            margin-bottom: 20px;
         }
 
         .gac-wizard-cta.hidden { display: none; }
@@ -1326,11 +1371,11 @@ body {
 
         @media (max-width: 1024px) {
             .hero-cards-grid { grid-template-columns: repeat(2, 1fr); }
+            .hero-dashboard { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 768px) {
             .hero-cards-grid { grid-template-columns: 1fr; }
-            .hero-dashboard { grid-template-columns: 1fr; }
             .gac-item { flex-wrap: wrap; }
             .gac-actions { width: 100%; justify-content: flex-end; }
         }
@@ -1605,26 +1650,31 @@ body {
         }
         .headlines-view-all:hover { background: rgba(16,185,129,0.15); border-color: var(--color-primary); }
         .headlines-view-all .icon { width: 12px; height: 12px; }
+        .headlines-widget {
+            margin-top: 24px;
+        }
         .headlines-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
         }
         .hl-item {
             display: flex;
-            gap: 12px;
-            align-items: center;
+            flex-direction: column;
+            gap: 0;
             text-decoration: none;
             color: inherit;
-            padding: 8px;
-            border-radius: var(--radius-md);
+            padding: 0;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            overflow: hidden;
             transition: background 150ms;
         }
         .hl-item:hover { background: var(--surface-2); }
         .hl-thumb {
-            width: 80px;
-            height: 56px;
-            border-radius: var(--radius-sm);
+            width: 100%;
+            height: 120px;
+            border-radius: 0;
             overflow: hidden;
             flex-shrink: 0;
             background: var(--surface-2);
@@ -1635,7 +1685,7 @@ body {
             display: flex; align-items: center; justify-content: center;
         }
         .hl-thumb-fallback svg { width: 20px; height: 20px; opacity: 0.3; }
-        .hl-body { flex: 1; min-width: 0; }
+        .hl-body { flex: 1; min-width: 0; padding: 12px; }
         .hl-headline {
             font-size: 13px;
             font-weight: 600;
@@ -1665,8 +1715,9 @@ body {
         .hl-time { font-size: 10px; color: var(--text-muted); }
         .hl-crests { display: flex; gap: 3px; margin-left: auto; }
         .hl-crests img { width: 16px; height: 16px; }
-        @media (max-width: 600px) {
-            .hl-thumb { width: 64px; height: 48px; }
+        @media (max-width: 768px) {
+            .headlines-list { grid-template-columns: 1fr; }
+            .hl-thumb { height: 100px; }
         }
 
         /* ===== TICKER SUB-NAV BAR ===== */
@@ -2362,17 +2413,25 @@ body {
                 <div class="hero-greeting">
                     <div class="hero-greeting-text">Welcome back, <span id="heroManagerName">Manager</span></div>
                     <div class="hero-greeting-gw" id="heroGwBadge">GW1</div>
+                    <div class="hero-deadline-badge hidden" id="heroDeadlineBadge">
+                        <i data-lucide="clock" class="icon"></i>
+                        <span id="heroDeadlineText">Loading...</span>
+                    </div>
                 </div>
                 <div class="hero-cards-grid" id="heroCardsGrid"></div>
                 <div class="hero-dashboard" id="heroDashboard">
-                    <div class="hero-squad-panel" id="heroSquadPanel"></div>
-                    <div class="hero-intel-panel" id="heroIntelPanel"></div>
+                    <div class="dashboard-main">
+                        <div class="hero-squad-panel" id="heroSquadPanel"></div>
+                    </div>
+                    <div class="dashboard-sidebar">
+                        <div class="gw-action-centre hidden" id="gwActionCentre"></div>
+                        <div class="gac-wizard-cta hidden" id="gwWizardCta"></div>
+                        <div class="hero-intel-panel" id="heroIntelPanel"></div>
+                    </div>
                 </div>
-                <div class="gw-action-centre hidden" id="gwActionCentre"></div>
-                <div class="gac-wizard-cta hidden" id="gwWizardCta"></div>
                 <section class="headlines-widget hidden" id="headlinesWidget">
                     <div class="headlines-header">
-                        <div class="headlines-title"><i data-lucide="newspaper" class="icon"></i> Latest Headlines</div>
+                        <div class="headlines-title"><i data-lucide="newspaper" class="icon"></i> FPL News Hub</div>
                         <a href="fpl-news.html" class="headlines-view-all">View All News <i data-lucide="arrow-right" class="icon"></i></a>
                     </div>
                     <div class="headlines-list" id="headlinesList"></div>
@@ -3100,11 +3159,41 @@ body {
                 </div>`;
             }
 
-            let squadHtml = '<div class="hsp-title">Starting XI</div>';
-            starters.forEach(p => { squadHtml += playerRow(p, false); });
+            // Group starters by position
+            const posGroups = { 1: [], 2: [], 3: [], 4: [] };
+            const posLabels = { 1: 'Goalkeepers', 2: 'Defenders', 3: 'Midfielders', 4: 'Forwards' };
+            const posClasses = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
+            starters.forEach(p => { if (posGroups[p.position]) posGroups[p.position].push(p); });
+
+            let squadHtml = '<div class="hsp-title">My Squad</div>';
+            [1, 2, 3, 4].forEach(pos => {
+                const group = posGroups[pos];
+                if (!group.length) return;
+                squadHtml += `<div class="hsp-position-header ${posClasses[pos]}">${posLabels[pos]}</div>`;
+                group.forEach(p => { squadHtml += playerRow(p, false); });
+            });
             squadHtml += '<div class="hsp-bench-sep">Bench</div>';
             bench.forEach(p => { squadHtml += playerRow(p, true); });
             document.getElementById('heroSquadPanel').innerHTML = squadHtml;
+
+            // --- Deadline Badge ---
+            const dlBadge = document.getElementById('heroDeadlineBadge');
+            const dlText = document.getElementById('heroDeadlineText');
+            if (dlBadge && dlText && deadlineTime) {
+                function updateTopDeadline() {
+                    const diff = new Date(deadlineTime).getTime() - Date.now();
+                    if (diff <= 0) { dlText.textContent = 'LOCKED'; return; }
+                    const d = Math.floor(diff / 86400000);
+                    const h = Math.floor((diff % 86400000) / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    dlText.textContent = d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`;
+                }
+                updateTopDeadline();
+                setInterval(updateTopDeadline, 60000);
+                dlBadge.classList.remove('hidden');
+            } else if (dlBadge) {
+                dlBadge.classList.add('hidden');
+            }
 
             // --- Intel Panel (Fixtures only — alerts moved to Action Centre) ---
             let intelHtml = '';
