@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ - FPL Tools</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --surface-bg: #FFFFFF;
+            --surface-0: #F9FAFB;
+            --surface-1: #FFFFFF;
+            --surface-2: #F3F4F6;
+            --surface-3: #E5E7EB;
+            --surface-4: #D1D5DB;
+            --color-primary: #10B981;
+            --color-primary-hover: #059669;
+            --color-primary-muted: rgba(16, 185, 129, 0.10);
+            --color-primary-glow: rgba(16, 185, 129, 0.20);
+            --color-primary-text: #065F46;
+            --text-primary: #111827;
+            --text-secondary: #4B5563;
+            --text-muted: #9CA3AF;
+            --border-subtle: rgba(0, 0, 0, 0.04);
+            --border-default: rgba(0, 0, 0, 0.08);
+            --border-emphasis: rgba(0, 0, 0, 0.15);
+            --color-success: #10B981;
+            --color-error: #EF4444;
+            --color-warning: #F59E0B;
+            --color-info: #3B82F6;
+            --font-display: 'Space Grotesk', system-ui, sans-serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px;
+            --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+            --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem;
+        }
+
+        body { font-family: var(--font-body); background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 30%, #FFFFFF 70%, #EFF6FF 100%); background-attachment: fixed; color: var(--text-primary); line-height: 1.5; font-size: 14px; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+        /* ===== NAV ===== */
+        .top-nav { background: var(--surface-0); border-bottom: 1px solid var(--border-default); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 32px; }
+        .nav-logo { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-primary); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+        .nav-logo span { color: var(--color-success); }
+        .nav-links { display: flex; gap: 4px; }
+        .nav-link { display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 500; border-radius: 8px; transition: all 150ms; }
+        .nav-link:hover { color: var(--text-primary); background: var(--surface-1); }
+        .nav-link.active { color: var(--color-primary); background: var(--color-primary-muted); }
+        .nav-link .icon { width: 16px; height: 16px; flex-shrink: 0; }
+        .nav-link--accent { background: rgba(167, 139, 250, 0.08); border: 1px solid rgba(167, 139, 250, 0.25); }
+        .nav-link--accent:not(.active) { color: #A78BFA; }
+        .mobile-nav-item--accent { color: #A78BFA !important; }
+        @media (max-width: 768px) { .nav-links { display: none; } }
+        .nav-dropdown { position: relative; display: flex; }
+        .nav-dropdown-menu { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%) translateY(4px); min-width: 200px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06); padding: 6px; opacity: 0; pointer-events: none; transition: opacity 150ms ease-out, transform 150ms ease-out; z-index: 200; }
+        .nav-dropdown:hover .nav-dropdown-menu, .nav-dropdown-menu:hover { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+        .nav-dropdown::after { content: ''; position: absolute; bottom: -8px; left: 0; right: 0; height: 8px; }
+        .dropdown-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--text-secondary); text-decoration: none; font-size: 12px; font-weight: 500; border-radius: 7px; transition: all 120ms; white-space: nowrap; }
+        .dropdown-item:hover { color: var(--color-primary); background: rgba(16, 185, 129, 0.08); }
+        .dropdown-item .dd-icon { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-muted); }
+        .dropdown-item:hover .dd-icon { color: var(--color-primary); }
+        .hidden { display: none !important; }
+
+        /* ===== FAQ HERO ===== */
+        .faq-hero {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--space-12) 24px var(--space-8);
+            text-align: center;
+        }
+        .faq-hero-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-xl);
+            background: var(--color-primary-muted);
+            color: var(--color-primary);
+            margin-bottom: var(--space-4);
+        }
+        .faq-hero-icon .icon { width: 28px; height: 28px; }
+        .faq-hero h1 {
+            font-family: var(--font-display);
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+        .faq-hero p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ===== FAQ CONTENT ===== */
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px var(--space-12);
+        }
+
+        .faq-category {
+            margin-bottom: var(--space-8);
+        }
+        .faq-category:last-child {
+            margin-bottom: 0;
+        }
+
+        .faq-category-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: var(--space-4);
+        }
+        .faq-category-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        .faq-list {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .faq-item {
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .faq-item:last-child {
+            border-bottom: none;
+        }
+
+        .faq-question {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            padding: var(--space-4) var(--space-5);
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: background 150ms ease;
+        }
+        .faq-question:hover {
+            background: var(--surface-2);
+        }
+
+        .faq-question .chevron {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            color: var(--text-muted);
+            transition: transform 0.3s ease, color 0.3s ease;
+        }
+
+        .faq-item.active .faq-question {
+            color: var(--color-primary-text);
+        }
+        .faq-item.active .faq-question .chevron {
+            transform: rotate(180deg);
+            color: var(--color-primary);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.3s ease, opacity 0.25s ease;
+        }
+        .faq-answer-inner {
+            padding: 0 var(--space-5) var(--space-5);
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+        .faq-answer-inner code {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            background: var(--surface-2);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+        }
+
+        /* ===== MOBILE NAV ===== */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--surface-0);
+            border-top: 1px solid var(--border-default);
+            padding: 8px 0;
+            z-index: 100;
+        }
+        @media (max-width: 768px) {
+            .mobile-nav { display: flex; justify-content: space-around; }
+        }
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 4px 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 9px;
+        }
+        .mobile-nav-item.active { color: var(--color-primary); }
+        .mobile-nav-item .icon { width: 20px; height: 20px; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .faq-hero { padding: var(--space-8) 16px var(--space-6); }
+            .faq-hero h1 { font-size: 24px; }
+            .faq-hero p { font-size: 13px; }
+            .faq-container { padding: 0 16px var(--space-8); }
+            .faq-question { padding: var(--space-3) var(--space-4); font-size: 13px; }
+            .faq-answer-inner { padding: 0 var(--space-4) var(--space-4); font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo"><i data-lucide="zap" style="color:var(--color-primary);width:20px;height:20px;"></i> FPL<span>Tools</span></a>
+            <div class="nav-links">
+                <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent"><i data-lucide="wand-2" class="icon"></i> FPL Wizard</a>
+                <a href="fpl-news.html" class="nav-link"><i data-lucide="newspaper" class="icon"></i> News</a>
+                <div class="nav-dropdown">
+                    <a href="fpl-my-team-analysis.html" class="nav-link"><i data-lucide="users" class="icon"></i> My Team</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-my-team-analysis.html#squad" class="dropdown-item"><i data-lucide="users" class="dd-icon"></i> Squad Analysis</a>
+                        <a href="fpl-my-team-analysis.html#transfers" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Transfers</a>
+                        <a href="fpl-my-team-analysis.html#news" class="dropdown-item"><i data-lucide="newspaper" class="dd-icon"></i> News</a>
+                        <a href="fpl-my-team-analysis.html#draft" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> GW Draft</a>
+                        <a href="fpl-my-team-analysis.html#transfer" class="dropdown-item"><i data-lucide="repeat" class="dd-icon"></i> Transfer Wizard</a>
+                        <a href="fpl-my-team-analysis.html#lineup" class="dropdown-item"><i data-lucide="wand-2" class="dd-icon"></i> Lineup Wizard</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-players-analysis.html" class="nav-link"><i data-lucide="user-search" class="icon"></i> Players</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-players-analysis.html#recommendations" class="dropdown-item"><i data-lucide="star" class="dd-icon"></i> Recommendations</a>
+                        <a href="fpl-players-analysis.html#rising" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Rising Form</a>
+                        <a href="fpl-players-analysis.html#charts" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Charts</a>
+                        <a href="fpl-players-analysis.html#routes" class="dropdown-item"><i data-lucide="git-branch" class="dd-icon"></i> Routes to Points</a>
+                        <a href="fpl-players-analysis.html#all" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> All Players</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-teams-analysis.html" class="nav-link"><i data-lucide="bar-chart-3" class="icon"></i> Teams</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-teams-analysis.html#rankings" class="dropdown-item"><i data-lucide="trophy" class="dd-icon"></i> Team Rankings</a>
+                        <a href="fpl-teams-analysis.html#swings" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Fixture Swings</a>
+                        <a href="fpl-teams-analysis.html#calendar" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> Full Calendar</a>
+                        <a href="fpl-teams-analysis.html#stats" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Stats Table</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown">
+                    <a href="fpl-league-rivals.html" class="nav-link"><i data-lucide="trophy" class="icon"></i> Rivals</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="fpl-league-rivals.html#insights" class="dropdown-item"><i data-lucide="lightbulb" class="dd-icon"></i> Insights</a>
+                        <a href="fpl-league-rivals.html#captain" class="dropdown-item"><i data-lucide="crown" class="dd-icon"></i> Captain Race</a>
+                        <a href="fpl-league-rivals.html#race" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> League Race</a>
+                        <a href="fpl-league-rivals.html#strength" class="dropdown-item"><i data-lucide="shield" class="dd-icon"></i> Squad Strength</a>
+                        <a href="fpl-league-rivals.html#matrix" class="dropdown-item"><i data-lucide="grid-3x3" class="dd-icon"></i> Matrix</a>
+                        <a href="fpl-league-rivals.html#h2h" class="dropdown-item"><i data-lucide="swords" class="dd-icon"></i> Head-to-Head</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Header -->
+    <div class="faq-hero">
+        <div class="faq-hero-icon"><i data-lucide="help-circle" class="icon"></i></div>
+        <h1>Frequently Asked Questions</h1>
+        <p>Everything you need to know about using our FPL analysis tools.</p>
+    </div>
+
+    <!-- FAQ Content -->
+    <div class="faq-container">
+
+        <!-- Category 1: Getting Started & Account -->
+        <div class="faq-category">
+            <div class="faq-category-title">Getting Started &amp; Account</div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Do you need my FPL password?</span>
+                        <i data-lucide="chevron-down" class="chevron"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-inner">No, absolutely not. We only require your public FPL Team ID. We will never ask for your email or password.</div>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Where do I find my FPL Team ID?</span>
+                        <i data-lucide="chevron-down" class="chevron"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-inner">Go to the official <strong>fantasy.premierleague.com</strong> website, click on the &ldquo;Pick Team&rdquo; or &ldquo;Points&rdquo; tab, and look at the URL. Your Team ID is the number in the middle of the URL (e.g., <code>.../entry/123456/history</code>).</div>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Why does it say my Team ID is invalid?</span>
+                        <i data-lucide="chevron-down" class="chevron"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-inner">Ensure you are entering just the numerical ID, not the whole URL. Also, ensure the official FPL game isn&rsquo;t currently updating, as their API goes down briefly before gameweek deadlines.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category 2: Data & Updates -->
+        <div class="faq-category">
+            <div class="faq-category-title">Data &amp; Updates</div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>How often is the player data and pricing updated?</span>
+                        <i data-lucide="chevron-down" class="chevron"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-inner">Player prices, injuries, and ownership stats are updated multiple times a day, catching the overnight price changes and late-week press conference news.</div>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Where do you get your stats from?</span>
+                        <i data-lucide="chevron-down" class="chevron"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-inner">We utilize the official FPL API for all baseline game data (prices, ownership, points), which is then processed by our custom algorithms to generate projections.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category 3: Metrics & Features -->
+        <div class="faq-category">
+            <div class="faq-category-title">Metrics &amp; Features</div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>What does xG and xGA mean in the Team Context?</span>
+                        <i data-lucide="chevron-down" class="chevron"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-inner"><abbr title="Expected Goals">xG</abbr> stands for Expected Goals (attacking threat), and <abbr title="Expected Goals Against">xGA</abbr> stands for Expected Goals Against (defensive vulnerability). We compare these metrics to give you a &ldquo;Traffic Light&rdquo; verdict on whether a fixture is favorable or tough for your players.</div>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>How is the &lsquo;Captain Score&rsquo; calculated?</span>
+                        <i data-lucide="chevron-down" class="chevron"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-inner">The Captain Score is a custom metric that combines a player&rsquo;s recent form (Points per Game over the last 5 matches) with the <abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> of their upcoming opponent to project their explosive potential.</div>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-question">
+                        <span>Does the Transfer Wizard automatically make transfers for me?</span>
+                        <i data-lucide="chevron-down" class="chevron"></i>
+                    </button>
+                    <div class="faq-answer">
+                        <div class="faq-answer-inner">No. The Wizard is a planning tool that suggests optimized transfers based on your current squad and bank balance. You still need to log into the official FPL site to finalize and confirm your moves.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav">
+        <a href="fpl-transfer-wizard.html" class="mobile-nav-item mobile-nav-item--accent"><i data-lucide="wand-2" class="icon"></i>Wizard</a>
+        <a href="fpl-news.html" class="mobile-nav-item"><i data-lucide="newspaper" class="icon"></i>News</a>
+        <a href="fpl-my-team-analysis.html" class="mobile-nav-item"><i data-lucide="users" class="icon"></i>My Team</a>
+        <a href="fpl-players-analysis.html" class="mobile-nav-item"><i data-lucide="user-search" class="icon"></i>Players</a>
+        <a href="fpl-teams-analysis.html" class="mobile-nav-item"><i data-lucide="bar-chart-3" class="icon"></i>Teams</a>
+        <a href="fpl-league-rivals.html" class="mobile-nav-item"><i data-lucide="trophy" class="icon"></i>Rivals</a>
+    </nav>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        lucide.createIcons();
+
+        document.querySelectorAll('.faq-question').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = btn.parentElement;
+                const answer = item.querySelector('.faq-answer');
+                const category = item.closest('.faq-category');
+                const isOpen = item.classList.contains('active');
+
+                // Close all other items in this category
+                category.querySelectorAll('.faq-item.active').forEach(openItem => {
+                    if (openItem !== item) {
+                        openItem.classList.remove('active');
+                        const openAnswer = openItem.querySelector('.faq-answer');
+                        openAnswer.style.maxHeight = null;
+                        openAnswer.style.opacity = '0';
+                    }
+                });
+
+                // Toggle current item
+                if (isOpen) {
+                    item.classList.remove('active');
+                    answer.style.maxHeight = null;
+                    answer.style.opacity = '0';
+                } else {
+                    item.classList.add('active');
+                    answer.style.maxHeight = answer.scrollHeight + 'px';
+                    answer.style.opacity = '1';
+                }
+            });
+        });
+    </script>
+    <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons()});</script>
+</body>
+</html>

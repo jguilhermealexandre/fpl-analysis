@@ -1460,96 +1460,104 @@ body {
             text-decoration: underline;
         }
 
-        /* ===== "HOW IT WORKS" STRIP ===== */
+        /* ===== "HOW IT WORKS" SECTION ===== */
         .how-it-works {
-            padding: 40px 24px;
+            padding: 64px 24px;
             background: var(--surface-0);
             border-bottom: 1px solid var(--border-default);
         }
-
         .how-it-works-inner {
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
         }
-
-        .how-it-works-label {
+        .how-it-works-header {
             text-align: center;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 24px;
+            margin-bottom: 48px;
         }
-
-        .steps-row {
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            gap: 0;
-        }
-
-        .step-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            flex: 0 0 160px;
-            text-align: center;
-        }
-
-        .step-circle {
-            width: 52px;
-            height: 52px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
+        .how-it-works-header h2 {
+            font-family: var(--font-display);
+            font-size: 28px;
             font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .how-it-works-header p {
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+        }
+        .step-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 32px 24px;
+            text-align: center;
+            transition: all 300ms ease;
             position: relative;
         }
-
-        .step-circle .icon {
-            width: 22px;
-            height: 22px;
+        .step-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--color-primary-glow);
+            box-shadow: 0 12px 32px rgba(16, 185, 129, 0.08);
         }
-
-        .step-circle--green { background: var(--color-primary-muted); color: var(--color-primary); border: 2px solid rgba(16, 185, 129, 0.20); }
-        .step-circle--blue { background: var(--color-players-muted); color: var(--color-players); border: 2px solid rgba(59, 130, 246, 0.20); }
-        .step-circle--purple { background: var(--color-wizard-muted); color: var(--color-wizard); border: 2px solid rgba(139, 92, 246, 0.20); }
-
-        .step-label {
-            font-family: var(--font-display);
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .step-desc {
-            font-size: 12px;
-            color: var(--text-muted);
-            line-height: 1.4;
-        }
-
-        .step-connector {
-            flex: 0 0 60px;
+        .step-icon-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--color-primary-muted);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding-top: 14px;
+            margin: 0 auto 20px;
         }
-
-        .step-connector-line {
-            width: 100%;
+        .step-icon-circle .icon {
+            width: 28px;
+            height: 28px;
+            color: var(--color-primary);
+        }
+        .step-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--color-primary);
+            background: var(--color-primary-muted);
+            padding: 4px 12px;
+            border-radius: 9999px;
+            margin-bottom: 12px;
+        }
+        .step-card h3 {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .step-card p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .step-card:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 56px;
+            right: -20px;
+            width: 8px;
             height: 2px;
-            background: repeating-linear-gradient(90deg, var(--surface-4) 0 6px, transparent 6px 12px);
+            background: repeating-linear-gradient(90deg, var(--surface-4) 0 4px, transparent 4px 8px);
         }
-
-        @media (max-width: 600px) {
-            .steps-row { flex-direction: column; align-items: center; gap: 8px; }
-            .step-connector { flex: 0 0 auto; padding-top: 0; transform: rotate(90deg); width: 40px; }
-            .step-item { flex: 0 0 auto; }
+        @media (max-width: 768px) {
+            .steps-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+            .step-card:not(:last-child)::after { display: none; }
+            .how-it-works { padding: 40px 16px; }
+            .how-it-works-header h2 { font-size: 22px; }
+            .how-it-works-header { margin-bottom: 32px; }
         }
 
         /* ===== INDEX GRID (always single column) ===== */
@@ -2044,58 +2052,6 @@ body {
         .tool-tag--teams { background: var(--color-teams-muted); color: var(--color-teams-text); }
         .tool-tag--rivals { background: var(--color-rivals-muted); color: var(--color-rivals-text); }
 
-        /* ===== FOOTER ===== */
-        .site-footer {
-            margin-top: 32px;
-            padding: 24px;
-            border-top: 1px solid var(--border-default);
-            text-align: center;
-        }
-
-        .footer-inner {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .footer-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-
-        .footer-pill .icon {
-            width: 14px;
-            height: 14px;
-        }
-
-        .footer-divider {
-            width: 1px;
-            height: 14px;
-            background: var(--border-default);
-        }
-
-        .footer-pill--support {
-            color: #92400E;
-            background: rgba(245, 158, 11, 0.10);
-            padding: 4px 12px;
-            border-radius: var(--radius-full);
-            border: 1px solid rgba(245, 158, 11, 0.20);
-            text-decoration: none;
-            transition: all 200ms ease-out;
-        }
-
-        .footer-pill--support:hover {
-            background: rgba(245, 158, 11, 0.18);
-            transform: translateY(-1px);
-        }
-
         /* ===== QUICK ACTIONS ROW (returning users) ===== */
         .quick-actions {
             display: flex;
@@ -2435,30 +2391,34 @@ body {
     <!-- How It Works -->
     <section class="how-it-works" id="howItWorks">
         <div class="how-it-works-inner">
-            <div class="how-it-works-label">How It Works</div>
-            <div class="steps-row">
-                <div class="step-item">
-                    <div class="step-circle step-circle--green">
-                        <i data-lucide="log-in" class="icon"></i>
+            <div class="how-it-works-header">
+                <h2>How It Works</h2>
+                <p>From your current squad to green arrows in three simple steps.</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-icon-circle">
+                        <i data-lucide="user-check" class="icon"></i>
                     </div>
-                    <div class="step-label">Enter Team ID</div>
-                    <div class="step-desc">Paste your Team ID to sync your squad instantly</div>
+                    <span class="step-badge">Step 1</span>
+                    <h3>Connect Your Squad</h3>
+                    <p>Enter your public FPL Team ID. No passwords, no sign-ups. We securely sync your live squad, bank balance, and mini-league data directly from the official FPL servers.</p>
                 </div>
-                <div class="step-connector"><div class="step-connector-line"></div></div>
-                <div class="step-item">
-                    <div class="step-circle step-circle--blue">
-                        <i data-lucide="search" class="icon"></i>
+                <div class="step-card">
+                    <div class="step-icon-circle">
+                        <i data-lucide="bar-chart-3" class="icon"></i>
                     </div>
-                    <div class="step-label">Explore Tools</div>
-                    <div class="step-desc">Run health checks, scout targets, compare rivals</div>
+                    <span class="step-badge">Step 2</span>
+                    <h3>Uncover Insights</h3>
+                    <p>Stop guessing. Our algorithm processes expected goals (xG), fixture difficulty, and price change data to highlight your squad's exact weaknesses and top captaincy picks.</p>
                 </div>
-                <div class="step-connector"><div class="step-connector-line"></div></div>
-                <div class="step-item">
-                    <div class="step-circle step-circle--purple">
-                        <i data-lucide="trophy" class="icon"></i>
+                <div class="step-card">
+                    <div class="step-icon-circle">
+                        <i data-lucide="fast-forward" class="icon"></i>
                     </div>
-                    <div class="step-label">Climb the Ranks</div>
-                    <div class="step-desc">Make smarter picks and climb the ranks</div>
+                    <span class="step-badge">Step 3</span>
+                    <h3>Plan and Dominate</h3>
+                    <p>Use the interactive Transfer Wizard and GW Planner to map out your moves weeks in advance. Save your drafts, spot differential players, and climb your mini-league.</p>
                 </div>
             </div>
         </div>
@@ -2591,26 +2551,6 @@ body {
                 </section>
         </div>
 
-        <!-- Footer -->
-        <footer class="site-footer">
-            <div class="footer-inner">
-                <span class="footer-pill">
-                    <i data-lucide="database" class="icon"></i> Official FPL API
-                </span>
-                <span class="footer-divider"></span>
-                <span class="footer-pill">
-                    <i data-lucide="refresh-cw" class="icon"></i> Updated daily
-                </span>
-                <span class="footer-divider"></span>
-                <span class="footer-pill">
-                    <i data-lucide="code-2" class="icon"></i> Free & open source
-                </span>
-                <span class="footer-divider"></span>
-                <a href="#" class="footer-pill footer-pill--support" target="_blank" rel="noopener noreferrer">
-                    <i data-lucide="coffee" class="icon"></i> Buy me a coffee
-                </a>
-            </div>
-        </footer>
     </main>
 
     <!-- Mobile Navigation -->
@@ -3841,5 +3781,6 @@ body {
             activateTeam(savedTeamId);
         }
     </script>
+    <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons()});</script>
 </body>
 </html>
