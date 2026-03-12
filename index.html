@@ -3363,6 +3363,12 @@ body {
 
         // ===== EXTERNAL NEWS =====
         let externalNewsCache = null, externalNewsFetchedAt = 0;
+        const DEAD_HEADLINES = ['find out more here','read more','click here','learn more','watch now','full story'];
+        function isValidHeadline(title) {
+            if (!title || title.trim().length < 10) return false;
+            const lower = title.trim().toLowerCase();
+            return !DEAD_HEADLINES.some(d => lower === d || lower.startsWith(d));
+        }
         async function fetchExternalNews() {
             const now = Date.now();
             if (externalNewsCache && (now - externalNewsFetchedAt) < 30 * 60 * 1000) {
@@ -3374,6 +3380,9 @@ body {
                 { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', badge: 'sky' },
                 { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian', badge: 'guardian' }
             ];
+            const plTeams = ['arsenal','aston villa','bournemouth','brentford','brighton','burnley','chelsea','crystal palace','everton','fulham','ipswich','leicester','liverpool','luton','man city','manchester city','man utd','manchester united','newcastle','nott\'m forest','nottingham forest','sheffield','southampton','spurs','tottenham','west ham','wolves','wolverhampton'];
+            const plKeywords = ['premier league','fpl','gameweek','epl','prem','pl table','top four','relegation','var ','offside','penalty','clean sheet'];
+            const oneDayAgo = now - 24 * 60 * 60 * 1000;
             const items = [];
             for (const feed of feeds) {
                 try {
@@ -3382,13 +3391,17 @@ body {
                     if (!resp.ok) continue;
                     const data = await resp.json();
                     if (data.status !== 'ok' || !data.items) continue;
-                    data.items.slice(0, 5).forEach(article => {
-                        const title = article.title || '';
-                        if (title.trim().length < 10) return;
+                    data.items.slice(0, 12).forEach(article => {
+                        if (!isValidHeadline(article.title)) return;
+                        if (article.pubDate && new Date(article.pubDate).getTime() < oneDayAgo) return;
+                        const rawDesc = article.description ? article.description.replace(/<[^>]*>/g, '') : '';
+                        const textToCheck = ((article.title || '') + ' ' + rawDesc).toLowerCase();
+                        const isPL = plTeams.some(t => textToCheck.includes(t)) || plKeywords.some(k => textToCheck.includes(k));
+                        if (!isPL) return;
                         items.push({
                             cat: 'external',
-                            text: `${title} — ${feed.source}`,
-                            headline: title,
+                            text: `${article.title} — ${feed.source}`,
+                            headline: article.title,
                             link: article.link,
                             thumbnail: article.thumbnail || article.enclosure?.link || null,
                             source: feed.source,
@@ -3402,6 +3415,7 @@ body {
                     console.warn(`Failed to fetch ${feed.source} RSS:`, e);
                 }
             }
+            items.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
             externalNewsCache = items;
             externalNewsFetchedAt = now;
             return items;
