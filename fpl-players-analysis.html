@@ -3333,7 +3333,11 @@
                 // Build fixture swing data (needs currentGameweek)
                 buildFixtureSwingData(staticData.teams, fixturesData);
 
-                // Render
+                // Pre-compute Rising Form and Routes data for cross-wiring into recommendations
+                precomputeRisingFormScores(analyses);
+                precomputeRoutesData(analyses);
+
+                // Render (recommendations uses rising form + routes data)
                 document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(analyses);
                 document.getElementById('section-CHARTS').innerHTML = generateCharts(analyses);
                 document.getElementById('section-RISING').innerHTML = generateRisingForm(analyses);
@@ -3465,8 +3469,11 @@
             const tp = teamAnalysis[teamId], op = teamAnalysis[opponentId];
             if (!tp || !op) return 0.25;
             let base = isHome ? 0.35 : 0.25;
-            base += (tp.defensePower - 50) * 0.003;
-            base -= (op.attackPower - 50) * 0.0025;
+            // Use venue-adjusted power when available
+            const teamDef = isHome ? (tp.defensePowerHome || tp.defensePower) : (tp.defensePowerAway || tp.defensePower);
+            const oppAtk = isHome ? (op.attackPowerAway || op.attackPower) : (op.attackPowerHome || op.attackPower);
+            base += (teamDef - 50) * 0.003;
+            base -= (oppAtk - 50) * 0.0025;
             base += (1.3 - tp.gaPerGame) * 0.06;
             return Math.max(0.05, Math.min(0.65, base));
         }
@@ -3658,8 +3665,53 @@
 
                 const gaPerGame = avgConceded;
 
+                // ── Venue-adjusted attack/defense power (ported from teams-analysis) ──
+                const fplAttHomeNorm = Math.min(1, Math.max(0, (team.strength_attack_home - 900) / 500));
+                const fplAttAwayNorm = Math.min(1, Math.max(0, (team.strength_attack_away - 900) / 500));
+                const fplDefHomeNorm = Math.min(1, Math.max(0, (team.strength_defence_home - 900) / 500));
+                const fplDefAwayNorm = Math.min(1, Math.max(0, (team.strength_defence_away - 900) / 500));
+
+                const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
+                    Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.35 +
+                    (hasRealXg && recent6Xg ? Math.min(1, recent6Xg.xGpg / 2.0) * 0.35 : Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.35) +
+                    fplAttHomeNorm * 0.30
+                ) * 100))) : attackPower;
+
+                const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
+                    Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.35 +
+                    (hasRealXg && recent6Xg ? Math.min(1, recent6Xg.xGpg / 2.0) * 0.35 : Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.35) +
+                    fplAttAwayNorm * 0.30
+                ) * 100))) : attackPower;
+
+                const homeGaConcededRate = homeStats.games > 0 ? Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.0))) : 0.5;
+                const awayGaConcededRate = awayStats.games > 0 ? Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.0))) : 0.5;
+                const xgcHomeComponent = hasRealXg && recent6Xg ? Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0))) : homeGaConcededRate;
+                const xgcAwayComponent = hasRealXg && recent6Xg ? Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0))) : awayGaConcededRate;
+
+                const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
+                    homeGaConcededRate * 0.35 + xgcHomeComponent * 0.35 + fplDefHomeNorm * 0.30
+                ) * 100))) : defensePower;
+
+                const defensePowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
+                    awayGaConcededRate * 0.35 + xgcAwayComponent * 0.35 + fplDefAwayNorm * 0.30
+                ) * 100))) : defensePower;
+
+                // ── xG trend data (ported from teams-analysis) ──
+                let xgTrend = 'stable', xgcTrend = 'stable';
+                if (recent6Xg && seasonXg && (seasonXg.games || 0) >= 10) {
+                    const xgDelta = recent6Xg.xGpg - seasonXg.xGpg;
+                    if (xgDelta > 0.25) xgTrend = 'rising';
+                    else if (xgDelta < -0.25) xgTrend = 'falling';
+                    const xgcDelta = recent6Xg.xGCpg - seasonXg.xGCpg;
+                    if (xgcDelta < -0.20) xgcTrend = 'improving';
+                    else if (xgcDelta > 0.20) xgcTrend = 'worsening';
+                }
+
                 teamAnalysis[teamId] = {
                     attackPower, defensePower, formRating, fixtureScore,
+                    attackPowerHome, attackPowerAway, defensePowerHome, defensePowerAway,
+                    xgTrend, xgcTrend, xgTrendDelta: recent6Xg && seasonXg ? recent6Xg.xGpg - seasonXg.xGpg : 0,
+                    xgcTrendDelta: recent6Xg && seasonXg ? seasonXg.xGCpg - recent6Xg.xGCpg : 0,
                     avgGoals, avgConceded, avgFdr, csRate, gaPerGame,
                     wins, draws, losses, gamesPlayed,
                     teamName: team.short_name || team.name
@@ -3800,6 +3852,119 @@
         // (Global filter toggles removed — filters were taking up space without enough utility)
 
         // ============================================
+        // PRE-COMPUTE DATA FOR CROSS-WIRING INTO RECOMMENDATIONS
+        // ============================================
+
+        /**
+         * Pre-computes rising form scores for all players and stores in window._risingFormScores.
+         * This allows calculatePositionScore to reward players with rising momentum.
+         */
+        function precomputeRisingFormScores(analyses) {
+            window._risingFormScores = {};
+            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            analyses.forEach(p => {
+                if ((p.l5?.games || 0) < 3 || (p.season?.games || 0) < 6) return;
+                const pos = posMap[p.position];
+                const isDefPos = (pos === 'GK' || pos === 'DEF');
+                let risingScore = 0;
+
+                // Pillar 1: Team form
+                const ts = p.teamScores;
+                if (ts && ts.formRating > 55) risingScore += Math.min(9, ((ts.formRating - 55) / 45) * 9) * 1.5;
+
+                // Pillar 1b: Team xG trend
+                const seasonXg = getTeamSeasonXg(p.teamId);
+                const recent6Xg = getTeamXgWindow(p.teamId, 6);
+                if (recent6Xg && seasonXg && (seasonXg.games || 0) >= 10) {
+                    if (isDefPos) {
+                        const xgcDelta = seasonXg.xGCpg - recent6Xg.xGCpg;
+                        if (xgcDelta > 0.10) risingScore += Math.min(10, (xgcDelta / 0.6) * 10) * 2;
+                    } else {
+                        const xgDelta = recent6Xg.xGpg - seasonXg.xGpg;
+                        if (xgDelta > 0.10) risingScore += Math.min(10, (xgDelta / 0.6) * 10) * 2;
+                    }
+                }
+
+                // Pillar 2: Fixture swing
+                const swing = fixtureSwingData[p.teamId];
+                if (swing && swing.direction === 'improving') risingScore += Math.min(10, Math.abs(swing.swing) * 4) * 2.5;
+                const avgFdr = p.fixtures?.avgFDR3 || 3;
+                if (avgFdr <= 2.5) risingScore += Math.min(8, (3 - avgFdr) * 6) * 1.2;
+
+                // Pillar 3: Player stats improving (simplified — L3 vs season trend)
+                const history = p.history || [];
+                if (history.length >= 5) {
+                    const last5Pts = history.slice(-5).map(g => parseFloat(g.total_points) || 0);
+                    const l3Avg = last5Pts.slice(-3).reduce((s, v) => s + v, 0) / 3;
+                    const p2Avg = last5Pts.slice(0, 2).reduce((s, v) => s + v, 0) / 2;
+                    if (l3Avg > p2Avg + 1) risingScore += Math.min(8, (l3Avg - p2Avg) * 1.5);
+                }
+
+                if (risingScore >= 6) window._risingFormScores[p.id] = risingScore;
+            });
+        }
+
+        /**
+         * Pre-computes routes-to-points data for all players and stores in window._routesData.
+         * This allows calculatePositionScore to reward players with multiple reliable routes.
+         */
+        function precomputeRoutesData(analyses) {
+            window._routesData = {};
+            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const goalPts = { GK: 6, DEF: 6, MID: 5, FWD: 4 };
+
+            analyses.filter(p => isPlayerEligible(p, { minGames: 3 })).forEach(p => {
+                const pos = posMap[p.position];
+                const g5 = p.l5?.games || 1;
+                const gS = p.season?.games || g5;
+                const blend = (l5val, sVal) => (l5val / g5) * 0.6 + (sVal / gS) * 0.4;
+
+                const xGpg = blend(p.l5?.xG || 0, p.season?.xG || 0);
+                const xApg = blend(p.l5?.xA || 0, p.season?.xA || 0);
+                const goalsPg = blend(p.l5?.goals || 0, p.season?.goals || 0);
+                const assistsPg = blend(p.l5?.assists || 0, p.season?.assists || 0);
+                const csPg = blend(p.l5?.cleanSheets || 0, p.season?.cleanSheets || 0);
+                const bonusPg = blend(p.l5?.bonus || 0, p.season?.bonus || 0);
+                const savesPg = blend(p.l5?.saves || 0, p.season?.saves || 0);
+                const creativityPg = blend(p.l5?.creativity || 0, p.season?.creativity || 0);
+
+                const goalThresh = { GK: 0.03, DEF: 0.06, MID: 0.12, FWD: 0.15 }[pos];
+                const assistThresh = { GK: 0.02, DEF: 0.06, MID: 0.10, FWD: 0.08 }[pos];
+                const csThresh = { GK: 0.15, DEF: 0.15, MID: 0.30, FWD: 999 }[pos];
+                const bonusThresh = { GK: 0.3, DEF: 0.3, MID: 0.4, FWD: 0.5 }[pos];
+
+                let routeCount = 0;
+                let weightedSum = 0;
+
+                if (xGpg >= goalThresh || goalsPg >= goalThresh * 1.5) {
+                    const ceiling = pos === 'FWD' ? 0.6 : pos === 'MID' ? 0.5 : 0.3;
+                    routeCount++; weightedSum += Math.min(10, (xGpg / ceiling) * 10) * goalPts[pos];
+                }
+                if (xApg >= assistThresh || assistsPg >= assistThresh * 1.5) {
+                    const ceiling = pos === 'MID' ? 0.4 : 0.3;
+                    routeCount++; weightedSum += Math.min(10, (xApg / ceiling) * 10) * 3;
+                }
+                if (csPg >= csThresh) {
+                    const ptWeight = { GK: 4, DEF: 4, MID: 1, FWD: 0 }[pos];
+                    routeCount++; weightedSum += Math.min(10, (csPg / 0.55) * 10) * ptWeight;
+                }
+                if (bonusPg >= bonusThresh) {
+                    routeCount++; weightedSum += Math.min(10, (bonusPg / 2) * 10) * 2;
+                }
+                if (pos === 'GK' && savesPg >= 2) {
+                    routeCount++; weightedSum += Math.min(10, (savesPg / 5) * 10) * 1.5;
+                }
+                if (creativityPg >= 12 && (pos === 'MID' || pos === 'DEF')) {
+                    routeCount++; weightedSum += Math.min(10, (creativityPg / 45) * 10) * 1.5;
+                }
+
+                if (routeCount >= 2) {
+                    window._routesData[p.id] = { routeCount, compositeScore: weightedSum };
+                }
+            });
+        }
+
+        // ============================================
         // ROUTES TO POINTS
         // ============================================
         function generateRoutesToPoints(analyses) {
@@ -3925,8 +4090,9 @@
                     const nextFx = p.fixtures?.next3?.[0] || null;
                     let fixtureFactor = 1.0;
                     if (nextFx?.opponent && teamAnalysis[nextFx.opponent]) {
-                        const oppAttack = teamAnalysis[nextFx.opponent].attackPower || 50;
-                        const oppDefense = teamAnalysis[nextFx.opponent].defensePower || 50;
+                        const oppData = teamAnalysis[nextFx.opponent];
+                        const oppAttack = nextFx.isHome ? (oppData.attackPowerAway || oppData.attackPower || 50) : (oppData.attackPowerHome || oppData.attackPower || 50);
+                        const oppDefense = nextFx.isHome ? (oppData.defensePowerAway || oppData.defensePower || 50) : (oppData.defensePowerHome || oppData.defensePower || 50);
                         const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
                         fixtureFactor = 1 + (50 - relevantOpp) * 0.004;
                         if (nextFx.isHome) fixtureFactor += 0.04; // home boost
@@ -4183,8 +4349,10 @@
                     const isHome = fixture.isHome;
                     let ff = 0;
                     if (opp && teamAnalysis[opp]) {
-                        const oppAttack = teamAnalysis[opp].attackPower || 50;
-                        const oppDefense = teamAnalysis[opp].defensePower || 50;
+                        // Use venue-adjusted opponent power for more accurate fixture scoring
+                        const oppData = teamAnalysis[opp];
+                        const oppAttack = isHome ? (oppData.attackPowerAway || oppData.attackPower || 50) : (oppData.attackPowerHome || oppData.attackPower || 50);
+                        const oppDefense = isHome ? (oppData.defensePowerAway || oppData.defensePower || 50) : (oppData.defensePowerHome || oppData.defensePower || 50);
                         const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
                         ff = ((50 - relevantOpp) / 50) * 10;
                         if (isHome) ff += 1.5;
@@ -4287,6 +4455,71 @@
                 } catch(e) { /* silent fallback */ }
             }
 
+            // ── ENHANCEMENT: Fixture swing bonus (from teams-analysis) ──
+            // Rewards players whose teams have improving fixture runs (next 3 GWs easier than GW4-6)
+            let fixtureSwingBonus = 0;
+            if (fixtureSwingData && fixtureSwingData[p.teamId]) {
+                const swing = fixtureSwingData[p.teamId];
+                if (swing.direction === 'improving') {
+                    fixtureSwingBonus = Math.min(3, Math.abs(swing.swing) * 2);
+                } else if (swing.direction === 'worsening') {
+                    fixtureSwingBonus = -Math.min(3, Math.abs(swing.swing) * 2);
+                }
+            }
+
+            // ── ENHANCEMENT: Easy run bonus ──
+            // Players on teams with very easy upcoming fixtures get extra credit
+            let easyRunBonus = 0;
+            const avgFdr3 = p.fixtures?.avgFDR3 || 3;
+            if (avgFdr3 <= 2.0) easyRunBonus = 3;       // premium easy run
+            else if (avgFdr3 <= 2.5) easyRunBonus = 2;   // great easy run
+            else if (avgFdr3 <= 2.8) easyRunBonus = 1;   // good easy run
+
+            // ── ENHANCEMENT: Team xG trend bonus (from teams-analysis) ──
+            // Rewards players on teams whose underlying xG process is improving
+            let xgTrendBonus = 0;
+            if (ts) {
+                if ((pos === 'MID' || pos === 'FWD') && ts.xgTrend === 'rising') {
+                    xgTrendBonus = Math.min(2, (ts.xgTrendDelta || 0) * 3);
+                } else if ((pos === 'GK' || pos === 'DEF') && ts.xgcTrend === 'improving') {
+                    xgTrendBonus = Math.min(2, (ts.xgcTrendDelta || 0) * 3);
+                }
+            }
+
+            // ── ENHANCEMENT: Rising Form momentum bonus ──
+            // Cross-wires the Rising Form 3-pillar analysis into recommendations
+            let risingFormBonus = 0;
+            if (window._risingFormScores && window._risingFormScores[p.id]) {
+                risingFormBonus = Math.min(5, window._risingFormScores[p.id] * 0.4);
+            }
+
+            // ── ENHANCEMENT: Routes to Points diversity bonus ──
+            // Players with multiple reliable routes to points are inherently more valuable
+            let routesDiversityBonus = 0;
+            if (window._routesData && window._routesData[p.id]) {
+                const rd = window._routesData[p.id];
+                if (rd.routeCount >= 3) routesDiversityBonus += rd.routeCount * 0.8;
+                routesDiversityBonus += Math.min(3, (rd.compositeScore || 0) * 0.15);
+                routesDiversityBonus = Math.min(7, routesDiversityBonus);
+            }
+
+            // ── ENHANCEMENT: Reliability & explosiveness bonus ──
+            // Rewards consistent returners and high-ceiling players from chart metrics
+            let reliabilityBonus = 0;
+            if (p.season && p.season.games >= 5 && p.history && p.history.length >= 5) {
+                const seasonGames = p.season.games;
+                const returns = (p.season.goals || 0) + (p.season.assists || 0) + (p.season.cleanSheets || 0) + (p.season.bonus || 0);
+                const reliabilityPct = Math.min(100, (returns / seasonGames) * 100);
+                // Count games with 10+ points for explosiveness
+                const doubleDigits = p.history.filter(g => (parseFloat(g.total_points) || 0) >= 10).length;
+                const explosivenessPct = (doubleDigits / seasonGames) * 100;
+                reliabilityBonus = (reliabilityPct - 40) * 0.06 + explosivenessPct * 0.05;
+                reliabilityBonus = Math.max(-3, Math.min(3, reliabilityBonus));
+            }
+
+            // Sum of all enhancement bonuses
+            const enhancementBonus = fixtureSwingBonus + easyRunBonus + xgTrendBonus + risingFormBonus + routesDiversityBonus + reliabilityBonus;
+
             if (pos === 'GK') {
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
                 const savesPerGame = (p.l5?.saves || 0) / games;
@@ -4304,7 +4537,8 @@
                        csProbFactor +
                        xPtsFactor +
                        rotationPenalty +
-                       nailedBonus) * venueMultiplier;
+                       nailedBonus +
+                       enhancementBonus) * venueMultiplier;
             }
 
             if (pos === 'DEF') {
@@ -4324,7 +4558,8 @@
                        xPtsFactor +
                        rotationPenalty +
                        penTakerBonus +
-                       nailedBonus) * venueMultiplier;
+                       nailedBonus +
+                       enhancementBonus) * venueMultiplier;
             }
 
             if (pos === 'MID') {
@@ -4345,7 +4580,8 @@
                        xPtsFactor +
                        rotationPenalty +
                        penTakerBonus +
-                       nailedBonus) * venueMultiplier;
+                       nailedBonus +
+                       enhancementBonus) * venueMultiplier;
             }
 
             if (pos === 'FWD') {
@@ -4367,7 +4603,8 @@
                        xPtsFactor +
                        rotationPenalty +
                        penTakerBonus +
-                       nailedBonus) * venueMultiplier;
+                       nailedBonus +
+                       enhancementBonus) * venueMultiplier;
             }
 
             return 0;
@@ -6689,8 +6926,10 @@
             const nextIsHome = nextFixture?.isHome ?? null;
             let oppMultiplier = 1.0;
             if (nextOpp && teamAnalysis[nextOpp]) {
-                const oppAttack = teamAnalysis[nextOpp].attackPower || 50;
-                const oppDefense = teamAnalysis[nextOpp].defensePower || 50;
+                const oppData = teamAnalysis[nextOpp];
+                // Use venue-adjusted opponent power (opponent is away when we're home, and vice versa)
+                const oppAttack = nextIsHome ? (oppData.attackPowerAway || oppData.attackPower || 50) : (oppData.attackPowerHome || oppData.attackPower || 50);
+                const oppDefense = nextIsHome ? (oppData.defensePowerAway || oppData.defensePower || 50) : (oppData.defensePowerHome || oppData.defensePower || 50);
                 // For attackers: weak opponent defense = more goals. For defenders: weak opponent attack = more CS.
                 const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
                 oppMultiplier = 1 + (50 - relevantOpp) * 0.004; // range ~0.8–1.2

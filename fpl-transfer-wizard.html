@@ -633,6 +633,7 @@
 
         showLoading(true, 'Computing team power ratings...');
         computeTeamPower(bootData, fixturesData);
+        buildFixtureSwingData();
 
         allPlayers = []; allPlayersById = {};
         bootData.elements.forEach(p => {
@@ -757,6 +758,44 @@
                 formRating,fixtureScore,goalsPerGame:gpg,xGPerGame:xgpg,gaPerGame:gapg,xGCPerGame:xgcpg,
                 csRate:csr,gamesPlayed:gp,recentXGCpg:ss.recentXGCpg||1.3
             };
+        });
+    }
+
+    // ===== SHARED SCORING UTILITIES (aligned with players-analysis) =====
+
+    /**
+     * Recency-weighted per-game average for last N stats. Most recent game gets highest weight.
+     * Aligned with players-analysis recencyWeightedAvg.
+     */
+    function recencyWeightedAvg(history, key, n = 5) {
+        if (!history || history.length === 0) return 0;
+        const games = history.slice(-n);
+        const weights = games.map((_, i) => i + 1);
+        const totalWeight = weights.reduce((s, w) => s + w, 0);
+        const weightedSum = games.reduce((s, g, i) => s + (parseFloat(g[key]) || 0) * weights[i], 0);
+        return weightedSum / totalWeight;
+    }
+
+    /** Fixture swing detection (ported from players-analysis / teams-analysis) */
+    let fixtureSwingData = {};
+    function buildFixtureSwingData() {
+        fixtureSwingData = {};
+        Object.keys(teams).forEach(tid => {
+            const id = parseInt(tid);
+            const fx = teamFixtures[id];
+            if (!fx || fx.length < 6) return;
+            const first3 = fx.slice(0, 3);
+            const next3 = fx.slice(3, 6);
+            const avgFdr = arr => arr.reduce((s, f) => s + f.difficulty, 0) / arr.length;
+            const avgFirst = avgFdr(first3), avgNext = avgFdr(next3);
+            const swing = avgFirst - avgNext;
+            if (Math.abs(swing) > 0.3) {
+                fixtureSwingData[id] = {
+                    swing, direction: swing > 0 ? 'improving' : 'worsening',
+                    currentFdr: avgFirst.toFixed(1), futureFdr: avgNext.toFixed(1),
+                    swingGW: next3[0]?.event || '?'
+                };
+            }
         });
     }
 
@@ -1312,40 +1351,179 @@
         const cacheKey = `${pos}_${maxPrice.toFixed(1)}`;
         if (transferCandidateCache[cacheKey]) return transferCandidateCache[cacheKey];
         const squadIds = new Set(mySquad.map(p => p.id));
+        const posName = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[pos] || 'MID';
+        const isDefPos = pos <= 2;
+        const seasonGWs = Math.max(currentGW - 1, 1);
+
         const candidates = allPlayers.filter(p =>
             p.pos === pos && p.price <= maxPrice && !squadIds.has(p.id) &&
             p.status === 'a' && p.minutes > 90
         ).map(p => {
             let score = 0;
-            // Form
-            score += p.form * 3;
-            // Fixtures
-            const fx = (p.fixtures || []).slice(0, 4);
-            const avgFdr = fx.length ? fx.reduce((s, f) => s + f.difficulty, 0) / fx.length : 3;
-            score += (4 - avgFdr) * 8;
-            // xGI
-            if (p.minutes > 200) {
-                const xgi90 = (p.xGI / p.minutes) * 90;
-                score += xgi90 * 15;
+            const history = p.history || [];
+            const l5 = p.l5Stats;
+            const l3 = p.l3Stats;
+            const games = l5?.games || 1;
+            const minsPerGame = (l5?.minutes || p.minutes) / Math.max(games, 1);
+
+            // ── Recency-weighted stats (aligned with players-analysis) ──
+            const rwPtsPerGame = history.length >= 3 ? recencyWeightedAvg(history, 'total_points') : p.totalPoints / seasonGWs;
+            const rwXGI = history.length >= 3 ? recencyWeightedAvg(history, 'expected_goal_involvements') : (p.xGI / seasonGWs);
+            const rwXG = history.length >= 3 ? recencyWeightedAvg(history, 'expected_goals') : (p.xG / seasonGWs);
+            const rwXA = history.length >= 3 ? recencyWeightedAvg(history, 'expected_assists') : (p.xA / seasonGWs);
+            const rwBonus = history.length >= 3 ? recencyWeightedAvg(history, 'bonus') : (p.bonus / seasonGWs);
+
+            // ── Position-specific xG scoring (aligned with players-analysis formulas) ──
+            if (posName === 'GK') {
+                const csPerGame = (l5?.cs || 0) / games;
+                const savesPerGame = (l5?.saves || 0) / games;
+                const xGCPerGame = (l5?.xGC || 0) / games;
+                score += csPerGame * 30 + savesPerGame * 2 + Math.max(0, (2 - xGCPerGame)) * 8;
+            } else if (posName === 'DEF') {
+                const csPerGame = (l5?.cs || 0) / games;
+                const xGCPerGame = (l5?.xGC || 0) / games;
+                score += csPerGame * 25 + Math.max(0, (2 - xGCPerGame)) * 8 + rwXGI * 12;
+            } else if (posName === 'MID') {
+                score += rwXGI * 40;
+                const actualGI = ((l5?.goals || 0) + (l5?.assists || 0)) / games;
+                const overPerf = actualGI - rwXGI;
+                score += overPerf > 0 ? overPerf * -3 : overPerf * -2; // regression
+                score += ((l5?.cs || 0) / games) * 3;
+            } else { // FWD
+                score += rwXG * 40 + rwXA * 15;
+                const actualGoals = (l5?.goals || 0) / games;
+                const overPerf = actualGoals - rwXG;
+                score += overPerf > 0 ? overPerf * -4 : overPerf * -2; // regression
             }
-            // Points per game
-            const ppg = p.totalPoints / Math.max(currentGW - 1, 1);
-            score += ppg * 2;
-            // Minutes reliability
-            const mpg = p.minutes / Math.max(currentGW - 1, 1);
-            if (mpg >= 85) score += 5;
-            else if (mpg < 50) score -= 5;
-            // Penalty taker
-            if (p.penOrder === 1) score += 5;
-            // Team attack/defense
+
+            // ── Common factors ──
+            score += rwPtsPerGame * 3;
+            score += rwBonus * 2;
+
+            // Value per million
+            const value = rwPtsPerGame / Math.max(p.price, 3.5);
+            score += value * (isDefPos ? 10 : 12);
+
+            // Nailed bonus (continuous)
+            score += Math.min(5, Math.max(0, (minsPerGame - 60) / 4));
+
+            // ── Multi-GW fixture factor with venue-adjusted opponent power ──
+            const fx = (p.fixtures || []).slice(0, 4);
+            const fixtureWeights = [3, 2, 1, 0.5];
+            let fixtureFactor = 0, fxTotalWeight = 0;
+            fx.forEach((f, idx) => {
+                const w = fixtureWeights[idx] || 0.5;
+                const oppTp = teamPowerData[f.opponentId];
+                let ff = 0;
+                if (oppTp) {
+                    const oppAttack = f.isHome ? (oppTp.attackPowerAway || oppTp.attackPower) : (oppTp.attackPowerHome || oppTp.attackPower);
+                    const oppDefense = f.isHome ? (oppTp.defensePowerAway || oppTp.defensePower) : (oppTp.defensePowerHome || oppTp.defensePower);
+                    const relevantOpp = isDefPos ? oppAttack : oppDefense;
+                    ff = ((50 - relevantOpp) / 50) * 10;
+                    if (f.isHome) ff += 1.5;
+                } else {
+                    ff = Math.max(-10, (3.5 - f.difficulty) * 8);
+                }
+                fixtureFactor += ff * w;
+                fxTotalWeight += w;
+            });
+            score += fxTotalWeight > 0 ? fixtureFactor / fxTotalWeight : 0;
+
+            // ── Venue multiplier from home/away splits ──
+            let venueMultiplier = 1.0;
+            if (fx.length > 0 && l5 && l5.games >= 3) {
+                const nextIsHome = fx[0]?.isHome;
+                if (nextIsHome !== undefined && history.length >= 3) {
+                    const homeGames = history.slice(-5).filter(g => g.was_home);
+                    const awayGames = history.slice(-5).filter(g => !g.was_home);
+                    const splitGames = nextIsHome ? homeGames : awayGames;
+                    if (splitGames.length >= 2) {
+                        const splitPts = splitGames.reduce((s, g) => s + (parseFloat(g.total_points) || 0), 0) / splitGames.length;
+                        const overallPts = (l5.points || 0) / games;
+                        if (overallPts > 0) {
+                            venueMultiplier = 0.7 + 0.3 * (splitPts / overallPts);
+                            venueMultiplier = Math.max(0.8, Math.min(1.25, venueMultiplier));
+                        }
+                    } else {
+                        venueMultiplier = nextIsHome ? 1.05 : 0.95;
+                    }
+                }
+            }
+
+            // ── Team-level factors ──
             const tp = teamPowerData[p.teamId];
             if (tp) {
-                if (pos >= 3) score += (tp.attackPower - 50) * 0.15;
-                if (pos <= 2) score += (tp.defensePower - 50) * 0.15;
+                score += ((tp.formRating - 50) / 50) * 3; // team form
+                score += isDefPos ? ((tp.defensePower - 50) / 50) * 4 : ((tp.attackPower - 50) / 50) * 4; // team quality
             }
-            // Captain potential
+
+            // ── CS probability for GK/DEF ──
+            if (isDefPos && fx.length > 0) {
+                let csTotal = 0, csWeightTotal = 0;
+                fx.slice(0, 3).forEach((f, idx) => {
+                    const w = fixtureWeights[idx] || 1;
+                    if (f.opponentId) {
+                        csTotal += getCleanSheetProb(p.teamId, f.opponentId, f.isHome) * w;
+                        csWeightTotal += w;
+                    }
+                });
+                if (csWeightTotal > 0) score += ((csTotal / csWeightTotal) - 0.28) * 35;
+            }
+
+            // ── Penalty taker detection ──
+            let penTakerBonus = 0;
+            if (p.penOrder === 1) penTakerBonus = 6;
+            else if (p.penOrder === 2) penTakerBonus = 2;
+            score += penTakerBonus;
+
+            // ── Rotation risk ──
+            if (fx.length >= 3 && minsPerGame < 85) score -= 2;
+
+            // ── DGW/BGW detection ──
+            if (fx.length > 0) {
+                const nextGW = fx[0]?.event;
+                const dgwFixtures = fx.filter(f => f.event === nextGW);
+                if (dgwFixtures.length >= 2) score += 15;
+                if (dgwFixtures.length === 0) score -= 30;
+            }
+
+            // ── Fixture swing bonus ──
+            if (fixtureSwingData[p.teamId]) {
+                const swing = fixtureSwingData[p.teamId];
+                if (swing.direction === 'improving') score += Math.min(3, Math.abs(swing.swing) * 2);
+                else score -= Math.min(3, Math.abs(swing.swing) * 2);
+            }
+
+            // ── Easy run bonus ──
+            const avgFdr = fx.length ? fx.reduce((s, f) => s + f.difficulty, 0) / fx.length : 3;
+            if (avgFdr <= 2.0) score += 3;
+            else if (avgFdr <= 2.5) score += 2;
+
+            // ── Ownership differential bonus ──
+            if (p.ownership < 10) score += (10 - p.ownership) * 0.3;
+
+            // ── L3/L5 trend bonus ──
+            if (l3 && l5 && l5.games >= 5) {
+                const l3Ppg = l3.points / Math.max(l3.games, 1);
+                const l5Ppg = l5.points / Math.max(l5.games, 1);
+                const ppgDelta = l3Ppg - l5Ppg;
+                score += Math.max(-5, Math.min(5, ppgDelta * 2));
+            }
+
+            // ── ICT index factor for attackers ──
+            if (!isDefPos && l5 && l5.games >= 3) {
+                const ictPerGame = (l5.influence + l5.creativity + l5.threat) / l5.games / 30;
+                score += Math.min(3, ictPerGame * 0.5);
+            }
+
+            // Apply venue multiplier
+            const finalScore = score * venueMultiplier;
+
+            // Captain potential flag
+            const ppg = p.totalPoints / seasonGWs;
             const isCaptainPick = pos >= 3 && p.form >= 6 && ppg >= 5;
-            return { ...p, transferScore: Math.round(score), isCaptainPick, avgFdr };
+
+            return { ...p, transferScore: Math.round(finalScore), isCaptainPick, avgFdr };
         }).sort((a, b) => b.transferScore - a.transferScore).slice(0, 8);
         transferCandidateCache[cacheKey] = candidates;
         return candidates;
