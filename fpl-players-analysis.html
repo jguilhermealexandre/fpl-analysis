@@ -2718,6 +2718,137 @@
         .rising-fixture-opp { font-size: 12px; }
         .compact-mode .player-name { font-size: 12px; }
         .compact-mode .player-team { font-size: 10px; }
+
+        /* ===== TOXIC LIST (Anti-Recommendations) ===== */
+        .toxic-assets-card {
+            background: #1F2937;
+            border: 1px solid #EF4444;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 28px;
+            overflow: hidden;
+            animation: toxicReveal 0.4s ease-out;
+        }
+        @keyframes toxicReveal {
+            from { opacity: 0; transform: translateY(-16px); max-height: 0; }
+            to { opacity: 1; transform: translateY(0); max-height: 800px; }
+        }
+        .toxic-header {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .toxic-header-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #EF4444;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .toxic-header-subtitle {
+            font-size: 12px;
+            color: #9CA3AF;
+        }
+        .toxic-list { display: flex; flex-direction: column; gap: 6px; }
+        .toxic-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: rgba(239, 68, 68, 0.04);
+            border: 1px solid rgba(239, 68, 68, 0.1);
+            border-radius: 8px;
+            transition: all 150ms;
+        }
+        .toxic-row:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            transform: translateX(2px);
+        }
+        .toxic-rank {
+            width: 22px;
+            height: 22px;
+            background: rgba(239, 68, 68, 0.15);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #EF4444;
+            flex-shrink: 0;
+        }
+        .toxic-player-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .toxic-player-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #F3F4F6;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .toxic-player-meta {
+            font-size: 11px;
+            color: #9CA3AF;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 2px;
+        }
+        .toxic-player-meta .player-pos {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+        .badge-toxic {
+            background: rgba(239, 68, 68, 0.1);
+            color: #EF4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .toxic-warnings {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .toxic-warning-badge {
+            background: rgba(239, 68, 68, 0.08);
+            color: #F87171;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 10px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .toxic-empty {
+            text-align: center;
+            padding: 24px;
+            color: #6B7280;
+            font-size: 13px;
+        }
+        .toxic-empty-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
+        .toxic-hidden { display: none !important; }
+        @media (max-width: 700px) {
+            .toxic-row { flex-wrap: wrap; gap: 8px; }
+            .toxic-warnings { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -3208,6 +3339,11 @@
                 document.getElementById('section-RISING').innerHTML = generateRisingForm(analyses);
                 document.getElementById('section-ROUTES').innerHTML = generateRoutesToPoints(analyses);
                 document.getElementById('section-ALL').innerHTML = createTable('ALL', analyses);
+
+                // Toxic List (hidden by default — revealed via triple-click easter egg)
+                const toxicPlayers = generateToxicList(allAnalyses);
+                const toxicHtml = `<div id="toxicListContainer" class="toxic-hidden">${renderToxicList(toxicPlayers)}</div>`;
+                document.getElementById('section-RECOMMENDATIONS').insertAdjacentHTML('beforeend', toxicHtml);
 
                 // Initialize Lucide icons in dynamically rendered content
                 if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -7077,6 +7213,138 @@
                 });
             }
         }
+
+        // ============================================
+        // TOXIC LIST (Anti-Recommendations)
+        // ============================================
+        const TOXIC_OWNERSHIP_THRESHOLD = 15.0;
+        const TOXIC_FORM_THRESHOLD = 2.5;
+        const TOXIC_FDR_THRESHOLD = 3.5;
+        const TOXIC_MAX_PLAYERS = 5;
+
+        function generateToxicList(allPlayers, userSquad = []) {
+            const userSquadSet = new Set(userSquad);
+            const toxicPlayers = [];
+
+            for (const p of allPlayers) {
+                if (p.selectedBy < TOXIC_OWNERSHIP_THRESHOLD) continue;
+
+                const reasons = [];
+
+                // Terrible form
+                if (p.form < TOXIC_FORM_THRESHOLD) {
+                    reasons.push(`\u{1F534} Avg Form: ${p.form.toFixed(1)}`);
+                }
+
+                // Brutal upcoming fixtures
+                if (p.fixtures && p.fixtures.avgFDR3 > TOXIC_FDR_THRESHOLD) {
+                    reasons.push(`\u{1F534} Brutal Next 3 GWs (${p.fixtures.avgFDR3.toFixed(1)})`);
+                }
+
+                // Tactically dropped: 0 mins last GW but not injured/suspended
+                if (p.history && p.history.length > 0) {
+                    const lastGw = p.history[p.history.length - 1];
+                    if (lastGw.minutes === 0 && p.status === 'a') {
+                        reasons.push(`\u{1F534} Dropped — 0 mins last GW`);
+                    }
+                }
+
+                if (reasons.length > 0) {
+                    toxicPlayers.push({
+                        id: p.id,
+                        name: p.name,
+                        position: p.position,
+                        team: p.team,
+                        selectedBy: p.selectedBy,
+                        form: p.form,
+                        reasons,
+                        inSquad: userSquadSet.has(p.id)
+                    });
+                }
+            }
+
+            toxicPlayers.sort((a, b) => b.selectedBy - a.selectedBy);
+            return toxicPlayers.slice(0, TOXIC_MAX_PLAYERS);
+        }
+
+        function renderToxicList(toxicPlayers) {
+            if (toxicPlayers.length === 0) {
+                return `<div class="toxic-assets-card">
+                    <div class="toxic-header">
+                        <div class="toxic-header-title">\u2622\uFE0F The Toxic List</div>
+                        <div class="toxic-header-subtitle">Highly-owned traps you need to sell.</div>
+                    </div>
+                    <div class="toxic-empty">
+                        <div class="toxic-empty-icon">\u2705</div>
+                        <div>All clear — no major ownership traps detected right now.</div>
+                    </div>
+                </div>`;
+            }
+
+            const posClass = { GK: 'gk', DEF: 'def', MID: 'mid', FWD: 'fwd' };
+            const rows = toxicPlayers.map((p, i) => {
+                const warnings = p.reasons.map(r =>
+                    `<span class="toxic-warning-badge">${r}</span>`
+                ).join('');
+                const pc = posClass[p.position] || 'mid';
+                return `<div class="toxic-row">
+                    <div class="toxic-rank">${i + 1}</div>
+                    <div class="toxic-player-info">
+                        <div class="toxic-player-name">${p.name}</div>
+                        <div class="toxic-player-meta">
+                            <span class="player-pos ${pc}">${p.position}</span>
+                            <span>${p.team}</span>
+                        </div>
+                    </div>
+                    <span class="badge-toxic">${p.selectedBy.toFixed(1)}% Owned</span>
+                    <div class="toxic-warnings">${warnings}</div>
+                </div>`;
+            }).join('');
+
+            return `<div class="toxic-assets-card">
+                <div class="toxic-header">
+                    <div class="toxic-header-title">\u2622\uFE0F The Toxic List</div>
+                    <div class="toxic-header-subtitle">Highly-owned traps you need to sell.</div>
+                </div>
+                <div class="toxic-list">${rows}</div>
+            </div>`;
+        }
+
+        // Triple-click easter egg on page title
+        (function initToxicEasterEgg() {
+            const title = document.querySelector('.page-title');
+            if (!title) return;
+            let clickCount = 0;
+            let clickTimer = null;
+            title.style.cursor = 'default';
+            title.addEventListener('click', function () {
+                clickCount++;
+                if (clickTimer) clearTimeout(clickTimer);
+                if (clickCount >= 3) {
+                    clickCount = 0;
+                    const container = document.getElementById('toxicListContainer');
+                    if (container) {
+                        const isHidden = container.classList.toggle('toxic-hidden');
+                        // Flash title red briefly
+                        title.style.transition = 'color 0.2s';
+                        title.style.color = isHidden ? '' : '#EF4444';
+                        if (!isHidden) {
+                            // Re-trigger animation
+                            const card = container.querySelector('.toxic-assets-card');
+                            if (card) {
+                                card.style.animation = 'none';
+                                card.offsetHeight; // force reflow
+                                card.style.animation = '';
+                            }
+                        } else {
+                            setTimeout(() => { title.style.color = ''; }, 400);
+                        }
+                    }
+                } else {
+                    clickTimer = setTimeout(() => { clickCount = 0; }, 600);
+                }
+            });
+        })();
 
         // ============================================
         // INIT
