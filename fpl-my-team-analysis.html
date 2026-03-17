@@ -1481,9 +1481,43 @@
 
         .draft-save-indicator { font-size: 0.65rem; color: var(--text-muted); font-style: italic; }
 
+        /* Plan selector */
+        .draft-plan-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+        .draft-plan-tabs { display: flex; gap: 4px; }
+        .draft-plan-tab { position: relative; padding: 7px 18px; border-radius: 20px; border: 1.5px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.78rem; font-weight: 700; font-family: var(--font-display); cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+        .draft-plan-tab:hover { border-color: var(--color-primary); color: var(--color-primary); background: rgba(99,102,241,0.06); }
+        .draft-plan-tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+        .draft-plan-tab .plan-tab-badge { font-size: 0.55rem; font-weight: 700; background: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 8px; }
+        .draft-plan-tab.active .plan-tab-badge { background: rgba(255,255,255,0.25); }
+        .draft-plan-tab:not(.active) .plan-tab-badge { background: var(--surface-2); color: var(--text-muted); }
+        .draft-plan-del { font-size: 0.6rem; width: 16px; height: 16px; border-radius: 50%; border: none; background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0; line-height: 1; }
+        .draft-plan-tab:not(.active) .draft-plan-del { background: var(--surface-2); color: var(--text-muted); }
+        .draft-plan-del:hover { background: var(--color-error); color: #fff; }
+        .draft-plan-add { padding: 7px 12px; border-radius: 20px; border: 1.5px dashed var(--border-default); background: transparent; color: var(--text-muted); font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .draft-plan-add:hover { border-color: var(--color-primary); color: var(--color-primary); border-style: solid; }
+        .draft-plan-actions { display: flex; gap: 4px; margin-left: auto; }
+        .draft-plan-action-btn { padding: 5px 10px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.68rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .draft-plan-action-btn:hover { border-color: var(--color-info); color: var(--color-info); }
+
+        /* Compare plans side-by-side */
+        .draft-compare-wrapper { display: flex; gap: 12px; margin-top: 8px; flex-wrap: nowrap; }
+        .draft-compare-col { flex: 1; min-width: 0; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 12px; overflow: hidden; }
+        .draft-compare-col .planner-pitch-container { transform: scale(0.85); transform-origin: top center; }
+        .draft-compare-header { text-align: center; font-size: 0.8rem; font-weight: 700; font-family: var(--font-display); color: var(--text-primary); margin-bottom: 8px; padding: 6px 10px; border-radius: var(--radius-md); background: var(--surface-2); }
+        .draft-compare-meta { display: flex; justify-content: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .draft-compare-meta-item { font-size: 0.68rem; color: var(--text-secondary); padding: 3px 8px; background: var(--surface-0); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); }
+        .draft-compare-meta-item strong { font-family: var(--font-mono); color: var(--text-primary); }
+        .draft-compare-transfers { margin-top: 8px; }
+        .draft-compare-transfer-item { font-size: 0.68rem; padding: 3px 0; color: var(--text-secondary); }
+        .draft-compare-close { margin-bottom: 10px; }
+
         @media (max-width: 768px) {
             .draft-toolbar { flex-direction: column; align-items: stretch; }
             .draft-meta-row { margin-left: 0; }
+            .draft-compare-wrapper { flex-direction: column; }
+            .draft-compare-col .planner-pitch-container { transform: scale(1); }
+            .draft-plan-bar { flex-direction: column; align-items: stretch; }
+            .draft-plan-actions { margin-left: 0; }
         }
 
         /* ===== MANAGER'S NOTEPAD ===== */
@@ -4454,11 +4488,17 @@
         }
 
         // ===== GW DRAFT =====
-        let draftState = null;
+        let draftStates = [null, null, null];
+        let activeDraftSlot = 0;
+        let draftSlotCount = 1;
         let draftSwapSource = null;
         let draftReplacementTarget = null;
+        let draftCompareMode = false;
 
-        function initDraft() {
+        function getActiveDraft() { return draftStates[activeDraftSlot]; }
+
+        function initDraft(slotIndex) {
+            if (slotIndex === undefined) slotIndex = activeDraftSlot;
             const gwNumbers = [];
             const upcoming = allFixtures.filter(f => !f.finished && f.event !== null).map(f => f.event);
             const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
@@ -4475,7 +4515,7 @@
                 });
             }
 
-            draftState = {
+            draftStates[slotIndex] = {
                 gwNumbers: gwNumbers,
                 selectedGW: gwNumbers[0] || null,
                 originalSquad: selectedPlayers.map(p => ({ ...p })),
@@ -4491,35 +4531,39 @@
 
             // Initialize lineups for each GW (carry-forward model)
             gwNumbers.forEach(gw => {
-                draftState.transfers[gw] = [];
-                draftState.chips[gw] = null;
-                draftState.lineups[gw] = selectedPlayers.map(p => ({ ...p }));
+                draftStates[slotIndex].transfers[gw] = [];
+                draftStates[slotIndex].chips[gw] = null;
+                draftStates[slotIndex].lineups[gw] = selectedPlayers.map(p => ({ ...p }));
             });
 
-            draftSwapSource = null;
-            draftReplacementTarget = null;
+            if (slotIndex === activeDraftSlot) {
+                draftSwapSource = null;
+                draftReplacementTarget = null;
+            }
         }
 
-        function getDraftSquad(gw) {
-            return draftState.lineups[gw] || selectedPlayers.map(p => ({ ...p }));
+        function getDraftSquad(gw, slotIndex) {
+            const ds = slotIndex !== undefined ? draftStates[slotIndex] : getActiveDraft();
+            return ds.lineups[gw] || selectedPlayers.map(p => ({ ...p }));
         }
 
-        function rebuildDraftSquads() {
+        function rebuildDraftSquads(slotIndex) {
+            const ds = slotIndex !== undefined ? draftStates[slotIndex] : getActiveDraft();
             // Rebuild all squads from original, applying transfers cumulatively
-            const gws = draftState.gwNumbers;
-            let currentSquad = draftState.originalSquad.map(p => ({ ...p }));
+            const gws = ds.gwNumbers;
+            let currentSquad = ds.originalSquad.map(p => ({ ...p }));
 
             // Track cumulative transfers (except free hit GWs)
             let carrySquad = currentSquad.map(p => ({ ...p }));
 
             gws.forEach(gw => {
-                const chip = draftState.chips[gw];
+                const chip = ds.chips[gw];
 
                 if (chip === 'freehit') {
                     // Free Hit: start from carrySquad but don't update it
                     let fhSquad = carrySquad.map(p => ({ ...p }));
                     // Apply this GW's transfers
-                    const gwTransfers = draftState.transfers[gw] || [];
+                    const gwTransfers = ds.transfers[gw] || [];
                     gwTransfers.forEach(t => {
                         const idx = fhSquad.findIndex(p => p.id === t.outId);
                         if (idx >= 0) {
@@ -4541,11 +4585,11 @@
                             }
                         }
                     });
-                    draftState.lineups[gw] = fhSquad;
+                    ds.lineups[gw] = fhSquad;
                     // carrySquad unchanged — next GW reverts
                 } else {
                     // Normal/Wildcard: apply transfers to carry squad
-                    const gwTransfers = draftState.transfers[gw] || [];
+                    const gwTransfers = ds.transfers[gw] || [];
                     gwTransfers.forEach(t => {
                         const idx = carrySquad.findIndex(p => p.id === t.outId);
                         if (idx >= 0) {
@@ -4567,21 +4611,22 @@
                             }
                         }
                     });
-                    draftState.lineups[gw] = carrySquad.map(p => ({ ...p }));
+                    ds.lineups[gw] = carrySquad.map(p => ({ ...p }));
                 }
             });
         }
 
         function getDraftBudget(gw) {
-            let budget = draftState.bank;
-            const gws = draftState.gwNumbers;
+            const ds = getActiveDraft();
+            let budget = ds.bank;
+            const gws = ds.gwNumbers;
             // Carry squad value changes up to this GW
-            let carrySquad = draftState.originalSquad.map(p => ({ ...p }));
+            let carrySquad = ds.originalSquad.map(p => ({ ...p }));
 
             for (const g of gws) {
                 if (g > gw) break;
-                const chip = draftState.chips[g];
-                const gwTransfers = draftState.transfers[g] || [];
+                const chip = ds.chips[g];
+                const gwTransfers = ds.transfers[g] || [];
 
                 gwTransfers.forEach(t => {
                     // Find sell price of outgoing player in current carry squad
@@ -4608,12 +4653,13 @@
         }
 
         function getDraftFreeTransfers(gw) {
-            const gws = draftState.gwNumbers;
-            let ft = draftState.startingFT;
+            const ds = getActiveDraft();
+            const gws = ds.gwNumbers;
+            let ft = ds.startingFT;
             for (const g of gws) {
                 if (g === gw) return Math.max(0, ft);
-                const chip = draftState.chips[g];
-                const numTransfers = (draftState.transfers[g] || []).length;
+                const chip = ds.chips[g];
+                const numTransfers = (ds.transfers[g] || []).length;
                 if (chip === 'wildcard' || chip === 'freehit') {
                     // WC/FH: transfers don't cost FTs
                     if (g !== gws[0]) ft = Math.min(ft + 1, 5);
@@ -4628,18 +4674,20 @@
         }
 
         function getDraftHitCost(gw) {
-            const chip = draftState.chips[gw];
+            const ds = getActiveDraft();
+            const chip = ds.chips[gw];
             if (chip === 'wildcard' || chip === 'freehit') return 0;
-            const numTransfers = (draftState.transfers[gw] || []).length;
+            const numTransfers = (ds.transfers[gw] || []).length;
             const ft = getDraftFreeTransfers(gw);
             const excess = Math.max(0, numTransfers - ft);
             return excess * 4;
         }
 
         function isDraftChipAvailable(chipName) {
+            const ds = getActiveDraft();
             // 2025/26 season: each chip can be used once per half (GW1-19 = first half, GW20-38 = second half)
             const HALF_CUTOFF = 20;
-            const draftGW = draftState.selectedGW;
+            const draftGW = ds.selectedGW;
             const draftHalf = draftGW >= HALF_CUTOFF ? 2 : 1;
 
             const mapped = {
@@ -4651,13 +4699,13 @@
             const aliases = mapped[chipName] || [chipName];
 
             // Check if chip was already used in real FPL in the SAME half
-            const usedInSameHalf = draftState.usedChips.some(c =>
+            const usedInSameHalf = ds.usedChips.some(c =>
                 aliases.includes(c.name) && (c.event >= HALF_CUTOFF ? 2 : 1) === draftHalf
             );
             if (usedInSameHalf) return false;
 
             // Check if already assigned to a GW in the same half in draft
-            const assignedInSameHalf = Object.entries(draftState.chips)
+            const assignedInSameHalf = Object.entries(ds.chips)
                 .filter(([g, c]) => c === chipName && (parseInt(g) >= HALF_CUTOFF ? 2 : 1) === draftHalf)
                 .length;
 
@@ -4665,18 +4713,19 @@
         }
 
         function activateDraftChip(chip) {
-            const gw = draftState.selectedGW;
-            const currentChip = draftState.chips[gw];
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
+            const currentChip = ds.chips[gw];
 
             if (currentChip === chip) {
                 // Deactivate
-                draftState.chips[gw] = null;
+                ds.chips[gw] = null;
             } else {
                 // Remove from other GW if already assigned
-                Object.keys(draftState.chips).forEach(g => {
-                    if (draftState.chips[g] === chip) draftState.chips[g] = null;
+                Object.keys(ds.chips).forEach(g => {
+                    if (ds.chips[g] === chip) ds.chips[g] = null;
                 });
-                draftState.chips[gw] = chip;
+                ds.chips[gw] = chip;
             }
 
             // If free hit changed, rebuild squads
@@ -4689,7 +4738,8 @@
 
         // ===== DRAFT TRANSFER SYSTEM =====
         function openDraftTransferPanel(playerId) {
-            const gw = draftState.selectedGW;
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
             const squad = getDraftSquad(gw);
             const player = squad.find(p => p.id === playerId) || allPlayersById[playerId];
             if (!player) return;
@@ -4763,7 +4813,8 @@
         }
 
         function findDraftReplacements(player, currentSquad, count = 8) {
-            const gw = draftState.selectedGW;
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
             const maxPrice = getDraftBudget(gw) + (player.sellPrice || player.price);
             const squadIds = new Set(currentSquad.map(p => p.id));
             const candidates = allPlayers.filter(p =>
@@ -4796,7 +4847,8 @@
             if (query.length < 2) { dropdown.classList.remove('show'); return; }
 
             const pos = draftReplacementTarget?.position;
-            const gw = draftState.selectedGW;
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
             const maxPrice = getDraftBudget(gw) + (draftReplacementTarget?.sellPrice || draftReplacementTarget?.price || 0);
             const squadIds = new Set(getDraftSquad(gw).map(p => p.id));
 
@@ -4873,13 +4925,14 @@
         }
 
         function confirmDraftTransfer(outId, inId) {
-            const gw = draftState.selectedGW;
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
             const squad = getDraftSquad(gw);
             const outPlayer = squad.find(p => p.id === outId);
             const inPlayer = allPlayersById[inId];
             if (!outPlayer || !inPlayer) return;
 
-            draftState.transfers[gw].push({
+            ds.transfers[gw].push({
                 outId: outId,
                 inId: inId,
                 outName: outPlayer.name,
@@ -4895,7 +4948,7 @@
         }
 
         function revertDraftTransfer(gw, transferIndex) {
-            draftState.transfers[gw].splice(transferIndex, 1);
+            getActiveDraft().transfers[gw].splice(transferIndex, 1);
             rebuildDraftSquads();
             saveDraft();
             rerenderDraftView();
@@ -4903,7 +4956,7 @@
 
         // ===== DRAFT SWAP & CAPTAINCY =====
         function draftCanSwap(sourceId, targetId) {
-            const gw = draftState.selectedGW;
+            const gw = getActiveDraft().selectedGW;
             const lineup = getDraftSquad(gw);
             const source = lineup.find(p => p.id === sourceId);
             const target = lineup.find(p => p.id === targetId);
@@ -4922,7 +4975,7 @@
         }
 
         function performDraftSwap(sourceId, targetId) {
-            const gw = draftState.selectedGW;
+            const gw = getActiveDraft().selectedGW;
             const lineup = getDraftSquad(gw);
             const source = lineup.find(p => p.id === sourceId);
             const target = lineup.find(p => p.id === targetId);
@@ -4961,7 +5014,7 @@
         }
 
         function setDraftCaptain(playerId) {
-            const gw = draftState.selectedGW;
+            const gw = getActiveDraft().selectedGW;
             const lineup = getDraftSquad(gw);
             lineup.forEach(p => {
                 if (p.id === playerId) {
@@ -4982,7 +5035,7 @@
         }
 
         function setDraftViceCaptain(playerId) {
-            const gw = draftState.selectedGW;
+            const gw = getActiveDraft().selectedGW;
             const lineup = getDraftSquad(gw);
             lineup.forEach(p => {
                 if (p.id === playerId) {
@@ -5003,40 +5056,95 @@
         }
 
         // ===== DRAFT localStorage PERSISTENCE =====
-        function saveDraft() {
-            if (!draftState || !draftState.teamId) return;
+        function saveDraft(slotIndex) {
+            if (slotIndex === undefined) slotIndex = activeDraftSlot;
+            const ds = draftStates[slotIndex];
+            if (!ds || !ds.teamId) return;
             const payload = {
-                gwNumbers: draftState.gwNumbers,
-                selectedGW: draftState.selectedGW,
-                transfers: draftState.transfers,
-                chips: draftState.chips,
+                gwNumbers: ds.gwNumbers,
+                selectedGW: ds.selectedGW,
+                transfers: ds.transfers,
+                chips: ds.chips,
                 lineups: {},
-                bank: draftState.bank,
-                startingFT: draftState.startingFT,
-                usedChips: draftState.usedChips,
-                teamId: draftState.teamId,
+                bank: ds.bank,
+                startingFT: ds.startingFT,
+                usedChips: ds.usedChips,
+                teamId: ds.teamId,
                 savedAt: new Date().toISOString()
             };
             // Store lineups as compact: [{id, onBench, isCaptain, isVice, pickPosition}]
-            draftState.gwNumbers.forEach(gw => {
-                const squad = getDraftSquad(gw);
+            ds.gwNumbers.forEach(gw => {
+                const squad = getDraftSquad(gw, slotIndex);
                 payload.lineups[gw] = squad.map(p => ({
                     id: p.id, onBench: p.onBench, isCaptain: p.isCaptain, isVice: p.isVice, pickPosition: p.pickPosition
                 }));
             });
             try {
-                localStorage.setItem(`fpl_draft_${draftState.teamId}`, JSON.stringify(payload));
-                draftState.savedAt = payload.savedAt;
+                localStorage.setItem(`fpl_draft_${ds.teamId}_plan${slotIndex}`, JSON.stringify(payload));
+                ds.savedAt = payload.savedAt;
+                // Save meta
+                saveDraftMeta();
             } catch (e) { /* localStorage full */ }
+        }
+
+        function saveDraftMeta() {
+            const teamId = localStorage.getItem('fpl_team_id') || '';
+            if (!teamId) return;
+            try {
+                localStorage.setItem(`fpl_draft_meta_${teamId}`, JSON.stringify({
+                    slotCount: draftSlotCount,
+                    activeSlot: activeDraftSlot
+                }));
+            } catch(e) {}
         }
 
         function loadDraft() {
             const teamId = localStorage.getItem('fpl_team_id') || '';
             if (!teamId) return false;
+
+            // Load meta
+            let meta = null;
             try {
-                const raw = localStorage.getItem(`fpl_draft_${teamId}`);
-                if (!raw) return false;
-                const saved = JSON.parse(raw);
+                const rawMeta = localStorage.getItem(`fpl_draft_meta_${teamId}`);
+                if (rawMeta) meta = JSON.parse(rawMeta);
+            } catch(e) {}
+
+            // Legacy migration: check for old single-draft key
+            const legacyRaw = localStorage.getItem(`fpl_draft_${teamId}`);
+            if (legacyRaw && !meta) {
+                // Migrate old format to Plan 0
+                const migrated = loadDraftSlot(0, legacyRaw);
+                if (migrated) {
+                    try { localStorage.removeItem(`fpl_draft_${teamId}`); } catch(e) {}
+                    draftSlotCount = 1;
+                    activeDraftSlot = 0;
+                    saveDraft(0);
+                    saveDraftMeta();
+                    return true;
+                }
+            }
+
+            if (!meta) return false;
+
+            draftSlotCount = Math.max(1, Math.min(3, meta.slotCount || 1));
+            activeDraftSlot = Math.max(0, Math.min(draftSlotCount - 1, meta.activeSlot || 0));
+
+            let anyLoaded = false;
+            for (let i = 0; i < draftSlotCount; i++) {
+                // Initialize this slot if not already done
+                if (!draftStates[i]) initDraft(i);
+                try {
+                    const raw = localStorage.getItem(`fpl_draft_${teamId}_plan${i}`);
+                    if (raw && loadDraftSlot(i, raw)) anyLoaded = true;
+                } catch(e) {}
+            }
+            return anyLoaded;
+        }
+
+        function loadDraftSlot(slotIndex, rawJson) {
+            try {
+                const saved = JSON.parse(rawJson);
+                const teamId = localStorage.getItem('fpl_team_id') || '';
                 if (!saved || saved.teamId !== teamId) return false;
 
                 // Validate saved GWs still make sense
@@ -5046,26 +5154,25 @@
                 for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) currentGWNums.push(uniqueGWs[i]);
 
                 // If GW numbers don't match, saved data is stale
-                if (JSON.stringify(currentGWNums) !== JSON.stringify(saved.gwNumbers)) {
-                    console.warn('[Draft] Saved draft discarded — gameweeks have progressed since last save.');
-                    try { localStorage.removeItem(`fpl_draft_${teamId}`); } catch(e) {}
-                    return false;
-                }
+                if (JSON.stringify(currentGWNums) !== JSON.stringify(saved.gwNumbers)) return false;
+
+                const ds = draftStates[slotIndex];
+                if (!ds) return false;
 
                 // Restore state
-                draftState.transfers = saved.transfers || {};
-                draftState.chips = saved.chips || {};
-                draftState.startingFT = saved.startingFT || 1;
-                draftState.savedAt = saved.savedAt;
+                ds.transfers = saved.transfers || {};
+                ds.chips = saved.chips || {};
+                ds.startingFT = saved.startingFT || 1;
+                ds.savedAt = saved.savedAt;
 
                 // Rebuild squads from transfers
-                rebuildDraftSquads();
+                rebuildDraftSquads(slotIndex);
 
                 // Restore lineup modifications (swap/captain) from saved compact lineups
-                draftState.gwNumbers.forEach(gw => {
+                ds.gwNumbers.forEach(gw => {
                     const savedLineup = saved.lineups?.[gw];
                     if (!savedLineup) return;
-                    const currentLineup = getDraftSquad(gw);
+                    const currentLineup = getDraftSquad(gw, slotIndex);
                     savedLineup.forEach(sp => {
                         const player = currentLineup.find(p => p.id === sp.id);
                         if (player) {
@@ -5077,8 +5184,8 @@
                     });
                 });
 
-                if (saved.selectedGW && draftState.gwNumbers.includes(saved.selectedGW)) {
-                    draftState.selectedGW = saved.selectedGW;
+                if (saved.selectedGW && ds.gwNumbers.includes(saved.selectedGW)) {
+                    ds.selectedGW = saved.selectedGW;
                 }
 
                 return true;
@@ -5088,12 +5195,110 @@
         }
 
         function resetDraft() {
-            if (!draftState) return;
-            const teamId = draftState.teamId;
-            try { localStorage.removeItem(`fpl_draft_${teamId}`); } catch(e) {}
-            initDraft();
+            const ds = getActiveDraft();
+            if (!ds) return;
+            const teamId = ds.teamId;
+            try { localStorage.removeItem(`fpl_draft_${teamId}_plan${activeDraftSlot}`); } catch(e) {}
+            initDraft(activeDraftSlot);
             draftTabRendered = false;
             renderSquadPlanner();
+        }
+
+        // ===== PLAN SLOT MANAGEMENT =====
+        function switchDraftSlot(slot) {
+            if (slot === activeDraftSlot || slot < 0 || slot >= draftSlotCount) return;
+            saveDraft(activeDraftSlot);
+            activeDraftSlot = slot;
+            draftSwapSource = null;
+            draftReplacementTarget = null;
+            draftCompareMode = false;
+            saveDraftMeta();
+            rerenderDraftView();
+        }
+
+        function addDraftSlot() {
+            if (draftSlotCount >= 3) return;
+            const newSlot = draftSlotCount;
+            draftSlotCount++;
+            initDraft(newSlot);
+            saveDraft(activeDraftSlot);
+            activeDraftSlot = newSlot;
+            draftSwapSource = null;
+            draftCompareMode = false;
+            saveDraft(newSlot);
+            saveDraftMeta();
+            rerenderDraftView();
+        }
+
+        function duplicateDraftSlot(sourceSlot) {
+            if (draftSlotCount >= 3) return;
+            const newSlot = draftSlotCount;
+            draftSlotCount++;
+            initDraft(newSlot);
+            // Deep clone the source
+            const src = draftStates[sourceSlot];
+            const dst = draftStates[newSlot];
+            dst.transfers = JSON.parse(JSON.stringify(src.transfers));
+            dst.chips = JSON.parse(JSON.stringify(src.chips));
+            dst.startingFT = src.startingFT;
+            dst.selectedGW = src.selectedGW;
+            rebuildDraftSquads(newSlot);
+            // Restore lineup mods from source
+            dst.gwNumbers.forEach(gw => {
+                const srcLineup = getDraftSquad(gw, sourceSlot);
+                const dstLineup = getDraftSquad(gw, newSlot);
+                srcLineup.forEach(sp => {
+                    const p = dstLineup.find(x => x.id === sp.id);
+                    if (p) {
+                        p.onBench = sp.onBench;
+                        p.isCaptain = sp.isCaptain;
+                        p.isVice = sp.isVice;
+                        p.pickPosition = sp.pickPosition;
+                    }
+                });
+            });
+            saveDraft(activeDraftSlot);
+            activeDraftSlot = newSlot;
+            draftSwapSource = null;
+            draftCompareMode = false;
+            saveDraft(newSlot);
+            saveDraftMeta();
+            rerenderDraftView();
+        }
+
+        function removeDraftSlot(slot) {
+            if (draftSlotCount <= 1) return;
+            if (!confirm(`Delete Plan ${slot + 1}? This cannot be undone.`)) return;
+            const teamId = localStorage.getItem('fpl_team_id') || '';
+            // Remove localStorage for this slot
+            try { localStorage.removeItem(`fpl_draft_${teamId}_plan${slot}`); } catch(e) {}
+            // Remove notepad keys for this slot
+            const ds = draftStates[slot];
+            if (ds) {
+                ds.gwNumbers.forEach(gw => {
+                    try { localStorage.removeItem(`fpl_notes_${teamId}_plan${slot}_gw${gw}`); } catch(e) {}
+                });
+            }
+            // Shift higher slots down
+            for (let i = slot; i < draftSlotCount - 1; i++) {
+                draftStates[i] = draftStates[i + 1];
+                // Re-save shifted slots with new key
+                try { localStorage.removeItem(`fpl_draft_${teamId}_plan${i + 1}`); } catch(e) {}
+                if (draftStates[i]) saveDraft(i);
+            }
+            draftStates[draftSlotCount - 1] = null;
+            draftSlotCount--;
+            if (activeDraftSlot >= draftSlotCount) activeDraftSlot = draftSlotCount - 1;
+            draftSwapSource = null;
+            draftCompareMode = false;
+            saveDraftMeta();
+            draftTabRendered = false;
+            renderSquadPlanner();
+        }
+
+        function toggleDraftCompare() {
+            draftCompareMode = !draftCompareMode;
+            rerenderDraftView();
         }
 
         // ===== DRAFT RENDERING =====
@@ -5105,29 +5310,39 @@
                 return;
             }
 
-            initDraft();
+            // Initialize all active slots
+            for (let i = 0; i < Math.max(draftSlotCount, 1); i++) {
+                if (!draftStates[i]) initDraft(i);
+            }
             const loaded = loadDraft();
 
+            const ds = getActiveDraft();
             let html = '';
 
             // Intro
-            html += `<div class="planner-intro"><span>📋</span> Plan your transfers, lineup, and chips for the next gameweeks. Changes are saved automatically and carry forward.</div>`;
+            html += `<div class="planner-intro"><span>📋</span> Plan your transfers, lineup, and chips for the next gameweeks. Create up to 3 plans to compare different strategies.</div>`;
+
+            // Plan selector bar
+            html += `<div id="draftPlanBar">${renderDraftPlanBar()}</div>`;
+
+            // Compare mode
+            html += `<div id="draftCompareArea">${draftCompareMode ? renderDraftComparison() : ''}</div>`;
 
             // Toolbar
-            html += `<div class="draft-toolbar" id="draftToolbar">${renderDraftToolbar()}</div>`;
+            html += `<div class="draft-toolbar" id="draftToolbar" ${draftCompareMode ? 'style="display:none;"' : ''}>${renderDraftToolbar()}</div>`;
 
             // Chip selector row
-            html += `<div id="draftChipRow" style="margin-bottom:12px;">${renderDraftChipRow()}</div>`;
+            html += `<div id="draftChipRow" style="margin-bottom:12px;${draftCompareMode ? 'display:none;' : ''}">${renderDraftChipRow()}</div>`;
 
             // Pitch view + Notepad layout wrapper
             const notepadOpen = localStorage.getItem('fpl_notepad_open') === 'true';
-            html += `<div class="planner-layout-wrapper">`;
+            html += `<div class="planner-layout-wrapper" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
             html += `<div class="planner-pitch-wrap" id="draftPitchArea">${renderDraftPitchHTML()}</div>`;
             html += `<button class="notepad-toggle-tab${notepadOpen ? ' active' : ''}" onclick="toggleNotepad()" title="Manager's Notepad" aria-label="Toggle Manager's Notepad"><span class="notepad-tab-icon"><i data-lucide="pen-line" style="width:14px;height:14px;"></i></span>Notes</button>`;
             html += `<aside id="gw-notepad-panel" class="notepad-panel${notepadOpen ? '' : ' collapsed'}">`;
             html += `<div class="notepad-header">`;
             html += `<div class="notepad-header-title"><i data-lucide="notebook-pen" style="width:14px;height:14px;"></i> Manager's Notepad</div>`;
-            html += `<span class="notepad-gw-label" id="notepadGwLabel">GW${draftState.selectedGW}</span>`;
+            html += `<span class="notepad-gw-label" id="notepadGwLabel">GW${ds.selectedGW}</span>`;
             html += `<span class="notepad-save-status" id="notepadSaveStatus">✓ Saved</span>`;
             html += `<button class="notepad-close-btn" onclick="toggleNotepad()" title="Close notepad" aria-label="Close notepad">✕</button>`;
             html += `</div>`;
@@ -5136,7 +5351,7 @@
             html += `</div>`;
 
             // ===== STATS HUB — Tabbed Interface =====
-            html += `<div class="gw-stats-hub">`;
+            html += `<div class="gw-stats-hub" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
             html += `<div class="hub-tab-nav">`;
             html += `<button class="hub-tab active" data-target="player-tab" onclick="switchHubTab(this)">👤 Player Insights</button>`;
             html += `<button class="hub-tab" data-target="team-tab" onclick="switchHubTab(this)">🛡️ Team Insights</button>`;
@@ -5145,7 +5360,7 @@
             // Player Insights tab (active by default)
             html += `<div class="hub-panel active" id="player-tab">`;
             html += `<div class="planner-table-wrap"><table class="planner-table">`;
-            const gwNumbers = draftState.gwNumbers;
+            const gwNumbers = ds.gwNumbers;
             html += `<thead><tr>`;
             html += `<th rowspan="2" style="min-width:140px;">Player</th>`;
             html += `<th colspan="3" class="planner-col-group planner-col-season" style="border-bottom:1px solid rgba(96,165,250,0.15);" title="Full-season averages">Season</th>`;
@@ -5163,7 +5378,7 @@
 
             // Team Insights tab
             html += `<div class="hub-panel" id="team-tab">`;
-            const draftSquad = getDraftSquad(draftState.selectedGW);
+            const draftSquad = getDraftSquad(ds.selectedGW);
             const uniqueTeamIds = [...new Set(draftSquad.map(p => p.teamId))].filter(tid => teamFixtures6[tid] && teamFixtures6[tid].length > 0);
             if (uniqueTeamIds.length > 0) {
                 html += `<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:10px;" id="draftTeamContext">`;
@@ -5176,8 +5391,8 @@
             html += `</div>`;
 
             // Save indicator
-            if (draftState.savedAt) {
-                html += `<div class="draft-save-indicator" id="draftSaveIndicator">Last saved: ${new Date(draftState.savedAt).toLocaleTimeString()}</div>`;
+            if (ds.savedAt) {
+                html += `<div class="draft-save-indicator" id="draftSaveIndicator">Plan ${activeDraftSlot + 1} saved: ${new Date(ds.savedAt).toLocaleTimeString()}</div>`;
             }
 
             container.innerHTML = html;
@@ -5185,22 +5400,59 @@
             initNotepad();
         }
 
+        function renderDraftPlanBar() {
+            let html = `<div class="draft-plan-bar">`;
+            html += `<div class="draft-plan-tabs">`;
+            for (let i = 0; i < draftSlotCount; i++) {
+                const active = i === activeDraftSlot ? 'active' : '';
+                const ds = draftStates[i];
+                let totalTransfers = 0;
+                if (ds) {
+                    Object.values(ds.transfers).forEach(arr => { totalTransfers += (arr || []).length; });
+                }
+                const badge = totalTransfers > 0 ? `<span class="plan-tab-badge">${totalTransfers}T</span>` : '';
+                html += `<button class="draft-plan-tab ${active}" onclick="switchDraftSlot(${i})">`;
+                html += `Plan ${i + 1}${badge}`;
+                if (draftSlotCount > 1) {
+                    html += ` <button class="draft-plan-del" onclick="event.stopPropagation();removeDraftSlot(${i})" title="Delete Plan ${i + 1}" aria-label="Delete Plan ${i + 1}">✕</button>`;
+                }
+                html += `</button>`;
+            }
+            if (draftSlotCount < 3) {
+                html += `<button class="draft-plan-add" onclick="addDraftSlot()" title="Add new plan">+ New Plan</button>`;
+            }
+            html += `</div>`;
+
+            // Plan actions
+            html += `<div class="draft-plan-actions">`;
+            if (draftSlotCount < 3) {
+                html += `<button class="draft-plan-action-btn" onclick="duplicateDraftSlot(${activeDraftSlot})" title="Duplicate current plan">📋 Duplicate</button>`;
+            }
+            if (draftSlotCount >= 2) {
+                html += `<button class="draft-plan-action-btn" onclick="toggleDraftCompare()" title="Compare plans side by side">${draftCompareMode ? '← Back' : '⚖️ Compare Plans'}</button>`;
+            }
+            html += `</div>`;
+            html += `</div>`;
+            return html;
+        }
+
         function renderDraftToolbar() {
-            const gw = draftState.selectedGW;
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
             const lineup = getDraftSquad(gw);
             const formation = getFormation(lineup);
             const budget = getDraftBudget(gw);
             const ft = getDraftFreeTransfers(gw);
             const hitCost = getDraftHitCost(gw);
-            const numTransfers = (draftState.transfers[gw] || []).length;
+            const numTransfers = (ds.transfers[gw] || []).length;
 
             let html = '';
             // GW pills
             html += `<div class="draft-gw-pills">`;
-            draftState.gwNumbers.forEach(g => {
+            ds.gwNumbers.forEach(g => {
                 const active = g === gw ? 'active' : '';
-                const gwTransfers = (draftState.transfers[g] || []).length;
-                const gwChip = draftState.chips[g];
+                const gwTransfers = (ds.transfers[g] || []).length;
+                const gwChip = ds.chips[g];
                 let badges = '';
                 if (gwTransfers > 0) badges += `<span class="draft-pill-badge transfer-badge">${gwTransfers}</span>`;
                 if (gwChip) {
@@ -5221,7 +5473,7 @@
             if (hitCost > 0) {
                 html += `<div class="draft-meta-item hit-warning">⚠️ Hit: <strong>-${hitCost}pts</strong></div>`;
             }
-            html += `<div class="draft-meta-item" style="font-size:0.7rem;">Starting <abbr title="Free Transfers available at the start of this gameweek">FT</abbr>: <input type="number" class="draft-ft-input" value="${draftState.startingFT}" min="0" max="5" onchange="updateDraftStartingFT(this.value)"></div>`;
+            html += `<div class="draft-meta-item" style="font-size:0.7rem;">Starting <abbr title="Free Transfers available at the start of this gameweek">FT</abbr>: <input type="number" class="draft-ft-input" value="${ds.startingFT}" min="0" max="5" onchange="updateDraftStartingFT(this.value)"></div>`;
             html += `</div>`;
 
             // Actions
@@ -5233,8 +5485,9 @@
         }
 
         function renderDraftChipRow() {
-            const gw = draftState.selectedGW;
-            const activeChip = draftState.chips[gw];
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
+            const activeChip = ds.chips[gw];
             const chips = [
                 { id: 'wildcard', label: '♠️ Wildcard', short: 'WC' },
                 { id: 'freehit', label: '⚡ Free Hit', short: 'FH' },
@@ -5261,12 +5514,13 @@
         }
 
         function renderDraftPitchHTML() {
-            const gw = draftState.selectedGW;
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
             if (!gw) return '';
             const lineup = getDraftSquad(gw);
             const starters = lineup.filter(p => !p.onBench);
             const bench = lineup.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
-            const activeChip = draftState.chips[gw];
+            const activeChip = ds.chips[gw];
 
             const gks = starters.filter(p => p.position === 1);
             const defs = starters.filter(p => p.position === 2);
@@ -5341,9 +5595,10 @@
         }
 
         function renderDraftTableBody() {
-            const gw = draftState.selectedGW;
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
             const lineup = getDraftSquad(gw);
-            const gwNumbers = draftState.gwNumbers;
+            const gwNumbers = ds.gwNumbers;
             const starters = lineup.filter(p => !p.onBench).sort((a, b) => a.position - b.position || a.pickPosition - b.pickPosition);
             const bench = lineup.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
 
@@ -5440,8 +5695,9 @@
         }
 
         function renderDraftTransferSummary() {
-            const gw = draftState.selectedGW;
-            const gwTransfers = draftState.transfers[gw] || [];
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
+            const gwTransfers = ds.transfers[gw] || [];
             if (gwTransfers.length === 0) return '';
 
             let html = `<div class="draft-transfer-summary">`;
@@ -5459,7 +5715,7 @@
         }
 
         function switchDraftGW(gw) {
-            draftState.selectedGW = gw;
+            getActiveDraft().selectedGW = gw;
             draftSwapSource = null;
             saveDraft();
             rerenderDraftView();
@@ -5468,33 +5724,174 @@
         function updateDraftStartingFT(val) {
             const v = parseInt(val);
             if (!isNaN(v) && v >= 0 && v <= 5) {
-                draftState.startingFT = v;
+                getActiveDraft().startingFT = v;
                 saveDraft();
                 rerenderDraftView();
             }
         }
 
         function rerenderDraftView() {
+            const ds = getActiveDraft();
+
+            const planBar = document.getElementById('draftPlanBar');
+            if (planBar) planBar.innerHTML = renderDraftPlanBar();
+
+            const compareArea = document.getElementById('draftCompareArea');
+            if (compareArea) compareArea.innerHTML = draftCompareMode ? renderDraftComparison() : '';
+
             const toolbar = document.getElementById('draftToolbar');
-            if (toolbar) toolbar.innerHTML = renderDraftToolbar();
+            if (toolbar) { toolbar.innerHTML = renderDraftToolbar(); toolbar.style.display = draftCompareMode ? 'none' : ''; }
 
             const chipRow = document.getElementById('draftChipRow');
-            if (chipRow) chipRow.innerHTML = renderDraftChipRow();
+            if (chipRow) chipRow.style.display = draftCompareMode ? 'none' : '';
+            if (chipRow && !draftCompareMode) chipRow.innerHTML = renderDraftChipRow();
 
             const pitchArea = document.getElementById('draftPitchArea');
-            if (pitchArea) pitchArea.innerHTML = renderDraftPitchHTML();
+            if (pitchArea) pitchArea.innerHTML = draftCompareMode ? '' : renderDraftPitchHTML();
+
+            const layoutWrapper = pitchArea?.closest('.planner-layout-wrapper');
+            if (layoutWrapper) layoutWrapper.style.display = draftCompareMode ? 'none' : '';
+
+            const statsHub = document.querySelector('.gw-stats-hub');
+            if (statsHub) statsHub.style.display = draftCompareMode ? 'none' : '';
 
             const tbody = document.getElementById('draftTableBody');
-            if (tbody) tbody.innerHTML = renderDraftTableBody();
+            if (tbody && !draftCompareMode) tbody.innerHTML = renderDraftTableBody();
 
             const summary = document.getElementById('draftTransferSummary');
-            if (summary) summary.innerHTML = renderDraftTransferSummary();
+            if (summary && !draftCompareMode) summary.innerHTML = renderDraftTransferSummary();
 
             const saveInd = document.getElementById('draftSaveIndicator');
-            if (saveInd && draftState.savedAt) saveInd.textContent = `Last saved: ${new Date(draftState.savedAt).toLocaleTimeString()}`;
+            if (saveInd && ds.savedAt) saveInd.textContent = `Plan ${activeDraftSlot + 1} saved: ${new Date(ds.savedAt).toLocaleTimeString()}`;
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            loadNotepadNotes();
+            if (!draftCompareMode) loadNotepadNotes();
+        }
+
+        // ===== SIDE-BY-SIDE PLAN COMPARISON =====
+        function renderDraftComparison() {
+            if (draftSlotCount < 2) return '';
+            // Use first plan's selectedGW as the comparison GW
+            const compareGW = getActiveDraft().selectedGW;
+
+            let html = '';
+
+            // GW selector for comparison
+            const gwNums = getActiveDraft().gwNumbers;
+            html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">`;
+            html += `<span style="font-size:0.78rem;font-weight:700;color:var(--text-primary);">Comparing GW:</span>`;
+            html += `<div class="draft-gw-pills">`;
+            gwNums.forEach(g => {
+                const active = g === compareGW ? 'active' : '';
+                html += `<button class="draft-gw-pill ${active}" onclick="switchCompareGW(${g})">GW${g}</button>`;
+            });
+            html += `</div></div>`;
+
+            html += `<div class="draft-compare-wrapper">`;
+
+            for (let i = 0; i < draftSlotCount; i++) {
+                const ds = draftStates[i];
+                if (!ds) continue;
+
+                const lineup = getDraftSquad(compareGW, i);
+                const starters = lineup.filter(p => !p.onBench);
+                const bench = lineup.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
+                const formation = getFormation(lineup);
+                const activeChip = ds.chips[compareGW];
+
+                const gks = starters.filter(p => p.position === 1);
+                const defs = starters.filter(p => p.position === 2);
+                const mids = starters.filter(p => p.position === 3);
+                const fwds = starters.filter(p => p.position === 4);
+
+                // Calculate budget/FT for this slot
+                // Temporarily switch active to compute budget
+                const prevSlot = activeDraftSlot;
+                activeDraftSlot = i;
+                const budget = getDraftBudget(compareGW);
+                const ft = getDraftFreeTransfers(compareGW);
+                const hitCost = getDraftHitCost(compareGW);
+                activeDraftSlot = prevSlot;
+
+                const gwTransfers = ds.transfers[compareGW] || [];
+
+                html += `<div class="draft-compare-col">`;
+                html += `<div class="draft-compare-header" style="${i === prevSlot ? 'border:2px solid var(--color-primary);' : ''}">Plan ${i + 1}${i === prevSlot ? ' (active)' : ''}</div>`;
+                html += `<div style="text-align:center;font-size:0.72rem;color:var(--text-muted);margin-bottom:6px;">${formation}</div>`;
+
+                // Meta
+                html += `<div class="draft-compare-meta">`;
+                html += `<span class="draft-compare-meta-item">💰 <strong>£${budget.toFixed(1)}m</strong></span>`;
+                html += `<span class="draft-compare-meta-item">🔄 FT: <strong>${ft}</strong></span>`;
+                if (hitCost > 0) html += `<span class="draft-compare-meta-item" style="color:var(--color-error);">⚠️ <strong>-${hitCost}pts</strong></span>`;
+                if (activeChip) {
+                    const chipLabels = { wildcard: 'WC', benchboost: 'BB', freehit: 'FH', triplecaptain: 'TC' };
+                    html += `<span class="draft-compare-meta-item" style="color:var(--color-primary);font-weight:700;">${chipLabels[activeChip]}</span>`;
+                }
+                html += `</div>`;
+
+                // Mini pitch
+                const renderMiniNode = (p) => {
+                    const posClass = `pos-${POSITION_CONFIG[p.position]?.class || 'mid'}`;
+                    const fixtures = teamFixtures6[p.teamId] || [];
+                    const fix = fixtures.find(f => f.event === compareGW);
+                    const injured = p.status === 'i' || p.status === 'u';
+                    let node = `<div class="planner-pitch-player" title="${p.name} — ${p.team}">`;
+                    node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
+                    node += p.team;
+                    if (p.isCaptain) node += `<span class="planner-pitch-captain">C</span>`;
+                    if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
+                    if (p.isTransferIn) node += `<span class="draft-pitch-new-badge">NEW</span>`;
+                    node += `</div>`;
+                    if (fix) {
+                        const fdrClass = `fdr-${fix.difficulty || 3}`;
+                        node += `<div class="planner-fdr-chip ${fdrClass}">${fix.opponent || '?'}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
+                    }
+                    node += `<div class="planner-pitch-player-name">${p.name}</div>`;
+                    node += `</div>`;
+                    return node;
+                };
+
+                html += `<div class="planner-pitch-container" style="position:relative;">`;
+                if (activeChip) {
+                    const chipLabels = { wildcard: 'WILDCARD', benchboost: 'BENCH BOOST', freehit: 'FREE HIT', triplecaptain: 'TRIPLE CAPTAIN' };
+                    html += `<div class="draft-chip-overlay">${chipLabels[activeChip]}</div>`;
+                }
+                html += `<div class="planner-pitch-rows">`;
+                html += `<div class="planner-pitch-row">${fwds.map(renderMiniNode).join('')}</div>`;
+                html += `<div class="planner-pitch-row">${mids.map(renderMiniNode).join('')}</div>`;
+                html += `<div class="planner-pitch-row">${defs.map(renderMiniNode).join('')}</div>`;
+                html += `<div class="planner-pitch-row">${gks.map(renderMiniNode).join('')}</div>`;
+                html += `<div class="planner-pitch-row planner-bench-row">`;
+                html += `<div class="planner-bench-tag">Bench</div>`;
+                html += bench.map(renderMiniNode).join('');
+                html += `</div></div></div>`;
+
+                // Transfers for this GW
+                if (gwTransfers.length > 0) {
+                    html += `<div class="draft-compare-transfers">`;
+                    html += `<div style="font-size:0.7rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;">🔄 Transfers</div>`;
+                    gwTransfers.forEach(t => {
+                        html += `<div class="draft-compare-transfer-item"><span style="color:var(--color-error);">${t.outName}</span> → <span style="color:var(--color-success);">${t.inName}</span></div>`;
+                    });
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        function switchCompareGW(gw) {
+            // Set the selected GW on ALL plans so comparison stays in sync
+            for (let i = 0; i < draftSlotCount; i++) {
+                if (draftStates[i]) draftStates[i].selectedGW = gw;
+            }
+            draftSwapSource = null;
+            saveDraft();
+            rerenderDraftView();
         }
 
         function switchHubTab(btn) {
@@ -5533,16 +5930,18 @@
         function loadNotepadNotes() {
             const textarea = document.getElementById('fpl-notes-area');
             const gwLabel = document.getElementById('notepadGwLabel');
-            if (!textarea || !draftState) return;
-            const key = `fpl_notes_${draftState.teamId}_gw${draftState.selectedGW}`;
+            const ds = getActiveDraft();
+            if (!textarea || !ds) return;
+            const key = `fpl_notes_${ds.teamId}_plan${activeDraftSlot}_gw${ds.selectedGW}`;
             textarea.value = localStorage.getItem(key) || '';
-            if (gwLabel) gwLabel.textContent = `GW${draftState.selectedGW}`;
+            if (gwLabel) gwLabel.textContent = `P${activeDraftSlot + 1} · GW${ds.selectedGW}`;
         }
 
         function saveNotepadNotes() {
             const textarea = document.getElementById('fpl-notes-area');
-            if (!textarea || !draftState) return;
-            const key = `fpl_notes_${draftState.teamId}_gw${draftState.selectedGW}`;
+            const ds = getActiveDraft();
+            if (!textarea || !ds) return;
+            const key = `fpl_notes_${ds.teamId}_plan${activeDraftSlot}_gw${ds.selectedGW}`;
             localStorage.setItem(key, textarea.value);
             const status = document.getElementById('notepadSaveStatus');
             if (status) {
