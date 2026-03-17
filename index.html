@@ -3027,7 +3027,8 @@ body {
         // ===== PERSONALIZED HERO STATS =====
         function renderHeroStats({ firstName, currentGW, rank, totalPoints, gwPoints, bank, squad, analysisResults, flagged,
                                    avgManagerTotal, pointsDiff, nextBracket, deadlineTime, deadlineGW, avgFDR,
-                                   priceDropRisk, priceRiseTargets, healthScore, healthDeductions, captainRec }) {
+                                   priceDropRisk, priceRiseTargets, healthScore, healthDeductions, captainRec,
+                                   squadIds, shortlistIds }) {
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
             el('heroManagerName', firstName);
             el('heroGwBadge', 'GW' + currentGW);
@@ -3117,37 +3118,45 @@ body {
                 <div class="hcc-fdr-outlook ${fdrClass}">Next 3 GWs: ${fdrLabel} (FDR ${avgFDR.toFixed(1)})</div>
             </div>`;
 
-            // CARD 4: MARKET WATCH (price alerts — stock market style)
+            // CARD 4: MARKET WATCH (price alerts — squad & shortlist only)
             const dropCount = priceDropRisk.length;
             const riseCount = priceRiseTargets.length;
+            const _sqIds = squadIds || new Set();
+            const _slIds = shortlistIds || new Set();
             let marketHtml = '';
-            // Ticker-style rows for drops
-            priceDropRisk.slice(0, 3).forEach(p => {
-                const netK = Math.round((p.transfersOut - p.transfersIn) / 1000);
-                marketHtml += `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;">
-                    <span style="color:#EF4444;font-weight:700;font-size:10px;">▼</span>
+            function mktRow(p, direction) {
+                const isFall = direction === 'fall';
+                const netK = Math.round(Math.abs(p.transfersOut - p.transfersIn) / 1000);
+                const arrow = isFall ? '▼' : '▲';
+                const color = isFall ? '#EF4444' : '#10B981';
+                const flowText = isFall ? `${netK}k out` : `+${netK}k in`;
+                const pc = posClass[p.position] || 'mid';
+                const ps = posShort[p.position] || 'MID';
+                const badge = _sqIds.has(p.id) ? '<span style="font-size:9px;color:#F59E0B;" title="In your squad">★</span>'
+                    : _slIds.has(p.id) ? '<span style="font-size:9px;color:#3B82F6;" title="Shortlisted">☆</span>' : '';
+                return `<div style="display:flex;align-items:center;gap:5px;padding:2px 0;font-size:11px;">
+                    <span style="color:${color};font-weight:700;font-size:10px;">${arrow}</span>
+                    <span class="hsp-pos ${pc}" style="font-size:8px;padding:1px 4px;min-width:22px;text-align:center;border-radius:3px;">${ps}</span>
+                    ${badge}
                     <span style="font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</span>
-                    <span style="font-family:var(--font-mono);font-size:10px;color:#EF4444;">£${p.price.toFixed(1)}m</span>
-                    <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);">${netK}k out</span>
+                    <span style="font-family:var(--font-mono);font-size:10px;color:${color};">£${p.price.toFixed(1)}m</span>
+                    <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);">${flowText}</span>
                 </div>`;
-            });
-            // Ticker-style rows for rises
-            priceRiseTargets.slice(0, 2).forEach(p => {
-                const netK = Math.round((p.transfersIn - p.transfersOut) / 1000);
-                marketHtml += `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;">
-                    <span style="color:#10B981;font-weight:700;font-size:10px;">▲</span>
-                    <span style="font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</span>
-                    <span style="font-family:var(--font-mono);font-size:10px;color:#10B981;">£${p.price.toFixed(1)}m</span>
-                    <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);">+${netK}k in</span>
-                </div>`;
-            });
-            if (dropCount === 0 && riseCount === 0) {
-                marketHtml = `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">All prices stable</div>`;
             }
-            const marketSignal = dropCount > 0 ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:#10B981;background:rgba(16,185,129,0.1);padding:1px 6px;border-radius:3px;"><span style="width:5px;height:5px;border-radius:50%;background:#10B981;animation:pricePulse 1.5s ease-in-out infinite;"></span>LIVE</span>` : '';
+            // Fallers
+            priceDropRisk.slice(0, 5).forEach(p => { marketHtml += mktRow(p, 'fall'); });
+            // Risers
+            priceRiseTargets.slice(0, 5).forEach(p => { marketHtml += mktRow(p, 'rise'); });
+            if (dropCount === 0 && riseCount === 0) {
+                const hasSL = _slIds.size > 0;
+                marketHtml = hasSL
+                    ? `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px 0;">No price movement in your squad or shortlist</div>`
+                    : `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:6px 0;">No price movement in your squad<br><a href="fpl-players-analysis.html" style="color:var(--color-primary);font-weight:600;text-decoration:none;font-size:10px;">Shortlist players to track more →</a></div>`;
+            }
+            const marketSignal = (dropCount + riseCount) > 0 ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:#10B981;background:rgba(16,185,129,0.1);padding:1px 6px;border-radius:3px;"><span style="width:5px;height:5px;border-radius:50%;background:#10B981;animation:pricePulse 1.5s ease-in-out infinite;"></span>LIVE</span>` : '';
             cardsHtml += `<div class="hero-cmd-card hero-cmd-card--market">
                 <div class="hcc-header"><div class="hcc-icon hcc-icon--market"><i data-lucide="trending-up" class="icon"></i></div><span class="hcc-label">Market Watch</span>${marketSignal}</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">${dropCount} at risk · ${riseCount} rising</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">${dropCount} falling · ${riseCount} rising</div>
                 ${marketHtml}
                 <a href="fpl-my-team-analysis.html#squad" style="display:block;text-align:center;font-size:11px;color:var(--color-primary);text-decoration:none;margin-top:6px;font-weight:600;">View Price Watch →</a>
             </div>`;
@@ -3753,16 +3762,18 @@ body {
                     avgFDR = fdrValues.reduce((s, v) => s + v, 0) / fdrValues.length;
                 }
 
-                // --- NEW: Market watch - price risk players ---
+                // --- NEW: Market watch - price risk players (squad + shortlist only) ---
                 const squadIds = new Set(squad.map(p => p.id));
+                const shortlistIds = new Set(JSON.parse(localStorage.getItem('fpl_shortlist') || '[]'));
+                const myPlayerIds = p => squadIds.has(p.id) || shortlistIds.has(p.id);
                 const priceDropRisk = allPlayers
-                    .filter(p => squadIds.has(p.id) && (p.transfersOut - p.transfersIn) > 50000)
+                    .filter(p => myPlayerIds(p) && (p.transfersOut - p.transfersIn) > 20000)
                     .sort((a, b) => (b.transfersOut - b.transfersIn) - (a.transfersOut - a.transfersIn))
-                    .slice(0, 2);
+                    .slice(0, 5);
                 const priceRiseTargets = allPlayers
-                    .filter(p => !squadIds.has(p.id) && (p.transfersIn - p.transfersOut) > 80000 && p.ownership > 5)
+                    .filter(p => myPlayerIds(p) && (p.transfersIn - p.transfersOut) > 20000)
                     .sort((a, b) => (b.transfersIn - b.transfersOut) - (a.transfersIn - a.transfersOut))
-                    .slice(0, 1);
+                    .slice(0, 5);
 
                 // --- Squad health score (aligned with squad analysis) ---
                 const starterResults = analysisResults.filter((_, i) => squad[i]?.pickPosition <= 11);
@@ -3854,7 +3865,9 @@ body {
                     priceRiseTargets,
                     healthScore,
                     healthDeductions,
-                    captainRec
+                    captainRec,
+                    squadIds,
+                    shortlistIds
                 });
 
                 renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank: bank.toFixed(1), allPlayers });
