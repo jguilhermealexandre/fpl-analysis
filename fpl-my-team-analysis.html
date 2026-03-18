@@ -4862,6 +4862,7 @@
 
         function getDraftFreeTransfers(gw) {
             const ds = getActiveDraft();
+            if (!ds) return 1;
             const gws = ds.gwNumbers;
             let ft = ds.startingFT;
             for (const g of gws) {
@@ -4883,6 +4884,7 @@
 
         function getDraftHitCost(gw) {
             const ds = getActiveDraft();
+            if (!ds) return 0;
             const chip = ds.chips[gw];
             if (chip === 'wildcard' || chip === 'freehit') return 0;
             const numTransfers = (ds.transfers[gw] || []).length;
@@ -6529,6 +6531,11 @@
 
         function renderTransferWizard() {
             transferRendered = true;
+            // Ensure draft is initialized (needed if Transfer Wizard opens before Squad Planner)
+            if (!draftStates[activeDraftSlot]) {
+                initDraft(activeDraftSlot);
+                loadDraft();
+            }
             transferState = { step: 1, sellPlayers: [], packages: [], selections: {}, budget: 0, candidateCache: {}, marketPosition: 0, marketMaxPrice: 0 };
             const container = document.getElementById('transferDisplay');
             const bank = (picksData?.entry_history?.bank || 0) / 10;
