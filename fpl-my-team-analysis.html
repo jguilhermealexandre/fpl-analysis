@@ -968,40 +968,140 @@
 
         /* ===== TAB BAR (removed - using .tabs-container now) ===== */
 
-        /* ===== TRANSFER MARKET ===== */
+        /* ===== TRANSFER MARKET — Sports Terminal Redesign ===== */
         .tm-section { margin-bottom: 24px; }
-        .tm-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle); }
-        .tm-section-header h2 { font-family: var(--font-display); font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .tm-section-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
-        .tm-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--surface-1); border-radius: 10px; overflow: hidden; border: 1px solid var(--border-default); }
-        .tm-table th, .tm-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border-subtle); }
-        .tm-table th { background: var(--surface-2); font-weight: 600; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; white-space: nowrap; user-select: none; }
-        .tm-table th:hover { color: var(--text-primary); }
-        .tm-table tr:hover td { background: var(--surface-0); }
-        .tm-table .tm-name { font-weight: 600; }
-        .tm-table .tm-meta { font-size: 11px; color: var(--text-muted); }
-        .tm-price-change { font-family: var(--font-display); font-weight: 600; font-size: 12px; }
-        .tm-price-change.up { color: var(--color-success); }
-        .tm-price-change.down { color: var(--color-error); }
-        .tm-price-change.flat { color: var(--text-muted); }
-        .tm-pressure-bar { width: 60px; height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
-        .tm-pressure-fill { height: 100%; border-radius: 3px; }
-        .tm-pressure-fill.rising { background: var(--color-success); }
-        .tm-pressure-fill.falling { background: var(--color-error); }
-        .tm-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+        .tm-section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--surface-1); border: 1px solid var(--border-default); }
+        .tm-section-header.rising-header { border-left: 4px solid var(--color-success); }
+        .tm-section-header.falling-header { border-left: 4px solid var(--color-error); }
+        .tm-section-header.squad-header { border-left: 4px solid var(--color-info); }
+        .tm-section-header h2 { font-family: var(--font-display); font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex: 1; margin: 0; }
+        .tm-section-count { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; font-size: 11px; font-weight: 700; font-family: var(--font-display); }
+        .tm-section-count.green { background: rgba(16,185,129,0.15); color: var(--color-success); }
+        .tm-section-count.red { background: rgba(239,68,68,0.15); color: var(--color-error); }
+        .tm-section-count.blue { background: rgba(59,130,246,0.15); color: var(--color-info); }
+        .tm-view-all-btn { padding: 5px 14px; border: 1px solid var(--border-default); background: var(--surface-1); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-secondary); font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+        .tm-view-all-btn:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+        /* Data Grid */
+        .tm-table { width: 100%; border-collapse: separate; border-spacing: 0 2px; font-size: 12px; background: transparent; }
+        .tm-table thead { position: sticky; top: 0; z-index: 2; }
+        .tm-table th { background: var(--surface-2); backdrop-filter: blur(8px); font-weight: 700; font-size: 9.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; cursor: pointer; white-space: nowrap; user-select: none; padding: 9px 10px; text-align: left; border: none; }
+        .tm-table th:first-child { border-radius: 8px 0 0 8px; }
+        .tm-table th:last-child { border-radius: 0 8px 8px 0; }
+        .tm-table th:hover { color: var(--text-primary); background: var(--surface-3); }
+        .tm-table th:not(:first-child) { text-align: right; }
+        .tm-table td { padding: 10px 10px; background: var(--surface-1); border: none; vertical-align: middle; transition: background 0.12s; }
+        .tm-table td:first-child { border-radius: 8px 0 0 8px; }
+        .tm-table td:last-child { border-radius: 0 8px 8px 0; }
+        .tm-table td:not(:first-child) { text-align: right; }
+        .tm-table tr:hover td { background: var(--surface-2); }
+        .tm-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border-default); background: var(--surface-0); padding: 4px; }
+
+        /* Player Cell */
+        .tm-player-cell { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+        .tm-player-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0; font-family: var(--font-display); letter-spacing: -0.3px; text-transform: uppercase; }
+        .tm-player-avatar.gk { background: linear-gradient(135deg, #D97706, #F59E0B); }
+        .tm-player-avatar.def { background: linear-gradient(135deg, #059669, #34D399); }
+        .tm-player-avatar.mid { background: linear-gradient(135deg, #2563EB, #60A5FA); }
+        .tm-player-avatar.fwd { background: linear-gradient(135deg, #DC2626, #F87171); }
+        .tm-player-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .tm-player-name-row { display: flex; align-items: center; gap: 6px; }
+        .tm-player-name { font-weight: 700; font-size: 12.5px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tm-player-sub { display: flex; align-items: center; gap: 4px; }
+        .tm-pos-pill { padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+        .tm-pos-pill.gk { background: rgba(252,211,77,0.18); color: #D97706; }
+        .tm-pos-pill.def { background: rgba(52,211,153,0.18); color: #059669; }
+        .tm-pos-pill.mid { background: rgba(96,165,250,0.18); color: #2563EB; }
+        .tm-pos-pill.fwd { background: rgba(248,113,113,0.18); color: #DC2626; }
+        .tm-team-name { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+
+        /* SQUAD Badge — Glowing */
+        .tm-badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
         .tm-badge.rise { background: rgba(16,185,129,0.12); color: var(--color-success); }
         .tm-badge.fall { background: rgba(239,68,68,0.12); color: var(--color-error); }
         .tm-badge.stable { background: var(--surface-2); color: var(--text-muted); }
-        .tm-badge.in-squad { background: rgba(59,130,246,0.12); color: var(--color-info); }
-        .tm-summary-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .tm-summary-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: 10px; padding: 16px; text-align: center; }
-        .tm-summary-card .tm-sc-value { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin-bottom: 2px; }
+        .tm-badge.in-squad { background: var(--color-info); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 8.5px; font-weight: 800; box-shadow: 0 0 8px rgba(59,130,246,0.4); letter-spacing: 0.5px; }
+
+        /* Consolidated Price */
+        .tm-price-col { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+        .tm-price-main { font-family: var(--font-display); font-weight: 700; font-size: 12.5px; color: var(--text-primary); display: flex; align-items: center; gap: 5px; }
+        .tm-price-delta { display: inline-flex; align-items: center; padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 700; font-family: var(--font-mono); }
+        .tm-price-delta.up { background: rgba(16,185,129,0.15); color: #059669; }
+        .tm-price-delta.down { background: rgba(239,68,68,0.15); color: #DC2626; }
+        .tm-price-delta.flat { background: var(--surface-2); color: var(--text-muted); }
+        .tm-price-season { font-size: 9.5px; color: var(--text-muted); font-family: var(--font-mono); }
+
+        /* Ownership Ring */
+        .tm-own-cell { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+        .tm-own-ring svg { display: block; }
+        .tm-own-pct { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+
+        /* Velocity Indicator */
+        .tm-velocity { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .tm-velocity.surge { color: #059669; }
+        .tm-velocity.rising { color: var(--color-success); }
+        .tm-velocity.steady { color: var(--text-muted); }
+        .tm-velocity.falling { color: var(--color-error); }
+        .tm-velocity.plummeting { color: #DC2626; }
+        .tm-velocity-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+
+        /* Heat Gauge Pressure Bar */
+        .tm-heat-gauge { position: relative; width: 80px; height: 10px; background: var(--surface-3); border-radius: 5px; overflow: hidden; display: inline-block; vertical-align: middle; }
+        .tm-heat-fill { position: absolute; top: 0; height: 100%; border-radius: 5px; transition: width 0.3s ease; }
+        .tm-heat-fill.rising { left: 0; background: linear-gradient(90deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.5) 50%, #10B981 100%); box-shadow: inset -2px 0 4px rgba(16,185,129,0.6); }
+        .tm-heat-fill.falling { right: 0; left: auto; background: linear-gradient(270deg, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.5) 50%, #EF4444 100%); box-shadow: inset 2px 0 4px rgba(239,68,68,0.6); }
+        .tm-heat-fill.rising::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 4px; border-radius: 0 5px 5px 0; background: #10B981; box-shadow: 0 0 6px #10B981, 0 0 12px rgba(16,185,129,0.4); }
+        .tm-heat-fill.falling::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 5px 0 0 5px; background: #EF4444; box-shadow: 0 0 6px #EF4444, 0 0 12px rgba(239,68,68,0.4); }
+        .tm-heat-fill.pulse { animation: heatPulse 1.2s ease-in-out infinite; }
+        @keyframes heatPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .tm-pressure-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: nowrap; }
+        .tm-heat-pct { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; min-width: 28px; text-align: right; }
+        .tm-heat-pct.rise { color: var(--color-success); }
+        .tm-heat-pct.fall { color: var(--color-error); }
+        .tm-heat-pct.stable { color: var(--text-muted); }
+
+        /* Summary Cards */
+        .tm-summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .tm-summary-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: 10px; padding: 14px 16px; text-align: center; transition: transform 0.15s, box-shadow 0.15s; }
+        .tm-summary-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .tm-summary-card.accent-green { border-left: 3px solid var(--color-success); }
+        .tm-summary-card.accent-red { border-left: 3px solid var(--color-error); }
+        .tm-summary-card .tm-sc-value { font-family: var(--font-display); font-size: 26px; font-weight: 700; margin-bottom: 2px; }
         .tm-summary-card .tm-sc-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-        .tm-pos-filter { display: flex; gap: 4px; margin-bottom: 12px; }
-        .tm-pos-btn { padding: 4px 10px; border: 1px solid var(--border-default); background: var(--surface-1); border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; color: var(--text-secondary); font-family: inherit; }
-        .tm-pos-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
-        .tm-squad-row { background: rgba(59,130,246,0.04); }
-        @media (max-width: 768px) { .tm-summary-cards { grid-template-columns: repeat(2, 1fr); } .tm-table { font-size: 11px; } }
+
+        /* Position Filter Pills */
+        .tm-pos-filter { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; }
+        .tm-pos-filter::-webkit-scrollbar { display: none; }
+        .tm-pos-btn { padding: 6px 14px; border: 1px solid var(--border-default); background: var(--surface-1); border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-secondary); font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+        .tm-pos-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+        .tm-pos-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); box-shadow: 0 2px 8px rgba(16,185,129,0.25); }
+
+        /* Bento Grid: Rising + Falling side-by-side */
+        .tm-bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .tm-bento-panel { background: var(--surface-0); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 12px; overflow: hidden; }
+        .tm-squad-row td { background: rgba(59,130,246,0.04) !important; }
+        .tm-squad-row:hover td { background: rgba(59,130,246,0.08) !important; }
+
+        /* Net Transfers */
+        .tm-net { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+        .tm-net.positive { color: var(--color-success); }
+        .tm-net.negative { color: var(--color-error); }
+
+        @media (max-width: 768px) {
+            .tm-summary-cards { grid-template-columns: repeat(2, 1fr); }
+            .tm-bento-grid { grid-template-columns: 1fr; }
+            .tm-table { font-size: 11px; }
+            .tm-player-cell { min-width: 140px; }
+            .tm-player-avatar { width: 26px; height: 26px; font-size: 9px; }
+            .tm-heat-gauge { width: 60px; }
+        }
+        @media (max-width: 500px) {
+            .tm-player-name { max-width: 90px; }
+            .tm-heat-gauge { width: 46px; }
+            .tm-summary-cards { gap: 8px; }
+            .tm-summary-card { padding: 10px 8px; }
+            .tm-summary-card .tm-sc-value { font-size: 20px; }
+        }
 
         /* ===== TRANSFER WIZARD ===== */
         .tw-container { padding: 0; }
@@ -7340,9 +7440,12 @@
 
         // ===== TRANSFER MARKET =====
         let tmPosFilter = 'all';
+        let tmPriceFilter = 'all'; // 'all', 'premium', 'budget'
         let tmSquadSort = { col: 'pressure', asc: false };
         let tmRisingSort = { col: 'netTransfers', asc: false };
         let tmFallingSort = { col: 'netTransfers', asc: true };
+        let tmShowAllRising = false;
+        let tmShowAllFalling = false;
 
         function getTransferPressure(player) {
             const owners = Math.max(totalFplPlayers * (player.ownership / 100), 1);
@@ -7356,6 +7459,30 @@
             if (pressure < -0.04) return { text: 'Dropping', cls: 'fall' };
             if (pressure < -0.015) return { text: 'Cooling', cls: 'fall' };
             return { text: 'Stable', cls: 'stable' };
+        }
+
+        function ownershipRingSVG(pct) {
+            const r = 9, cx = 12, cy = 12, sw = 3;
+            const circ = 2 * Math.PI * r;
+            const offset = circ * (1 - Math.min(pct, 100) / 100);
+            const color = pct >= 30 ? 'var(--color-primary)' : pct >= 10 ? 'var(--color-info)' : 'var(--text-muted)';
+            return `<svg width="24" height="24" viewBox="0 0 24 24" class="tm-own-ring-svg"><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="${sw}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round" transform="rotate(-90 ${cx} ${cy})"/></svg>`;
+        }
+
+        function velocityIndicator(netTransfers) {
+            const abs = Math.abs(netTransfers);
+            if (netTransfers >= 50000) return `<span class="tm-velocity surge">▲▲ <span class="tm-velocity-label">Surge</span></span>`;
+            if (netTransfers >= 10000) return `<span class="tm-velocity rising">▲ <span class="tm-velocity-label">Rising</span></span>`;
+            if (netTransfers <= -50000) return `<span class="tm-velocity plummeting">▼▼ <span class="tm-velocity-label">Plummet</span></span>`;
+            if (netTransfers <= -10000) return `<span class="tm-velocity falling">▼ <span class="tm-velocity-label">Falling</span></span>`;
+            return `<span class="tm-velocity steady">— <span class="tm-velocity-label">Steady</span></span>`;
+        }
+
+        function tmToggleViewAll(section) {
+            if (section === 'rising') tmShowAllRising = !tmShowAllRising;
+            else if (section === 'falling') tmShowAllFalling = !tmShowAllFalling;
+            transferMarketRendered = false;
+            renderTransferMarket();
         }
 
         function renderTransferMarket() {
@@ -7375,14 +7502,21 @@
                 pressure: getTransferPressure(p),
                 priceChangeGW: (p.costChangeEvent || 0) / 10,
                 priceChangeSeason: (p.costChangeStart || 0) / 10,
-                posName: ['','GK','DEF','MID','FWD'][p.position] || '?'
+                posName: ['','GK','DEF','MID','FWD'][p.position] || '?',
+                posClass: ['','gk','def','mid','fwd'][p.position] || '',
+                teamShort: (p.team || '???').substring(0, 3)
             }));
 
             // Identify squad players
             const squadIds = new Set(selectedPlayers.map(p => p.id));
 
-            // Filter by position
-            const filterPlayers = (list) => tmPosFilter === 'all' ? list : list.filter(p => p.position === parseInt(tmPosFilter));
+            // Filter by position + price
+            const filterPlayers = (list) => {
+                let filtered = tmPosFilter === 'all' ? list : list.filter(p => p.position === parseInt(tmPosFilter));
+                if (tmPriceFilter === 'premium') filtered = filtered.filter(p => p.price >= 10);
+                else if (tmPriceFilter === 'budget') filtered = filtered.filter(p => p.price < 5);
+                return filtered;
+            };
 
             // Summary stats
             const risingCount = playersWithPressure.filter(p => p.priceChangeGW > 0).length;
@@ -7392,95 +7526,114 @@
 
             let html = '';
 
-            // Summary cards
+            // ─── Summary Cards ───
             html += `<div class="tm-summary-cards">
-                <div class="tm-summary-card"><div class="tm-sc-value" style="color:var(--color-success);">${risingCount}</div><div class="tm-sc-label">Rose This GW</div></div>
-                <div class="tm-summary-card"><div class="tm-sc-value" style="color:var(--color-error);">${fallingCount}</div><div class="tm-sc-label">Fell This GW</div></div>
-                <div class="tm-summary-card"><div class="tm-sc-value" style="color:var(--color-success);">${squadRising}</div><div class="tm-sc-label">Your Squad Rising</div></div>
-                <div class="tm-summary-card"><div class="tm-sc-value" style="color:var(--color-error);">${squadFalling}</div><div class="tm-sc-label">Your Squad Falling</div></div>
+                <div class="tm-summary-card accent-green"><div class="tm-sc-value" style="color:var(--color-success);">${risingCount}</div><div class="tm-sc-label">Rose This GW</div></div>
+                <div class="tm-summary-card accent-red"><div class="tm-sc-value" style="color:var(--color-error);">${fallingCount}</div><div class="tm-sc-label">Fell This GW</div></div>
+                <div class="tm-summary-card accent-green"><div class="tm-sc-value" style="color:var(--color-success);">${squadRising}</div><div class="tm-sc-label">Your Squad Rising</div></div>
+                <div class="tm-summary-card accent-red"><div class="tm-sc-value" style="color:var(--color-error);">${squadFalling}</div><div class="tm-sc-label">Your Squad Falling</div></div>
             </div>`;
 
-            // Position filter
+            // ─── Filter Pills ───
             html += `<div class="tm-pos-filter">
-                <button class="tm-pos-btn ${tmPosFilter === 'all' ? 'active' : ''}" onclick="tmFilterPos('all')">All</button>
+                <button class="tm-pos-btn ${tmPosFilter === 'all' && tmPriceFilter === 'all' ? 'active' : ''}" onclick="tmFilterPos('all')">All</button>
                 <button class="tm-pos-btn ${tmPosFilter === '1' ? 'active' : ''}" onclick="tmFilterPos('1')">GK</button>
                 <button class="tm-pos-btn ${tmPosFilter === '2' ? 'active' : ''}" onclick="tmFilterPos('2')">DEF</button>
                 <button class="tm-pos-btn ${tmPosFilter === '3' ? 'active' : ''}" onclick="tmFilterPos('3')">MID</button>
                 <button class="tm-pos-btn ${tmPosFilter === '4' ? 'active' : ''}" onclick="tmFilterPos('4')">FWD</button>
+                <span style="width:1px;background:var(--border-default);margin:2px 4px;"></span>
+                <button class="tm-pos-btn ${tmPriceFilter === 'premium' ? 'active' : ''}" onclick="tmFilterPrice('premium')">Premium £10m+</button>
+                <button class="tm-pos-btn ${tmPriceFilter === 'budget' ? 'active' : ''}" onclick="tmFilterPrice('budget')">Budget &lt;£5m</button>
             </div>`;
 
-            // Section 1: Your Squad Price Watch
+            // ─── Bento Grid: Rising + Falling Side-by-Side ───
+            const rising = filterPlayers(playersWithPressure.filter(p => p.netTransfers > 0));
+            tmSortList(rising, tmRisingSort);
+            const risingDisplay = tmShowAllRising ? rising.slice(0, 50) : rising.slice(0, 5);
+
+            const falling = filterPlayers(playersWithPressure.filter(p => p.netTransfers < 0));
+            tmSortList(falling, tmFallingSort);
+            const fallingDisplay = tmShowAllFalling ? falling.slice(0, 50) : falling.slice(0, 5);
+
+            const risersFallersCols = `<th>Player</th><th>Price</th><th>Own%</th><th>Velocity</th><th>Net Transfers</th><th>Pressure</th>`;
+
+            html += `<div class="tm-bento-grid">`;
+
+            // Left: Rising Players
+            html += `<div class="tm-bento-panel">
+                <div class="tm-section-header rising-header">
+                    <h2 style="color:var(--color-success);"><i data-lucide="trending-up" style="width:16px;height:16px;display:inline;"></i> Rising Players</h2>
+                    <span class="tm-section-count green">${rising.length}</span>
+                </div>
+                <div class="tm-table-wrap">
+                <table class="tm-table">
+                    <thead><tr>
+                        <th onclick="tmSort('rising','name')">Player</th>
+                        <th onclick="tmSort('rising','price')">Price</th>
+                        <th onclick="tmSort('rising','ownership')">Own%</th>
+                        <th onclick="tmSort('rising','netTransfers')">Velocity</th>
+                        <th onclick="tmSort('rising','netTransfers')">Net Transfers</th>
+                        <th onclick="tmSort('rising','pressure')">Pressure</th>
+                    </tr></thead>
+                    <tbody>${risingDisplay.map(p => renderTmRow(p, true, squadIds)).join('')}</tbody>
+                </table>
+                </div>
+                ${rising.length > 5 ? `<div style="text-align:center;margin-top:10px;">
+                    <button class="tm-view-all-btn" onclick="tmToggleViewAll('rising')">${tmShowAllRising ? 'Show Top 5' : `View All ${rising.length} Risers \u2192`}</button>
+                </div>` : ''}
+            </div>`;
+
+            // Right: Falling Players
+            html += `<div class="tm-bento-panel">
+                <div class="tm-section-header falling-header">
+                    <h2 style="color:var(--color-error);"><i data-lucide="trending-down" style="width:16px;height:16px;display:inline;"></i> Falling Players</h2>
+                    <span class="tm-section-count red">${falling.length}</span>
+                </div>
+                <div class="tm-table-wrap">
+                <table class="tm-table">
+                    <thead><tr>
+                        <th onclick="tmSort('falling','name')">Player</th>
+                        <th onclick="tmSort('falling','price')">Price</th>
+                        <th onclick="tmSort('falling','ownership')">Own%</th>
+                        <th onclick="tmSort('falling','netTransfers')">Velocity</th>
+                        <th onclick="tmSort('falling','netTransfers')">Net Transfers</th>
+                        <th onclick="tmSort('falling','pressure')">Pressure</th>
+                    </tr></thead>
+                    <tbody>${fallingDisplay.map(p => renderTmRow(p, true, squadIds)).join('')}</tbody>
+                </table>
+                </div>
+                ${falling.length > 5 ? `<div style="text-align:center;margin-top:10px;">
+                    <button class="tm-view-all-btn" onclick="tmToggleViewAll('falling')">${tmShowAllFalling ? 'Show Top 5' : `View All ${falling.length} Fallers \u2192`}</button>
+                </div>` : ''}
+            </div>`;
+
+            html += `</div>`; // close .tm-bento-grid
+
+            // ─── Full-Width: Your Squad Price Watch ───
             if (selectedPlayers.length > 0) {
                 const squadPressure = playersWithPressure.filter(p => squadIds.has(p.id));
                 const filtered = filterPlayers(squadPressure);
                 tmSortList(filtered, tmSquadSort);
 
                 html += `<div class="tm-section">
-                    <div class="tm-section-header"><h2><i data-lucide="shield" style="width:18px;height:18px;display:inline;"></i> Your Squad Price Watch</h2></div>
-                    <p class="tm-section-desc">Transfer activity and price pressure for your current squad. High activity may indicate upcoming price changes.</p>
-                    <div style="overflow-x:auto;">
+                    <div class="tm-section-header squad-header">
+                        <h2><i data-lucide="shield" style="width:16px;height:16px;display:inline;"></i> Your Squad Price Watch</h2>
+                        <span class="tm-section-count blue">${filtered.length}</span>
+                    </div>
+                    <div class="tm-table-wrap">
                     <table class="tm-table">
                         <thead><tr>
                             <th onclick="tmSort('squad','name')">Player</th>
                             <th onclick="tmSort('squad','price')">Price</th>
-                            <th onclick="tmSort('squad','priceChangeSeason')">Season Δ</th>
-                            <th onclick="tmSort('squad','priceChangeGW')">GW Δ</th>
+                            <th onclick="tmSort('squad','netTransfers')">Velocity</th>
                             <th onclick="tmSort('squad','netTransfers')">Net Transfers</th>
                             <th onclick="tmSort('squad','pressure')">Pressure</th>
                         </tr></thead>
-                        <tbody>${filtered.map(p => renderTmRow(p, false)).join('')}</tbody>
+                        <tbody>${filtered.map(p => renderTmRow(p, false, squadIds)).join('')}</tbody>
                     </table>
                     </div>
                 </div>`;
             }
-
-            // Section 2: Rising Players
-            const rising = filterPlayers(playersWithPressure.filter(p => p.netTransfers > 0));
-            tmSortList(rising, tmRisingSort);
-            const topRising = rising.slice(0, 25);
-
-            html += `<div class="tm-section">
-                <div class="tm-section-header"><h2 style="color:var(--color-success);"><i data-lucide="trending-up" style="width:18px;height:18px;display:inline;"></i> Rising Players</h2></div>
-                <p class="tm-section-desc">Players with highest positive transfer activity this gameweek. May rise in price soon.</p>
-                <div style="overflow-x:auto;">
-                <table class="tm-table">
-                    <thead><tr>
-                        <th onclick="tmSort('rising','name')">Player</th>
-                        <th onclick="tmSort('rising','price')">Price</th>
-                        <th onclick="tmSort('rising','priceChangeSeason')">Season Δ</th>
-                        <th onclick="tmSort('rising','priceChangeGW')">GW Δ</th>
-                        <th onclick="tmSort('rising','ownership')">Own%</th>
-                        <th onclick="tmSort('rising','netTransfers')">Net Transfers</th>
-                        <th onclick="tmSort('rising','pressure')">Pressure</th>
-                    </tr></thead>
-                    <tbody>${topRising.map(p => renderTmRow(p, true, squadIds)).join('')}</tbody>
-                </table>
-                </div>
-            </div>`;
-
-            // Section 3: Falling Players
-            const falling = filterPlayers(playersWithPressure.filter(p => p.netTransfers < 0));
-            tmSortList(falling, tmFallingSort);
-            const topFalling = falling.slice(0, 25);
-
-            html += `<div class="tm-section">
-                <div class="tm-section-header"><h2 style="color:var(--color-error);"><i data-lucide="trending-down" style="width:18px;height:18px;display:inline;"></i> Falling Players</h2></div>
-                <p class="tm-section-desc">Players with highest negative transfer activity. May drop in price. Watch out if they're in your squad.</p>
-                <div style="overflow-x:auto;">
-                <table class="tm-table">
-                    <thead><tr>
-                        <th onclick="tmSort('falling','name')">Player</th>
-                        <th onclick="tmSort('falling','price')">Price</th>
-                        <th onclick="tmSort('falling','priceChangeSeason')">Season Δ</th>
-                        <th onclick="tmSort('falling','priceChangeGW')">GW Δ</th>
-                        <th onclick="tmSort('falling','ownership')">Own%</th>
-                        <th onclick="tmSort('falling','netTransfers')">Net Transfers</th>
-                        <th onclick="tmSort('falling','pressure')">Pressure</th>
-                    </tr></thead>
-                    <tbody>${topFalling.map(p => renderTmRow(p, true, squadIds)).join('')}</tbody>
-                </table>
-                </div>
-            </div>`;
 
             container.innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -7490,24 +7643,64 @@
             const pressureLabel = getPressureLabel(p.pressure);
             const pressurePct = Math.min(Math.abs(p.pressure) * 500, 100);
             const isInSquad = squadIds && squadIds.has(p.id);
-            const seasonCls = p.priceChangeSeason > 0 ? 'up' : p.priceChangeSeason < 0 ? 'down' : 'flat';
-            const gwCls = p.priceChangeGW > 0 ? 'up' : p.priceChangeGW < 0 ? 'down' : 'flat';
-            const netStr = p.netTransfers > 0 ? `+${p.netTransfers.toLocaleString()}` : p.netTransfers.toLocaleString();
             const pressureDir = p.pressure >= 0 ? 'rising' : 'falling';
+            const pulseClass = pressurePct >= 95 ? ' pulse' : '';
+            const pctCls = pressureLabel.cls === 'rise' ? 'rise' : pressureLabel.cls === 'fall' ? 'fall' : 'stable';
+
+            // Consolidated price
+            const gwCls = p.priceChangeGW > 0 ? 'up' : p.priceChangeGW < 0 ? 'down' : 'flat';
+            const gwSign = p.priceChangeGW > 0 ? '+' : '';
+            const seasonSign = p.priceChangeSeason > 0 ? '+' : '';
+
+            // Net transfers
+            const netStr = p.netTransfers > 0 ? `+${p.netTransfers.toLocaleString()}` : p.netTransfers.toLocaleString();
+            const netCls = p.netTransfers > 0 ? 'positive' : p.netTransfers < 0 ? 'negative' : '';
 
             return `<tr class="${isInSquad ? 'tm-squad-row' : ''}">
-                <td><span class="tm-name">${p.name}</span>${isInSquad ? ' <span class="tm-badge in-squad">Squad</span>' : ''}<br><span class="tm-meta">${p.team} · ${p.posName}</span></td>
-                <td>£${p.price.toFixed(1)}m</td>
-                <td><span class="tm-price-change ${seasonCls}">${p.priceChangeSeason > 0 ? '+' : ''}${p.priceChangeSeason.toFixed(1)}</span></td>
-                <td><span class="tm-price-change ${gwCls}">${p.priceChangeGW > 0 ? '+' : ''}${p.priceChangeGW.toFixed(1)}</span></td>
-                ${showOwnership ? `<td>${p.ownership.toFixed(1)}%</td>` : ''}
-                <td style="white-space:nowrap;">${netStr}</td>
-                <td><div class="tm-pressure-bar"><div class="tm-pressure-fill ${pressureDir}" style="width:${pressurePct}%;"></div></div><span class="tm-badge ${pressureLabel.cls}">${pressureLabel.text}</span></td>
+                <td>
+                    <div class="tm-player-cell">
+                        <div class="tm-player-avatar ${p.posClass}">${p.teamShort}</div>
+                        <div class="tm-player-info">
+                            <div class="tm-player-name-row">
+                                <span class="tm-player-name">${escHTML(p.name)}</span>
+                                ${isInSquad ? '<span class="tm-badge in-squad">SQUAD</span>' : ''}
+                            </div>
+                            <div class="tm-player-sub">
+                                <span class="tm-pos-pill ${p.posClass}">${p.posName}</span>
+                                <span class="tm-team-name">${escHTML(p.team || '')}</span>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="tm-price-col">
+                        <span class="tm-price-main">\u00a3${p.price.toFixed(1)}m${p.priceChangeGW !== 0 ? ` <span class="tm-price-delta ${gwCls}">${gwSign}${p.priceChangeGW.toFixed(1)}</span>` : ''}</span>
+                        ${p.priceChangeSeason !== 0 ? `<span class="tm-price-season">Season ${seasonSign}${p.priceChangeSeason.toFixed(1)}</span>` : ''}
+                    </div>
+                </td>
+                ${showOwnership ? `<td><div class="tm-own-cell"><span class="tm-own-ring">${ownershipRingSVG(p.ownership)}</span><span class="tm-own-pct">${p.ownership.toFixed(1)}%</span></div></td>` : ''}
+                <td>${velocityIndicator(p.netTransfers)}</td>
+                <td><span class="tm-net ${netCls}">${netStr}</span></td>
+                <td>
+                    <div class="tm-pressure-cell">
+                        <span class="tm-heat-pct ${pctCls}">${Math.round(pressurePct)}%</span>
+                        <div class="tm-heat-gauge"><div class="tm-heat-fill ${pressureDir}${pulseClass}" style="width:${pressurePct}%;"></div></div>
+                        <span class="tm-badge ${pressureLabel.cls}">${pressureLabel.text}</span>
+                    </div>
+                </td>
             </tr>`;
         }
 
         function tmFilterPos(pos) {
             tmPosFilter = pos;
+            tmPriceFilter = 'all';
+            transferMarketRendered = false;
+            renderTransferMarket();
+        }
+
+        function tmFilterPrice(tier) {
+            tmPriceFilter = tmPriceFilter === tier ? 'all' : tier;
+            tmPosFilter = 'all';
             transferMarketRendered = false;
             renderTransferMarket();
         }
