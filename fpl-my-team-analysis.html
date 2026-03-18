@@ -1025,7 +1025,48 @@
         .tw-budget-value.negative { color: var(--color-error); }
         .tw-budget-sep { width: 1px; height: 32px; background: var(--border-default); }
 
-        /* Sell Selection Cards */
+        /* ── Transfer Desk (Split-screen Step 1) ── */
+        .tw-desk-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
+        @media (max-width: 860px) { .tw-desk-layout { grid-template-columns: 1fr; } }
+        .tw-desk-pane { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+        .tw-desk-pane-header { padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+
+        /* Position groups inside squad pane */
+        .tw-pos-group { border-bottom: 1px solid var(--border-subtle); }
+        .tw-pos-group:last-child { border-bottom: none; }
+        .tw-pos-group-label { padding: 6px 14px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); background: var(--surface-2); }
+
+        /* Compact squad rows */
+        .tw-squad-row { display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-bottom: 1px solid var(--border-subtle); transition: background 0.15s; cursor: pointer; }
+        .tw-squad-row:last-child { border-bottom: none; }
+        .tw-squad-row:hover { background: rgba(255,255,255,0.03); }
+        .tw-squad-row.selected { background: rgba(96,165,250,0.08); }
+        .tw-squad-row.on-bench { opacity: 0.6; }
+        .tw-sr-name { flex: 1; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .tw-sr-pill { font-size: 10px; font-family: var(--font-mono); font-weight: 600; color: var(--text-secondary); min-width: 38px; text-align: right; }
+        .tw-sr-verdict { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; flex-shrink: 0; }
+        .tw-sr-verdict.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
+        .tw-sr-verdict.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
+        .tw-sr-verdict.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
+        .tw-sr-verdict.star { background: var(--verdict-star-bg); color: var(--verdict-star); }
+
+        /* Swap icon (replaces SELL button) */
+        .tw-swap-icon { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1.5px solid var(--border-default); background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+        .tw-swap-icon:hover { border-color: var(--color-info); color: var(--color-info); background: rgba(96,165,250,0.08); }
+        .tw-swap-icon.active { border-color: var(--color-info); background: var(--color-info); color: #fff; }
+        .tw-swap-icon svg { width: 14px; height: 14px; }
+
+        /* Right pane — selected to sell list */
+        .tw-desk-sell-list { padding: 8px 0; }
+        .tw-desk-sell-item { display: flex; align-items: center; gap: 8px; padding: 8px 14px; }
+        .tw-desk-sell-item + .tw-desk-sell-item { border-top: 1px solid var(--border-subtle); }
+        .tw-desk-sell-remove { width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(248,113,113,0.12); color: var(--color-error); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; flex-shrink: 0; transition: background 0.15s; }
+        .tw-desk-sell-remove:hover { background: rgba(248,113,113,0.25); }
+        .tw-desk-empty { padding: 24px 14px; text-align: center; color: var(--text-muted); font-size: 12px; }
+        .tw-counter { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); margin-left: auto; }
+        .tw-counter strong { color: var(--text-primary); font-family: var(--font-mono); }
+
+        /* Sell Selection Cards (kept for legacy / other usages) */
         .tw-squad-group { margin-bottom: 16px; }
         .tw-squad-group-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; padding-left: 4px; }
         .tw-sell-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
@@ -1048,8 +1089,6 @@
         .tw-sell-verdict.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
         .tw-sell-verdict.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
         .tw-sell-verdict.star { background: var(--verdict-star-bg); color: var(--verdict-star); }
-        .tw-counter { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); margin-left: auto; }
-        .tw-counter strong { color: var(--text-primary); font-family: var(--font-mono); }
 
         /* Action Buttons */
         .tw-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
@@ -1109,10 +1148,12 @@
         .tw-replacement-info { flex: 1; min-width: 0; }
         .tw-replacement-name { font-weight: 600; font-size: 13px; }
         .tw-replacement-meta { font-size: 11px; color: var(--text-secondary); }
-        .tw-replacement-stats { display: flex; gap: 10px; align-items: center; }
-        .tw-replacement-stat { text-align: center; min-width: 36px; }
-        .tw-replacement-stat-val { font-size: 12px; font-weight: 700; font-family: var(--font-mono); }
-        .tw-replacement-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+
+        /* Stat badge pills (replacement rows) */
+        .tw-stat-badges { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+        .tw-stat-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 600; font-family: var(--font-mono); background: var(--surface-3); color: var(--text-secondary); white-space: nowrap; }
+        .tw-stat-badge .tw-sb-label { font-family: var(--font-body); font-weight: 700; text-transform: uppercase; font-size: 9px; color: var(--text-muted); }
+
         .tw-replacement-delta { font-size: 11px; font-weight: 600; font-family: var(--font-mono); padding: 2px 6px; border-radius: 3px; }
         .tw-replacement-delta.positive { background: rgba(74,222,128,0.12); color: var(--color-success); }
         .tw-replacement-delta.negative { background: rgba(248,113,113,0.12); color: var(--color-error); }
@@ -6392,52 +6433,59 @@
             else if (step === 4) renderTransferStep4();
         }
 
-        // ===== STEP 1: Select Sells =====
+        // ===== STEP 1: Select Sells (Transfer Desk) =====
         function renderTransferStep1() {
             const panel = document.getElementById('twPanel1');
             const bank = (picksData?.entry_history?.bank || 0) / 10;
             const sellTotal = transferState.sellPlayers.reduce((s, p) => s + (p.sellPrice || p.price), 0);
             const totalBudget = sellTotal + bank;
-
-            const starters = selectedPlayers.filter(p => !p.onBench).sort((a, b) => a.position - b.position || a.pickPosition - b.pickPosition);
-            const bench = selectedPlayers.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
-
             const sellIds = new Set(transferState.sellPlayers.map(p => p.id));
 
-            function renderSellCard(player) {
+            // Group all players by position
+            const grouped = {};
+            [1, 2, 3, 4].forEach(pos => { grouped[pos] = []; });
+            selectedPlayers.forEach(p => { grouped[p.position].push(p); });
+            Object.values(grouped).forEach(arr => arr.sort((a, b) => a.pickPosition - b.pickPosition));
+
+            // Build squad rows
+            function buildRow(player) {
                 const analysis = analysisResults.find(a => a.player.id === player.id);
                 const verdict = analysis?.verdict || 'hold';
-                const sellRating = analysis?.sellRating || 40;
-                const posConfig = POSITION_CONFIG[player.position];
                 const isSelected = sellIds.has(player.id);
-                const suggestClass = verdict === 'sell' ? 'suggested' : verdict === 'monitor' ? 'suggested-monitor' : '';
-
-                return `<div class="tw-sell-card ${isSelected ? 'selected' : ''} ${suggestClass}" onclick="toggleTransferSell(${player.id})">
-                    <div class="tw-check">${isSelected ? '✓' : ''}</div>
-                    <span class="position-badge ${posConfig.class}" style="font-size:10px;padding:2px 6px;">${posConfig.short}</span>
-                    <div class="tw-sell-info">
-                        <div class="tw-sell-name">${player.name}</div>
-                        <div class="tw-sell-meta">
-                            <span>${player.team}</span>
-                            <span>£${(player.sellPrice || player.price).toFixed(1)}m</span>
-                            <span class="tw-sell-verdict ${verdict}">${verdict}</span>
-                        </div>
-                    </div>
-                    <div class="tw-sell-stats">
-                        <div class="tw-sell-stat">
-                            <div class="tw-sell-stat-val">${player.form.toFixed(1)}</div>
-                            <div class="tw-sell-stat-label">Form</div>
-                        </div>
-                        <div class="tw-sell-stat">
-                            <div class="tw-sell-stat-val">${player.ppg.toFixed(1)}</div>
-                            <div class="tw-sell-stat-label">PPG</div>
-                        </div>
-                        <div class="tw-sell-stat">
-                            <div class="tw-sell-stat-val" style="color:${sellRating >= 55 ? 'var(--color-error)' : sellRating >= 38 ? 'var(--color-warning)' : 'var(--color-success)'}">${sellRating}</div>
-                            <div class="tw-sell-stat-label">Sell</div>
-                        </div>
-                    </div>
+                return `<div class="tw-squad-row ${isSelected ? 'selected' : ''} ${player.onBench ? 'on-bench' : ''}" onclick="toggleTransferSell(${player.id})">
+                    <button class="tw-swap-icon ${isSelected ? 'active' : ''}" aria-label="Toggle sell">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                    </button>
+                    <span class="tw-sr-name">${player.name}</span>
+                    <span class="tw-sr-pill">£${(player.sellPrice || player.price).toFixed(1)}m</span>
+                    <span class="tw-sr-pill">${player.form.toFixed(1)}</span>
+                    <span class="tw-sr-verdict ${verdict}">${verdict}</span>
                 </div>`;
+            }
+
+            let squadRows = '';
+            [1, 2, 3, 4].forEach(pos => {
+                const posConfig = POSITION_CONFIG[pos];
+                squadRows += `<div class="tw-pos-group">
+                    <div class="tw-pos-group-label">${posConfig.name}s</div>
+                    ${grouped[pos].map(p => buildRow(p)).join('')}
+                </div>`;
+            });
+
+            // Build right-pane sell list
+            let sellListHtml = '';
+            if (transferState.sellPlayers.length === 0) {
+                sellListHtml = `<div class="tw-desk-empty">Tap the <b>⇄</b> icon on a player to mark them for sale</div>`;
+            } else {
+                transferState.sellPlayers.forEach(p => {
+                    const posConfig = POSITION_CONFIG[p.position];
+                    sellListHtml += `<div class="tw-desk-sell-item">
+                        <button class="tw-desk-sell-remove" onclick="event.stopPropagation();toggleTransferSell(${p.id})" title="Remove">✕</button>
+                        <span class="position-badge ${posConfig.class}" style="font-size:10px;padding:2px 5px;">${posConfig.short}</span>
+                        <span style="flex:1;font-size:12px;font-weight:600;">${p.name}</span>
+                        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-secondary);">£${(p.sellPrice || p.price).toFixed(1)}m</span>
+                    </div>`;
+                });
             }
 
             let html = `
@@ -6462,13 +6510,17 @@
                     </div>
                 </div>
 
-                <div class="tw-squad-group">
-                    <div class="tw-squad-group-title">Starting XI</div>
-                    <div class="tw-sell-grid">${starters.map(p => renderSellCard(p)).join('')}</div>
-                </div>
-                <div class="tw-squad-group">
-                    <div class="tw-squad-group-title">Bench</div>
-                    <div class="tw-sell-grid">${bench.map(p => renderSellCard(p)).join('')}</div>
+                <div class="tw-desk-layout">
+                    <!-- Left: Squad grouped by position -->
+                    <div class="tw-desk-pane">
+                        <div class="tw-desk-pane-header">🗂 Your Squad</div>
+                        ${squadRows}
+                    </div>
+                    <!-- Right: Selected to sell -->
+                    <div class="tw-desk-pane">
+                        <div class="tw-desk-pane-header">📤 Selling (${transferState.sellPlayers.length}/3)</div>
+                        <div class="tw-desk-sell-list">${sellListHtml}</div>
+                    </div>
                 </div>
 
                 <div class="tw-actions">
@@ -6674,23 +6726,11 @@
                             <div class="tw-replacement-name">${c.name}</div>
                             <div class="tw-replacement-meta">${c.team} · £${c.price.toFixed(1)}m · ${c.ownership.toFixed(1)}% owned</div>
                         </div>
-                        <div class="tw-replacement-stats">
-                            <div class="tw-replacement-stat">
-                                <div class="tw-replacement-stat-val">${c.form.toFixed(1)}</div>
-                                <div class="tw-replacement-stat-label">Form</div>
-                            </div>
-                            <div class="tw-replacement-stat">
-                                <div class="tw-replacement-stat-val">${c.ppg.toFixed(1)}</div>
-                                <div class="tw-replacement-stat-label">PPG</div>
-                            </div>
-                            <div class="tw-replacement-stat">
-                                <div class="tw-replacement-stat-val">${xgiDisplay}</div>
-                                <div class="tw-replacement-stat-label">xGI/90</div>
-                            </div>
-                            <div class="tw-replacement-stat">
-                                <div class="tw-replacement-stat-val">${fdr}</div>
-                                <div class="tw-replacement-stat-label">FDR</div>
-                            </div>
+                        <div class="tw-stat-badges">
+                            <span class="tw-stat-badge"><span class="tw-sb-label">Form</span> ${c.form.toFixed(1)}</span>
+                            <span class="tw-stat-badge"><span class="tw-sb-label">PPG</span> ${c.ppg.toFixed(1)}</span>
+                            <span class="tw-stat-badge"><span class="tw-sb-label">xGI</span> ${xgiDisplay}</span>
+                            <span class="tw-stat-badge"><span class="tw-sb-label">FDR</span> ${fdr}</span>
                         </div>
                         <div class="tw-replacement-delta ${deltaClass}">${deltaSign}${delta.toFixed(1)}</div>
                         <button class="tw-lock-btn ${isLocked ? 'locked' : ''}" onclick="event.stopPropagation();lockSlotChoice(${slotIdx},${c.id})">${isLocked ? '✓ Locked' : 'Lock In'}</button>
@@ -6788,23 +6828,11 @@
                         <div class="tw-replacement-name">${c.name}</div>
                         <div class="tw-replacement-meta">${c.team} · £${c.price.toFixed(1)}m · ${c.ownership.toFixed(1)}% owned</div>
                     </div>
-                    <div class="tw-replacement-stats">
-                        <div class="tw-replacement-stat">
-                            <div class="tw-replacement-stat-val">${c.form.toFixed(1)}</div>
-                            <div class="tw-replacement-stat-label">Form</div>
-                        </div>
-                        <div class="tw-replacement-stat">
-                            <div class="tw-replacement-stat-val">${c.ppg.toFixed(1)}</div>
-                            <div class="tw-replacement-stat-label">PPG</div>
-                        </div>
-                        <div class="tw-replacement-stat">
-                            <div class="tw-replacement-stat-val">${xgiDisplay}</div>
-                            <div class="tw-replacement-stat-label">xGI/90</div>
-                        </div>
-                        <div class="tw-replacement-stat">
-                            <div class="tw-replacement-stat-val">${fdr}</div>
-                            <div class="tw-replacement-stat-label">FDR</div>
-                        </div>
+                    <div class="tw-stat-badges">
+                        <span class="tw-stat-badge"><span class="tw-sb-label">Form</span> ${c.form.toFixed(1)}</span>
+                        <span class="tw-stat-badge"><span class="tw-sb-label">PPG</span> ${c.ppg.toFixed(1)}</span>
+                        <span class="tw-stat-badge"><span class="tw-sb-label">xGI</span> ${xgiDisplay}</span>
+                        <span class="tw-stat-badge"><span class="tw-sb-label">FDR</span> ${fdr}</span>
                     </div>
                     <div class="tw-replacement-delta ${deltaClass}">${deltaSign}${delta.toFixed(1)}</div>
                     <button class="tw-lock-btn ${isLocked ? 'locked' : ''}" onclick="event.stopPropagation();lockSlotChoice(${slotIdx},${c.id})">${isLocked ? '✓ Locked' : 'Lock In'}</button>
