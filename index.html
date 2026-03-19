@@ -880,6 +880,16 @@ body {
             font-weight: 500;
             color: var(--text-muted);
         }
+        .hss-milestone .ml-pts {
+            font-family: var(--font-mono);
+            font-weight: 700;
+        }
+        .hss-milestone-loading {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-style: italic;
+            padding: 4px 0;
+        }
         .hss-gw-rank {
             display: inline-flex;
             align-items: center;
@@ -3167,7 +3177,7 @@ body {
         // ===== PERSONALIZED HERO STATS =====
         function renderHeroStats({ firstName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta, prevRank,
                                    squad, analysisResults, flagged,
-                                   avgManagerTotal, pointsDiff, nextBracket, deadlineTime, deadlineGW, avgFDR,
+                                   avgManagerTotal, pointsDiff, deadlineTime, deadlineGW, avgFDR,
                                    priceDropRisk, priceRiseTargets, healthScore, healthDeductions, captainRec,
                                    squadIds, shortlistIds }) {
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
@@ -3252,26 +3262,16 @@ body {
             statsHtml += `<div class="hss-card hss-card--points">
                 <div class="hss-label"><i data-lucide="bar-chart-2" class="icon" style="color:#3B82F6;"></i> Total Points</div>
                 <div class="hss-value">${totalPoints ? totalPoints.toLocaleString() : '-'} <span class="hss-diff ${diffClass}">${diffSign}${pointsDiff} vs avg</span></div>
-                <div class="hss-secondary">GW${currentGW}: ${gwPoints} pts${nextBracket ? ` · <span class="hss-gamify">${(rank - nextBracket).toLocaleString()} to Top ${nextBracket >= 1000000 ? (nextBracket/1000000)+'M' : nextBracket >= 1000 ? (nextBracket/1000)+'k' : nextBracket}</span>` : ''}</div>
+                <div class="hss-secondary">GW${currentGW}: ${gwPoints} pts</div>
             </div>`;
             // Card 2: Rank
-            const milestoneBrackets = [1000, 5000, 10000, 50000, 100000, 250000, 500000, 1000000];
-            let milestonesHtml = '';
-            if (rank) {
-                const targets = milestoneBrackets.filter(b => rank > b).slice(0, 3);
-                milestonesHtml = targets.map((b, i) => {
-                    const gap = (rank - b).toLocaleString();
-                    const label = b >= 1000000 ? (b/1000000)+'M' : b >= 1000 ? (b/1000)+'k' : b;
-                    return `<span class="hss-milestone${i === 0 ? ' next' : ''}"><span class="ml-label">Top ${label}</span> ${gap} away</span>`;
-                }).join('');
-            }
             const gwRankLine = gwRank ? `<div class="hss-gw-rank"><i data-lucide="zap" class="icon" style="width:12px;height:12px;color:#F59E0B;"></i> GW${currentGW} rank: <strong>${gwRank.toLocaleString()}</strong></div>` : '';
             statsHtml += `<div class="hss-card hss-card--rank">
                 <div class="hss-label"><i data-lucide="trophy" class="icon" style="color:#10B981;"></i> Overall Rank</div>
                 <div class="hss-value">${rankDisplay} ${rankArrowHtml}</div>
                 ${prevRank ? `<div class="hss-secondary">Previous: ${prevRank.toLocaleString()}</div>` : ''}
                 ${gwRankLine}
-                ${milestonesHtml ? `<div class="hss-milestones">${milestonesHtml}</div>` : ''}
+                <div id="rankMilestones" class="hss-milestones"><span class="hss-milestone-loading">Loading targets…</span></div>
             </div>`;
             // Card 3: Value & Bank
             statsHtml += `<div class="hss-card hss-card--value">
@@ -3915,13 +3915,6 @@ body {
                 const avgManagerTotal = finishedEvents.reduce((s, e) => s + (e.average_entry_score || 0), 0);
                 const pointsDiff = totalPointsRaw - avgManagerTotal;
 
-                // --- NEW: Gamified rank target ---
-                const rankBrackets = [1000, 5000, 10000, 50000, 100000, 250000, 500000, 1000000];
-                let nextBracket = null;
-                for (const b of rankBrackets) {
-                    if (rankRaw > b) { nextBracket = b; break; }
-                }
-
                 // --- NEW: Deadline info from next event ---
                 const deadlineTime = nextEvent ? nextEvent.deadline_time : (currEvent ? currEvent.deadline_time : null);
                 const deadlineGW = nextEvent ? nextEvent.id : currentGW;
@@ -4037,7 +4030,6 @@ body {
                     flagged,
                     avgManagerTotal,
                     pointsDiff,
-                    nextBracket,
                     deadlineTime,
                     deadlineGW,
                     avgFDR,
@@ -4052,6 +4044,36 @@ body {
 
                 renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank: bank.toFixed(1), allPlayers });
                 renderPriceTicker(allPlayers, squad);
+
+                // --- Async: fetch points at nearby rank thresholds ---
+                (async () => {
+                    try {
+                        const tiers = [1000, 5000, 10000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000];
+                        const targets = tiers.filter(t => rankRaw > t).slice(0, 2);
+                        if (!targets.length || !totalPointsRaw) return;
+                        const results = await Promise.all(targets.map(async t => {
+                            const page = Math.ceil(t / 50);
+                            const res = await fetchWithProxy(`https://fantasy.premierleague.com/api/leagues-classic/314/standings/?page_standings=${page}`);
+                            const data = await res.json();
+                            const entries = data.standings?.results || [];
+                            const entry = entries.find(e => e.rank <= t) || entries[0];
+                            return { tier: t, points: entry ? entry.total : null };
+                        }));
+                        const el = document.getElementById('rankMilestones');
+                        if (!el) return;
+                        const pills = results.filter(r => r.points && r.points > totalPointsRaw).map((r, i) => {
+                            const gap = r.points - totalPointsRaw;
+                            const label = r.tier >= 1000000 ? (r.tier / 1000000) + 'M' : (r.tier / 1000) + 'k';
+                            return `<span class="hss-milestone${i === 0 ? ' next' : ''}"><span class="ml-label">Top ${label}</span> <span class="ml-pts">${gap} pts</span></span>`;
+                        }).join('');
+                        el.innerHTML = pills || '<span class="hss-milestone-loading">You\'re inside the top bracket!</span>';
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    } catch (e) {
+                        console.warn('Milestone fetch failed:', e);
+                        const el = document.getElementById('rankMilestones');
+                        if (el) el.innerHTML = '';
+                    }
+                })();
 
                 // Fetch external news (non-blocking) and render strip + headlines
                 fetchExternalNews().then(externalItems => {
