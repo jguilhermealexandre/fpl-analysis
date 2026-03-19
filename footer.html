@@ -151,6 +151,8 @@
         border-radius: 50%;
         animation: footerPulse 2s ease-in-out infinite;
     }
+    .footer-status-dot.stale { background: #F59E0B; }
+    .footer-status-dot.outdated { background: #EF4444; }
     @keyframes footerPulse {
         0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
         50% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
@@ -235,8 +237,26 @@
     <div class="footer-bottom">
         <span class="footer-legal">&copy; 2026 FPL Tools. Not affiliated with the Premier League.</span>
         <span class="footer-status">
-            <span class="footer-status-dot"></span>
-            Systems Operational &bull; Updated Daily
+            <span class="footer-status-dot" id="dataFreshnessDot"></span>
+            <span id="dataFreshnessText">Systems Operational</span>
         </span>
     </div>
 </footer>
+
+<script>
+// Global function pages can call after loading data
+window.updateDataFreshness = function(isoTimestamp) {
+    const dot = document.getElementById('dataFreshnessDot');
+    const text = document.getElementById('dataFreshnessText');
+    if (!dot || !text || !isoTimestamp) return;
+    const updated = new Date(isoTimestamp);
+    if (isNaN(updated.getTime())) return;
+    const hoursAgo = (Date.now() - updated.getTime()) / 3600000;
+    let label;
+    if (hoursAgo < 1) { const m = Math.round(hoursAgo * 60); label = m <= 1 ? 'just now' : m + ' min ago'; }
+    else if (hoursAgo < 24) { const h = Math.round(hoursAgo); label = h + 'h ago'; }
+    else { const d = Math.round(hoursAgo / 24); label = d + 'd ago'; }
+    dot.className = 'footer-status-dot' + (hoursAgo > 6 ? ' outdated' : hoursAgo > 2 ? ' stale' : '');
+    text.textContent = 'Data updated ' + label;
+};
+</script>

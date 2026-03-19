@@ -3885,14 +3885,15 @@
                 showLoading(true);
                 
                 const [playersRes, fixturesRes, bootstrapRes] = await Promise.all([
-                    fetch('data/players-data.json'),
-                    fetch('data/fixtures.json'),
-                    fetch('data/bootstrap-static.json').catch(() => null)
+                    fetch('data/players-data.json?v=' + Math.floor(Date.now()/300000)),
+                    fetch('data/fixtures.json?v=' + Math.floor(Date.now()/300000)),
+                    fetch('data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000)).catch(() => null)
                 ]);
 
                 if (!playersRes.ok) throw new Error('Failed to load players data');
                 
                 const staticData = await playersRes.json();
+                if (staticData?.metadata?.lastUpdated && window.updateDataFreshness) window.updateDataFreshness(staticData.metadata.lastUpdated);
                 const fixturesData = fixturesRes.ok ? await fixturesRes.json() : [];
 
                 // Load bootstrap data for availability info

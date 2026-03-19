@@ -603,7 +603,7 @@
     // ===== DATA LOADING =====
     async function loadAllData() {
         showLoading(true, 'Loading FPL bootstrap data...');
-        const bootData = await (await fetch('data/bootstrap-static.json')).json();
+        const bootData = await (await fetch('data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000))).json();
         const currEvent = bootData.events.find(e => e.is_current);
         currentGW = currEvent ? currEvent.id : 1;
         teams = {};
@@ -615,21 +615,19 @@
         });
 
         showLoading(true, 'Loading fixtures...');
-        const fixturesData = await (await fetch('data/fixtures.json')).json();
+        const fixturesData = await (await fetch('data/fixtures.json?v=' + Math.floor(Date.now()/300000))).json();
         processFixtures(fixturesData);
 
         showLoading(true, 'Loading detailed player data...');
         let playersDataRaw = [];
-        try { playersDataRaw = await (await fetch('data/players-data.json')).json(); } catch(e) {}
+        try { playersDataRaw = await (await fetch('data/players-data.json?v=' + Math.floor(Date.now()/300000))).json(); } catch(e) {}
+        if (playersDataRaw?.metadata?.lastUpdated && window.updateDataFreshness) window.updateDataFreshness(playersDataRaw.metadata.lastUpdated);
         playerHistory = {};
-        if (Array.isArray(playersDataRaw)) {
-            playersDataRaw.forEach(entry => {
-                if (entry.id && entry.history) playerHistory[entry.id] = entry.history;
-                else if (entry.element) { if (!playerHistory[entry.element]) playerHistory[entry.element]=[]; playerHistory[entry.element].push(entry); }
-            });
-        }
-
-        try { await (await fetch('data/teams-data.json')).json(); } catch(e) {}
+        const playersList = Array.isArray(playersDataRaw) ? playersDataRaw : (playersDataRaw?.players || []);
+        playersList.forEach(entry => {
+            if (entry.id && entry.history) playerHistory[entry.id] = entry.history;
+            else if (entry.element) { if (!playerHistory[entry.element]) playerHistory[entry.element]=[]; playerHistory[entry.element].push(entry); }
+        });
 
         showLoading(true, 'Computing team power ratings...');
         computeTeamPower(bootData, fixturesData);

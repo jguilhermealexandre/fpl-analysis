@@ -666,8 +666,8 @@
                 </div>
                 <div class="data-point">
                     <div class="data-point-icon"><i data-lucide="refresh-cw" class="icon"></i></div>
-                    <h4>Updated Daily</h4>
-                    <p>Prices, injuries, and stats are refreshed multiple times a day from the FPL API.</p>
+                    <h4>Updated Every 4 Hours</h4>
+                    <p>Prices, injuries, and stats are refreshed every 4 hours from the FPL API, with targeted updates at key times.</p>
                 </div>
             </div>
         </div>
@@ -694,6 +694,6 @@
 
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>lucide.createIcons();</script>
-    <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons()});</script>
+    <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons();fetch('data/last-updated.json?v='+Math.floor(Date.now()/300000)).then(r=>r.ok?r.json():null).then(d=>{if(d?.lastUpdated&&window.updateDataFreshness)window.updateDataFreshness(d.lastUpdated)}).catch(()=>{})});</script>
 </body>
 </html>

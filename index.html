@@ -852,6 +852,48 @@ body {
             font-weight: 600;
         }
 
+        .hss-milestones {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .hss-milestone {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: var(--radius-full);
+            background: rgba(16,185,129,0.08);
+            color: #059669;
+            font-family: var(--font-mono);
+        }
+        .hss-milestone.next {
+            background: rgba(16,185,129,0.15);
+            color: #047857;
+            border: 1px solid rgba(16,185,129,0.25);
+        }
+        .hss-milestone .ml-label {
+            font-family: var(--font-body);
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+        .hss-gw-rank {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        .hss-gw-rank strong {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
         /* --- Squad Health Bar (inside squad panel header) --- */
         .hsp-health-bar {
             display: flex;
@@ -3123,7 +3165,7 @@ body {
         }
 
         // ===== PERSONALIZED HERO STATS =====
-        function renderHeroStats({ firstName, currentGW, rank, totalPoints, gwPoints, bank, squadValue, rankDelta, prevRank,
+        function renderHeroStats({ firstName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta, prevRank,
                                    squad, analysisResults, flagged,
                                    avgManagerTotal, pointsDiff, nextBracket, deadlineTime, deadlineGW, avgFDR,
                                    priceDropRisk, priceRiseTargets, healthScore, healthDeductions, captainRec,
@@ -3213,10 +3255,23 @@ body {
                 <div class="hss-secondary">GW${currentGW}: ${gwPoints} pts${nextBracket ? ` · <span class="hss-gamify">${(rank - nextBracket).toLocaleString()} to Top ${nextBracket >= 1000000 ? (nextBracket/1000000)+'M' : nextBracket >= 1000 ? (nextBracket/1000)+'k' : nextBracket}</span>` : ''}</div>
             </div>`;
             // Card 2: Rank
+            const milestoneBrackets = [1000, 5000, 10000, 50000, 100000, 250000, 500000, 1000000];
+            let milestonesHtml = '';
+            if (rank) {
+                const targets = milestoneBrackets.filter(b => rank > b).slice(0, 3);
+                milestonesHtml = targets.map((b, i) => {
+                    const gap = (rank - b).toLocaleString();
+                    const label = b >= 1000000 ? (b/1000000)+'M' : b >= 1000 ? (b/1000)+'k' : b;
+                    return `<span class="hss-milestone${i === 0 ? ' next' : ''}"><span class="ml-label">Top ${label}</span> ${gap} away</span>`;
+                }).join('');
+            }
+            const gwRankLine = gwRank ? `<div class="hss-gw-rank"><i data-lucide="zap" class="icon" style="width:12px;height:12px;color:#F59E0B;"></i> GW${currentGW} rank: <strong>${gwRank.toLocaleString()}</strong></div>` : '';
             statsHtml += `<div class="hss-card hss-card--rank">
                 <div class="hss-label"><i data-lucide="trophy" class="icon" style="color:#10B981;"></i> Overall Rank</div>
                 <div class="hss-value">${rankDisplay} ${rankArrowHtml}</div>
                 ${prevRank ? `<div class="hss-secondary">Previous: ${prevRank.toLocaleString()}</div>` : ''}
+                ${gwRankLine}
+                ${milestonesHtml ? `<div class="hss-milestones">${milestonesHtml}</div>` : ''}
             </div>`;
             // Card 3: Value & Bank
             statsHtml += `<div class="hss-card hss-card--value">
@@ -3766,8 +3821,8 @@ body {
             try {
                 // Phase 1: Load basic stats and render ticker immediately
                 const [bootData, fixturesData, mgrRes, historyRes] = await Promise.all([
-                    fetch('data/bootstrap-static.json').then(r => { if (!r.ok) throw new Error('Data load failed'); return r.json(); }),
-                    fetch('data/fixtures.json').then(r => r.ok ? r.json() : []),
+                    fetch('data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000)).then(r => { if (!r.ok) throw new Error('Data load failed'); return r.json(); }),
+                    fetch('data/fixtures.json?v=' + Math.floor(Date.now()/300000)).then(r => r.ok ? r.json() : []),
                     fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`),
                     fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`).catch(() => null)
                 ]);
@@ -3840,6 +3895,7 @@ body {
 
                 const bank = (picksData.entry_history?.bank || 0) / 10;
                 const gwPoints = picksData.entry_history?.points || 0;
+                const gwRank = picksData.entry_history?.rank || 0;
                 const totalPointsRaw = managerData.summary_overall_points || 0;
                 const rankRaw = managerData.summary_overall_rank || 0;
                 const squadValue = (picksData.entry_history?.value || 0) / 10;
@@ -3971,6 +4027,7 @@ body {
                     rank: rankRaw,
                     totalPoints: totalPointsRaw,
                     gwPoints,
+                    gwRank,
                     bank: bank.toFixed(1),
                     squadValue,
                     rankDelta,
@@ -4035,6 +4092,4 @@ body {
             activateTeam(savedTeamId);
         }
     </script>
-    <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons()});</script>
-</body>
-</html>
+    <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons();fetch('data/last-updated.json?v='+Math.floor(Date.now()/300000)).then(r=>r.ok?r.json():null).then(d=>{if(d?.lastUpdated&&window.updateDataFreshness)window.updateDataFreshness(d.lastUpdated)}).catch(()=>{})});</script>

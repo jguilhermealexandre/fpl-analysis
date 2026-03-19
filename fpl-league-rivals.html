@@ -1224,8 +1224,8 @@
         let raceChart = null;
         
         // ===== CONFIGURATION =====
-        const BOOTSTRAP_URL = 'data/bootstrap-static.json';
-        const FIXTURES_URL = 'data/fixtures.json';
+        const BOOTSTRAP_URL = 'data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000);
+        const FIXTURES_URL = 'data/fixtures.json?v=' + Math.floor(Date.now()/300000);
         const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
         
         const POS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
@@ -2222,6 +2222,4 @@
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>lucide.createIcons();</script>
-    <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons()});</script>
-</body>
-</html>
+    <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons();fetch('data/last-updated.json?v='+Math.floor(Date.now()/300000)).then(r=>r.ok?r.json():null).then(d=>{if(d?.lastUpdated&&window.updateDataFreshness)window.updateDataFreshness(d.lastUpdated)}).catch(()=>{})});</script>

@@ -2903,9 +2903,9 @@
 
     <script>
         // Data URLs - served from local files updated by GitHub Actions
-        const BOOTSTRAP_URL = 'data/bootstrap-static.json';
-        const FIXTURES_URL = 'data/fixtures.json';
-        const PLAYERS_URL = 'data/players-data.json';
+        const BOOTSTRAP_URL = 'data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000);
+        const FIXTURES_URL = 'data/fixtures.json?v=' + Math.floor(Date.now()/300000);
+        const PLAYERS_URL = 'data/players-data.json?v=' + Math.floor(Date.now()/300000);
         
         let allTeamsData = [];
         let currentView = 'rankings';
@@ -3040,6 +3040,7 @@
                 const playersRes = await fetch(PLAYERS_URL);
                 if (playersRes.ok) {
                     const playersData = await playersRes.json();
+                    if (playersData?.metadata?.lastUpdated && window.updateDataFreshness) window.updateDataFreshness(playersData.metadata.lastUpdated);
                     console.log(`🎯 Loaded players-data.json: ${playersData.metadata?.playerCount} players with per-GW history`);
                     
                     (playersData.players || []).forEach(player => {
@@ -3168,6 +3169,7 @@
                 totalGoals: data.seasonGoals,
                 totalXgc: data.seasonXgc,
                 totalConceded: data.seasonConceded,
+                netXGpg: (data.seasonXg - data.seasonXgc) / g,
                 xGoverperformance: data.seasonGoals - data.seasonXg,
                 xGCoverperformance: data.seasonXgc - data.seasonConceded
             };
@@ -5408,7 +5410,15 @@
             // Compute Y-axis midpoint for quadrant lines
             const yValues = dataPoints.map(p => p.y);
             const yMid = momentumMetric === 'net' ? 0 : yValues.reduce((a, b) => a + b, 0) / (yValues.length || 1);
-            const xMid = 3.0; // midpoint of 1-5 range
+
+            // Dynamic X-axis range based on actual data with padding
+            const xValues = dataPoints.map(p => p.x);
+            const xDataMin = Math.min(...xValues);
+            const xDataMax = Math.max(...xValues);
+            const xPad = Math.max(0.3, (xDataMax - xDataMin) * 0.15);
+            const xAxisMin = Math.floor((xDataMin - xPad) * 2) / 2; // snap to 0.5
+            const xAxisMax = Math.ceil((xDataMax + xPad) * 2) / 2;
+            const xMid = (xAxisMin + xAxisMax) / 2;
 
             const style = getComputedStyle(document.documentElement);
             const gridColor = style.getPropertyValue('--border-default').trim() || 'rgba(0,0,0,0.08)';
@@ -5457,14 +5467,14 @@
                             annotations: {
                                 quadTopRight: {
                                     type: 'box',
-                                    xMin: xMid, xMax: 5.5,
+                                    xMin: xMid, xMax: xAxisMax,
                                     yMin: yMid, yMax: momentumMetric === 'net' ? 2.5 : Math.max(...yValues) + 0.3,
                                     backgroundColor: 'rgba(16, 185, 129, 0.05)',
                                     borderWidth: 0,
                                 },
                                 quadBottomLeft: {
                                     type: 'box',
-                                    xMin: 0.5, xMax: xMid,
+                                    xMin: xAxisMin, xMax: xMid,
                                     yMin: momentumMetric === 'net' ? -2.5 : Math.min(...yValues) - 0.3,
                                     yMax: yMid,
                                     backgroundColor: 'rgba(239, 68, 68, 0.05)',
@@ -5472,14 +5482,14 @@
                                 },
                                 quadTopLeft: {
                                     type: 'box',
-                                    xMin: 0.5, xMax: xMid,
+                                    xMin: xAxisMin, xMax: xMid,
                                     yMin: yMid, yMax: momentumMetric === 'net' ? 2.5 : Math.max(...yValues) + 0.3,
                                     backgroundColor: 'rgba(96, 165, 250, 0.04)',
                                     borderWidth: 0,
                                 },
                                 quadBottomRight: {
                                     type: 'box',
-                                    xMin: xMid, xMax: 5.5,
+                                    xMin: xMid, xMax: xAxisMax,
                                     yMin: momentumMetric === 'net' ? -2.5 : Math.min(...yValues) - 0.3,
                                     yMax: yMid,
                                     backgroundColor: 'rgba(245, 158, 11, 0.04)',
@@ -5501,14 +5511,14 @@
                                 },
                                 labelTR: {
                                     type: 'label',
-                                    xValue: 4.8, yValue: yMid + (momentumMetric === 'net' ? 0.15 : 0.05),
+                                    xValue: xMid + (xAxisMax - xMid) * 0.85, yValue: yMid + (momentumMetric === 'net' ? 0.15 : 0.05),
                                     content: ['\u2714 TARGET'],
                                     font: { size: 10, weight: '700', family: 'Inter' },
                                     color: 'rgba(16, 185, 129, 0.35)',
                                 },
                                 labelBL: {
                                     type: 'label',
-                                    xValue: 1.2, yValue: yMid - (momentumMetric === 'net' ? 0.15 : 0.05),
+                                    xValue: xAxisMin + (xMid - xAxisMin) * 0.15, yValue: yMid - (momentumMetric === 'net' ? 0.15 : 0.05),
                                     content: ['\u2716 AVOID'],
                                     font: { size: 10, weight: '700', family: 'Inter' },
                                     color: 'rgba(239, 68, 68, 0.35)',
@@ -5524,19 +5534,20 @@
                                 font: { size: 12, weight: '600', family: 'Inter' },
                                 color: textColor,
                             },
-                            min: 0.5,
-                            max: 5.5,
+                            min: xAxisMin,
+                            max: xAxisMax,
                             grid: { color: gridColor },
                             ticks: {
                                 color: mutedColor,
                                 font: { size: 11 },
                                 callback: function(v) {
-                                    if (v === 1) return 'Hard';
-                                    if (v === 3) return 'Mid';
-                                    if (v === 5) return 'Easy';
+                                    const range = xAxisMax - xAxisMin;
+                                    if (Math.abs(v - xAxisMin) < 0.01) return 'Harder';
+                                    if (Math.abs(v - xAxisMax) < 0.01) return 'Easier';
+                                    if (Math.abs(v - xMid) < 0.01) return 'Mid';
                                     return '';
                                 },
-                                stepSize: 1,
+                                stepSize: (xAxisMax - xAxisMin) / 4,
                             }
                         },
                         y: {
