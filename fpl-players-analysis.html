@@ -90,6 +90,9 @@
         .nav-link--accent { background: rgba(167, 139, 250, 0.08); border: 1px solid rgba(167, 139, 250, 0.25); }
         .nav-link--accent:not(.active) { color: #A78BFA; }
         @media (max-width: 768px) { .nav-links { display: none; } }
+        @media (max-width: 640px) {
+            .tabs-right-controls { display: none; }
+        }
 
         /* NAV DROPDOWNS */
         .nav-dropdown { position: relative; display: flex; }
@@ -194,19 +197,28 @@
         .tab:hover { color: var(--text-primary); border-bottom-color: var(--border-emphasis); }
         .tab.active { color: var(--color-success); border-bottom-color: var(--color-success); }
 
-        /* Position pills — inline in tab bar */
+        .tabs-right-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        /* Position pills — premium segmented control */
         .pos-pills {
             display: flex;
-            gap: 4px;
-            margin-left: auto;
+            gap: 2px;
             padding: 3px;
-            background: var(--surface-2);
-            border-radius: 7px;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 8px;
             border: 1px solid var(--border-default);
             flex-shrink: 0;
         }
         .pos-pill {
-            padding: 4px 10px;
+            padding: 5px 12px;
             background: transparent;
             border: none;
             color: var(--text-muted);
@@ -214,15 +226,36 @@
             font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            border-radius: 5px;
+            border-radius: 6px;
             white-space: nowrap;
-            transition: all 150ms;
+            transition: all 200ms cubic-bezier(.4,0,.2,1);
+            position: relative;
+            letter-spacing: 0.02em;
         }
-        .pos-pill:hover { color: var(--text-primary); background: var(--surface-2); }
-        .pos-pill.active { color: var(--color-success); background: rgba(74, 222, 128, 0.12); }
-        .cat-pill.active.budget { color: var(--color-success); background: rgba(74, 222, 128, 0.12); }
-        .cat-pill.active.premium { color: var(--color-warning); background: rgba(251, 191, 36, 0.12); }
-        .cat-pill.active.differential { color: var(--color-info); background: rgba(96, 165, 250, 0.12); }
+        .pos-pill:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.05);
+        }
+        .pos-pill.active {
+            color: #fff;
+            background: var(--color-success);
+            box-shadow: 0 1px 4px rgba(74, 222, 128, 0.25), inset 0 1px 0 rgba(255,255,255,0.12);
+        }
+        .cat-pill.active.budget {
+            color: #fff;
+            background: var(--color-success);
+            box-shadow: 0 1px 4px rgba(74, 222, 128, 0.25), inset 0 1px 0 rgba(255,255,255,0.12);
+        }
+        .cat-pill.active.premium {
+            color: #fff;
+            background: var(--color-warning);
+            box-shadow: 0 1px 4px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255,255,255,0.12);
+        }
+        .cat-pill.active.differential {
+            color: #fff;
+            background: var(--color-info);
+            box-shadow: 0 1px 4px rgba(96, 165, 250, 0.3), inset 0 1px 0 rgba(255,255,255,0.12);
+        }
         .pos-pills.hidden { display: none; }
 
         /* CONTENT */
@@ -394,7 +427,97 @@
             color: var(--text-muted);
         }
 
+        /* Routes view toggle */
+        .routes-view-toggle {
+            display: flex;
+            gap: 2px;
+            background: var(--surface-2);
+            border-radius: 8px;
+            padding: 2px;
+            border: 1px solid var(--border-default);
+        }
+        .routes-view-btn {
+            padding: 5px 14px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 150ms;
+            white-space: nowrap;
+        }
+        .routes-view-btn:hover {
+            color: var(--text-secondary);
+        }
+        .routes-view-btn.active {
+            background: var(--surface-3);
+            color: var(--text-primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
 
+        /* Routes view containers */
+        .routes-top15-view,
+        .routes-database-view {
+            display: none;
+            opacity: 0;
+            transition: opacity 200ms ease;
+        }
+        .routes-top15-view.active,
+        .routes-database-view.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Position sub-headers */
+        .routes-pos-subheader {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-default);
+            margin: 20px 0 12px;
+            padding-bottom: 6px;
+            font-weight: 600;
+        }
+        .routes-pos-subheader:first-child {
+            margin-top: 0;
+        }
+
+        /* Routes search input */
+        .routes-search-wrap {
+            margin-bottom: 16px;
+        }
+        .routes-search-input {
+            width: 100%;
+            max-width: 320px;
+            padding: 7px 12px 7px 32px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 12px;
+            outline: none;
+            transition: border-color 150ms;
+        }
+        .routes-search-input:focus {
+            border-color: rgba(74, 222, 128, 0.4);
+        }
+        .routes-search-input::placeholder {
+            color: var(--text-muted);
+        }
+        .routes-search-wrap {
+            position: relative;
+        }
+        .routes-search-wrap .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
 
         /* POSITION RECOMMENDATIONS */
         .pos-rec-section { margin-bottom: 32px; }
@@ -450,7 +573,11 @@
         .rec-category-tab.active.premium { color: var(--color-warning); background: rgba(251, 191, 36, 0.12); }
         .rec-category-tab.active.differential { color: var(--color-info); background: rgba(96, 165, 250, 0.12); }
         .rec-category-panel { display: none; }
-        .rec-category-panel.active { display: block; }
+        .rec-category-panel.active {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+        }
 
         .pos-rec-title {
             font-family: 'Space Grotesk', sans-serif;
@@ -491,25 +618,38 @@
             color: var(--text-muted);
         }
 
-        /* Recommendation Cards */
+        /* Recommendation Cards — responsive grid cards */
         .rec-card {
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 10px;
-            padding: 8px 10px;
-            background: var(--surface-2);
-            border-radius: 8px;
-            margin-bottom: 4px;
-            transition: all 150ms;
+            padding: 14px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            transition: border-color 150ms, transform 150ms;
         }
-        .rec-card:last-child { margin-bottom: 0; }
-        .rec-card:hover { background: var(--surface-3); }
+        .rec-card:hover { border-color: rgba(74, 222, 128, 0.3); transform: translateY(-2px); }
+
+        .rec-card-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .rec-card-top-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            flex: 1;
+        }
 
         .rec-card-rank {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             background: var(--surface-3);
-            border-radius: 5px;
+            border-radius: 6px;
             font-size: 11px;
             font-weight: 700;
             display: flex;
@@ -523,15 +663,15 @@
         .rec-card:nth-child(3) .rec-card-rank { background: rgba(205, 127, 50, 0.2); color: #CD7F32; }
 
         .rec-card-main {
-            flex: 1;
             min-width: 0;
+            flex: 1;
         }
         .rec-card-header {
-            margin-bottom: 4px;
+            margin-bottom: 0;
         }
         .rec-card-name {
             font-weight: 600;
-            font-size: 12px;
+            font-size: 13px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -541,49 +681,48 @@
             color: var(--text-muted);
         }
 
-        .rec-card-stats {
+        .rec-card-top-right {
             display: flex;
-            gap: 10px;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
         }
-        .rec-stat {
+
+        .rec-card-price {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .rec-card-metrics {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 8px;
+            border-top: 1px solid var(--border-subtle);
+            font-variant-numeric: tabular-nums;
+        }
+        .rec-metric {
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-width: 32px;
+            gap: 1px;
         }
-        .rec-stat-value {
+        .rec-metric-value {
             font-family: 'Space Grotesk', sans-serif;
             font-size: 13px;
             font-weight: 600;
             color: var(--color-success);
         }
-        .rec-stat.inverse .rec-stat-value {
+        .rec-metric.inverse .rec-metric-value {
             color: var(--text-primary);
         }
-        .rec-stat-label {
+        .rec-metric-label {
             font-size: 9px;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.3px;
-        }
-
-        .rec-card-fdr {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-        }
-        .rec-card-fdr .fdr-badge {
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-        .rec-card-fdr .fdr-label {
-            font-size: 9px;
-            color: var(--text-muted);
-            text-transform: uppercase;
         }
 
         .rec-card-swing {
@@ -620,7 +759,7 @@
             overflow: hidden;
         }
 
-        /* Table Toolbar */
+        /* Table Toolbar — premium */
         .table-toolbar {
             padding: 20px 24px;
             background: var(--surface-1);
@@ -659,20 +798,22 @@
             gap: 8px;
         }
         .action-btn {
-            padding: 10px 16px;
-            background: var(--surface-2);
+            padding: 8px 14px;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             border: 1px solid var(--border-default);
             border-radius: 8px;
             color: var(--text-secondary);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
-            transition: all 150ms;
+            transition: all 200ms cubic-bezier(.4,0,.2,1);
         }
-        .action-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+        .action-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); border-color: var(--border-emphasis); }
         .action-btn.active { background: rgba(74, 222, 128, 0.15); color: var(--color-success); border-color: rgba(74, 222, 128, 0.3); }
 
         /* Table Controls - Search and Quick Filters */
@@ -713,46 +854,55 @@
             pointer-events: none;
         }
 
-        /* Quick Filter Pills */
+        /* Quick Filter Pills — premium style */
         .filter-pills {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
             align-items: center;
         }
         .filter-pill {
-            padding: 8px 14px;
-            background: var(--surface-2);
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             border: 1px solid var(--border-default);
             border-radius: 20px;
             color: var(--text-secondary);
             font-size: 12px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 150ms;
+            transition: all 200ms cubic-bezier(.4,0,.2,1);
             display: flex;
             align-items: center;
             gap: 6px;
             white-space: nowrap;
         }
         .filter-pill:hover { 
-            background: var(--surface-3); 
+            background: rgba(255,255,255,0.06);
             color: var(--text-primary);
-            border-color: var(--border-default);
+            border-color: var(--border-emphasis);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
         .filter-pill.active { 
-            background: rgba(74, 222, 128, 0.12); 
+            background: rgba(74, 222, 128, 0.15); 
             color: var(--color-success); 
-            border-color: rgba(74, 222, 128, 0.3);
+            border-color: rgba(74, 222, 128, 0.4);
+            box-shadow: 0 1px 6px rgba(74, 222, 128, 0.15);
         }
         .filter-pill .dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
             background: currentColor;
+            transition: transform 200ms;
+        }
+        .filter-pill.active .dot {
+            transform: scale(1.3);
         }
 
-        /* Position filter bar (All Players tab) */
+        /* Position filter pills (All Players tab) — premium segmented */
         .position-filter-bar {
             display: flex;
             align-items: center;
@@ -763,33 +913,40 @@
         }
         .position-filter-pills {
             display: flex;
-            gap: 6px;
+            gap: 2px;
+            padding: 3px;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 8px;
+            border: 1px solid var(--border-default);
         }
         .pos-filter-pill {
             padding: 5px 14px;
-            border-radius: 20px;
-            border: 1px solid var(--border-default);
+            border-radius: 6px;
+            border: none;
             background: transparent;
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 200ms cubic-bezier(.4,0,.2,1);
             font-family: inherit;
+            letter-spacing: 0.02em;
         }
         .pos-filter-pill:hover {
-            border-color: var(--text-secondary);
             color: var(--text-primary);
+            background: rgba(255,255,255,0.05);
         }
         .pos-filter-pill.active {
             background: var(--color-info);
-            border-color: var(--color-info);
             color: #fff;
+            box-shadow: 0 1px 4px rgba(96, 165, 250, 0.3), inset 0 1px 0 rgba(255,255,255,0.12);
         }
 
-        /* Compact Toolbar (ALL Players) */
+        /* Compact Toolbar (ALL Players) — premium */
         .compact-toolbar {
-            padding: 8px 12px;
+            padding: 10px 16px;
             background: var(--surface-1);
             border-bottom: 1px solid var(--border-default);
             position: sticky;
@@ -799,7 +956,7 @@
         .compact-toolbar-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             flex-wrap: wrap;
         }
         .compact-divider {
@@ -809,43 +966,204 @@
             flex-shrink: 0;
         }
         .compact-search input {
-            width: 160px;
+            width: 170px;
             padding: 6px 10px 6px 32px;
             font-size: 12px;
-            border-radius: 6px;
+            border-radius: 8px;
         }
         .compact-search .search-icon {
             left: 10px;
             font-size: 12px;
         }
         .compact-pill {
-            padding: 4px 10px;
+            padding: 5px 12px;
             font-size: 11px;
-            border-radius: 14px;
+            border-radius: 16px;
+            font-weight: 500;
         }
         .compact-spacer { flex: 1; }
         .compact-count {
             font-size: 11px;
             color: var(--text-muted);
             white-space: nowrap;
+            letter-spacing: 0.01em;
         }
         .compact-icon-btn {
             width: 32px;
             height: 32px;
-            border-radius: 6px;
+            border-radius: 8px;
             border: 1px solid var(--border-default);
-            background: var(--surface-2);
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            color: var(--text-secondary);
             font-size: 14px;
-            transition: all 150ms;
+            transition: all 200ms cubic-bezier(.4,0,.2,1);
             flex-shrink: 0;
         }
         .compact-icon-btn:hover {
-            background: var(--surface-3);
-            border-color: var(--text-secondary);
+            background: rgba(255,255,255,0.06);
+            border-color: var(--border-emphasis);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        .compact-icon-btn.active {
+            background: rgba(74, 222, 128, 0.12);
+            border-color: rgba(74, 222, 128, 0.3);
+            color: var(--color-success);
+        }
+
+        /* Team filter dropdown */
+        .team-filter-wrapper {
+            position: relative;
+        }
+        .team-filter-btn {
+            padding: 5px 12px;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid var(--border-default);
+            border-radius: 16px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            transition: all 200ms cubic-bezier(.4,0,.2,1);
+            font-family: inherit;
+        }
+        .team-filter-btn:hover {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-primary);
+            border-color: var(--border-emphasis);
+        }
+        .team-filter-btn.active {
+            background: rgba(96, 165, 250, 0.15);
+            color: var(--color-info);
+            border-color: rgba(96, 165, 250, 0.4);
+        }
+        .team-filter-btn .team-count-badge {
+            background: var(--color-info);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 8px;
+            min-width: 16px;
+            text-align: center;
+        }
+        .team-filter-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            padding: 12px;
+            z-index: 100;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2);
+            min-width: 260px;
+        }
+        .team-filter-dropdown.show { display: block; }
+        .team-filter-dropdown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .team-filter-dropdown-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .team-filter-clear {
+            font-size: 10px;
+            color: var(--color-info);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            font-weight: 500;
+        }
+        .team-filter-clear:hover { text-decoration: underline; }
+        .team-filter-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+        }
+        .team-chip {
+            padding: 5px 2px;
+            border-radius: 6px;
+            border: 1px solid var(--border-default);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 200ms cubic-bezier(.4,0,.2,1);
+            font-family: inherit;
+            letter-spacing: 0.02em;
+        }
+        .team-chip:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.05);
+            border-color: var(--border-emphasis);
+        }
+        .team-chip.active {
+            background: rgba(96, 165, 250, 0.18);
+            color: var(--color-info);
+            border-color: rgba(96, 165, 250, 0.4);
+        }
+
+        /* Timeframe segmented control */
+        .timeframe-control {
+            display: flex;
+            gap: 2px;
+            padding: 3px;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 8px;
+            border: 1px solid var(--border-default);
+            flex-shrink: 0;
+        }
+        .timeframe-btn {
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 200ms cubic-bezier(.4,0,.2,1);
+            font-family: inherit;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+        .timeframe-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.05);
+        }
+        .timeframe-btn.active {
+            color: #fff;
+            background: var(--color-info);
+            box-shadow: 0 1px 4px rgba(96, 165, 250, 0.3), inset 0 1px 0 rgba(255,255,255,0.12);
         }
 
         /* Compact mode table density */
@@ -2113,6 +2431,8 @@
             padding: 24px;
             overflow-y: auto;
             min-width: 600px;
+            flex: 1;
+            min-height: 0;
         }
 
         /* Compare Content */
@@ -2404,29 +2724,7 @@
             color: var(--text-muted);
         }
 
-        /* TAB DESCRIPTION BAR */
-        .tab-description {
-            background: var(--surface-1);
-            border-bottom: 1px solid var(--border-default);
-        }
-        .tab-description-inner {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 6px 24px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 11px;
-            color: var(--text-secondary);
-            flex-wrap: wrap;
-        }
-        .tab-desc-icon {
-            font-size: 12px;
-            flex-shrink: 0;
-        }
-        .tab-desc-text {
-            line-height: 1.4;
-        }
+
 
         /* SECTION TOOLBAR — compact inline bar for legend + filters */
         .section-toolbar {
@@ -2698,13 +2996,11 @@
         /* ===== ACCESSIBILITY: Minimum font sizes & contrast ===== */
         .tab { font-size: 12px; }
         .page-subtitle { font-size: 13px; color: var(--text-secondary); }
-        .tab-description-inner { font-size: 12px; }
         .pos-pill { font-size: 12px; color: var(--text-secondary); }
         .pos-pill:hover { color: var(--text-primary); }
         .rec-category-tab { font-size: 12px; color: var(--text-secondary); }
         .rec-category-tab:hover { color: var(--text-primary); }
-        .rec-stat-label { font-size: 10px; color: var(--text-secondary); }
-        .rec-card-fdr .fdr-label { font-size: 10px; color: var(--text-secondary); }
+        .rec-metric-label { font-size: 10px; color: var(--text-secondary); }
         .rec-card-swing { font-size: 10px; }
         .route-card-rank { font-size: 12px; }
         .route-card-meta { font-size: 12px; color: var(--text-secondary); }
@@ -2954,6 +3250,7 @@
             grid-template-columns: 360px 1fr;
             gap: 20px;
             margin-bottom: 24px;
+            align-items: start;
         }
         .report-radar-container {
             background: var(--surface-2);
@@ -3400,26 +3697,7 @@
             color: var(--text-muted);
         }
 
-        /* Compare shortlisted button */
-        .compare-shortlisted-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            background: linear-gradient(135deg, rgba(96,165,250,0.15), rgba(168,85,247,0.15));
-            border: 1px solid rgba(96,165,250,0.3);
-            border-radius: 20px;
-            color: #60A5FA;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 150ms;
-            margin-left: 8px;
-        }
-        .compare-shortlisted-btn:hover {
-            background: linear-gradient(135deg, rgba(96,165,250,0.25), rgba(168,85,247,0.25));
-            transform: translateY(-1px);
-        }
+
 
         /* Responsive */
         @media (max-width: 900px) {
@@ -3572,14 +3850,15 @@
         </div>
     </div>
 
+    <!-- Top Navigation (Master Nav) -->
     <nav class="top-nav">
         <div class="nav-container">
             <a href="index.html" class="nav-logo"><i data-lucide="zap" class="logo-icon"></i> FPL<span>Tools</span></a>
             <div class="nav-links">
-                <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent"><i data-lucide="wand-2" class="icon"></i> FPL Wizard</a>
-                <a href="fpl-news.html" class="nav-link"><i data-lucide="newspaper" class="icon"></i> News</a>
+                <a href="fpl-my-team-analysis.html#transfer" class="nav-link nav-link--accent" data-nav="fpl-transfer-wizard.html"><i data-lucide="wand-2" class="icon"></i> FPL Wizard</a>
+                <a href="fpl-news.html" class="nav-link" data-nav="fpl-news.html"><i data-lucide="newspaper" class="icon"></i> News</a>
                 <div class="nav-dropdown">
-                    <a href="fpl-my-team-analysis.html" class="nav-link"><i data-lucide="users" class="icon"></i> My Team</a>
+                    <a href="fpl-my-team-analysis.html" class="nav-link" data-nav="fpl-my-team-analysis.html"><i data-lucide="users" class="icon"></i> My Team <i data-lucide="chevron-down" class="dd-chevron"></i></a>
                     <div class="nav-dropdown-menu">
                         <a href="fpl-my-team-analysis.html#squad" class="dropdown-item"><i data-lucide="users" class="dd-icon"></i> Squad Analysis</a>
                         <a href="fpl-my-team-analysis.html#transfers" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Transfers</a>
@@ -3589,18 +3868,25 @@
                         <a href="fpl-my-team-analysis.html#lineup" class="dropdown-item"><i data-lucide="wand-2" class="dd-icon"></i> Lineup Wizard</a>
                     </div>
                 </div>
-                <a href="fpl-players-analysis.html" class="nav-link active"><i data-lucide="user-search" class="icon"></i> Players</a>
                 <div class="nav-dropdown">
-                    <a href="fpl-teams-analysis.html" class="nav-link"><i data-lucide="bar-chart-3" class="icon"></i> Teams</a>
-                    <div class="nav-dropdown-menu">
-                        <a href="fpl-teams-analysis.html#rankings" class="dropdown-item"><i data-lucide="trophy" class="dd-icon"></i> Team Rankings</a>
+                    <span class="nav-link" data-nav="fpl-players-analysis.html,fpl-teams-analysis.html"><i data-lucide="bar-chart-3" class="icon"></i> Analysis <i data-lucide="chevron-down" class="dd-chevron"></i></span>
+                    <div class="nav-dropdown-menu nav-dropdown-menu--wide">
+                        <div class="dropdown-group-label"><i data-lucide="user-search" class="dd-icon"></i> Player Analysis</div>
+                        <a href="fpl-players-analysis.html" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> All Players</a>
+                        <a href="fpl-players-analysis.html#recommendations" class="dropdown-item"><i data-lucide="star" class="dd-icon"></i> Recommendations</a>
+                        <a href="fpl-players-analysis.html#rising" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Rising Form</a>
+                        <a href="fpl-players-analysis.html#charts" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Charts</a>
+                        <a href="fpl-players-analysis.html#routes" class="dropdown-item"><i data-lucide="git-branch" class="dd-icon"></i> Routes to Points</a>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-group-label"><i data-lucide="bar-chart-3" class="dd-icon"></i> Team Analysis</div>
+                        <a href="fpl-teams-analysis.html" class="dropdown-item"><i data-lucide="trophy" class="dd-icon"></i> Team Rankings</a>
                         <a href="fpl-teams-analysis.html#swings" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Fixture Swings</a>
                         <a href="fpl-teams-analysis.html#calendar" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> Full Calendar</a>
                         <a href="fpl-teams-analysis.html#stats" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Stats Table</a>
                     </div>
                 </div>
                 <div class="nav-dropdown">
-                    <a href="fpl-league-rivals.html" class="nav-link"><i data-lucide="trophy" class="icon"></i> Rivals</a>
+                    <a href="fpl-league-rivals.html" class="nav-link" data-nav="fpl-league-rivals.html"><i data-lucide="trophy" class="icon"></i> Rivals <i data-lucide="chevron-down" class="dd-chevron"></i></a>
                     <div class="nav-dropdown-menu">
                         <a href="fpl-league-rivals.html#insights" class="dropdown-item"><i data-lucide="lightbulb" class="dd-icon"></i> Insights</a>
                         <a href="fpl-league-rivals.html#captain" class="dropdown-item"><i data-lucide="crown" class="dd-icon"></i> Captain Race</a>
@@ -3611,8 +3897,32 @@
                     </div>
                 </div>
             </div>
+            <div class="nav-team-id" id="navTeamId">
+                <div id="navTidInput">
+                    <div class="nav-tid-form">
+                        <input type="text" id="navTeamIdInput" placeholder="Team ID" inputmode="numeric">
+                        <button class="btn btn-primary" onclick="_fplNavGo()" style="padding:3px 10px;font-size:11px;border-radius:9999px;">Go</button>
+                    </div>
+                </div>
+                <div id="navTidBadge" class="hidden">
+                    <span class="nav-tid-badge">
+                        <i data-lucide="user" class="icon"></i>
+                        ID: <span id="teamIdDisplay"></span>
+                        <button class="nav-tid-change" onclick="_fplNavChange()" title="Change Team ID" aria-label="Change Team ID">
+                            <i data-lucide="pencil" class="icon"></i>
+                        </button>
+                    </span>
+                </div>
+            </div>
         </div>
     </nav>
+
+    <header class="page-header">
+        <div class="page-header-inner">
+            <h1 class="page-title">Players Analysis</h1>
+            <p class="page-subtitle" id="pageSubtitle">Position-specific recommendations split by budget, premium, and differential tiers using form, fixtures, and value.</p>
+        </div>
+    </header>
 
     <div class="tabs-container">
         <div class="tabs" id="tabs">
@@ -3621,30 +3931,18 @@
             <button class="tab" data-position="CHARTS" data-desc="Interactive scatter plots to visually identify value picks, underperformers, regression candidates, and differentials.">Charts</button>
             <button class="tab" data-position="ROUTES" data-desc="Players with the most diverse ways to score FPL points. More routes = more reliable returns." data-has-pos="true">Routes to Points</button>
             <button class="tab" data-position="ALL" data-desc="Full stats table for all players — sortable, filterable by position, with shortlist support." data-has-pos="false">All Players</button>
-        </div>
-    </div>
-
-    <header class="page-header">
-        <div class="page-header-inner">
-            <h1 class="page-title">Players Analysis</h1>
-            <p class="page-subtitle">Stats, form trends, and recommendations for all Premier League players</p>
-        </div>
-    </header>
-
-    <div class="tab-description" id="tabDescription">
-        <div class="tab-description-inner">
-            <span class="tab-desc-icon"><i data-lucide="lightbulb" style="width:16px;height:16px;"></i></span>
-            <span class="tab-desc-text">Position-specific recommendations split by budget, premium, and differential tiers using form, fixtures, and value.</span>
-            <div class="pos-pills" id="posPills">
-                <button class="pos-pill active" data-pos="GK" onclick="switchGlobalPosition('GK', this)">GK</button>
-                <button class="pos-pill" data-pos="DEF" onclick="switchGlobalPosition('DEF', this)">DEF</button>
-                <button class="pos-pill" data-pos="MID" onclick="switchGlobalPosition('MID', this)">MID</button>
-                <button class="pos-pill" data-pos="FWD" onclick="switchGlobalPosition('FWD', this)">FWD</button>
-            </div>
-            <div class="pos-pills" id="catPills" style="margin-left:0;">
-                <button class="pos-pill cat-pill active budget" data-cat="budget" onclick="switchGlobalCategory('budget', this)"><i data-lucide="coins" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Budget</button>
-                <button class="pos-pill cat-pill premium" data-cat="premium" onclick="switchGlobalCategory('premium', this)"><i data-lucide="star" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Premium</button>
-                <button class="pos-pill cat-pill differential" data-cat="differential" onclick="switchGlobalCategory('differential', this)"><i data-lucide="gem" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Differentials</button>
+            <div class="tabs-right-controls">
+                <div class="pos-pills" id="posPills">
+                    <button class="pos-pill active" data-pos="GK" onclick="switchGlobalPosition('GK', this)">GK</button>
+                    <button class="pos-pill" data-pos="DEF" onclick="switchGlobalPosition('DEF', this)">DEF</button>
+                    <button class="pos-pill" data-pos="MID" onclick="switchGlobalPosition('MID', this)">MID</button>
+                    <button class="pos-pill" data-pos="FWD" onclick="switchGlobalPosition('FWD', this)">FWD</button>
+                </div>
+                <div class="pos-pills" id="catPills" style="margin-left:0;">
+                    <button class="pos-pill cat-pill active budget" data-cat="budget" onclick="switchGlobalCategory('budget', this)"><i data-lucide="coins" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Budget</button>
+                    <button class="pos-pill cat-pill premium" data-cat="premium" onclick="switchGlobalCategory('premium', this)"><i data-lucide="star" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Premium</button>
+                    <button class="pos-pill cat-pill differential" data-cat="differential" onclick="switchGlobalCategory('differential', this)"><i data-lucide="gem" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Differentials</button>
+                </div>
             </div>
         </div>
     </div>
@@ -3698,72 +3996,6 @@
                 pill.innerHTML = `<span class="dot"></span> <i data-lucide="star" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Shortlisted${count > 0 ? ' (' + count + ')' : ''}`;
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             }
-            // Update "Compare Shortlisted" button visibility
-            updateCompareShortlistedBtn();
-        }
-
-        function updateCompareShortlistedBtn() {
-            let btn = document.getElementById('compareShortlistedBtn');
-            if (!btn) return;
-            // Find shortlisted players grouped by position
-            const shortlisted = allAnalyses.filter(p => shortlistedPlayerIds.has(p.id));
-            const byPos = {};
-            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            shortlisted.forEach(p => {
-                const pos = posMap[p.position];
-                if (!byPos[pos]) byPos[pos] = [];
-                byPos[pos].push(p);
-            });
-            // Find positions with 2-5 comparable players
-            const comparablePositions = Object.entries(byPos).filter(([, arr]) => arr.length >= 2 && arr.length <= 5);
-            if (comparablePositions.length > 0) {
-                const [pos, players] = comparablePositions[0]; // First matching position
-                btn.style.display = 'inline-flex';
-                btn.textContent = `⚡ Compare ${players.length} ${pos}s`;
-                btn.setAttribute('data-compare-pos', pos);
-            } else if (shortlisted.length >= 2 && shortlisted.length <= 5) {
-                btn.style.display = 'inline-flex';
-                btn.textContent = `⚡ Compare ${shortlisted.length} Shortlisted`;
-                btn.setAttribute('data-compare-pos', 'mixed');
-            } else {
-                btn.style.display = 'none';
-            }
-        }
-
-        function compareShortlisted() {
-            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const shortlisted = allAnalyses.filter(p => shortlistedPlayerIds.has(p.id));
-            const btn = document.getElementById('compareShortlistedBtn');
-            const targetPos = btn?.getAttribute('data-compare-pos') || 'mixed';
-
-            let toCompare;
-            if (targetPos !== 'mixed') {
-                toCompare = shortlisted.filter(p => posMap[p.position] === targetPos).slice(0, 5);
-            } else {
-                toCompare = shortlisted.slice(0, 5);
-            }
-            if (toCompare.length < 2) return;
-
-            // Build compare-compatible objects (need same shape as tableData entries)
-            compareList = toCompare.map(p => {
-                const l5Games = p.l5?.games || 1;
-                return {
-                    id: p.id, name: p.name, position: p.position,
-                    team: p.team, teamId: p.teamId, teamCode: p.teamCode,
-                    price: p.price, form: p.form, selectedBy: p.selectedBy,
-                    totalPoints: p.totalPoints, season: p.season, l5: p.l5,
-                    fixtures: p.fixtures, history: p.history, status: p.status,
-                    news: p.news, chanceNextRound: p.chanceNextRound,
-                    teamScores: p.teamScores,
-                    minsPerGame: (p.l5?.minutes || 0) / l5Games,
-                    ptsPerGame: (p.l5?.points || 0) / l5Games,
-                    xgiPerGame: (p.l5?.xGI || 0) / l5Games,
-                    fdr: p.fixtures?.avgFDR3 || 3,
-                    valueScore: ((p.l5?.points || 0) / l5Games) / p.price
-                };
-            });
-            updateCompareBar();
-            showCompareModal();
         }
 
         function toggleShortlist(playerId, event) {
@@ -3829,11 +4061,11 @@
             document.querySelectorAll('.position-section').forEach(s => s.classList.remove('active'));
             document.getElementById(`section-${pos}`)?.classList.add('active');
 
-            // Update tab description
+            // Update page subtitle with tab description
             const desc = tab.dataset.desc;
-            const descEl = document.getElementById('tabDescription');
-            if (descEl && desc) {
-                descEl.querySelector('.tab-desc-text').textContent = desc;
+            const subtitleEl = document.getElementById('pageSubtitle');
+            if (subtitleEl && desc) {
+                subtitleEl.textContent = desc;
             }
 
             // Show/hide position pills based on tab
@@ -4526,7 +4758,16 @@
             const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             analyses.forEach(p => {
                 if ((p.l5?.games || 0) < 3 || (p.season?.games || 0) < 6) return;
+                if ((p.l5?.minutes || 0) < 180) return;
+                if (p.status !== 'a') return;
+                const l5PPG = (p.l5?.points || 0) / (p.l5?.games || 1);
+                const seasonPPG = (p.season?.points || 0) / (p.season?.games || 1);
+                if (l5PPG <= seasonPPG * 1.15) return;
                 const pos = posMap[p.position];
+                if (pos === 'MID' || pos === 'FWD') {
+                    const l5XGIper90 = (p.l5?.xGI || 0) / ((p.l5?.minutes || 1) / 90);
+                    if (l5XGIper90 <= 0.2) return;
+                }
                 const isDefPos = (pos === 'GK' || pos === 'DEF');
                 let risingScore = 0;
 
@@ -4777,34 +5018,39 @@
             const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
             scored.forEach(p => byPos[p.pos]?.push(p));
 
+            // Store scored data globally for database view
+            window._allRoutesPlayers = scored;
+
+            // Top 15 Squad: 2 GK + 5 DEF + 5 MID + 3 FWD
+            const top15Counts = { GK: 2, DEF: 5, MID: 5, FWD: 3 };
             const posConfigs = [
-                { pos: 'GK', icon: '<i data-lucide="hand" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Goalkeepers' },
-                { pos: 'DEF', icon: '<i data-lucide="shield-check" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Defenders' },
-                { pos: 'MID', icon: '<i data-lucide="zap" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Midfielders' },
-                { pos: 'FWD', icon: '<i data-lucide="crosshair" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Forwards' }
+                { pos: 'GK', name: 'Goalkeepers' },
+                { pos: 'DEF', name: 'Defenders' },
+                { pos: 'MID', name: 'Midfielders' },
+                { pos: 'FWD', name: 'Forwards' }
             ];
 
-            const tabs = posConfigs.map((cfg, i) =>
-                `<button class="sub-tab ${i === 0 ? 'active' : ''}" onclick="switchRoutesTab('${cfg.pos}', this)">${cfg.icon} ${cfg.name}</button>`
-            ).join('');
-
-            const panels = posConfigs.map((cfg, i) => {
-                const posPlayers = byPos[cfg.pos].slice(0, 10);
-                return `
-                    <div class="sub-tab-panel ${cfg.pos === activeGlobalPosition ? 'active' : ''}" id="routes-panel-${cfg.pos}">
-                        ${posPlayers.length > 0
-                            ? `<div class="routes-grid">${posPlayers.map((p, j) => renderRouteCard(p, j + 1)).join('')}</div>`
-                            : '<div class="no-players">No players with 2+ routes found</div>'
-                        }
-                    </div>
-                `;
+            let globalRank = 1;
+            const top15Html = posConfigs.map(cfg => {
+                const posPlayers = byPos[cfg.pos].slice(0, top15Counts[cfg.pos]);
+                if (posPlayers.length === 0) return '';
+                const cards = posPlayers.map(p => renderRouteCard(p, globalRank++)).join('');
+                return `<div class="routes-pos-subheader">${cfg.name}</div><div class="routes-grid">${cards}</div>`;
             }).join('');
+
+            // Database view: first 30 players (rendered on demand)
+            const dbInitial = scored.slice(0, 30);
+            const dbHtml = dbInitial.map((p, i) => renderRouteCard(p, i + 1)).join('');
+            const hasMore = scored.length > 30;
 
             return `
                 <div class="routes-section">
                     <div class="section-toolbar">
                         <div class="section-toolbar-left">
-                            <div class="sub-tabs" id="routesSubTabs">${tabs}</div>
+                            <div class="routes-view-toggle">
+                                <button class="routes-view-btn active" onclick="switchRoutesView('top15', this)">Top 15 Squad</button>
+                                <button class="routes-view-btn" onclick="switchRoutesView('database', this)">Full Database</button>
+                            </div>
                         </div>
                         <div class="section-toolbar-right">
                             <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('routesLegend').classList.toggle('show')">
@@ -4822,7 +5068,17 @@
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#F472B6"></span> Penalties</span>
                         <span class="legend-panel-item" style="margin-left:8px;"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> = Nailed on</span>
                     </div>
-                    ${panels}
+                    <div class="routes-top15-view active">
+                        ${top15Html || '<div class="no-players">No players with 2+ routes found</div>'}
+                    </div>
+                    <div class="routes-database-view">
+                        <div class="routes-search-wrap">
+                            <i data-lucide="search" class="search-icon" style="width:14px;height:14px;"></i>
+                            <input type="text" class="routes-search-input" placeholder="Search players..." oninput="filterRoutesDatabase(this.value)">
+                        </div>
+                        <div class="routes-grid" id="routesDatabaseGrid">${dbHtml}</div>
+                        ${hasMore ? '<div style="text-align:center;margin-top:16px;"><button class="routes-view-btn" style="background:var(--surface-2);border:1px solid var(--border-default);" onclick="loadMoreRoutes()">Load more</button></div>' : ''}
+                    </div>
                 </div>
             `;
         }
@@ -5326,34 +5582,38 @@
             return `
                 <div class="rec-card" onclick="openPlayerModal(${p.id})">
                     ${getStarHtml(p.id, 'shortlist-star-card')}
-                    <div class="rec-card-rank">${rank}</div>
-                    <div class="rec-card-main">
-                        <div class="rec-card-header">
-                            <div class="rec-card-name">${p.name}${ownBadge}${swingBadge}</div>
-                            <div class="rec-card-team">${p.team} \u2022 \u00a3${p.price.toFixed(1)}m</div>
+                    <div class="rec-card-top-row">
+                        <div class="rec-card-top-left">
+                            <div class="rec-card-rank">${rank}</div>
+                            <div class="rec-card-main">
+                                <div class="rec-card-header">
+                                    <div class="rec-card-name">${p.name}${ownBadge}${swingBadge}</div>
+                                    <div class="rec-card-team">${p.team}</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="rec-card-stats">
-                            <div class="rec-stat ${metrics.primary.inverse ? 'inverse' : ''}">
-                                <span class="rec-stat-value">${metrics.primary.value}</span>
-                                <span class="rec-stat-label">${metrics.primary.label}</span>
-                            </div>
-                            <div class="rec-stat ${metrics.secondary.inverse ? 'inverse' : ''}">
-                                <span class="rec-stat-value">${metrics.secondary.value}</span>
-                                <span class="rec-stat-label">${metrics.secondary.label}</span>
-                            </div>
-                            <div class="rec-stat ${metrics.tertiary.inverse ? 'inverse' : ''}">
-                                <span class="rec-stat-value">${metrics.tertiary.value}</span>
-                                <span class="rec-stat-label">${metrics.tertiary.label}</span>
-                            </div>
-                            <div class="rec-stat">
-                                <span class="rec-stat-value">${ptsPerGame}</span>
-                                <span class="rec-stat-label">Pts/G</span>
-                            </div>
+                        <div class="rec-card-top-right">
+                            <span class="fdr-badge ${fdrClass}" style="padding:3px 7px;border-radius:5px;font-size:10px;font-weight:700;">${fdr.toFixed(1)}</span>
+                            <span class="rec-card-price">\u00a3${p.price.toFixed(1)}m</span>
                         </div>
                     </div>
-                    <div class="rec-card-fdr">
-                        <span class="fdr-badge ${fdrClass}">${fdr.toFixed(1)}</span>
-                        <span class="fdr-label">FDR</span>
+                    <div class="rec-card-metrics">
+                        <div class="rec-metric ${metrics.primary.inverse ? 'inverse' : ''}">
+                            <span class="rec-metric-value">${metrics.primary.value}</span>
+                            <span class="rec-metric-label">${metrics.primary.label}</span>
+                        </div>
+                        <div class="rec-metric ${metrics.secondary.inverse ? 'inverse' : ''}">
+                            <span class="rec-metric-value">${metrics.secondary.value}</span>
+                            <span class="rec-metric-label">${metrics.secondary.label}</span>
+                        </div>
+                        <div class="rec-metric ${metrics.tertiary.inverse ? 'inverse' : ''}">
+                            <span class="rec-metric-value">${metrics.tertiary.value}</span>
+                            <span class="rec-metric-label">${metrics.tertiary.label}</span>
+                        </div>
+                        <div class="rec-metric">
+                            <span class="rec-metric-value">${ptsPerGame}</span>
+                            <span class="rec-metric-label">Pts/G</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -5418,10 +5678,6 @@
             // Sync global category pills to this position's active category
             syncGlobalCatPills(window._activeRecCat?.[pos] || 'budget');
 
-            // Switch Routes panel
-            document.querySelectorAll('[id^="routes-panel-"]').forEach(p => p.classList.remove('active'));
-            document.getElementById('routes-panel-' + pos)?.classList.add('active');
-
             // Switch Rising panel
             document.querySelectorAll('[id^="rising-panel-"]').forEach(p => p.classList.remove('active'));
             document.getElementById('rising-panel-' + pos)?.classList.add('active');
@@ -5433,6 +5689,44 @@
 
         function switchRoutesTab(pos, btn) {
             switchGlobalPosition(pos);
+        }
+
+        // Routes view toggle: Top 15 Squad / Full Database
+        window._routesDbOffset = 30;
+        function switchRoutesView(view, btn) {
+            // Toggle buttons
+            document.querySelectorAll('.routes-view-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            // Toggle views
+            document.querySelector('.routes-top15-view')?.classList.toggle('active', view === 'top15');
+            document.querySelector('.routes-database-view')?.classList.toggle('active', view === 'database');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function filterRoutesDatabase(query) {
+            const grid = document.getElementById('routesDatabaseGrid');
+            if (!grid || !window._allRoutesPlayers) return;
+            const q = query.trim().toLowerCase();
+            const filtered = q
+                ? window._allRoutesPlayers.filter(p => p.name.toLowerCase().includes(q))
+                : window._allRoutesPlayers.slice(0, window._routesDbOffset);
+            grid.innerHTML = filtered.map((p, i) => renderRouteCard(p, i + 1)).join('');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function loadMoreRoutes() {
+            if (!window._allRoutesPlayers) return;
+            window._routesDbOffset = Math.min(window._allRoutesPlayers.length, window._routesDbOffset + 30);
+            const grid = document.getElementById('routesDatabaseGrid');
+            if (!grid) return;
+            const players = window._allRoutesPlayers.slice(0, window._routesDbOffset);
+            grid.innerHTML = players.map((p, i) => renderRouteCard(p, i + 1)).join('');
+            // Hide load-more if all shown
+            if (window._routesDbOffset >= window._allRoutesPlayers.length) {
+                const btn = grid.parentElement?.querySelector('[onclick="loadMoreRoutes()"]');
+                if (btn) btn.parentElement.style.display = 'none';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function switchRisingTab(pos, btn) {
@@ -5473,6 +5767,20 @@
                 .filter(p => {
                     if ((p.l5?.games || 0) < 3) return false;
                     if ((p.season?.games || 0) < 6) return false; // need season baseline
+                    // Minutes threshold: must have played 180+ minutes over L5
+                    if ((p.l5?.minutes || 0) < 180) return false;
+                    // Availability: must be currently available
+                    if (p.status !== 'a') return false;
+                    // True form: recent PPG must exceed season PPG by 15%
+                    const l5PPG = (p.l5?.points || 0) / (p.l5?.games || 1);
+                    const seasonPPG = (p.season?.points || 0) / (p.season?.games || 1);
+                    if (l5PPG <= seasonPPG * 1.15) return false;
+                    // Attacking output: MID/FWD must show xGI > 0.2 per 90
+                    const pos = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position];
+                    if (pos === 'MID' || pos === 'FWD') {
+                        const l5XGIper90 = (p.l5?.xGI || 0) / ((p.l5?.minutes || 1) / 90);
+                        if (l5XGIper90 <= 0.2) return false;
+                    }
                     return true;
                 })
                 .map(p => {
@@ -5868,7 +6176,7 @@
             DEF: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
             MID: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
             FWD: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
-            ALL: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1, positionFilter: 'ALL' }
+            ALL: { sort: 'pts', sortDir: 'desc', filters: { teams: new Set() }, visibleCols: [], search: '', page: 1, positionFilter: 'ALL', timeframe: 'l5' }
         };
         const ROWS_PER_PAGE_DEFAULT = 25;
         const ROWS_PER_PAGE_ALL = 50;
@@ -5986,27 +6294,30 @@
             }
 
             // Process players with computed fields
+            const currentTf = (position === 'ALL') ? (tableState.ALL.timeframe || 'l5') : 'l5';
             const players = analyses
                 .filter(a => {
                     if (position === 'ALL') return a.l5?.games >= 1;
                     return a.position === posMap[position] && a.l5?.games >= 1;
                 })
                 .map(p => {
-                    const l5Games = p.l5?.games || 1;
+                    const tfStats = (position === 'ALL') ? computePlayerStats(p, currentTf) : (p.l5 || {});
+                    const tfGames = tfStats.games || 1;
                     const seasonGames = p.season?.games || 1;
                     return {
                         ...p,
+                        l5: (position === 'ALL') ? tfStats : p.l5,
                         posName: POSITIONS_MAP[p.position] || '?',
-                        ptsPerGame: (p.l5?.points || 0) / l5Games,
-                        xgiPerGame: (p.l5?.xGI || 0) / l5Games,
-                        xgPerGame: (p.l5?.xG || 0) / l5Games,
-                        xaPerGame: (p.l5?.xA || 0) / l5Games,
-                        minsPerGame: (p.l5?.minutes || 0) / l5Games,
+                        ptsPerGame: (tfStats.points || 0) / tfGames,
+                        xgiPerGame: (tfStats.xGI || 0) / tfGames,
+                        xgPerGame: (tfStats.xG || 0) / tfGames,
+                        xaPerGame: (tfStats.xA || 0) / tfGames,
+                        minsPerGame: (tfStats.minutes || 0) / tfGames,
                         seasonPtsPerGame: (p.season?.points || 0) / seasonGames,
                         fdr: p.fixtures?.avgFDR3 || 3,
                         fdrNext: p.fixtures?.next3 || [],
                         fixtureString: p.fixtures?.fixtureString || '-',
-                        valueScore: ((p.l5?.points || 0) / l5Games) / p.price
+                        valueScore: ((tfStats.points || 0) / tfGames) / p.price
                     };
                 });
 
@@ -6076,6 +6387,12 @@
             `;
 
             // Compact toolbar for ALL position; classic for individual positions
+            // Build team filter chips
+            const teamsList = Object.values(teams).sort((a,b) => a.short_name.localeCompare(b.short_name));
+            const teamChipsHtml = teamsList.map(t => `<button class="team-chip" data-team-id="${t.id}" onclick="toggleTeamFilter(${t.id}, this)">${t.short_name}</button>`).join('');
+
+            const currentTimeframe = tableState.ALL.timeframe || 'l5';
+
             const toolbarHtml = position === 'ALL' ? `
                 <div class="compact-toolbar" id="compactToolbar-${position}">
                     <div class="compact-toolbar-row">
@@ -6104,7 +6421,27 @@
                                 onclick="quickFilter('${position}', 'nailed', true)"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Nailed</button>
                             <button class="filter-pill compact-pill ${tableState.ALL.filters.shortlist ? 'active' : ''}" id="shortlistPill-ALL"
                                 onclick="quickFilter('ALL', 'shortlist', true)"><i data-lucide="star" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> ${shortlistedPlayerIds.size > 0 ? shortlistedPlayerIds.size : ''}</button>
-                            <button class="compare-shortlisted-btn" id="compareShortlistedBtn" style="display:none;" onclick="compareShortlisted()">⚡ Compare Shortlisted</button>
+                            <div class="team-filter-wrapper">
+                                <button class="team-filter-btn ${(tableState.ALL.filters.teams?.size > 0) ? 'active' : ''}" onclick="toggleTeamDropdown()" id="teamFilterBtn">
+                                    <i data-lucide="shield" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>
+                                    Teams
+                                    ${(tableState.ALL.filters.teams?.size > 0) ? '<span class="team-count-badge">' + tableState.ALL.filters.teams.size + '</span>' : ''}
+                                </button>
+                                <div class="team-filter-dropdown" id="teamFilterDropdown">
+                                    <div class="team-filter-dropdown-header">
+                                        <span class="team-filter-dropdown-title">Filter by Team</span>
+                                        <button class="team-filter-clear" onclick="clearTeamFilter()">Clear all</button>
+                                    </div>
+                                    <div class="team-filter-grid">${teamChipsHtml}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="compact-divider"></div>
+                        <div class="timeframe-control" id="timeframeControl">
+                            <button class="timeframe-btn ${currentTimeframe === 'season' ? 'active' : ''}" onclick="setTimeframe('season')">Season</button>
+                            <button class="timeframe-btn ${currentTimeframe === 'l10' ? 'active' : ''}" onclick="setTimeframe('l10')">L10</button>
+                            <button class="timeframe-btn ${currentTimeframe === 'l5' ? 'active' : ''}" onclick="setTimeframe('l5')">L5</button>
+                            <button class="timeframe-btn ${currentTimeframe === 'l3' ? 'active' : ''}" onclick="setTimeframe('l3')">L3</button>
                         </div>
                         <div class="compact-spacer"></div>
                         <span class="compact-count"><span id="rowCount-${position}">${players.length}</span> players</span>
@@ -6198,12 +6535,15 @@
             const state = tableState[position];
             const compareHeader = `<th class="compare-header" style="width: 40px; text-align: center;"><i data-lucide="scale" style="width:14px;height:14px;"></i></th>`;
             const starHeader = `<th style="width: 36px; text-align: center; cursor: default;"><i data-lucide="star" style="width:14px;height:14px;"></i></th>`;
+            const tfLabel = position === 'ALL' ? { season: 'Season', l10: 'Last 10', l5: 'Last 5', l3: 'Last 3' }[state.timeframe || 'l5'] || 'Last 5' : 'L5';
             const cols = state.visibleCols.map(colKey => {
                 const col = COLUMN_DEFS[colKey];
                 if (!col) return '';
                 const isSorted = state.sort === colKey;
                 const sortIcon = isSorted ? (state.sortDir === 'asc' ? '↑' : '↓') : '↕';
-                return `<th class="${isSorted ? 'sorted' : ''}" onclick="sortTable('${position}', '${colKey}')" title="${col.tip || col.label}">
+                let tip = col.tip || col.label;
+                if (position === 'ALL' && tip.includes('(L5)')) tip = tip.replace('(L5)', '(' + tfLabel + ')');
+                return `<th class="${isSorted ? 'sorted' : ''}" onclick="sortTable('${position}', '${colKey}')" title="${tip}">
                     ${col.label}<span class="sort-icon">${sortIcon}</span>
                 </th>`;
             }).join('');
@@ -6225,6 +6565,11 @@
                 const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
                 const filterPosId = posMap[state.positionFilter];
                 players = players.filter(p => p.position === filterPosId);
+            }
+
+            // Apply team filter (ALL tab only)
+            if (position === 'ALL' && state.filters.teams?.size > 0) {
+                players = players.filter(p => state.filters.teams.has(p.teamId));
             }
 
             // Apply shortlist filter
@@ -6427,6 +6772,7 @@
             const section = document.getElementById('section-ALL');
             if (section) {
                 section.innerHTML = createTable('ALL', allAnalyses);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
             }
             
             // Update position filter pill active states
@@ -6458,13 +6804,141 @@
         }
 
         function clearFilters(position) {
-            tableState[position].filters = {};
+            if (position === 'ALL') {
+                tableState[position].filters = { teams: new Set() };
+            } else {
+                tableState[position].filters = {};
+            }
             tableState[position].search = '';
             tableState[position].page = 1;
             const searchInput = document.getElementById(`search-${position}`);
             if (searchInput) searchInput.value = '';
             refreshTable(position);
             updateFilterButtons(position);
+        }
+
+        // ============================================
+        // TEAM FILTER (ALL Players)
+        // ============================================
+        function toggleTeamDropdown() {
+            const dropdown = document.getElementById('teamFilterDropdown');
+            if (dropdown) {
+                dropdown.classList.toggle('show');
+                // Sync chip active states
+                const activeTeams = tableState.ALL.filters.teams || new Set();
+                dropdown.querySelectorAll('.team-chip').forEach(chip => {
+                    const teamId = parseInt(chip.dataset.teamId);
+                    chip.classList.toggle('active', activeTeams.has(teamId));
+                });
+            }
+        }
+
+        function toggleTeamFilter(teamId, btn) {
+            if (!tableState.ALL.filters.teams) tableState.ALL.filters.teams = new Set();
+            const teamSet = tableState.ALL.filters.teams;
+            if (teamSet.has(teamId)) {
+                teamSet.delete(teamId);
+                btn.classList.remove('active');
+            } else {
+                teamSet.add(teamId);
+                btn.classList.add('active');
+            }
+            tableState.ALL.page = 1;
+            refreshTable('ALL');
+            updateTeamFilterBtn();
+        }
+
+        function clearTeamFilter() {
+            tableState.ALL.filters.teams = new Set();
+            document.querySelectorAll('.team-chip').forEach(c => c.classList.remove('active'));
+            tableState.ALL.page = 1;
+            refreshTable('ALL');
+            updateTeamFilterBtn();
+        }
+
+        function updateTeamFilterBtn() {
+            const btn = document.getElementById('teamFilterBtn');
+            if (!btn) return;
+            const count = tableState.ALL.filters.teams?.size || 0;
+            const icon = '<i data-lucide="shield" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>';
+            btn.className = 'team-filter-btn' + (count > 0 ? ' active' : '');
+            btn.innerHTML = icon + ' Teams' + (count > 0 ? ' <span class="team-count-badge">' + count + '</span>' : '');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Close team dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('teamFilterDropdown');
+            if (dropdown?.classList.contains('show') && !e.target.closest('.team-filter-wrapper')) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // ============================================
+        // TIMEFRAME TOGGLE (ALL Players)
+        // ============================================
+        function computePlayerStats(player, timeframe) {
+            if (timeframe === 'season') return player.season || {};
+            if (timeframe === 'l5') return player.l5 || {};
+
+            // Compute from history for l10, l3
+            const n = timeframe === 'l10' ? 10 : 3;
+            const history = player.history || [];
+            const slice = history.slice(-n);
+            if (slice.length === 0) return player.l5 || {};
+
+            const stats = {
+                games: slice.filter(g => g.minutes > 0).length,
+                minutes: 0, points: 0, goals: 0, assists: 0,
+                xG: 0, xA: 0, xGI: 0, xGC: 0,
+                cleanSheets: 0, goalsConceded: 0, saves: 0,
+                bonus: 0, bps: 0, ict: 0,
+                influence: 0, creativity: 0, threat: 0,
+                bigChancesMissed: null, bigChancesCreated: null,
+                keyPasses: null, penaltiesSaved: 0
+            };
+
+            let hasBCM = false, hasBCC = false, hasKP = false;
+            slice.forEach(g => {
+                stats.minutes += g.minutes || 0;
+                stats.points += g.total_points || 0;
+                stats.goals += g.goals_scored || 0;
+                stats.assists += g.assists || 0;
+                stats.xG += parseFloat(g.expected_goals) || 0;
+                stats.xA += parseFloat(g.expected_assists) || 0;
+                stats.xGI += parseFloat(g.expected_goal_involvements) || 0;
+                stats.xGC += parseFloat(g.expected_goals_conceded) || 0;
+                stats.cleanSheets += g.clean_sheets || 0;
+                stats.goalsConceded += g.goals_conceded || 0;
+                stats.saves += g.saves || 0;
+                stats.bonus += g.bonus || 0;
+                stats.bps += g.bps || 0;
+                stats.ict += parseFloat(g.ict_index) || 0;
+                stats.influence += parseFloat(g.influence) || 0;
+                stats.creativity += parseFloat(g.creativity) || 0;
+                stats.threat += parseFloat(g.threat) || 0;
+                stats.penaltiesSaved += g.penalties_saved || 0;
+                if (g.big_chances_missed !== undefined && g.big_chances_missed !== null) { stats.bigChancesMissed = (stats.bigChancesMissed || 0) + g.big_chances_missed; hasBCM = true; }
+                if (g.big_chances_created !== undefined && g.big_chances_created !== null) { stats.bigChancesCreated = (stats.bigChancesCreated || 0) + g.big_chances_created; hasBCC = true; }
+                if (g.key_passes !== undefined && g.key_passes !== null) { stats.keyPasses = (stats.keyPasses || 0) + g.key_passes; hasKP = true; }
+            });
+            if (!hasBCM) stats.bigChancesMissed = null;
+            if (!hasBCC) stats.bigChancesCreated = null;
+            if (!hasKP) stats.keyPasses = null;
+
+            return stats;
+        }
+
+        function setTimeframe(tf) {
+            tableState.ALL.timeframe = tf;
+            tableState.ALL.page = 1;
+
+            // Re-render whole table section (createTable remaps player stats with new timeframe)
+            const section = document.getElementById('section-ALL');
+            if (section) {
+                section.innerHTML = createTable('ALL', allAnalyses);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
         }
 
         function toggleColumn(position, colKey) {
@@ -6549,11 +7023,11 @@
             document.querySelectorAll(`#tableSection-${position} .filter-pill`).forEach(btn => {
                 const text = btn.textContent.trim();
                 let isActive = false;
-                if (text.includes('Hot Form')) isActive = state.filters.form === 'hot';
-                if (text.includes('Easy Fixtures')) isActive = state.filters.fixtures === 'easy';
-                if (text.includes('High Value')) isActive = state.filters.value === 'high';
-                if (text.includes('Nailed On')) isActive = state.filters.nailed === true;
-                if (text.includes('Shortlisted')) isActive = !!state.filters.shortlist;
+                if (text.includes('Hot')) isActive = state.filters.form === 'hot';
+                if (text.includes('Easy')) isActive = state.filters.fixtures === 'easy';
+                if (text.includes('Value')) isActive = state.filters.value === 'high';
+                if (text.includes('Nailed')) isActive = state.filters.nailed === true;
+                if (text.includes('Shortlist') || btn.id === 'shortlistPill-ALL') isActive = !!state.filters.shortlist;
                 btn.classList.toggle('active', isActive);
             });
             // Update position filter pills
@@ -7294,7 +7768,8 @@
                 </div>
             `;
 
-            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            requestAnimationFrame(() => { modal.classList.add('show'); });
 
             // Render radar chart
             setTimeout(() => {
@@ -7342,6 +7817,7 @@
             const modal = document.getElementById('compareModal');
             if (!modal) return;
             modal.classList.remove('show');
+            document.body.style.overflow = '';
             const container = modal.querySelector('.compare-modal-container');
             if (container) container.classList.remove('report-mode');
             if (reportRadarChart) { reportRadarChart.destroy(); reportRadarChart = null; }
@@ -9742,6 +10218,46 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         lucide.createIcons();
+    </script>
+    <!-- Master Nav: Active State & Team ID Handlers -->
+    <script>
+    (function() {
+        var page = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+        document.querySelectorAll('.top-nav [data-nav]').forEach(function(el) {
+            var pages = el.dataset.nav.split(',');
+            if (pages.some(function(p) { return page === p.toLowerCase(); })) el.classList.add('active');
+        });
+        var savedId = localStorage.getItem('fpl_team_id');
+        if (savedId) {
+            var d = document.getElementById('teamIdDisplay');
+            var inp = document.getElementById('navTidInput');
+            var bdg = document.getElementById('navTidBadge');
+            if (d) d.textContent = savedId;
+            if (inp) inp.classList.add('hidden');
+            if (bdg) bdg.classList.remove('hidden');
+        }
+    })();
+    function _fplNavGo() {
+        var input = document.getElementById('navTeamIdInput');
+        var id = input && input.value.trim();
+        if (!id || isNaN(id)) return;
+        localStorage.setItem('fpl_team_id', id);
+        if (typeof activateTeam === 'function') { activateTeam(id); return; }
+        if (typeof loadTeamData === 'function') { loadTeamData(); return; }
+        if (typeof loadTeamById === 'function') { document.getElementById('teamIdInput').value = id; loadTeamById(); return; }
+        window.location.href = 'index.html';
+    }
+    function _fplNavChange() {
+        if (typeof changeTeamId === 'function') { changeTeamId(); return; }
+        if (typeof changeTeamIdNav === 'function') { changeTeamIdNav(); return; }
+        localStorage.removeItem('fpl_team_id');
+        var inp = document.getElementById('navTidInput');
+        var bdg = document.getElementById('navTidBadge');
+        if (inp) inp.classList.remove('hidden');
+        if (bdg) bdg.classList.add('hidden');
+        var navInput = document.getElementById('navTeamIdInput');
+        if (navInput) { navInput.value = ''; navInput.focus(); }
+    }
     </script>
     <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons()});</script>
 </body>

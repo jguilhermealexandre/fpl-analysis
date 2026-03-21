@@ -1743,6 +1743,121 @@
             width: 200px !important;
         }
 
+        /* Column Selector Dropdown */
+        .col-selector-wrap {
+            position: relative;
+        }
+
+        .col-selector-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms ease-out;
+            white-space: nowrap;
+        }
+
+        .col-selector-btn:hover {
+            background: var(--surface-3);
+            color: var(--text-primary);
+            border-color: var(--border-emphasis);
+        }
+
+        .col-selector-popover {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            z-index: 50;
+            width: 280px;
+            max-height: 420px;
+            overflow-y: auto;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            padding: var(--space-2) 0;
+        }
+
+        .col-selector-popover.open {
+            display: block;
+        }
+
+        .col-selector-group {
+            padding: var(--space-1) var(--space-3);
+        }
+
+        .col-selector-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 4px;
+        }
+
+        .col-selector-group-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .col-selector-toggle-all {
+            font-size: 10px;
+            color: var(--color-info);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0;
+        }
+
+        .col-selector-toggle-all:hover {
+            text-decoration: underline;
+        }
+
+        .col-selector-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 0;
+        }
+
+        .col-selector-item input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--color-info);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .col-selector-item label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .col-selector-item label .col-key {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-right: 4px;
+        }
+
         .stats-header {
             padding: var(--space-4) var(--space-6);
             border-bottom: 1px solid var(--border-default);
@@ -2456,135 +2571,7 @@
         .text-yellow { color: var(--color-warning); font-weight: 500; }
         .text-red { color: var(--color-error); font-weight: 600; }
 
-        /* Advanced xG Table */
-        .adv-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .adv-table th {
-            background: var(--surface-2);
-            padding: 10px 14px;
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 2px solid var(--border-default);
-            cursor: pointer;
-            user-select: none;
-            transition: all 150ms;
-            white-space: nowrap;
-        }
-
-        .adv-table th:first-child {
-            text-align: left;
-            position: sticky;
-            left: 0;
-            z-index: 20;
-            min-width: 180px;
-        }
-
-        .adv-table th:not(:first-child) {
-            text-align: right;
-        }
-
-        .adv-table th:hover {
-            background: var(--surface-3);
-            color: var(--text-primary);
-        }
-
-        .adv-table th.sorted-asc,
-        .adv-table th.sorted-desc {
-            background: rgba(96, 165, 250, 0.15);
-            color: var(--color-info);
-        }
-
-        .adv-table th.sorted-asc::after { content: ' \2191'; }
-        .adv-table th.sorted-desc::after { content: ' \2193'; }
-
-        .adv-table td {
-            padding: 10px 14px;
-            border-bottom: 1px solid var(--border-subtle);
-            font-size: 13px;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .adv-table td:first-child {
-            position: sticky;
-            left: 0;
-            background: var(--surface-1);
-            z-index: 5;
-        }
-
-        .adv-table td:not(:first-child) {
-            text-align: right;
-        }
-
-        .adv-table tr:hover td {
-            background: var(--surface-2);
-        }
-
-        .adv-table tr:hover td:first-child {
-            background: var(--surface-2);
-        }
-
-        /* Net xG bar visual */
-        .net-xg-cell {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-
-        .net-xg-bar {
-            height: 8px;
-            border-radius: 4px;
-            min-width: 2px;
-            transition: width 300ms ease-out;
-        }
-
-        .net-xg-bar.positive {
-            background: linear-gradient(90deg, rgba(16, 185, 129, 0.5), var(--color-success));
-        }
-
-        .net-xg-bar.negative {
-            background: linear-gradient(90deg, var(--color-error), rgba(239, 68, 68, 0.5));
-        }
-
-        .net-xg-value {
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            min-width: 40px;
-            text-align: right;
-        }
-
-        .adv-team-cell {
-            display: flex;
-            align-items: center;
-            gap: var(--space-2);
-        }
-
-        .adv-rank {
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--text-muted);
-            width: 22px;
-            text-align: center;
-            flex-shrink: 0;
-        }
-
-        .adv-badge {
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-            flex-shrink: 0;
-        }
-
-        .adv-name {
-            font-weight: 600;
-            font-size: 13px;
-        }
+        /* Advanced xG Table — removed; columns merged into main Stats Table */
 
         /* ===== MOMENTUM MATRIX ===== */
         .momentum-matrix-section {
@@ -2635,7 +2622,7 @@
             background: var(--surface-0);
             border: 1px solid var(--border-default);
             border-radius: var(--radius-lg);
-            padding: var(--space-3);
+            padding: var(--space-2);
             min-height: 400px;
         }
 
@@ -2790,22 +2777,15 @@
     </div>
 
     <!-- Top Navigation -->
+    <!-- Top Navigation (Master Nav) -->
     <nav class="top-nav">
         <div class="nav-container">
-            <a href="index.html" class="nav-logo">
-                <i data-lucide="zap" class="logo-icon"></i> FPL<span>Tools</span>
-            </a>
+            <a href="index.html" class="nav-logo"><i data-lucide="zap" class="logo-icon"></i> FPL<span>Tools</span></a>
             <div class="nav-links">
-                <a href="fpl-transfer-wizard.html" class="nav-link nav-link--accent">
-                    <i data-lucide="wand-2" class="icon"></i> FPL Wizard
-                </a>
-                <a href="fpl-news.html" class="nav-link">
-                    <i data-lucide="newspaper" class="icon"></i> News
-                </a>
+                <a href="fpl-my-team-analysis.html#transfer" class="nav-link nav-link--accent" data-nav="fpl-transfer-wizard.html"><i data-lucide="wand-2" class="icon"></i> FPL Wizard</a>
+                <a href="fpl-news.html" class="nav-link" data-nav="fpl-news.html"><i data-lucide="newspaper" class="icon"></i> News</a>
                 <div class="nav-dropdown">
-                    <a href="fpl-my-team-analysis.html" class="nav-link">
-                        <i data-lucide="users" class="icon"></i> My Team
-                    </a>
+                    <a href="fpl-my-team-analysis.html" class="nav-link" data-nav="fpl-my-team-analysis.html"><i data-lucide="users" class="icon"></i> My Team <i data-lucide="chevron-down" class="dd-chevron"></i></a>
                     <div class="nav-dropdown-menu">
                         <a href="fpl-my-team-analysis.html#squad" class="dropdown-item"><i data-lucide="users" class="dd-icon"></i> Squad Analysis</a>
                         <a href="fpl-my-team-analysis.html#transfers" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Transfers</a>
@@ -2816,24 +2796,24 @@
                     </div>
                 </div>
                 <div class="nav-dropdown">
-                    <a href="fpl-players-analysis.html" class="nav-link">
-                        <i data-lucide="user-search" class="icon"></i> Players
-                    </a>
-                    <div class="nav-dropdown-menu">
+                    <span class="nav-link" data-nav="fpl-players-analysis.html,fpl-teams-analysis.html"><i data-lucide="bar-chart-3" class="icon"></i> Analysis <i data-lucide="chevron-down" class="dd-chevron"></i></span>
+                    <div class="nav-dropdown-menu nav-dropdown-menu--wide">
+                        <div class="dropdown-group-label"><i data-lucide="user-search" class="dd-icon"></i> Player Analysis</div>
+                        <a href="fpl-players-analysis.html" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> All Players</a>
                         <a href="fpl-players-analysis.html#recommendations" class="dropdown-item"><i data-lucide="star" class="dd-icon"></i> Recommendations</a>
                         <a href="fpl-players-analysis.html#rising" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Rising Form</a>
                         <a href="fpl-players-analysis.html#charts" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Charts</a>
                         <a href="fpl-players-analysis.html#routes" class="dropdown-item"><i data-lucide="git-branch" class="dd-icon"></i> Routes to Points</a>
-                        <a href="fpl-players-analysis.html#all" class="dropdown-item"><i data-lucide="clipboard-list" class="dd-icon"></i> All Players</a>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-group-label"><i data-lucide="bar-chart-3" class="dd-icon"></i> Team Analysis</div>
+                        <a href="fpl-teams-analysis.html" class="dropdown-item"><i data-lucide="trophy" class="dd-icon"></i> Team Rankings</a>
+                        <a href="fpl-teams-analysis.html#swings" class="dropdown-item"><i data-lucide="trending-up" class="dd-icon"></i> Fixture Swings</a>
+                        <a href="fpl-teams-analysis.html#calendar" class="dropdown-item"><i data-lucide="calendar" class="dd-icon"></i> Full Calendar</a>
+                        <a href="fpl-teams-analysis.html#stats" class="dropdown-item"><i data-lucide="bar-chart-3" class="dd-icon"></i> Stats Table</a>
                     </div>
                 </div>
-                <a href="fpl-teams-analysis.html" class="nav-link active">
-                    <i data-lucide="bar-chart-3" class="icon"></i> Teams
-                </a>
                 <div class="nav-dropdown">
-                    <a href="fpl-league-rivals.html" class="nav-link">
-                        <i data-lucide="trophy" class="icon"></i> Rivals
-                    </a>
+                    <a href="fpl-league-rivals.html" class="nav-link" data-nav="fpl-league-rivals.html"><i data-lucide="trophy" class="icon"></i> Rivals <i data-lucide="chevron-down" class="dd-chevron"></i></a>
                     <div class="nav-dropdown-menu">
                         <a href="fpl-league-rivals.html#insights" class="dropdown-item"><i data-lucide="lightbulb" class="dd-icon"></i> Insights</a>
                         <a href="fpl-league-rivals.html#captain" class="dropdown-item"><i data-lucide="crown" class="dd-icon"></i> Captain Race</a>
@@ -2842,6 +2822,23 @@
                         <a href="fpl-league-rivals.html#matrix" class="dropdown-item"><i data-lucide="grid-3x3" class="dd-icon"></i> Matrix</a>
                         <a href="fpl-league-rivals.html#h2h" class="dropdown-item"><i data-lucide="swords" class="dd-icon"></i> Head-to-Head</a>
                     </div>
+                </div>
+            </div>
+            <div class="nav-team-id" id="navTeamId">
+                <div id="navTidInput">
+                    <div class="nav-tid-form">
+                        <input type="text" id="navTeamIdInput" placeholder="Team ID" inputmode="numeric">
+                        <button class="btn btn-primary" onclick="_fplNavGo()" style="padding:3px 10px;font-size:11px;border-radius:9999px;">Go</button>
+                    </div>
+                </div>
+                <div id="navTidBadge" class="hidden">
+                    <span class="nav-tid-badge">
+                        <i data-lucide="user" class="icon"></i>
+                        ID: <span id="teamIdDisplay"></span>
+                        <button class="nav-tid-change" onclick="_fplNavChange()" title="Change Team ID" aria-label="Change Team ID">
+                            <i data-lucide="pencil" class="icon"></i>
+                        </button>
+                    </span>
                 </div>
             </div>
         </div>
@@ -2854,7 +2851,6 @@
             <button class="tab" data-view="swings">Fixture Swings</button>
             <button class="tab" data-view="calendar">Full Calendar</button>
             <button class="tab" data-view="stats">Stats Table</button>
-            <button class="tab" data-view="xg">xG Table</button>
         </div>
     </div>
 
@@ -3708,10 +3704,6 @@
                 case 'stats':
                     renderStatsTable(contentArea);
                     break;
-
-                case 'xg':
-                    renderAdvancedTeamTable(advXgTimeframe, advXgVenue);
-                    break;
             }
 
             // Initialize Lucide icons in dynamically rendered content
@@ -4511,8 +4503,10 @@
         // ===== STATS TABLE =====
         let statsSort = { col: 'pts', dir: 'desc' };
         let statsView = 'season'; // 'season', 'last10', or 'last5'
+        let statsVenue = 'all'; // 'all', 'home', or 'away'
         let statsCategory = 'overall'; // kept for legacy; not used in new all-columns view
-        let statsVisibleGroups = new Set(['overall', 'attack', 'defense', 'discipline', 'fpl', 'xg', 'homeAway']);
+        // All column keys visible by default — populated from getStatsColumns() on first render
+        let statsVisibleCols = null; // initialized lazily
         let statsSearch = '';
 
         function createEmptyStatBucket() {
@@ -4774,11 +4768,13 @@
                     groupClass: 'defense-group',
                     cols: [
                         { key: 'xGpg', label: 'xG/G', title: 'Expected Goals per Game (from real Opta xG)', decimals: 2 },
+                        { key: 'npxGpg', label: 'NPxG/G', title: 'Non-Penalty xG per Game (~90% of xG)', decimals: 2 },
                         { key: 'gpg', label: 'G/G', title: 'Actual Goals per Game', decimals: 2 },
                         { key: 'xGdiffTotal', label: 'G-xG', title: 'Goals minus xG (+ = overperforming, lucky)', decimals: 1 },
                         { key: 'xGCpg', label: 'xGC/G', title: 'Expected Goals Conceded per Game', decimals: 2, inverted: true },
                         { key: 'gapg', label: 'GA/G', title: 'Actual Goals Conceded per Game', decimals: 2, inverted: true },
                         { key: 'xGCdiffTotal', label: 'GA-xGC', title: 'Goals Conceded minus xGC (- = overperforming defense)', decimals: 1, inverted: true },
+                        { key: 'netXGpg', label: 'Net xG/G', title: 'xG minus xGC per Game (overall xG balance)', decimals: 2 },
                         { key: 'r6xGpg', label: 'L6 xG/G', title: 'Last 6 Games xG per Game (recency)', decimals: 2 },
                         { key: 'r6gapg', label: 'L6 GA/G', title: 'Last 6 Games Goals Conceded per Game', decimals: 2, inverted: true },
                     ]
@@ -4816,35 +4812,61 @@
             const cats = getStatsColumns();
             const catKeys = Object.keys(cats);
 
-            const groupPillLabels = {
-                overall: 'Overall',
-                attack: '<i data-lucide="swords" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Attack',
-                defense: '<i data-lucide="shield-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Defence',
-                discipline: '<i data-lucide="clipboard-list" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Discipline',
-                fpl: '<i data-lucide="award" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> FPL',
-                xg: '<i data-lucide="trending-up" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> xG',
-                homeAway: '<i data-lucide="home" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> H/A'
-            };
+            // Lazily initialize statsVisibleCols with all column keys
+            if (!statsVisibleCols) {
+                statsVisibleCols = new Set();
+                Object.values(cats).forEach(group => {
+                    group.cols.forEach(c => statsVisibleCols.add(c.key));
+                });
+            }
+
+            // Build Column Selector popover HTML
+            const colSelectorHtml = catKeys.map(catKey => {
+                const cat = cats[catKey];
+                const groupLabel = catKey.charAt(0).toUpperCase() + catKey.slice(1);
+                const colItems = cat.cols.map(c => {
+                    const checked = statsVisibleCols.has(c.key) ? 'checked' : '';
+                    return `<div class="col-selector-item">
+                        <input type="checkbox" id="colChk_${c.key}" data-col-key="${c.key}" ${checked}>
+                        <label for="colChk_${c.key}"><span class="col-key">${c.label}</span>${c.title}</label>
+                    </div>`;
+                }).join('');
+                return `<div class="col-selector-group" data-group-key="${catKey}">
+                    <div class="col-selector-group-header">
+                        <span class="col-selector-group-label">${cat.groupLabel}</span>
+                        <button class="col-selector-toggle-all" data-toggle-group="${catKey}">Toggle</button>
+                    </div>
+                    ${colItems}
+                </div>`;
+            }).join('');
 
             container.innerHTML = `
                 <div class="stats-container">
                     <div class="stats-compact-toolbar">
                         <div class="stats-toolbar-row">
-                            <div class="stats-group-pills">
-                                ${catKeys.map(k => `
-                                    <button class="stats-group-pill ${statsVisibleGroups.has(k) ? 'active' : ''}" data-group="${k}">${groupPillLabels[k] || cats[k].groupLabel}</button>
-                                `).join('')}
-                            </div>
-                            <div class="stats-toolbar-divider"></div>
                             <div class="stats-view-pills">
                                 <button class="stats-view-pill ${statsView === 'season' ? 'active' : ''}" data-view="season">Season</button>
                                 <button class="stats-view-pill ${statsView === 'last10' ? 'active' : ''}" data-view="last10">L10</button>
                                 <button class="stats-view-pill ${statsView === 'last5' ? 'active' : ''}" data-view="last5">L5</button>
                             </div>
                             <div class="stats-toolbar-divider"></div>
+                            <div class="segmented-control stats-venue-pills">
+                                <button class="segmented-btn ${statsVenue === 'all' ? 'active' : ''}" data-venue="all">All</button>
+                                <button class="segmented-btn ${statsVenue === 'home' ? 'active' : ''}" data-venue="home">Home</button>
+                                <button class="segmented-btn ${statsVenue === 'away' ? 'active' : ''}" data-venue="away">Away</button>
+                            </div>
+                            <div class="stats-toolbar-divider"></div>
                             <div class="search-box stats-search-box">
                                 <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
                                 <input type="text" class="search-input stats-search-input" placeholder="Search teams..." id="statsSearchInput" value="${statsSearch}">
+                            </div>
+                            <div class="col-selector-wrap">
+                                <button class="col-selector-btn" id="colSelectorBtn">
+                                    <i data-lucide="settings-2" style="width:13px;height:13px;"></i> Columns
+                                </button>
+                                <div class="col-selector-popover" id="colSelectorPopover">
+                                    ${colSelectorHtml}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -4857,25 +4879,73 @@
                 </div>
             `;
 
-            // Group pill toggle handlers
-            document.querySelectorAll('.stats-group-pill').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const group = btn.dataset.group;
-                    if (statsVisibleGroups.has(group)) {
-                        if (statsVisibleGroups.size > 1) {
-                            statsVisibleGroups.delete(group);
-                        }
-                    } else {
-                        statsVisibleGroups.add(group);
-                    }
-                    renderStatsTable(document.getElementById('content-area'));
+            // Column Selector: open/close popover
+            const colBtn = document.getElementById('colSelectorBtn');
+            const colPopover = document.getElementById('colSelectorPopover');
+            if (colBtn && colPopover) {
+                colBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    colPopover.classList.toggle('open');
                 });
-            });
+                document.addEventListener('click', (e) => {
+                    if (!colPopover.contains(e.target) && e.target !== colBtn) {
+                        colPopover.classList.remove('open');
+                    }
+                }, { once: false });
+
+                // Individual column checkboxes
+                colPopover.querySelectorAll('input[data-col-key]').forEach(chk => {
+                    chk.addEventListener('change', () => {
+                        const key = chk.dataset.colKey;
+                        if (chk.checked) {
+                            statsVisibleCols.add(key);
+                        } else {
+                            statsVisibleCols.delete(key);
+                        }
+                        buildStatsTableHeader(cats);
+                        updateStatsTable(_cachedSeasonStats || calculateSeasonStats());
+                    });
+                });
+
+                // Group toggle buttons
+                colPopover.querySelectorAll('.col-selector-toggle-all').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const groupKey = btn.dataset.toggleGroup;
+                        const cat = cats[groupKey];
+                        if (!cat) return;
+                        const allVisible = cat.cols.every(c => statsVisibleCols.has(c.key));
+                        cat.cols.forEach(c => {
+                            if (allVisible) {
+                                statsVisibleCols.delete(c.key);
+                            } else {
+                                statsVisibleCols.add(c.key);
+                            }
+                        });
+                        // Update checkboxes in this group
+                        const groupEl = colPopover.querySelector(`[data-group-key="${groupKey}"]`);
+                        if (groupEl) {
+                            groupEl.querySelectorAll('input[data-col-key]').forEach(chk => {
+                                chk.checked = statsVisibleCols.has(chk.dataset.colKey);
+                            });
+                        }
+                        buildStatsTableHeader(cats);
+                        updateStatsTable(_cachedSeasonStats || calculateSeasonStats());
+                    });
+                });
+            }
 
             // View pill handlers
             document.querySelectorAll('.stats-view-pill').forEach(btn => {
                 btn.addEventListener('click', () => {
                     statsView = btn.dataset.view;
+                    renderStatsTable(document.getElementById('content-area'));
+                });
+            });
+
+            // Venue pill handlers
+            document.querySelectorAll('.stats-venue-pills .segmented-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    statsVenue = btn.dataset.venue;
                     renderStatsTable(document.getElementById('content-area'));
                 });
             });
@@ -4902,22 +4972,21 @@
             const thead = document.getElementById('statsHead');
             if (!thead) return;
 
-            // Build headers for all visible groups
-            const visibleCats = Object.keys(cats).filter(k => statsVisibleGroups.has(k));
-            
-            // Group header row
+            // Build headers using per-column visibility
             let groupHeaders = '<th class="team-col" rowspan="2">Team</th>';
-            // Column header row
             let colHeaders = '';
-            
-            visibleCats.forEach((catKey, idx) => {
+            let groupIdx = 0;
+            Object.keys(cats).forEach(catKey => {
                 const cat = cats[catKey];
-                const dividerClass = idx > 0 ? ' section-divider' : '';
-                groupHeaders += `<th colspan="${cat.cols.length}" class="${cat.groupClass}${dividerClass}">${cat.groupLabel}</th>`;
-                cat.cols.forEach((c, ci) => {
-                    const firstColDivider = (idx > 0 && ci === 0) ? ' section-divider' : '';
+                const visCols = cat.cols.filter(c => statsVisibleCols.has(c.key));
+                if (visCols.length === 0) return;
+                const dividerClass = groupIdx > 0 ? ' section-divider' : '';
+                groupHeaders += `<th colspan="${visCols.length}" class="${cat.groupClass}${dividerClass}">${cat.groupLabel}</th>`;
+                visCols.forEach((c, ci) => {
+                    const firstColDivider = (groupIdx > 0 && ci === 0) ? ' section-divider' : '';
                     colHeaders += `<th data-col="${c.key}" title="${c.title}" class="${firstColDivider}">${c.label}</th>`;
                 });
+                groupIdx++;
             });
 
             thead.innerHTML = `
@@ -4952,30 +5021,48 @@
             if (!tbody) return;
 
             const cats = getStatsColumns();
-            // Flatten all visible columns
-            const visibleCats = Object.keys(cats).filter(k => statsVisibleGroups.has(k));
+            // Flatten visible columns using per-column set
             const cols = [];
             const colGroupBoundaries = new Set();
-            visibleCats.forEach((catKey, idx) => {
-                if (idx > 0) colGroupBoundaries.add(cols.length); // mark first col of non-first group
-                cats[catKey].cols.forEach(c => cols.push(c));
+            let gIdx = 0;
+            Object.keys(cats).forEach(catKey => {
+                const visCols = cats[catKey].cols.filter(c => statsVisibleCols.has(c.key));
+                if (visCols.length === 0) return;
+                if (gIdx > 0) colGroupBoundaries.add(cols.length);
+                visCols.forEach(c => cols.push(c));
+                gIdx++;
             });
 
             // Convert to flat array with computed values
             let teams = Object.values(seasonStats).map(team => {
                 const s = statsView === 'season' ? team.season : (statsView === 'last10' ? team.last10 : team.last5);
-                const games = s.p || 1;
-                const pts = (s.w * 3) + s.d;
+
+                // Venue-aware base stats
+                let games, w, gf, ga, cs;
+                if (statsVenue === 'home') {
+                    games = s.homeP || 1; w = s.homeW || 0; gf = s.homeGf || 0; ga = s.homeGa || 0; cs = s.homeCs || 0;
+                } else if (statsVenue === 'away') {
+                    games = s.awayP || 1; w = s.awayW || 0; gf = s.awayGf || 0; ga = s.awayGa || 0; cs = s.awayCs || 0;
+                } else {
+                    games = s.p || 1; w = s.w; gf = s.gf; ga = s.ga; cs = s.cs;
+                }
+                const pts = (w * 3) + (statsVenue === 'all' ? s.d : 0);
                 return {
                     ...team,
                     ...s,
+                    // Override base stats with venue-filtered values
+                    p: games,
+                    w: w,
+                    gf: gf,
+                    ga: ga,
+                    cs: cs,
                     pts,
-                    gd: s.gf - s.ga,
+                    gd: gf - ga,
                     ppg: pts / games,
-                    gpg: s.gf / games,
-                    gapg: s.ga / games,
+                    gpg: gf / games,
+                    gapg: ga / games,
                     apg: s.assists / games,
-                    csPct: (s.cs / games) * 100,
+                    csPct: (cs / games) * 100,
                     ftsPct: (s.fts / games) * 100,
                     svpg: s.saves / games,
                     ycpg: s.yellowCards / games,
@@ -4987,9 +5074,9 @@
                     awayGpg: s.awayP > 0 ? s.awayGf / s.awayP : 0,
                     homeCsPct: s.homeP > 0 ? (s.homeCs / s.homeP) * 100 : 0,
                     awayCsPct: s.awayP > 0 ? (s.awayCs / s.awayP) * 100 : 0,
-                    gAndA: s.gf + s.assists,
-                    gapg_combined: (s.gf + s.assists) / games,
-                    csBonus: s.cs + s.saves,
+                    gAndA: gf + s.assists,
+                    gapg_combined: (gf + s.assists) / games,
+                    csBonus: cs + s.saves,
                     // xG data — matched to current statsView window
                     xGpg: (() => {
                         if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? r.xGpg : 0; }
@@ -5013,6 +5100,19 @@
                     })(),
                     r6xGpg: (() => { const r = getTeamXgWindow(team.id, 6); return r ? r.xGpg : 0; })(),
                     r6gapg: (() => { const r = getTeamXgWindow(team.id, 6); return r ? r.gapg : 0; })(),
+                    // NPxG/G placeholder (~90% of xG) — replace with real NPxG from backend when available
+                    npxGpg: (() => {
+                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? r.xGpg * 0.9 : 0; }
+                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? r.xGpg * 0.9 : 0; }
+                        const sx = getTeamSeasonXg(team.id); return sx ? sx.xGpg * 0.9 : 0;
+                    })(),
+                    netXGpg: (() => {
+                        let xgVal, xgcVal;
+                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); xgVal = r ? r.xGpg : 0; xgcVal = r ? r.xGCpg : 0; }
+                        else if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); xgVal = r ? r.xGpg : 0; xgcVal = r ? r.xGCpg : 0; }
+                        else { const sx = getTeamSeasonXg(team.id); xgVal = sx ? sx.xGpg : 0; xgcVal = sx ? sx.xGCpg : 0; }
+                        return xgVal - xgcVal;
+                    })(),
                 };
             });
 
@@ -5119,207 +5219,7 @@
             }).join('');
         }
 
-        // ===== ADVANCED xG TABLE =====
-        let advXgTimeframe = 'season'; // 'season' or 'last5'
-        let advXgVenue = 'all';        // 'all', 'home', or 'away'
-        let advXgSort = { col: 'xG', dir: 'desc' };
-
-        function renderAdvancedTeamTable(timeframe, venue) {
-            const container = document.getElementById('content-area');
-            if (!container) return;
-
-            advXgTimeframe = timeframe || advXgTimeframe;
-            advXgVenue = venue || advXgVenue;
-
-            // ----- Data controls -----
-            const controlsHtml = `
-                <div class="data-controls">
-                    <span class="data-controls-label">Timeframe</span>
-                    <div class="segmented-control" id="advTimeframeControl">
-                        <button class="segmented-btn ${advXgTimeframe === 'season' ? 'active' : ''}" data-tf="season">Season</button>
-                        <button class="segmented-btn ${advXgTimeframe === 'last5' ? 'active' : ''}" data-tf="last5">Last 5 GWs</button>
-                    </div>
-                    <span class="data-controls-label">Venue</span>
-                    <div class="segmented-control" id="advVenueControl">
-                        <button class="segmented-btn ${advXgVenue === 'all' ? 'active' : ''}" data-venue="all">All</button>
-                        <button class="segmented-btn ${advXgVenue === 'home' ? 'active' : ''}" data-venue="home">Home</button>
-                        <button class="segmented-btn ${advXgVenue === 'away' ? 'active' : ''}" data-venue="away">Away</button>
-                    </div>
-                </div>`;
-
-            // ----- Column definitions -----
-            const columns = [
-                { key: 'xG',    label: 'xG',     title: 'Expected Goals', decimals: 2 },
-                { key: 'NPxG',  label: 'NPxG',   title: 'Non-Penalty Expected Goals', decimals: 2 },
-                { key: 'xGC',   label: 'xGC',    title: 'Expected Goals Conceded', decimals: 2, inverted: true },
-                { key: 'csPct', label: 'CS%',     title: 'Clean Sheet Percentage', decimals: 0, suffix: '%' },
-                { key: 'netXG', label: 'Net xG',  title: 'xG minus xGC', decimals: 2, isNetXg: true },
-            ];
-
-            // ----- Gather team rows -----
-            let rows = allTeamsData.map(team => {
-                const windowSize = advXgTimeframe === 'last5' ? 5 : null;
-                const xgData = windowSize ? getTeamXgWindow(team.id, windowSize) : getTeamSeasonXg(team.id);
-
-                const cacheKey = `${allTeamsData.length}-${window.rawFixturesData?.length}`;
-                if (_cachedStatsKey !== cacheKey) {
-                    _cachedSeasonStats = calculateSeasonStats();
-                    _cachedStatsKey = cacheKey;
-                }
-                const teamStats = _cachedSeasonStats ? _cachedSeasonStats[team.id] : null;
-                const bucket = teamStats ? (advXgTimeframe === 'last5' ? teamStats.last5 : teamStats.season) : null;
-
-                // Venue filter
-                let games = bucket ? bucket.p : 1;
-                let cs = bucket ? bucket.cs : 0;
-                if (advXgVenue === 'home' && bucket) {
-                    games = bucket.homeP || 1;
-                    cs = bucket.homeCs || 0;
-                } else if (advXgVenue === 'away' && bucket) {
-                    games = bucket.awayP || 1;
-                    cs = bucket.awayCs || 0;
-                }
-                const csPctVal = games > 0 ? (cs / games) * 100 : 0;
-
-                // xG values — stub-ready: replace with real advanced JSON when available
-                const xGVal = xgData ? xgData.xGpg * (games || 1) : 0;
-                const xGCVal = xgData ? xgData.xGCpg * (games || 1) : 0;
-                // NPxG placeholder (~90% of xG) — replace with real NPxG from backend
-                const NPxGVal = xGVal * 0.9;
-
-                return {
-                    id: team.id,
-                    name: team.name,
-                    shortName: team.shortName,
-                    badgeUrl: team.badgeUrl,
-                    xG: xGVal,
-                    NPxG: NPxGVal,
-                    xGC: xGCVal,
-                    csPct: csPctVal,
-                    netXG: xGVal - xGCVal,
-                };
-            });
-
-            // ----- Sort -----
-            const sortCol = advXgSort.col;
-            const sortDir = advXgSort.dir;
-            const invertedKeys = columns.filter(c => c.inverted).map(c => c.key);
-            rows.sort((a, b) => {
-                const aV = a[sortCol] ?? 0;
-                const bV = b[sortCol] ?? 0;
-                if (invertedKeys.includes(sortCol)) {
-                    return sortDir === 'desc' ? aV - bV : bV - aV;
-                }
-                return sortDir === 'desc' ? bV - aV : aV - bV;
-            });
-
-            // ----- Percentile heatmap -----
-            const valArrays = {};
-            columns.forEach(c => { valArrays[c.key] = rows.map(r => r[c.key] ?? 0); });
-
-            function heatClass(key, val, col) {
-                const arr = valArrays[key];
-                if (!arr || arr.length === 0) return '';
-                const sorted = [...arr].sort((a, b) => a - b);
-                const matches = [];
-                sorted.forEach((v, i) => { if (v === val) matches.push(i); });
-                const avgRank = matches.length > 0 ? matches.reduce((a, b) => a + b, 0) / matches.length : sorted.indexOf(val);
-                const pct = avgRank / (sorted.length - 1 || 1);
-                if (col.inverted) {
-                    if (pct <= 0.25) return 'text-green';
-                    if (pct >= 0.75) return 'text-red';
-                } else {
-                    if (pct >= 0.75) return 'text-green';
-                    if (pct <= 0.25) return 'text-red';
-                }
-                return 'text-yellow';
-            }
-
-            const maxAbsNetXg = Math.max(0.1, ...rows.map(r => Math.abs(r.netXG)));
-
-            // ----- Render HTML -----
-            const headerCells = columns.map(c => {
-                let cls = '';
-                if (advXgSort.col === c.key) cls = advXgSort.dir === 'asc' ? 'sorted-asc' : 'sorted-desc';
-                return `<th data-adv-col="${c.key}" title="${c.title}" class="${cls}">${c.label}</th>`;
-            }).join('');
-
-            const bodyRows = rows.map((team, idx) => {
-                const rank = idx + 1;
-                const cells = columns.map(c => {
-                    const val = team[c.key] ?? 0;
-                    const cls = heatClass(c.key, val, c);
-                    let display = c.decimals !== undefined ? val.toFixed(c.decimals) : val;
-                    if (c.suffix) display += c.suffix;
-
-                    if (c.isNetXg) {
-                        const sign = val >= 0 ? '+' : '';
-                        const barClass = val >= 0 ? 'positive' : 'negative';
-                        const barWidth = Math.round((Math.abs(val) / maxAbsNetXg) * 60);
-                        return `<td>
-                            <div class="net-xg-cell">
-                                <div class="net-xg-bar ${barClass}" style="width:${barWidth}px;"></div>
-                                <span class="net-xg-value ${cls}">${sign}${val.toFixed(2)}</span>
-                            </div>
-                        </td>`;
-                    }
-
-                    return `<td class="${cls}">${display}</td>`;
-                }).join('');
-
-                return `<tr>
-                    <td><div class="adv-team-cell">
-                        <span class="adv-rank">${rank}</span>
-                        <img src="${team.badgeUrl}" alt="${team.shortName}" class="adv-badge" onerror="this.style.display='none'">
-                        <span class="adv-name">${team.name}</span>
-                    </div></td>
-                    ${cells}
-                </tr>`;
-            }).join('');
-
-            container.innerHTML = `
-                ${controlsHtml}
-                <div class="stats-container">
-                    <div class="stats-scroll">
-                        <table class="adv-table" id="advXgTable">
-                            <thead><tr><th>Team</th>${headerCells}</tr></thead>
-                            <tbody>${bodyRows}</tbody>
-                        </table>
-                    </div>
-                </div>`;
-
-            // ----- Event listeners -----
-            document.querySelectorAll('#advTimeframeControl .segmented-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    advXgTimeframe = btn.dataset.tf;
-                    console.log('[xG Table] Timeframe changed:', advXgTimeframe);
-                    renderAdvancedTeamTable(advXgTimeframe, advXgVenue);
-                });
-            });
-
-            document.querySelectorAll('#advVenueControl .segmented-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    advXgVenue = btn.dataset.venue;
-                    console.log('[xG Table] Venue changed:', advXgVenue);
-                    renderAdvancedTeamTable(advXgTimeframe, advXgVenue);
-                });
-            });
-
-            document.querySelectorAll('#advXgTable th[data-adv-col]').forEach(th => {
-                th.addEventListener('click', () => {
-                    const col = th.dataset.advCol;
-                    if (advXgSort.col === col) {
-                        advXgSort.dir = advXgSort.dir === 'desc' ? 'asc' : 'desc';
-                    } else {
-                        advXgSort.col = col;
-                        advXgSort.dir = 'desc';
-                    }
-                    renderAdvancedTeamTable(advXgTimeframe, advXgVenue);
-                });
-            });
-
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
+        // ===== ADVANCED xG TABLE — removed; columns merged into Stats Table =====
 
         // ===== MOMENTUM MATRIX =====
         const TEAM_COLORS = {
@@ -5334,6 +5234,18 @@
 
         let momentumMetric = 'net'; // 'net', 'attack', 'defense'
         let momentumChart = null;
+        let badgeImages = new Map();
+
+        function preloadTeamBadges(teams) {
+            teams.forEach(team => {
+                if (team.badgeUrl && !badgeImages.has(team.id)) {
+                    const img = new Image(20, 20);
+                    img.crossOrigin = 'anonymous';
+                    img.src = team.badgeUrl;
+                    badgeImages.set(team.id, img);
+                }
+            });
+        }
 
         function renderMomentumMatrix() {
             return `
@@ -5394,6 +5306,9 @@
 
             const ctx = canvas.getContext('2d');
 
+            // Ensure badges are preloaded
+            preloadTeamBadges(allTeamsData);
+
             const dataPoints = allTeamsData.map(team => {
                 const xVal = 6 - parseFloat(team.avgFdr); // invert: low FDR → right side
                 const yVal = getMomentumY(team);
@@ -5404,6 +5319,7 @@
                     teamData: team,
                     backgroundColor: color,
                     borderColor: color,
+                    badgeImg: badgeImages.get(team.id) || null,
                 };
             });
 
@@ -5411,13 +5327,13 @@
             const yValues = dataPoints.map(p => p.y);
             const yMid = momentumMetric === 'net' ? 0 : yValues.reduce((a, b) => a + b, 0) / (yValues.length || 1);
 
-            // Dynamic X-axis range based on actual data with padding
+            // Dynamic X-axis range based on actual data with tight padding
             const xValues = dataPoints.map(p => p.x);
             const xDataMin = Math.min(...xValues);
             const xDataMax = Math.max(...xValues);
-            const xPad = Math.max(0.3, (xDataMax - xDataMin) * 0.15);
-            const xAxisMin = Math.floor((xDataMin - xPad) * 2) / 2; // snap to 0.5
-            const xAxisMax = Math.ceil((xDataMax + xPad) * 2) / 2;
+            const xPad = Math.max(0.1, (xDataMax - xDataMin) * 0.05);
+            const xAxisMin = Math.floor((xDataMin - xPad) * 10) / 10;
+            const xAxisMax = Math.ceil((xDataMax + xPad) * 10) / 10;
             const xMid = (xAxisMin + xAxisMax) / 2;
 
             const style = getComputedStyle(document.documentElement);
@@ -5425,17 +5341,25 @@
             const textColor = style.getPropertyValue('--text-secondary').trim() || '#6B7280';
             const mutedColor = style.getPropertyValue('--text-muted').trim() || '#9CA3AF';
 
+            // Build pointStyle array: use badge Image if loaded, else colored circle fallback
+            const pointStyles = dataPoints.map(p => {
+                const img = p.badgeImg;
+                if (img && img.complete && img.naturalWidth > 0) return img;
+                return 'circle';
+            });
+
             momentumChart = new Chart(ctx, {
                 type: 'scatter',
                 data: {
                     datasets: [{
                         data: dataPoints,
-                        pointRadius: 8,
-                        pointHoverRadius: 12,
+                        pointStyle: pointStyles,
+                        pointRadius: 14,
+                        pointHoverRadius: 18,
                         pointBackgroundColor: dataPoints.map(p => p.backgroundColor),
                         pointBorderColor: dataPoints.map(p => p.borderColor),
-                        pointBorderWidth: 2,
-                        pointHoverBorderWidth: 3,
+                        pointBorderWidth: 0,
+                        pointHoverBorderWidth: 2,
                         pointHoverBorderColor: '#ffffff',
                     }]
                 },
@@ -5528,6 +5452,7 @@
                     },
                     scales: {
                         x: {
+                            offset: false,
                             title: {
                                 display: true,
                                 text: 'Upcoming Fixture Ease \u2192',
@@ -5541,7 +5466,6 @@
                                 color: mutedColor,
                                 font: { size: 11 },
                                 callback: function(v) {
-                                    const range = xAxisMax - xAxisMin;
                                     if (Math.abs(v - xAxisMin) < 0.01) return 'Harder';
                                     if (Math.abs(v - xAxisMax) < 0.01) return 'Easier';
                                     if (Math.abs(v - xMid) < 0.01) return 'Mid';
@@ -5551,6 +5475,7 @@
                             }
                         },
                         y: {
+                            offset: false,
                             title: {
                                 display: true,
                                 text: getMomentumYLabel(),
@@ -6430,6 +6355,46 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         lucide.createIcons();
+    </script>
+    <!-- Master Nav: Active State & Team ID Handlers -->
+    <script>
+    (function() {
+        var page = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+        document.querySelectorAll('.top-nav [data-nav]').forEach(function(el) {
+            var pages = el.dataset.nav.split(',');
+            if (pages.some(function(p) { return page === p.toLowerCase(); })) el.classList.add('active');
+        });
+        var savedId = localStorage.getItem('fpl_team_id');
+        if (savedId) {
+            var d = document.getElementById('teamIdDisplay');
+            var inp = document.getElementById('navTidInput');
+            var bdg = document.getElementById('navTidBadge');
+            if (d) d.textContent = savedId;
+            if (inp) inp.classList.add('hidden');
+            if (bdg) bdg.classList.remove('hidden');
+        }
+    })();
+    function _fplNavGo() {
+        var input = document.getElementById('navTeamIdInput');
+        var id = input && input.value.trim();
+        if (!id || isNaN(id)) return;
+        localStorage.setItem('fpl_team_id', id);
+        if (typeof activateTeam === 'function') { activateTeam(id); return; }
+        if (typeof loadTeamData === 'function') { loadTeamData(); return; }
+        if (typeof loadTeamById === 'function') { document.getElementById('teamIdInput').value = id; loadTeamById(); return; }
+        window.location.href = 'index.html';
+    }
+    function _fplNavChange() {
+        if (typeof changeTeamId === 'function') { changeTeamId(); return; }
+        if (typeof changeTeamIdNav === 'function') { changeTeamIdNav(); return; }
+        localStorage.removeItem('fpl_team_id');
+        var inp = document.getElementById('navTidInput');
+        var bdg = document.getElementById('navTidBadge');
+        if (inp) inp.classList.remove('hidden');
+        if (bdg) bdg.classList.add('hidden');
+        var navInput = document.getElementById('navTeamIdInput');
+        if (navInput) { navInput.value = ''; navInput.focus(); }
+    }
     </script>
     <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons()});</script>
 </body>
