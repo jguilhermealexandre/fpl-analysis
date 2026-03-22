@@ -263,6 +263,7 @@
             max-width: 1400px;
             margin: 0 auto;
             padding: 12px 24px;
+            min-height: calc(100vh - 200px);
         }
         .position-section { display: none; }
         .position-section.active { display: block; }
@@ -575,8 +576,8 @@
         .rec-category-panel { display: none; }
         .rec-category-panel.active {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
         }
 
         .pos-rec-title {
@@ -742,6 +743,112 @@
         .rec-card-swing.worsening {
             background: rgba(248, 113, 113, 0.12);
             color: var(--color-error);
+        }
+
+        /* Scout Card enhancements */
+        .rec-why-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+        .rec-why-badge.form-monster   { background: rgba(251,191,36,0.15); color: #FCD34D; }
+        .rec-why-badge.fixture-target  { background: rgba(74,222,128,0.15); color: var(--color-success); }
+        .rec-why-badge.budget-enabler  { background: rgba(96,165,250,0.15); color: var(--color-info); }
+        .rec-why-badge.algorithmic     { background: rgba(168,85,247,0.15); color: #C084FC; }
+
+        .rec-stat-bar-wrap {
+            width: 100%;
+            height: 6px;
+            background: var(--surface-3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .rec-stat-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+        .rec-stat-bar-fill.green  { background: var(--color-success); }
+        .rec-stat-bar-fill.yellow { background: var(--color-warning); }
+        .rec-stat-bar-fill.red    { background: var(--color-error); }
+
+        .rec-stat-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+        }
+        .rec-stat-label {
+            width: 42px;
+            flex-shrink: 0;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.3px;
+        }
+        .rec-stat-value {
+            width: 34px;
+            flex-shrink: 0;
+            text-align: right;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 11px;
+            color: var(--text-primary);
+        }
+
+        .rec-fix-row {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .rec-fix-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 3px 7px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1.2;
+            min-width: 40px;
+            text-align: center;
+        }
+        .rec-fix-chip .gw-label {
+            font-size: 8px;
+            font-weight: 400;
+            opacity: 0.7;
+        }
+        .rec-fix-chip.fdr-1 { background: rgba(1,252,122,0.18); color: #01fc7a; }
+        .rec-fix-chip.fdr-2 { background: rgba(74,222,128,0.15); color: var(--color-success); }
+        .rec-fix-chip.fdr-3 { background: rgba(200,200,200,0.12); color: var(--text-muted); }
+        .rec-fix-chip.fdr-4 { background: rgba(248,113,113,0.15); color: var(--color-error); }
+        .rec-fix-chip.fdr-5 { background: rgba(220,38,38,0.20); color: #FCA5A5; }
+
+        .rec-card .shortlist-star-card {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 2;
+            cursor: pointer;
+        }
+        .rec-card .shortlist-star-card i { color: var(--text-muted); opacity: 0.4; }
+        .rec-card .shortlist-star-card.shortlisted i { color: #FCD34D; opacity: 1; }
+
+        .rec-card-avg-fdr {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 2px;
         }
 
         .no-players {
@@ -5047,12 +5154,21 @@
                         ${top15Html || '<div class="no-players">No players with 2+ routes found</div>'}
                     </div>
                     <div class="routes-database-view">
-                        <div class="routes-search-wrap">
-                            <i data-lucide="search" class="search-icon" style="width:14px;height:14px;"></i>
-                            <input type="text" class="routes-search-input" placeholder="Search players..." oninput="filterRoutesDatabase(this.value)">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+                            <div class="routes-search-wrap" style="flex:1;min-width:180px;">
+                                <i data-lucide="search" class="search-icon" style="width:14px;height:14px;"></i>
+                                <input type="text" class="routes-search-input" placeholder="Search players..." oninput="filterRoutesDatabase(this.value)">
+                            </div>
+                            <div style="display:flex;gap:4px;">
+                                <button class="routes-pos-filter-pill pos-filter-pill active" onclick="switchRoutesPosition('All', this)">All</button>
+                                <button class="routes-pos-filter-pill pos-filter-pill" onclick="switchRoutesPosition('GK', this)">GK</button>
+                                <button class="routes-pos-filter-pill pos-filter-pill" onclick="switchRoutesPosition('DEF', this)">DEF</button>
+                                <button class="routes-pos-filter-pill pos-filter-pill" onclick="switchRoutesPosition('MID', this)">MID</button>
+                                <button class="routes-pos-filter-pill pos-filter-pill" onclick="switchRoutesPosition('FWD', this)">FWD</button>
+                            </div>
                         </div>
                         <div class="routes-grid" id="routesDatabaseGrid">${dbHtml}</div>
-                        ${hasMore ? '<div style="text-align:center;margin-top:16px;"><button class="routes-view-btn" style="background:var(--surface-2);border:1px solid var(--border-default);" onclick="loadMoreRoutes()">Load more</button></div>' : ''}
+                        <div class="routes-load-more-wrap" style="text-align:center;margin-top:16px;${hasMore ? '' : 'display:none;'}"><button class="routes-view-btn" style="background:var(--surface-2);border:1px solid var(--border-default);" onclick="loadMoreRoutes()">Load more</button></div>
                     </div>
                 </div>
             `;
@@ -5080,9 +5196,9 @@
                                 ${p.team} \u00b7 \u00a3${p.price.toFixed(1)}m
                             </div>
                         </div>
-                        <div class="route-card-score">
-                            <div class="route-score-number">${p.routeCount}</div>
-                            <div class="route-score-label">routes</div>
+                        <div class="route-card-score" title="Composite score: weighted routes × nailed × fixture factor">
+                            <div class="route-score-number">${p.compositeScore.toFixed(1)}</div>
+                            <div class="route-score-label">${p.routeCount} routes</div>
                         </div>
                     </div>
                     <div class="route-card-bars">
@@ -5542,41 +5658,81 @@
             return {};
         }
 
+        function getRecWhyBadge(p, pos) {
+            const games = p.l5?.games || 1;
+            const rwPtsPerGame = p.history ? recencyWeightedAvg(p.history, 'total_points') : (p.l5?.points || 0) / games;
+            const avgFdr = p.fixtures?.avgFDR3 || 3;
+            const value = rwPtsPerGame / Math.max(p.price, 3.5);
+            const risingScore = (window._risingFormScores && window._risingFormScores[p.id]) || 0;
+
+            // Form Monster: high recent form or strong rising form signal
+            if (rwPtsPerGame >= 5.5 || risingScore >= 8) {
+                return `<span class="rec-why-badge form-monster"><i data-lucide="flame" style="width:10px;height:10px;"></i> Form Monster</span>`;
+            }
+            // Fixture Target: easy upcoming fixtures or improving swing
+            const swing = fixtureSwingData[p.teamId];
+            if (avgFdr <= 2.5 || (swing && swing.direction === 'improving' && Math.abs(swing.swing) >= 0.5)) {
+                return `<span class="rec-why-badge fixture-target"><i data-lucide="crosshair" style="width:10px;height:10px;"></i> Fixture Target</span>`;
+            }
+            // Budget Enabler: great value per million
+            if (value >= 1.0 && p.price <= 6.5) {
+                return `<span class="rec-why-badge budget-enabler"><i data-lucide="piggy-bank" style="width:10px;height:10px;"></i> Budget Enabler</span>`;
+            }
+            // Algorithmic Pick: default
+            return `<span class="rec-why-badge algorithmic"><i data-lucide="cpu" style="width:10px;height:10px;"></i> Algorithmic Pick</span>`;
+        }
+
         function renderRecCard(p, rank, pos, isDifferential = false) {
             const games = p.l5?.games || 1;
             const ptsPerGame = ((p.l5?.points || 0) / games).toFixed(1);
             const fdr = p.fixtures?.avgFDR3 || 3;
-            const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
             const metrics = p.displayMetrics;
             const ownBadge = isDifferential ? `<span style="font-size:10px;color:var(--color-info);margin-left:4px;">${(p.selectedBy || 0).toFixed(1)}%</span>` : '';
-            const swing = fixtureSwingData[p.teamId];
-            const swingBadge = swing
-                ? `<span class="rec-card-swing ${swing.direction}" title="Fixtures ${swing.direction} from GW${swing.swingGW}: FDR ${swing.currentFdr} \u2192 ${swing.futureFdr}">${swing.direction === 'improving' ? '\u25b2' : '\u25bc'} GW${swing.swingGW}+</span>`
-                : '';
-            
+
+            // Why badge
+            const whyBadge = getRecWhyBadge(p, pos);
+
+            // Stat bar — use primary metric
+            const barMax = { CS: 5, Saves: 25, GC: 10, xGI: 1.2, xG: 0.8, G: 5, A: 5 };
+            const pVal = parseFloat(metrics.primary.value) || 0;
+            const pMax = barMax[metrics.primary.label] || 5;
+            const barPct = Math.min(100, (pVal / pMax) * 100).toFixed(0);
+            const barColor = barPct >= 60 ? 'green' : barPct >= 30 ? 'yellow' : 'red';
+
+            // Fixture chips — next 3
+            const next3 = p.fixtures?.next3 || [];
+            const fixChips = next3.slice(0, 3).map(f => {
+                const oppName = (f.opponent && teams[f.opponent]) ? teams[f.opponent].short_name : '???';
+                const d = f.difficulty || 3;
+                const cls = d <= 1 ? 'fdr-1' : d <= 2 ? 'fdr-2' : d <= 3 ? 'fdr-3' : d <= 4 ? 'fdr-4' : 'fdr-5';
+                const venue = f.isHome ? 'H' : 'A';
+                return `<span class="rec-fix-chip ${cls}"><span class="gw-label">GW${f.event || ''}</span>${oppName} (${venue})</span>`;
+            }).join('');
+            const avgFdrDisplay = fdr.toFixed(1);
+
             return `
-                <div class="rec-card" onclick="openPlayerModal(${p.id})">
+                <div class="rec-card" style="position:relative;" onclick="openPlayerModal(${p.id})">
                     ${getStarHtml(p.id, 'shortlist-star-card')}
                     <div class="rec-card-top-row">
                         <div class="rec-card-top-left">
                             <div class="rec-card-rank">${rank}</div>
                             <div class="rec-card-main">
                                 <div class="rec-card-header">
-                                    <div class="rec-card-name">${p.name}${ownBadge}${swingBadge}</div>
-                                    <div class="rec-card-team">${p.team}</div>
+                                    <div class="rec-card-name">${p.name}${ownBadge}</div>
+                                    <div class="rec-card-team">${p.team} &middot; \u00a3${p.price.toFixed(1)}m</div>
                                 </div>
                             </div>
                         </div>
                         <div class="rec-card-top-right">
-                            <span class="fdr-badge ${fdrClass}" style="padding:3px 7px;border-radius:5px;font-size:10px;font-weight:700;">${fdr.toFixed(1)}</span>
-                            <span class="rec-card-price">\u00a3${p.price.toFixed(1)}m</span>
+                            ${whyBadge}
                         </div>
                     </div>
+                    <div class="rec-stat-row">
+                        <span class="rec-stat-label">${metrics.primary.label}</span>
+                        <div class="rec-stat-bar-wrap"><div class="rec-stat-bar-fill ${barColor}" style="width:${barPct}%;"></div></div>
+                        <span class="rec-stat-value">${metrics.primary.value}</span>
+                    </div>
                     <div class="rec-card-metrics">
-                        <div class="rec-metric ${metrics.primary.inverse ? 'inverse' : ''}">
-                            <span class="rec-metric-value">${metrics.primary.value}</span>
-                            <span class="rec-metric-label">${metrics.primary.label}</span>
-                        </div>
                         <div class="rec-metric ${metrics.secondary.inverse ? 'inverse' : ''}">
                             <span class="rec-metric-value">${metrics.secondary.value}</span>
                             <span class="rec-metric-label">${metrics.secondary.label}</span>
@@ -5590,6 +5746,10 @@
                             <span class="rec-metric-label">Pts/G</span>
                         </div>
                     </div>
+                    <div class="rec-fix-row">
+                        ${fixChips}
+                    </div>
+                    <div class="rec-card-avg-fdr">Avg FDR: ${avgFdrDisplay}</div>
                 </div>
             `;
         }
@@ -5668,6 +5828,38 @@
 
         // Routes view toggle: Top 15 Squad / Full Database
         window._routesDbOffset = 30;
+        window._currentRoutesPosFilter = 'All';
+
+        function getFilteredRoutesPlayers() {
+            if (!window._allRoutesPlayers) return [];
+            let players = window._allRoutesPlayers;
+            if (window._currentRoutesPosFilter !== 'All') {
+                players = players.filter(p => p.pos === window._currentRoutesPosFilter);
+            }
+            return players.sort((a, b) => b.compositeScore - a.compositeScore);
+        }
+
+        function switchRoutesPosition(pos, btn) {
+            window._currentRoutesPosFilter = pos;
+            window._routesDbOffset = 30;
+            document.querySelectorAll('.routes-pos-filter-pill').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            renderRoutesDatabaseView();
+        }
+
+        function renderRoutesDatabaseView() {
+            const grid = document.getElementById('routesDatabaseGrid');
+            if (!grid) return;
+            const filtered = getFilteredRoutesPlayers();
+            const players = filtered.slice(0, window._routesDbOffset);
+            grid.innerHTML = players.map((p, i) => renderRouteCard(p, i + 1)).join('');
+            const loadMoreWrap = grid.parentElement?.querySelector('.routes-load-more-wrap');
+            if (loadMoreWrap) {
+                loadMoreWrap.style.display = window._routesDbOffset < filtered.length ? '' : 'none';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
         function switchRoutesView(view, btn) {
             // Toggle buttons
             document.querySelectorAll('.routes-view-btn').forEach(b => b.classList.remove('active'));
@@ -5682,24 +5874,26 @@
             const grid = document.getElementById('routesDatabaseGrid');
             if (!grid || !window._allRoutesPlayers) return;
             const q = query.trim().toLowerCase();
+            const base = getFilteredRoutesPlayers();
             const filtered = q
-                ? window._allRoutesPlayers.filter(p => p.name.toLowerCase().includes(q))
-                : window._allRoutesPlayers.slice(0, window._routesDbOffset);
+                ? base.filter(p => p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))
+                : base.slice(0, window._routesDbOffset);
             grid.innerHTML = filtered.map((p, i) => renderRouteCard(p, i + 1)).join('');
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function loadMoreRoutes() {
             if (!window._allRoutesPlayers) return;
-            window._routesDbOffset = Math.min(window._allRoutesPlayers.length, window._routesDbOffset + 30);
+            const filtered = getFilteredRoutesPlayers();
+            window._routesDbOffset = Math.min(filtered.length, window._routesDbOffset + 30);
             const grid = document.getElementById('routesDatabaseGrid');
             if (!grid) return;
-            const players = window._allRoutesPlayers.slice(0, window._routesDbOffset);
+            const players = filtered.slice(0, window._routesDbOffset);
             grid.innerHTML = players.map((p, i) => renderRouteCard(p, i + 1)).join('');
             // Hide load-more if all shown
-            if (window._routesDbOffset >= window._allRoutesPlayers.length) {
-                const btn = grid.parentElement?.querySelector('[onclick="loadMoreRoutes()"]');
-                if (btn) btn.parentElement.style.display = 'none';
+            const loadMoreWrap = grid.parentElement?.querySelector('.routes-load-more-wrap');
+            if (loadMoreWrap) {
+                loadMoreWrap.style.display = window._routesDbOffset >= filtered.length ? 'none' : '';
             }
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }

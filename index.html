@@ -852,44 +852,6 @@ body {
             font-weight: 600;
         }
 
-        .hss-milestones {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-top: 6px;
-        }
-        .hss-milestone {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 7px;
-            border-radius: var(--radius-full);
-            background: rgba(16,185,129,0.08);
-            color: #059669;
-            font-family: var(--font-mono);
-        }
-        .hss-milestone.next {
-            background: rgba(16,185,129,0.15);
-            color: #047857;
-            border: 1px solid rgba(16,185,129,0.25);
-        }
-        .hss-milestone .ml-label {
-            font-family: var(--font-body);
-            font-weight: 500;
-            color: var(--text-muted);
-        }
-        .hss-milestone .ml-pts {
-            font-family: var(--font-mono);
-            font-weight: 700;
-        }
-        .hss-milestone-loading {
-            font-size: 10px;
-            color: var(--text-muted);
-            font-style: italic;
-            padding: 4px 0;
-        }
         .hss-gw-rank {
             display: inline-flex;
             align-items: center;
@@ -2976,36 +2938,6 @@ body {
             return teamFixtures;
         }
 
-        // ===== DYNAMIC RANK TARGETS =====
-        function getDynamicRankTargets(userRank) {
-            if (!userRank || userRank <= 0) return [];
-            if (userRank > 1000000)  return [{ rank: 500000,  label: 'Top 500k' }, { rank: 250000, label: 'Top 250k' }];
-            if (userRank > 250000)   return [{ rank: 150000,  label: 'Top 150k' }, { rank: 100000, label: 'Top 100k' }];
-            if (userRank > 100000)   return [{ rank: 50000,   label: 'Top 50k' },  { rank: 10000,  label: 'Top 10k' }];
-            if (userRank > 10000)    return [{ rank: 5000,    label: 'Top 5k' },   { rank: 1000,   label: 'Top 1k' }];
-            return [{ rank: 1000, label: 'Top 1k' }, { rank: 100, label: 'Top 100' }];
-        }
-
-        async function fetchPointsAtRank(rank) {
-            const page = Math.ceil(rank / 50);
-            const res = await fetchWithProxy(`https://fantasy.premierleague.com/api/leagues-classic/314/standings/?page_standings=${page}`);
-            const data = await res.json();
-            const entries = data.standings?.results || [];
-            const entry = entries.find(e => e.rank <= rank) || entries[0];
-            return entry ? entry.total : null;
-        }
-
-        function estimatePointsForRank(targetRank, avgTotal, top10kPts, totalPlayers) {
-            // Logarithmic interpolation: points degrade from top-10k toward the global average
-            if (!top10kPts || !avgTotal || !totalPlayers || totalPlayers <= 10000) return null;
-            const logTarget = Math.log10(Math.max(targetRank, 1));
-            const logTop = Math.log10(10000);
-            const logTotal = Math.log10(totalPlayers);
-            if (logTotal <= logTop) return top10kPts;
-            const fraction = (logTarget - logTop) / (logTotal - logTop);
-            return Math.round(top10kPts - (top10kPts - avgTotal) * Math.max(0, Math.min(1, fraction)));
-        }
-
         function analyzePlayerForTicker(player, posAvg, teamAnalysis, currentGW, settings) {
             let sellRating = 40;
             let topConcern = '';
@@ -3283,7 +3215,6 @@ body {
                 <div class="hss-value">${rankDisplay} ${rankArrowHtml}</div>
                 ${prevRank ? `<div class="hss-secondary">Previous: ${prevRank.toLocaleString()}</div>` : ''}
                 ${gwRankLine}
-                <div id="rankMilestones" class="hss-milestones"><span class="hss-milestone-loading">Loading targets…</span></div>
             </div>`;
             // Card 3: Value & Bank
             statsHtml += `<div class="hss-card hss-card--value">
@@ -3703,9 +3634,11 @@ body {
             const squadIds = new Set(squad.map(p => p.id));
             const items = [];
 
-            // Injury/status items (squad first)
+            // Injury/status items (squad first) — skip stale loan/transfer news
             allPlayers.forEach(p => {
                 if (p.news && p.news.trim()) {
+                    const nl = p.news.toLowerCase();
+                    if (nl.includes('loan') || nl.includes('transferred') || nl.includes('left the club')) return;
                     const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : '';
                     items.push({
                         cat: 'injury', text: `${p.name}: ${p.news}${chance}`,
@@ -4056,40 +3989,6 @@ body {
 
                 renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank: bank.toFixed(1), allPlayers });
                 renderPriceTicker(allPlayers, squad);
-
-                // --- Async: dynamic rank targets (next two rungs on the ladder) ---
-                (async () => {
-                    const el = document.getElementById('rankMilestones');
-                    if (!el || !totalPointsRaw || !rankRaw) { if (el) el.innerHTML = ''; return; }
-                    try {
-                        const targets = getDynamicRankTargets(rankRaw);
-                        if (!targets.length) { el.innerHTML = '<span class="hss-milestone-loading">You\'re in the top bracket!</span>'; return; }
-
-                        // Fetch top-10k anchor + attempt direct API for each target in parallel
-                        const totalPlayers = bootData.total_players || finishedEvents[0]?.ranked_count || 11000000;
-                        const [top10kPts, ...directResults] = await Promise.all([
-                            fetchPointsAtRank(10000).catch(() => null),
-                            ...targets.map(t => fetchPointsAtRank(t.rank).catch(() => null))
-                        ]);
-
-                        // For each target: use API result if available, otherwise estimate
-                        const pills = targets.map((t, i) => {
-                            let pts = directResults[i];
-                            if (!pts && top10kPts) {
-                                pts = estimatePointsForRank(t.rank, avgManagerTotal, top10kPts, totalPlayers);
-                            }
-                            if (!pts || pts <= totalPointsRaw) return '';
-                            const gap = pts - totalPointsRaw;
-                            return `<span class="hss-milestone${i === 0 ? ' next' : ''}"><span class="ml-label">${t.label}</span> <span class="ml-pts">+${gap} pts</span></span>`;
-                        }).join('');
-
-                        el.innerHTML = pills || '<span class="hss-milestone-loading">You\'re inside this bracket!</span>';
-                        if (typeof lucide !== 'undefined') lucide.createIcons();
-                    } catch (e) {
-                        console.warn('Milestone fetch failed:', e);
-                        if (el) el.innerHTML = '';
-                    }
-                })();
 
                 // Fetch external news (non-blocking) and render strip + headlines
                 fetchExternalNews().then(externalItems => {
