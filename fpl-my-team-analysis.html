@@ -1114,52 +1114,83 @@
             .tm-summary-card .tm-sc-value { font-size: 20px; }
         }
 
-        /* ===== TRANSFER WIZARD ===== */
+        /* ===== TRANSFER WIZARD (Control Room) ===== */
         .tw-container { padding: 0; }
         .tw-intro { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); }
         .tw-intro span { font-size: 1.2rem; }
 
-        /* Wizard Steps Indicator */
-        .tw-steps { display: flex; gap: 2px; margin-bottom: 20px; padding: 4px; background: var(--surface-1); border-radius: var(--radius-lg); border: 1px solid var(--border-default); }
-        .tw-step { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 8px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; background: transparent; border: none; color: var(--text-muted); font-family: var(--font-body); font-size: 12px; font-weight: 600; }
-        .tw-step:hover:not(.disabled) { background: rgba(255,255,255,0.04); color: var(--text-secondary); }
-        .tw-step.active { background: var(--color-info); color: #fff; box-shadow: 0 2px 8px rgba(96,165,250,0.3); }
-        .tw-step.completed { color: var(--color-success); }
-        .tw-step.disabled { cursor: not-allowed; opacity: 0.4; }
-        .tw-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
-        .tw-step.active .tw-step-num { background: rgba(255,255,255,0.2); }
-        .tw-step.completed .tw-step-num { background: var(--color-success); color: #000; }
-        @media (max-width: 600px) { .tw-step span.tw-step-label { display: none; } }
+        /* Budget Bar — sticky at top */
+        .tw-budget-bar-top { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: var(--surface-0); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; flex-wrap: wrap; position: sticky; top: 56px; z-index: 50; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        .tw-budget-section { display: flex; flex-direction: column; gap: 1px; }
+        .tw-budget-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700; }
+        .tw-budget-val { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
+        .tw-budget-val.success { color: var(--color-success); }
+        .tw-budget-val.danger { color: var(--color-error); }
+        .tw-budget-val.warning { color: var(--color-warning); }
+        .tw-budget-sep { width: 1px; height: 28px; background: var(--border-default); flex-shrink: 0; }
+        .tw-confirm-btn { padding: 8px 20px; border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; background: var(--color-success); color: #fff; margin-left: auto; display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .tw-confirm-btn:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+        .tw-confirm-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; background: var(--surface-3); color: var(--text-muted); }
 
-        /* Step Panels */
-        .tw-panel { display: none; }
-        .tw-panel.active { display: block; }
+        /* 2-column Room Layout */
+        .tw-room-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+        @media (max-width: 900px) { .tw-room-layout { grid-template-columns: 1fr; } }
+        .tw-board-col { display: flex; flex-direction: column; gap: 12px; }
+        .tw-scout-col { position: sticky; top: 120px; }
 
-        /* Budget Bar */
-        .tw-budget-bar { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 16px; flex-wrap: wrap; }
-        .tw-budget-item { display: flex; flex-direction: column; gap: 2px; }
-        .tw-budget-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
-        .tw-budget-value { font-size: 16px; font-weight: 700; font-family: var(--font-mono); }
-        .tw-budget-value.positive { color: var(--color-success); }
-        .tw-budget-value.negative { color: var(--color-error); }
-        .tw-budget-sep { width: 1px; height: 32px; background: var(--border-default); }
+        /* Draft Board — Slot Cards */
+        .tw-board { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+        .tw-board-header { padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        .tw-board-body { padding: 8px; }
+        .tw-slot-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 8px; transition: all 0.2s; cursor: pointer; }
+        .tw-slot-card:last-child { margin-bottom: 0; }
+        .tw-slot-card:hover { border-color: var(--border-emphasis); }
+        .tw-slot-card.active { border-color: var(--color-info); box-shadow: 0 0 0 1px var(--color-info); background: rgba(96,165,250,0.06); }
+        .tw-slot-card.complete { border-color: var(--color-success); }
+        .tw-slot-num { width: 24px; height: 24px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; color: var(--text-secondary); }
+        .tw-slot-card.active .tw-slot-num { background: var(--color-info); color: #fff; }
+        .tw-slot-card.complete .tw-slot-num { background: var(--color-success); color: #000; }
+        .tw-slot-out { flex: 1; min-width: 0; }
+        .tw-slot-out-name { font-weight: 600; font-size: 12px; color: var(--color-error); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tw-slot-out-meta { font-size: 10px; color: var(--text-muted); }
+        .tw-slot-arrow { color: var(--text-muted); font-size: 16px; flex-shrink: 0; }
+        .tw-slot-in { flex: 1; min-width: 0; }
+        .tw-slot-in-name { font-weight: 600; font-size: 12px; color: var(--color-success); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tw-slot-in-empty { font-size: 11px; color: var(--text-muted); font-style: italic; }
+        .tw-slot-in-meta { font-size: 10px; color: var(--text-muted); }
+        .tw-slot-remove { width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(248,113,113,0.12); color: var(--color-error); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; flex-shrink: 0; transition: background 0.15s; }
+        .tw-slot-remove:hover { background: rgba(248,113,113,0.25); }
+        .tw-add-slot { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 2px dashed var(--border-default); border-radius: var(--radius-md); background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; width: 100%; font-family: var(--font-body); margin-top: 8px; }
+        .tw-add-slot:hover { border-color: var(--color-info); color: var(--color-info); background: rgba(96,165,250,0.04); }
+        .tw-add-slot:disabled { opacity: 0.3; cursor: not-allowed; }
+        .tw-board-actions { display: flex; gap: 8px; padding: 8px; }
 
-        /* ── Transfer Desk (Split-screen Step 1) ── */
-        .tw-desk-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
-        @media (max-width: 860px) { .tw-desk-layout { grid-template-columns: 1fr; } }
-        .tw-desk-pane { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
-        .tw-desk-pane-header { padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        /* Buttons */
+        .tw-btn { padding: 8px 16px; border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+        .tw-btn-primary { background: var(--color-info); color: #fff; }
+        .tw-btn-primary:hover:not(:disabled) { filter: brightness(1.15); }
+        .tw-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+        .tw-btn-secondary { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border-default); }
+        .tw-btn-secondary:hover { background: var(--surface-3); }
+        .tw-btn-danger { background: rgba(248,113,113,0.1); color: var(--color-error); border: 1px solid rgba(248,113,113,0.2); }
+        .tw-btn-danger:hover { background: rgba(248,113,113,0.2); }
 
-        /* Position groups inside squad pane */
+        /* Scout Panel */
+        .tw-scout { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+        .tw-scout-header { padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        .tw-scout-body { max-height: 600px; overflow-y: auto; }
+        .tw-scout-empty { padding: 40px 16px; text-align: center; color: var(--text-muted); font-size: 12px; }
+
+        /* Squad Picker (inside Scout) */
+        .tw-squad-picker { padding: 0; }
         .tw-pos-group { border-bottom: 1px solid var(--border-subtle); }
         .tw-pos-group:last-child { border-bottom: none; }
         .tw-pos-group-label { padding: 6px 14px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); background: var(--surface-2); }
-
-        /* Compact squad rows */
         .tw-squad-row { display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-bottom: 1px solid var(--border-subtle); transition: background 0.15s; cursor: pointer; }
         .tw-squad-row:last-child { border-bottom: none; }
         .tw-squad-row:hover { background: rgba(255,255,255,0.03); }
         .tw-squad-row.selected { background: rgba(96,165,250,0.08); }
+        .tw-squad-row.sold { opacity: 0.4; pointer-events: none; text-decoration: line-through; }
         .tw-squad-row.on-bench { opacity: 0.6; }
         .tw-sr-name { flex: 1; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         .tw-sr-pill { font-size: 10px; font-family: var(--font-mono); font-weight: 600; color: var(--text-secondary); min-width: 38px; text-align: right; }
@@ -1168,199 +1199,64 @@
         .tw-sr-verdict.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
         .tw-sr-verdict.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
         .tw-sr-verdict.star { background: var(--verdict-star-bg); color: var(--verdict-star); }
+        .tw-sr-fixture { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: var(--text-muted); flex-shrink: 0; white-space: nowrap; }
+        .tw-sr-pos { font-size: 10px; font-weight: 700; color: var(--text-muted); min-width: 28px; }
 
-        /* Swap icon (replaces SELL button) */
-        .tw-swap-icon { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1.5px solid var(--border-default); background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
-        .tw-swap-icon:hover { border-color: var(--color-info); color: var(--color-info); background: rgba(96,165,250,0.08); }
-        .tw-swap-icon.active { border-color: var(--color-info); background: var(--color-info); color: #fff; }
-        .tw-swap-icon svg { width: 14px; height: 14px; }
-
-        /* Right pane — selected to sell list */
-        .tw-desk-sell-list { padding: 8px 0; }
-        .tw-desk-sell-item { display: flex; align-items: center; gap: 8px; padding: 8px 14px; }
-        .tw-desk-sell-item + .tw-desk-sell-item { border-top: 1px solid var(--border-subtle); }
-        .tw-desk-sell-remove { width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(248,113,113,0.12); color: var(--color-error); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; flex-shrink: 0; transition: background 0.15s; }
-        .tw-desk-sell-remove:hover { background: rgba(248,113,113,0.25); }
-        .tw-desk-empty { padding: 24px 14px; text-align: center; color: var(--text-muted); font-size: 12px; }
-        .tw-counter { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); margin-left: auto; }
-        .tw-counter strong { color: var(--text-primary); font-family: var(--font-mono); }
-
-        /* Sell Selection Cards (kept for legacy / other usages) */
-        .tw-squad-group { margin-bottom: 16px; }
-        .tw-squad-group-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; padding-left: 4px; }
-        .tw-sell-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
-        .tw-sell-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; position: relative; }
-        .tw-sell-card:hover { border-color: var(--border-emphasis); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-        .tw-sell-card.selected { border-color: var(--color-info); background: rgba(96,165,250,0.08); box-shadow: 0 0 0 1px var(--color-info); }
-        .tw-sell-card.suggested { border-color: rgba(239,68,68,0.3); }
-        .tw-sell-card.suggested-monitor { border-color: rgba(245,158,11,0.3); }
-        .tw-sell-card .tw-check { width: 20px; height: 20px; border: 2px solid var(--border-emphasis); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; font-size: 12px; }
-        .tw-sell-card.selected .tw-check { background: var(--color-info); border-color: var(--color-info); color: #fff; }
-        .tw-sell-info { flex: 1; min-width: 0; }
-        .tw-sell-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .tw-sell-meta { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .tw-sell-stats { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-        .tw-sell-stat { text-align: center; }
-        .tw-sell-stat-val { font-size: 13px; font-weight: 700; font-family: var(--font-mono); }
-        .tw-sell-stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
-        .tw-sell-verdict { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
-        .tw-sell-verdict.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
-        .tw-sell-verdict.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
-        .tw-sell-verdict.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
-        .tw-sell-verdict.star { background: var(--verdict-star-bg); color: var(--verdict-star); }
-
-        /* Action Buttons */
-        .tw-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-        .tw-btn { padding: 10px 20px; border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
-        .tw-btn-primary { background: var(--color-info); color: #fff; }
-        .tw-btn-primary:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
-        .tw-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-        .tw-btn-secondary { background: var(--surface-2); color: var(--text-primary); }
-        .tw-btn-secondary:hover { background: var(--surface-3); }
-        .tw-btn-back { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-default); }
-        .tw-btn-back:hover { background: var(--surface-1); color: var(--text-primary); }
-
-        /* Package Cards */
-        .tw-packages { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        .tw-package { padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.2s; }
-        .tw-package:hover { border-color: var(--border-emphasis); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
-        .tw-package.selected { border-color: var(--color-info); box-shadow: 0 0 0 1px var(--color-info); }
-        .tw-package-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-        .tw-package-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-        .tw-package-delta { font-family: var(--font-mono); font-size: 14px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-sm); }
-        .tw-package-delta.positive { background: rgba(74,222,128,0.12); color: var(--color-success); }
-        .tw-package-delta.negative { background: rgba(248,113,113,0.12); color: var(--color-error); }
-        .tw-package-transfers { display: flex; flex-direction: column; gap: 8px; }
-        .tw-package-transfer { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-        .tw-package-player { display: flex; align-items: center; gap: 6px; min-width: 120px; }
-        .tw-package-arrow { color: var(--text-muted); font-size: 16px; flex-shrink: 0; }
-        .tw-package-player.out { color: var(--color-error); }
-        .tw-package-player.in { color: var(--color-success); }
-        .tw-package-footer { display: flex; align-items: center; gap: 16px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-muted); flex-wrap: wrap; }
-        .tw-package-stat { display: flex; align-items: center; gap: 4px; }
-        .tw-package-stat strong { color: var(--text-secondary); font-family: var(--font-mono); }
-
-        /* Slot Panels (Step 3) */
-        .tw-slots { display: flex; flex-direction: column; gap: 20px; }
-        .tw-slot { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
-        .tw-slot-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); }
-        .tw-slot-sold { flex: 1; }
-        .tw-slot-sold-name { font-weight: 600; font-size: 13px; }
-        .tw-slot-sold-meta { font-size: 11px; color: var(--text-secondary); }
-        .tw-slot-locked { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--color-success); }
-        .tw-slot-budget { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
-
-        /* Filter pills for slot */
-        .tw-slot-filters { display: flex; gap: 4px; padding: 8px 16px; flex-wrap: wrap; }
-        .tw-filter-pill { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); }
+        /* Market List (inside Scout) */
+        .tw-market-header { padding: 8px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .tw-market-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); flex: 1; }
+        .tw-market-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+        .tw-filter-pill { padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border-default); background: transparent; color: var(--text-muted); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); }
         .tw-filter-pill:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
         .tw-filter-pill.active { background: var(--color-info); border-color: var(--color-info); color: #fff; }
-
-        /* Replacement rows */
-        .tw-replacements { padding: 0; }
-        .tw-replacement { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; transition: all 0.15s; }
-        .tw-replacement:last-child { border-bottom: none; }
-        .tw-replacement:hover { background: rgba(0,0,0,0.02); }
-        .tw-replacement.locked { background: rgba(96,165,250,0.08); border-left: 3px solid var(--color-info); }
-        .tw-replacement-rank { width: 24px; height: 24px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; color: var(--text-secondary); }
-        .tw-replacement:nth-child(-n+3) .tw-replacement-rank { background: rgba(96,165,250,0.15); color: var(--color-info); }
-        .tw-replacement-info { flex: 1; min-width: 0; }
-        .tw-replacement-name { font-weight: 600; font-size: 13px; }
-        .tw-replacement-meta { font-size: 11px; color: var(--text-secondary); }
-
-        /* Stat badge pills (replacement rows) */
-        .tw-stat-badges { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
-        .tw-stat-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 600; font-family: var(--font-mono); background: var(--surface-3); color: var(--text-secondary); white-space: nowrap; }
-        .tw-stat-badge .tw-sb-label { font-family: var(--font-body); font-weight: 700; text-transform: uppercase; font-size: 9px; color: var(--text-muted); }
-
-        .tw-replacement-delta { font-size: 11px; font-weight: 600; font-family: var(--font-mono); padding: 2px 6px; border-radius: 3px; }
-        .tw-replacement-delta.positive { background: rgba(74,222,128,0.12); color: var(--color-success); }
-        .tw-replacement-delta.negative { background: rgba(248,113,113,0.12); color: var(--color-error); }
-        .tw-lock-btn { padding: 5px 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); flex-shrink: 0; }
-        .tw-lock-btn:hover { border-color: var(--color-info); color: var(--color-info); }
-        .tw-lock-btn.locked { background: var(--color-info); border-color: var(--color-info); color: #fff; }
-
-        /* Summary (Step 4) */
-        .tw-summary { display: flex; flex-direction: column; gap: 16px; }
-        .tw-summary-card { padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
-        .tw-summary-header { font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .tw-summary-transfers { display: flex; flex-direction: column; gap: 10px; }
-        .tw-summary-transfer { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-md); }
-        .tw-summary-out, .tw-summary-in { flex: 1; }
-        .tw-summary-player-name { font-weight: 600; font-size: 13px; }
-        .tw-summary-player-meta { font-size: 11px; color: var(--text-secondary); }
-        .tw-summary-arrow { font-size: 18px; color: var(--text-muted); flex-shrink: 0; }
-        .tw-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
-        .tw-summary-metric { padding: 10px; background: var(--surface-2); border-radius: var(--radius-md); text-align: center; }
-        .tw-summary-metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; }
-        .tw-summary-metric-val { font-size: 18px; font-weight: 700; font-family: var(--font-mono); margin-top: 2px; }
-        .tw-summary-metric-delta { font-size: 11px; font-weight: 600; font-family: var(--font-mono); }
-
-        /* Comparison inline table */
-        .tw-compare-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-        .tw-compare-table th { padding: 6px 8px; text-align: left; font-size: 10px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-default); }
-        .tw-compare-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); }
-        .tw-compare-table .better { color: var(--color-success); }
-        .tw-compare-table .worse { color: var(--color-error); }
-
-        /* Tabular Nums — align decimals in stat columns */
-        .tw-sr-pill, .tw-budget-value, .tw-stat-badge, .tw-replacement-delta, .tw-package-delta,
-        .tw-summary-metric-val, .tw-sell-stat-val, .tw-slot-budget, .tw-counter strong,
-        .tw-bar-value, .tw-market-price { font-variant-numeric: tabular-nums; }
-
-        /* ── Floating Transfer Status Bar ── */
-        .tw-transfer-bar { position: sticky; top: 56px; z-index: 50; display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--surface-0); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); flex-wrap: wrap; }
-        .tw-bar-section { display: flex; flex-direction: column; gap: 1px; }
-        .tw-bar-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700; }
-        .tw-bar-value { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
-        .tw-bar-value.success { color: var(--color-success); }
-        .tw-bar-value.danger { color: var(--color-error); }
-        .tw-bar-value.warning { color: var(--color-warning); }
-        .tw-bar-sep { width: 1px; height: 28px; background: var(--border-default); flex-shrink: 0; }
-        .tw-bar-bank-math { font-size: 12px; font-family: var(--font-mono); font-weight: 600; display: flex; align-items: center; gap: 4px; }
-        .tw-bar-bank-math .old { color: var(--text-muted); }
-        .tw-bar-bank-math .arrow { color: var(--text-muted); font-size: 11px; }
-        .tw-bar-bank-math .new { font-weight: 700; }
-        .tw-btn-confirm { padding: 8px 20px; border: none; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; background: var(--color-success); color: #fff; margin-left: auto; display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
-        .tw-btn-confirm:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
-        .tw-btn-confirm:disabled { opacity: 0.35; cursor: not-allowed; transform: none; background: var(--surface-3); color: var(--text-muted); }
-        @media (max-width: 600px) { .tw-transfer-bar { gap: 10px; padding: 8px 12px; } .tw-bar-section { min-width: 60px; } .tw-btn-confirm { width: 100%; justify-content: center; margin-top: 4px; } }
-
-        /* ── Ghost Row (Sold Player State) ── */
-        .tw-squad-row.player-sold-state { opacity: 0.5; border: 1.5px dashed var(--border-emphasis); border-radius: var(--radius-sm); margin: 2px 6px; padding: 5px 10px; background: rgba(239,68,68,0.03); transition: all 0.25s ease; }
-        .tw-squad-row.player-sold-state .tw-sr-name { text-decoration: line-through; color: var(--text-muted); }
-        .tw-squad-row.player-sold-state .tw-sr-pill { color: var(--text-muted); }
-        .tw-squad-row.player-sold-state .tw-sr-verdict { opacity: 0.4; }
-        .tw-swap-icon.sold { border-color: var(--color-warning); color: var(--color-warning); background: rgba(245,158,11,0.08); }
-        .tw-swap-icon.sold:hover { background: rgba(245,158,11,0.15); }
-        .tw-squad-row.player-sold-state .tw-sr-fixture { opacity: 0.4; }
-
-        /* ── Fixture Micro-display in squad rows ── */
-        .tw-sr-fixture { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: var(--text-muted); flex-shrink: 0; white-space: nowrap; }
-
-        /* ── Market Preview Panel (right pane in Step 1) ── */
-        .tw-market-section { border-top: 1px solid var(--border-default); }
-        .tw-market-header { padding: 8px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .tw-market-header-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
-        .tw-market-filter-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.25); font-size: 10px; font-weight: 600; color: var(--color-info); }
-        .tw-market-filter-clear { cursor: pointer; opacity: 0.7; font-size: 12px; line-height: 1; }
-        .tw-market-filter-clear:hover { opacity: 1; }
-        .tw-market-tabs { display: flex; gap: 2px; padding: 6px 14px; }
-        .tw-market-tab { padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border-default); background: transparent; color: var(--text-muted); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.15s; font-family: var(--font-body); }
-        .tw-market-tab:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
-        .tw-market-tab.active { background: var(--color-info); border-color: var(--color-info); color: #fff; }
-        .tw-market-row { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-bottom: 1px solid var(--border-subtle); font-size: 11px; transition: background 0.15s; }
+        .tw-market-list { padding: 0; }
+        .tw-market-row { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border-subtle); font-size: 11px; cursor: pointer; transition: background 0.15s; }
         .tw-market-row:last-child { border-bottom: none; }
-        .tw-market-row:hover { background: rgba(255,255,255,0.03); }
-        .tw-market-rank { width: 18px; height: 18px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; color: var(--text-muted); }
+        .tw-market-row:hover { background: rgba(96,165,250,0.05); }
+        .tw-market-row.previewed { background: rgba(96,165,250,0.08); border-left: 3px solid var(--color-info); }
+        .tw-market-rank { width: 20px; height: 20px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; color: var(--text-muted); }
         .tw-market-row:nth-child(-n+3) .tw-market-rank { background: rgba(96,165,250,0.15); color: var(--color-info); }
         .tw-market-name { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tw-market-price { font-family: var(--font-mono); font-weight: 600; color: var(--text-secondary); font-size: 10px; }
-        .tw-market-form { font-family: var(--font-mono); font-weight: 600; font-size: 10px; }
+        .tw-market-stat { font-family: var(--font-mono); font-weight: 600; font-size: 10px; }
         .tw-market-empty { padding: 20px 14px; text-align: center; color: var(--text-muted); font-size: 11px; }
-        .tw-market-more { padding: 8px 14px; text-align: center; }
-        .tw-market-more a { font-size: 11px; color: var(--color-info); text-decoration: none; font-weight: 600; cursor: pointer; }
-        .tw-market-more a:hover { text-decoration: underline; }
+
+        /* Comparison Panel (inside Scout) */
+        .tw-compare-panel { padding: 16px; }
+        .tw-compare-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .tw-compare-back { background: none; border: none; color: var(--text-muted); font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-family: var(--font-body); }
+        .tw-compare-back:hover { color: var(--text-primary); }
+        .tw-compare-pick-btn { padding: 6px 16px; border: none; border-radius: var(--radius-md); background: var(--color-success); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font-body); transition: all 0.15s; }
+        .tw-compare-pick-btn:hover { filter: brightness(1.15); }
+        .tw-compare-pick-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .tw-compare-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; }
+        .tw-compare-player-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; text-align: center; }
+        .tw-compare-player-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; text-align: center; }
+        .tw-compare-vs { display: flex; align-items: center; justify-content: center; padding: 0 12px; font-size: 11px; font-weight: 700; color: var(--text-muted); }
+        .tw-compare-stats { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+        .tw-compare-stat-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-subtle); }
+        .tw-compare-stat-row:last-child { border-bottom: none; }
+        .tw-compare-stat-val { font-size: 13px; font-weight: 700; font-family: var(--font-mono); }
+        .tw-compare-stat-val.left { text-align: right; }
+        .tw-compare-stat-val.right { text-align: left; }
+        .tw-compare-stat-val.better { color: var(--color-success); }
+        .tw-compare-stat-val.worse { color: var(--color-error); }
+        .tw-compare-stat-label { text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+        .tw-compare-fixtures-title { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 12px 0 6px; }
+
+        /* Tabular Nums */
+        .tw-sr-pill, .tw-budget-val, .tw-market-price, .tw-market-stat, .tw-compare-stat-val,
+        .tw-slot-out-meta, .tw-slot-in-meta { font-variant-numeric: tabular-nums; }
+
+        /* Responsive */
+        @media (max-width: 900px) { .tw-scout-col { position: static; } }
+        @media (max-width: 600px) {
+            .tw-budget-bar-top { gap: 10px; padding: 8px 12px; }
+            .tw-budget-section { min-width: 60px; }
+            .tw-confirm-btn { width: 100%; justify-content: center; margin-top: 4px; }
+            .tw-compare-grid { grid-template-columns: 1fr; gap: 12px; }
+            .tw-compare-vs { display: none; }
+        }
 
         /* ===== LINEUP WIZARD ===== */
         .lw-container { padding: 0; }
@@ -1433,6 +1329,96 @@
         .lw-change-badge.promoted { background: rgba(74,222,128,0.12); color: var(--color-success); }
         .lw-change-badge.benched { background: rgba(248,113,113,0.12); color: var(--color-error); }
         .lw-change-badge.captain { background: rgba(245,158,11,0.12); color: #F59E0B; }
+
+        /* ===== LINEUP WIZARD — SPLIT SCREEN LAYOUT ===== */
+        .lw-clipboard-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; align-items: start; }
+        .lw-lineup-col { min-width: 0; }
+        .lw-context-col { position: sticky; top: 20px; min-width: 0; }
+        @media (max-width: 900px) {
+            .lw-clipboard-layout { grid-template-columns: 1fr; }
+            .lw-context-col { position: static; }
+        }
+
+        /* High-density lineup table */
+        .lw-pos-group { margin-bottom: 2px; }
+        .lw-pos-header { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; border-radius: 6px 6px 0 0; }
+        .lw-pos-header.pos-gk { background: rgba(217,119,6,0.12); color: #D97706; }
+        .lw-pos-header.pos-def { background: rgba(5,150,105,0.12); color: #059669; }
+        .lw-pos-header.pos-mid { background: rgba(37,99,235,0.12); color: #2563EB; }
+        .lw-pos-header.pos-fwd { background: rgba(220,38,38,0.12); color: #DC2626; }
+        .lw-pos-header.pos-bench { background: rgba(156,163,175,0.1); color: var(--text-muted); }
+
+        .lw-row { display: grid; grid-template-columns: 32px 1.5fr 80px 44px 44px 48px; align-items: center; gap: 4px; padding: 7px 10px; background: var(--surface-1); border-bottom: 1px solid var(--border-subtle); cursor: pointer; transition: all 0.15s; font-size: 12px; }
+        .lw-row:last-child { border-bottom: none; }
+        .lw-row:hover { background: var(--surface-2); }
+        .lw-row.lw-row-selected { background: rgba(167,139,250,0.1); box-shadow: inset 3px 0 0 #A78BFA; }
+        .lw-row.lw-row-bench { opacity: 0.65; }
+        .lw-row.lw-row-swap-source { background: rgba(96,165,250,0.15); box-shadow: inset 3px 0 0 #60A5FA; }
+        .lw-row.lw-row-swap-target { background: rgba(245,158,11,0.1); }
+
+        .lw-row-swap-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border-default); background: transparent; color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; transition: all 0.15s; padding: 0; }
+        .lw-row-swap-btn:hover { border-color: var(--border-emphasis); color: var(--text-primary); background: var(--surface-3); }
+        .lw-row-swap-btn.active { border-color: #60A5FA; color: #60A5FA; background: rgba(96,165,250,0.1); }
+
+        .lw-row-player { display: flex; flex-direction: column; min-width: 0; }
+        .lw-row-player-name { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lw-row-player-team { font-size: 10px; color: var(--text-muted); }
+        .lw-row-fixture { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
+        .lw-row-fixture .fdr-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .lw-row-stat { text-align: center; font-family: var(--font-mono); font-weight: 700; font-size: 12px; }
+        .lw-row-stat-label { font-size: 8px; color: var(--text-muted); text-transform: uppercase; text-align: center; }
+
+        /* Column headers for the lineup table */
+        .lw-col-headers { display: grid; grid-template-columns: 32px 1.5fr 80px 44px 44px 48px; gap: 4px; padding: 4px 10px; font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .lw-col-headers span:nth-child(n+3) { text-align: center; }
+
+        /* Context/Comparison Panel (Right Column) */
+        .lw-ctx-panel { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+        .lw-ctx-empty { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        .lw-ctx-empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+        .lw-ctx-header { padding: 12px 16px; border-bottom: 1px solid var(--border-default); display: flex; align-items: center; gap: 10px; }
+        .lw-ctx-header-name { font-weight: 700; font-size: 14px; flex: 1; }
+        .lw-ctx-header-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 16px; }
+        .lw-ctx-header-close:hover { color: var(--text-primary); }
+        .lw-ctx-body { padding: 16px; }
+        .lw-ctx-section { margin-bottom: 16px; }
+        .lw-ctx-section:last-child { margin-bottom: 0; }
+        .lw-ctx-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
+        .lw-ctx-score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+        .lw-ctx-score-label { width: 70px; color: var(--text-secondary); font-size: 11px; flex-shrink: 0; }
+        .lw-ctx-score-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+        .lw-ctx-score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+        .lw-ctx-score-val { width: 36px; text-align: right; font-family: var(--font-mono); font-weight: 700; font-size: 11px; flex-shrink: 0; }
+        .lw-ctx-fixtures-strip { display: flex; gap: 4px; flex-wrap: wrap; }
+        .lw-ctx-fixture-chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid var(--border-subtle); background: var(--surface-2); }
+        .lw-ctx-fixture-chip .fdr-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .lw-ctx-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .lw-ctx-stat-box { text-align: center; padding: 8px 4px; background: var(--surface-2); border-radius: 6px; }
+        .lw-ctx-stat-box-val { font-family: var(--font-mono); font-weight: 700; font-size: 14px; }
+        .lw-ctx-stat-box-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
+
+        /* Comparison mode */
+        .lw-ctx-compare { display: grid; grid-template-columns: 1fr 1fr; }
+        .lw-ctx-compare-col { padding: 16px; }
+        .lw-ctx-compare-col:first-child { border-right: 1px solid var(--border-subtle); }
+        .lw-ctx-compare-header { text-align: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle); }
+        .lw-ctx-compare-name { font-weight: 700; font-size: 13px; }
+        .lw-ctx-compare-meta { font-size: 10px; color: var(--text-muted); }
+        .lw-ctx-compare-stat { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 12px; border-bottom: 1px solid var(--border-subtle); }
+        .lw-ctx-compare-stat:last-child { border-bottom: none; }
+        .lw-ctx-compare-stat-label { color: var(--text-muted); font-size: 10px; text-transform: uppercase; text-align: center; flex: 1; }
+        .lw-ctx-compare-stat-val { font-family: var(--font-mono); font-weight: 700; font-size: 12px; min-width: 40px; }
+        .lw-ctx-compare-stat-val.better { color: var(--color-success); }
+        .lw-ctx-compare-stat-val.worse { color: var(--text-muted); }
+
+        @media (max-width: 600px) {
+            .lw-row { grid-template-columns: 28px 1.2fr 64px 40px 48px; }
+            .lw-row .lw-row-stat:nth-child(5) { display: none; }
+            .lw-col-headers { grid-template-columns: 28px 1.2fr 64px 40px 48px; }
+            .lw-col-headers span:nth-child(5) { display: none; }
+            .lw-ctx-compare { grid-template-columns: 1fr; }
+            .lw-ctx-compare-col:first-child { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+        }
 
         /* ===== FDR & SHARED STYLES ===== */
         .planner-fdr-cell { border-radius: var(--radius-sm); padding: 4px 3px; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; line-height: 1.2; text-align: center; color: #000; }
@@ -2297,6 +2283,7 @@
             bench: [],             // current bench
             formation: '',         // current formation string
             swapSource: null,      // player ID selected for swap (first click)
+            selectedPlayers: [],   // up to 2 player IDs for context panel
             captain: null,         // captain player ID
             viceCaptain: null,     // vice-captain player ID
             originalXIIds: new Set(),    // original starting XI IDs from FPL
@@ -2304,12 +2291,12 @@
             originalVC: null             // original vice-captain ID
         };
         let transferState = {
-            step: 1,
-            sellPlayers: [],       // selected players to sell
-            packages: [],          // generated transfer packages
-            selections: {},        // per-slot locked replacement { slotIdx: player }
-            budget: 0,             // total budget (sell prices + bank)
-            candidateCache: {}     // position -> scored candidates
+            pending: [],           // Array of { soldPlayer, replacement } — up to 5 transfer slots
+            activeSlot: -1,        // Index into pending[]
+            mode: 'squad',         // 'squad' | 'market' | 'compare' | 'summary'
+            candidateCache: {},    // cacheKey -> scored candidates
+            marketFilter: { pos: 0, priceRange: 'all' },
+            previewPlayer: null    // candidate being previewed in comparison
         };
 
         let userSettings = {
@@ -2719,7 +2706,7 @@
                 lineupRendered = false;
                 draftTabRendered = false;
                 newsRendered = false;
-                transferState = { step: 1, sellPlayers: [], packages: [], selections: {}, budget: 0, candidateCache: {} };
+                transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null };
                 document.getElementById('tabBar').classList.add('visible');
                 if (window._pendingTab) { switchTab(window._pendingTab); window._pendingTab = null; }
             } catch (error) {
@@ -6539,886 +6526,567 @@
             return packages;
         }
 
-        // ===== TRANSFER WIZARD RENDERING =====
+        // ===== TRANSFER WIZARD RENDERING (Control Room) =====
 
         function renderTransferWizard() {
             transferRendered = true;
-            // Ensure draft is initialized (needed if Transfer Wizard opens before Squad Planner)
             if (!draftStates[activeDraftSlot]) {
                 initDraft(activeDraftSlot);
                 loadDraft();
             }
-            transferState = { step: 1, sellPlayers: [], packages: [], selections: {}, budget: 0, candidateCache: {}, marketPosition: 0, marketMaxPrice: 0 };
+            transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null };
             const container = document.getElementById('transferDisplay');
-            const bank = (picksData?.entry_history?.bank || 0) / 10;
 
             container.innerHTML = `
                 <div class="tw-container">
                     <div class="tw-intro">
                         <span><i data-lucide="repeat" style="width:20px;height:20px;"></i></span>
-                        <div>Select 1–3 players to sell, then explore AI-powered replacement packages that consider form, fixtures, team strength, and budget.</div>
+                        <div>Build your transfer plan — select players to sell from your squad, then find AI-powered replacements. Up to 5 transfers with live budget tracking.</div>
                     </div>
-
-                    <!-- Floating Transfer Status Bar -->
-                    <div class="tw-transfer-bar" id="twTransferBar">
-                        <div class="tw-bar-section">
-                            <div class="tw-bar-label">Transfers</div>
-                            <div class="tw-bar-value" id="twBarTransfers">0 / ${typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1} Free</div>
+                    <div id="twBudgetBar"></div>
+                    <div class="tw-room-layout">
+                        <div class="tw-board-col" id="twBoardCol">
+                            <div id="twDraftBoard"></div>
                         </div>
-                        <div class="tw-bar-sep"></div>
-                        <div class="tw-bar-section">
-                            <div class="tw-bar-label">Point Hit</div>
-                            <div class="tw-bar-value" id="twBarHit" style="color:var(--text-muted);">0 pts</div>
+                        <div class="tw-scout-col" id="twScoutCol">
+                            <div id="twScoutPanel"></div>
                         </div>
-                        <div class="tw-bar-sep"></div>
-                        <div class="tw-bar-section">
-                            <div class="tw-bar-label">Bank</div>
-                            <div class="tw-bar-bank-math" id="twBarBank">
-                                <span class="old">£${bank.toFixed(1)}m</span>
-                                <span class="arrow">➔</span>
-                                <span class="new success">£${bank.toFixed(1)}m</span>
-                            </div>
-                        </div>
-                        <button class="tw-btn-confirm" id="twBarConfirm" disabled onclick="if(transferState.step===4) return; goToTransferStep(4);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"/></svg>
-                            Confirm Transfers
-                        </button>
                     </div>
-
-                    <!-- Step Indicator -->
-                    <div class="tw-steps" id="twSteps">
-                        <button class="tw-step active" onclick="goToTransferStep(1)">
-                            <div class="tw-step-num">1</div>
-                            <span class="tw-step-label"><i data-lucide="clipboard-list" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Select Sells</span>
-                        </button>
-                        <button class="tw-step disabled" onclick="goToTransferStep(2)">
-                            <div class="tw-step-num">2</div>
-                            <span class="tw-step-label"><i data-lucide="package" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Packages</span>
-                        </button>
-                        <button class="tw-step disabled" onclick="goToTransferStep(3)">
-                            <div class="tw-step-num">3</div>
-                            <span class="tw-step-label"><i data-lucide="search" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Per-Slot</span>
-                        </button>
-                        <button class="tw-step disabled" onclick="goToTransferStep(4)">
-                            <div class="tw-step-num">4</div>
-                            <span class="tw-step-label"><i data-lucide="check-circle" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Summary</span>
-                        </button>
-                    </div>
-
-                    <!-- Step Panels -->
-                    <div class="tw-panel active" id="twPanel1"></div>
-                    <div class="tw-panel" id="twPanel2"></div>
-                    <div class="tw-panel" id="twPanel3"></div>
-                    <div class="tw-panel" id="twPanel4"></div>
                 </div>
             `;
-
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            renderTransferStep1();
+            renderTWBudgetBar();
+            renderTWDraftBoard();
+            renderTWScoutPanel();
         }
 
-        // Step navigation
-        function goToTransferStep(step) {
-            // Validation
-            if (step >= 2 && transferState.sellPlayers.length === 0) return;
-            if (step >= 3 && transferState.packages.length === 0 && Object.keys(transferState.candidateCache).length === 0) return;
-            if (step >= 4 && Object.keys(transferState.selections).length < transferState.sellPlayers.length) return;
-
-            transferState.step = step;
-
-            // Update step indicators
-            document.querySelectorAll('.tw-step').forEach((el, i) => {
-                el.classList.remove('active', 'completed', 'disabled');
-                if (i + 1 === step) el.classList.add('active');
-                else if (i + 1 < step) el.classList.add('completed');
-                else el.classList.add('disabled');
-            });
-
-            // Show/hide panels
-            document.querySelectorAll('.tw-panel').forEach((el, i) => {
-                el.classList.toggle('active', i + 1 === step);
-            });
-
-            // Render the target step
-            if (step === 1) renderTransferStep1();
-            else if (step === 2) renderTransferStep2();
-            else if (step === 3) renderTransferStep3();
-            else if (step === 4) renderTransferStep4();
-
-            updateTransferBar();
+        function getTWBank() {
+            return (picksData?.entry_history?.bank || 0) / 10;
         }
 
-        // ===== Floating Transfer Bar — live update =====
-        function updateTransferBar() {
-            const bar = document.getElementById('twTransferBar');
-            if (!bar) return;
-
-            const bank = (picksData?.entry_history?.bank || 0) / 10;
-            const sellTotal = transferState.sellPlayers.reduce((s, p) => s + (p.sellPrice || p.price), 0);
-            const buyTotal = Object.values(transferState.selections).reduce((s, p) => s + p.price, 0);
-            const newBank = bank + sellTotal - buyTotal;
-            const sellCount = transferState.sellPlayers.length;
-            const freeTransfers = typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1;
-            const excessTransfers = Math.max(0, sellCount - freeTransfers);
-            const hitCost = excessTransfers * 4;
-            const allLocked = sellCount > 0 && Object.keys(transferState.selections).length === sellCount;
-
-            // Transfers Made
-            const trEl = document.getElementById('twBarTransfers');
-            if (trEl) {
-                trEl.textContent = `${sellCount} / ${freeTransfers} Free`;
-                trEl.className = 'tw-bar-value' + (sellCount > freeTransfers ? ' warning' : '');
+        function getTWLiveITB() {
+            const bank = getTWBank();
+            let sellTotal = 0, buyTotal = 0;
+            for (const slot of transferState.pending) {
+                sellTotal += slot.soldPlayer.sellPrice || slot.soldPlayer.price;
+                if (slot.replacement) buyTotal += slot.replacement.price;
             }
-
-            // Point Hit
-            const hitEl = document.getElementById('twBarHit');
-            if (hitEl) {
-                hitEl.textContent = hitCost > 0 ? `-${hitCost} pts` : '0 pts';
-                hitEl.className = 'tw-bar-value' + (hitCost > 0 ? ' danger' : '');
-                hitEl.style.color = hitCost > 0 ? '' : 'var(--text-muted)';
-            }
-
-            // Bank Balance math
-            const bankEl = document.getElementById('twBarBank');
-            if (bankEl) {
-                const newClass = newBank >= 0 ? 'success' : 'danger';
-                bankEl.innerHTML = `
-                    <span class="old">£${bank.toFixed(1)}m</span>
-                    <span class="arrow">➔</span>
-                    <span class="new ${newClass}">£${newBank.toFixed(1)}m</span>
-                `;
-            }
-
-            // Confirm button
-            const confirmBtn = document.getElementById('twBarConfirm');
-            if (confirmBtn) {
-                confirmBtn.disabled = !allLocked;
-            }
+            return bank + sellTotal - buyTotal;
         }
 
-        // ===== STEP 1: Select Sells (Transfer Desk) =====
-        function renderTransferStep1() {
-            const panel = document.getElementById('twPanel1');
-            const bank = (picksData?.entry_history?.bank || 0) / 10;
-            const sellTotal = transferState.sellPlayers.reduce((s, p) => s + (p.sellPrice || p.price), 0);
-            const totalBudget = sellTotal + bank;
-            const sellIds = new Set(transferState.sellPlayers.map(p => p.id));
+        function getTWHitCost() {
+            const ft = typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1;
+            const count = transferState.pending.length;
+            return Math.max(0, count - ft) * 4;
+        }
 
-            // Group all players by position
-            const grouped = {};
-            [1, 2, 3, 4].forEach(pos => { grouped[pos] = []; });
-            selectedPlayers.forEach(p => { grouped[p.position].push(p); });
-            Object.values(grouped).forEach(arr => arr.sort((a, b) => a.pickPosition - b.pickPosition));
+        function renderTWBudgetBar() {
+            const el = document.getElementById('twBudgetBar');
+            if (!el) return;
+            const itb = getTWLiveITB();
+            const hit = getTWHitCost();
+            const ft = typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1;
+            const count = transferState.pending.length;
+            const allFilled = count > 0 && transferState.pending.every(s => s.replacement);
+            const hitClass = hit > 0 ? 'danger' : '';
+            const itbClass = itb < 0 ? 'danger' : itb < 0.5 ? 'warning' : 'success';
 
-            // SVG icons
-            const swapSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
-            const undoSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>`;
-
-            // Build squad rows with Ghost Row state + FDR dots
-            function buildRow(player) {
-                const analysis = analysisResults.find(a => a.player.id === player.id);
-                const verdict = analysis?.verdict || 'hold';
-                const isSold = sellIds.has(player.id);
-                const nextFx = player.fixtures?.[0];
-                const fxHtml = nextFx ? `<span class="tw-sr-fixture"><span class="fdr-dot fdr-${nextFx.difficulty}"></span> ${nextFx.opponent}(${nextFx.isHome ? 'H' : 'A'})</span>` : '';
-
-                if (isSold) {
-                    // Ghost Row — sold state
-                    return `<div class="tw-squad-row player-sold-state" onclick="toggleTransferSell(${player.id})">
-                        <button class="tw-swap-icon sold" aria-label="Undo sell">${undoSvg}</button>
-                        <span class="tw-sr-name">${player.name}</span>
-                        <span class="tw-sr-pill">£${(player.sellPrice || player.price).toFixed(1)}m</span>
-                        ${fxHtml}
-                        <span class="tw-sr-verdict ${verdict}">${verdict}</span>
-                    </div>`;
-                }
-
-                return `<div class="tw-squad-row ${player.onBench ? 'on-bench' : ''}" onclick="toggleTransferSell(${player.id})">
-                    <button class="tw-swap-icon" aria-label="Toggle sell">${swapSvg}</button>
-                    <span class="tw-sr-name">${player.name}</span>
-                    <span class="tw-sr-pill">£${(player.sellPrice || player.price).toFixed(1)}m</span>
-                    <span class="tw-sr-pill">${player.form.toFixed(1)}</span>
-                    ${fxHtml}
-                    <span class="tw-sr-verdict ${verdict}">${verdict}</span>
-                </div>`;
-            }
-
-            let squadRows = '';
-            [1, 2, 3, 4].forEach(pos => {
-                const posConfig = POSITION_CONFIG[pos];
-                squadRows += `<div class="tw-pos-group">
-                    <div class="tw-pos-group-label">${posConfig.name}s</div>
-                    ${grouped[pos].map(p => buildRow(p)).join('')}
-                </div>`;
-            });
-
-            // Build right-pane sell list (compact)
-            let sellListHtml = '';
-            if (transferState.sellPlayers.length === 0) {
-                sellListHtml = `<div class="tw-desk-empty">Tap the <b>⇄</b> icon on a player to mark them for sale</div>`;
-            } else {
-                transferState.sellPlayers.forEach(p => {
-                    const posConfig = POSITION_CONFIG[p.position];
-                    sellListHtml += `<div class="tw-desk-sell-item">
-                        <button class="tw-desk-sell-remove" onclick="event.stopPropagation();toggleTransferSell(${p.id})" title="Remove">✕</button>
-                        <span class="position-badge ${posConfig.class}" style="font-size:10px;padding:2px 5px;">${posConfig.short}</span>
-                        <span style="flex:1;font-size:12px;font-weight:600;">${p.name}</span>
-                        <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-secondary);">£${(p.sellPrice || p.price).toFixed(1)}m</span>
-                    </div>`;
-                });
-            }
-
-            // Build market preview section
-            const lastSold = transferState.sellPlayers[transferState.sellPlayers.length - 1];
-            let marketHtml = buildMarketPreview(lastSold, bank, sellIds);
-
-            let html = `
-                <div class="tw-budget-bar" id="twBudgetBar1">
-                    <div class="tw-budget-item">
-                        <div class="tw-budget-label">Selling</div>
-                        <div class="tw-budget-value" id="twSelling">£${sellTotal.toFixed(1)}m</div>
+            el.innerHTML = `
+                <div class="tw-budget-bar-top">
+                    <div class="tw-budget-section">
+                        <div class="tw-budget-lbl">Transfers</div>
+                        <div class="tw-budget-val">${count} / ${ft} Free</div>
                     </div>
                     <div class="tw-budget-sep"></div>
-                    <div class="tw-budget-item">
-                        <div class="tw-budget-label">Bank</div>
-                        <div class="tw-budget-value">£${bank.toFixed(1)}m</div>
+                    <div class="tw-budget-section">
+                        <div class="tw-budget-lbl">Point Hit</div>
+                        <div class="tw-budget-val ${hitClass}">${hit > 0 ? '-' : ''}${hit} pts</div>
                     </div>
                     <div class="tw-budget-sep"></div>
-                    <div class="tw-budget-item">
-                        <div class="tw-budget-label">Total Budget</div>
-                        <div class="tw-budget-value positive" id="twTotalBudget">£${totalBudget.toFixed(1)}m</div>
+                    <div class="tw-budget-section">
+                        <div class="tw-budget-lbl">In The Bank</div>
+                        <div class="tw-budget-val ${itbClass}">£${itb.toFixed(1)}m</div>
                     </div>
-                    <div class="tw-counter">
-                        <span>Selected:</span>
-                        <strong id="twSellCount">${transferState.sellPlayers.length}/3</strong>
+                    <div class="tw-budget-sep"></div>
+                    <div class="tw-budget-section">
+                        <div class="tw-budget-lbl">Squad Value</div>
+                        <div class="tw-budget-val">£${((picksData?.entry_history?.value || 0) / 10).toFixed(1)}m</div>
                     </div>
-                </div>
-
-                <div class="tw-desk-layout">
-                    <!-- Left: Squad grouped by position -->
-                    <div class="tw-desk-pane">
-                        <div class="tw-desk-pane-header">🗂 Your Squad</div>
-                        ${squadRows}
-                    </div>
-                    <!-- Right: Sell list + Market preview -->
-                    <div class="tw-desk-pane">
-                        <div class="tw-desk-pane-header">📤 Selling (${transferState.sellPlayers.length}/3)</div>
-                        <div class="tw-desk-sell-list">${sellListHtml}</div>
-                        ${marketHtml}
-                    </div>
-                </div>
-
-                <div class="tw-actions">
-                    <button class="tw-btn tw-btn-primary" id="twFindBtn" onclick="proceedToPackages()" ${transferState.sellPlayers.length === 0 ? 'disabled' : ''}>
-                        Find Replacements →
+                    <button class="tw-confirm-btn" ${!allFilled ? 'disabled' : ''} onclick="twShowSummary()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"/></svg>
+                        View Summary
                     </button>
                 </div>
             `;
-
-            panel.innerHTML = html;
-            updateTransferBar();
         }
 
-        // ===== Market Preview Builder =====
-        function buildMarketPreview(soldPlayer, bank, sellIds) {
-            if (!soldPlayer) return '';
+        function renderTWDraftBoard() {
+            const el = document.getElementById('twDraftBoard');
+            if (!el) return;
+            const maxSlots = 5;
+            const pending = transferState.pending;
 
-            const maxPrice = (soldPlayer.sellPrice || soldPlayer.price) + bank;
-            const excludeIds = new Set(selectedPlayers.map(p => p.id));
-            // Remove sold players from exclude so they aren't double-counted
-            if (sellIds) sellIds.forEach(id => excludeIds.delete(id));
-
-            const activePos = transferState.marketPosition || soldPlayer.position;
-            const activeMaxPrice = transferState.marketMaxPrice || maxPrice;
-            const posConfig = POSITION_CONFIG[activePos];
-
-            // Find candidates
-            const candidates = allPlayers.filter(p =>
-                p.position === activePos &&
-                p.price <= activeMaxPrice &&
-                !excludeIds.has(p.id) &&
-                (p.status === 'a' || p.status === 'd') &&
-                p.minutes >= 100
-            );
-            candidates.forEach(c => { c._transferScore = c._transferScore || calculateTransferScore(c, c.position); });
-            candidates.sort((a, b) => b._transferScore - a._transferScore);
-            const top5 = candidates.slice(0, 5);
-
-            // Position tabs
-            const tabs = [1, 2, 3, 4].map(pos => {
-                const pc = POSITION_CONFIG[pos];
-                return `<button class="tw-market-tab ${pos === activePos ? 'active' : ''}" onclick="switchMarketPosition(${pos})">${pc.short}</button>`;
-            }).join('');
-
-            // Candidate rows with FDR dot
-            let rows = '';
-            if (top5.length === 0) {
-                rows = `<div class="tw-market-empty">No affordable ${posConfig.name.toLowerCase()}s found</div>`;
+            let slotsHtml = '';
+            if (pending.length === 0) {
+                slotsHtml = `<div style="padding:24px 14px;text-align:center;color:var(--text-muted);font-size:12px;">
+                    <i data-lucide="arrow-right-left" style="width:24px;height:24px;display:block;margin:0 auto 8px;opacity:0.3;"></i>
+                    Select players to sell from your squad →
+                </div>`;
             } else {
-                top5.forEach((c, i) => {
-                    const nextFx = c.fixtures?.[0];
-                    const fxDot = nextFx ? `<span class="fdr-dot fdr-${nextFx.difficulty}"></span> <span style="font-size:9px;color:var(--text-muted);">${nextFx.opponent}</span>` : '';
-                    rows += `<div class="tw-market-row">
-                        <div class="tw-market-rank">${i + 1}</div>
-                        <span class="tw-market-name">${c.name}</span>
-                        <span class="tw-market-price">£${c.price.toFixed(1)}m</span>
-                        <span class="tw-market-form" style="color:${c.form >= 5 ? 'var(--color-success)' : c.form >= 3 ? 'var(--text-secondary)' : 'var(--color-error)'};">${c.form.toFixed(1)}</span>
-                        <span style="display:inline-flex;align-items:center;gap:2px;">${fxDot}</span>
-                    </div>`;
-                });
-            }
+                for (let i = 0; i < pending.length; i++) {
+                    const slot = pending[i];
+                    const isActive = transferState.activeSlot === i;
+                    const isComplete = !!slot.replacement;
+                    const sold = slot.soldPlayer;
+                    const posName = ['', 'GKP', 'DEF', 'MID', 'FWD'][sold.position] || '';
 
-            // Sell slot tabs (when multiple sold)
-            let slotTabs = '';
-            if (transferState.sellPlayers.length > 1) {
-                slotTabs = `<div style="display:flex;gap:3px;padding:4px 14px;">` +
-                    transferState.sellPlayers.map((sp, i) => {
-                        const isActive = sp.id === soldPlayer.id;
-                        return `<button class="tw-market-tab ${isActive ? 'active' : ''}" onclick="switchMarketSlot(${i})" style="font-size:9px;">${sp.name.split(' ').pop()}</button>`;
-                    }).join('') + `</div>`;
-            }
-
-            return `<div class="tw-market-section" id="twMarketSection">
-                <div class="tw-market-header">
-                    <span class="tw-market-header-title">🏪 Market Preview</span>
-                    <span class="tw-market-filter-badge">
-                        ${posConfig.short}, Max £${activeMaxPrice.toFixed(1)}m
-                        <span class="tw-market-filter-clear" onclick="clearMarketFilter()" title="Clear filter">✕</span>
-                    </span>
-                </div>
-                ${slotTabs}
-                <div class="tw-market-tabs">${tabs}</div>
-                <div id="twMarketList">${rows}</div>
-                ${top5.length > 0 ? `<div class="tw-market-more"><a onclick="proceedToPackages()">See all candidates in Step 2 →</a></div>` : ''}
-            </div>`;
-        }
-
-        // Switch market position filter tab
-        function switchMarketPosition(pos) {
-            transferState.marketPosition = pos;
-            refreshMarketPreview();
-        }
-
-        // Switch between sold player slots in market
-        function switchMarketSlot(slotIdx) {
-            const soldPlayer = transferState.sellPlayers[slotIdx];
-            if (!soldPlayer) return;
-            const bank = (picksData?.entry_history?.bank || 0) / 10;
-            transferState.marketPosition = soldPlayer.position;
-            transferState.marketMaxPrice = (soldPlayer.sellPrice || soldPlayer.price) + bank;
-            refreshMarketPreview();
-        }
-
-        // Clear market auto-filter
-        function clearMarketFilter() {
-            transferState.marketPosition = 0;
-            transferState.marketMaxPrice = 0;
-            refreshMarketPreview();
-        }
-
-        // Refresh just the market section without full re-render
-        function refreshMarketPreview() {
-            const section = document.getElementById('twMarketSection');
-            if (!section) { renderTransferStep1(); return; }
-            const lastSold = transferState.sellPlayers[transferState.sellPlayers.length - 1];
-            if (!lastSold) { section.remove(); return; }
-            const bank = (picksData?.entry_history?.bank || 0) / 10;
-            const sellIds = new Set(transferState.sellPlayers.map(p => p.id));
-            const newHtml = buildMarketPreview(lastSold, bank, sellIds);
-            section.outerHTML = newHtml;
-        }
-
-        function toggleTransferSell(playerId) {
-            const player = selectedPlayers.find(p => p.id === playerId);
-            if (!player) return;
-
-            const idx = transferState.sellPlayers.findIndex(p => p.id === playerId);
-            if (idx >= 0) {
-                // Undo sell
-                transferState.sellPlayers.splice(idx, 1);
-            } else {
-                if (transferState.sellPlayers.length >= 3) return; // Max 3
-                transferState.sellPlayers.push(player);
-                // Auto-set market filter to match sold player
-                transferState.marketPosition = player.position;
-                const bank = (picksData?.entry_history?.bank || 0) / 10;
-                transferState.marketMaxPrice = (player.sellPrice || player.price) + bank;
-            }
-
-            // Reset downstream state
-            transferState.packages = [];
-            transferState.selections = {};
-            transferState.candidateCache = {};
-
-            renderTransferStep1();
-            updateTransferBar();
-        }
-
-        function proceedToPackages() {
-            if (transferState.sellPlayers.length === 0) return;
-            generateTransferPackages();
-            goToTransferStep(2);
-        }
-
-        // ===== STEP 2: Packages =====
-        function renderTransferStep2() {
-            const panel = document.getElementById('twPanel2');
-            const packages = transferState.packages;
-            const bank = (picksData?.entry_history?.bank || 0) / 10;
-
-            let html = `
-                <div class="tw-budget-bar">
-                    <div class="tw-budget-item">
-                        <div class="tw-budget-label">Total Budget</div>
-                        <div class="tw-budget-value positive">£${transferState.budget.toFixed(1)}m</div>
-                    </div>
-                    <div class="tw-budget-sep"></div>
-                    <div class="tw-budget-item">
-                        <div class="tw-budget-label">Transfers</div>
-                        <div class="tw-budget-value">${transferState.sellPlayers.length}</div>
-                    </div>
-                </div>
-            `;
-
-            if (packages.length === 0) {
-                html += `<div style="padding:24px;text-align:center;color:var(--text-muted);">No viable packages found within budget. Try selling different players.</div>`;
-            } else {
-                html += `<div class="tw-packages">`;
-                packages.forEach((pkg, pkgIdx) => {
-                    const deltaClass = pkg.scoreDelta >= 0 ? 'positive' : 'negative';
-                    const deltaSign = pkg.scoreDelta >= 0 ? '+' : '';
-
-                    html += `<div class="tw-package" onclick="applyPackage(${pkgIdx})">
-                        <div class="tw-package-header">
-                            <div class="tw-package-name">${pkg.icon} ${pkg.name}</div>
-                            <div class="tw-package-delta ${deltaClass}">${deltaSign}${pkg.scoreDelta.toFixed(1)} score</div>
-                        </div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">${pkg.description}</div>
-                        <div class="tw-package-transfers">`;
-
-                    pkg.sells.forEach((sold, i) => {
-                        const pick = pkg.picks[i];
-                        const pickNextFx = pick.fixtures?.[0];
-                        const pickFxDot = pickNextFx ? `<span class="fdr-dot fdr-${pickNextFx.difficulty}" style="margin-left:2px;"></span> <span style="color:var(--text-muted);font-size:10px;">${pickNextFx.opponent}</span>` : '';
-                        html += `<div class="tw-package-transfer">
-                            <div class="tw-package-player out">
-                                <span class="position-badge ${POSITION_CONFIG[sold.position].class}" style="font-size:9px;padding:1px 4px;">${POSITION_CONFIG[sold.position].short}</span>
-                                <span>${sold.name}</span>
-                                <span style="color:var(--text-muted);">£${(sold.sellPrice || sold.price).toFixed(1)}m</span>
-                            </div>
-                            <div class="tw-package-arrow">→</div>
-                            <div class="tw-package-player in">
-                                <span>${pick.name}</span>
-                                <span style="color:var(--text-muted);">£${pick.price.toFixed(1)}m</span>
-                                <span style="color:var(--text-muted);">F:${pick.form.toFixed(1)}</span>
-                                ${pickFxDot}
-                            </div>
+                    let inHtml = '';
+                    if (isComplete) {
+                        const repl = slot.replacement;
+                        inHtml = `<div class="tw-slot-in">
+                            <div class="tw-slot-in-name">${repl.name}</div>
+                            <div class="tw-slot-in-meta">${repl.team} · £${repl.price.toFixed(1)}m</div>
                         </div>`;
-                    });
+                    } else {
+                        inHtml = `<div class="tw-slot-in">
+                            <div class="tw-slot-in-empty">Click to find replacement</div>
+                        </div>`;
+                    }
 
-                    html += `</div>
-                        <div class="tw-package-footer">
-                            <div class="tw-package-stat">Cost: <strong>£${pkg.totalCost.toFixed(1)}m</strong></div>
-                            <div class="tw-package-stat">Remaining: <strong style="color:var(--color-success);">£${pkg.remaining.toFixed(1)}m</strong></div>
+                    slotsHtml += `<div class="tw-slot-card${isActive ? ' active' : ''}${isComplete ? ' complete' : ''}" onclick="twSelectSlot(${i})">
+                        <div class="tw-slot-num">${i + 1}</div>
+                        <div class="tw-slot-out">
+                            <div class="tw-slot-out-name">${sold.name}</div>
+                            <div class="tw-slot-out-meta">${posName} · £${(sold.sellPrice || sold.price).toFixed(1)}m</div>
                         </div>
+                        <div class="tw-slot-arrow">→</div>
+                        ${inHtml}
+                        <button class="tw-slot-remove" onclick="event.stopPropagation();twRemoveSlot(${i});" title="Remove transfer">×</button>
                     </div>`;
-                });
-                html += `</div>`;
+                }
             }
 
-            html += `
-                <div class="tw-actions">
-                    <button class="tw-btn tw-btn-back" onclick="goToTransferStep(1)">← Back</button>
-                    <button class="tw-btn tw-btn-secondary" onclick="goToCustomSlots()">Build Custom →</button>
+            const canAdd = pending.length < maxSlots;
+
+            el.innerHTML = `
+                <div class="tw-board">
+                    <div class="tw-board-header">
+                        <i data-lucide="clipboard-list" style="width:14px;height:14px;"></i>
+                        Transfer Plan${pending.length > 0 ? ' (' + pending.length + ')' : ''}
+                    </div>
+                    <div class="tw-board-body">
+                        ${slotsHtml}
+                        ${canAdd ? `<button class="tw-add-slot" onclick="twAddTransferSlot()">
+                            <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Transfer
+                        </button>` : ''}
+                    </div>
+                    ${pending.length > 0 ? `<div class="tw-board-actions">
+                        <button class="tw-btn tw-btn-danger" onclick="twClearAll()">
+                            <i data-lucide="trash-2" style="width:12px;height:12px;"></i> Clear All
+                        </button>
+                        <button class="tw-btn tw-btn-secondary" onclick="renderTransferWizard()">
+                            <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Start Over
+                        </button>
+                    </div>` : ''}
                 </div>
             `;
-
-            panel.innerHTML = html;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        function applyPackage(pkgIdx) {
-            const pkg = transferState.packages[pkgIdx];
-            if (!pkg) return;
-            transferState.selections = {};
-            pkg.picks.forEach((pick, i) => { transferState.selections[i] = pick; });
-            goToTransferStep(3);
-        }
-
-        function goToCustomSlots() {
-            transferState.selections = {};
-            goToTransferStep(3);
-        }
-
-        // ===== STEP 3: Per-Slot Drill-down =====
-        function renderTransferStep3() {
-            const panel = document.getElementById('twPanel3');
-            const sells = transferState.sellPlayers;
-            const bank = (picksData?.entry_history?.bank || 0) / 10;
-            const totalBudget = transferState.budget;
-
-            // Calculate spent so far from locked selections
-            const lockedSpent = Object.values(transferState.selections).reduce((s, p) => s + p.price, 0);
-            const remaining = totalBudget - lockedSpent;
-            const allLocked = Object.keys(transferState.selections).length === sells.length;
-
-            let html = `
-                <div class="tw-budget-bar">
-                    <div class="tw-budget-item">
-                        <div class="tw-budget-label">Total Budget</div>
-                        <div class="tw-budget-value">£${totalBudget.toFixed(1)}m</div>
-                    </div>
-                    <div class="tw-budget-sep"></div>
-                    <div class="tw-budget-item">
-                        <div class="tw-budget-label">Spent</div>
-                        <div class="tw-budget-value">£${lockedSpent.toFixed(1)}m</div>
-                    </div>
-                    <div class="tw-budget-sep"></div>
-                    <div class="tw-budget-item">
-                        <div class="tw-budget-label">Remaining</div>
-                        <div class="tw-budget-value ${remaining >= 0 ? 'positive' : 'negative'}">£${remaining.toFixed(1)}m</div>
-                    </div>
-                </div>
-                <div class="tw-slots">
-            `;
-
-            sells.forEach((sold, slotIdx) => {
-                const locked = transferState.selections[slotIdx];
-                const posConfig = POSITION_CONFIG[sold.position];
-                const candidates = transferState.candidateCache[slotIdx] || [];
-
-                // Filter out players locked in other slots
-                const otherLockedIds = new Set();
-                Object.entries(transferState.selections).forEach(([idx, p]) => {
-                    if (parseInt(idx) !== slotIdx) otherLockedIds.add(p.id);
-                });
-                const availableCandidates = candidates.filter(c => !otherLockedIds.has(c.id));
-
-                // Budget filter state
-                const slotFilterId = `twSlotFilter${slotIdx}`;
-
-                html += `<div class="tw-slot">
-                    <div class="tw-slot-header">
-                        <span class="position-badge ${posConfig.class}" style="font-size:10px;padding:2px 6px;">${posConfig.short}</span>
-                        <div class="tw-slot-sold">
-                            <div class="tw-slot-sold-name">${sold.name} <span style="color:var(--color-error);font-size:11px;">OUT</span></div>
-                            <div class="tw-slot-sold-meta">${sold.team} · £${(sold.sellPrice || sold.price).toFixed(1)}m · Form ${sold.form.toFixed(1)} · PPG ${sold.ppg.toFixed(1)}</div>
-                        </div>
-                        ${locked ? `<div class="tw-slot-locked">✓ ${locked.name} locked</div>` : ''}
-                    </div>
-
-                    <div class="tw-slot-filters">
-                        <button class="tw-filter-pill active" onclick="filterSlotCandidates(${slotIdx},'all')">All</button>
-                        <button class="tw-filter-pill" onclick="filterSlotCandidates(${slotIdx},'budget')">Budget (≤£6m)</button>
-                        <button class="tw-filter-pill" onclick="filterSlotCandidates(${slotIdx},'mid')">Mid (£6–9m)</button>
-                        <button class="tw-filter-pill" onclick="filterSlotCandidates(${slotIdx},'premium')">Premium (≥£9m)</button>
-                    </div>
-
-                    <div class="tw-replacements" id="twSlotList${slotIdx}">`;
-
-                availableCandidates.slice(0, 10).forEach((c, rank) => {
-                    const isLocked = locked && locked.id === c.id;
-                    const delta = c._transferScore - sold._transferScore;
-                    const deltaClass = delta >= 0 ? 'positive' : 'negative';
-                    const deltaSign = delta >= 0 ? '+' : '';
-                    const fdr = c.fixtures?.length > 0 ? (c.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / Math.min(c.fixtures.length, 3)).toFixed(1) : '-';
-                    const xgiDisplay = c._recentStats ? c._recentStats.xGIPer90.toFixed(2) : (c.minutes > 0 ? ((c.xGI / c.minutes) * 90).toFixed(2) : '-');
-                    const cNextFx = c.fixtures?.[0];
-                    const cFxDot = cNextFx ? `<span class="fdr-dot fdr-${cNextFx.difficulty}"></span>` : '';
-
-                    html += `<div class="tw-replacement ${isLocked ? 'locked' : ''}" id="twRep${slotIdx}_${c.id}">
-                        <div class="tw-replacement-rank">${rank + 1}</div>
-                        <div class="tw-replacement-info">
-                            <div class="tw-replacement-name">${c.name}</div>
-                            <div class="tw-replacement-meta">${c.team} · £${c.price.toFixed(1)}m · ${c.ownership.toFixed(1)}% owned ${cFxDot} ${cNextFx ? cNextFx.opponent + '(' + (cNextFx.isHome ? 'H' : 'A') + ')' : ''}</div>
-                        </div>
-                        <div class="tw-stat-badges">
-                            <span class="tw-stat-badge"><span class="tw-sb-label">Form</span> ${c.form.toFixed(1)}</span>
-                            <span class="tw-stat-badge"><span class="tw-sb-label">PPG</span> ${c.ppg.toFixed(1)}</span>
-                            <span class="tw-stat-badge"><span class="tw-sb-label">xGI</span> ${xgiDisplay}</span>
-                            <span class="tw-stat-badge"><span class="tw-sb-label">FDR</span> ${fdr}</span>
-                        </div>
-                        <div class="tw-replacement-delta ${deltaClass}">${deltaSign}${delta.toFixed(1)}</div>
-                        <button class="tw-lock-btn ${isLocked ? 'locked' : ''}" onclick="event.stopPropagation();lockSlotChoice(${slotIdx},${c.id})">${isLocked ? '✓ Locked' : 'Lock In'}</button>
-                    </div>`;
-                });
-
-                if (availableCandidates.length === 0) {
-                    html += `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No affordable candidates found for this slot.</div>`;
-                }
-
-                html += `</div></div>`;
-            });
-
-            html += `</div>`;
-
-            html += `
-                <div class="tw-actions">
-                    <button class="tw-btn tw-btn-back" onclick="goToTransferStep(2)">← Back to Packages</button>
-                    <button class="tw-btn tw-btn-primary" id="twSummaryBtn" onclick="goToTransferStep(4)" ${!allLocked ? 'disabled' : ''}>
-                        View Summary →
-                    </button>
-                    <span style="font-size:11px;color:var(--text-muted);margin-left:8px;" id="twLockHint">${!allLocked ? `Lock in all ${sells.length} slot${sells.length > 1 ? 's' : ''} to continue` : ''}</span>
-                </div>
-            `;
-
-            panel.innerHTML = html;
-        }
-
-        function lockSlotChoice(slotIdx, playerId) {
-            const candidates = transferState.candidateCache[slotIdx] || [];
-            const player = candidates.find(c => c.id === playerId);
-            if (!player) return;
-
-            // Toggle lock
-            if (transferState.selections[slotIdx]?.id === playerId) {
-                delete transferState.selections[slotIdx];
+        function renderTWScoutPanel() {
+            const el = document.getElementById('twScoutPanel');
+            if (!el) return;
+            const mode = transferState.mode;
+            if (mode === 'compare' && transferState.previewPlayer && transferState.activeSlot >= 0) {
+                renderTWComparison(el);
+            } else if (mode === 'market' && transferState.activeSlot >= 0) {
+                renderTWMarket(el);
+            } else if (mode === 'summary') {
+                twRenderSummaryPanel(el);
             } else {
-                // Check budget feasibility
-                const otherSpent = Object.entries(transferState.selections)
-                    .filter(([idx]) => parseInt(idx) !== slotIdx)
-                    .reduce((s, [, p]) => s + p.price, 0);
-                if (otherSpent + player.price > transferState.budget + 0.01) {
-                    // Can't afford — flash a warning
-                    return;
-                }
-                transferState.selections[slotIdx] = player;
+                renderTWSquadPicker(el);
             }
-
-            renderTransferStep3();
-            updateTransferBar();
         }
 
-        function filterSlotCandidates(slotIdx, filter) {
-            const candidates = transferState.candidateCache[slotIdx] || [];
-            const sold = transferState.sellPlayers[slotIdx];
-            const locked = transferState.selections[slotIdx];
-
-            // Filter out players locked in other slots
-            const otherLockedIds = new Set();
-            Object.entries(transferState.selections).forEach(([idx, p]) => {
-                if (parseInt(idx) !== slotIdx) otherLockedIds.add(p.id);
-            });
-
-            let filtered = candidates.filter(c => !otherLockedIds.has(c.id));
-            if (filter === 'budget') filtered = filtered.filter(c => c.price <= 6);
-            else if (filter === 'mid') filtered = filtered.filter(c => c.price > 6 && c.price < 9);
-            else if (filter === 'premium') filtered = filtered.filter(c => c.price >= 9);
-
-            // Update filter pill styles
-            const slot = document.querySelector(`#twSlotList${slotIdx}`)?.closest('.tw-slot');
-            if (slot) {
-                slot.querySelectorAll('.tw-filter-pill').forEach(pill => pill.classList.remove('active'));
-                const pills = slot.querySelectorAll('.tw-filter-pill');
-                if (filter === 'all') pills[0]?.classList.add('active');
-                else if (filter === 'budget') pills[1]?.classList.add('active');
-                else if (filter === 'mid') pills[2]?.classList.add('active');
-                else if (filter === 'premium') pills[3]?.classList.add('active');
-            }
-
-            // Re-render just the list
-            const listEl = document.getElementById(`twSlotList${slotIdx}`);
-            if (!listEl) return;
+        function renderTWSquadPicker(el) {
+            const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
+            const positions = [
+                { type: 1, label: 'Goalkeepers' },
+                { type: 2, label: 'Defenders' },
+                { type: 3, label: 'Midfielders' },
+                { type: 4, label: 'Forwards' }
+            ];
 
             let html = '';
-            filtered.slice(0, 10).forEach((c, rank) => {
-                const isLocked = locked && locked.id === c.id;
-                const delta = c._transferScore - sold._transferScore;
-                const deltaClass = delta >= 0 ? 'positive' : 'negative';
-                const deltaSign = delta >= 0 ? '+' : '';
-                const fdr = c.fixtures?.length > 0 ? (c.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / Math.min(c.fixtures.length, 3)).toFixed(1) : '-';
-                const xgiDisplay = c._recentStats ? c._recentStats.xGIPer90.toFixed(2) : (c.minutes > 0 ? ((c.xGI / c.minutes) * 90).toFixed(2) : '-');
-                const cNextFx = c.fixtures?.[0];
-                const cFxDot = cNextFx ? `<span class="fdr-dot fdr-${cNextFx.difficulty}"></span>` : '';
+            for (const pos of positions) {
+                const players = selectedPlayers.filter(p => p.position === pos.type);
+                if (players.length === 0) continue;
 
-                html += `<div class="tw-replacement ${isLocked ? 'locked' : ''}">
-                    <div class="tw-replacement-rank">${rank + 1}</div>
-                    <div class="tw-replacement-info">
-                        <div class="tw-replacement-name">${c.name}</div>
-                        <div class="tw-replacement-meta">${c.team} · £${c.price.toFixed(1)}m · ${c.ownership.toFixed(1)}% owned ${cFxDot} ${cNextFx ? cNextFx.opponent + '(' + (cNextFx.isHome ? 'H' : 'A') + ')' : ''}</div>
-                    </div>
-                    <div class="tw-stat-badges">
-                        <span class="tw-stat-badge"><span class="tw-sb-label">Form</span> ${c.form.toFixed(1)}</span>
-                        <span class="tw-stat-badge"><span class="tw-sb-label">PPG</span> ${c.ppg.toFixed(1)}</span>
-                        <span class="tw-stat-badge"><span class="tw-sb-label">xGI</span> ${xgiDisplay}</span>
-                        <span class="tw-stat-badge"><span class="tw-sb-label">FDR</span> ${fdr}</span>
-                    </div>
-                    <div class="tw-replacement-delta ${deltaClass}">${deltaSign}${delta.toFixed(1)}</div>
-                    <button class="tw-lock-btn ${isLocked ? 'locked' : ''}" onclick="event.stopPropagation();lockSlotChoice(${slotIdx},${c.id})">${isLocked ? '✓ Locked' : 'Lock In'}</button>
-                </div>`;
-            });
+                html += '<div class="tw-pos-group"><div class="tw-pos-group-label">' + pos.label + '</div>';
+                for (const p of players) {
+                    const isSold = soldIds.has(p.id);
+                    const result = analysisResults?.find(r => r.player?.id === p.id || r.id === p.id);
+                    const verdict = result?.verdict || '';
+                    const verdictClass = verdict.toLowerCase().replace(/[^a-z]/g, '');
 
-            if (filtered.length === 0) {
-                html += `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">No players in this price range.</div>`;
+                    const fixes = teamFixtures[p.teamId] || p.fixtures || [];
+                    const nextFix = fixes[0];
+                    let fixHtml = '';
+                    if (nextFix) {
+                        fixHtml = '<span class="tw-sr-fixture"><span class="fdr-dot fdr-' + nextFix.difficulty + '"></span>' + nextFix.opponent + '(' + (nextFix.isHome ? 'H' : 'A') + ')</span>';
+                    }
+
+                    html += '<div class="tw-squad-row' + (isSold ? ' sold' : '') + (p.onBench ? ' on-bench' : '') + '" onclick="' + (isSold ? '' : 'twPickOutPlayer(' + p.id + ')') + '">' +
+                        '<span class="tw-sr-pos">' + ['', 'GK', 'DEF', 'MID', 'FWD'][p.position] + '</span>' +
+                        '<span class="tw-sr-name">' + p.name + '</span>' +
+                        fixHtml +
+                        '<span class="tw-sr-pill">£' + (p.sellPrice || p.price).toFixed(1) + 'm</span>' +
+                        '<span class="tw-sr-pill">' + (p.form || 0).toFixed(1) + '</span>' +
+                        (verdict ? '<span class="tw-sr-verdict ' + verdictClass + '">' + verdict + '</span>' : '') +
+                        '</div>';
+                }
+                html += '</div>';
             }
 
-            listEl.innerHTML = html;
+            el.innerHTML = '<div class="tw-scout">' +
+                '<div class="tw-scout-header"><i data-lucide="users" style="width:14px;height:14px;"></i> Your Squad — Select players to sell</div>' +
+                '<div class="tw-scout-body tw-squad-picker">' + html + '</div></div>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // ===== STEP 4: Summary =====
-        function renderTransferStep4() {
-            const panel = document.getElementById('twPanel4');
-            const sells = transferState.sellPlayers;
-            const picks = sells.map((_, i) => transferState.selections[i]);
-            const totalCost = picks.reduce((s, p) => s + (p?.price || 0), 0);
-            const remaining = transferState.budget - totalCost;
-
-            // Compute before/after metrics
-            const sellIds = new Set(sells.map(p => p.id));
-            const keptPlayers = selectedPlayers.filter(p => !sellIds.has(p.id));
-
-            // Average form: before vs after
-            const beforeForm = selectedPlayers.reduce((s, p) => s + p.form, 0) / selectedPlayers.length;
-            const afterPlayers = [...keptPlayers, ...picks.filter(Boolean)];
-            const afterForm = afterPlayers.reduce((s, p) => s + p.form, 0) / afterPlayers.length;
-
-            // Total points: before vs after
-            const beforePts = selectedPlayers.reduce((s, p) => s + p.points, 0);
-            const afterPts = afterPlayers.reduce((s, p) => s + p.points, 0);
-
-            // Average PPG
-            const beforePpg = selectedPlayers.reduce((s, p) => s + p.ppg, 0) / selectedPlayers.length;
-            const afterPpg = afterPlayers.reduce((s, p) => s + p.ppg, 0) / afterPlayers.length;
-
-            // Squad value
-            const beforeValue = selectedPlayers.reduce((s, p) => s + p.price, 0);
-            const afterValue = afterPlayers.reduce((s, p) => s + p.price, 0);
-
-            // xGI total
-            const beforeXGI = selectedPlayers.reduce((s, p) => s + p.xGI, 0);
-            const afterXGI = afterPlayers.reduce((s, p) => s + p.xGI, 0);
-
-            // Overall score delta
-            const totalScoreDelta = picks.reduce((s, p, i) => {
-                if (!p) return s;
-                return s + ((p._transferScore || 0) - (sells[i]._transferScore || 0));
-            }, 0);
-
-            function fmtDelta(val, decimals = 1) {
-                const sign = val >= 0 ? '+' : '';
-                return `<span class="tw-summary-metric-delta" style="color:${val >= 0 ? 'var(--color-success)' : 'var(--color-error)'}">${sign}${val.toFixed(decimals)}</span>`;
+        function renderTWMarket(el) {
+            const slotIdx = transferState.activeSlot;
+            if (slotIdx < 0 || !transferState.pending[slotIdx]) {
+                renderTWSquadPicker(el);
+                return;
             }
 
-            let html = `
-                <div class="tw-summary">
-                    <div class="tw-summary-card">
-                        <div class="tw-summary-header"><i data-lucide="repeat" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> Transfer Plan</div>
-                        <div class="tw-summary-transfers">
-            `;
+            const slot = transferState.pending[slotIdx];
+            const sold = slot.soldPlayer;
+            const pos = sold.position;
+            const itb = getTWLiveITB();
+            let maxPrice = itb;
+            if (slot.replacement) maxPrice += slot.replacement.price;
 
-            sells.forEach((sold, i) => {
-                const pick = picks[i];
-                if (!pick) return;
-                const priceDiff = pick.price - (sold.sellPrice || sold.price);
-                html += `<div class="tw-summary-transfer">
-                    <div class="tw-summary-out">
-                        <div class="tw-summary-player-name" style="color:var(--color-error);">
-                            <span class="position-badge ${POSITION_CONFIG[sold.position].class}" style="font-size:9px;padding:1px 4px;margin-right:4px;">${POSITION_CONFIG[sold.position].short}</span>
-                            ${sold.name}
-                        </div>
-                        <div class="tw-summary-player-meta">${sold.team} · £${(sold.sellPrice || sold.price).toFixed(1)}m · Form ${sold.form.toFixed(1)}</div>
-                    </div>
-                    <div class="tw-summary-arrow">→</div>
-                    <div class="tw-summary-in">
-                        <div class="tw-summary-player-name" style="color:var(--color-success);">
-                            <span class="position-badge ${POSITION_CONFIG[pick.position].class}" style="font-size:9px;padding:1px 4px;margin-right:4px;">${POSITION_CONFIG[pick.position].short}</span>
-                            ${pick.name}
-                        </div>
-                        <div class="tw-summary-player-meta">${pick.team} · £${pick.price.toFixed(1)}m · Form ${pick.form.toFixed(1)}</div>
-                    </div>
-                </div>`;
-            });
+            const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
+            const boughtIds = new Set(transferState.pending.filter(s => s.replacement).map(s => s.replacement.id));
+            const excludeIds = new Set([...selectedPlayers.map(p => p.id), ...boughtIds]);
+            for (const id of soldIds) excludeIds.delete(id);
 
-            html += `</div></div>`;
+            const cacheKey = pos + '_' + maxPrice.toFixed(1);
+            if (!transferState.candidateCache[cacheKey]) {
+                transferState.candidateCache[cacheKey] = findTransferCandidates(pos, maxPrice, excludeIds);
+            }
+            let candidates = transferState.candidateCache[cacheKey];
 
-            // Before/After comparison
-            html += `
-                <div class="tw-summary-card">
-                    <div class="tw-summary-header"><i data-lucide="bar-chart-3" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> Before vs After</div>
-                    <div class="tw-summary-grid">
-                        <div class="tw-summary-metric">
-                            <div class="tw-summary-metric-label">Avg Form</div>
-                            <div class="tw-summary-metric-val">${afterForm.toFixed(1)}</div>
-                            ${fmtDelta(afterForm - beforeForm)}
-                        </div>
-                        <div class="tw-summary-metric">
-                            <div class="tw-summary-metric-label">Avg PPG</div>
-                            <div class="tw-summary-metric-val">${afterPpg.toFixed(2)}</div>
-                            ${fmtDelta(afterPpg - beforePpg, 2)}
-                        </div>
-                        <div class="tw-summary-metric">
-                            <div class="tw-summary-metric-label">Total xGI</div>
-                            <div class="tw-summary-metric-val">${afterXGI.toFixed(1)}</div>
-                            ${fmtDelta(afterXGI - beforeXGI)}
-                        </div>
-                        <div class="tw-summary-metric">
-                            <div class="tw-summary-metric-label">Squad Value</div>
-                            <div class="tw-summary-metric-val">£${afterValue.toFixed(1)}m</div>
-                            ${fmtDelta(afterValue - beforeValue)}
-                        </div>
-                        <div class="tw-summary-metric">
-                            <div class="tw-summary-metric-label">Transfer Score</div>
-                            <div class="tw-summary-metric-val" style="color:${totalScoreDelta >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">${totalScoreDelta >= 0 ? '+' : ''}${totalScoreDelta.toFixed(1)}</div>
-                            <div class="tw-summary-metric-delta" style="color:var(--text-muted);">vs sold players</div>
-                        </div>
-                        <div class="tw-summary-metric">
-                            <div class="tw-summary-metric-label">ITB After</div>
-                            <div class="tw-summary-metric-val positive">£${remaining.toFixed(1)}m</div>
-                            <div class="tw-summary-metric-delta" style="color:var(--text-muted);">in the bank</div>
-                        </div>
-                    </div>
-                </div>
-            `;
+            const priceFilter = transferState.marketFilter.priceRange;
+            if (priceFilter === 'budget') candidates = candidates.filter(c => c.price <= 6);
+            else if (priceFilter === 'mid') candidates = candidates.filter(c => c.price > 6 && c.price <= 9);
+            else if (priceFilter === 'premium') candidates = candidates.filter(c => c.price > 9);
 
-            // Per-transfer comparison tables
-            html += `<div class="tw-summary-card">
-                <div class="tw-summary-header"><i data-lucide="scale" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> Detailed Comparison</div>`;
+            const posName = ['', 'Goalkeepers', 'Defenders', 'Midfielders', 'Forwards'][pos];
 
-            sells.forEach((sold, i) => {
-                const pick = picks[i];
-                if (!pick) return;
-                const soldRecent = getPlayerRecentStats(sold.id, 5);
-                const pickRecent = getPlayerRecentStats(pick.id, 5);
+            let rowsHtml = '';
+            if (candidates.length === 0) {
+                rowsHtml = '<div class="tw-market-empty">No candidates found within budget</div>';
+            } else {
+                const top = candidates.slice(0, 15);
+                for (let i = 0; i < top.length; i++) {
+                    const c = top[i];
+                    const affordable = c.price <= maxPrice;
+                    const previewed = transferState.previewPlayer?.id === c.id;
+                    rowsHtml += '<div class="tw-market-row' + (previewed ? ' previewed' : '') + '" onclick="twPreviewPlayer(' + c.id + ')" style="' + (!affordable ? 'opacity:0.4;' : '') + '">' +
+                        '<div class="tw-market-rank">' + (i + 1) + '</div>' +
+                        '<span class="tw-market-name">' + c.name + '</span>' +
+                        '<span class="tw-market-price">£' + c.price.toFixed(1) + 'm</span>' +
+                        '<span class="tw-market-stat" style="color:' + (c.form >= 5 ? 'var(--color-success)' : 'var(--text-secondary)') + ';">' + c.form.toFixed(1) + '</span>' +
+                        '</div>';
+                }
+            }
 
-                const metrics = [
-                    { label: 'Price', soldVal: `£${(sold.sellPrice || sold.price).toFixed(1)}m`, pickVal: `£${pick.price.toFixed(1)}m`, lowerBetter: true, soldNum: sold.sellPrice || sold.price, pickNum: pick.price },
-                    { label: 'Form', soldVal: sold.form.toFixed(1), pickVal: pick.form.toFixed(1), soldNum: sold.form, pickNum: pick.form },
-                    { label: 'PPG', soldVal: sold.ppg.toFixed(1), pickVal: pick.ppg.toFixed(1), soldNum: sold.ppg, pickNum: pick.ppg },
-                    { label: 'Ownership', soldVal: `${sold.ownership.toFixed(1)}%`, pickVal: `${pick.ownership.toFixed(1)}%`, soldNum: sold.ownership, pickNum: pick.ownership },
-                    { label: 'xGI/90 (recent)', soldVal: soldRecent ? soldRecent.xGIPer90.toFixed(2) : '-', pickVal: pickRecent ? pickRecent.xGIPer90.toFixed(2) : '-', soldNum: soldRecent?.xGIPer90 || 0, pickNum: pickRecent?.xGIPer90 || 0 },
-                ];
-
-                const avgFdrSold = sold.fixtures?.length > 0 ? (sold.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / Math.min(sold.fixtures.length, 3)) : 3;
-                const avgFdrPick = pick.fixtures?.length > 0 ? (pick.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / Math.min(pick.fixtures.length, 3)) : 3;
-                metrics.push({ label: 'Avg FDR (next 3)', soldVal: avgFdrSold.toFixed(1), pickVal: avgFdrPick.toFixed(1), lowerBetter: true, soldNum: avgFdrSold, pickNum: avgFdrPick });
-
-                html += `<table class="tw-compare-table" style="margin-bottom:12px;">
-                    <tr><th></th><th style="color:var(--color-error);">${sold.name} (out)</th><th style="color:var(--color-success);">${pick.name} (in)</th></tr>`;
-
-                metrics.forEach(m => {
-                    const soldBetter = m.lowerBetter ? m.soldNum < m.pickNum : m.soldNum > m.pickNum;
-                    const pickBetter = m.lowerBetter ? m.pickNum < m.soldNum : m.pickNum > m.soldNum;
-                    html += `<tr>
-                        <td>${m.label}</td>
-                        <td class="${soldBetter ? 'better' : pickBetter ? 'worse' : ''}">${m.soldVal}</td>
-                        <td class="${pickBetter ? 'better' : soldBetter ? 'worse' : ''}">${m.pickVal}</td>
-                    </tr>`;
-                });
-
-                html += `</table>`;
-            });
-
-            html += `</div>`;
-
-            // Actions
-            html += `
-                <div class="tw-actions">
-                    <button class="tw-btn tw-btn-back" onclick="goToTransferStep(3)">← Edit Selections</button>
-                    <button class="tw-btn tw-btn-secondary" onclick="renderTransferWizard()"><i data-lucide="repeat" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Start Over</button>
-                </div>
-            </div>`;
-
-            panel.innerHTML = html;
+            el.innerHTML = '<div class="tw-scout">' +
+                '<div class="tw-scout-header"><i data-lucide="search" style="width:14px;height:14px;"></i> Replacements for ' + sold.name +
+                '<span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--text-muted);font-family:var(--font-mono);">Budget: £' + maxPrice.toFixed(1) + 'm</span></div>' +
+                '<div class="tw-market-header"><span class="tw-market-title">' + posName + '</span>' +
+                '<div class="tw-market-filters">' +
+                '<button class="tw-filter-pill' + (priceFilter === 'all' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'all\')">All</button>' +
+                '<button class="tw-filter-pill' + (priceFilter === 'budget' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'budget\')">≤£6m</button>' +
+                '<button class="tw-filter-pill' + (priceFilter === 'mid' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'mid\')">£6-9m</button>' +
+                '<button class="tw-filter-pill' + (priceFilter === 'premium' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'premium\')">≥£9m</button>' +
+                '</div></div>' +
+                '<div class="tw-scout-body tw-market-list">' + rowsHtml + '</div>' +
+                '<div style="padding:8px 14px;"><button class="tw-btn tw-btn-secondary" onclick="twBackToSquad()" style="width:100%;"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> Back to Squad</button></div>' +
+                '</div>';
             if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function renderTWComparison(el) {
+            const slotIdx = transferState.activeSlot;
+            const slot = transferState.pending[slotIdx];
+            if (!slot || !transferState.previewPlayer) { renderTWMarket(el); return; }
+
+            const sold = slot.soldPlayer;
+            const candidate = transferState.previewPlayer;
+            const posName = ['', 'GK', 'DEF', 'MID', 'FWD'][sold.position];
+            const soldPrice = sold.sellPrice || sold.price;
+            const candPrice = candidate.price;
+            const itb = getTWLiveITB();
+            const affordable = candPrice <= itb + (slot.replacement ? slot.replacement.price : 0);
+
+            const metrics = [
+                { label: 'Price', left: '£' + soldPrice.toFixed(1) + 'm', right: '£' + candPrice.toFixed(1) + 'm', lv: soldPrice, rv: candPrice, higherBetter: false },
+                { label: 'Form', left: (sold.form || 0).toFixed(1), right: (candidate.form || 0).toFixed(1), lv: sold.form || 0, rv: candidate.form || 0, higherBetter: true },
+                { label: 'PPG', left: (sold.ppg || 0).toFixed(1), right: (candidate.ppg || 0).toFixed(1), lv: sold.ppg || 0, rv: candidate.ppg || 0, higherBetter: true },
+                { label: 'Ownership', left: (sold.ownership || 0).toFixed(1) + '%', right: (candidate.ownership || 0).toFixed(1) + '%', lv: sold.ownership || 0, rv: candidate.ownership || 0, higherBetter: false },
+                { label: 'xGI', left: (sold.xGI || 0).toFixed(2), right: (candidate.xGI || 0).toFixed(2), lv: sold.xGI || 0, rv: candidate.xGI || 0, higherBetter: true },
+                { label: 'Total Pts', left: '' + (sold.points || 0), right: '' + (candidate.points || 0), lv: sold.points || 0, rv: candidate.points || 0, higherBetter: true },
+                { label: 'ICT Index', left: (sold.ictIndex || 0).toFixed(1), right: (candidate.ictIndex || 0).toFixed(1), lv: sold.ictIndex || 0, rv: candidate.ictIndex || 0, higherBetter: true }
+            ];
+
+            let statsHtml = '';
+            for (const m of metrics) {
+                const lBetter = m.higherBetter ? m.lv > m.rv : m.lv < m.rv;
+                const rBetter = m.higherBetter ? m.rv > m.lv : m.rv < m.lv;
+                statsHtml += '<div class="tw-compare-stat-row">' +
+                    '<div class="tw-compare-stat-val left' + (lBetter ? ' better' : rBetter ? ' worse' : '') + '">' + m.left + '</div>' +
+                    '<div class="tw-compare-stat-label">' + m.label + '</div>' +
+                    '<div class="tw-compare-stat-val right' + (rBetter ? ' better' : lBetter ? ' worse' : '') + '">' + m.right + '</div>' +
+                    '</div>';
+            }
+
+            // Fixtures comparison
+            const soldFix = teamFixtures[sold.teamId] || sold.fixtures || [];
+            const candFix = teamFixtures[candidate.teamId] || candidate.fixtures || [];
+            const maxFix = Math.max(Math.min(soldFix.length, 3), Math.min(candFix.length, 3));
+            let fixHtml = '';
+            if (maxFix > 0) {
+                fixHtml += '<div class="tw-compare-fixtures-title">Next Fixtures</div>';
+                for (let i = 0; i < maxFix; i++) {
+                    const sf = soldFix[i];
+                    const cf = candFix[i];
+                    const sfText = sf ? sf.opponent + '(' + (sf.isHome ? 'H' : 'A') + ')' : '-';
+                    const sfFdr = sf ? sf.difficulty : 3;
+                    const cfText = cf ? cf.opponent + '(' + (cf.isHome ? 'H' : 'A') + ')' : '-';
+                    const cfFdr = cf ? cf.difficulty : 3;
+                    fixHtml += '<div class="tw-compare-stat-row">' +
+                        '<div class="tw-compare-stat-val left"><span class="fdr-dot fdr-' + sfFdr + '"></span> ' + sfText + '</div>' +
+                        '<div class="tw-compare-stat-label">GW' + (currentGW + 1 + i) + '</div>' +
+                        '<div class="tw-compare-stat-val right"><span class="fdr-dot fdr-' + cfFdr + '"></span> ' + cfText + '</div>' +
+                        '</div>';
+                }
+            }
+
+            el.innerHTML = '<div class="tw-scout">' +
+                '<div class="tw-scout-header"><i data-lucide="git-compare" style="width:14px;height:14px;"></i> Player Comparison</div>' +
+                '<div class="tw-compare-panel">' +
+                '<div class="tw-compare-header">' +
+                '<button class="tw-compare-back" onclick="twBackToMarket()"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> Back to Market</button>' +
+                '<button class="tw-compare-pick-btn" onclick="twConfirmPick()" ' + (!affordable ? 'disabled title="Over budget"' : '') + '>' +
+                '<i data-lucide="check" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Confirm Pick</button>' +
+                '</div>' +
+                '<div class="tw-compare-grid">' +
+                '<div class="tw-compare-col"><div class="tw-compare-player-name" style="color:var(--color-error);">' + sold.name + '</div>' +
+                '<div class="tw-compare-player-meta">' + sold.team + ' · ' + posName + ' · £' + soldPrice.toFixed(1) + 'm</div></div>' +
+                '<div class="tw-compare-vs">VS</div>' +
+                '<div class="tw-compare-col"><div class="tw-compare-player-name" style="color:var(--color-success);">' + candidate.name + '</div>' +
+                '<div class="tw-compare-player-meta">' + candidate.team + ' · ' + posName + ' · £' + candPrice.toFixed(1) + 'm</div></div>' +
+                '</div>' +
+                '<div class="tw-compare-stats">' + statsHtml + '</div>' +
+                fixHtml +
+                '</div></div>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // ===== Transfer Control Room — Actions =====
+
+        function twPickOutPlayer(playerId) {
+            const player = selectedPlayers.find(p => p.id === playerId);
+            if (!player) return;
+            if (transferState.pending.some(s => s.soldPlayer.id === playerId)) return;
+            if (transferState.pending.length >= 5) return;
+
+            transferState.pending.push({ soldPlayer: player, replacement: null });
+            transferState.activeSlot = transferState.pending.length - 1;
+            transferState.mode = 'market';
+            transferState.previewPlayer = null;
+            transferState.candidateCache = {};
+
+            renderTWBudgetBar();
+            renderTWDraftBoard();
+            renderTWScoutPanel();
+        }
+
+        function twAddTransferSlot() {
+            transferState.mode = 'squad';
+            transferState.activeSlot = -1;
+            transferState.previewPlayer = null;
+            renderTWDraftBoard();
+            renderTWScoutPanel();
+        }
+
+        function twSelectSlot(idx) {
+            if (idx < 0 || idx >= transferState.pending.length) return;
+            transferState.activeSlot = idx;
+            transferState.mode = 'market';
+            transferState.previewPlayer = null;
+            renderTWDraftBoard();
+            renderTWScoutPanel();
+        }
+
+        function twRemoveSlot(idx) {
+            if (idx < 0 || idx >= transferState.pending.length) return;
+            transferState.pending.splice(idx, 1);
+            transferState.candidateCache = {};
+            if (transferState.activeSlot >= transferState.pending.length) {
+                transferState.activeSlot = transferState.pending.length - 1;
+            }
+            if (transferState.pending.length === 0) {
+                transferState.mode = 'squad';
+                transferState.activeSlot = -1;
+            }
+            renderTWBudgetBar();
+            renderTWDraftBoard();
+            renderTWScoutPanel();
+        }
+
+        function twPreviewPlayer(playerId) {
+            const candidates = Object.values(transferState.candidateCache).flat();
+            let candidate = candidates.find(c => c.id === playerId);
+            if (!candidate) candidate = allPlayers.find(p => p.id === playerId);
+            if (!candidate) return;
+            transferState.previewPlayer = candidate;
+            transferState.mode = 'compare';
+            renderTWScoutPanel();
+        }
+
+        function twBackToMarket() {
+            transferState.previewPlayer = null;
+            transferState.mode = 'market';
+            renderTWScoutPanel();
+        }
+
+        function twBackToSquad() {
+            transferState.mode = 'squad';
+            transferState.activeSlot = -1;
+            transferState.previewPlayer = null;
+            renderTWDraftBoard();
+            renderTWScoutPanel();
+        }
+
+        function twConfirmPick() {
+            const slotIdx = transferState.activeSlot;
+            if (slotIdx < 0 || !transferState.previewPlayer) return;
+            const candidate = transferState.previewPlayer;
+            const slot = transferState.pending[slotIdx];
+            const itb = getTWLiveITB();
+            const extraBudget = slot.replacement ? slot.replacement.price : 0;
+            if (candidate.price > itb + extraBudget + 0.01) return;
+
+            // Team count check (max 3 per team)
+            const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
+            const teamCounts = {};
+            for (const p of selectedPlayers) {
+                if (soldIds.has(p.id)) continue;
+                teamCounts[p.teamId] = (teamCounts[p.teamId] || 0) + 1;
+            }
+            for (let i = 0; i < transferState.pending.length; i++) {
+                if (i === slotIdx) continue;
+                const repl = transferState.pending[i].replacement;
+                if (repl) teamCounts[repl.teamId] = (teamCounts[repl.teamId] || 0) + 1;
+            }
+            if ((teamCounts[candidate.teamId] || 0) >= 3) return;
+
+            slot.replacement = candidate;
+            transferState.previewPlayer = null;
+            transferState.mode = 'market';
+            transferState.candidateCache = {};
+            renderTWBudgetBar();
+            renderTWDraftBoard();
+            renderTWScoutPanel();
+        }
+
+        function twSetMarketFilter(key, value) {
+            transferState.marketFilter[key] = value;
+            renderTWScoutPanel();
+        }
+
+        function twClearAll() {
+            transferState.pending = [];
+            transferState.activeSlot = -1;
+            transferState.mode = 'squad';
+            transferState.candidateCache = {};
+            transferState.previewPlayer = null;
+            renderTWBudgetBar();
+            renderTWDraftBoard();
+            renderTWScoutPanel();
+        }
+
+        function twShowSummary() {
+            if (!transferState.pending.every(s => s.replacement)) return;
+            if (transferState.pending.length === 0) return;
+            transferState.mode = 'summary';
+            renderTWScoutPanel();
+        }
+
+        function twRenderSummaryPanel(el) {
+            const hit = getTWHitCost();
+            const itb = getTWLiveITB();
+            let transfersHtml = '';
+            let totalScoreBefore = 0, totalScoreAfter = 0;
+
+            for (const slot of transferState.pending) {
+                const sold = slot.soldPlayer;
+                const repl = slot.replacement;
+                const posName = ['', 'GK', 'DEF', 'MID', 'FWD'][sold.position];
+                const soldScore = calculateTransferScore(sold, sold.position);
+                const replScore = calculateTransferScore(repl, repl.position);
+                totalScoreBefore += soldScore;
+                totalScoreAfter += replScore;
+
+                transfersHtml += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface-2);border-radius:var(--radius-md);">' +
+                    '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;background:var(--surface-3);color:var(--text-muted);">' + posName + '</span>' +
+                    '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:12px;color:var(--color-error);">' + sold.name +
+                    ' <span style="font-weight:400;color:var(--text-muted);font-size:10px;">' + sold.team + ' · £' + (sold.sellPrice || sold.price).toFixed(1) + 'm</span></div></div>' +
+                    '<div style="color:var(--text-muted);font-size:16px;flex-shrink:0;">→</div>' +
+                    '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:12px;color:var(--color-success);">' + repl.name +
+                    ' <span style="font-weight:400;color:var(--text-muted);font-size:10px;">' + repl.team + ' · £' + repl.price.toFixed(1) + 'm</span></div></div>' +
+                    '</div>';
+            }
+
+            const scoreDelta = totalScoreAfter - totalScoreBefore;
+            const deltaStyle = scoreDelta >= 0 ? 'color:var(--color-success)' : 'color:var(--color-error)';
+            const deltaBg = scoreDelta >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)';
+
+            el.innerHTML = '<div class="tw-scout">' +
+                '<div class="tw-scout-header"><i data-lucide="check-circle" style="width:14px;height:14px;"></i> Transfer Summary</div>' +
+                '<div style="padding:16px;">' +
+                '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">' +
+                '<div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:var(--radius-md);">' +
+                '<div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Transfers</div>' +
+                '<div style="font-size:18px;font-weight:700;font-family:var(--font-mono);">' + transferState.pending.length + '</div></div>' +
+                '<div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:var(--radius-md);">' +
+                '<div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Hit Cost</div>' +
+                '<div style="font-size:18px;font-weight:700;font-family:var(--font-mono);' + (hit > 0 ? 'color:var(--color-error)' : '') + '">' + (hit > 0 ? '-' : '') + hit + ' pts</div></div>' +
+                '<div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:var(--radius-md);">' +
+                '<div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Remaining ITB</div>' +
+                '<div style="font-size:18px;font-weight:700;font-family:var(--font-mono);' + (itb < 0 ? 'color:var(--color-error)' : 'color:var(--color-success)') + '">£' + itb.toFixed(1) + 'm</div></div>' +
+                '</div>' +
+                '<div style="font-weight:700;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px;">Transfers ' +
+                '<span style="font-family:var(--font-mono);font-size:12px;padding:2px 8px;border-radius:var(--radius-sm);' + deltaStyle + ';background:' + deltaBg + ';">' +
+                (scoreDelta >= 0 ? '+' : '') + scoreDelta.toFixed(1) + ' score</span></div>' +
+                '<div style="display:flex;flex-direction:column;gap:8px;">' + transfersHtml + '</div>' +
+                '<div style="margin-top:16px;display:flex;gap:8px;">' +
+                '<button class="tw-btn tw-btn-secondary" onclick="twBackFromSummary()"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> Edit Transfers</button>' +
+                '<button class="tw-btn tw-btn-secondary" onclick="renderTransferWizard()"><i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Start Over</button>' +
+                '</div></div></div>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function twBackFromSummary() {
+            transferState.mode = 'squad';
+            transferState.activeSlot = -1;
+            renderTWDraftBoard();
+            renderTWScoutPanel();
         }
 
         // ===== SETTINGS =====
@@ -7769,6 +7437,7 @@
             lineupState.squad = squad;
             lineupState.excluded = new Set();
             lineupState.swapSource = null;
+            lineupState.selectedPlayers = [];
             lineupState.captain = null;
             lineupState.viceCaptain = null;
             lineupState.step = 1;
@@ -7949,73 +7618,108 @@
             const formation = lineupState.formation;
             const totalScore = xi.reduce((s, p) => s + p.lwScore, 0);
 
-            const gk = xi.filter(p => p.pos === 1);
-            const defs = xi.filter(p => p.pos === 2);
-            const mids = xi.filter(p => p.pos === 3);
-            const fwds = xi.filter(p => p.pos === 4);
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+            const posClasses = { 1: 'pos-gk', 2: 'pos-def', 3: 'pos-mid', 4: 'pos-fwd' };
 
-            let html = `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:4px;"><i data-lucide="layout-grid" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Optimal Lineup — GW${currentGW}</div>`;
-            html += `<div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex-wrap:wrap;">
+            const gk = xi.filter(p => p.pos === 1);
+            const defs = xi.filter(p => p.pos === 2).sort((a, b) => b.lwScore - a.lwScore);
+            const mids = xi.filter(p => p.pos === 3).sort((a, b) => b.lwScore - a.lwScore);
+            const fwds = xi.filter(p => p.pos === 4).sort((a, b) => b.lwScore - a.lwScore);
+
+            // Row renderer
+            function renderRow(p, isBench, benchIdx) {
+                const fx = p.fixtures?.[0];
+                const sc = p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)';
+                const isSwapSrc = lineupState.swapSource === p.id;
+                const isSwapTgt = lineupState.swapSource && lineupState.swapSource !== p.id;
+                const isSelected = lineupState.selectedPlayers.includes(p.id);
+                let cls = 'lw-row';
+                if (isBench) cls += ' lw-row-bench';
+                if (isSwapSrc) cls += ' lw-row-swap-source';
+                else if (isSwapTgt) cls += ' lw-row-swap-target';
+                if (isSelected) cls += ' lw-row-selected';
+
+                return `<div class="${cls}" data-player-id="${p.id}" onclick="handleLWRowClick(${p.id})">
+                    <button class="lw-row-swap-btn ${isSwapSrc ? 'active' : ''}" onclick="handleLWSwapBtnClick(${p.id}, event)" title="Swap player">↕</button>
+                    <div class="lw-row-player">
+                        <div class="lw-row-player-name">${benchIdx ? `<span style="color:var(--text-muted);font-size:10px;margin-right:2px;">${benchIdx}.</span>` : ''}${p.web_name}</div>
+                        <div class="lw-row-player-team">${p.team}</div>
+                    </div>
+                    <div class="lw-row-fixture">${fx ? `<span class="fdr-dot fdr-${fx.difficulty}"></span><span>${fx.opponent}</span><span style="font-size:9px;color:var(--text-muted);">${fx.isHome ? 'H' : 'A'}</span>` : '<span style="color:var(--text-muted);">-</span>'}</div>
+                    <div class="lw-row-stat">${p.form}</div>
+                    <div class="lw-row-stat">${(p.epNext || 0).toFixed(1)}</div>
+                    <div class="lw-row-stat" style="color:${sc};font-size:13px;">${p.lwScore}</div>
+                </div>`;
+            }
+
+            // ── LEFT COLUMN: Lineup ──
+            let left = '';
+
+            // Header bar
+            left += `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:4px;"><i data-lucide="layout-grid" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Optimal Lineup — GW${currentGW}</div>`;
+            left += `<div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex-wrap:wrap;">
                 <span>Formation: <strong style="color:var(--text-primary);">${formation}</strong></span>
                 <span>·</span>
                 <span>Total Score: <strong style="color:var(--color-success);font-family:var(--font-mono);">${totalScore}</strong></span>
-                <span>·</span>
-                <span style="font-size:11px;">Click a player to select, then click another to swap</span>
+                <span style="flex:1;"></span>
+                <button class="tw-btn tw-btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="resetLineupToOptimal()"><i data-lucide="rotate-ccw" style="width:12px;height:12px;"></i> Reset</button>
             </div>`;
 
             // Swap hint
             if (lineupState.swapSource) {
                 const src = lineupState.squad.find(p => p.id === lineupState.swapSource);
-                html += `<div class="lw-swap-hint"><i data-lucide="repeat" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Swapping: ${src?.web_name || '?'} — Click another player to complete swap, or click again to cancel</div>`;
+                left += `<div class="lw-swap-hint"><i data-lucide="repeat" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Swapping: ${src?.web_name || '?'} — Click ↕ on another player to complete, or click again to cancel</div>`;
             }
 
-            // Pitch
-            html += `<div class="lw-pitch">`;
-            html += `<div class="lw-pitch-row">${fwds.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
-            html += `<div class="lw-pitch-row">${mids.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
-            html += `<div class="lw-pitch-row">${defs.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
-            html += `<div class="lw-pitch-row">${gk.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
-            html += `</div>`;
+            // Compact mini pitch
+            left += `<div class="lw-pitch" style="padding:16px 12px;margin-bottom:12px;">`;
+            left += `<div class="lw-pitch-row">${fwds.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
+            left += `<div class="lw-pitch-row">${mids.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
+            left += `<div class="lw-pitch-row">${defs.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
+            left += `<div class="lw-pitch-row">${gk.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
+            left += `</div>`;
 
-            // Bench
-            html += `<div class="lw-bench-section">`;
-            html += `<div class="lw-bench-header"><i data-lucide="clipboard-list" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Bench Order</div>`;
-            html += `<div class="lw-bench-row">${bench.map((p, i) => renderLWPitchPlayer(p, true, i + 1)).join('')}</div>`;
-            html += `</div>`;
+            // Column headers
+            left += `<div class="lw-col-headers"><span></span><span>Player</span><span>Fixture</span><span>Form</span><span>EP</span><span>Score</span></div>`;
 
-            // Team Context — H2H matchup cards
-            const lwUniqueTeams = [...new Set(lineupState.squad.map(p => p.teamId))].filter(tid => teamFixtures6[tid] && teamFixtures6[tid].length > 0);
-            if (lwUniqueTeams.length > 0) {
-                html += `<div style="margin-bottom:16px;">`;
-                html += `<div style="font-family:var(--font-display);font-weight:700;font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('lwTeamContext').style.display = document.getElementById('lwTeamContext').style.display === 'none' ? 'grid' : 'none'; this.querySelector('span').textContent = document.getElementById('lwTeamContext').style.display === 'none' ? '▸' : '▾';">⚔️ Matchup Context <span>▾</span></div>`;
-                html += `<div id="lwTeamContext" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:10px;">`;
-                lwUniqueTeams.forEach(tid => { html += renderTeamContextCard(tid, true); });
-                html += `</div></div>`;
-            }
+            // Starting XI — grouped by position
+            const groups = [
+                { pos: 1, label: 'Goalkeeper', players: gk },
+                { pos: 2, label: 'Defenders', players: defs },
+                { pos: 3, label: 'Midfielders', players: mids },
+                { pos: 4, label: 'Forwards', players: fwds }
+            ];
 
-            // Score table
-            html += `<div style="background:var(--surface-1);border-radius:12px;padding:16px;border:1px solid var(--border-default);margin-bottom:20px;">`;
-            html += `<div style="font-size:13px;font-weight:700;margin-bottom:12px;"><i data-lucide="bar-chart-3" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Score Breakdown</div>`;
-            html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;">`;
-            [...xi].sort((a, b) => b.lwScore - a.lwScore).forEach((p, i) => {
-                const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-                const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
-                const fx = p.fixtures?.[0];
-                html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface-2);border-radius:6px;font-size:12px;">
-                    <span style="width:16px;font-weight:700;color:var(--text-muted);font-family:var(--font-mono);">${i + 1}</span>
-                    <span style="color:${posColors[p.pos]};font-weight:700;font-size:10px;">${posNames[p.pos]}</span>
-                    <span style="font-weight:600;flex:1;">${p.web_name}</span>
-                    ${fx ? `<span class="fixture-chip fdr-${fx.difficulty}" style="font-size:9px;padding:1px 4px;">${fx.opponent}</span>` : ''}
-                    <span style="font-family:var(--font-mono);font-weight:700;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'}">${p.lwScore}</span>
-                </div>`;
+            groups.forEach(g => {
+                if (g.players.length === 0) return;
+                left += `<div class="lw-pos-group">`;
+                left += `<div class="lw-pos-header ${posClasses[g.pos]}"><span style="font-size:11px;">${posNames[g.pos]}</span> ${g.label}</div>`;
+                g.players.forEach(p => { left += renderRow(p, false); });
+                left += `</div>`;
             });
-            html += `</div></div>`;
+
+            // Bench group
+            if (bench.length > 0) {
+                left += `<div class="lw-pos-group" style="margin-top:8px;">`;
+                left += `<div class="lw-pos-header pos-bench"><i data-lucide="clipboard-list" style="width:11px;height:11px;display:inline;vertical-align:middle;"></i> Bench</div>`;
+                bench.forEach((p, i) => { left += renderRow(p, true, i + 1); });
+                left += `</div>`;
+            }
 
             // Actions
-            html += `<div class="tw-actions">
+            left += `<div class="tw-actions" style="margin-top:16px;">
                 <button class="tw-btn tw-btn-back" onclick="goToLineupStep(1)"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back</button>
-                <button class="tw-btn tw-btn-secondary" onclick="resetLineupToOptimal()"><i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> Reset to Optimal</button>
                 <button class="tw-btn tw-btn-primary" onclick="goToLineupStep(3)"><i data-lucide="crown" style="width:14px;height:14px;"></i> Pick Captain →</button>
+            </div>`;
+
+            // ── RIGHT COLUMN: Context Panel ──
+            let right = renderLWContextPanel();
+
+            // ── Assemble split layout ──
+            let html = `<div class="lw-clipboard-layout">
+                <div class="lw-lineup-col">${left}</div>
+                <div class="lw-context-col" id="lwContextPanel">${right}</div>
             </div>`;
 
             panel.innerHTML = html;
@@ -8027,15 +7731,14 @@
             const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
             const bg = { 1: 'rgba(217,119,6,0.2)', 2: 'rgba(5,150,105,0.2)', 3: 'rgba(37,99,235,0.2)', 4: 'rgba(220,38,38,0.2)' };
             const sc = p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)';
-            const isSwapSource = lineupState.swapSource === p.id;
-            const isSwapTarget = lineupState.swapSource && lineupState.swapSource !== p.id;
-            const cls = isBench ? 'bench' : '';
-            const swapCls = isSwapSource ? 'swap-source' : isSwapTarget ? 'swap-target' : '';
+            const fx = p.fixtures?.[0];
+            const isSelected = lineupState.selectedPlayers.includes(p.id);
 
-            return `<div class="lw-pitch-player ${cls} ${swapCls}" onclick="handleLWSwapClick(${p.id})" title="${p.web_name} · Score: ${p.lwScore}">
+            return `<div class="lw-pitch-player ${isBench ? 'bench' : ''}" onclick="handleLWRowClick(${p.id})" title="${p.web_name} · Score: ${p.lwScore}" style="${isSelected ? 'background:rgba(167,139,250,0.2);box-shadow:0 0 0 2px #A78BFA;border-radius:8px;' : ''}">
                 ${benchOrder ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${benchOrder}</div>` : ''}
                 <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${posNames[p.pos]}</div>
                 <div class="lw-pitch-name">${p.web_name}</div>
+                ${fx ? `<div style="display:flex;align-items:center;gap:2px;justify-content:center;"><span class="fdr-dot fdr-${fx.difficulty}" style="width:6px;height:6px;"></span><span style="font-size:8px;color:rgba(255,255,255,0.7);">${fx.opponent}</span></div>` : ''}
                 <div class="lw-pitch-score" style="color:${sc};">${p.lwScore}</div>
             </div>`;
         }
@@ -8361,6 +8064,266 @@
             const xiIds = new Set(bestXI.map(p => p.id));
             const bench = squad.filter(p => !xiIds.has(p.id)).sort((a, b) => { if (a.pos === 1 && b.pos !== 1) return 1; if (b.pos === 1 && a.pos !== 1) return -1; return b.lwScore - a.lwScore; });
             return { xi: bestXI, bench, formation: bestFormation };
+        }
+
+        // ── LINEUP WIZARD: Detailed Score Breakdown ──
+        function computeQuickLineupScoreDetailed(p) {
+            const result = { total: 0, ep: 0, form: 0, fixture: 0, home: 0, xgi: 0, minutes: 0, ppg: 0, doubtful: 0 };
+            if (p.status === 'i' || p.status === 'u' || p.status === 's') { result.total = -100; return result; }
+            if (p.status === 'd') result.doubtful = -20;
+            result.ep = Math.round((p.epNext || 0) * 3 * 10) / 10;
+            result.form = Math.round((parseFloat(p.form) || 0) * 2 * 10) / 10;
+            const fx = p.fixtures || [];
+            if (fx.length > 0) { result.fixture = Math.round((3 - fx[0].difficulty) * 5 * 10) / 10; if (fx[0].isHome) result.home = 2; }
+            const mins = p.minutes || 0;
+            if (mins > 200) { result.xgi = Math.round(((p.xGI / mins) * 90) * 10 * 10) / 10; }
+            const mpg = mins / Math.max(currentGW - 1, 1);
+            if (mpg >= 85) result.minutes = 3;
+            else if (mpg < 45) result.minutes = -5;
+            result.ppg = Math.round((p.points / Math.max(currentGW - 1, 1)) * 1.5 * 10) / 10;
+            result.total = Math.round(result.ep + result.form + result.fixture + result.home + result.xgi + result.minutes + result.ppg + result.doubtful);
+            return result;
+        }
+
+        // ── LINEUP WIZARD: Context Panel Rendering ──
+        function renderLWContextEmpty() {
+            return `<div class="lw-ctx-panel">
+                <div class="lw-ctx-empty">
+                    <div class="lw-ctx-empty-icon"><i data-lucide="mouse-pointer-click" style="width:32px;height:32px;"></i></div>
+                    <div style="font-weight:600;margin-bottom:4px;">Player Intel Panel</div>
+                    <div>Click any player to view deep stats & score breakdown.<br>Click two to compare side-by-side.</div>
+                </div>
+            </div>`;
+        }
+
+        function renderLWContextPanel() {
+            const sel = lineupState.selectedPlayers;
+            if (!sel || sel.length === 0) return renderLWContextEmpty();
+            if (sel.length === 1) return renderLWContextSingle(sel[0]);
+            return renderLWContextCompare(sel[0], sel[1]);
+        }
+
+        function renderLWContextSingle(playerId) {
+            const p = lineupState.squad.find(x => x.id === playerId);
+            if (!p) return renderLWContextEmpty();
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+            const detailed = computeQuickLineupScoreDetailed(p);
+            const ta = teamAnalysis[p.teamId];
+            const fx = p.fixtures || [];
+            const gamesPlayed = Math.max(currentGW - 1, 1);
+            const xGIPer90 = p.minutes > 0 ? ((p.xGI / p.minutes) * 90) : 0;
+            const mpg = (p.minutes || 0) / gamesPlayed;
+
+            // Score bar helper
+            function scoreBar(label, value, maxVal, color) {
+                const pct = Math.min(Math.max(Math.abs(value) / maxVal * 100, 0), 100);
+                const isNeg = value < 0;
+                return `<div class="lw-ctx-score-row">
+                    <div class="lw-ctx-score-label">${label}</div>
+                    <div class="lw-ctx-score-bar"><div class="lw-ctx-score-bar-fill" style="width:${pct}%;background:${isNeg ? 'var(--color-error)' : color};"></div></div>
+                    <div class="lw-ctx-score-val" style="color:${isNeg ? 'var(--color-error)' : value > 0 ? color : 'var(--text-muted)'}">${value > 0 ? '+' : ''}${value.toFixed(1)}</div>
+                </div>`;
+            }
+
+            let html = `<div class="lw-ctx-panel">`;
+            // Header
+            html += `<div class="lw-ctx-header">
+                <span style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</span>
+                <div class="lw-ctx-header-name">${p.web_name}</div>
+                <span style="font-size:11px;color:var(--text-muted);">${p.team} · £${p.price.toFixed(1)}m</span>
+                <button class="lw-ctx-header-close" onclick="lineupState.selectedPlayers=[];updateLWContextPanel();">✕</button>
+            </div>`;
+
+            html += `<div class="lw-ctx-body">`;
+
+            // AI Score Breakdown
+            html += `<div class="lw-ctx-section">`;
+            html += `<div class="lw-ctx-section-title"><i data-lucide="brain" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> AI Score Breakdown</div>`;
+            html += `<div style="text-align:center;margin-bottom:10px;"><span style="font-family:var(--font-mono);font-size:24px;font-weight:700;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.lwScore}</span><span style="font-size:11px;color:var(--text-muted);margin-left:4px;">pts</span></div>`;
+            html += scoreBar('Exp Pts', detailed.ep, 15, 'var(--color-info)');
+            html += scoreBar('Form', detailed.form, 15, '#A78BFA');
+            html += scoreBar('Fixture', detailed.fixture, 10, 'var(--color-success)');
+            html += scoreBar('Home', detailed.home, 2, '#F59E0B');
+            html += scoreBar('xGI/90', detailed.xgi, 10, '#EC4899');
+            html += scoreBar('Minutes', detailed.minutes, 5, '#06B6D4');
+            html += scoreBar('PPG', detailed.ppg, 10, '#8B5CF6');
+            if (detailed.doubtful !== 0) html += scoreBar('Doubtful', detailed.doubtful, 20, 'var(--color-error)');
+            html += `</div>`;
+
+            // Next 3 Fixtures
+            if (fx.length > 0) {
+                html += `<div class="lw-ctx-section">`;
+                html += `<div class="lw-ctx-section-title"><i data-lucide="calendar" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Next Fixtures</div>`;
+                html += `<div class="lw-ctx-fixtures-strip">`;
+                fx.slice(0, 3).forEach(f => {
+                    html += `<div class="lw-ctx-fixture-chip">
+                        <span class="fdr-dot fdr-${f.difficulty}"></span>
+                        <span>${f.opponent}</span>
+                        <span style="font-size:9px;color:var(--text-muted);">${f.isHome ? 'H' : 'A'}</span>
+                    </div>`;
+                });
+                html += `</div></div>`;
+            }
+
+            // Season Stats
+            html += `<div class="lw-ctx-section">`;
+            html += `<div class="lw-ctx-section-title"><i data-lucide="bar-chart-3" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Season Stats</div>`;
+            html += `<div class="lw-ctx-stat-grid">`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.form}</div><div class="lw-ctx-stat-box-label">Form</div></div>`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${(p.points / gamesPlayed).toFixed(1)}</div><div class="lw-ctx-stat-box-label">PPG</div></div>`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${xGIPer90.toFixed(2)}</div><div class="lw-ctx-stat-box-label">xGI/90</div></div>`;
+            if (p.pos >= 3) {
+                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.goals}</div><div class="lw-ctx-stat-box-label">Goals</div></div>`;
+                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.assists}</div><div class="lw-ctx-stat-box-label">Assists</div></div>`;
+            } else {
+                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.cleanSheets}</div><div class="lw-ctx-stat-box-label">CS</div></div>`;
+                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.pos === 1 ? p.saves : p.goals}</div><div class="lw-ctx-stat-box-label">${p.pos === 1 ? 'Saves' : 'Goals'}</div></div>`;
+            }
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${mpg.toFixed(0)}</div><div class="lw-ctx-stat-box-label">Min/G</div></div>`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.bonus}</div><div class="lw-ctx-stat-box-label">Bonus</div></div>`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.ictIndex.toFixed(0)}</div><div class="lw-ctx-stat-box-label">ICT</div></div>`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${(p.epNext || 0).toFixed(1)}</div><div class="lw-ctx-stat-box-label">EP Next</div></div>`;
+            html += `</div></div>`;
+
+            // Team Context
+            if (ta) {
+                html += `<div class="lw-ctx-section">`;
+                html += `<div class="lw-ctx-section-title"><i data-lucide="shield" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Team Context — ${p.team}</div>`;
+                function pw(v) { return v > 60 ? 'var(--color-success)' : v < 40 ? 'var(--color-error)' : 'var(--text-secondary)'; }
+                html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">`;
+                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val" style="color:${pw(ta.attackPower)}">${ta.attackPower}</div><div class="lw-ctx-stat-box-label">ATK</div></div>`;
+                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val" style="color:${pw(ta.defensePower)}">${ta.defensePower}</div><div class="lw-ctx-stat-box-label">DEF</div></div>`;
+                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val" style="color:${pw(ta.formRating)}">${ta.formRating}</div><div class="lw-ctx-stat-box-label">Form</div></div>`;
+                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val" style="color:${pw(ta.fixtureScore)}">${ta.fixtureScore}</div><div class="lw-ctx-stat-box-label">Fix</div></div>`;
+                html += `</div></div>`;
+            }
+
+            html += `</div></div>`;
+            return html;
+        }
+
+        function renderLWContextCompare(id1, id2) {
+            const p1 = lineupState.squad.find(x => x.id === id1);
+            const p2 = lineupState.squad.find(x => x.id === id2);
+            if (!p1 || !p2) return renderLWContextEmpty();
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+            const d1 = computeQuickLineupScoreDetailed(p1);
+            const d2 = computeQuickLineupScoreDetailed(p2);
+            const gp = Math.max(currentGW - 1, 1);
+
+            function cmpVal(v1, v2, higher) {
+                const b1 = higher ? v1 > v2 : v1 < v2;
+                const b2 = higher ? v2 > v1 : v2 < v1;
+                const eq = Math.abs(v1 - v2) < 0.01;
+                return { c1: eq ? '' : (b1 ? 'better' : 'worse'), c2: eq ? '' : (b2 ? 'better' : 'worse') };
+            }
+
+            function statRow(label, v1, v2, fmt, higherBetter) {
+                const s1 = typeof fmt === 'function' ? fmt(v1) : v1.toFixed(1);
+                const s2 = typeof fmt === 'function' ? fmt(v2) : v2.toFixed(1);
+                const { c1, c2 } = cmpVal(v1, v2, higherBetter !== false);
+                return `<div class="lw-ctx-compare-stat">
+                    <div class="lw-ctx-compare-stat-val ${c1}" style="text-align:right;">${s1}</div>
+                    <div class="lw-ctx-compare-stat-label">${label}</div>
+                    <div class="lw-ctx-compare-stat-val ${c2}" style="text-align:left;">${s2}</div>
+                </div>`;
+            }
+
+            let html = `<div class="lw-ctx-panel">`;
+            html += `<div class="lw-ctx-header" style="justify-content:space-between;">
+                <span style="font-weight:700;font-size:13px;">Side-by-Side Comparison</span>
+                <button class="lw-ctx-header-close" onclick="lineupState.selectedPlayers=[];updateLWContextPanel();">✕</button>
+            </div>`;
+
+            // Player headers
+            html += `<div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border-subtle);">`;
+            [p1, p2].forEach(p => {
+                html += `<div style="text-align:center;padding:10px 8px;${p === p1 ? 'border-right:1px solid var(--border-subtle);' : ''}">
+                    <span style="padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</span>
+                    <div style="font-weight:700;font-size:13px;margin-top:4px;">${p.web_name}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">${p.team} · £${p.price.toFixed(1)}m</div>
+                    <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;margin-top:4px;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.lwScore}</div>
+                </div>`;
+            });
+            html += `</div>`;
+
+            // Comparison stats
+            html += `<div style="padding:12px 16px;">`;
+            html += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">Key Metrics</div>`;
+            const int = v => Math.round(v).toString();
+            html += statRow('Form', parseFloat(p1.form), parseFloat(p2.form), v => v.toFixed(1));
+            html += statRow('PPG', p1.points / gp, p2.points / gp, v => v.toFixed(1));
+            html += statRow('EP Next', p1.epNext || 0, p2.epNext || 0, v => v.toFixed(1));
+            html += statRow('xGI/90', p1.minutes > 0 ? (p1.xGI/p1.minutes)*90 : 0, p2.minutes > 0 ? (p2.xGI/p2.minutes)*90 : 0, v => v.toFixed(2));
+            html += statRow('Min/G', (p1.minutes||0)/gp, (p2.minutes||0)/gp, int);
+            html += statRow('Bonus', p1.bonus, p2.bonus, int);
+            html += statRow('ICT', p1.ictIndex, p2.ictIndex, v => v.toFixed(0));
+
+            // Score factor comparison
+            html += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin:12px 0 6px;">Score Factors</div>`;
+            html += statRow('EP', d1.ep, d2.ep, v => v.toFixed(1));
+            html += statRow('Form', d1.form, d2.form, v => v.toFixed(1));
+            html += statRow('Fixture', d1.fixture, d2.fixture, v => v.toFixed(1));
+            html += statRow('xGI', d1.xgi, d2.xgi, v => v.toFixed(1));
+            html += statRow('PPG', d1.ppg, d2.ppg, v => v.toFixed(1));
+            html += `</div>`;
+
+            // Fixture strips
+            html += `<div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border-subtle);padding:12px 16px;">`;
+            [p1, p2].forEach((p, idx) => {
+                const pFx = p.fixtures || [];
+                html += `<div style="text-align:center;${idx === 0 ? 'border-right:1px solid var(--border-subtle);padding-right:8px;' : 'padding-left:8px;'}">
+                    <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Fixtures</div>
+                    <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">`;
+                pFx.slice(0, 3).forEach(f => {
+                    html += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:600;padding:2px 5px;border-radius:4px;background:var(--surface-2);"><span class="fdr-dot fdr-${f.difficulty}"></span>${f.opponent}</span>`;
+                });
+                html += `</div></div>`;
+            });
+            html += `</div>`;
+
+            html += `</div>`;
+            return html;
+        }
+
+        function updateLWContextPanel() {
+            const el = document.getElementById('lwContextPanel');
+            if (el) {
+                el.innerHTML = renderLWContextPanel();
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+            // Update row selection highlights
+            document.querySelectorAll('.lw-row').forEach(row => {
+                const pid = parseInt(row.dataset.playerId);
+                row.classList.toggle('lw-row-selected', lineupState.selectedPlayers.includes(pid));
+            });
+        }
+
+        // ── LINEUP WIZARD: Row Click Handler (separates view from swap) ──
+        function handleLWRowClick(playerId) {
+            // If in swap mode, delegate to swap handler
+            if (lineupState.swapSource) {
+                handleLWSwapClick(playerId);
+                return;
+            }
+            // Toggle selection for context panel (max 2)
+            const idx = lineupState.selectedPlayers.indexOf(playerId);
+            if (idx >= 0) {
+                lineupState.selectedPlayers.splice(idx, 1);
+            } else if (lineupState.selectedPlayers.length >= 2) {
+                lineupState.selectedPlayers.shift();
+                lineupState.selectedPlayers.push(playerId);
+            } else {
+                lineupState.selectedPlayers.push(playerId);
+            }
+            updateLWContextPanel();
+        }
+
+        function handleLWSwapBtnClick(playerId, event) {
+            event.stopPropagation();
+            handleLWSwapClick(playerId);
         }
 
         // ===== INITIALIZATION =====
