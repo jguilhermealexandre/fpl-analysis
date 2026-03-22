@@ -3,7 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Players | FPL Analysis</title>
+    <title>EasyFPL — Player Analysis</title>
+    <meta name="description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, fixture-difficulty ratings, and advanced stats for every Premier League player.">
+    <meta name="theme-color" content="#0a0f1a">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a0f1a'/><text x='50' y='72' font-size='65' font-family='Arial,sans-serif' font-weight='bold' fill='%2300DC82' text-anchor='middle'>e</text></svg>">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="EasyFPL">
+    <meta property="og:title" content="EasyFPL — Player Analysis">
+    <meta property="og:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
+    <meta property="og:url" content="https://easyfpl.com/fpl-players-analysis.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="EasyFPL — Player Analysis">
+    <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
@@ -5154,18 +5165,9 @@
                         ${top15Html || '<div class="no-players">No players with 2+ routes found</div>'}
                     </div>
                     <div class="routes-database-view">
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-                            <div class="routes-search-wrap" style="flex:1;min-width:180px;">
-                                <i data-lucide="search" class="search-icon" style="width:14px;height:14px;"></i>
-                                <input type="text" class="routes-search-input" placeholder="Search players..." oninput="filterRoutesDatabase(this.value)">
-                            </div>
-                            <div style="display:flex;gap:4px;">
-                                <button class="routes-pos-filter-pill pos-filter-pill active" onclick="switchRoutesPosition('All', this)">All</button>
-                                <button class="routes-pos-filter-pill pos-filter-pill" onclick="switchRoutesPosition('GK', this)">GK</button>
-                                <button class="routes-pos-filter-pill pos-filter-pill" onclick="switchRoutesPosition('DEF', this)">DEF</button>
-                                <button class="routes-pos-filter-pill pos-filter-pill" onclick="switchRoutesPosition('MID', this)">MID</button>
-                                <button class="routes-pos-filter-pill pos-filter-pill" onclick="switchRoutesPosition('FWD', this)">FWD</button>
-                            </div>
+                        <div class="routes-search-wrap">
+                            <i data-lucide="search" class="search-icon" style="width:14px;height:14px;"></i>
+                            <input type="text" class="routes-search-input" placeholder="Search players..." oninput="filterRoutesDatabase(this.value)">
                         </div>
                         <div class="routes-grid" id="routesDatabaseGrid">${dbHtml}</div>
                         <div class="routes-load-more-wrap" style="text-align:center;margin-top:16px;${hasMore ? '' : 'display:none;'}"><button class="routes-view-btn" style="background:var(--surface-2);border:1px solid var(--border-default);" onclick="loadMoreRoutes()">Load more</button></div>
@@ -5816,6 +5818,10 @@
             // Switch Rising panel
             document.querySelectorAll('[id^="rising-panel-"]').forEach(p => p.classList.remove('active'));
             document.getElementById('rising-panel-' + pos)?.classList.add('active');
+
+            // Re-filter Routes database view for this position
+            window._routesDbOffset = 30;
+            renderRoutesDatabaseView();
         }
 
         function switchRecTab(pos, btn) {
@@ -5828,23 +5834,14 @@
 
         // Routes view toggle: Top 15 Squad / Full Database
         window._routesDbOffset = 30;
-        window._currentRoutesPosFilter = 'All';
 
         function getFilteredRoutesPlayers() {
             if (!window._allRoutesPlayers) return [];
-            let players = window._allRoutesPlayers;
-            if (window._currentRoutesPosFilter !== 'All') {
-                players = players.filter(p => p.pos === window._currentRoutesPosFilter);
-            }
+            const pos = activeGlobalPosition;
+            let players = pos
+                ? window._allRoutesPlayers.filter(p => p.pos === pos)
+                : window._allRoutesPlayers;
             return players.sort((a, b) => b.compositeScore - a.compositeScore);
-        }
-
-        function switchRoutesPosition(pos, btn) {
-            window._currentRoutesPosFilter = pos;
-            window._routesDbOffset = 30;
-            document.querySelectorAll('.routes-pos-filter-pill').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
-            renderRoutesDatabaseView();
         }
 
         function renderRoutesDatabaseView() {
