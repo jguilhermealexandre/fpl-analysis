@@ -2912,6 +2912,8 @@
         window.teamXgData = {};      // Per-GW xG/xGC aggregated by team
         window.playerElements = [];  // Raw bootstrap elements (for season xG)
 
+        function escHTML(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+
         // Hash routing
         const HASH_TO_VIEW = { 'rankings': 'rankings', 'swings': 'swings', 'calendar': 'calendar', 'stats': 'stats', 'xg': 'xg' };
 
@@ -3714,8 +3716,8 @@
         function createTeamCard(team, rank, mode = 'form') {
             // Create FDR strip
             const fdrStrip = team.futureFixtures.slice(0, 5).map(f => `
-                <div class="fdr-badge fdr-${Math.round(f.fdr)}" title="${f.opponent} (${f.isHome ? 'H' : 'A'})">
-                    <span class="opp">${f.opponent}</span>
+                <div class="fdr-badge fdr-${Math.round(f.fdr)}" title="${escHTML(f.opponent)} (${f.isHome ? 'H' : 'A'})">
+                    <span class="opp">${escHTML(f.opponent)}</span>
                     <span class="venue">${f.isHome ? 'H' : 'A'}</span>
                 </div>
             `).join('');
@@ -3723,7 +3725,7 @@
             // Create form results (last 5 as W/D/L text)
             const formText = team.pastResults.slice(0, 5).map(r => {
                 const cls = r.result.toLowerCase() === 'w' ? 'win' : r.result.toLowerCase() === 'd' ? 'draw' : 'loss';
-                return `<span class="form-letter ${cls}" title="${r.opponent} ${r.score}">${r.result.toUpperCase()}</span>`;
+                return `<span class="form-letter ${cls}" title="${escHTML(r.opponent)} ${escHTML(r.score)}">${r.result.toUpperCase()}</span>`;
             }).join('');
 
             // Trend badge
@@ -3754,13 +3756,13 @@
             const highlightFORM = mode === 'form' ? ' highlight' : '';
 
             return `
-                <div class="team-card" data-team="${team.name}" onclick="openTeamReport(${team.id})">
+                <div class="team-card" data-team="${escHTML(team.name)}" onclick="openTeamReport(${team.id})">
                     <div class="card-header">
                         <div class="team-badge">
-                            <img src="${team.badgeUrl}" alt="${team.shortName}" onerror="this.style.display='none'">
+                            <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" onerror="this.style.display='none'">
                         </div>
                         <div class="team-info">
-                            <div class="team-name">${team.name}</div>
+                            <div class="team-name">${escHTML(team.name)}</div>
                             <div class="team-meta">
                                 <span><abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> ${team.avgFdr}</span>
                                 <span>•</span>
@@ -3858,9 +3860,9 @@
                                         return `
                                             <div class="swings-run-item" onclick="openEasyRunModal(${i})">
                                                 <span class="swings-run-rank" style="color: ${i < 3 ? 'var(--color-warning)' : 'var(--text-muted)'}">${i + 1}</span>
-                                                <img src="${run.badgeUrl}" alt="${run.teamShort}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                <img src="${run.badgeUrl}" alt="${escHTML(run.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
                                                 <div class="swings-run-info">
-                                                    <div class="swings-run-name">${run.teamName}</div>
+                                                    <div class="swings-run-name">${escHTML(run.teamName)}</div>
                                                     <div class="swings-run-detail">
                                                         <span>GW${run.startGW}–${run.endGW}</span>
                                                         <span>•</span>
@@ -3870,7 +3872,7 @@
                                                 </div>
                                                 <div class="swings-run-mini-fdr">
                                                     ${run.fixtures.slice(0, 7).map(f => `
-                                                        <div class="swings-mini-dot fdr-${Math.round(getEffectiveFdr(f))}">${f.opponent.slice(0,1)}</div>
+                                                        <div class="swings-mini-dot fdr-${Math.round(getEffectiveFdr(f))}">${escHTML(f.opponent.slice(0,1))}</div>
                                                     `).join('')}
                                                 </div>
                                                 <span class="swings-run-stat" style="color: ${tier.color}">${run.avgFdr}<span style="font-size:10px;font-weight:400;color:var(--text-muted)"> avg</span></span>
@@ -3897,9 +3899,9 @@
                                         '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
                                         improvingSwings.map((s, i) => `
                                             <div class="swings-run-item" onclick="openSwingModal(${i}, 'improving')">
-                                                <img src="${s.badgeUrl}" alt="${s.teamShort}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
                                                 <div class="swings-run-info">
-                                                    <div class="swings-run-name">${s.teamName}</div>
+                                                    <div class="swings-run-name">${escHTML(s.teamName)}</div>
                                                     <div class="swings-run-detail">
                                                         <span>Eases from GW${s.swingGW}</span>
                                                         <span>•</span>
@@ -3923,9 +3925,9 @@
                                         '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
                                         worseningSwings.map((s, i) => `
                                             <div class="swings-run-item" onclick="openSwingModal(${i}, 'worsening')">
-                                                <img src="${s.badgeUrl}" alt="${s.teamShort}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
                                                 <div class="swings-run-info">
-                                                    <div class="swings-run-name">${s.teamName}</div>
+                                                    <div class="swings-run-name">${escHTML(s.teamName)}</div>
                                                     <div class="swings-run-detail">
                                                         <span>Hardens from GW${s.swingGW}</span>
                                                         <span>•</span>
@@ -4000,8 +4002,8 @@
                     <tr>
                         <td class="team-cell">
                             <div class="calendar-team">
-                                <img src="${team.badgeUrl}" alt="${team.shortName}" class="calendar-team-badge" onerror="this.style.display='none'">
-                                <span class="calendar-team-name">${team.shortName}</span>
+                                <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="calendar-team-badge" onerror="this.style.display='none'">
+                                <span class="calendar-team-name">${escHTML(team.shortName)}</span>
                                 <span class="calendar-team-fdr ${avgClass}">${avgFdr.toFixed(1)}</span>
                             </div>
                         </td>
@@ -4378,8 +4380,8 @@
                     <tr>
                         <td class="team-cell">
                             <div class="calendar-team">
-                                <img src="${team.badgeUrl}" alt="${team.shortName}" class="calendar-team-badge" onerror="this.style.display='none'">
-                                <span class="calendar-team-name">${team.shortName}</span>
+                                <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="calendar-team-badge" onerror="this.style.display='none'">
+                                <span class="calendar-team-name">${escHTML(team.shortName)}</span>
                                 <span class="calendar-team-fdr ${avgClass}">${avgFdr.toFixed(1)}</span>
                             </div>
                         </td>
@@ -4418,7 +4420,7 @@
         function getFixtureTooltip(fixture, gw) {
             if (!fixture) return '';
             
-            const base = `GW${gw}: ${fixture.opponent} (${fixture.isHome ? 'H' : 'A'})`;
+            const base = `GW${gw}: ${escHTML(fixture.opponent)} (${fixture.isHome ? 'H' : 'A'})`;
             const fdr = `FDR: ${fixture.fdr}`;
             const atkFdr = `Att FDR: ${fixture.attackFdr || '?'}`;
             const defFdr = `Def FDR: ${fixture.defenseFdr || '?'}`;
@@ -4461,7 +4463,7 @@
             // Show CS% in cell if in CS mode
             const cellContent = calendarColorMode === 'cs' ? 
                 `<span class="cs-value">${f.csChance || '?'}%</span>${bttsIndicator}` :
-                `<span class="opp">${f.opponent}</span><span class="venue">${f.isHome ? 'H' : 'A'}</span>${bttsIndicator}`;
+                `<span class="opp">${escHTML(f.opponent)}</span><span class="venue">${f.isHome ? 'H' : 'A'}</span>${bttsIndicator}`;
 
             // Handle double gameweeks
             if (fixtures.length > 1) {
@@ -5210,8 +5212,8 @@
                         <td class="team-col">
                             <div class="stats-team">
                                 <span class="stats-rank">${rank}</span>
-                                <img src="${team.badgeUrl}" alt="${team.shortName}" class="stats-badge" onerror="this.style.display='none'">
-                                <span class="stats-team-name">${team.name}</span>
+                                <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="stats-badge" onerror="this.style.display='none'">
+                                <span class="stats-team-name">${escHTML(team.name)}</span>
                             </div>
                         </td>
                         ${cells}
@@ -5538,22 +5540,22 @@
                 quadrant = 'target';
                 quadrantLabel = '\u2714 Prime Target';
                 quadrantClass = 'target';
-                reportText = `<strong>${team.name}</strong> are currently prime FPL targets. They are dominating underlying metrics with a positive performance trend, and are entering a highly favorable run of fixtures (avg FDR ${fdrVal}). Investment in their key assets is highly recommended.`;
+                reportText = `<strong>${escHTML(team.name)}</strong> are currently prime FPL targets. They are dominating underlying metrics with a positive performance trend, and are entering a highly favorable run of fixtures (avg FDR ${fdrVal}). Investment in their key assets is highly recommended.`;
             } else if (goodForm && !goodFixtures) {
                 quadrant = 'monitor';
                 quadrantLabel = '\u23F3 Monitor';
                 quadrantClass = 'monitor';
-                reportText = `<strong>${team.name}</strong> boast strong underlying numbers \u2014 their xG metrics rank well above average. However, their upcoming fixture schedule is challenging (avg FDR ${fdrVal}). Hold existing assets but consider selling to fund moves elsewhere. Revisit once fixtures turn.`;
+                reportText = `<strong>${escHTML(team.name)}</strong> boast strong underlying numbers \u2014 their xG metrics rank well above average. However, their upcoming fixture schedule is challenging (avg FDR ${fdrVal}). Hold existing assets but consider selling to fund moves elsewhere. Revisit once fixtures turn.`;
             } else if (!goodForm && goodFixtures) {
                 quadrant = 'speculative';
                 quadrantLabel = '\u26A0 Speculative Buy';
                 quadrantClass = 'speculative';
-                reportText = `<strong>${team.name}</strong> have been underwhelming in recent underlying data, but their fixture schedule is about to soften significantly (avg FDR ${fdrVal}). This makes them a speculative buy \u2014 the easy games could catalyse a turnaround. Low-cost differentials from this squad could pay off.`;
+                reportText = `<strong>${escHTML(team.name)}</strong> have been underwhelming in recent underlying data, but their fixture schedule is about to soften significantly (avg FDR ${fdrVal}). This makes them a speculative buy \u2014 the easy games could catalyse a turnaround. Low-cost differentials from this squad could pay off.`;
             } else {
                 quadrant = 'avoid';
                 quadrantLabel = '\u2716 Avoid';
                 quadrantClass = 'avoid';
-                reportText = `<strong>${team.name}</strong> should be avoided right now. Their underlying metrics are poor and their upcoming fixtures offer no relief (avg FDR ${fdrVal}). Look to sell any assets from this squad and reinvest in teams with better profiles.`;
+                reportText = `<strong>${escHTML(team.name)}</strong> should be avoided right now. Their underlying metrics are poor and their upcoming fixtures offer no relief (avg FDR ${fdrVal}). Look to sell any assets from this squad and reinvest in teams with better profiles.`;
             }
 
             const xgClass = netXgVal > 0.2 ? 'good' : netXgVal < -0.2 ? 'bad' : 'warn';
@@ -5561,9 +5563,9 @@
 
             panel.innerHTML = `
                 <div class="scout-team-header">
-                    <img src="${team.badgeUrl}" alt="${team.shortName}" class="scout-badge" onerror="this.style.display='none'">
+                    <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="scout-badge" onerror="this.style.display='none'">
                     <div>
-                        <div class="scout-team-name">${team.name}</div>
+                        <div class="scout-team-name">${escHTML(team.name)}</div>
                         <div class="scout-team-sub">${team.wins}W ${team.draws}D ${team.losses}L \u00B7 Form Rating: ${team.formRating.toFixed(0)}</div>
                     </div>
                 </div>
@@ -5856,9 +5858,9 @@
             if (!team) return;
 
             const header = `
-                <img src="${team.badgeUrl}" alt="${team.shortName}" class="modal-header-badge" onerror="this.style.display='none'">
+                <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="modal-header-badge" onerror="this.style.display='none'">
                 <div class="modal-header-info">
-                    <div class="modal-title">${team.name}</div>
+                    <div class="modal-title">${escHTML(team.name)}</div>
                     <div class="modal-subtitle">${team.wins}W ${team.draws}D ${team.losses}L &nbsp;•&nbsp; Avg <abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> ${team.avgFdr}</div>
                 </div>
                 <button class="modal-close" onclick="closeModal()" aria-label="Close modal">✕</button>
@@ -5963,8 +5965,8 @@
                 const cls = r.result.toLowerCase();
                 return `<div class="report-form-item">
                     <div class="report-form-result ${cls}">${r.result.toUpperCase()}</div>
-                    <div class="report-form-opp">${r.opponent}</div>
-                    <div class="report-form-score">${r.score}</div>
+                    <div class="report-form-opp">${escHTML(r.opponent)}</div>
+                    <div class="report-form-score">${escHTML(r.score)}</div>
                 </div>`;
             }).join('');
 
@@ -5973,7 +5975,7 @@
                 const bg = getFdrColor(f.fdr);
                 const tc = getFdrTextColor(f.fdr);
                 return `<div class="report-fdr-match" style="background:${bg};color:${tc};">
-                    <span class="report-fdr-opp">${f.opponent}</span>
+                    <span class="report-fdr-opp">${escHTML(f.opponent)}</span>
                     <span class="report-fdr-venue">${f.isHome ? 'HOME' : 'AWAY'}</span>
                     ${f.csChance ? `<span class="report-fdr-cs">CS ${(f.csChance * 100).toFixed(0)}%</span>` : ''}
                 </div>`;
@@ -6039,9 +6041,9 @@
             const avgFdrClass = run.avgFdr <= 2.2 ? 'good' : run.avgFdr <= 2.7 ? 'info' : 'warn';
 
             const header = `
-                <img src="${run.badgeUrl}" alt="${run.teamShort}" class="modal-header-badge" onerror="this.style.display='none'">
+                <img src="${run.badgeUrl}" alt="${escHTML(run.teamShort)}" class="modal-header-badge" onerror="this.style.display='none'">
                 <div class="modal-header-info">
-                    <div class="modal-title">${run.teamName}</div>
+                    <div class="modal-title">${escHTML(run.teamName)}</div>
                     <div class="modal-subtitle" style="display:flex;align-items:center;gap:8px;">
                         <span>GW${run.startGW} → GW${run.endGW}</span>
                         <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: ${tier.bg}; color: ${tier.color}; font-weight: 700;">${tier.label}</span>
@@ -6115,7 +6117,7 @@
                             <div class="modal-fdr-row">
                                 <span class="modal-fdr-gw">GW${f.gw}</span>
                                 <div class="modal-fdr-dot fdr-${Math.round(effFdr)}" style="color: ${getFdrTextColor(effFdr)}">${Math.round(effFdr)}</div>
-                                <span class="modal-fdr-opp">${f.opponent}</span>
+                                <span class="modal-fdr-opp">${escHTML(f.opponent)}</span>
                                 <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
                                 <div class="modal-fdr-bar-container">
                                     <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${barColor};"></div>
@@ -6132,7 +6134,7 @@
                             const effFdr = getEffectiveFdr(f);
                             return `
                             <div style="flex: 1; height: ${24 + effFdr * 8}px; border-radius: var(--radius-sm); background: ${getFdrColor(effFdr)}; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px;">
-                                <span style="font-size: 8px; font-weight: 700; color: ${getFdrTextColor(effFdr)}">${f.opponent}</span>
+                                <span style="font-size: 8px; font-weight: 700; color: ${getFdrTextColor(effFdr)}">${escHTML(f.opponent)}</span>
                             </div>`;
                         }).join('')}
                     </div>
@@ -6147,7 +6149,7 @@
                         ${run.easyCount >= run.length * 0.7 ? `${run.easyCount} of ${run.length} fixtures are FDR ≤ 2 — this is a dominant green stretch. ` : ''}
                         ${run.hardCount > 0 ? `There ${run.hardCount === 1 ? 'is 1 tougher fixture' : `are ${run.hardCount} tougher fixtures`} mixed in, but the overall average is still strong. ` : 'No difficult fixtures (FDR ≥ 4) in this entire stretch. '}
                         ${run.homeCount >= Math.ceil(run.length * 0.6) ? 'Heavy home schedule adds extra attacking value. ' : ''}
-                        ${run.attackPower >= 60 ? `${run.teamName} have strong attacking output — their forwards and midfielders are premium targets here. ` : ''}
+                        ${run.attackPower >= 60 ? `${escHTML(run.teamName)} have strong attacking output — their forwards and midfielders are premium targets here. ` : ''}
                         ${run.defensePower >= 60 ? 'Solid defensive record too — their defenders offer clean sheet potential. ' : ''}
                         ${run.length >= 5 ? `At ${run.length} gameweeks, this patch is long enough to plan multiple transfers around. ` : ''}
                         ${run.formRating >= 60 ? 'Currently in good form, which adds confidence to this pick. ' : run.formRating < 35 ? 'Form is poor though — monitor whether they can turn it around before committing. ' : ''}
@@ -6169,9 +6171,9 @@
             const swingMag = Math.abs(s.swing).toFixed(1);
 
             const header = `
-                <img src="${s.badgeUrl}" alt="${s.teamShort}" class="modal-header-badge" onerror="this.style.display='none'">
+                <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="modal-header-badge" onerror="this.style.display='none'">
                 <div class="modal-header-info">
-                    <div class="modal-title">${s.teamName}</div>
+                    <div class="modal-title">${escHTML(s.teamName)}</div>
                     <div class="modal-subtitle">Fixture swing · ${swingLabel} from GW${s.swingGW}</div>
                 </div>
                 <button class="modal-close" onclick="closeModal()">✕</button>
@@ -6224,7 +6226,7 @@
                             <div class="modal-fdr-row">
                                 <span class="modal-fdr-gw">GW${f.gw}</span>
                                 <div class="modal-fdr-dot fdr-${Math.round(effFdr)}" style="color: ${getFdrTextColor(effFdr)}">${Math.round(effFdr)}</div>
-                                <span class="modal-fdr-opp">${f.opponent}</span>
+                                <span class="modal-fdr-opp">${escHTML(f.opponent)}</span>
                                 <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
                                 <div class="modal-fdr-bar-container">
                                     <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(effFdr)};"></div>
@@ -6243,7 +6245,7 @@
                             <div class="modal-fdr-row">
                                 <span class="modal-fdr-gw">GW${f.gw}</span>
                                 <div class="modal-fdr-dot fdr-${Math.round(effFdr)}" style="color: ${getFdrTextColor(effFdr)}">${Math.round(effFdr)}</div>
-                                <span class="modal-fdr-opp">${f.opponent}</span>
+                                <span class="modal-fdr-opp">${escHTML(f.opponent)}</span>
                                 <span class="modal-fdr-venue ${f.isHome ? 'home' : 'away'}">${f.isHome ? 'HOME' : 'AWAY'}</span>
                                 <div class="modal-fdr-bar-container">
                                     <div class="modal-fdr-bar" style="width: ${barWidth}%; background: ${getFdrColor(effFdr)};"></div>
@@ -6270,7 +6272,7 @@
                         <div style="display: flex; gap: 2px;">
                             ${s.allFutureFixtures.map((f, i) => `
                                 <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 700; background: ${getFdrColor(getEffectiveFdr(f))}; color: ${getFdrTextColor(getEffectiveFdr(f))}; ${i === 4 ? 'border-left: 2px solid var(--surface-1); border-right: 2px solid var(--surface-1);' : ''}">
-                                    ${f.opponent}
+                                    ${escHTML(f.opponent)}
                                 </div>
                             `).join('')}
                         </div>
@@ -6281,13 +6283,13 @@
                     <div class="modal-section-title">FPL Insight</div>
                     <div style="background: var(--surface-0); border-radius: var(--radius-md); padding: var(--space-3); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
                         ${isImproving ? 
-                            `<strong style="color: var(--color-success)">${s.teamName}'s fixtures ease significantly from GW${s.swingGW}.</strong> ` +
+                            `<strong style="color: var(--color-success)">${escHTML(s.teamName)}'s fixtures ease significantly from GW${s.swingGW}.</strong> ` +
                             `Average FDR drops from ${s.currentFdr} to ${s.futureFdr}. ` +
                             (parseFloat(s.futureFdr) <= 2.5 ? 'The upcoming run looks very favourable — consider bringing in their assets ahead of the swing. ' : 'Worth monitoring for transfer planning. ') +
                             (s.homeCountNext >= 2 ? `${s.homeCountNext} of the next 3 are at home, adding further value. ` : '') +
                             (s.attackPower >= 55 ? 'Their attacking numbers support investment in forwards/midfielders. ' : '')
                         :
-                            `<strong style="color: var(--color-error)">${s.teamName}'s fixtures get considerably harder from GW${s.swingGW}.</strong> ` +
+                            `<strong style="color: var(--color-error)">${escHTML(s.teamName)}'s fixtures get considerably harder from GW${s.swingGW}.</strong> ` +
                             `Average FDR rises from ${s.currentFdr} to ${s.futureFdr}. ` +
                             (parseFloat(s.futureFdr) >= 4.0 ? 'This is a tough run — strongly consider selling their assets before the swing hits. ' : 'Keep an eye on this and prepare alternatives. ') +
                             (s.homeCountNext <= 1 ? 'Heavy away schedule makes it even tougher. ' : '') +
@@ -6338,9 +6340,9 @@
                         ${top5.map((team, i) => `
                             <div class="analysis-team-item">
                                 <span style="font-size: 12px; font-weight: 700; color: ${i < 3 ? 'var(--color-warning)' : 'var(--text-muted)'}; width: 20px;">${i + 1}</span>
-                                <img src="${team.badgeUrl}" alt="${team.shortName}" class="analysis-team-badge" onerror="this.style.display='none'">
+                                <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="analysis-team-badge" onerror="this.style.display='none'">
                                 <div class="analysis-team-info">
-                                    <div class="analysis-team-name">${team.name}</div>
+                                    <div class="analysis-team-name">${escHTML(team.name)}</div>
                                     <div class="analysis-team-detail">${team.homeCount} home games</div>
                                 </div>
                                 <span class="analysis-team-stat good">${team.avgFdr.toFixed(1)}</span>
@@ -6351,9 +6353,9 @@
             `;
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.577.0"></script>
     <script>
         lucide.createIcons();
     </script>

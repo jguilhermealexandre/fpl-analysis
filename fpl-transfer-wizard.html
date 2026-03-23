@@ -610,6 +610,7 @@
     }
     function updateStatus(msg, type='info') { const el=document.getElementById('status'); el.textContent=msg; el.className='status '+type; }
     function showLoading(show, text) { document.getElementById('loadingOverlay').classList.toggle('show', show); if(text) document.getElementById('loadingText').textContent=text; }
+    function escHTML(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
 
     // ===== DATA LOADING =====
     async function loadAllData() {
@@ -1595,9 +1596,9 @@
                 html += `<div class="tw-player-card ${statusCls} ${isSel ? 'selected' : ''}" onclick="toggleSell(${p.id})">
                     <div class="tw-check">${isSel ? '✓' : ''}</div>
                     <div class="tw-player-info">
-                        <div class="tw-player-name">${p.name}</div>
-                        <div class="tw-player-meta"><span>${p.team}</span><span>£${p.price.toFixed(1)}m</span><span>Form ${p.form}</span></div>
-                        <div class="tw-player-badges">${p.twData.flags.map(f => `<span class="tw-badge ${f.cls}">${f.text}</span>`).join('')}</div>
+                        <div class="tw-player-name">${escHTML(p.name)}</div>
+                        <div class="tw-player-meta"><span>${escHTML(p.team)}</span><span>£${p.price.toFixed(1)}m</span><span>Form ${p.form}</span></div>
+                        <div class="tw-player-badges">${p.twData.flags.map(f => `<span class="tw-badge ${f.cls}">${escHTML(f.text)}</span>`).join('')}</div>
                     </div>
                     <div class="tw-player-stats"><div class="tw-stat"><div class="tw-stat-val">${ppg}</div><div class="tw-stat-label">PPG</div></div></div>
                 </div>`;
@@ -1642,7 +1643,7 @@
             const ppg = (p.totalPoints / Math.max(currentGW - 1, 1)).toFixed(1);
             const isSell = transferSellList.includes(p.id);
             const rowCls = isSell ? 'style="background:rgba(248,113,113,0.08);"' : p.onBench ? 'style="opacity:0.6;"' : '';
-            html += `<tr ${rowCls}><td style="font-weight:600;white-space:nowrap;">${isSell ? '<i data-lucide="x-circle" style="width:12px;height:12px;display:inline-block;vertical-align:middle;color:var(--color-error);"></i> ' : ''}${p.name} <span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></td>`;
+            html += `<tr ${rowCls}><td style="font-weight:600;white-space:nowrap;">${isSell ? '<i data-lucide="x-circle" style="width:12px;height:12px;display:inline-block;vertical-align:middle;color:var(--color-error);"></i> ' : ''}${escHTML(p.name)} <span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></td>`;
             html += `<td class="num" style="color:${p.form >= 5 ? 'var(--color-success)' : p.form < 3 ? 'var(--color-error)' : 'var(--text-primary)'};">${p.form}</td>`;
             html += `<td class="num">${ppg}</td>`;
 
@@ -1653,7 +1654,7 @@
                 if (gwFx.length > 0) {
                     html += '<td class="num">';
                     gwFx.forEach(f => {
-                        html += `<span class="fixture-chip fdr-${f.difficulty}" style="font-size:9px;">${f.opponent}(${f.isHome ? 'H' : 'A'})</span> `;
+                        html += `<span class="fixture-chip fdr-${f.difficulty}" style="font-size:9px;">${escHTML(f.opponent)}(${f.isHome ? 'H' : 'A'})</span> `;
                         fdrSum += f.difficulty; fdrCount++;
                     });
                     html += '</td>';
@@ -1683,14 +1684,14 @@
                 html += '<div style="margin-bottom:8px;">';
                 rising.forEach(p => {
                     const delta = ((p.l3Stats.points / p.l3Stats.games) - (p.l5Stats.points / p.l5Stats.games)).toFixed(1);
-                    html += `<div class="insight-box positive"><div class="insight-title">${p.name} <i data-lucide="trending-up" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i></div><div class="insight-text">+${delta} ppg trend — keep!</div></div>`;
+                    html += `<div class="insight-box positive"><div class="insight-title">${escHTML(p.name)} <i data-lucide="trending-up" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i></div><div class="insight-text">+${delta} ppg trend — keep!</div></div>`;
                 });
                 html += '</div>';
             }
             if (falling.length > 0) {
                 falling.forEach(p => {
                     const delta = ((p.l3Stats.points / p.l3Stats.games) - (p.l5Stats.points / p.l5Stats.games)).toFixed(1);
-                    html += `<div class="insight-box warning"><div class="insight-title">${p.name} <i data-lucide="trending-down" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i></div><div class="insight-text">${delta} ppg trend — consider selling</div></div>`;
+                    html += `<div class="insight-box warning"><div class="insight-title">${escHTML(p.name)} <i data-lucide="trending-down" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i></div><div class="insight-text">${delta} ppg trend — consider selling</div></div>`;
                 });
             }
             html += '</div>';
@@ -1703,9 +1704,9 @@
             const fx = (p.fixtures || []).slice(0, 3);
             html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 12px;${i > 0 ? 'border-top:1px solid var(--border-subtle);' : ''}">
                 <span style="font-size:16px;">${i === 0 ? '<i data-lucide="crown" style="width:16px;height:16px;display:inline-block;vertical-align:middle;color:var(--color-captain);"></i>' : i === 1 ? '<i data-lucide="award" style="width:16px;height:16px;display:inline-block;vertical-align:middle;color:#9CA3AF;"></i>' : '<i data-lucide="award" style="width:16px;height:16px;display:inline-block;vertical-align:middle;color:#CD7F32;"></i>'}</span>
-                <span style="font-weight:600;flex:1;">${p.name}</span>
+                <span style="font-weight:600;flex:1;">${escHTML(p.name)}</span>
                 <span class="tw-stat"><span class="tw-stat-val">${p.form}</span><span class="tw-stat-label"> Form</span></span>
-                <div class="fixture-strip">${fx.map(f => `<span class="fixture-chip fdr-${f.difficulty}" style="font-size:9px;">${f.opponent}</span>`).join('')}</div>
+                <div class="fixture-strip">${fx.map(f => `<span class="fixture-chip fdr-${f.difficulty}" style="font-size:9px;">${escHTML(f.opponent)}</span>`).join('')}</div>
             </div>`;
         });
         html += '</div>';
@@ -1735,10 +1736,10 @@
             html += `<div class="tw-slot">
                 <div class="tw-slot-header">
                     <span class="pos-badge ${POS_CONFIG[seller.pos].cls}">${seller.posName}</span>
-                    <span style="font-weight:600;color:var(--color-error);">OUT: ${seller.name}</span>
+                    <span style="font-weight:600;color:var(--color-error);">OUT: ${escHTML(seller.name)}</span>
                     <span style="font-size:12px;color:var(--text-muted);">£${seller.price.toFixed(1)}m</span>
                     <span style="margin-left:auto;font-size:12px;color:var(--text-secondary);">Budget: <strong style="color:var(--color-success);">£${budget.toFixed(1)}m</strong></span>
-                    ${lockedId ? `<span class="tw-slot-locked">✓ ${allPlayersById[lockedId]?.name || 'Locked'}</span>` : ''}
+                    ${lockedId ? `<span class="tw-slot-locked">✓ ${escHTML(allPlayersById[lockedId]?.name || 'Locked')}</span>` : ''}
                 </div>`;
 
             if (candidates.length > 0) {
@@ -1749,8 +1750,8 @@
                     html += `<div class="tw-replacement ${isLocked ? 'locked' : ''}" onclick="lockTarget(${sellId}, ${c.id})">
                         <div class="tw-replacement-rank">${i + 1}</div>
                         <div class="tw-player-info" style="flex:1;">
-                            <div class="tw-player-name">${c.name}</div>
-                            <div class="tw-player-meta"><span>${c.team}</span><span>£${c.price.toFixed(1)}m</span><span>${c.ownership.toFixed(0)}% owned</span></div>
+                            <div class="tw-player-name">${escHTML(c.name)}</div>
+                            <div class="tw-player-meta"><span>${escHTML(c.team)}</span><span>£${c.price.toFixed(1)}m</span><span>${c.ownership.toFixed(0)}% owned</span></div>
                             <div class="tw-player-badges">
                                 ${c.isCaptainPick ? '<span class="tw-badge captain-pick">Captain pick</span>' : ''}
                                 ${c.penOrder === 1 ? '<span class="tw-badge set-piece">Pen taker</span>' : ''}
@@ -1762,7 +1763,7 @@
                             <div class="tw-stat"><div class="tw-stat-val">${ppg}</div><div class="tw-stat-label">PPG</div></div>
                             <div class="tw-stat"><div class="tw-stat-val" style="color:${c.avgFdr <= 2.5 ? 'var(--color-success)' : c.avgFdr >= 3.8 ? 'var(--color-error)' : 'var(--text-primary)'};">${c.avgFdr.toFixed(1)}</div><div class="tw-stat-label">FDR</div></div>
                         </div>
-                        <div class="fixture-strip">${fx.map(f => `<span class="fixture-chip fdr-${f.difficulty}" style="font-size:9px;">${f.opponent}</span>`).join('')}</div>
+                        <div class="fixture-strip">${fx.map(f => `<span class="fixture-chip fdr-${f.difficulty}" style="font-size:9px;">${escHTML(f.opponent)}</span>`).join('')}</div>
                         <button class="tw-lock-btn ${isLocked ? 'locked' : ''}" onclick="event.stopPropagation();lockTarget(${sellId}, ${c.id})">${isLocked ? '✓ Locked' : 'Lock'}</button>
                     </div>`;
                 });
@@ -1790,9 +1791,9 @@
                 if (!seller || !buyer) return;
                 const ppgDelta = ((buyer.totalPoints / Math.max(currentGW - 1, 1)) - (seller.totalPoints / Math.max(currentGW - 1, 1)));
                 html += `<div class="tw-advisor-row">
-                    <span class="out-name">${seller.name} (${seller.team})</span>
+                    <span class="out-name">${escHTML(seller.name)} (${escHTML(seller.team)})</span>
                     <span class="tw-advisor-arrow">→</span>
-                    <span class="in-name">${buyer.name} (${buyer.team})</span>
+                    <span class="in-name">${escHTML(buyer.name)} (${escHTML(buyer.team)})</span>
                     <span class="tw-points-delta ${ppgDelta >= 0 ? 'positive' : 'negative'}">${ppgDelta >= 0 ? '+' : ''}${ppgDelta.toFixed(1)} ppg</span>
                 </div>`;
             });
@@ -1834,10 +1835,10 @@
         if (bgwPlayers.length > 0 || dgwPlayers.length > 0) {
             html += '<div class="tw-summary-card"><div class="tw-summary-header"><i data-lucide="calendar" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> BGW/DGW Outlook (GW${currentGW + 1})</div>';
             if (dgwPlayers.length > 0) {
-                html += `<div class="insight-box positive"><div class="insight-title"><i data-lucide="crosshair" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> ${dgwPlayers.length} player${dgwPlayers.length > 1 ? 's' : ''} with DGW next week</div><div class="insight-text">${dgwPlayers.map(p => p.name).join(', ')}</div></div>`;
+                html += `<div class="insight-box positive"><div class="insight-title"><i data-lucide="crosshair" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> ${dgwPlayers.length} player${dgwPlayers.length > 1 ? 's' : ''} with DGW next week</div><div class="insight-text">${dgwPlayers.map(p => escHTML(p.name)).join(', ')}</div></div>`;
             }
             if (bgwPlayers.length > 0) {
-                html += `<div class="insight-box warning"><div class="insight-title"><i data-lucide="ban" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> ${bgwPlayers.length} player${bgwPlayers.length > 1 ? 's' : ''} potentially blanking next week</div><div class="insight-text">${bgwPlayers.map(p => p.name).join(', ')}</div></div>`;
+                html += `<div class="insight-box warning"><div class="insight-title"><i data-lucide="ban" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> ${bgwPlayers.length} player${bgwPlayers.length > 1 ? 's' : ''} potentially blanking next week</div><div class="insight-text">${bgwPlayers.map(p => escHTML(p.name)).join(', ')}</div></div>`;
             }
             html += '</div>';
         }
@@ -1897,8 +1898,8 @@
                 }
                 const secVal=isDef?(csProb!=='-'?csProb+'%':'-'):(p.bps/Math.max(currentGW-1,1)).toFixed(0);
                 const rc=inXI?'in-squad':'on-bench';
-                const topR=p.lineupData.reasons.slice(0,2).map(r=>`<span class="captain-reason ${r.type}">${r.text}</span>`).join(' ');
-                html+=`<tr class="${rc}"><td style="font-weight:600;white-space:nowrap;">${st}${inXI?'<i data-lucide="circle-dot" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> ':''}${p.name}${p.id===captainId?' ©':p.id===viceCaptainId?' (VC)':''}</td><td style="color:var(--text-secondary);">${p.team}</td><td class="num" style="color:${p.form>=5?'var(--color-success)':p.form<3?'var(--color-error)':'var(--text-primary)'}">${p.form}</td><td class="num" style="color:${xStatColor}">${xStatVal}</td><td class="num">${secVal}</td><td class="num">${ppg}</td><td>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${fx.opponent}(${fx.isHome?'H':'A'})</span>`:'-'}</td><td class="num"><span class="pitch-score ${sc}">${p.lineupData.score}</span></td><td style="font-size:11px;">${topR}</td></tr>`;
+                const topR=p.lineupData.reasons.slice(0,2).map(r=>`<span class="captain-reason ${r.type}">${escHTML(r.text)}</span>`).join(' ');
+                html+=`<tr class="${rc}"><td style="font-weight:600;white-space:nowrap;">${st}${inXI?'<i data-lucide="circle-dot" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> ':''}${escHTML(p.name)}${p.id===captainId?' ©':p.id===viceCaptainId?' (VC)':''}</td><td style="color:var(--text-secondary);">${escHTML(p.team)}</td><td class="num" style="color:${p.form>=5?'var(--color-success)':p.form<3?'var(--color-error)':'var(--text-primary)'}">${p.form}</td><td class="num" style="color:${xStatColor}">${xStatVal}</td><td class="num">${secVal}</td><td class="num">${ppg}</td><td>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${escHTML(fx.opponent)}(${fx.isHome?'H':'A'})</span>`:'-'}</td><td class="num"><span class="pitch-score ${sc}">${p.lineupData.score}</span></td><td style="font-size:11px;">${topR}</td></tr>`;
             });
             html+=`</tbody></table></div></div>`;
         });
@@ -1955,7 +1956,7 @@
             const cc=p.id===captainId?'captain':p.id===viceCaptainId?'vice':'';
             const cls=[bench?'bench-player':'',cc,isSel?'swap-selected':'',isTgt?'swap-target':''].filter(Boolean).join(' ');
             const fx=p.fixtures?.[0];
-            return `<div class="pitch-player ${cls}" onclick="handleSwapClick(${p.id})" title="${p.name} · Score ${p.lineupData.score} · Form ${p.form}${fx?' · vs '+fx.opponent:''}"><div class="pitch-shirt ${POS_CONFIG[p.pos].cls}">${POS_CONFIG[p.pos].icon}${cb}</div><div class="pitch-name">${p.name}</div><div class="pitch-score ${sc}">${p.lineupData.score}</div></div>`;
+            return `<div class="pitch-player ${cls}" onclick="handleSwapClick(${p.id})" title="${escHTML(p.name)} · Score ${p.lineupData.score} · Form ${p.form}${fx?' · vs '+escHTML(fx.opponent):''}"><div class="pitch-shirt ${POS_CONFIG[p.pos].cls}">${POS_CONFIG[p.pos].icon}${cb}</div><div class="pitch-name">${escHTML(p.name)}</div><div class="pitch-score ${sc}">${p.lineupData.score}</div></div>`;
         }
 
         const bp=recommendedBench.slice(0,4);
@@ -1963,8 +1964,8 @@
         if(selP){
             const fx=selP.fixtures?.[0];
             const isInXI=recommendedXI.some(p=>p.id===selP.id);
-            const fxInfo=fx?`vs ${fx.opponent}(${fx.isHome?'H':'A'}) FDR ${fx.difficulty}`:'';
-            swapBar=`<div class="swap-bar"><span class="pos-badge ${POS_CONFIG[selP.pos].cls}">${selP.posName}</span><strong>${selP.name}</strong><span class="swap-stat">Score ${selP.lineupData.score}</span><span class="swap-stat">Form ${selP.form}</span>${fxInfo?`<span class="swap-stat">${fxInfo}</span>`:''}<span style="color:var(--text-muted);">→ tap a ${isInXI?'bench':'starting'} player to swap</span></div>`;
+            const fxInfo=fx?`vs ${escHTML(fx.opponent)}(${fx.isHome?'H':'A'}) FDR ${fx.difficulty}`:'';
+            swapBar=`<div class="swap-bar"><span class="pos-badge ${POS_CONFIG[selP.pos].cls}">${selP.posName}</span><strong>${escHTML(selP.name)}</strong><span class="swap-stat">Score ${selP.lineupData.score}</span><span class="swap-stat">Form ${selP.form}</span>${fxInfo?`<span class="swap-stat">${fxInfo}</span>`:''}<span style="color:var(--text-muted);">→ tap a ${isInXI?'bench':'starting'} player to swap</span></div>`;
         }
 
         let html=`
@@ -1990,7 +1991,7 @@
 
         let html=`
             <div class="panel-header"><div class="panel-title"><i data-lucide="crown" style="width:18px;height:18px;display:inline;color:var(--color-captain);"></i> Captain & Vice Captain</div><div class="panel-desc">Ranked by expected output using xGI, fixture difficulty, opponent weakness, bonus history, and form.</div></div>
-            <div class="auto-banner"><div class="auto-banner-icon"><i data-lucide="crown" style="width:24px;height:24px;color:var(--color-captain);"></i></div><div class="auto-banner-text"><div class="auto-banner-title">Recommended: ${candidates[0]?.name||'-'} (C), ${candidates[1]?.name||'-'} (VC)</div><div class="auto-banner-desc">Based on expected points, fixture quality, and opponent defensive weakness</div></div></div>
+            <div class="auto-banner"><div class="auto-banner-icon"><i data-lucide="crown" style="width:24px;height:24px;color:var(--color-captain);"></i></div><div class="auto-banner-text"><div class="auto-banner-title">Recommended: ${escHTML(candidates[0]?.name||'-')} (C), ${escHTML(candidates[1]?.name||'-')} (VC)</div><div class="auto-banner-desc">Based on expected points, fixture quality, and opponent defensive weakness</div></div></div>
             <div class="captain-grid">`;
 
         candidates.forEach((p,i)=>{
@@ -2002,14 +2003,14 @@
             const isC=p.id===captainId, isVC=p.id===viceCaptainId;
             html+=`<div class="captain-card ${isC?'selected':isVC?'vc-selected':''}" id="capCard-${p.id}">
                 <div class="captain-rank ${rk}">${i+1}</div>
-                <div class="captain-top"><div class="captain-icon pitch-shirt ${POS_CONFIG[p.pos].cls}" style="width:36px;height:36px;font-size:16px;">${POS_CONFIG[p.pos].icon}</div><div><div class="captain-name">${p.name}</div><div class="captain-meta">${p.team} • ${p.posName} • £${p.price.toFixed(1)}m • ${p.ownership.toFixed(0)}% owned</div></div></div>
+                <div class="captain-top"><div class="captain-icon pitch-shirt ${POS_CONFIG[p.pos].cls}" style="width:36px;height:36px;font-size:16px;">${POS_CONFIG[p.pos].icon}</div><div><div class="captain-name">${escHTML(p.name)}</div><div class="captain-meta">${escHTML(p.team)} • ${p.posName} • £${p.price.toFixed(1)}m • ${p.ownership.toFixed(0)}% owned</div></div></div>
                 <div class="captain-metrics">
                     <div class="captain-metric"><div class="captain-metric-value val-good">${p.form}</div><div class="captain-metric-label">Form</div></div>
                     <div class="captain-metric"><div class="captain-metric-value" style="color:var(--color-info);">${xgi90}</div><div class="captain-metric-label">xGI/90</div></div>
                     <div class="captain-metric"><div class="captain-metric-value">${ppg}</div><div class="captain-metric-label">Pts/G</div></div>
                     <div class="captain-metric"><div class="captain-metric-value" style="color:var(--color-warning);">${fx?fx.difficulty:'-'}</div><div class="captain-metric-label">FDR</div></div>
                 </div>
-                <div class="captain-reasons">${p.captainData.reasons.map(r=>`<span class="captain-reason ${r.type}">${r.text}</span>`).join('')}</div>
+                <div class="captain-reasons">${p.captainData.reasons.map(r=>`<span class="captain-reason ${r.type}">${escHTML(r.text)}</span>`).join('')}</div>
                 <div class="captain-btns"><button class="captain-btn ${isC?'c-active':''}" onclick="setCaptain(${p.id})"><i data-lucide="crown" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Captain</button><button class="captain-btn ${isVC?'vc-active':''}" onclick="setViceCaptain(${p.id})"><i data-lucide="award" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Vice</button></div>
                 <div class="captain-score-bar" style="width:${bw}%;"></div>
             </div>`;
@@ -2043,22 +2044,22 @@
                     <div class="summary-stat"><div class="summary-stat-value val-good">${easyFx}</div><div class="summary-stat-label">Easy Fixtures</div></div>
                     <div class="summary-stat"><div class="summary-stat-value val-bad">${hardFx}</div><div class="summary-stat-label">Hard Fixtures</div></div>
                 </div>
-                <div class="summary-captain-row"><div style="font-size:28px;"><i data-lucide="crown" style="width:28px;height:28px;color:var(--color-captain);"></i></div><div style="flex:1;"><div style="font-size:11px;font-weight:600;color:var(--color-captain);text-transform:uppercase;letter-spacing:0.5px;">Captain</div><div style="font-size:16px;font-weight:700;">${captain?.name||'-'}</div><div style="font-size:12px;color:var(--text-secondary);">${captain?.team||''} • ${captain?.posName||''} • Form: ${captain?.form||'-'} • Score: ${captain?.captainData?.score||'-'}</div></div></div>
-                <div class="summary-vc-row"><div style="font-size:22px;"><i data-lucide="award" style="width:22px;height:22px;color:#9CA3AF;"></i></div><div style="flex:1;"><div style="font-size:11px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;">Vice Captain</div><div style="font-size:14px;font-weight:600;">${vc?.name||'-'}</div><div style="font-size:12px;color:var(--text-secondary);">${vc?.team||''} • ${vc?.posName||''}</div></div></div>
+                <div class="summary-captain-row"><div style="font-size:28px;"><i data-lucide="crown" style="width:28px;height:28px;color:var(--color-captain);"></i></div><div style="flex:1;"><div style="font-size:11px;font-weight:600;color:var(--color-captain);text-transform:uppercase;letter-spacing:0.5px;">Captain</div><div style="font-size:16px;font-weight:700;">${escHTML(captain?.name||'-')}</div><div style="font-size:12px;color:var(--text-secondary);">${escHTML(captain?.team||'')} • ${captain?.posName||''} • Form: ${captain?.form||'-'} • Score: ${captain?.captainData?.score||'-'}</div></div></div>
+                <div class="summary-vc-row"><div style="font-size:22px;"><i data-lucide="award" style="width:22px;height:22px;color:#9CA3AF;"></i></div><div style="flex:1;"><div style="font-size:11px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;">Vice Captain</div><div style="font-size:14px;font-weight:600;">${escHTML(vc?.name||'-')}</div><div style="font-size:12px;color:var(--text-secondary);">${escHTML(vc?.team||'')} • ${vc?.posName||''}</div></div></div>
                 <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">Starting XI</div>
                 <div class="summary-player-list">`;
 
         [1,2,3,4].forEach(pos=>{
             recommendedXI.filter(p=>p.pos===pos).sort((a,b)=>b.lineupData.score-a.lineupData.score).forEach(p=>{
                 const fx=p.fixtures?.[0]; const ci=p.id===captainId?' <i data-lucide="crown" style="width:12px;height:12px;display:inline;color:var(--color-captain);"></i>':p.id===viceCaptainId?' <i data-lucide="award" style="width:12px;height:12px;display:inline;color:#9CA3AF;"></i>':'';
-                html+=`<div class="summary-player"><div class="summary-player-pos"><span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></div><div class="summary-player-name">${p.name}${ci}</div><div class="summary-player-team">${p.team}</div><div>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${fx.opponent}(${fx.isHome?'H':'A'})</span>`:'-'}</div><div class="summary-player-score pitch-score ${p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low'}">${p.lineupData.score}</div></div>`;
+                html+=`<div class="summary-player"><div class="summary-player-pos"><span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></div><div class="summary-player-name">${escHTML(p.name)}${ci}</div><div class="summary-player-team">${escHTML(p.team)}</div><div>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${escHTML(fx.opponent)}(${fx.isHome?'H':'A'})</span>`:'-'}</div><div class="summary-player-score pitch-score ${p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low'}">${p.lineupData.score}</div></div>`;
             });
         });
 
         html+=`</div><div style="font-size:13px;font-weight:600;margin:16px 0 8px;color:var(--text-muted);">Bench (auto-sub order)</div><div class="summary-player-list">`;
         recommendedBench.slice(0,4).forEach((p,i)=>{
             const fx=p.fixtures?.[0];
-            html+=`<div class="summary-player" style="opacity:0.6;"><div class="summary-player-pos"><span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></div><div class="summary-player-name">${i+1}. ${p.name}</div><div class="summary-player-team">${p.team}</div><div>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${fx.opponent}(${fx.isHome?'H':'A'})</span>`:'-'}</div><div class="summary-player-score pitch-score ${p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low'}">${p.lineupData.score}</div></div>`;
+            html+=`<div class="summary-player" style="opacity:0.6;"><div class="summary-player-pos"><span class="pos-badge ${POS_CONFIG[p.pos].cls}">${p.posName}</span></div><div class="summary-player-name">${i+1}. ${escHTML(p.name)}</div><div class="summary-player-team">${escHTML(p.team)}</div><div>${fx?`<span class="fixture-chip fdr-${fx.difficulty}">${escHTML(fx.opponent)}(${fx.isHome?'H':'A'})</span>`:'-'}</div><div class="summary-player-score pitch-score ${p.lineupData.score>=40?'high':p.lineupData.score>=15?'mid':'low'}">${p.lineupData.score}</div></div>`;
         });
 
         html+=`</div></div><div style="text-align:center;margin-top:20px;"><button class="btn btn-primary" style="padding:12px 32px;font-size:14px;" onclick="window.open('https://fantasy.premierleague.com/my-team','_blank')">Apply on FPL →</button></div>${wizardNav('Captain', null, null)}`;
@@ -2092,7 +2093,7 @@
     document.getElementById('navTeamIdInput').addEventListener('keypress',e=>{if(e.key==='Enter')submitTeamIdNav();});
     document.getElementById('teamIdInput').addEventListener('keypress',e=>{if(e.key==='Enter')loadTeamById();});
     </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.577.0"></script>
     <script>
         lucide.createIcons();
         // Re-render Lucide icons after dynamic content updates
@@ -2107,7 +2108,7 @@
     (function() {
         try {
             var savedTeamId = localStorage.getItem('fpl_team_id');
-            if (savedTeamId) {
+            if (savedTeamId && /^\d+$/.test(savedTeamId)) {
                 var input = document.getElementById('teamIdInput');
                 if (input) input.value = savedTeamId;
                 activateTeamBadge(savedTeamId);

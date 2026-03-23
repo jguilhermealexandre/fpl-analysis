@@ -1235,6 +1235,8 @@
         let raceChart = null;
         
         // ===== CONFIGURATION =====
+        function escHTML(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+
         const BOOTSTRAP_URL = 'data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000);
         const FIXTURES_URL = 'data/fixtures.json?v=' + Math.floor(Date.now()/300000);
         const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
@@ -1305,8 +1307,8 @@
         // ===== LOAD LEAGUE =====
         async function loadLeague() {
             const leagueId = document.getElementById('leagueIdInput').value.trim();
-            if (!leagueId) {
-                showStatus('Please enter a league ID', 'error');
+            if (!leagueId || isNaN(leagueId) || !Number.isInteger(Number(leagueId)) || Number(leagueId) <= 0) {
+                showStatus('Please enter a valid league ID', 'error');
                 return;
             }
             
@@ -1533,8 +1535,8 @@
                     <div class="action-item">
                         <div class="action-priority">${i + 1}</div>
                         <div class="action-text">
-                            <strong>Consider ${p.player.name}</strong><br>
-                            <span>${p.pct}% of rivals own this ${p.player.posName} (£${p.player.price.toFixed(1)}m)${p.captainCount > 0 ? ' · ⓒ captained by ' + p.captainCount : ''}</span>
+                            <strong>Consider ${escHTML(p.player.name)}</strong><br>
+                            <span>${p.pct}% of rivals own this ${escHTML(p.player.posName)} (£${p.player.price.toFixed(1)}m)${p.captainCount > 0 ? ' · ⓒ captained by ' + p.captainCount : ''}</span>
                         </div>
                     </div>
                 `).join('');
@@ -1553,11 +1555,11 @@
                     <div class="player-top">
                         <div>
                             <div class="player-name">
-                                ${p.player.name}
+                                ${escHTML(p.player.name)}
                                 ${p.youOwn ? '<span class="you-badge">You Own</span>' : '<span class="missing-badge">Missing</span>'}
                                 ${captainInfo}
                             </div>
-                            <div class="player-meta">${p.player.teamName} • ${p.player.posName}</div>
+                            <div class="player-meta">${escHTML(p.player.teamName)} • ${escHTML(p.player.posName)}</div>
                         </div>
                         <div class="player-price">£${p.player.price.toFixed(1)}m</div>
                     </div>
@@ -1813,14 +1815,14 @@
             if (topCapPlayer) {
                 heroEl.innerHTML = `
                     <div style="font-size:32px;margin-bottom:var(--space-2);">👑</div>
-                    <div class="captain-hero-name">${topCapPlayer.name}</div>
-                    <div class="captain-hero-meta">${topCapPlayer.teamName} • ${topCapPlayer.posName} • £${topCapPlayer.price.toFixed(1)}m</div>
+                    <div class="captain-hero-name">${escHTML(topCapPlayer.name)}</div>
+                    <div class="captain-hero-meta">${escHTML(topCapPlayer.teamName)} • ${escHTML(topCapPlayer.posName)} • £${topCapPlayer.price.toFixed(1)}m</div>
                     <div style="margin-top:var(--space-3);font-size:13px;">
                         <strong>${topCapCount} of ${allIds.length}</strong> managers captained this player
                         ${youMatchedPopular 
                             ? '<span style="color:var(--color-info);margin-left:8px;">— You matched the consensus</span>' 
                             : myCaptainPlayer 
-                                ? `<span style="color:var(--color-warning);margin-left:8px;">— You went differential with <strong>${myCaptainPlayer.name}</strong></span>` 
+                                ? `<span style="color:var(--color-warning);margin-left:8px;">— You went differential with <strong>${escHTML(myCaptainPlayer.name)}</strong></span>` 
                                 : ''}
                     </div>`;
             }
@@ -1836,9 +1838,9 @@
                 const chipLabel = mp.activeChip ? `<span class="chip-played-badge">${mp.activeChip}</span>` : '';
                 
                 rows += `<tr class="${isYou ? 'you-row' : ''}">
-                    <td>${isYou ? '<strong>⭐ ' + mp.manager.player_name + '</strong>' : mp.manager.player_name} ${chipLabel}</td>
-                    <td><strong>${capPlayer?.name || '?'}</strong> <span style="color:var(--text-muted);font-size:11px;">${capPlayer?.teamName || ''} ${capPlayer?.posName || ''}</span></td>
-                    <td>${vcPlayer?.name || '?'} <span style="color:var(--text-muted);font-size:11px;">${vcPlayer?.posName || ''}</span></td>
+                    <td>${isYou ? '<strong>⭐ ' + escHTML(mp.manager.player_name) + '</strong>' : escHTML(mp.manager.player_name)} ${chipLabel}</td>
+                    <td><strong>${escHTML(capPlayer?.name || '?')}</strong> <span style="color:var(--text-muted);font-size:11px;">${escHTML(capPlayer?.teamName || '')} ${escHTML(capPlayer?.posName || '')}</span></td>
+                    <td>${escHTML(vcPlayer?.name || '?')} <span style="color:var(--text-muted);font-size:11px;">${escHTML(vcPlayer?.posName || '')}</span></td>
                     <td style="text-align:center;">${capPlayer?.form || '-'}</td>
                     <td style="text-align:center;">${capPlayer?.pts || '-'}</td>
                 </tr>`;
@@ -1859,8 +1861,8 @@
                     <div class="eo-card ${edgeClass}">
                         <div class="player-top">
                             <div>
-                                <div class="player-name">${p.player.name} ${p.youCaptain ? '<span class="captain-badge">ⓒ YOUR CAP</span>' : p.youOwn ? '<span class="you-badge">You Own</span>' : '<span class="missing-badge">Missing</span>'}</div>
-                                <div class="player-meta">${p.player.teamName} • ${p.player.posName}</div>
+                                <div class="player-name">${escHTML(p.player.name)} ${p.youCaptain ? '<span class="captain-badge">ⓒ YOUR CAP</span>' : p.youOwn ? '<span class="you-badge">You Own</span>' : '<span class="missing-badge">Missing</span>'}</div>
+                                <div class="player-meta">${escHTML(p.player.teamName)} • ${escHTML(p.player.posName)}</div>
                             </div>
                         </div>
                         <div class="eo-bars">
@@ -2052,7 +2054,7 @@
                 
                 return `<tr class="${isYou ? 'you-row' : ''}">
                     <td style="font-weight:600;">${i + 1}</td>
-                    <td>${isYou ? '⭐ ' : ''}${r.name}<br><span style="font-size:10px;color:var(--text-muted);">${r.teamName}</span></td>
+                    <td>${isYou ? '⭐ ' : ''}${escHTML(r.name)}<br><span style="font-size:10px;color:var(--text-muted);">${escHTML(r.teamName)}</span></td>
                     <td style="text-align:center;font-weight:600;">${r.lastGwPts}</td>
                     <td style="text-align:center;font-weight:700;font-family:'Space Grotesk',sans-serif;">${r.totalPts}</td>
                     <td style="text-align:center;">${r.totalTransfers}</td>
@@ -2104,8 +2106,8 @@
                     <div class="strength-card ${c.isYou ? 'you-card' : ''}">
                         <div class="strength-card-header">
                             <div>
-                                <div class="strength-card-name">${c.isYou ? '⭐ ' : ''}${c.name}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">${c.teamName} · Rank #${i + 1} easiest</div>
+                                <div class="strength-card-name">${c.isYou ? '⭐ ' : ''}${escHTML(c.name)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">${escHTML(c.teamName)} · Rank #${i + 1} easiest</div>
                             </div>
                             <div class="strength-card-fdr" style="color:${fdrColor};">${c.avgFdrDisplay}</div>
                         </div>
@@ -2150,8 +2152,8 @@
             function renderRow(players, posClass) {
                 return `<div class="pitch-row">${players.map(p => `
                     <div class="pitch-player">
-                        <div class="pitch-player-circle ${posClass} ${p.youOwn ? 'you-have' : 'you-missing'}">${p.player.posName}</div>
-                        <div class="pitch-player-name">${p.player.name}</div>
+                        <div class="pitch-player-circle ${posClass} ${p.youOwn ? 'you-have' : 'you-missing'}">${escHTML(p.player.posName)}</div>
+                        <div class="pitch-player-name">${escHTML(p.player.name)}</div>
                         <div class="pitch-player-own">${p.startCount}/${allManagerIds.length} start</div>
                     </div>`).join('')}</div>`;
             }
@@ -2231,6 +2233,6 @@
             updateClearLeagueBtn();
         });
     </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.577.0"></script>
     <script>lucide.createIcons();</script>
     <script>fetch('footer.html').then(r=>r.text()).then(h=>{document.body.insertAdjacentHTML('beforeend',h);if(window.lucide)lucide.createIcons();fetch('data/last-updated.json?v='+Math.floor(Date.now()/300000)).then(r=>r.ok?r.json():null).then(d=>{if(d?.lastUpdated&&window.updateDataFreshness)window.updateDataFreshness(d.lastUpdated)}).catch(()=>{})});</script>

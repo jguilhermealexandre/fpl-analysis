@@ -2768,7 +2768,7 @@ body {
         </a>
     </nav>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.577.0"></script>
     <script>
         lucide.createIcons();
 
@@ -3084,9 +3084,10 @@ body {
             const tickerBar = document.getElementById('tickerBar');
             const tickerTrack = document.getElementById('tickerTrack');
             const tickerLoading = document.getElementById('tickerLoading');
+            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
 
             let items = '';
-            items += `<span class="ticker-item"><span class="ticker-manager">${managerName}</span></span>`;
+            items += `<span class="ticker-item"><span class="ticker-manager">${esc(managerName)}</span></span>`;
             items += `<span class="ticker-sep">\u2022</span>`;
             items += `<span class="ticker-item"><span class="ticker-gw">GW${currentGW}</span></span>`;
             items += `<span class="ticker-sep">\u2022</span>`;
@@ -3105,7 +3106,7 @@ body {
                     items += `<span class="ticker-sep">\u2022</span>`;
                     const critClass = p.verdict === 'sell' ? 'ticker-flag--critical' : 'ticker-flag';
                     const icon = p.verdict === 'sell' ? 'alert-circle' : 'alert-triangle';
-                    items += `<span class="ticker-item ${critClass}"><i data-lucide="${icon}" class="icon"></i> ${p.name} \u2014 ${p.topConcern || 'Monitor'}</span>`;
+                    items += `<span class="ticker-item ${critClass}"><i data-lucide="${icon}" class="icon"></i> ${esc(p.name)} \u2014 ${esc(p.topConcern || 'Monitor')}</span>`;
                 });
             } else {
                 items += `<span class="ticker-sep">\u2022</span>`;
@@ -4035,7 +4036,7 @@ body {
 
         // On page load: check for saved team ID
         const savedTeamId = localStorage.getItem('fpl_team_id');
-        if (savedTeamId) {
+        if (savedTeamId && /^\d+$/.test(savedTeamId)) {
             document.getElementById('teamIdInput').value = savedTeamId;
             activateTeam(savedTeamId);
         }

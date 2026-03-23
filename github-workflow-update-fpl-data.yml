@@ -12,15 +12,20 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Fetch FPL Bootstrap Data
         run: |
-          curl -o data/bootstrap-static.json https://fantasy.premierleague.com/api/bootstrap-static/
+          curl -f -o data/bootstrap-static.json https://fantasy.premierleague.com/api/bootstrap-static/
           
       - name: Fetch FPL Fixtures Data
         run: |
-          curl -o data/fixtures.json https://fantasy.premierleague.com/api/fixtures/
+          curl -f -o data/fixtures.json https://fantasy.premierleague.com/api/fixtures/
+
+      - name: Validate JSON files
+        run: |
+          python3 -c "import json; json.load(open('data/bootstrap-static.json'))"
+          python3 -c "import json; json.load(open('data/fixtures.json'))"
       
       - name: Add timestamp
         run: |

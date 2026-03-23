@@ -4060,6 +4060,8 @@
         // ============================================
         // GLOBALS
         // ============================================
+        function escHTML(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
         let bootstrapData = null;
         let bootstrapElements = {}; // id -> bootstrap element (for availability)
         let playerAnalyses = {};
@@ -5192,10 +5194,10 @@
                     <div class="route-card-top">
                         <div class="route-card-rank">${rank}</div>
                         <div class="route-card-player">
-                            <div class="route-card-name">${p.name} ${nailedIcon}</div>
+                            <div class="route-card-name">${escHTML(p.name)} ${nailedIcon}</div>
                             <div class="route-card-meta">
                                 <span class="route-pos-badge" style="background: ${posColors[p.pos]}20; color: ${posColors[p.pos]}">${p.pos}</span>
-                                ${p.team} \u00b7 \u00a3${p.price.toFixed(1)}m
+                                ${escHTML(p.team)} \u00b7 \u00a3${p.price.toFixed(1)}m
                             </div>
                         </div>
                         <div class="route-card-score" title="Number of distinct scoring routes">
@@ -5720,8 +5722,8 @@
                             <div class="rec-card-rank">${rank}</div>
                             <div class="rec-card-main">
                                 <div class="rec-card-header">
-                                    <div class="rec-card-name">${p.name}${ownBadge}</div>
-                                    <div class="rec-card-team">${p.team} &middot; \u00a3${p.price.toFixed(1)}m</div>
+                                    <div class="rec-card-name">${escHTML(p.name)}${ownBadge}</div>
+                                    <div class="rec-card-team">${escHTML(p.team)} &middot; \u00a3${p.price.toFixed(1)}m</div>
                                 </div>
                             </div>
                         </div>
@@ -6298,10 +6300,10 @@
                     <div class="rising-card-top">
                         <div class="rising-card-rank">${rank}</div>
                         <div class="rising-card-player">
-                            <div class="rising-card-name">${p.name}</div>
+                            <div class="rising-card-name">${escHTML(p.name)}</div>
                             <div class="rising-card-meta">
                                 <span class="route-pos-badge" style="background: ${posColors[p.pos]}20; color: ${posColors[p.pos]}">${p.pos}</span>
-                                ${p.team} \u00b7 \u00a3${p.price.toFixed(1)}m
+                                ${escHTML(p.team)} \u00b7 \u00a3${p.price.toFixed(1)}m
                             </div>
                         </div>
                         <div class="rising-card-score">
@@ -6814,8 +6816,8 @@
                     <div class="player-cell clickable" onclick="openPlayerModal(${p.id}, '${posMap[p.position]}')">
                         <div class="player-avatar">${initials}</div>
                         <div class="player-info">
-                            <div class="player-name">${p.name}</div>
-                            <div class="player-team">${p.team}</div>
+                            <div class="player-name">${escHTML(p.name)}</div>
+                            <div class="player-team">${escHTML(p.team)}</div>
                         </div>
                         <div class="player-trend" title="Points trend (Last 5 gameweeks)">${sparkline}</div>
                     </div>
@@ -6823,7 +6825,7 @@
             }
             
             if (colKey === 'team') {
-                return `<td>${p.team}</td>`;
+                return `<td>${escHTML(p.team)}</td>`;
             }
 
             if (colKey === 'pos') {
@@ -7252,7 +7254,7 @@
                 count.textContent = compareList.length;
                 list.innerHTML = compareList.map(p => `
                     <div class="compare-player-chip">
-                        <span>${p.name}</span>
+                        <span>${escHTML(p.name)}</span>
                         <button onclick="removeFromCompare(${p.id})">×</button>
                     </div>
                 `).join('');
@@ -7726,8 +7728,8 @@
                         <div class="report-player-card-header">
                             <div class="report-player-avatar pos-${p.pos}">${p.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
                             <div class="report-player-info">
-                                <h4>${p.name}</h4>
-                                <div class="meta">${p.team} · ${p.pos} · £${p.price.toFixed(1)}m · ${p.selectedBy.toFixed(1)}% owned</div>
+                                <h4>${escHTML(p.name)}</h4>
+                                <div class="meta">${escHTML(p.team)} · ${p.pos} · £${p.price.toFixed(1)}m · ${p.selectedBy.toFixed(1)}% owned</div>
                             </div>
                             <div class="report-player-badges">${pickBadges}</div>
                         </div>
@@ -7745,7 +7747,7 @@
 
             // Build routes comparison
             const routesHtml = reportData.map(p => {
-                if (p.routes.length === 0) return `<div class="report-routes-player"><div class="report-routes-player-name">${p.name}</div><div style="font-size:11px;color:var(--text-muted);">No qualifying routes</div></div>`;
+                if (p.routes.length === 0) return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)}</div><div style="font-size:11px;color:var(--text-muted);">No qualifying routes</div></div>`;
                 const bars = p.routes.sort((a, b) => {
                     const order = { Goals: 0, Assists: 1, 'Clean Sheets': 2, Bonus: 3, Saves: 4, Creativity: 5 };
                     return (order[a.name] ?? 99) - (order[b.name] ?? 99);
@@ -7756,12 +7758,12 @@
                         <div class="report-route-value">${r.detail}</div>
                     </div>
                 `).join('');
-                return `<div class="report-routes-player"><div class="report-routes-player-name">${p.name} <span style="color:var(--text-muted);font-weight:400;">(${p.routes.length} routes)</span></div>${bars}</div>`;
+                return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)} <span style="color:var(--text-muted);font-weight:400;">(${p.routes.length} routes)</span></div>${bars}</div>`;
             }).join('');
 
             // Build rising form collapsible
             const risingHtml = reportData.map(p => {
-                if (p.risingSignals.length === 0) return `<div class="report-routes-player"><div class="report-routes-player-name">${p.name}</div><div style="font-size:11px;color:var(--text-muted);">No rising form signals detected</div></div>`;
+                if (p.risingSignals.length === 0) return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)}</div><div style="font-size:11px;color:var(--text-muted);">No rising form signals detected</div></div>`;
                 const signals = p.risingSignals.map(s => `
                     <div class="report-signal-row">
                         <div class="report-signal-icon" style="background:${s.color}20;color:${s.color};">▲</div>
@@ -7772,7 +7774,7 @@
                         <div class="report-signal-bar"><div class="report-signal-fill" style="width:${s.strength * 10}%;background:${s.color};"></div></div>
                     </div>
                 `).join('');
-                return `<div class="report-routes-player"><div class="report-routes-player-name">${p.name} <span style="color:var(--text-muted);font-weight:400;">(score: ${p.risingScore > 0 ? p.risingScore.toFixed(0) : '0'})</span></div>${signals}</div>`;
+                return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)} <span style="color:var(--text-muted);font-weight:400;">(score: ${p.risingScore > 0 ? p.risingScore.toFixed(0) : '0'})</span></div>${signals}</div>`;
             }).join('');
 
             // Build team context collapsible
@@ -7781,7 +7783,7 @@
                 const teamName = teams[p.teamId]?.name || p.team;
                 return `
                     <div class="report-team-card">
-                        <div class="report-team-card-name">${p.name} — ${teamName}</div>
+                        <div class="report-team-card-name">${escHTML(p.name)} — ${escHTML(teamName)}</div>
                         <div class="report-team-stat"><span class="report-team-stat-label">Attack Power</span><span class="report-team-stat-value">${ts.attackPower?.toFixed(0) || '?'}</span></div>
                         <div class="report-team-stat"><span class="report-team-stat-label">Defense Power</span><span class="report-team-stat-value">${ts.defensePower?.toFixed(0) || '?'}</span></div>
                         <div class="report-team-stat"><span class="report-team-stat-label">Form Rating</span><span class="report-team-stat-value">${ts.formRating?.toFixed(0) || '?'}</span></div>
@@ -7801,10 +7803,10 @@
             const splitsHtml = reportData.map(p => {
                 const h = p.homeSplit;
                 const a = p.awaySplit;
-                if (!h && !a) return `<div class="report-routes-player"><div class="report-routes-player-name">${p.name}</div><div style="font-size:11px;color:var(--text-muted);">Insufficient home/away data</div></div>`;
+                if (!h && !a) return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)}</div><div style="font-size:11px;color:var(--text-muted);">Insufficient home/away data</div></div>`;
                 return `
                     <div class="report-routes-player">
-                        <div class="report-routes-player-name">${p.name}</div>
+                        <div class="report-routes-player-name">${escHTML(p.name)}</div>
                         <table class="report-splits-table">
                             <tr><th></th><th>Home (${h?.games || 0}g)</th><th>Away (${a?.games || 0}g)</th></tr>
                             <tr>${buildSplitRow('Points', h, a, 'points', v => (v || 0).toFixed(0))}</tr>
@@ -7823,7 +7825,7 @@
                 const color = overperf > 2 ? 'var(--color-warning)' : overperf < -2 ? 'var(--color-success)' : 'var(--text-secondary)';
                 return `
                     <div class="report-routes-player">
-                        <div class="report-routes-player-name">${p.name}</div>
+                        <div class="report-routes-player-name">${escHTML(p.name)}</div>
                         <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px;">
                             <span>Goals: ${p.seasonGoals}</span>
                             <span>xG: ${p.seasonXgVal.toFixed(1)}</span>
@@ -7842,7 +7844,7 @@
                     const tooltip = (p.pos === 'GK' || p.pos === 'DEF') ? `ATK ${oppTs.attackPower?.toFixed(0) || '?'}` : `DEF ${oppTs.defensePower?.toFixed(0) || '?'}`;
                     return `<div class="report-fixture-chip ${fdrClass}" title="${tooltip}"><span>${opp}</span><span class="venue">${f.isHome ? 'H' : 'A'}</span></div>`;
                 }).join('');
-                return `<div style="margin-bottom:8px;"><span style="font-size:12px;font-weight:600;margin-right:8px;">${p.name}</span><span style="font-size:10px;color:var(--text-muted);">FDR ${(p.fixtures?.avgFDR3 || 3).toFixed(1)}</span><div class="report-fixture-strip" style="margin-top:4px;">${chips}</div></div>`;
+                return `<div style="margin-bottom:8px;"><span style="font-size:12px;font-weight:600;margin-right:8px;">${escHTML(p.name)}</span><span style="font-size:10px;color:var(--text-muted);">FDR ${(p.fixtures?.avgFDR3 || 3).toFixed(1)}</span><div class="report-fixture-strip" style="margin-top:4px;">${chips}</div></div>`;
             }).join('');
 
             // Assemble full report
@@ -7866,13 +7868,13 @@
                             <h4>Player Profile Overlay</h4>
                             <canvas id="reportRadarCanvas" height="280"></canvas>
                             <div class="report-radar-legend">
-                                ${reportData.map((p, i) => `<div class="report-radar-legend-item"><div class="report-radar-legend-dot" style="background:${radarColors[i]}"></div>${p.name}</div>`).join('')}
+                                ${reportData.map((p, i) => `<div class="report-radar-legend-item"><div class="report-radar-legend-dot" style="background:${radarColors[i]}"></div>${escHTML(p.name)}</div>`).join('')}
                             </div>
                         </div>
                         <div class="report-stats-container">
                             <h4>Key Metrics Comparison</h4>
                             <table class="report-stats-table">
-                                <thead><tr><th></th>${reportData.map(p => `<th>${p.name}</th>`).join('')}</tr></thead>
+                                <thead><tr><th></th>${reportData.map(p => `<th>${escHTML(p.name)}</th>`).join('')}</tr></thead>
                                 <tbody>${statsTableHtml}</tbody>
                             </table>
                         </div>
@@ -8240,10 +8242,10 @@
                         <div class="chart-player-rank">${i + 1}</div>
                         <div class="chart-player-info">
                             <div class="chart-player-name-row">
-                                <span class="chart-player-name">${p.name}</span>
+                                <span class="chart-player-name">${escHTML(p.name)}</span>
                                 <span class="chart-player-pos-badge" style="background: ${posColors[p.pos]}20; color: ${posColors[p.pos]}">${p.pos}</span>
                             </div>
-                            <div class="chart-player-meta">${p.team} · £${p.price.toFixed(1)}m · ${p.ownership.toFixed(1)}% owned</div>
+                            <div class="chart-player-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${p.ownership.toFixed(1)}% owned</div>
                             <div class="chart-player-reason">${reason}</div>
                         </div>
                         <div class="chart-player-stat-badge">
@@ -9422,10 +9424,10 @@
                 return `<div class="toxic-row">
                     <div class="toxic-rank">${i + 1}</div>
                     <div class="toxic-player-info">
-                        <div class="toxic-player-name">${p.name}</div>
+                        <div class="toxic-player-name">${escHTML(p.name)}</div>
                         <div class="toxic-player-meta">
                             <span class="player-pos ${pc}">${p.position}</span>
-                            <span>${p.team}</span>
+                            <span>${escHTML(p.team)}</span>
                         </div>
                     </div>
                     <span class="badge-toxic">${p.selectedBy.toFixed(1)}% Owned</span>
@@ -9856,11 +9858,15 @@
             }, 300);
         }
 
-        function addAIMessage(html, type) {
+        function addAIMessage(content, type) {
             const container = document.getElementById('ai-messages');
             const div = document.createElement('div');
             div.className = `ai-msg ${type}`;
-            div.innerHTML = html;
+            if (type === 'user') {
+                div.textContent = content;
+            } else {
+                div.innerHTML = content;
+            }
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -9953,17 +9959,17 @@
                 ).slice(0, 5);
                 
                 if (matches.length === 0) {
-                    return `No players found matching "${searchTerm}". Try a shorter search term.`;
+                    return `No players found matching "${escHTML(searchTerm)}". Try a shorter search term.`;
                 }
                 
                 return `
-                    <strong>Players matching "${searchTerm}":</strong>
+                    <strong>Players matching "${escHTML(searchTerm)}":</strong>
                     <div class="ai-player-list">
                         ${matches.map(p => `
-                            <div class="ai-player-row" style="cursor: pointer;" onclick="askAI('Stats for ${p.name}')">
+                            <div class="ai-player-row" style="cursor: pointer;" data-pname="${escHTML(p.name)}" onclick="askAI('Stats for ' + this.dataset.pname)">
                                 <div class="ai-player-info">
-                                    <div class="ai-player-name">${p.name}</div>
-                                    <div class="ai-player-meta">£${p.price}m · ${p.team}</div>
+                                    <div class="ai-player-name">${escHTML(p.name)}</div>
+                                    <div class="ai-player-meta">£${p.price}m · ${escHTML(p.team)}</div>
                                 </div>
                             </div>
                         `).join('')}
@@ -9983,7 +9989,7 @@
                 <div class="ai-suggestions" style="margin-top: 10px;">
                     <button onclick="askAI('Best budget forwards')"><i data-lucide="coins" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Budget picks</button>
                     <button onclick="askAI('Who should I captain?')"><i data-lucide="crown" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Captain</button>
-                    <button onclick="askAI('Stats for ${playerHint}')"><i data-lucide="bar-chart-3" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Player stats</button>
+                    <button onclick="askAI('Stats for ${escHTML(playerHint)}')"><i data-lucide="bar-chart-3" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Player stats</button>
                     <button onclick="askAI('search sal')"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Search players</button>
                 </div>`;
         }
@@ -10063,7 +10069,7 @@
             const posStr = getPosString(p.position);
 
             return `
-                <strong>${p.name}</strong> <span style="color: var(--text-muted)">(${p.team} - ${posStr})</span>
+                <strong>${escHTML(p.name)}</strong> <span style="color: var(--text-muted)">(${escHTML(p.team)} - ${posStr})</span>
                 <div class="ai-player-card">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 18px; font-weight: 700;">£${p.price}m</span>
@@ -10175,8 +10181,8 @@
                             <div class="ai-player-row">
                                 <span class="ai-player-rank">${i + 1}</span>
                                 <div class="ai-player-info">
-                                    <div class="ai-player-name">${p.name}</div>
-                                    <div class="ai-player-meta">£${p.price}m · ${p.team}</div>
+                                    <div class="ai-player-name">${escHTML(p.name)}</div>
+                                    <div class="ai-player-meta">£${p.price}m · ${escHTML(p.team)}</div>
                                 </div>
                                 <div class="ai-player-stat">
                                     <div class="ai-player-stat-value">${(p.l5?.points / g).toFixed(1)}</div>
@@ -10216,7 +10222,7 @@
                             <div class="ai-player-row">
                                 <span class="ai-player-rank">${i + 1}</span>
                                 <div class="ai-player-info">
-                                    <div class="ai-player-name">${p.name}</div>
+                                    <div class="ai-player-name">${escHTML(p.name)}</div>
                                     <div class="ai-player-meta">£${p.price}m · ${(p.selectedBy || 0).toFixed(1)}% owned</div>
                                 </div>
                                 <div class="ai-player-stat">
@@ -10294,7 +10300,7 @@
                             <div class="ai-player-row">
                                 <span class="ai-player-rank">${i + 1}</span>
                                 <div class="ai-player-info">
-                                    <div class="ai-player-name">${p.name}</div>
+                                    <div class="ai-player-name">${escHTML(p.name)}</div>
                                     <div class="ai-player-meta">£${p.price}m · ${(p.l5?.points / g).toFixed(1)} Pts/G</div>
                                 </div>
                                 <div class="ai-player-stat">
@@ -10324,8 +10330,8 @@
                             <div class="ai-player-row">
                                 <span class="ai-player-rank">${i + 1}</span>
                                 <div class="ai-player-info">
-                                    <div class="ai-player-name">${p.name}</div>
-                                    <div class="ai-player-meta">£${p.price}m · ${p.team}</div>
+                                    <div class="ai-player-name">${escHTML(p.name)}</div>
+                                    <div class="ai-player-meta">£${p.price}m · ${escHTML(p.team)}</div>
                                 </div>
                                 <div class="ai-player-stat">
                                     <div class="ai-player-stat-value">${p.form?.toFixed(1) || 0}</div>
@@ -10364,7 +10370,7 @@
                             <div class="ai-player-row">
                                 <span class="ai-player-rank">${i + 1}</span>
                                 <div class="ai-player-info">
-                                    <div class="ai-player-name">${p.name}</div>
+                                    <div class="ai-player-name">${escHTML(p.name)}</div>
                                     <div class="ai-player-meta">${p.fixtures?.fixtureString?.split(',')[0] || 'N/A'} · ${(p.l5?.points / g).toFixed(1)} Pts/G</div>
                                 </div>
                                 <div class="ai-player-stat">
@@ -10381,7 +10387,7 @@
             `;
         }
     </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.577.0"></script>
     <script>
         lucide.createIcons();
     </script>
