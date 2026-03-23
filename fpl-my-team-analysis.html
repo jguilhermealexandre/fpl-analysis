@@ -1258,6 +1258,42 @@
             .tw-compare-vs { display: none; }
         }
 
+        /* Batch-Select Mode */
+        .tw-squad-row.pending-sell { background: rgba(248,113,113,0.08); border-left: 3px solid var(--color-error); }
+        .tw-squad-row.pending-sell .tw-sr-name { text-decoration: line-through; color: var(--color-error); }
+        .tw-sr-check { width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--border-emphasis); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; transition: all 0.15s; color: transparent; }
+        .tw-squad-row.pending-sell .tw-sr-check { background: var(--color-error); border-color: var(--color-error); color: #fff; }
+        .tw-squad-row.sold .tw-sr-check { background: var(--surface-3); border-color: var(--surface-3); color: var(--text-muted); font-size: 8px; }
+        .tw-squad-footer { padding: 12px 14px; border-top: 1px solid var(--border-default); display: flex; align-items: center; gap: 10px; }
+        .tw-squad-count { font-size: 11px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
+
+        /* Rich Market Rows */
+        .tw-market-list .tw-market-row { flex-wrap: wrap; align-items: flex-start; padding: 10px 14px; }
+        .tw-market-row-detail { display: flex; gap: 6px; width: 100%; margin-top: 4px; align-items: center; padding-left: 26px; }
+        .tw-market-mini-stat { font-size: 10px; font-family: var(--font-mono); font-weight: 600; padding: 1px 5px; border-radius: 3px; background: var(--surface-2); }
+        .tw-market-mini-stat.good { color: var(--color-success); background: rgba(74,222,128,0.1); }
+        .tw-market-mini-stat.poor { color: var(--color-error); background: rgba(248,113,113,0.1); }
+        .tw-market-score { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; font-family: var(--font-mono); background: rgba(96,165,250,0.12); color: var(--color-info); flex-shrink: 0; }
+
+        /* Market Tabs */
+        .tw-market-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-default); }
+        .tw-market-tab { flex: 1; padding: 8px 12px; background: none; border: none; font-family: var(--font-body); font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid transparent; transition: all 0.15s; }
+        .tw-market-tab:hover { color: var(--text-secondary); }
+        .tw-market-tab.active { color: var(--color-info); border-bottom-color: var(--color-info); }
+        .tw-market-search { padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--border-default); border-radius: var(--radius-md); font-family: var(--font-body); font-size: 12px; color: var(--text-primary); margin: 8px 14px; width: calc(100% - 28px); box-sizing: border-box; }
+        .tw-market-search:focus { outline: none; border-color: var(--color-info); }
+        .tw-market-sort { display: flex; gap: 4px; padding: 4px 14px 8px; }
+
+        /* Comparison Sections */
+        .tw-compare-section { margin-top: 16px; }
+        .tw-compare-section:first-child { margin-top: 0; }
+        .tw-compare-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); padding: 8px 0; margin-bottom: 4px; border-bottom: 1px solid var(--border-default); display: flex; align-items: center; gap: 6px; }
+        .tw-compare-trend { font-size: 10px; margin-left: 4px; }
+        .tw-compare-trend.up { color: var(--color-success); }
+        .tw-compare-trend.down { color: var(--color-error); }
+        .tw-compare-trend.flat { color: var(--text-muted); }
+        .tw-compare-sub { font-size: 9px; font-weight: 400; color: var(--text-muted); }
+
         /* ===== LINEUP WIZARD ===== */
         .lw-container { padding: 0; }
         .lw-intro { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); }
@@ -6321,6 +6357,38 @@
                 }
             }
 
+            // ── Enhancement bonuses (inspired by players-analysis calculatePositionScore) ──
+            // Rising form: compare L3 ppg vs season ppg
+            let risingFormBonus = 0;
+            const recentPpg = recent ? recent.ppg : 0;
+            const seasonPpg = player.ppg || 0;
+            if (seasonPpg > 1) {
+                const formRatio = recentPpg / seasonPpg;
+                if (formRatio > 1.3) risingFormBonus = 3;
+                else if (formRatio > 1.15) risingFormBonus = 1.5;
+            }
+
+            // Routes-to-points diversity
+            let routeCount = 0;
+            if (rwXG > 0.1) routeCount++;
+            if (rwXA > 0.1) routeCount++;
+            if (rwBonus > 0.3) routeCount++;
+            if (pos <= 2 && csPerGame > 0.2) routeCount++;
+            const routeBonus = Math.max(0, (routeCount - 1) * 1.5);
+
+            // Reliability (low variance in recent scores)
+            let reliabilityBonus = 0;
+            if (history.length >= 4) {
+                const recentScores = history.slice(-5).map(h => h.total_points || 0);
+                const avg = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
+                if (avg > 3) {
+                    const variance = recentScores.reduce((s, v) => s + (v - avg) ** 2, 0) / recentScores.length;
+                    reliabilityBonus = Math.max(0, 3 - Math.sqrt(variance) * 0.5);
+                }
+            }
+
+            const commonBonuses = risingFormBonus + routeBonus + reliabilityBonus;
+
             // ── Position-specific scoring formulas ──
             if (posName === 'GK') {
                 const savesPer90 = recent ? recent.savesPer90 : (player.minutes > 0 ? (player.saves / player.minutes) * 90 : 0);
@@ -6337,7 +6405,8 @@
                        teamFormFactor +
                        csProbFactor +
                        rotationPenalty +
-                       nailedBonus) * venueMultiplier;
+                       nailedBonus +
+                       commonBonuses) * venueMultiplier;
             }
 
             if (posName === 'DEF') {
@@ -6355,7 +6424,8 @@
                        csProbFactor +
                        rotationPenalty +
                        penTakerBonus +
-                       nailedBonus) * venueMultiplier;
+                       nailedBonus +
+                       commonBonuses) * venueMultiplier;
             }
 
             if (posName === 'MID') {
@@ -6374,7 +6444,8 @@
                        teamFormFactor +
                        rotationPenalty +
                        penTakerBonus +
-                       nailedBonus) * venueMultiplier;
+                       nailedBonus +
+                       commonBonuses) * venueMultiplier;
             }
 
             // FWD
@@ -6394,7 +6465,8 @@
                    teamFormFactor +
                    rotationPenalty +
                    penTakerBonus +
-                   nailedBonus) * venueMultiplier;
+                   nailedBonus +
+                   commonBonuses) * venueMultiplier;
         }
 
         // Find replacement candidates for a position within budget
@@ -6534,7 +6606,7 @@
                 initDraft(activeDraftSlot);
                 loadDraft();
             }
-            transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null };
+            transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null, marketTab: 'ai', browseSearch: '', browseSort: 'score' };
             const container = document.getElementById('transferDisplay');
 
             container.innerHTML = `
@@ -6709,7 +6781,9 @@
         }
 
         function renderTWSquadPicker(el) {
-            const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
+            const filledIds = new Set(transferState.pending.filter(s => s.replacement).map(s => s.soldPlayer.id));
+            const pendingSellIds = new Set(transferState.pending.filter(s => !s.replacement).map(s => s.soldPlayer.id));
+            const totalPending = transferState.pending.length;
             const positions = [
                 { type: 1, label: 'Goalkeepers' },
                 { type: 2, label: 'Defenders' },
@@ -6724,7 +6798,8 @@
 
                 html += '<div class="tw-pos-group"><div class="tw-pos-group-label">' + pos.label + '</div>';
                 for (const p of players) {
-                    const isSold = soldIds.has(p.id);
+                    const hasFill = filledIds.has(p.id);
+                    const isPending = pendingSellIds.has(p.id);
                     const result = analysisResults?.find(r => r.player?.id === p.id || r.id === p.id);
                     const verdict = result?.verdict || '';
                     const verdictClass = verdict.toLowerCase().replace(/[^a-z]/g, '');
@@ -6736,7 +6811,14 @@
                         fixHtml = '<span class="tw-sr-fixture"><span class="fdr-dot fdr-' + nextFix.difficulty + '"></span>' + nextFix.opponent + '(' + (nextFix.isHome ? 'H' : 'A') + ')</span>';
                     }
 
-                    html += '<div class="tw-squad-row' + (isSold ? ' sold' : '') + (p.onBench ? ' on-bench' : '') + '" onclick="' + (isSold ? '' : 'twPickOutPlayer(' + p.id + ')') + '">' +
+                    let rowClass = 'tw-squad-row';
+                    if (hasFill) rowClass += ' sold';
+                    else if (isPending) rowClass += ' pending-sell';
+                    if (p.onBench && !isPending && !hasFill) rowClass += ' on-bench';
+                    const canToggle = isPending || (!hasFill && totalPending < 5);
+
+                    html += '<div class="' + rowClass + '"' + (canToggle ? ' onclick="twPickOutPlayer(' + p.id + ')"' : '') + '>' +
+                        '<span class="tw-sr-check">' + (isPending ? '✓' : hasFill ? '🔒' : '') + '</span>' +
                         '<span class="tw-sr-pos">' + ['', 'GK', 'DEF', 'MID', 'FWD'][p.position] + '</span>' +
                         '<span class="tw-sr-name">' + p.name + '</span>' +
                         fixHtml +
@@ -6748,9 +6830,16 @@
                 html += '</div>';
             }
 
+            const unfilled = transferState.pending.filter(s => !s.replacement).length;
+            const footerHtml = '<div class="tw-squad-footer">' +
+                '<span class="tw-squad-count">' + totalPending + '/5 selected</span>' +
+                '<button class="tw-btn tw-btn-primary" onclick="twStartMarketForSlots()"' + (unfilled === 0 ? ' disabled' : '') + ' style="margin-left:auto;">' +
+                '<i data-lucide="search" style="width:12px;height:12px;"></i> Find Replacements' + (unfilled > 0 ? ' (' + unfilled + ')' : '') + '</button>' +
+                '</div>';
+
             el.innerHTML = '<div class="tw-scout">' +
-                '<div class="tw-scout-header"><i data-lucide="users" style="width:14px;height:14px;"></i> Your Squad — Select players to sell</div>' +
-                '<div class="tw-scout-body tw-squad-picker">' + html + '</div></div>';
+                '<div class="tw-scout-header"><i data-lucide="users" style="width:14px;height:14px;"></i> Your Squad — Tap players to sell</div>' +
+                '<div class="tw-scout-body tw-squad-picker">' + html + '</div>' + footerHtml + '</div>';
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -6773,40 +6862,129 @@
             const excludeIds = new Set([...selectedPlayers.map(p => p.id), ...boughtIds]);
             for (const id of soldIds) excludeIds.delete(id);
 
-            const cacheKey = pos + '_' + maxPrice.toFixed(1);
-            if (!transferState.candidateCache[cacheKey]) {
-                transferState.candidateCache[cacheKey] = findTransferCandidates(pos, maxPrice, excludeIds);
-            }
-            let candidates = transferState.candidateCache[cacheKey];
-
+            const tab = transferState.marketTab || 'ai';
             const priceFilter = transferState.marketFilter.priceRange;
+            const posName = ['', 'Goalkeepers', 'Defenders', 'Midfielders', 'Forwards'][pos];
+
+            let candidates;
+            if (tab === 'ai') {
+                const cacheKey = pos + '_' + maxPrice.toFixed(1);
+                if (!transferState.candidateCache[cacheKey]) {
+                    transferState.candidateCache[cacheKey] = findTransferCandidates(pos, maxPrice, excludeIds);
+                }
+                candidates = [...transferState.candidateCache[cacheKey]];
+            } else {
+                const query = (transferState.browseSearch || '').toLowerCase();
+                candidates = allPlayers.filter(p =>
+                    p.position === pos &&
+                    p.price <= maxPrice &&
+                    !excludeIds.has(p.id) &&
+                    (p.status === 'a' || p.status === 'd') &&
+                    p.minutes >= 50 &&
+                    (!query || p.name.toLowerCase().includes(query))
+                );
+                candidates.forEach(c => {
+                    if (c._transferScore == null) c._transferScore = calculateTransferScore(c, c.position);
+                    if (!c._recentStats) c._recentStats = getPlayerRecentStats(c.id, 5);
+                });
+                const sortBy = transferState.browseSort || 'score';
+                if (sortBy === 'price') candidates.sort((a, b) => b.price - a.price);
+                else if (sortBy === 'form') candidates.sort((a, b) => (b.form || 0) - (a.form || 0));
+                else if (sortBy === 'ppg') candidates.sort((a, b) => (b.ppg || 0) - (a.ppg || 0));
+                else candidates.sort((a, b) => (b._transferScore || 0) - (a._transferScore || 0));
+            }
+
             if (priceFilter === 'budget') candidates = candidates.filter(c => c.price <= 6);
             else if (priceFilter === 'mid') candidates = candidates.filter(c => c.price > 6 && c.price <= 9);
             else if (priceFilter === 'premium') candidates = candidates.filter(c => c.price > 9);
 
-            const posName = ['', 'Goalkeepers', 'Defenders', 'Midfielders', 'Forwards'][pos];
+            const display = candidates.slice(0, tab === 'ai' ? 15 : 50);
+
+            // Position-specific stat columns
+            function getStatCols(p) {
+                const rs = p._recentStats || getPlayerRecentStats(p.id, 5);
+                const ss = getPlayerSeasonPer90(p);
+                const fmt = (v) => v != null ? v.toFixed(2) : '-';
+                const fPct = (v) => v != null ? v.toFixed(0) + '%' : '-';
+                if (pos === 1) return [
+                    { label: 'Sv%', val: fPct(rs?.savePct ?? ss.savePct), raw: rs?.savePct ?? ss.savePct ?? 0, lb: false },
+                    { label: 'CS%', val: fPct(rs?.csPercent ?? ss.csPercent), raw: rs?.csPercent ?? ss.csPercent ?? 0, lb: false },
+                    { label: 'xGC/90', val: fmt(rs?.xGCPer90 ?? ss.xGCPer90), raw: rs?.xGCPer90 ?? ss.xGCPer90 ?? 0, lb: true }
+                ];
+                if (pos === 2) return [
+                    { label: 'CS%', val: fPct(rs?.csPercent ?? ss.csPercent), raw: rs?.csPercent ?? ss.csPercent ?? 0, lb: false },
+                    { label: 'xGI/90', val: fmt(rs?.xGIPer90 ?? ss.xGIPer90), raw: rs?.xGIPer90 ?? ss.xGIPer90 ?? 0, lb: false },
+                    { label: 'xGC/90', val: fmt(rs?.xGCPer90 ?? ss.xGCPer90), raw: rs?.xGCPer90 ?? ss.xGCPer90 ?? 0, lb: true }
+                ];
+                if (pos === 3) return [
+                    { label: 'xGI/90', val: fmt(rs?.xGIPer90 ?? ss.xGIPer90), raw: rs?.xGIPer90 ?? ss.xGIPer90 ?? 0, lb: false },
+                    { label: 'xG/90', val: fmt(rs?.xGPer90 ?? ss.xGPer90), raw: rs?.xGPer90 ?? ss.xGPer90 ?? 0, lb: false },
+                    { label: 'xA/90', val: fmt(rs?.xAPer90 ?? ss.xAPer90), raw: rs?.xAPer90 ?? ss.xAPer90 ?? 0, lb: false }
+                ];
+                return [
+                    { label: 'xG/90', val: fmt(rs?.xGPer90 ?? ss.xGPer90), raw: rs?.xGPer90 ?? ss.xGPer90 ?? 0, lb: false },
+                    { label: 'xGI/90', val: fmt(rs?.xGIPer90 ?? ss.xGIPer90), raw: rs?.xGIPer90 ?? ss.xGIPer90 ?? 0, lb: false },
+                    { label: 'Goals', val: String(rs?.goals ?? p.goals ?? 0), raw: rs?.goals ?? p.goals ?? 0, lb: false }
+                ];
+            }
+
+            function statCls(col) {
+                const t = { 'Sv%': [70, 60], 'CS%': [35, 20], 'xGC/90': [1.0, 1.4], 'xGI/90': [0.35, 0.2], 'xG/90': [0.3, 0.15], 'xA/90': [0.2, 0.1], 'Goals': [6, 3] }[col.label];
+                if (!t) return '';
+                if (col.lb) return col.raw <= t[0] ? ' good' : col.raw >= t[1] ? ' poor' : '';
+                return col.raw >= t[0] ? ' good' : col.raw <= t[1] ? ' poor' : '';
+            }
 
             let rowsHtml = '';
-            if (candidates.length === 0) {
-                rowsHtml = '<div class="tw-market-empty">No candidates found within budget</div>';
+            if (display.length === 0) {
+                rowsHtml = '<div class="tw-market-empty">' + (tab === 'browse' && transferState.browseSearch ? 'No players match your search' : 'No candidates found within budget') + '</div>';
             } else {
-                const top = candidates.slice(0, 15);
-                for (let i = 0; i < top.length; i++) {
-                    const c = top[i];
+                for (let i = 0; i < display.length; i++) {
+                    const c = display[i];
                     const affordable = c.price <= maxPrice;
                     const previewed = transferState.previewPlayer?.id === c.id;
+                    const score = c._transferScore || 0;
+                    const cols = getStatCols(c);
+                    const teamName = c.team || teams[c.teamId]?.short_name || '';
+                    const fixes = teamFixtures[c.teamId] || c.fixtures || [];
+                    const nextF = fixes[0];
+                    const fdrHtml = nextF ? '<span class="fdr-dot fdr-' + nextF.difficulty + '"></span>' + nextF.opponent + '(' + (nextF.isHome ? 'H' : 'A') + ')' : '';
+
+                    let miniStats = '';
+                    for (const col of cols) {
+                        miniStats += '<span class="tw-market-mini-stat' + statCls(col) + '" title="' + col.label + '">' + col.val + '</span>';
+                    }
+
                     rowsHtml += '<div class="tw-market-row' + (previewed ? ' previewed' : '') + '" onclick="twPreviewPlayer(' + c.id + ')" style="' + (!affordable ? 'opacity:0.4;' : '') + '">' +
                         '<div class="tw-market-rank">' + (i + 1) + '</div>' +
                         '<span class="tw-market-name">' + c.name + '</span>' +
+                        '<span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">' + teamName + '</span>' +
                         '<span class="tw-market-price">£' + c.price.toFixed(1) + 'm</span>' +
-                        '<span class="tw-market-stat" style="color:' + (c.form >= 5 ? 'var(--color-success)' : 'var(--text-secondary)') + ';">' + c.form.toFixed(1) + '</span>' +
-                        '</div>';
+                        '<span class="tw-market-stat" style="color:' + ((c.form || 0) >= 5 ? 'var(--color-success)' : 'var(--text-secondary)') + ';">' + (c.form || 0).toFixed(1) + '</span>' +
+                        '<span class="tw-market-score" title="AI Score">' + score.toFixed(0) + '</span>' +
+                        '<div class="tw-market-row-detail">' + miniStats +
+                        (fdrHtml ? '<span class="tw-sr-fixture" style="margin-left:auto;">' + fdrHtml + '</span>' : '') +
+                        '</div></div>';
                 }
             }
+
+            const tabsHtml = '<div class="tw-market-tabs">' +
+                '<button class="tw-market-tab' + (tab === 'ai' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'ai\')">AI Picks</button>' +
+                '<button class="tw-market-tab' + (tab === 'browse' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'browse\')">Browse All</button></div>';
+
+            const searchHtml = tab === 'browse' ? '<input class="tw-market-search" type="text" placeholder="Search by name..." value="' + (transferState.browseSearch || '').replace(/"/g, '&quot;') + '" oninput="twSearchInput(this.value)">' : '';
+
+            const sortBy = transferState.browseSort || 'score';
+            const sortHtml = tab === 'browse' ? '<div class="tw-market-sort">' +
+                '<button class="tw-filter-pill' + (sortBy === 'score' ? ' active' : '') + '" onclick="twSetBrowseSort(\'score\')">Score</button>' +
+                '<button class="tw-filter-pill' + (sortBy === 'price' ? ' active' : '') + '" onclick="twSetBrowseSort(\'price\')">Price</button>' +
+                '<button class="tw-filter-pill' + (sortBy === 'form' ? ' active' : '') + '" onclick="twSetBrowseSort(\'form\')">Form</button>' +
+                '<button class="tw-filter-pill' + (sortBy === 'ppg' ? ' active' : '') + '" onclick="twSetBrowseSort(\'ppg\')">PPG</button></div>' : '';
 
             el.innerHTML = '<div class="tw-scout">' +
                 '<div class="tw-scout-header"><i data-lucide="search" style="width:14px;height:14px;"></i> Replacements for ' + sold.name +
                 '<span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--text-muted);font-family:var(--font-mono);">Budget: £' + maxPrice.toFixed(1) + 'm</span></div>' +
+                tabsHtml + searchHtml + sortHtml +
                 '<div class="tw-market-header"><span class="tw-market-title">' + posName + '</span>' +
                 '<div class="tw-market-filters">' +
                 '<button class="tw-filter-pill' + (priceFilter === 'all' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'all\')">All</button>' +
@@ -6814,7 +6992,7 @@
                 '<button class="tw-filter-pill' + (priceFilter === 'mid' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'mid\')">£6-9m</button>' +
                 '<button class="tw-filter-pill' + (priceFilter === 'premium' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'premium\')">≥£9m</button>' +
                 '</div></div>' +
-                '<div class="tw-scout-body tw-market-list">' + rowsHtml + '</div>' +
+                '<div id="twMarketList" class="tw-scout-body tw-market-list">' + rowsHtml + '</div>' +
                 '<div style="padding:8px 14px;"><button class="tw-btn tw-btn-secondary" onclick="twBackToSquad()" style="width:100%;"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> Back to Squad</button></div>' +
                 '</div>';
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -6827,72 +7005,126 @@
 
             const sold = slot.soldPlayer;
             const candidate = transferState.previewPlayer;
-            const posName = ['', 'GK', 'DEF', 'MID', 'FWD'][sold.position];
+            const pos = sold.position;
+            const posName = ['', 'GK', 'DEF', 'MID', 'FWD'][pos];
             const soldPrice = sold.sellPrice || sold.price;
             const candPrice = candidate.price;
             const itb = getTWLiveITB();
             const affordable = candPrice <= itb + (slot.replacement ? slot.replacement.price : 0);
 
-            const metrics = [
-                { label: 'Price', left: '£' + soldPrice.toFixed(1) + 'm', right: '£' + candPrice.toFixed(1) + 'm', lv: soldPrice, rv: candPrice, higherBetter: false },
-                { label: 'Form', left: (sold.form || 0).toFixed(1), right: (candidate.form || 0).toFixed(1), lv: sold.form || 0, rv: candidate.form || 0, higherBetter: true },
-                { label: 'PPG', left: (sold.ppg || 0).toFixed(1), right: (candidate.ppg || 0).toFixed(1), lv: sold.ppg || 0, rv: candidate.ppg || 0, higherBetter: true },
-                { label: 'Ownership', left: (sold.ownership || 0).toFixed(1) + '%', right: (candidate.ownership || 0).toFixed(1) + '%', lv: sold.ownership || 0, rv: candidate.ownership || 0, higherBetter: false },
-                { label: 'xGI', left: (sold.xGI || 0).toFixed(2), right: (candidate.xGI || 0).toFixed(2), lv: sold.xGI || 0, rv: candidate.xGI || 0, higherBetter: true },
-                { label: 'Total Pts', left: '' + (sold.points || 0), right: '' + (candidate.points || 0), lv: sold.points || 0, rv: candidate.points || 0, higherBetter: true },
-                { label: 'ICT Index', left: (sold.ictIndex || 0).toFixed(1), right: (candidate.ictIndex || 0).toFixed(1), lv: sold.ictIndex || 0, rv: candidate.ictIndex || 0, higherBetter: true }
-            ];
+            // Detailed stats
+            const soldRecent = getPlayerRecentStats(sold.id, 5);
+            const candRecent = getPlayerRecentStats(candidate.id, 5);
+            const soldSeason = getPlayerSeasonPer90(sold);
+            const candSeason = getPlayerSeasonPer90(candidate);
 
-            let statsHtml = '';
-            for (const m of metrics) {
-                const lBetter = m.higherBetter ? m.lv > m.rv : m.lv < m.rv;
-                const rBetter = m.higherBetter ? m.rv > m.lv : m.rv < m.lv;
-                statsHtml += '<div class="tw-compare-stat-row">' +
-                    '<div class="tw-compare-stat-val left' + (lBetter ? ' better' : rBetter ? ' worse' : '') + '">' + m.left + '</div>' +
-                    '<div class="tw-compare-stat-label">' + m.label + '</div>' +
-                    '<div class="tw-compare-stat-val right' + (rBetter ? ' better' : lBetter ? ' worse' : '') + '">' + m.right + '</div>' +
-                    '</div>';
+            function fmtV(v, dec, suf) { return v == null ? '-' : (dec === 0 ? Math.round(v) : v.toFixed(dec || 1)) + (suf || ''); }
+            function compRow(label, lv, rv, higherBetter, lfmt, rfmt) {
+                const left = lfmt || fmtV(lv);
+                const right = rfmt || fmtV(rv);
+                const lB = higherBetter ? lv > rv : lv < rv;
+                const rB = higherBetter ? rv > lv : rv < lv;
+                return '<div class="tw-compare-stat-row">' +
+                    '<div class="tw-compare-stat-val left' + (lB ? ' better' : rB ? ' worse' : '') + '">' + left + '</div>' +
+                    '<div class="tw-compare-stat-label">' + label + '</div>' +
+                    '<div class="tw-compare-stat-val right' + (rB ? ' better' : lB ? ' worse' : '') + '">' + right + '</div></div>';
             }
 
-            // Fixtures comparison
+            // ── Section 1: Core Stats ──
+            let coreHtml = '';
+            coreHtml += compRow('Price', soldPrice, candPrice, false, '£' + soldPrice.toFixed(1) + 'm', '£' + candPrice.toFixed(1) + 'm');
+            coreHtml += compRow('Form', sold.form || 0, candidate.form || 0, true);
+            coreHtml += compRow('PPG', sold.ppg || 0, candidate.ppg || 0, true);
+            coreHtml += compRow('Pts (L5)', soldRecent?.points || 0, candRecent?.points || 0, true, fmtV(soldRecent?.points, 0), fmtV(candRecent?.points, 0));
+            coreHtml += compRow('Mins/G', soldRecent ? soldRecent.minutes / soldRecent.games : 0, candRecent ? candRecent.minutes / candRecent.games : 0, true, fmtV(soldRecent ? soldRecent.minutes / soldRecent.games : 0, 0), fmtV(candRecent ? candRecent.minutes / candRecent.games : 0, 0));
+            coreHtml += compRow('Ownership', sold.ownership || 0, candidate.ownership || 0, false, fmtV(sold.ownership, 1, '%'), fmtV(candidate.ownership, 1, '%'));
+            coreHtml += compRow('ICT', parseFloat(sold.ictIndex) || 0, parseFloat(candidate.ictIndex) || 0, true);
+            coreHtml += compRow('Transfer Score', calculateTransferScore(sold, pos), calculateTransferScore(candidate, pos), true, fmtV(calculateTransferScore(sold, pos), 0), fmtV(calculateTransferScore(candidate, pos), 0));
+
+            // ── Section 2: Position Stats (Recent + Season + Trend) ──
+            const soldPosStats = getPositionStats(sold, soldSeason, soldRecent);
+            const candPosStats = getPositionStats(candidate, candSeason, candRecent);
+            let posHtml = '';
+            for (let i = 0; i < soldPosStats.length; i++) {
+                const sp = soldPosStats[i], cp = candPosStats[i];
+                const sTrend = getTrend(sp.sVal, sp.rVal, sp.higherBetter);
+                const cTrend = getTrend(cp.sVal, cp.rVal, cp.higherBetter);
+                const lB = sp.higherBetter ? (sp.rVal || 0) > (cp.rVal || 0) : (sp.rVal || 0) < (cp.rVal || 0);
+                const rB = sp.higherBetter ? (cp.rVal || 0) > (sp.rVal || 0) : (cp.rVal || 0) < (sp.rVal || 0);
+                posHtml += '<div class="tw-compare-stat-row">' +
+                    '<div class="tw-compare-stat-val left' + (lB ? ' better' : rB ? ' worse' : '') + '">' + sp.recent +
+                    '<span class="tw-compare-trend ' + sTrend.cls + '">' + sTrend.icon + '</span>' +
+                    '<div class="tw-compare-sub">Season: ' + sp.season + '</div></div>' +
+                    '<div class="tw-compare-stat-label">' + sp.label + '</div>' +
+                    '<div class="tw-compare-stat-val right' + (rB ? ' better' : lB ? ' worse' : '') + '">' + cp.recent +
+                    '<span class="tw-compare-trend ' + cTrend.cls + '">' + cTrend.icon + '</span>' +
+                    '<div class="tw-compare-sub">Season: ' + cp.season + '</div></div></div>';
+            }
+
+            // ── Section 3: Team Context ──
+            const sT = teamAnalysis[sold.teamId] || {};
+            const cT = teamAnalysis[candidate.teamId] || {};
+            const sXg = getTeamSeasonXg(sold.teamId);
+            const cXg = getTeamSeasonXg(candidate.teamId);
+
+            let teamHtml = '';
+            teamHtml += compRow('Attack Power', sT.attackPower || 0, cT.attackPower || 0, true);
+            teamHtml += compRow('Defense Power', sT.defensePower || 0, cT.defensePower || 0, true);
+            teamHtml += compRow('Form Rating', sT.formRating || 0, cT.formRating || 0, true);
+            teamHtml += compRow('Fixture Score', sT.fixtureScore || 0, cT.fixtureScore || 0, true);
+            teamHtml += compRow('CS Rate', (sT.csRate || 0) * 100, (cT.csRate || 0) * 100, true, fmtV((sT.csRate || 0) * 100, 0, '%'), fmtV((cT.csRate || 0) * 100, 0, '%'));
+            teamHtml += compRow('Avg FDR', sT.avgFdr || 0, cT.avgFdr || 0, false);
+            if (sXg && cXg) {
+                teamHtml += compRow('xG/Game', sXg.xGpg, cXg.xGpg, true);
+                teamHtml += compRow('xGC/Game', sXg.xGCpg, cXg.xGCpg, false);
+            }
+            teamHtml += compRow('Atk Home', sT.attackPowerHome || 0, cT.attackPowerHome || 0, true);
+            teamHtml += compRow('Atk Away', sT.attackPowerAway || 0, cT.attackPowerAway || 0, true);
+            teamHtml += compRow('Def Home', sT.defensePowerHome || 0, cT.defensePowerHome || 0, true);
+            teamHtml += compRow('Def Away', sT.defensePowerAway || 0, cT.defensePowerAway || 0, true);
+
+            // ── Section 4: Fixture Comparison (next 5) ──
             const soldFix = teamFixtures[sold.teamId] || sold.fixtures || [];
             const candFix = teamFixtures[candidate.teamId] || candidate.fixtures || [];
-            const maxFix = Math.max(Math.min(soldFix.length, 3), Math.min(candFix.length, 3));
+            const maxFix = Math.min(5, Math.max(soldFix.length, candFix.length));
             let fixHtml = '';
-            if (maxFix > 0) {
-                fixHtml += '<div class="tw-compare-fixtures-title">Next Fixtures</div>';
-                for (let i = 0; i < maxFix; i++) {
-                    const sf = soldFix[i];
-                    const cf = candFix[i];
-                    const sfText = sf ? sf.opponent + '(' + (sf.isHome ? 'H' : 'A') + ')' : '-';
-                    const sfFdr = sf ? sf.difficulty : 3;
-                    const cfText = cf ? cf.opponent + '(' + (cf.isHome ? 'H' : 'A') + ')' : '-';
-                    const cfFdr = cf ? cf.difficulty : 3;
-                    fixHtml += '<div class="tw-compare-stat-row">' +
-                        '<div class="tw-compare-stat-val left"><span class="fdr-dot fdr-' + sfFdr + '"></span> ' + sfText + '</div>' +
-                        '<div class="tw-compare-stat-label">GW' + (currentGW + 1 + i) + '</div>' +
-                        '<div class="tw-compare-stat-val right"><span class="fdr-dot fdr-' + cfFdr + '"></span> ' + cfText + '</div>' +
-                        '</div>';
-                }
+            for (let i = 0; i < maxFix; i++) {
+                const sf = soldFix[i], cf = candFix[i];
+                const sfText = sf ? sf.opponent + '(' + (sf.isHome ? 'H' : 'A') + ')' : '-';
+                const sfFdr = sf ? sf.difficulty : 3;
+                const cfText = cf ? cf.opponent + '(' + (cf.isHome ? 'H' : 'A') + ')' : '-';
+                const cfFdr = cf ? cf.difficulty : 3;
+                let sfCs = '', cfCs = '';
+                if (sf && sf.opponentId) sfCs = '<div class="tw-compare-sub">CS: ' + (getCleanSheetProb(sold.teamId, sf.opponentId, sf.isHome) * 100).toFixed(0) + '%</div>';
+                if (cf && cf.opponentId) cfCs = '<div class="tw-compare-sub">CS: ' + (getCleanSheetProb(candidate.teamId, cf.opponentId, cf.isHome) * 100).toFixed(0) + '%</div>';
+                fixHtml += '<div class="tw-compare-stat-row">' +
+                    '<div class="tw-compare-stat-val left"><span class="fdr-dot fdr-' + sfFdr + '"></span> ' + sfText + sfCs + '</div>' +
+                    '<div class="tw-compare-stat-label">GW' + (currentGW + 1 + i) + '</div>' +
+                    '<div class="tw-compare-stat-val right"><span class="fdr-dot fdr-' + cfFdr + '"></span> ' + cfText + cfCs + '</div></div>';
             }
 
+            // ── Assemble ──
             el.innerHTML = '<div class="tw-scout">' +
-                '<div class="tw-scout-header"><i data-lucide="git-compare" style="width:14px;height:14px;"></i> Player Comparison</div>' +
+                '<div class="tw-scout-header"><i data-lucide="git-compare" style="width:14px;height:14px;"></i> Head-to-Head Comparison</div>' +
                 '<div class="tw-compare-panel">' +
                 '<div class="tw-compare-header">' +
-                '<button class="tw-compare-back" onclick="twBackToMarket()"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> Back to Market</button>' +
+                '<button class="tw-compare-back" onclick="twBackToMarket()"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> Back</button>' +
                 '<button class="tw-compare-pick-btn" onclick="twConfirmPick()" ' + (!affordable ? 'disabled title="Over budget"' : '') + '>' +
-                '<i data-lucide="check" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Confirm Pick</button>' +
-                '</div>' +
+                '<i data-lucide="check" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Confirm Pick</button></div>' +
                 '<div class="tw-compare-grid">' +
                 '<div class="tw-compare-col"><div class="tw-compare-player-name" style="color:var(--color-error);">' + sold.name + '</div>' +
-                '<div class="tw-compare-player-meta">' + sold.team + ' · ' + posName + ' · £' + soldPrice.toFixed(1) + 'm</div></div>' +
+                '<div class="tw-compare-player-meta">' + (sold.team || '') + ' · ' + posName + ' · £' + soldPrice.toFixed(1) + 'm</div></div>' +
                 '<div class="tw-compare-vs">VS</div>' +
                 '<div class="tw-compare-col"><div class="tw-compare-player-name" style="color:var(--color-success);">' + candidate.name + '</div>' +
-                '<div class="tw-compare-player-meta">' + candidate.team + ' · ' + posName + ' · £' + candPrice.toFixed(1) + 'm</div></div>' +
-                '</div>' +
-                '<div class="tw-compare-stats">' + statsHtml + '</div>' +
-                fixHtml +
+                '<div class="tw-compare-player-meta">' + (candidate.team || '') + ' · ' + posName + ' · £' + candPrice.toFixed(1) + 'm</div></div></div>' +
+                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="bar-chart-2" style="width:12px;height:12px;"></i> Core Stats</div>' +
+                '<div class="tw-compare-stats">' + coreHtml + '</div></div>' +
+                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="target" style="width:12px;height:12px;"></i> Position Stats (Recent · Season)</div>' +
+                '<div class="tw-compare-stats">' + posHtml + '</div></div>' +
+                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="shield" style="width:12px;height:12px;"></i> Team Context — ' + (sold.team || '') + ' vs ' + (candidate.team || '') + '</div>' +
+                '<div class="tw-compare-stats">' + teamHtml + '</div></div>' +
+                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="calendar" style="width:12px;height:12px;"></i> Next Fixtures + CS Probability</div>' +
+                '<div class="tw-compare-stats">' + fixHtml + '</div></div>' +
                 '</div></div>';
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -6902,14 +7134,20 @@
         function twPickOutPlayer(playerId) {
             const player = selectedPlayers.find(p => p.id === playerId);
             if (!player) return;
-            if (transferState.pending.some(s => s.soldPlayer.id === playerId)) return;
-            if (transferState.pending.length >= 5) return;
 
-            transferState.pending.push({ soldPlayer: player, replacement: null });
-            transferState.activeSlot = transferState.pending.length - 1;
-            transferState.mode = 'market';
-            transferState.previewPlayer = null;
-            transferState.candidateCache = {};
+            const existingIdx = transferState.pending.findIndex(s => s.soldPlayer.id === playerId);
+            if (existingIdx >= 0) {
+                if (!transferState.pending[existingIdx].replacement) {
+                    transferState.pending.splice(existingIdx, 1);
+                    transferState.candidateCache = {};
+                    if (transferState.activeSlot >= transferState.pending.length) {
+                        transferState.activeSlot = Math.max(-1, transferState.pending.length - 1);
+                    }
+                }
+            } else {
+                if (transferState.pending.length >= 5) return;
+                transferState.pending.push({ soldPlayer: player, replacement: null });
+            }
 
             renderTWBudgetBar();
             renderTWDraftBoard();
@@ -6920,6 +7158,19 @@
             transferState.mode = 'squad';
             transferState.activeSlot = -1;
             transferState.previewPlayer = null;
+            renderTWDraftBoard();
+            renderTWScoutPanel();
+        }
+
+        function twStartMarketForSlots() {
+            const idx = transferState.pending.findIndex(s => !s.replacement);
+            if (idx < 0) return;
+            transferState.activeSlot = idx;
+            transferState.mode = 'market';
+            transferState.previewPlayer = null;
+            transferState.candidateCache = {};
+            transferState.marketTab = 'ai';
+            transferState.browseSearch = '';
             renderTWDraftBoard();
             renderTWScoutPanel();
         }
@@ -6998,8 +7249,18 @@
 
             slot.replacement = candidate;
             transferState.previewPlayer = null;
-            transferState.mode = 'market';
             transferState.candidateCache = {};
+
+            // Auto-advance to next unfilled slot
+            const nextUnfilled = transferState.pending.findIndex(s => !s.replacement);
+            if (nextUnfilled >= 0) {
+                transferState.activeSlot = nextUnfilled;
+                transferState.mode = 'market';
+            } else {
+                transferState.mode = 'squad';
+                transferState.activeSlot = -1;
+            }
+
             renderTWBudgetBar();
             renderTWDraftBoard();
             renderTWScoutPanel();
@@ -7007,6 +7268,28 @@
 
         function twSetMarketFilter(key, value) {
             transferState.marketFilter[key] = value;
+            renderTWScoutPanel();
+        }
+
+        let twSearchTimeout = null;
+        function twSwitchMarketTab(tab) {
+            transferState.marketTab = tab;
+            transferState.browseSearch = '';
+            renderTWScoutPanel();
+        }
+
+        function twSearchInput(value) {
+            transferState.browseSearch = value;
+            clearTimeout(twSearchTimeout);
+            twSearchTimeout = setTimeout(() => {
+                renderTWScoutPanel();
+                const inp = document.querySelector('.tw-market-search');
+                if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
+            }, 250);
+        }
+
+        function twSetBrowseSort(sort) {
+            transferState.browseSort = sort;
             renderTWScoutPanel();
         }
 
