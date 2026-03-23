@@ -1294,6 +1294,31 @@
         .tw-compare-trend.flat { color: var(--text-muted); }
         .tw-compare-sub { font-size: 9px; font-weight: 400; color: var(--text-muted); }
 
+        /* Routes to Points Comparison */
+        .tw-routes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+        .tw-routes-side { min-width: 0; }
+        .tw-routes-player-label { font-size: 11px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+        .tw-route-bar-row { display: flex; align-items: center; gap: 4px; font-size: 10px; margin-bottom: 3px; }
+        .tw-route-bar-name { width: 56px; flex-shrink: 0; color: var(--text-secondary); font-weight: 500; font-size: 9px; }
+        .tw-route-bar-track { flex: 1; height: 5px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
+        .tw-route-bar-fill { height: 100%; border-radius: 3px; transition: width 300ms ease; }
+        .tw-route-bar-detail { width: 52px; flex-shrink: 0; text-align: right; color: var(--text-muted); font-size: 9px; font-family: var(--font-mono); }
+        .tw-route-count { text-align: center; font-size: 16px; font-weight: 700; color: var(--color-success); font-family: var(--font-mono); }
+        .tw-route-count-label { text-align: center; font-size: 9px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
+        .tw-routes-none { text-align: center; font-size: 10px; color: var(--text-muted); padding: 8px 0; }
+
+        /* Multi-Metric Trend Charts */
+        .tw-chart-wrap { margin-top: 8px; }
+        .tw-chart-legend { display: flex; justify-content: center; gap: 12px; margin-bottom: 6px; font-size: 10px; color: var(--text-muted); flex-wrap: wrap; }
+        .tw-chart-legend-dot { display: inline-block; width: 8px; height: 3px; border-radius: 2px; margin-right: 3px; vertical-align: middle; }
+        .tw-chart-legend-sold { border-bottom: 2px solid; border-style: solid; }
+        .tw-chart-legend-cand { border-bottom: 2px dashed; border-style: dashed; }
+        .tw-chart-canvas { width: 100%; height: 140px; border-radius: var(--radius-md); background: var(--surface-2); }
+        .tw-chart-tabs { display: flex; gap: 0; margin-bottom: 4px; }
+        .tw-chart-tab { flex: 1; padding: 5px 8px; background: none; border: none; border-bottom: 2px solid transparent; font-family: var(--font-body); font-size: 10px; font-weight: 700; color: var(--text-muted); cursor: pointer; text-align: center; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.3px; }
+        .tw-chart-tab:hover { color: var(--text-secondary); }
+        .tw-chart-tab.active { color: var(--text-primary); border-bottom-color: var(--color-info); }
+
         /* ===== LINEUP WIZARD ===== */
         .lw-container { padding: 0; }
         .lw-intro { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 0.8rem; color: var(--text-secondary); }
@@ -3158,6 +3183,16 @@
                 healthScore += 2;
                 healthFactors.push({ icon: '⭐', text: `${stars.length} Star performers in squad`, impact: 'positive' });
             }
+            // Penalty: starters with very poor form
+            const poorFormStarters = starters.filter(a => parseFloat(a.player.form) < 2.5 && !a.player.status);
+            if (poorFormStarters.length) {
+                healthScore -= poorFormStarters.length * 2;
+                healthFactors.push({ icon: '📉', text: `${poorFormStarters.length} starter${poorFormStarters.length > 1 ? 's' : ''} in poor form (<2.5)`, impact: 'negative' });
+            }
+
+            // Sort health factors: negative first, then warning, then positive
+            const impactOrder = { negative: 0, warning: 1, positive: 2 };
+            healthFactors.sort((a, b) => (impactOrder[a.impact] ?? 1) - (impactOrder[b.impact] ?? 1));
 
             const teamHealth = Math.max(0, Math.min(100, Math.round(healthScore)));
 
@@ -3198,11 +3233,17 @@
 
         function renderSquadAlertsPanel() {
             const squadPlayers = selectedPlayers || [];
-            const alerts = squadPlayers.filter(p => p.news && p.news.trim()).sort((a, b) => {
+            const injuryAlerts = squadPlayers.filter(p => p.news && p.news.trim()).sort((a, b) => {
                 const aChance = a.chanceNextRound ?? 100;
                 const bChance = b.chanceNextRound ?? 100;
                 return aChance - bChance;
             });
+            // Poor form starters (form < 3.0, no injury news already shown)
+            const poorFormAlerts = squadPlayers.filter(p => {
+                const form = parseFloat(p.form);
+                return form < 3.0 && !p.onBench && !(p.news && p.news.trim());
+            }).sort((a, b) => parseFloat(a.form) - parseFloat(b.form));
+            const alerts = [...injuryAlerts, ...poorFormAlerts];
             if (!alerts.length) return '';
             let html = `<div class="squad-alerts-panel">`;
             html += `<div class="squad-alerts-header" onclick="toggleSection('squad-alerts-body')">`;
@@ -3222,12 +3263,18 @@
                 } else if (p.status === 'd') {
                     statusClass = 'status-doubt'; statusIcon = '?';
                 }
-                const chanceText = chance !== null && chance !== undefined ? `<div class="squad-alert-chance" style="color:${chance <= 25 ? '#EF4444' : chance <= 75 ? '#D97706' : '#10B981'};">${chance}% chance of playing</div>` : '';
+                const isFormAlert = !(p.news && p.news.trim()) && parseFloat(p.form) < 3.0;
+                if (isFormAlert) {
+                    statusClass = 'status-doubt';
+                    statusIcon = '📉';
+                }
+                const chanceText = chance !== null && chance !== undefined && !isFormAlert ? `<div class="squad-alert-chance" style="color:${chance <= 25 ? '#EF4444' : chance <= 75 ? '#D97706' : '#10B981'};">${chance}% chance of playing</div>` : '';
+                const detailText = isFormAlert ? `Form: ${parseFloat(p.form).toFixed(1)} — starter in poor form` : escHTML(p.news);
                 html += `<div class="squad-alert-item">
                     <div class="squad-alert-status ${statusClass}">${statusIcon}</div>
                     <div class="squad-alert-info">
                         <div class="squad-alert-name">${escHTML(p.name)} <span style="font-weight:400;color:var(--text-muted);">${escHTML(p.team)}</span></div>
-                        <div class="squad-alert-detail">${escHTML(p.news)}</div>
+                        <div class="squad-alert-detail">${detailText}</div>
                         ${chanceText}
                     </div>
                 </div>`;
@@ -3270,8 +3317,8 @@
 
             if (dropping.length === 0 && rising.length === 0) return '';
 
-            // Ticker strip — top movers
-            const tickerPlayers = [...dropping.slice(0, 4), ...rising.slice(0, 4)];
+            // Ticker strip — top movers (prioritize drops, limit rises)
+            const tickerPlayers = [...dropping.slice(0, 4), ...rising.slice(0, 2)];
             let tickerHtml = '';
             tickerPlayers.forEach(p => {
                 const cls = p.pr < -0.015 ? 'bear' : p.pr > 0.015 ? 'bull' : 'flat';
@@ -3328,11 +3375,11 @@
                 html += `</div>`;
             }
 
-            // Rising section
+            // Rising section (capped at 3)
             if (rising.length > 0) {
-                html += `<div class="price-watch-section-title"><span style="color:#10B981;">▲</span> Rising — Buy Pressure</div>`;
+                html += `<div class="price-watch-section-title"><span style="color:#10B981;">▲</span> Rising — Buy Pressure${rising.length > 3 ? ` (top 3 of ${rising.length})` : ''}</div>`;
                 html += `<div class="price-watch-grid">`;
-                rising.forEach(p => {
+                rising.slice(0, 3).forEach(p => {
                     const netK = Math.round(p.net / 1000);
                     html += `<div class="price-card bull-card">
                         <div class="price-card-arrow bull">▲</div>
@@ -7061,7 +7108,138 @@
                     '<div class="tw-compare-sub">Season: ' + cp.season + '</div></div></div>';
             }
 
-            // ── Section 3: Team Context ──
+            // ── Section 3: Routes to Points ──
+            function twComputeRoutes(player) {
+                const goalPts = { 1: 6, 2: 6, 3: 5, 4: 4 };
+                const csPtsMap = { 1: 4, 2: 4, 3: 1, 4: 0 };
+                const seasonGames = Math.max(currentGW - 1, 1);
+                const recent = getPlayerRecentStats(player.id, 5);
+                const rg = recent?.games || 1;
+                const blend = (rVal, sVal, sDivisor) => ((rVal || 0) / rg) * 0.6 + ((sVal || 0) / sDivisor) * 0.4;
+
+                const xGpg = blend(recent?.xG, player.xG, seasonGames);
+                const xApg = blend(recent?.xA, player.xA, seasonGames);
+                const goalsPg = blend(recent?.goals, player.goals, seasonGames);
+                const assistsPg = blend(recent?.assists, player.assists, seasonGames);
+                const csPg = blend(recent?.cs, player.cleanSheets, seasonGames);
+                const bonusPg = blend(recent?.bonus, player.bonus, seasonGames);
+                const savesPg = pos === 1 ? blend(recent?.saves, player.saves, seasonGames) : 0;
+                const creativityPg = (player.creativity || 0) / seasonGames;
+
+                const goalThresh = { 1: 0.03, 2: 0.06, 3: 0.12, 4: 0.15 }[pos];
+                const assistThresh = { 1: 0.02, 2: 0.06, 3: 0.10, 4: 0.08 }[pos];
+                const csThresh = { 1: 0.15, 2: 0.15, 3: 0.30, 4: 999 }[pos];
+                const bonusThresh = { 1: 0.3, 2: 0.3, 3: 0.4, 4: 0.5 }[pos];
+
+                const routes = [];
+                if (xGpg >= goalThresh || goalsPg >= goalThresh * 1.5) {
+                    const ceiling = pos === 4 ? 0.6 : pos === 3 ? 0.5 : 0.3;
+                    routes.push({ name: 'Goals', strength: Math.min(10, (xGpg / ceiling) * 10), detail: xGpg.toFixed(2) + ' xG/g', color: '#F87171', ptWeight: goalPts[pos] });
+                }
+                if (xApg >= assistThresh || assistsPg >= assistThresh * 1.5) {
+                    const ceiling = pos === 3 ? 0.4 : 0.3;
+                    routes.push({ name: 'Assists', strength: Math.min(10, (xApg / ceiling) * 10), detail: xApg.toFixed(2) + ' xA/g', color: '#60A5FA', ptWeight: 3 });
+                }
+                if (csPg >= csThresh) {
+                    routes.push({ name: 'Clean Sheets', strength: Math.min(10, (csPg / 0.55) * 10), detail: (csPg * 100).toFixed(0) + '% rate', color: '#34D399', ptWeight: csPtsMap[pos] });
+                }
+                if (bonusPg >= bonusThresh) {
+                    routes.push({ name: 'Bonus', strength: Math.min(10, (bonusPg / 2) * 10), detail: bonusPg.toFixed(1) + '/g', color: '#FBBF24', ptWeight: 2 });
+                }
+                if (pos === 1 && savesPg >= 2) {
+                    routes.push({ name: 'Saves', strength: Math.min(10, (savesPg / 5) * 10), detail: savesPg.toFixed(1) + '/g', color: '#A78BFA', ptWeight: 1.5 });
+                }
+                if (creativityPg >= 12 && (pos === 3 || pos === 2)) {
+                    routes.push({ name: 'Creativity', strength: Math.min(10, (creativityPg / 45) * 10), detail: creativityPg.toFixed(0) + ' crea/g', color: '#FB923C', ptWeight: 1.5 });
+                }
+                const seasonPenGoals = Math.max(0, (player.goals || 0) - (player.xG || 0));
+                const penThresholds = { 1: 999, 2: 0.5, 3: 1.0, 4: 1.5 };
+                const penAttempts = seasonPenGoals >= (penThresholds[pos] || 1) ? Math.round(seasonPenGoals) : 0;
+                if (penAttempts >= 2 && pos !== 1) {
+                    routes.push({ name: 'Penalties', strength: Math.min(10, Math.max(3, penAttempts * 2)), detail: penAttempts + ' taken', color: '#F472B6', ptWeight: goalPts[pos] * 0.76 });
+                }
+                return routes;
+            }
+
+            function renderRoutesBars(routes) {
+                if (routes.length === 0) return '<div class="tw-routes-none">No qualifying routes</div>';
+                const order = { Goals: 0, Assists: 1, 'Clean Sheets': 2, Penalties: 3, Bonus: 4, Saves: 5, Creativity: 6 };
+                const sorted = [...routes].sort((a, b) => (order[a.name] ?? 99) - (order[b.name] ?? 99));
+                return sorted.map(r =>
+                    '<div class="tw-route-bar-row">' +
+                    '<span class="tw-route-bar-name">' + r.name + '</span>' +
+                    '<div class="tw-route-bar-track"><div class="tw-route-bar-fill" style="width:' + (r.strength * 10) + '%;background:' + r.color + ';"></div></div>' +
+                    '<span class="tw-route-bar-detail">' + r.detail + '</span></div>'
+                ).join('');
+            }
+
+            const soldRoutes = twComputeRoutes(sold);
+            const candRoutes = twComputeRoutes(candidate);
+
+            const routesHtml = '<div class="tw-routes-grid">' +
+                '<div class="tw-routes-side">' +
+                '<div class="tw-routes-player-label" style="color:var(--color-error);">' + sold.name + '</div>' +
+                '<div class="tw-route-count">' + soldRoutes.length + '</div><div class="tw-route-count-label">routes</div>' +
+                renderRoutesBars(soldRoutes) + '</div>' +
+                '<div class="tw-routes-side">' +
+                '<div class="tw-routes-player-label" style="color:var(--color-success);">' + candidate.name + '</div>' +
+                '<div class="tw-route-count">' + candRoutes.length + '</div><div class="tw-route-count-label">routes</div>' +
+                renderRoutesBars(candRoutes) + '</div></div>';
+
+            // ── Section 4: Multi-Metric Trend Charts ──
+            const soldPd = playersDetailData?.players?.find(p => p.id === sold.id);
+            const candPd = playersDetailData?.players?.find(p => p.id === candidate.id);
+            const soldHist = (soldPd?.history || []).filter(h => h.minutes > 0).slice(-8);
+            const candHist = (candPd?.history || []).filter(h => h.minutes > 0).slice(-8);
+            const hasChart = soldHist.length >= 2 || candHist.length >= 2;
+
+            // Define position-specific chart metrics
+            const chartMetrics = {
+                1: [ // GK
+                    { key: 'total_points', label: 'Points', color: '#FBBF24', per90: false },
+                    { key: 'saves', label: 'Saves', color: '#A78BFA', per90: false },
+                    { key: 'expected_goals_conceded', label: 'xGC', color: '#F87171', per90: true, lowerBetter: true },
+                    { key: 'clean_sheets', label: 'CS', color: '#34D399', per90: false }
+                ],
+                2: [ // DEF
+                    { key: 'total_points', label: 'Points', color: '#FBBF24', per90: false },
+                    { key: 'expected_goals_conceded', label: 'xGC', color: '#F87171', per90: true, lowerBetter: true },
+                    { key: 'expected_goal_involvements', label: 'xGI', color: '#60A5FA', per90: true },
+                    { key: 'clean_sheets', label: 'CS', color: '#34D399', per90: false },
+                    { key: 'bonus', label: 'Bonus', color: '#FB923C', per90: false }
+                ],
+                3: [ // MID
+                    { key: 'total_points', label: 'Points', color: '#FBBF24', per90: false },
+                    { key: 'expected_goal_involvements', label: 'xGI', color: '#60A5FA', per90: true },
+                    { key: 'expected_goals', label: 'xG', color: '#F87171', per90: true },
+                    { key: 'expected_assists', label: 'xA', color: '#34D399', per90: true },
+                    { key: 'bonus', label: 'Bonus', color: '#FB923C', per90: false }
+                ],
+                4: [ // FWD
+                    { key: 'total_points', label: 'Points', color: '#FBBF24', per90: false },
+                    { key: 'expected_goals', label: 'xG', color: '#F87171', per90: true },
+                    { key: 'expected_goal_involvements', label: 'xGI', color: '#60A5FA', per90: true },
+                    { key: 'goals_scored', label: 'Goals', color: '#34D399', per90: false },
+                    { key: 'bonus', label: 'Bonus', color: '#FB923C', per90: false }
+                ]
+            };
+
+            const metrics = chartMetrics[pos] || chartMetrics[3];
+
+            let chartTabsHtml = '';
+            let chartCanvasHtml = '';
+            if (hasChart) {
+                chartTabsHtml = '<div class="tw-chart-tabs">' +
+                    metrics.map((m, i) =>
+                        '<button class="tw-chart-tab' + (i === 0 ? ' active' : '') + '" onclick="twSwitchChart(' + i + ')">' + m.label + '</button>'
+                    ).join('') + '</div>';
+                chartCanvasHtml = '<div class="tw-chart-legend">' +
+                    '<span><span class="tw-chart-legend-dot" style="background:#F87171;"></span>' + sold.name + ' (solid)</span>' +
+                    '<span><span class="tw-chart-legend-dot" style="background:#60A5FA;"></span>' + candidate.name + ' (dashed)</span></div>' +
+                    '<canvas id="twTrendChart" class="tw-chart-canvas" width="460" height="140"></canvas>';
+            }
+
+            // ── Section 5: Team Context ──
             const sT = teamAnalysis[sold.teamId] || {};
             const cT = teamAnalysis[candidate.teamId] || {};
             const sXg = getTeamSeasonXg(sold.teamId);
@@ -7083,7 +7261,7 @@
             teamHtml += compRow('Def Home', sT.defensePowerHome || 0, cT.defensePowerHome || 0, true);
             teamHtml += compRow('Def Away', sT.defensePowerAway || 0, cT.defensePowerAway || 0, true);
 
-            // ── Section 4: Fixture Comparison (next 5) ──
+            // ── Section 6: Fixture Comparison (next 5) ──
             const soldFix = teamFixtures[sold.teamId] || sold.fixtures || [];
             const candFix = teamFixtures[candidate.teamId] || candidate.fixtures || [];
             const maxFix = Math.min(5, Math.max(soldFix.length, candFix.length));
@@ -7121,12 +7299,129 @@
                 '<div class="tw-compare-stats">' + coreHtml + '</div></div>' +
                 '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="target" style="width:12px;height:12px;"></i> Position Stats (Recent · Season)</div>' +
                 '<div class="tw-compare-stats">' + posHtml + '</div></div>' +
+                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="route" style="width:12px;height:12px;"></i> Routes to Points</div>' + routesHtml + '</div>' +
+                (hasChart ? '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> Performance Trends (Last 8 Games)</div>' +
+                '<div class="tw-chart-wrap">' + chartTabsHtml + chartCanvasHtml + '</div></div>' : '') +
                 '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="shield" style="width:12px;height:12px;"></i> Team Context — ' + (sold.team || '') + ' vs ' + (candidate.team || '') + '</div>' +
                 '<div class="tw-compare-stats">' + teamHtml + '</div></div>' +
                 '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="calendar" style="width:12px;height:12px;"></i> Next Fixtures + CS Probability</div>' +
                 '<div class="tw-compare-stats">' + fixHtml + '</div></div>' +
                 '</div></div>';
             if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            // Store chart data for tab switching
+            if (hasChart) {
+                window._twChartData = { soldHist, candHist, metrics, soldName: sold.name, candName: candidate.name };
+                twDrawTrendChart(0);
+            }
+        }
+
+        // ── Chart drawing + tab switching ──
+        let _twActiveChart = 0;
+
+        function twSwitchChart(idx) {
+            _twActiveChart = idx;
+            document.querySelectorAll('.tw-chart-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+            twDrawTrendChart(idx);
+        }
+
+        function twDrawTrendChart(metricIdx) {
+            const data = window._twChartData;
+            if (!data) return;
+            const canvas = document.getElementById('twTrendChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.clientWidth;
+            const h = canvas.clientHeight;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, w, h);
+
+            const metric = data.metrics[metricIdx];
+            const key = metric.key;
+            const isPer90 = metric.per90;
+
+            function extractVals(hist) {
+                return hist.map(g => {
+                    const raw = parseFloat(g[key]) || 0;
+                    if (isPer90 && g.minutes > 0) return (raw / g.minutes) * 90;
+                    return raw;
+                });
+            }
+
+            const soldVals = extractVals(data.soldHist);
+            const candVals = extractVals(data.candHist);
+            const allVals = [...soldVals, ...candVals];
+            const maxVal = Math.max(0.1, ...allVals) * 1.15;
+            const maxLen = Math.max(data.soldHist.length, data.candHist.length);
+
+            const pad = { top: 12, right: 14, bottom: 24, left: 32 };
+            const plotW = w - pad.left - pad.right;
+            const plotH = h - pad.top - pad.bottom;
+
+            // Grid lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 1;
+            const gridSteps = 4;
+            for (let i = 0; i <= gridSteps; i++) {
+                const v = (maxVal / gridSteps) * i;
+                const y = pad.top + plotH - (v / maxVal) * plotH;
+                ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.font = '9px monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText(v < 10 ? v.toFixed(1) : Math.round(v), pad.left - 4, y + 3);
+            }
+
+            // GW labels
+            const gwLabels = data.soldHist.length >= data.candHist.length ? data.soldHist : data.candHist;
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'center';
+            gwLabels.forEach((g, i) => {
+                const x = pad.left + (maxLen > 1 ? (i / (maxLen - 1)) * plotW : plotW / 2);
+                ctx.fillText('GW' + (g.round || ''), x, h - 4);
+            });
+
+            function drawLine(vals, hist, color, dashed) {
+                if (vals.length < 2) return;
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.lineJoin = 'round';
+                ctx.setLineDash(dashed ? [5, 3] : []);
+                vals.forEach((v, i) => {
+                    const x = pad.left + (maxLen > 1 ? (i / (maxLen - 1)) * plotW : plotW / 2);
+                    const y = pad.top + plotH - (v / maxVal) * plotH;
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+                ctx.setLineDash([]);
+                // Dots
+                vals.forEach((v, i) => {
+                    const x = pad.left + (maxLen > 1 ? (i / (maxLen - 1)) * plotW : plotW / 2);
+                    const y = pad.top + plotH - (v / maxVal) * plotH;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                });
+            }
+
+            drawLine(soldVals, data.soldHist, '#F87171', false);
+            drawLine(candVals, data.candHist, '#60A5FA', true);
+
+            // Y-axis label
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.font = '9px sans-serif';
+            ctx.translate(8, pad.top + plotH / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textAlign = 'center';
+            ctx.fillText(metric.label + (isPer90 ? ' /90' : ''), 0, 0);
+            ctx.restore();
         }
 
         // ===== Transfer Control Room — Actions =====
@@ -7936,18 +8231,19 @@
                 </div>`;
             }
 
-            // ── LEFT COLUMN: Lineup ──
-            let left = '';
-
-            // Header bar
-            left += `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:4px;"><i data-lucide="layout-grid" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Optimal Lineup — GW${currentGW}</div>`;
-            left += `<div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex-wrap:wrap;">
+            // ── FULL-WIDTH HEADER (above grid so intel and pitch align) ──
+            let topBar = '';
+            topBar += `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:4px;"><i data-lucide="layout-grid" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Optimal Lineup — GW${currentGW}</div>`;
+            topBar += `<div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex-wrap:wrap;">
                 <span>Formation: <strong style="color:var(--text-primary);">${formation}</strong></span>
                 <span>·</span>
                 <span>Total Score: <strong style="color:var(--color-success);font-family:var(--font-mono);">${totalScore}</strong></span>
                 <span style="flex:1;"></span>
                 <button class="tw-btn tw-btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="resetLineupToOptimal()"><i data-lucide="rotate-ccw" style="width:12px;height:12px;"></i> Reset</button>
             </div>`;
+
+            // ── LEFT COLUMN: Lineup ──
+            let left = '';
 
             // Swap hint
             if (lineupState.swapSource) {
@@ -8000,7 +8296,7 @@
             let right = renderLWContextPanel();
 
             // ── Assemble split layout ──
-            let html = `<div class="lw-clipboard-layout">
+            let html = topBar + `<div class="lw-clipboard-layout">
                 <div class="lw-lineup-col">${left}</div>
                 <div class="lw-context-col" id="lwContextPanel">${right}</div>
             </div>`;
