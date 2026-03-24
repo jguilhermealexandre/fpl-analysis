@@ -1133,7 +1133,7 @@
         .tw-confirm-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; background: var(--surface-3); color: var(--text-muted); }
 
         /* 2-column Room Layout */
-        .tw-room-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+        .tw-room-layout { display: grid; grid-template-columns: 2fr 3fr; gap: 16px; align-items: start; }
         @media (max-width: 900px) { .tw-room-layout { grid-template-columns: 1fr; } }
         .tw-board-col { display: flex; flex-direction: column; gap: 12px; }
         .tw-scout-col { position: sticky; top: 120px; }
@@ -7306,6 +7306,9 @@
                 '<div class="tw-compare-stats">' + teamHtml + '</div></div>' +
                 '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="calendar" style="width:12px;height:12px;"></i> Next Fixtures + CS Probability</div>' +
                 '<div class="tw-compare-stats">' + fixHtml + '</div></div>' +
+                twBuildRisingFormSection(sold, candidate) +
+                twBuildHomeSplitsSection(sold, candidate, pos) +
+                twBuildXgRegressionSection(sold, candidate) +
                 '</div></div>';
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
@@ -7314,6 +7317,97 @@
                 window._twChartData = { soldHist, candHist, metrics, soldName: sold.name, candName: candidate.name };
                 twDrawTrendChart(0);
             }
+        }
+
+        // ── TW: Rising Form Signals Section ──
+        function twBuildRisingFormSection(sold, candidate) {
+            function getRisingSignals(player) {
+                const ta = teamAnalysis[player.teamId] || {};
+                const swing = fixtureSwingData[player.teamId] || {};
+                const ss = seasonStats[player.teamId] || {};
+                const txg = teamXgData[player.teamId] || {};
+                const signals = [];
+                const l5 = ss.last5 || '';
+                if (ta.formRating > 55) signals.push({ label: 'Team in Form', value: l5 || (ta.formRating + ' rating'), positive: true });
+                if (txg.recentXgPg && txg.seasonXgPg && txg.recentXgPg > txg.seasonXgPg * 1.05) signals.push({ label: 'xG Rising', value: '+' + ((txg.recentXgPg - txg.seasonXgPg) * 100 / txg.seasonXgPg).toFixed(0) + '% vs season', positive: true });
+                if (txg.recentXgcPg && txg.seasonXgcPg && txg.recentXgcPg < txg.seasonXgcPg * 0.95) signals.push({ label: 'xGC Improving', value: ((txg.seasonXgcPg - txg.recentXgcPg) * 100 / txg.seasonXgcPg).toFixed(0) + '% better', positive: true });
+                if (swing.direction === 'improving') signals.push({ label: 'Fixtures Improving', value: 'Swing +' + (swing.magnitude || '').toString(), positive: true });
+                else if (swing.direction === 'worsening') signals.push({ label: 'Fixtures Worsening', value: 'Swing -' + (swing.magnitude || '').toString(), positive: false });
+                const avgFdr = ta.avgFdr || 3;
+                if (avgFdr <= 2.5) signals.push({ label: 'Easy Run', value: 'Avg FDR ' + avgFdr.toFixed(1), positive: true });
+                return signals;
+            }
+            const sSig = getRisingSignals(sold), cSig = getRisingSignals(candidate);
+            if (sSig.length === 0 && cSig.length === 0) return '';
+            function renderSignals(sigs) {
+                if (sigs.length === 0) return '<div style="font-size:11px;color:var(--text-muted);padding:4px 0;">No signals</div>';
+                return sigs.map(s => '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;">' +
+                    '<span style="color:' + (s.positive ? 'var(--color-success)' : 'var(--color-error)') + ';">' + (s.positive ? '▲' : '▼') + '</span>' +
+                    '<span style="font-weight:600;">' + s.label + '</span>' +
+                    '<span style="color:var(--text-muted);margin-left:auto;font-family:var(--font-mono);font-size:10px;">' + s.value + '</span></div>').join('');
+            }
+            return '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> Rising Form Signals</div>' +
+                '<div class="tw-routes-grid"><div class="tw-routes-side"><div class="tw-routes-player-label" style="color:var(--color-error);">' + escHTML(sold.name) + '</div>' + renderSignals(sSig) + '</div>' +
+                '<div class="tw-routes-side"><div class="tw-routes-player-label" style="color:var(--color-success);">' + escHTML(candidate.name) + '</div>' + renderSignals(cSig) + '</div></div></div>';
+        }
+
+        // ── TW: Home/Away Splits Section ──
+        function twBuildHomeSplitsSection(sold, candidate, pos) {
+            function getSplits(player) {
+                if (!playersDetailData || !playersDetailData.players) return null;
+                const pd = playersDetailData.players.find(p => p.id === player.id);
+                if (!pd || !pd.history) return null;
+                const played = pd.history.filter(h => h.minutes > 0);
+                const home = played.filter(h => h.was_home);
+                const away = played.filter(h => !h.was_home);
+                function agg(games) {
+                    if (games.length === 0) return { games: 0, points: 0, xGI: 0, cs: 0, bonus: 0 };
+                    return {
+                        games: games.length,
+                        points: (games.reduce((s, h) => s + h.total_points, 0) / games.length).toFixed(1),
+                        xGI: (games.reduce((s, h) => s + (parseFloat(h.expected_goal_involvements) || 0), 0) / games.length).toFixed(2),
+                        cs: games.reduce((s, h) => s + (h.clean_sheets || 0), 0),
+                        bonus: (games.reduce((s, h) => s + (h.bonus || 0), 0) / games.length).toFixed(1)
+                    };
+                }
+                return { home: agg(home), away: agg(away) };
+            }
+            const sSplits = getSplits(sold), cSplits = getSplits(candidate);
+            if (!sSplits && !cSplits) return '';
+            function splitTable(splits, name) {
+                if (!splits) return '<div style="font-size:11px;color:var(--text-muted);">' + escHTML(name) + ': Insufficient data</div>';
+                return '<div style="margin-bottom:4px;"><div class="tw-routes-player-label">' + escHTML(name) + '</div>' +
+                    '<table style="width:100%;font-size:11px;border-collapse:collapse;">' +
+                    '<tr style="color:var(--text-muted);"><th style="text-align:left;font-weight:600;padding:3px 4px;"></th><th style="padding:3px 4px;">Home (' + splits.home.games + 'g)</th><th style="padding:3px 4px;">Away (' + splits.away.games + 'g)</th></tr>' +
+                    '<tr><td style="padding:3px 4px;color:var(--text-muted);">PPG</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.home.points + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.away.points + '</td></tr>' +
+                    '<tr><td style="padding:3px 4px;color:var(--text-muted);">xGI/g</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.home.xGI + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.away.xGI + '</td></tr>' +
+                    '<tr><td style="padding:3px 4px;color:var(--text-muted);">CS</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.home.cs + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.away.cs + '</td></tr>' +
+                    '<tr><td style="padding:3px 4px;color:var(--text-muted);">Bonus/g</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.home.bonus + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.away.bonus + '</td></tr>' +
+                    '</table></div>';
+            }
+            return '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="home" style="width:12px;height:12px;"></i> Home vs Away Splits</div>' +
+                '<div class="tw-routes-grid">' + '<div class="tw-routes-side">' + splitTable(sSplits, sold.name) + '</div>' +
+                '<div class="tw-routes-side">' + splitTable(cSplits, candidate.name) + '</div></div></div>';
+        }
+
+        // ── TW: xG Regression Section ──
+        function twBuildXgRegressionSection(sold, candidate) {
+            function xgRegression(player) {
+                const goals = player.goals || 0;
+                const xG = player.xG || 0;
+                const diff = goals - xG;
+                const label = diff > 1 ? 'Overperforming' : diff < -1 ? 'Underperforming' : 'In line';
+                const color = diff > 2 ? 'var(--color-warning)' : diff < -2 ? 'var(--color-success)' : 'var(--text-secondary)';
+                return { goals, xG, diff, label, color };
+            }
+            const sR = xgRegression(sold), cR = xgRegression(candidate);
+            return '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> xG Regression Analysis</div>' +
+                '<div class="tw-routes-grid"><div class="tw-routes-side">' +
+                '<div class="tw-routes-player-label" style="color:var(--color-error);">' + escHTML(sold.name) + '</div>' +
+                '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px;"><span>Goals: ' + sR.goals + '</span><span>xG: ' + sR.xG.toFixed(1) + '</span><span style="color:' + sR.color + ';font-weight:600;">' + sR.label + ' (' + (sR.diff >= 0 ? '+' : '') + sR.diff.toFixed(1) + ')</span></div></div>' +
+                '<div class="tw-routes-side">' +
+                '<div class="tw-routes-player-label" style="color:var(--color-success);">' + escHTML(candidate.name) + '</div>' +
+                '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px;"><span>Goals: ' + cR.goals + '</span><span>xG: ' + cR.xG.toFixed(1) + '</span><span style="color:' + cR.color + ';font-weight:600;">' + cR.label + ' (' + (cR.diff >= 0 ? '+' : '') + cR.diff.toFixed(1) + ')</span></div></div></div></div>';
         }
 
         // ── Chart drawing + tab switching ──
@@ -8735,7 +8829,7 @@
                 html += `<div class="lw-ctx-section">`;
                 html += `<div class="lw-ctx-section-title"><i data-lucide="calendar" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Next Fixtures</div>`;
                 html += `<div class="lw-ctx-fixtures-strip">`;
-                fx.slice(0, 3).forEach(f => {
+                fx.slice(0, 5).forEach(f => {
                     html += `<div class="lw-ctx-fixture-chip">
                         <span class="fdr-dot fdr-${f.difficulty}"></span>
                         <span>${escHTML(f.opponent)}</span>
@@ -8778,8 +8872,112 @@
                 html += `</div></div>`;
             }
 
+            // Routes to Points
+            html += lwBuildSingleRoutes(p);
+            // Rising Form Signals
+            html += lwBuildSingleRisingForm(p);
+            // Home/Away Splits
+            html += lwBuildSingleSplits(p);
+            // xG Regression
+            html += lwBuildSingleXgRegression(p);
+
             html += `</div></div>`;
             return html;
+        }
+
+        // ── LW Intel: Routes to Points (single) ──
+        function lwBuildSingleRoutes(p) {
+            const pos = p.pos || p.position;
+            const seasonGames = Math.max(currentGW - 1, 1);
+            const recent = getPlayerRecentStats(p.id, 5);
+            const rg = recent?.games || 1;
+            const blend = (rVal, sVal, sDivisor) => ((rVal || 0) / rg) * 0.6 + ((sVal || 0) / sDivisor) * 0.4;
+            const xGpg = blend(recent?.xG, p.xG, seasonGames);
+            const xApg = blend(recent?.xA, p.xA, seasonGames);
+            const goalsPg = blend(recent?.goals, p.goals, seasonGames);
+            const csPg = blend(recent?.cs, p.cleanSheets, seasonGames);
+            const bonusPg = blend(recent?.bonus, p.bonus, seasonGames);
+            const savesPg = pos === 1 ? blend(recent?.saves, p.saves, seasonGames) : 0;
+            const goalThresh = { 1: 0.03, 2: 0.06, 3: 0.12, 4: 0.15 }[pos] || 0.1;
+            const assistThresh = { 1: 0.02, 2: 0.06, 3: 0.10, 4: 0.08 }[pos] || 0.08;
+            const csThresh = { 1: 0.15, 2: 0.15, 3: 0.30, 4: 999 }[pos] || 0.2;
+            const bonusThresh = { 1: 0.3, 2: 0.3, 3: 0.4, 4: 0.5 }[pos] || 0.3;
+            const routes = [];
+            if (xGpg >= goalThresh || goalsPg >= goalThresh * 1.5) { const c = pos === 4 ? 0.6 : pos === 3 ? 0.5 : 0.3; routes.push({ name: 'Goals', str: Math.min(100, (xGpg / c) * 100), detail: xGpg.toFixed(2) + ' xG/g', color: '#F87171' }); }
+            if (xApg >= assistThresh) { const c = pos === 3 ? 0.4 : 0.3; routes.push({ name: 'Assists', str: Math.min(100, (xApg / c) * 100), detail: xApg.toFixed(2) + ' xA/g', color: '#60A5FA' }); }
+            if (csPg >= csThresh) routes.push({ name: 'Clean Sheets', str: Math.min(100, (csPg / 0.55) * 100), detail: (csPg * 100).toFixed(0) + '% rate', color: '#34D399' });
+            if (bonusPg >= bonusThresh) routes.push({ name: 'Bonus', str: Math.min(100, (bonusPg / 2) * 100), detail: bonusPg.toFixed(1) + '/g', color: '#FBBF24' });
+            if (pos === 1 && savesPg >= 2) routes.push({ name: 'Saves', str: Math.min(100, (savesPg / 5) * 100), detail: savesPg.toFixed(1) + '/g', color: '#A78BFA' });
+            if (routes.length === 0) return '';
+            let h = '<div class="lw-ctx-section"><div class="lw-ctx-section-title"><i data-lucide="route" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Routes to Points (' + routes.length + ')</div>';
+            routes.forEach(r => {
+                h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">' +
+                    '<span style="font-size:10px;width:65px;flex-shrink:0;color:var(--text-muted);">' + r.name + '</span>' +
+                    '<div style="flex:1;height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + r.str + '%;background:' + r.color + ';border-radius:3px;"></div></div>' +
+                    '<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-secondary);width:55px;text-align:right;">' + r.detail + '</span></div>';
+            });
+            h += '</div>';
+            return h;
+        }
+
+        // ── LW Intel: Rising Form Signals (single) ──
+        function lwBuildSingleRisingForm(p) {
+            const ta = teamAnalysis[p.teamId] || {};
+            const swing = fixtureSwingData[p.teamId] || {};
+            const ss = seasonStats[p.teamId] || {};
+            const txg = teamXgData[p.teamId] || {};
+            const signals = [];
+            if (ta.formRating > 55) signals.push({ label: 'Team in Form', value: (ss.last5 || ta.formRating + ' rating'), positive: true });
+            if (txg.recentXgPg && txg.seasonXgPg && txg.recentXgPg > txg.seasonXgPg * 1.05) signals.push({ label: 'xG Rising', value: '+' + ((txg.recentXgPg - txg.seasonXgPg) * 100 / txg.seasonXgPg).toFixed(0) + '%', positive: true });
+            if (txg.recentXgcPg && txg.seasonXgcPg && txg.recentXgcPg < txg.seasonXgcPg * 0.95) signals.push({ label: 'xGC Improving', value: ((txg.seasonXgcPg - txg.recentXgcPg) * 100 / txg.seasonXgcPg).toFixed(0) + '%', positive: true });
+            if (swing.direction === 'improving') signals.push({ label: 'Fixtures ↑', value: 'Swing +' + (swing.magnitude || ''), positive: true });
+            else if (swing.direction === 'worsening') signals.push({ label: 'Fixtures ↓', value: 'Swing -' + (swing.magnitude || ''), positive: false });
+            if ((ta.avgFdr || 3) <= 2.5) signals.push({ label: 'Easy Run', value: 'FDR ' + (ta.avgFdr || 3).toFixed(1), positive: true });
+            if (signals.length === 0) return '';
+            let h = '<div class="lw-ctx-section"><div class="lw-ctx-section-title"><i data-lucide="trending-up" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Rising Form Signals</div>';
+            signals.forEach(s => {
+                h += '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;">' +
+                    '<span style="color:' + (s.positive ? 'var(--color-success)' : 'var(--color-error)') + ';">' + (s.positive ? '▲' : '▼') + '</span>' +
+                    '<span style="font-weight:600;">' + s.label + '</span>' +
+                    '<span style="color:var(--text-muted);margin-left:auto;font-family:var(--font-mono);font-size:10px;">' + s.value + '</span></div>';
+            });
+            h += '</div>';
+            return h;
+        }
+
+        // ── LW Intel: Home/Away Splits (single) ──
+        function lwBuildSingleSplits(p) {
+            if (!playersDetailData || !playersDetailData.players) return '';
+            const pd = playersDetailData.players.find(x => x.id === p.id);
+            if (!pd || !pd.history) return '';
+            const played = pd.history.filter(h => h.minutes > 0);
+            const home = played.filter(h => h.was_home);
+            const away = played.filter(h => !h.was_home);
+            if (home.length < 2 && away.length < 2) return '';
+            function avg(arr, key) { return arr.length > 0 ? (arr.reduce((s, h) => s + (parseFloat(h[key]) || 0), 0) / arr.length) : 0; }
+            const hPts = avg(home, 'total_points'), aPts = avg(away, 'total_points');
+            const hXgi = avg(home, 'expected_goal_involvements'), aXgi = avg(away, 'expected_goal_involvements');
+            const hBonus = avg(home, 'bonus'), aBonus = avg(away, 'bonus');
+            let h = '<div class="lw-ctx-section"><div class="lw-ctx-section-title"><i data-lucide="home" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Home vs Away</div>';
+            h += '<table style="width:100%;font-size:11px;border-collapse:collapse;">';
+            h += '<tr style="color:var(--text-muted);"><th style="text-align:left;padding:3px 4px;"></th><th style="padding:3px 4px;">Home (' + home.length + 'g)</th><th style="padding:3px 4px;">Away (' + away.length + 'g)</th></tr>';
+            h += '<tr><td style="padding:3px 4px;color:var(--text-muted);">PPG</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);color:' + (hPts > aPts ? 'var(--color-success)' : '') + '">' + hPts.toFixed(1) + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);color:' + (aPts > hPts ? 'var(--color-success)' : '') + '">' + aPts.toFixed(1) + '</td></tr>';
+            h += '<tr><td style="padding:3px 4px;color:var(--text-muted);">xGI/g</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + hXgi.toFixed(2) + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + aXgi.toFixed(2) + '</td></tr>';
+            h += '<tr><td style="padding:3px 4px;color:var(--text-muted);">Bonus/g</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + hBonus.toFixed(1) + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + aBonus.toFixed(1) + '</td></tr>';
+            h += '</table></div>';
+            return h;
+        }
+
+        // ── LW Intel: xG Regression (single) ──
+        function lwBuildSingleXgRegression(p) {
+            const goals = p.goals || 0;
+            const xG = p.xG || 0;
+            const diff = goals - xG;
+            if (Math.abs(diff) < 0.5) return '';
+            const label = diff > 1 ? 'Overperforming' : diff < -1 ? 'Underperforming' : 'In line';
+            const color = diff > 2 ? 'var(--color-warning)' : diff < -2 ? 'var(--color-success)' : 'var(--text-secondary)';
+            return '<div class="lw-ctx-section"><div class="lw-ctx-section-title"><i data-lucide="refresh-cw" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> xG Regression</div>' +
+                '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span>Goals: ' + goals + '</span><span>xG: ' + xG.toFixed(1) + '</span><span style="color:' + color + ';font-weight:600;">' + label + ' (' + (diff >= 0 ? '+' : '') + diff.toFixed(1) + ')</span></div></div>';
         }
 
         function renderLWContextCompare(id1, id2) {
@@ -8856,15 +9054,56 @@
                 html += `<div style="text-align:center;${idx === 0 ? 'border-right:1px solid var(--border-subtle);padding-right:8px;' : 'padding-left:8px;'}">
                     <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Fixtures</div>
                     <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">`;
-                pFx.slice(0, 3).forEach(f => {
+                pFx.slice(0, 5).forEach(f => {
                     html += `<span style="display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:600;padding:2px 5px;border-radius:4px;background:var(--surface-2);"><span class="fdr-dot fdr-${f.difficulty}"></span>${escHTML(f.opponent)}</span>`;
                 });
                 html += `</div></div>`;
             });
             html += `</div>`;
 
+            // Routes comparison
+            html += lwBuildCompareRoutes(p1, p2);
+            // Rising Form comparison
+            html += lwBuildCompareRisingForm(p1, p2);
+            // Home/Away comparison
+            html += lwBuildCompareSplits(p1, p2);
+            // xG Regression comparison
+            html += lwBuildCompareXgRegression(p1, p2);
+
             html += `</div>`;
             return html;
+        }
+
+        function lwBuildCompareRoutes(p1, p2) {
+            const r1 = lwBuildSingleRoutes(p1), r2 = lwBuildSingleRoutes(p2);
+            if (!r1 && !r2) return '';
+            return '<div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border-subtle);">' +
+                '<div style="padding:12px 12px;border-right:1px solid var(--border-subtle);">' + (r1 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No routes</div>') + '</div>' +
+                '<div style="padding:12px 12px;">' + (r2 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No routes</div>') + '</div></div>';
+        }
+
+        function lwBuildCompareRisingForm(p1, p2) {
+            const r1 = lwBuildSingleRisingForm(p1), r2 = lwBuildSingleRisingForm(p2);
+            if (!r1 && !r2) return '';
+            return '<div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border-subtle);">' +
+                '<div style="padding:12px 12px;border-right:1px solid var(--border-subtle);">' + (r1 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No signals</div>') + '</div>' +
+                '<div style="padding:12px 12px;">' + (r2 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No signals</div>') + '</div></div>';
+        }
+
+        function lwBuildCompareSplits(p1, p2) {
+            const r1 = lwBuildSingleSplits(p1), r2 = lwBuildSingleSplits(p2);
+            if (!r1 && !r2) return '';
+            return '<div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border-subtle);">' +
+                '<div style="padding:12px 12px;border-right:1px solid var(--border-subtle);">' + (r1 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No data</div>') + '</div>' +
+                '<div style="padding:12px 12px;">' + (r2 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No data</div>') + '</div></div>';
+        }
+
+        function lwBuildCompareXgRegression(p1, p2) {
+            const r1 = lwBuildSingleXgRegression(p1), r2 = lwBuildSingleXgRegression(p2);
+            if (!r1 && !r2) return '';
+            return '<div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border-subtle);">' +
+                '<div style="padding:12px 12px;border-right:1px solid var(--border-subtle);">' + (r1 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">In line</div>') + '</div>' +
+                '<div style="padding:12px 12px;">' + (r2 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">In line</div>') + '</div></div>';
         }
 
         function updateLWContextPanel() {
