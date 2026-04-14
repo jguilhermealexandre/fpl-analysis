@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
     <title>EasyFPL — My Team Analysis</title>
     <meta name="description" content="Analyse your FPL squad — expected points, captain picks, bench optimization, gameweek planner, and personalized transfer suggestions based on your exact team.">
     <meta name="theme-color" content="#0a0f1a">
@@ -485,9 +486,9 @@
             try {
                 // Load bootstrap + fixtures + players-data in parallel
                 const [bootData, fixturesData, playersDataRes] = await Promise.all([
-                    fetch('data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000)).then(r => { if (!r.ok) throw new Error('Data load failed'); return r.json(); }),
-                    fetch('data/fixtures.json?v=' + Math.floor(Date.now()/300000)).then(r => r.ok ? r.json() : []),
-                    fetch('data/players-data.json?v=' + Math.floor(Date.now()/300000)).then(r => r.ok ? r.json() : null).catch(() => null)
+                    DataCache.fetchJSON(DATA_URLS.bootstrap),
+                    DataCache.fetchJSON(DATA_URLS.fixtures).catch(() => []),
+                    DataCache.fetchJSON(DATA_URLS.players).catch(() => null)
                 ]);
 
                 teams = {};

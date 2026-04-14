@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
     <title>EasyFPL — League Rivals</title>
     <meta name="description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head performance analysis.">
     <meta name="theme-color" content="#0a0f1a">
@@ -592,6 +593,7 @@
             pointer-events: none;
             transition: opacity 300ms;
         }
+        [data-theme="dark"] .loading-overlay { background: rgba(15, 23, 42, 0.85); }
 
         .loading-overlay.show { opacity: 1; pointer-events: all; }
 
@@ -1023,12 +1025,10 @@
         // ===== INIT =====
         async function init() {
             try {
-                const [bootstrapRes, fixturesRes] = await Promise.all([
-                    fetch(BOOTSTRAP_URL),
-                    fetch(FIXTURES_URL)
+                const [data, fixturesData] = await Promise.all([
+                    DataCache.fetchJSON(BOOTSTRAP_URL),
+                    DataCache.fetchJSON(FIXTURES_URL).catch(() => null)
                 ]);
-                if (!bootstrapRes.ok) throw new Error('Failed to load bootstrap data');
-                const data = await bootstrapRes.json();
                 
                 allPlayers = data.elements.map(p => ({
                     id: p.id,
@@ -1049,8 +1049,8 @@
                 data.teams.forEach(t => teams[t.id] = t);
                 currentGW = data.events.find(e => e.is_current)?.id || 1;
                 
-                if (fixturesRes.ok) {
-                    fixtures = await fixturesRes.json();
+                if (fixturesData) {
+                    fixtures = fixturesData;
                     buildTeamFixtures();
                 }
                 
@@ -1766,6 +1766,7 @@
             
             if (raceChart) raceChart.destroy();
             
+            const ct = getChartTheme();
             raceChart = new Chart(canvas, {
                 type: 'line',
                 data: { labels, datasets },
@@ -1774,12 +1775,12 @@
                     maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } },
-                        tooltip: { backgroundColor: '#1F2937', titleFont: { size: 12 }, bodyFont: { size: 11 }, padding: 8, cornerRadius: 6 }
+                        legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 }, color: ct.text } },
+                        tooltip: { backgroundColor: ct.tooltipBg, titleFont: { size: 12 }, bodyFont: { size: 11 }, padding: 8, cornerRadius: 6 }
                     },
                     scales: {
-                        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                        y: { reverse: mode === 'gap', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 10 } }, title: { display: true, text: mode === 'gap' ? 'Points Behind Leader' : 'Total Points', font: { size: 11 } } }
+                        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: ct.text } },
+                        y: { reverse: mode === 'gap', grid: { color: ct.grid }, ticks: { font: { size: 10 }, color: ct.text }, title: { display: true, text: mode === 'gap' ? 'Points Behind Leader' : 'Total Points', font: { size: 11 }, color: ct.text } }
                     }
                 }
             });

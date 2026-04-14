@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
     <title>EasyFPL — Player Analysis</title>
     <meta name="description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, fixture-difficulty ratings, and advanced stats for every Premier League player.">
     <meta name="theme-color" content="#0a0f1a">
@@ -178,7 +179,16 @@
     </div>
 
     <main class="content">
-        <div class="position-section active" id="section-RECOMMENDATIONS"></div>
+        <div class="position-section active" id="section-RECOMMENDATIONS">
+            <div class="skeleton-container skeleton-grid" style="padding:16px 0;">
+                <div class="skeleton-card"><div class="skeleton-row"><div class="skeleton skeleton-circle" style="width:36px;height:36px;flex-shrink:0"></div><div style="flex:1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:70%"></div></div></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:50%"></div></div>
+                <div class="skeleton-card"><div class="skeleton-row"><div class="skeleton skeleton-circle" style="width:36px;height:36px;flex-shrink:0"></div><div style="flex:1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:70%"></div></div></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:50%"></div></div>
+                <div class="skeleton-card"><div class="skeleton-row"><div class="skeleton skeleton-circle" style="width:36px;height:36px;flex-shrink:0"></div><div style="flex:1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:70%"></div></div></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:50%"></div></div>
+                <div class="skeleton-card"><div class="skeleton-row"><div class="skeleton skeleton-circle" style="width:36px;height:36px;flex-shrink:0"></div><div style="flex:1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:70%"></div></div></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:50%"></div></div>
+                <div class="skeleton-card"><div class="skeleton-row"><div class="skeleton skeleton-circle" style="width:36px;height:36px;flex-shrink:0"></div><div style="flex:1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:70%"></div></div></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:50%"></div></div>
+                <div class="skeleton-card"><div class="skeleton-row"><div class="skeleton skeleton-circle" style="width:36px;height:36px;flex-shrink:0"></div><div style="flex:1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:70%"></div></div></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:50%"></div></div>
+            </div>
+        </div>
         <div class="position-section" id="section-RISING"></div>
         <div class="position-section" id="section-PURPLE_PATCH"></div>
         <div class="position-section" id="section-CHARTS"></div>
@@ -349,31 +359,24 @@
             try {
                 showLoading(true);
                 
-                const [playersRes, fixturesRes, bootstrapRes] = await Promise.all([
-                    fetch('data/players-data.json?v=' + Math.floor(Date.now()/300000)),
-                    fetch('data/fixtures.json?v=' + Math.floor(Date.now()/300000)),
-                    fetch('data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000)).catch(() => null)
+                const [staticData, fixturesData, bootData] = await Promise.all([
+                    DataCache.fetchJSON(DATA_URLS.players),
+                    DataCache.fetchJSON(DATA_URLS.fixtures).catch(() => []),
+                    DataCache.fetchJSON(DATA_URLS.bootstrap).catch(() => null)
                 ]);
 
-                if (!playersRes.ok) throw new Error('Failed to load players data');
-                
-                const staticData = await playersRes.json();
                 if (staticData?.metadata?.lastUpdated && window.updateDataFreshness) window.updateDataFreshness(staticData.metadata.lastUpdated);
-                const fixturesData = fixturesRes.ok ? await fixturesRes.json() : [];
 
                 // Load bootstrap data for availability info
-                if (bootstrapRes && bootstrapRes.ok) {
+                if (bootData && bootData.elements) {
                     try {
-                        const bootData = await bootstrapRes.json();
-                        if (bootData.elements) {
-                            bootData.elements.forEach(el => {
-                                bootstrapElements[el.id] = {
-                                    status: el.status,           // 'a' = available, 'i' = injured, 's' = suspended, 'u' = unavailable, 'd' = doubtful, 'n' = not in squad
-                                    news: el.news || '',
-                                    chanceNextRound: el.chance_of_playing_next_round // null, 0, 25, 50, 75, 100
-                                };
-                            });
-                        }
+                        bootData.elements.forEach(el => {
+                            bootstrapElements[el.id] = {
+                                status: el.status,
+                                news: el.news || '',
+                                chanceNextRound: el.chance_of_playing_next_round
+                            };
+                        });
                     } catch (e) {
                         console.warn('Could not parse bootstrap-static.json for availability data:', e);
                     }
@@ -489,6 +492,12 @@
             } catch (error) {
                 console.error('Error:', error);
                 showLoading(false);
+                document.getElementById('section-RECOMMENDATIONS').innerHTML = renderErrorState(
+                    'Failed to load player data',
+                    'Check your connection and try again.',
+                    'loadData'
+                );
+                initIcons();
             }
         }
 
@@ -1646,6 +1655,21 @@
                 risingFormBonus = Math.min(5, window._risingFormScores[p.id] * 0.4);
             }
 
+            // ── ENHANCEMENT: Purple Patch sustainability bonus ──
+            // Cross-wires Purple Patch sustainability engine into recommendations
+            // SUSTAINABLE patches get a boost; FADING ones get a penalty
+            let purplePatchBonus = 0;
+            if (window._purplePatchScores && window._purplePatchScores[p.id]) {
+                const pp = window._purplePatchScores[p.id];
+                if (pp.verdict === 'SUSTAINABLE') {
+                    purplePatchBonus = Math.min(6, pp.score * 0.08);
+                } else if (pp.verdict === 'MONITOR') {
+                    purplePatchBonus = Math.min(2, pp.score * 0.03);
+                } else if (pp.verdict === 'FADING') {
+                    purplePatchBonus = -Math.min(3, (100 - pp.score) * 0.04);
+                }
+            }
+
             // ── ENHANCEMENT: Routes to Points diversity bonus ──
             // Players with multiple reliable routes to points are inherently more valuable
             let routesDiversityBonus = 0;
@@ -1671,7 +1695,7 @@
             }
 
             // Sum of all enhancement bonuses
-            const enhancementBonus = fixtureSwingBonus + easyRunBonus + xgTrendBonus + risingFormBonus + routesDiversityBonus + reliabilityBonus;
+            const enhancementBonus = fixtureSwingBonus + easyRunBonus + xgTrendBonus + risingFormBonus + purplePatchBonus + routesDiversityBonus + reliabilityBonus;
 
             if (pos === 'GK') {
                 const csPerGame = (p.l5?.cleanSheets || 0) / games;
@@ -1832,6 +1856,7 @@
             const fdr = p.fixtures?.avgFDR3 || 3;
             const metrics = p.displayMetrics;
             const ownBadge = isDifferential ? `<span style="font-size:10px;color:var(--color-info);margin-left:4px;">${(p.selectedBy || 0).toFixed(1)}%</span>` : '';
+            const multiXPts = calculateMultiGWxPts(p, { 1:'GK', 2:'DEF', 3:'MID', 4:'FWD' }[p.position] || 'MID', 5);
 
             // Why badge
             const whyBadge = getRecWhyBadge(p, pos);
@@ -1889,6 +1914,7 @@
                             <span class="rec-metric-value">${ptsPerGame}</span>
                             <span class="rec-metric-label">Pts/G</span>
                         </div>
+                        ${multiXPts !== null ? `<div class="rec-metric"><span class="rec-metric-value" style="color:var(--color-info)">${multiXPts}</span><span class="rec-metric-label">xPts5</span></div>` : ''}
                     </div>
                     <div class="rec-fix-row">
                         ${fixChips}
@@ -2914,937 +2940,9 @@
             `;
         }
 
-        // ============================================
-        // TABLES
-        // ============================================
-        // ============================================
-        // TABLES - Advanced Implementation
-        // ============================================
-        let tableData = {};
-        let tableState = {
-            GK: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
-            DEF: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
-            MID: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
-            FWD: { sort: 'pts', sortDir: 'desc', filters: {}, visibleCols: [], search: '', page: 1 },
-            ALL: { sort: 'pts', sortDir: 'desc', filters: { teams: new Set() }, visibleCols: [], search: '', page: 1, positionFilter: 'ALL', timeframe: 'l5' }
-        };
-        const ROWS_PER_PAGE_DEFAULT = 25;
-        const ROWS_PER_PAGE_ALL = 50;
-        function getRowsPerPage(position) { return position === 'ALL' ? ROWS_PER_PAGE_ALL : ROWS_PER_PAGE_DEFAULT; }
-        
-        // Compare functionality
-        let compareList = [];
-        const MAX_COMPARE = 5;
-
-        // Column definitions with metadata - ALL metrics from original
-        const COLUMN_DEFS = {
-            // Core
-            player: { label: 'Player', key: 'name', sortable: true, always: true, tip: 'Player name' },
-            pos: { label: 'Pos', key: 'posName', sortable: true, tip: 'Position' },
-            team: { label: 'Team', key: 'team', sortable: true, tip: 'Team' },
-            price: { label: 'Price', key: 'price', sortable: true, format: v => `£${v.toFixed(1)}m`, tip: 'Current price' },
-            own: { label: 'Own%', key: 'selectedBy', sortable: true, format: v => v.toFixed(1) + '%', tip: 'Ownership percentage' },
-            
-            // Gametime
-            games: { label: 'GP', key: 'l5.games', sortable: true, tip: 'Games played (L5)' },
-            mins: { label: 'Mins', key: 'l5.minutes', sortable: true, tip: 'Total minutes (L5)' },
-            minsG: { label: 'Mins/G', key: 'minsPerGame', sortable: true, format: v => v.toFixed(0), tip: 'Minutes per game', highlight: v => v >= 80 ? 'good' : v >= 60 ? '' : 'bad' },
-            
-            // Points
-            pts: { label: 'Pts', key: 'l5.points', sortable: true, tip: 'Total points (L5)' },
-            ptsG: { label: 'Pts/G', key: 'ptsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Points per game', highlight: v => v >= 5 ? 'good' : v >= 3 ? '' : 'bad' },
-            form: { label: 'Form', key: 'form', sortable: true, format: v => v.toFixed(1), tip: 'FPL form rating', highlight: v => v >= 6 ? 'good' : v >= 4 ? '' : 'bad' },
-            seasonPts: { label: 'Pts (S)', key: 'season.points', sortable: true, tip: 'Total season points' },
-            seasonPtsG: { label: 'Pts/G (S)', key: 'seasonPtsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Season points per game' },
-            value: { label: 'Value', key: 'valueScore', sortable: true, format: v => v.toFixed(2), tip: 'Points per million', highlight: v => v >= 0.8 ? 'good' : '' },
-            
-            // Goals
-            goals: { label: 'G', key: 'l5.goals', sortable: true, tip: 'Goals scored (L5)' },
-            xG: { label: 'xG', key: 'l5.xG', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals (L5)' },
-            xGG: { label: 'xG/G', key: 'xgPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xG per game' },
-            bcm: { label: 'BCM', key: 'l5.bigChancesMissed', sortable: true, tip: 'Big chances missed (L5). Null = estimated from xG', estimated: '_bigChancesMissedEst' },
-            
-            // Assists/Creativity
-            assists: { label: 'A', key: 'l5.assists', sortable: true, tip: 'Assists (L5)' },
-            xA: { label: 'xA', key: 'l5.xA', sortable: true, format: v => v.toFixed(2), tip: 'Expected assists (L5)' },
-            xAG: { label: 'xA/G', key: 'xaPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xA per game' },
-            kp: { label: 'KP', key: 'l5.keyPasses', sortable: true, tip: 'Key passes (L5). Null = estimated from xA', estimated: '_keyPassesEst' },
-            bcc: { label: 'BCC', key: 'l5.bigChancesCreated', sortable: true, tip: 'Big chances created (L5). Null = estimated from xA', estimated: '_bigChancesCreatedEst' },
-            
-            // Combined Expected
-            xGI: { label: 'xGI', key: 'l5.xGI', sortable: true, format: v => v.toFixed(2), tip: 'Expected goal involvement (L5)' },
-            xGIG: { label: 'xGI/G', key: 'xgiPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xGI per game', highlight: v => v >= 0.5 ? 'good' : v >= 0.25 ? '' : 'bad' },
-            
-            // Defending
-            cs: { label: 'CS', key: 'l5.cleanSheets', sortable: true, tip: 'Clean sheets (L5)' },
-            gc: { label: 'GC', key: 'l5.goalsConceded', sortable: true, tip: 'Goals conceded (L5)' },
-            xGC: { label: 'xGC', key: 'l5.xGC', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals conceded (L5)' },
-            saves: { label: 'Saves', key: 'l5.saves', sortable: true, tip: 'Saves made (L5)' },
-            penSaved: { label: 'Pen S', key: 'l5.penaltiesSaved', sortable: true, tip: 'Penalties saved (L5)' },
-            
-            // Bonus
-            bonus: { label: 'Bonus', key: 'l5.bonus', sortable: true, tip: 'Bonus points (L5)' },
-            bps: { label: 'BPS', key: 'l5.bps', sortable: true, tip: 'Bonus points system score (L5)' },
-            
-            // ICT Index
-            ict: { label: 'ICT', key: 'l5.ict', sortable: true, format: v => v.toFixed(1), tip: 'ICT Index (L5)' },
-            influence: { label: 'Infl', key: 'l5.influence', sortable: true, format: v => v.toFixed(1), tip: 'Influence score (L5)' },
-            creativity: { label: 'Creat', key: 'l5.creativity', sortable: true, format: v => v.toFixed(1), tip: 'Creativity score (L5)' },
-            threat: { label: 'Threat', key: 'l5.threat', sortable: true, format: v => v.toFixed(1), tip: 'Threat score (L5)' },
-            
-            // Fixtures
-            fdr: { label: 'FDR', key: 'fdr', sortable: true, type: 'fdr', tip: 'Fixture difficulty (next 3)' },
-            fixtures: { label: 'Next 3', key: 'fixtureString', sortable: false, type: 'fixtures', tip: 'Upcoming fixtures' }
-        };
-
-        // Default columns per position
-        const DEFAULT_COLS = {
-            GK: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'saves', 'gc', 'xGC', 'bonus', 'fdr'],
-            DEF: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'gc', 'xGI', 'goals', 'assists', 'bonus', 'fdr'],
-            MID: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'xA', 'bonus', 'fdr'],
-            FWD: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'bcm', 'bonus', 'fdr'],
-            ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
-        };
-
-        const COLS_STORAGE_KEY = 'fpl_allplayers_cols';
-        function loadSavedColumns() {
-            try {
-                const saved = localStorage.getItem(COLS_STORAGE_KEY);
-                if (saved) return JSON.parse(saved);
-            } catch(e) {}
-            return null;
-        }
-        function saveColumns(cols) {
-            try { localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(cols)); } catch(e) {}
-        }
-
-        // Available columns per position - FULL LIST
-        const AVAILABLE_COLS = {
-            GK: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'saves', 'gc', 'xGC', 'penSaved', 'bonus', 'bps', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-            DEF: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'gc', 'xGC', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'bcc', 'kp', 'bonus', 'bps', 'ict', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-            MID: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'cs', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-            FWD: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-            ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
-        };
-
-        function createTable(position, analyses) {
-            const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
-            const posNames = { GK: 'Goalkeepers', DEF: 'Defenders', MID: 'Midfielders', FWD: 'Forwards', ALL: 'All Players' };
-            const posIcons = { GK: '<i data-lucide="hand" style="width:14px;height:14px;"></i>', DEF: '<i data-lucide="shield-check" style="width:14px;height:14px;"></i>', MID: '<i data-lucide="zap" style="width:14px;height:14px;"></i>', FWD: '<i data-lucide="crosshair" style="width:14px;height:14px;"></i>', ALL: '<i data-lucide="clipboard-list" style="width:14px;height:14px;"></i>' };
-            const POSITIONS_MAP = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            
-            // Initialize state
-            if (!tableState[position].visibleCols.length) {
-                if (position === 'ALL') {
-                    const saved = loadSavedColumns();
-                    tableState[position].visibleCols = saved ? saved : [...DEFAULT_COLS[position]];
-                } else {
-                    tableState[position].visibleCols = [...DEFAULT_COLS[position]];
-                }
-            }
-
-            // Process players with computed fields
-            const currentTf = (position === 'ALL') ? (tableState.ALL.timeframe || 'l5') : 'l5';
-            const players = analyses
-                .filter(a => {
-                    if (position === 'ALL') return a.l5?.games >= 1;
-                    return a.position === posMap[position] && a.l5?.games >= 1;
-                })
-                .map(p => {
-                    const tfStats = (position === 'ALL') ? computePlayerStats(p, currentTf) : (p.l5 || {});
-                    const tfGames = tfStats.games || 1;
-                    const seasonGames = p.season?.games || 1;
-                    return {
-                        ...p,
-                        l5: (position === 'ALL') ? tfStats : p.l5,
-                        posName: POSITIONS_MAP[p.position] || '?',
-                        ptsPerGame: (tfStats.points || 0) / tfGames,
-                        xgiPerGame: (tfStats.xGI || 0) / tfGames,
-                        xgPerGame: (tfStats.xG || 0) / tfGames,
-                        xaPerGame: (tfStats.xA || 0) / tfGames,
-                        minsPerGame: (tfStats.minutes || 0) / tfGames,
-                        seasonPtsPerGame: (p.season?.points || 0) / seasonGames,
-                        fdr: p.fixtures?.avgFDR3 || 3,
-                        fdrNext: p.fixtures?.next3 || [],
-                        fixtureString: p.fixtures?.fixtureString || '-',
-                        valueScore: ((tfStats.points || 0) / tfGames) / p.price
-                    };
-                });
-
-            tableData[position] = players;
-
-            // Build column dropdown (shared between both layouts)
-            const colDropdownHtml = `
-                <div class="column-dropdown" id="colDropdown-${position}">
-                    <div class="column-dropdown-title">Show/Hide Columns</div>
-                    <div class="column-dropdown-actions">
-                        <button onclick="selectAllColumns('${position}')" class="col-action-btn">Select All</button>
-                        <button onclick="deselectAllColumns('${position}')" class="col-action-btn">Deselect All</button>
-                        <button onclick="resetColumns('${position}')" class="col-action-btn">Reset</button>
-                    </div>
-                    <div class="column-options-list">
-                        ${AVAILABLE_COLS[position].map(col => {
-                            const def = COLUMN_DEFS[col];
-                            if (!def) return '';
-                            const checked = tableState[position].visibleCols.includes(col);
-                            const disabled = def.always ? 'disabled' : '';
-                            return `
-                                <div class="column-option">
-                                    <input type="checkbox" id="col-${position}-${col}" ${checked ? 'checked' : ''} ${disabled}
-                                        onchange="toggleColumn('${position}', '${col}')">
-                                    <label for="col-${position}-${col}">${def.label}${def.always ? ' *' : ''}</label>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-            `;
-
-            // Filters panel (shared between both layouts)
-            const filtersPanelHtml = `
-                <div class="filters-panel" id="filtersPanel-${position}">
-                    <div class="filter-group">
-                        <div class="filter-group-label">Price Range</div>
-                        <div class="filter-range">
-                            <input type="number" placeholder="Min" step="0.5" id="priceMin-${position}" 
-                                onchange="applyRangeFilter('${position}', 'price')">
-                            <span>to</span>
-                            <input type="number" placeholder="Max" step="0.5" id="priceMax-${position}"
-                                onchange="applyRangeFilter('${position}', 'price')">
-                        </div>
-                    </div>
-                    <div class="filter-group">
-                        <div class="filter-group-label">Ownership</div>
-                        <div class="filter-options">
-                            <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'low')">< 5% (Diff)</button>
-                            <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'mid')">5-15%</button>
-                            <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'high')">15-30%</button>
-                            <button class="filter-option" onclick="setFilter('${position}', 'ownership', 'template')"> 30%+</button>
-                        </div>
-                    </div>
-                    <div class="filter-group">
-                        <div class="filter-group-label">Minutes (Last 5)</div>
-                        <div class="filter-options">
-                            <button class="filter-option" onclick="setFilter('${position}', 'minutes', '90')">90 mins avg</button>
-                            <button class="filter-option" onclick="setFilter('${position}', 'minutes', '75')">75+ mins</button>
-                            <button class="filter-option" onclick="setFilter('${position}', 'minutes', '60')">60+ mins</button>
-                        </div>
-                    </div>
-                    <div style="margin-top: 12px;">
-                        <button class="action-btn" onclick="clearFilters('${position}')">Clear All Filters</button>
-                    </div>
-                </div>
-            `;
-
-            // Compact toolbar for ALL position; classic for individual positions
-            // Build team filter chips
-            const teamsList = Object.values(teams).sort((a,b) => a.short_name.localeCompare(b.short_name));
-            const teamChipsHtml = teamsList.map(t => `<button class="team-chip" data-team-id="${t.id}" onclick="toggleTeamFilter(${t.id}, this)">${t.short_name}</button>`).join('');
-
-            const currentTimeframe = tableState.ALL.timeframe || 'l5';
-
-            const toolbarHtml = position === 'ALL' ? `
-                <div class="compact-toolbar" id="compactToolbar-${position}">
-                    <div class="compact-toolbar-row">
-                        <div class="position-filter-pills">
-                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'ALL' ? 'active' : ''}" onclick="setPositionFilter('ALL')">All</button>
-                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'GK' ? 'active' : ''}" onclick="setPositionFilter('GK')">GK</button>
-                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'DEF' ? 'active' : ''}" onclick="setPositionFilter('DEF')">DEF</button>
-                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'MID' ? 'active' : ''}" onclick="setPositionFilter('MID')">MID</button>
-                            <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'FWD' ? 'active' : ''}" onclick="setPositionFilter('FWD')">FWD</button>
-                        </div>
-                        <div class="compact-divider"></div>
-                        <div class="search-box compact-search">
-                            <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-                            <input type="text" placeholder="Search..." id="search-${position}" 
-                                oninput="handleSearch('${position}', this.value)">
-                        </div>
-                        <div class="compact-divider"></div>
-                        <div class="filter-pills">
-                            <button class="filter-pill compact-pill ${tableState[position].filters.form === 'hot' ? 'active' : ''}" 
-                                onclick="quickFilter('${position}', 'form', 'hot')"><i data-lucide="flame" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Hot</button>
-                            <button class="filter-pill compact-pill ${tableState[position].filters.fixtures === 'easy' ? 'active' : ''}" 
-                                onclick="quickFilter('${position}', 'fixtures', 'easy')"><i data-lucide="calendar" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Easy</button>
-                            <button class="filter-pill compact-pill ${tableState[position].filters.value === 'high' ? 'active' : ''}" 
-                                onclick="quickFilter('${position}', 'value', 'high')"><i data-lucide="coins" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Value</button>
-                            <button class="filter-pill compact-pill ${tableState[position].filters.nailed === true ? 'active' : ''}" 
-                                onclick="quickFilter('${position}', 'nailed', true)"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Nailed</button>
-                            <button class="filter-pill compact-pill ${tableState.ALL.filters.shortlist ? 'active' : ''}" id="shortlistPill-ALL"
-                                onclick="quickFilter('ALL', 'shortlist', true)"><i data-lucide="star" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> ${shortlistedPlayerIds.size > 0 ? shortlistedPlayerIds.size : ''}</button>
-                            <div class="team-filter-wrapper">
-                                <button class="team-filter-btn ${(tableState.ALL.filters.teams?.size > 0) ? 'active' : ''}" onclick="toggleTeamDropdown()" id="teamFilterBtn">
-                                    <i data-lucide="shield" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>
-                                    Teams
-                                    ${(tableState.ALL.filters.teams?.size > 0) ? '<span class="team-count-badge">' + tableState.ALL.filters.teams.size + '</span>' : ''}
-                                </button>
-                                <div class="team-filter-dropdown" id="teamFilterDropdown">
-                                    <div class="team-filter-dropdown-header">
-                                        <span class="team-filter-dropdown-title">Filter by Team</span>
-                                        <button class="team-filter-clear" onclick="clearTeamFilter()">Clear all</button>
-                                    </div>
-                                    <div class="team-filter-grid">${teamChipsHtml}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="compact-divider"></div>
-                        <div class="timeframe-control" id="timeframeControl">
-                            <button class="timeframe-btn ${currentTimeframe === 'season' ? 'active' : ''}" onclick="setTimeframe('season')">Season</button>
-                            <button class="timeframe-btn ${currentTimeframe === 'l10' ? 'active' : ''}" onclick="setTimeframe('l10')">L10</button>
-                            <button class="timeframe-btn ${currentTimeframe === 'l5' ? 'active' : ''}" onclick="setTimeframe('l5')">L5</button>
-                            <button class="timeframe-btn ${currentTimeframe === 'l3' ? 'active' : ''}" onclick="setTimeframe('l3')">L3</button>
-                        </div>
-                        <div class="compact-spacer"></div>
-                        <span class="compact-count"><span id="rowCount-${position}">${players.length}</span> players</span>
-                        <button class="compact-icon-btn" onclick="toggleFilters('${position}')" id="filterBtn-${position}" title="Advanced Filters" aria-label="Toggle advanced filters"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
-                        <div class="column-selector">
-                            <button class="compact-icon-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}" title="Columns" aria-label="Toggle column visibility"><i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i></button>
-                            ${colDropdownHtml}
-                        </div>
-                    </div>
-                </div>
-                ${filtersPanelHtml}
-            ` : `
-                <div class="table-toolbar">
-                    <div class="table-toolbar-top">
-                        <div class="table-title-section">
-                            <div class="table-icon ${position.toLowerCase()}">${posIcons[position]}</div>
-                            <div>
-                                <div class="table-title">${posNames[position]}</div>
-                                <div class="table-count"><span id="rowCount-${position}">${players.length}</span> players</div>
-                            </div>
-                        </div>
-                        <div class="table-actions">
-                            <button class="action-btn" onclick="toggleFilters('${position}')" id="filterBtn-${position}">
-                                <span><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></span> Filters
-                            </button>
-                            <div class="column-selector">
-                                <button class="action-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}">
-                                    <span><i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i></span> Columns
-                                </button>
-                                ${colDropdownHtml}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="table-controls">
-                        <div class="search-box">
-                            <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-                            <input type="text" placeholder="Search players..." id="search-${position}" 
-                                oninput="handleSearch('${position}', this.value)">
-                        </div>
-                        <div class="filter-pills">
-                            <button class="filter-pill ${tableState[position].filters.form === 'hot' ? 'active' : ''}" 
-                                onclick="quickFilter('${position}', 'form', 'hot')">
-                                <span class="dot"></span> Hot Form
-                            </button>
-                            <button class="filter-pill ${tableState[position].filters.fixtures === 'easy' ? 'active' : ''}" 
-                                onclick="quickFilter('${position}', 'fixtures', 'easy')">
-                                <span class="dot"></span> Easy Fixtures
-                            </button>
-                            <button class="filter-pill ${tableState[position].filters.value === 'high' ? 'active' : ''}" 
-                                onclick="quickFilter('${position}', 'value', 'high')">
-                                <span class="dot"></span> High Value
-                            </button>
-                            <button class="filter-pill ${tableState[position].filters.nailed === true ? 'active' : ''}" 
-                                onclick="quickFilter('${position}', 'nailed', true)">
-                                <span class="dot"></span> Nailed On
-                            </button>
-                        </div>
-                    </div>
-                    ${filtersPanelHtml}
-                </div>
-            `;
-
-            return `
-                <div class="table-section ${position === 'ALL' ? 'compact-mode' : ''}" id="tableSection-${position}">
-                    ${toolbarHtml}
-                    <div class="table-container">
-                        <table class="data-table" id="table-${position}">
-                            <thead>
-                                <tr id="tableHead-${position}">
-                                    ${renderTableHeader(position)}
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody-${position}">
-                                ${renderTableBody(position)}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="table-footer">
-                        <div class="table-info">
-                            Showing <span id="showingCount-${position}">${Math.min(getRowsPerPage(position), players.length)}</span> of ${players.length}
-                        </div>
-                        <div class="table-pagination" id="pagination-${position}">
-                            ${renderPagination(position, players.length)}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderTableHeader(position) {
-            const state = tableState[position];
-            const compareHeader = `<th class="compare-header" style="width: 40px; text-align: center;"><i data-lucide="scale" style="width:14px;height:14px;"></i></th>`;
-            const starHeader = `<th style="width: 36px; text-align: center; cursor: default;"><i data-lucide="star" style="width:14px;height:14px;"></i></th>`;
-            const tfLabel = position === 'ALL' ? { season: 'Season', l10: 'Last 10', l5: 'Last 5', l3: 'Last 3' }[state.timeframe || 'l5'] || 'Last 5' : 'L5';
-            const cols = state.visibleCols.map(colKey => {
-                const col = COLUMN_DEFS[colKey];
-                if (!col) return '';
-                const isSorted = state.sort === colKey;
-                const sortIcon = isSorted ? (state.sortDir === 'asc' ? '↑' : '↓') : '↕';
-                let tip = col.tip || col.label;
-                if (position === 'ALL' && tip.includes('(L5)')) tip = tip.replace('(L5)', '(' + tfLabel + ')');
-                return `<th class="${isSorted ? 'sorted' : ''}" onclick="sortTable('${position}', '${colKey}')" title="${tip}">
-                    ${col.label}<span class="sort-icon">${sortIcon}</span>
-                </th>`;
-            }).join('');
-            return compareHeader + starHeader + cols;
-        }
-
-        function renderTableBody(position) {
-            const state = tableState[position];
-            let players = [...(tableData[position] || [])];
-            
-            // Apply search
-            if (state.search) {
-                const q = state.search.toLowerCase();
-                players = players.filter(p => p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q));
-            }
-            
-            // Apply position filter (ALL tab only)
-            if (position === 'ALL' && state.positionFilter && state.positionFilter !== 'ALL') {
-                const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
-                const filterPosId = posMap[state.positionFilter];
-                players = players.filter(p => p.position === filterPosId);
-            }
-
-            // Apply team filter (ALL tab only)
-            if (position === 'ALL' && state.filters.teams?.size > 0) {
-                players = players.filter(p => state.filters.teams.has(p.teamId));
-            }
-
-            // Apply shortlist filter
-            if (state.filters.shortlist) {
-                players = players.filter(p => shortlistedPlayerIds.has(p.id));
-            }
-
-            // Apply filters
-            if (state.filters.form === 'hot') players = players.filter(p => p.form >= 5);
-            if (state.filters.fixtures === 'easy') players = players.filter(p => p.fdr <= 2.5);
-            if (state.filters.value === 'high') players = players.filter(p => p.valueScore >= 0.8);
-            if (state.filters.nailed) players = players.filter(p => p.minsPerGame >= 75);
-            if (state.filters.ownership === 'low') players = players.filter(p => p.selectedBy < 5);
-            if (state.filters.ownership === 'mid') players = players.filter(p => p.selectedBy >= 5 && p.selectedBy < 15);
-            if (state.filters.ownership === 'high') players = players.filter(p => p.selectedBy >= 15 && p.selectedBy < 30);
-            if (state.filters.ownership === 'template') players = players.filter(p => p.selectedBy >= 30);
-            if (state.filters.minutes === '90') players = players.filter(p => p.minsPerGame >= 85);
-            if (state.filters.minutes === '75') players = players.filter(p => p.minsPerGame >= 75);
-            if (state.filters.minutes === '60') players = players.filter(p => p.minsPerGame >= 60);
-            if (state.filters.priceMin) players = players.filter(p => p.price >= state.filters.priceMin);
-            if (state.filters.priceMax) players = players.filter(p => p.price <= state.filters.priceMax);
-            
-            // Sort
-            const sortCol = COLUMN_DEFS[state.sort];
-            if (sortCol) {
-                players.sort((a, b) => {
-                    const aVal = getNestedValue(a, sortCol.key);
-                    const bVal = getNestedValue(b, sortCol.key);
-                    // Handle string sorting (e.g. player name, position, team)
-                    if (typeof aVal === 'string' && typeof bVal === 'string') {
-                        return state.sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-                    }
-                    return state.sortDir === 'asc' ? aVal - bVal : bVal - aVal;
-                });
-            }
-            
-            // Update count
-            setTimeout(() => {
-                const countEl = document.getElementById(`rowCount-${position}`);
-                if (countEl) countEl.textContent = players.length;
-                const showingEl = document.getElementById(`showingCount-${position}`);
-                if (showingEl) showingEl.textContent = Math.min(getRowsPerPage(position) * state.page, players.length);
-            }, 0);
-            
-            // Paginate
-            const rpp = getRowsPerPage(position);
-            const start = (state.page - 1) * rpp;
-            const paginated = players.slice(start, start + rpp);
-            
-            return paginated.map(p => renderPlayerRow(p, position)).join('');
-        }
-
-        function renderPlayerRow(p, position) {
-            const state = tableState[position];
-            const isSelected = compareList.some(cp => cp.id === p.id);
-            const checkboxCell = `<td class="compare-cell">
-                <input type="checkbox" class="compare-checkbox" 
-                    ${isSelected ? 'checked' : ''} 
-                    ${!isSelected && compareList.length >= 5 ? 'disabled' : ''}
-                    onchange="toggleComparePlayer(${p.id}, '${position}')">
-            </td>`;
-            const starCell = `<td style="text-align:center;">${getStarHtml(p.id)}</td>`;
-            return `<tr class="${isSelected ? 'selected-row' : ''}">${checkboxCell}${starCell}${state.visibleCols.map(colKey => renderCell(p, colKey)).join('')}</tr>`;
-        }
-
-        function renderCell(p, colKey) {
-            const col = COLUMN_DEFS[colKey];
-            if (!col) return '<td>-</td>';
-            let value = getNestedValue(p, col.key);
-            
-            if (colKey === 'player') {
-                const initials = p.name.split(' ').map(n => n[0]).join('').slice(0, 2);
-                const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-                const sparkline = generateSparkline(p.history || [], 'total_points');
-                return `<td>
-                    <div class="player-cell clickable" onclick="openPlayerModal(${p.id}, '${posMap[p.position]}')">
-                        <div class="player-avatar">${initials}</div>
-                        <div class="player-info">
-                            <div class="player-name">${escHTML(p.name)}</div>
-                            <div class="player-team">${escHTML(p.team)}</div>
-                        </div>
-                        <div class="player-trend" title="Points trend (Last 5 gameweeks)">${sparkline}</div>
-                    </div>
-                </td>`;
-            }
-            
-            if (colKey === 'team') {
-                return `<td>${escHTML(p.team)}</td>`;
-            }
-
-            if (colKey === 'pos') {
-                const posColors = { GK: '#f39c12', DEF: '#27ae60', MID: '#3498db', FWD: '#e74c3c' };
-                const posName = p.posName || '?';
-                return `<td><span class="pos-badge" style="background:${posColors[posName] || '#888'};color:#fff;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;">${posName}</span></td>`;
-            }
-            
-            if (col.type === 'fdr') {
-                const fdrClass = value <= 2 ? 'fdr-1' : value <= 2.5 ? 'fdr-2' : value <= 3.5 ? 'fdr-3' : value <= 4 ? 'fdr-4' : 'fdr-5';
-                return `<td><span class="fdr-badge ${fdrClass}">${(value || 0).toFixed(1)}</span></td>`;
-            }
-            
-            if (col.type === 'fixtures') {
-                const next3 = p.fdrNext || [];
-                if (next3.length > 0) {
-                    return `<td style="white-space: nowrap;">
-                        ${next3.map(f => {
-                            const d = f.difficulty || 3;
-                            const cls = d <= 2 ? 'fdr-1' : d <= 2.5 ? 'fdr-2' : d <= 3.5 ? 'fdr-3' : d <= 4 ? 'fdr-4' : 'fdr-5';
-                            const opp = teams[f.opponent]?.short_name || '???';
-                            const venue = f.isHome ? 'H' : 'A';
-                            return `<span class="fdr-badge ${cls}" style="margin-right: 2px; padding: 2px 4px; font-size: 9px;">${opp}(${venue})</span>`;
-                        }).join('')}
-                    </td>`;
-                }
-                return `<td style="color: var(--text-muted);">-</td>`;
-            }
-            
-            // Handle null/undefined values — check for estimated fallback
-            if (value === null || value === undefined) {
-                // If this column has an estimated field, show it with ~ prefix
-                if (col.estimated) {
-                    const estValue = getNestedValue(p, `l5.${col.estimated}`);
-                    if (estValue !== null && estValue !== undefined && estValue !== 0) {
-                        return `<td class="stat-cell" style="color: var(--text-muted);" title="Estimated from expected stats">~${estValue}</td>`;
-                    }
-                }
-                return `<td class="stat-cell" style="color: var(--text-muted);">-</td>`;
-            }
-            
-            const formatted = col.format ? col.format(value) : value;
-            const highlight = col.highlight ? col.highlight(value) : '';
-            return `<td class="stat-cell ${highlight}">${formatted}</td>`;
-        }
-
-        function renderPagination(position, total) {
-            const rpp = getRowsPerPage(position);
-            const pages = Math.ceil(total / rpp);
-            if (pages <= 1) return '';
-            
-            const state = tableState[position];
-            let html = '';
-            for (let i = 1; i <= Math.min(pages, 5); i++) {
-                html += `<button class="page-btn ${state.page === i ? 'active' : ''}" onclick="goToPage('${position}', ${i})">${i}</button>`;
-            }
-            return html;
-        }
-
-        function getNestedValue(obj, path) {
-            const val = path.split('.').reduce((o, k) => o?.[k], obj);
-            if (val === null || val === undefined) return 0;
-            return val;
-        }
-
-        // Table interactions
-        function sortTable(position, colKey) {
-            const state = tableState[position];
-            if (state.sort === colKey) {
-                state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-            } else {
-                state.sort = colKey;
-                state.sortDir = 'desc';
-            }
-            refreshTable(position);
-        }
-
-        function handleSearch(position, query) {
-            tableState[position].search = query;
-            tableState[position].page = 1;
-            refreshTable(position);
-        }
-
-        function quickFilter(position, type, value) {
-            const state = tableState[position];
-            if (state.filters[type] === value) {
-                delete state.filters[type];
-            } else {
-                state.filters[type] = value;
-            }
-            state.page = 1;
-            refreshTable(position);
-            updateFilterButtons(position);
-        }
-
-        function setPositionFilter(posFilter) {
-            const state = tableState.ALL;
-            state.positionFilter = posFilter;
-            state.page = 1;
-            
-            // Try to use saved cols; only change if user hasn't customised
-            const saved = loadSavedColumns();
-            if (saved) {
-                state.visibleCols = [...saved];
-            } else if (posFilter !== 'ALL' && DEFAULT_COLS[posFilter]) {
-                state.visibleCols = ['player', 'pos', ...DEFAULT_COLS[posFilter].filter(c => c !== 'player')];
-            } else {
-                state.visibleCols = [...DEFAULT_COLS.ALL];
-            }
-            
-            // Re-render entire table (to update column dropdown checkboxes too)
-            const section = document.getElementById('section-ALL');
-            if (section) {
-                section.innerHTML = createTable('ALL', allAnalyses);
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-            
-            // Update position filter pill active states
-            document.querySelectorAll('.pos-filter-pill').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.pos-filter-pill[onclick="setPositionFilter('${posFilter}')"]`)?.classList.add('active');
-        }
-
-        function setFilter(position, type, value) {
-            const state = tableState[position];
-            if (state.filters[type] === value) {
-                delete state.filters[type];
-            } else {
-                state.filters[type] = value;
-            }
-            state.page = 1;
-            refreshTable(position);
-        }
-
-        function applyRangeFilter(position, type) {
-            const min = parseFloat(document.getElementById(`${type}Min-${position}`)?.value);
-            const max = parseFloat(document.getElementById(`${type}Max-${position}`)?.value);
-            const state = tableState[position];
-            if (!isNaN(min)) state.filters[`${type}Min`] = min;
-            else delete state.filters[`${type}Min`];
-            if (!isNaN(max)) state.filters[`${type}Max`] = max;
-            else delete state.filters[`${type}Max`];
-            state.page = 1;
-            refreshTable(position);
-        }
-
-        function clearFilters(position) {
-            if (position === 'ALL') {
-                tableState[position].filters = { teams: new Set() };
-            } else {
-                tableState[position].filters = {};
-            }
-            tableState[position].search = '';
-            tableState[position].page = 1;
-            const searchInput = document.getElementById(`search-${position}`);
-            if (searchInput) searchInput.value = '';
-            refreshTable(position);
-            updateFilterButtons(position);
-        }
-
-        // ============================================
-        // TEAM FILTER (ALL Players)
-        // ============================================
-        function toggleTeamDropdown() {
-            const dropdown = document.getElementById('teamFilterDropdown');
-            if (dropdown) {
-                dropdown.classList.toggle('show');
-                // Sync chip active states
-                const activeTeams = tableState.ALL.filters.teams || new Set();
-                dropdown.querySelectorAll('.team-chip').forEach(chip => {
-                    const teamId = parseInt(chip.dataset.teamId);
-                    chip.classList.toggle('active', activeTeams.has(teamId));
-                });
-            }
-        }
-
-        function toggleTeamFilter(teamId, btn) {
-            if (!tableState.ALL.filters.teams) tableState.ALL.filters.teams = new Set();
-            const teamSet = tableState.ALL.filters.teams;
-            if (teamSet.has(teamId)) {
-                teamSet.delete(teamId);
-                btn.classList.remove('active');
-            } else {
-                teamSet.add(teamId);
-                btn.classList.add('active');
-            }
-            tableState.ALL.page = 1;
-            refreshTable('ALL');
-            updateTeamFilterBtn();
-        }
-
-        function clearTeamFilter() {
-            tableState.ALL.filters.teams = new Set();
-            document.querySelectorAll('.team-chip').forEach(c => c.classList.remove('active'));
-            tableState.ALL.page = 1;
-            refreshTable('ALL');
-            updateTeamFilterBtn();
-        }
-
-        function updateTeamFilterBtn() {
-            const btn = document.getElementById('teamFilterBtn');
-            if (!btn) return;
-            const count = tableState.ALL.filters.teams?.size || 0;
-            const icon = '<i data-lucide="shield" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>';
-            btn.className = 'team-filter-btn' + (count > 0 ? ' active' : '');
-            btn.innerHTML = icon + ' Teams' + (count > 0 ? ' <span class="team-count-badge">' + count + '</span>' : '');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        // Close team dropdown when clicking outside
-        document.addEventListener('click', function(e) {
-            const dropdown = document.getElementById('teamFilterDropdown');
-            if (dropdown?.classList.contains('show') && !e.target.closest('.team-filter-wrapper')) {
-                dropdown.classList.remove('show');
-            }
-        });
-
-        // ============================================
-        // TIMEFRAME TOGGLE (ALL Players)
-        // ============================================
-        function computePlayerStats(player, timeframe) {
-            if (timeframe === 'season') return player.season || {};
-            if (timeframe === 'l5') return player.l5 || {};
-
-            // Compute from history for l10, l3
-            const n = timeframe === 'l10' ? 10 : 3;
-            const history = player.history || [];
-            const slice = history.slice(-n);
-            if (slice.length === 0) return player.l5 || {};
-
-            const stats = {
-                games: slice.filter(g => g.minutes > 0).length,
-                minutes: 0, points: 0, goals: 0, assists: 0,
-                xG: 0, xA: 0, xGI: 0, xGC: 0,
-                cleanSheets: 0, goalsConceded: 0, saves: 0,
-                bonus: 0, bps: 0, ict: 0,
-                influence: 0, creativity: 0, threat: 0,
-                bigChancesMissed: null, bigChancesCreated: null,
-                keyPasses: null, penaltiesSaved: 0
-            };
-
-            let hasBCM = false, hasBCC = false, hasKP = false;
-            slice.forEach(g => {
-                stats.minutes += g.minutes || 0;
-                stats.points += g.total_points || 0;
-                stats.goals += g.goals_scored || 0;
-                stats.assists += g.assists || 0;
-                stats.xG += parseFloat(g.expected_goals) || 0;
-                stats.xA += parseFloat(g.expected_assists) || 0;
-                stats.xGI += parseFloat(g.expected_goal_involvements) || 0;
-                stats.xGC += parseFloat(g.expected_goals_conceded) || 0;
-                stats.cleanSheets += g.clean_sheets || 0;
-                stats.goalsConceded += g.goals_conceded || 0;
-                stats.saves += g.saves || 0;
-                stats.bonus += g.bonus || 0;
-                stats.bps += g.bps || 0;
-                stats.ict += parseFloat(g.ict_index) || 0;
-                stats.influence += parseFloat(g.influence) || 0;
-                stats.creativity += parseFloat(g.creativity) || 0;
-                stats.threat += parseFloat(g.threat) || 0;
-                stats.penaltiesSaved += g.penalties_saved || 0;
-                if (g.big_chances_missed !== undefined && g.big_chances_missed !== null) { stats.bigChancesMissed = (stats.bigChancesMissed || 0) + g.big_chances_missed; hasBCM = true; }
-                if (g.big_chances_created !== undefined && g.big_chances_created !== null) { stats.bigChancesCreated = (stats.bigChancesCreated || 0) + g.big_chances_created; hasBCC = true; }
-                if (g.key_passes !== undefined && g.key_passes !== null) { stats.keyPasses = (stats.keyPasses || 0) + g.key_passes; hasKP = true; }
-            });
-            if (!hasBCM) stats.bigChancesMissed = null;
-            if (!hasBCC) stats.bigChancesCreated = null;
-            if (!hasKP) stats.keyPasses = null;
-
-            return stats;
-        }
-
-        function setTimeframe(tf) {
-            tableState.ALL.timeframe = tf;
-            tableState.ALL.page = 1;
-
-            // Re-render whole table section (createTable remaps player stats with new timeframe)
-            const section = document.getElementById('section-ALL');
-            if (section) {
-                section.innerHTML = createTable('ALL', allAnalyses);
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-        }
-
-        function toggleColumn(position, colKey) {
-            const state = tableState[position];
-            const idx = state.visibleCols.indexOf(colKey);
-            if (idx > -1) {
-                state.visibleCols.splice(idx, 1);
-            } else {
-                state.visibleCols.push(colKey);
-            }
-            if (position === 'ALL') saveColumns(state.visibleCols);
-            refreshTable(position);
-        }
-
-        function selectAllColumns(position) {
-            const state = tableState[position];
-            state.visibleCols = [...AVAILABLE_COLS[position]];
-            // Update checkboxes
-            AVAILABLE_COLS[position].forEach(col => {
-                const checkbox = document.getElementById(`col-${position}-${col}`);
-                if (checkbox) checkbox.checked = true;
-            });
-            if (position === 'ALL') saveColumns(state.visibleCols);
-            refreshTable(position);
-        }
-
-        function deselectAllColumns(position) {
-            const state = tableState[position];
-            // Keep only the always-visible columns (like player)
-            state.visibleCols = AVAILABLE_COLS[position].filter(col => COLUMN_DEFS[col]?.always);
-            // Update checkboxes
-            AVAILABLE_COLS[position].forEach(col => {
-                const checkbox = document.getElementById(`col-${position}-${col}`);
-                if (checkbox && !COLUMN_DEFS[col]?.always) checkbox.checked = false;
-            });
-            if (position === 'ALL') saveColumns(state.visibleCols);
-            refreshTable(position);
-        }
-
-        function resetColumns(position) {
-            const state = tableState[position];
-            state.visibleCols = [...DEFAULT_COLS[position]];
-            // Update checkboxes
-            AVAILABLE_COLS[position].forEach(col => {
-                const checkbox = document.getElementById(`col-${position}-${col}`);
-                if (checkbox) checkbox.checked = DEFAULT_COLS[position].includes(col);
-            });
-            if (position === 'ALL') saveColumns(state.visibleCols);
-            refreshTable(position);
-        }
-
-        function toggleFilters(position) {
-            const panel = document.getElementById(`filtersPanel-${position}`);
-            const btn = document.getElementById(`filterBtn-${position}`);
-            panel?.classList.toggle('show');
-            btn?.classList.toggle('active');
-        }
-
-        function toggleColumnDropdown(position) {
-            const dropdown = document.getElementById(`colDropdown-${position}`);
-            dropdown?.classList.toggle('show');
-        }
-
-        function goToPage(position, page) {
-            tableState[position].page = page;
-            refreshTable(position);
-        }
-
-        function refreshTable(position) {
-            const head = document.getElementById(`tableHead-${position}`);
-            const body = document.getElementById(`tableBody-${position}`);
-            const pagination = document.getElementById(`pagination-${position}`);
-            if (head) head.innerHTML = renderTableHeader(position);
-            if (body) body.innerHTML = renderTableBody(position);
-            if (pagination) pagination.innerHTML = renderPagination(position, tableData[position]?.length || 0);
-            updateFilterButtons(position);
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        function updateFilterButtons(position) {
-            const state = tableState[position];
-            document.querySelectorAll(`#tableSection-${position} .filter-pill`).forEach(btn => {
-                const text = btn.textContent.trim();
-                let isActive = false;
-                if (text.includes('Hot')) isActive = state.filters.form === 'hot';
-                if (text.includes('Easy')) isActive = state.filters.fixtures === 'easy';
-                if (text.includes('Value')) isActive = state.filters.value === 'high';
-                if (text.includes('Nailed')) isActive = state.filters.nailed === true;
-                if (text.includes('Shortlist') || btn.id === 'shortlistPill-ALL') isActive = !!state.filters.shortlist;
-                btn.classList.toggle('active', isActive);
-            });
-            // Update position filter pills
-            if (position === 'ALL') {
-                document.querySelectorAll('.pos-filter-pill').forEach(btn => {
-                    const filter = btn.getAttribute('onclick')?.match(/setPositionFilter\('(\w+)'\)/)?.[1];
-                    btn.classList.toggle('active', filter === state.positionFilter);
-                });
-            }
-        }
-
-        // ============================================
-        // COMPARE FUNCTIONALITY
-        // ============================================
-        function toggleComparePlayer(playerId, position) {
-            const players = tableData[position] || [];
-            const player = players.find(p => p.id === playerId);
-            if (!player) return;
-            
-            const idx = compareList.findIndex(p => p.id === playerId);
-            if (idx > -1) {
-                compareList.splice(idx, 1);
-            } else if (compareList.length < MAX_COMPARE) {
-                compareList.push(player);
-            }
-            
-            updateCompareBar();
-            // Refresh the ALL table
-            const body = document.getElementById('tableBody-ALL');
-            if (body) body.innerHTML = renderTableBody('ALL');
-        }
-        
-        function removeFromCompare(playerId) {
-            compareList = compareList.filter(p => p.id !== playerId);
-            updateCompareBar();
-            const body = document.getElementById('tableBody-ALL');
-            if (body) body.innerHTML = renderTableBody('ALL');
-        }
-        
-        function clearCompare() {
-            compareList = [];
-            updateCompareBar();
-            const body = document.getElementById('tableBody-ALL');
-            if (body) body.innerHTML = renderTableBody('ALL');
-        }
-        
-        function updateCompareBar() {
-            const bar = document.getElementById('compareBar');
-            const count = document.getElementById('compareCount');
-            const list = document.getElementById('comparePlayersList');
-            
-            if (!bar) return;
-            
-            if (compareList.length > 0) {
-                bar.classList.add('show');
-                count.textContent = compareList.length;
-                list.innerHTML = compareList.map(p => `
-                    <div class="compare-player-chip">
-                        <span>${escHTML(p.name)}</span>
-                        <button onclick="removeFromCompare(${p.id})">×</button>
-                    </div>
-                `).join('');
-            } else {
-                bar.classList.remove('show');
-            }
-        }
-        
+    </script>
+    <script src="scripts/players-tables.js"></script>
+    <script>
         // ============================================
         // AI SCOUTING REPORT — DATA ENGINE
         // ============================================
@@ -5488,6 +4586,77 @@
 
             return Math.max(0, xPts);
         }
+
+        /**
+         * Multi-GW xPts — sums fixture-adjusted expected points across the next N gameweeks.
+         * Uses per-fixture opponent modifiers for a holistic forward view.
+         */
+        function calculateMultiGWxPts(p, pos, numGW) {
+            numGW = numGW || 5;
+            const fixtures = p.fixtures?.next3 || [];
+            if (!fixtures.length || !p.l5 || p.l5.games < 2) return null;
+
+            const l5Games = p.l5.games;
+            const mins = p.l5.minutes / l5Games;
+            if (mins < 30) return null;
+
+            const rwXG = p.history ? recencyWeightedAvg(p.history, 'expected_goals') : (p.l5.xG || 0) / l5Games;
+            const rwXA = p.history ? recencyWeightedAvg(p.history, 'expected_assists') : (p.l5.xA || 0) / l5Games;
+            const rwCS = p.history ? recencyWeightedAvg(p.history, 'clean_sheets') : (p.l5.cleanSheets || 0) / l5Games;
+            const rwBonus = p.history ? recencyWeightedAvg(p.history, 'bonus') : (p.l5.bonus || 0) / l5Games;
+            const rwSaves = p.history ? recencyWeightedAvg(p.history, 'saves') : (p.l5.saves || 0) / l5Games;
+            const rwGC = p.history ? recencyWeightedAvg(p.history, 'goals_conceded') : (p.l5.goalsConceded || 0) / l5Games;
+            const goalPts = { GK: 6, DEF: 6, MID: 5, FWD: 4 }[pos] || 4;
+
+            let totalXPts = 0;
+            const gwSlice = fixtures.slice(0, numGW);
+
+            for (const fix of gwSlice) {
+                const oppId = fix.opponent;
+                const isHome = fix.isHome ?? true;
+
+                let oppMul = 1.0;
+                if (oppId && teamAnalysis[oppId]) {
+                    const oppData = teamAnalysis[oppId];
+                    const oppAttack = isHome ? (oppData.attackPowerAway || oppData.attackPower || 50) : (oppData.attackPowerHome || oppData.attackPower || 50);
+                    const oppDefense = isHome ? (oppData.defensePowerAway || oppData.defensePower || 50) : (oppData.defensePowerHome || oppData.defensePower || 50);
+                    const relevant = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
+                    oppMul = Math.max(0.75, Math.min(1.3, 1 + (50 - relevant) * 0.004));
+                }
+
+                let venueAdj = isHome ? 1.06 : 0.94;
+
+                let gwXPts = (mins >= 60 ? 2 : 1);
+                gwXPts += rwXG * goalPts;
+                gwXPts += rwXA * 3;
+
+                if (pos === 'GK' || pos === 'DEF') {
+                    let csExp = rwCS;
+                    if (oppId) {
+                        const csProb = getCleanSheetProb(p.teamId, oppId, isHome);
+                        csExp = 0.6 * csProb + 0.4 * rwCS;
+                    }
+                    gwXPts += csExp * 4;
+                    const oppGoalRate = (oppId && teamAnalysis[oppId]) ? (teamAnalysis[oppId].avgGoals || 1.3) : 1.3;
+                    gwXPts -= oppGoalRate / 2;
+                } else if (pos === 'MID') {
+                    gwXPts += rwCS * 1;
+                }
+
+                if (pos === 'GK') gwXPts += rwSaves / 3;
+                gwXPts += rwBonus;
+
+                gwXPts *= oppMul * venueAdj;
+                totalXPts += Math.max(0, gwXPts);
+            }
+
+            // Prorate remaining GWs if fewer fixtures than numGW
+            if (gwSlice.length < numGW && gwSlice.length > 0) {
+                totalXPts = totalXPts * (numGW / gwSlice.length);
+            }
+
+            return Math.round(totalXPts * 10) / 10;
+        }
         
         function togglePositionFilter(pos) {
             activePositionFilters[pos] = !activePositionFilters[pos];
@@ -5526,6 +4695,7 @@
         }
         
         function createAllCharts(players) {
+            applyChartDefaults();
             const baseOptions = {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -6096,594 +5266,7 @@
         </div>
     </div>
 
-    <script>
-        // ============================================
-        // FPL AI ASSISTANT
-        // ============================================
-        
-        // Initialize player count and update suggestions after data loads
-        const aiInitInterval = setInterval(() => {
-            if (allAnalyses && allAnalyses.length > 0) {
-                const countEl = document.getElementById('ai-player-count');
-                if (countEl) countEl.textContent = allAnalyses.length;
-                
-                // Update comparison suggestion with real player names
-                const topPlayers = allAnalyses
-                    .filter(p => p.selectedBy > 15 && p.l5?.games >= 3)
-                    .sort((a, b) => b.selectedBy - a.selectedBy);
-                
-                if (topPlayers.length >= 2) {
-                    const p1 = topPlayers[0].name;
-                    const p2 = topPlayers[1].name;
-                    const compareBtn = document.getElementById('ai-compare-suggestion');
-                    if (compareBtn) {
-                        compareBtn.innerHTML = `<i data-lucide="scale" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> ${p1} vs ${p2}`;
-                        compareBtn.onclick = () => askAI(`Compare ${p1} and ${p2}`);
-                        if (typeof lucide !== 'undefined') lucide.createIcons();
-                    }
-                }
-                
-                clearInterval(aiInitInterval);
-            }
-        }, 500);
-
-        function toggleAIChat() {
-            document.getElementById('fpl-ai-widget').classList.toggle('expanded');
-        }
-
-        function handleAIEnter(e) {
-            if (e.key === 'Enter') submitAIQuery();
-        }
-
-        function askAI(question) {
-            document.getElementById('ai-input').value = question;
-            submitAIQuery();
-        }
-
-        function submitAIQuery() {
-            const input = document.getElementById('ai-input');
-            const text = input.value.trim();
-            if (!text) return;
-
-            addAIMessage(text, 'user');
-            input.value = '';
-
-            // Simulate thinking delay
-            setTimeout(() => {
-                const response = processAIQuery(text);
-                addAIMessage(response, 'bot');
-            }, 300);
-        }
-
-        function addAIMessage(content, type) {
-            const container = document.getElementById('ai-messages');
-            const div = document.createElement('div');
-            div.className = `ai-msg ${type}`;
-            if (type === 'user') {
-                div.textContent = content;
-            } else {
-                div.innerHTML = content;
-            }
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        // ============================================
-        // AI QUERY PROCESSING ENGINE
-        // ============================================
-        function processAIQuery(query) {
-            if (!allAnalyses || allAnalyses.length === 0) {
-                return "Still loading player data... Please try again in a moment.";
-            }
-
-            const q = query.toLowerCase();
-
-            // --- Intent: Debug/Help - Show sample players ---
-            if (q.includes('debug') || q.includes('help') || q.includes('list players')) {
-                const samples = allAnalyses.slice(0, 10).map(p => p.name);
-                return `
-                    <strong>Sample player names in database:</strong>
-                    <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
-                        ${samples.join(', ')}...
-                    </div>
-                    <div style="margin-top: 10px; font-size: 11px;">
-                        Try: "Stats for ${samples[0]}" or "Compare ${samples[1]} and ${samples[2]}"
-                    </div>
-                `;
-            }
-
-            // --- Intent: Compare Players ---
-            if (q.includes('compare') || q.includes(' vs ') || q.includes(' or ')) {
-                const players = findPlayersInQuery(q);
-                if (players.length >= 2) {
-                    return generateComparisonResponse(players.slice(0, 2));
-                }
-                if (players.length === 1) {
-                    return `I found <strong>${players[0].name}</strong>, but I need a second player to compare. Try adding another name.`;
-                }
-                // Show some popular player names as hints
-                const popularPlayers = allAnalyses
-                    .filter(p => p.selectedBy > 15)
-                    .sort((a, b) => b.selectedBy - a.selectedBy)
-                    .slice(0, 4)
-                    .map(p => p.name);
-                return `I couldn't find those players. Try using names like: <strong>${popularPlayers.join(', ')}</strong>`;
-            }
-
-            // --- Intent: Best/Top Players ---
-            if (q.includes('best') || q.includes('top') || q.includes('recommend')) {
-                return generateBestPlayersResponse(q);
-            }
-
-            // --- Intent: Differentials ---
-            if (q.includes('differential') || q.includes('hidden gem') || q.includes('under owned')) {
-                return generateDifferentialsResponse(q);
-            }
-
-            // --- Intent: Fixtures ---
-            if (q.includes('fixture') || q.includes('schedule') || q.includes('easiest') || q.includes('hardest')) {
-                return generateFixtureResponse(q);
-            }
-
-            // --- Intent: Value Picks ---
-            if (q.includes('value') || q.includes('cheap') || q.includes('budget') || q.includes('bargain')) {
-                return generateValueResponse(q);
-            }
-
-            // --- Intent: Form/Hot Players ---
-            if (q.includes('form') || q.includes('hot') || q.includes('scoring') || q.includes('returning')) {
-                return generateFormResponse(q);
-            }
-
-            // --- Intent: Specific Player Info ---
-            const players = findPlayersInQuery(q);
-            if (players.length === 1) {
-                return generatePlayerResponse(players[0]);
-            }
-
-            // --- Intent: Captain Picks ---
-            if (q.includes('captain') || q.includes('armband')) {
-                return generateCaptainResponse();
-            }
-
-            // --- Intent: Search for player ---
-            if (q.startsWith('search ') || q.startsWith('find ')) {
-                const searchTerm = q.replace(/^(search|find)\s+/, '').trim();
-                const matches = allAnalyses.filter(p => 
-                    p.name.toLowerCase().includes(searchTerm) ||
-                    (p.fullName && p.fullName.toLowerCase().includes(searchTerm))
-                ).slice(0, 5);
-                
-                if (matches.length === 0) {
-                    return `No players found matching "${escHTML(searchTerm)}". Try a shorter search term.`;
-                }
-                
-                return `
-                    <strong>Players matching "${escHTML(searchTerm)}":</strong>
-                    <div class="ai-player-list">
-                        ${matches.map(p => `
-                            <div class="ai-player-row" style="cursor: pointer;" data-pname="${escHTML(p.name)}" onclick="askAI('Stats for ' + this.dataset.pname)">
-                                <div class="ai-player-info">
-                                    <div class="ai-player-name">${escHTML(p.name)}</div>
-                                    <div class="ai-player-meta">£${p.price}m · ${escHTML(p.team)}</div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div style="margin-top: 8px; font-size: 10px; color: var(--text-muted);">Click a player to see their stats</div>
-                `;
-            }
-
-            // Default fallback - use actual popular players from database
-            const topPlayers = allAnalyses
-                .filter(p => p.selectedBy > 10)
-                .sort((a, b) => b.selectedBy - a.selectedBy)
-                .slice(0, 3);
-            const playerHint = topPlayers.length > 0 ? topPlayers[0].name : 'Haaland';
-            
-            return `I'm not sure about that. Try asking:
-                <div class="ai-suggestions" style="margin-top: 10px;">
-                    <button onclick="askAI('Best budget forwards')"><i data-lucide="coins" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Budget picks</button>
-                    <button onclick="askAI('Who should I captain?')"><i data-lucide="crown" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Captain</button>
-                    <button onclick="askAI('Stats for ${escHTML(playerHint)}')"><i data-lucide="bar-chart-3" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Player stats</button>
-                    <button onclick="askAI('search sal')"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Search players</button>
-                </div>`;
-        }
-
-        // ============================================
-        // PLAYER FINDER (Fuzzy Search)
-        // ============================================
-        function findPlayersInQuery(query) {
-            if (!allAnalyses || allAnalyses.length === 0) {
-                console.log('No analyses data available');
-                return [];
-            }
-            
-            const found = [];
-            const q = query.toLowerCase().trim();
-            
-            // Extract meaningful words from query (remove common words)
-            const stopWords = ['compare', 'vs', 'versus', 'and', 'or', 'the', 'to', 'with', 'for', 'stats', 'how', 'is', 'doing', 'who', 'what', 'best', 'top', 'should', 'i', 'my', 'a', 'an', 'about', 'tell', 'me', 'show'];
-            const queryWords = q.split(/[\s,]+/).filter(w => w.length > 2 && !stopWords.includes(w));
-            
-            console.log('Query words:', queryWords);
-
-            allAnalyses.forEach(p => {
-                if (found.some(f => f.id === p.id)) return; // Skip if already found
-                
-                // Get all name variations and clean them
-                const names = [p.name, p.fullName].filter(Boolean);
-                
-                for (const rawName of names) {
-                    const playerName = rawName.toLowerCase().trim();
-                    const nameParts = playerName.split(/[\s.-]+/).filter(part => part.length > 1);
-                    
-                    // Method 1: Full name match in query
-                    if (q.includes(playerName)) {
-                        found.push(p);
-                        return;
-                    }
-                    
-                    // Method 2: Any query word matches any name part
-                    for (const queryWord of queryWords) {
-                        for (const namePart of nameParts) {
-                            // For short names/words (<= 4 chars), require exact match only
-                            if (namePart.length <= 4 || queryWord.length <= 4) {
-                                if (namePart === queryWord) {
-                                    found.push(p);
-                                    return;
-                                }
-                            } else {
-                                // For longer names, allow substring matching
-                                if (namePart === queryWord || 
-                                    queryWord.includes(namePart) ||
-                                    namePart.includes(queryWord)) {
-                                    found.push(p);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            console.log('Found players:', found.map(p => p.name));
-            return found.slice(0, 4);
-        }
-
-        function getPosString(pos) {
-            return { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[pos] || 'MID';
-        }
-
-        // ============================================
-        // RESPONSE GENERATORS
-        // ============================================
-        function generatePlayerResponse(p) {
-            const g = p.l5?.games || 1;
-            const ptsPerGame = (p.l5?.points / g).toFixed(1);
-            const xGI = (p.l5?.xGI / g).toFixed(2);
-            const posStr = getPosString(p.position);
-
-            return `
-                <strong>${escHTML(p.name)}</strong> <span style="color: var(--text-muted)">(${escHTML(p.team)} - ${posStr})</span>
-                <div class="ai-player-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 18px; font-weight: 700;">£${p.price}m</span>
-                        <span style="font-size: 11px; color: var(--text-muted);">${p.selectedBy?.toFixed(1) || 0}% owned</span>
-                    </div>
-                    <div class="ai-player-stats">
-                        <div class="ai-stat-box">
-                            <div class="ai-stat-label">Pts/G (L5)</div>
-                            <div class="ai-stat-value">${ptsPerGame}</div>
-                        </div>
-                        <div class="ai-stat-box">
-                            <div class="ai-stat-label">xGI/G</div>
-                            <div class="ai-stat-value">${xGI}</div>
-                        </div>
-                        <div class="ai-stat-box">
-                            <div class="ai-stat-label">Goals (L5)</div>
-                            <div class="ai-stat-value">${p.l5?.goals || 0}</div>
-                        </div>
-                        <div class="ai-stat-box">
-                            <div class="ai-stat-label">Assists (L5)</div>
-                            <div class="ai-stat-value">${p.l5?.assists || 0}</div>
-                        </div>
-                    </div>
-                    <div style="margin-top: 10px; font-size: 11px; color: var(--text-muted);">
-                        Next 3: <strong>${p.fixtures?.fixtureString || 'N/A'}</strong>
-                    </div>
-                </div>
-                <button class="ai-view-btn" onclick="openPlayerModal(${p.id}, '${posStr}')">View Full Profile</button>
-            `;
-        }
-
-        function generateComparisonResponse(players) {
-            const [p1, p2] = players;
-            const g1 = p1.l5?.games || 1;
-            const g2 = p2.l5?.games || 1;
-
-            const stats = [
-                { label: 'Price', v1: `£${p1.price}m`, v2: `£${p2.price}m`, better: p1.price < p2.price ? 1 : 2 },
-                { label: 'Pts/G (L5)', v1: (p1.l5?.points/g1).toFixed(1), v2: (p2.l5?.points/g2).toFixed(1), better: (p1.l5?.points/g1) > (p2.l5?.points/g2) ? 1 : 2 },
-                { label: 'xGI/G', v1: (p1.l5?.xGI/g1).toFixed(2), v2: (p2.l5?.xGI/g2).toFixed(2), better: (p1.l5?.xGI/g1) > (p2.l5?.xGI/g2) ? 1 : 2 },
-                { label: 'Goals (L5)', v1: p1.l5?.goals || 0, v2: p2.l5?.goals || 0, better: (p1.l5?.goals || 0) > (p2.l5?.goals || 0) ? 1 : 2 },
-                { label: 'Assists (L5)', v1: p1.l5?.assists || 0, v2: p2.l5?.assists || 0, better: (p1.l5?.assists || 0) > (p2.l5?.assists || 0) ? 1 : 2 },
-                { label: 'Avg FDR', v1: p1.fixtures?.avgFDR5?.toFixed(1) || 'N/A', v2: p2.fixtures?.avgFDR5?.toFixed(1) || 'N/A', better: (p1.fixtures?.avgFDR5 || 5) < (p2.fixtures?.avgFDR5 || 5) ? 1 : 2 },
-            ];
-
-            const p1Wins = stats.filter(s => s.better === 1).length;
-            const p2Wins = stats.filter(s => s.better === 2).length;
-            const winner = p1Wins > p2Wins ? p1 : p2;
-
-            return `
-                <strong>${p1.name} vs ${p2.name}</strong>
-                <table style="width: 100%; margin-top: 10px; font-size: 11px; border-collapse: collapse;">
-                    <tr style="background: var(--surface-3);">
-                        <th style="padding: 6px; text-align: left;">Stat</th>
-                        <th style="padding: 6px; text-align: center;">${p1.name.split(' ').pop()}</th>
-                        <th style="padding: 6px; text-align: center;">${p2.name.split(' ').pop()}</th>
-                    </tr>
-                    ${stats.map(s => `
-                        <tr>
-                            <td style="padding: 6px; color: var(--text-muted);">${s.label}</td>
-                            <td style="padding: 6px; text-align: center; ${s.better === 1 ? 'color: var(--color-success); font-weight: 700;' : ''}">${s.v1}</td>
-                            <td style="padding: 6px; text-align: center; ${s.better === 2 ? 'color: var(--color-success); font-weight: 700;' : ''}">${s.v2}</td>
-                        </tr>
-                    `).join('')}
-                </table>
-                <div style="margin-top: 10px; padding: 8px; background: var(--surface-3); border-radius: 6px; font-size: 12px;">
-                    <strong style="color: var(--color-success);">Edge: ${winner.name}</strong> (${Math.max(p1Wins, p2Wins)}/${stats.length} categories)
-                </div>
-            `;
-        }
-
-        function generateBestPlayersResponse(q) {
-            let pos = null;
-            if (q.includes('goalkeeper') || q.includes(' gk')) pos = 1;
-            else if (q.includes('defender') || q.includes(' def')) pos = 2;
-            else if (q.includes('midfielder') || q.includes(' mid')) pos = 3;
-            else if (q.includes('forward') || q.includes('striker') || q.includes(' fwd')) pos = 4;
-
-            let maxPrice = 20;
-            if (q.includes('budget') || q.includes('cheap')) maxPrice = pos === 1 ? 5.0 : pos === 2 ? 5.5 : pos === 3 ? 7.0 : 7.5;
-            const priceMatch = q.match(/under (\d+(\.\d+)?)/);
-            if (priceMatch) maxPrice = parseFloat(priceMatch[1]);
-
-            let candidates = allAnalyses.filter(p => 
-                (pos === null || p.position === pos) &&
-                p.price <= maxPrice &&
-                (p.l5?.games || 0) >= 3
-            );
-
-            // Sort by points per game
-            candidates.sort((a, b) => {
-                const aG = a.l5?.games || 1;
-                const bG = b.l5?.games || 1;
-                return (b.l5?.points / bG) - (a.l5?.points / aG);
-            });
-
-            const top3 = candidates.slice(0, 3);
-            if (top3.length === 0) return "No players found matching that criteria.";
-
-            const posName = pos ? getPosString(pos) + 's' : 'players';
-            const priceText = maxPrice < 20 ? ` under £${maxPrice}m` : '';
-
-            return `
-                <strong>Best ${posName}${priceText}</strong> (by Pts/G)
-                <div class="ai-player-list">
-                    ${top3.map((p, i) => {
-                        const g = p.l5?.games || 1;
-                        return `
-                            <div class="ai-player-row">
-                                <span class="ai-player-rank">${i + 1}</span>
-                                <div class="ai-player-info">
-                                    <div class="ai-player-name">${escHTML(p.name)}</div>
-                                    <div class="ai-player-meta">£${p.price}m · ${escHTML(p.team)}</div>
-                                </div>
-                                <div class="ai-player-stat">
-                                    <div class="ai-player-stat-value">${(p.l5?.points / g).toFixed(1)}</div>
-                                    <div class="ai-player-stat-label">Pts/G</div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        }
-
-        function generateDifferentialsResponse(q) {
-            let maxOwnership = 10;
-            const ownMatch = q.match(/under (\d+)%?/);
-            if (ownMatch) maxOwnership = parseFloat(ownMatch[1]);
-
-            const candidates = allAnalyses.filter(p => 
-                (p.selectedBy || 0) <= maxOwnership &&
-                (p.l5?.games || 0) >= 3 &&
-                (p.l5?.points || 0) >= 15
-            ).sort((a, b) => {
-                const aG = a.l5?.games || 1;
-                const bG = b.l5?.games || 1;
-                return (b.l5?.points / bG) - (a.l5?.points / aG);
-            });
-
-            const top3 = candidates.slice(0, 3);
-            if (top3.length === 0) return "No differentials found with good form.";
-
-            return `
-                <strong><i data-lucide="crosshair" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Top Differentials</strong> (under ${maxOwnership}% owned)
-                <div class="ai-player-list">
-                    ${top3.map((p, i) => {
-                        const g = p.l5?.games || 1;
-                        return `
-                            <div class="ai-player-row">
-                                <span class="ai-player-rank">${i + 1}</span>
-                                <div class="ai-player-info">
-                                    <div class="ai-player-name">${escHTML(p.name)}</div>
-                                    <div class="ai-player-meta">£${p.price}m · ${(p.selectedBy || 0).toFixed(1)}% owned</div>
-                                </div>
-                                <div class="ai-player-stat">
-                                    <div class="ai-player-stat-value">${(p.l5?.points / g).toFixed(1)}</div>
-                                    <div class="ai-player-stat-label">Pts/G</div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        }
-
-        function generateFixtureResponse(q) {
-            const isHard = q.includes('hard') || q.includes('worst') || q.includes('avoid');
-            
-            // Group by team and get fixture data
-            const teamData = {};
-            allAnalyses.forEach(p => {
-                if (p.teamId && p.fixtures && !teamData[p.teamId]) {
-                    teamData[p.teamId] = {
-                        name: p.team,
-                        avgFDR: p.fixtures.avgFDR5 || 3,
-                        fixtures: p.fixtures.fixtureString || 'N/A'
-                    };
-                }
-            });
-
-            const sorted = Object.values(teamData).sort((a, b) => 
-                isHard ? b.avgFDR - a.avgFDR : a.avgFDR - b.avgFDR
-            ).slice(0, 5);
-
-            const title = isHard ? '<i data-lucide="alert-triangle" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Hardest Fixtures (Next 5)' : '<i data-lucide="circle-check" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Easiest Fixtures (Next 5)';
-
-            return `
-                <strong>${title}</strong>
-                <div style="margin-top: 10px;">
-                    ${sorted.map((t, i) => `
-                        <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--surface-3); border-radius: 6px; margin-bottom: 4px;">
-                            <span><strong>${i + 1}.</strong> ${t.name}</span>
-                            <span style="color: ${t.avgFDR <= 2.5 ? 'var(--color-success)' : t.avgFDR >= 3.5 ? 'var(--color-error)' : 'var(--text-muted)'}">
-                                FDR ${t.avgFDR.toFixed(1)}
-                            </span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-
-        function generateValueResponse(q) {
-            let pos = null;
-            if (q.includes('goalkeeper') || q.includes(' gk')) pos = 1;
-            else if (q.includes('defender') || q.includes(' def')) pos = 2;
-            else if (q.includes('midfielder') || q.includes(' mid')) pos = 3;
-            else if (q.includes('forward') || q.includes('striker') || q.includes(' fwd')) pos = 4;
-
-            const candidates = allAnalyses.filter(p => 
-                (pos === null || p.position === pos) &&
-                (p.l5?.games || 0) >= 3
-            ).map(p => {
-                const g = p.l5?.games || 1;
-                const ptsPerGame = p.l5?.points / g;
-                return { ...p, valueScore: ptsPerGame / p.price };
-            }).sort((a, b) => b.valueScore - a.valueScore);
-
-            const top3 = candidates.slice(0, 3);
-            const posName = pos ? getPosString(pos) + 's' : 'players';
-
-            return `
-                <strong><i data-lucide="gem" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Best Value ${posName}</strong> (Pts/G per £1m)
-                <div class="ai-player-list">
-                    ${top3.map((p, i) => {
-                        const g = p.l5?.games || 1;
-                        return `
-                            <div class="ai-player-row">
-                                <span class="ai-player-rank">${i + 1}</span>
-                                <div class="ai-player-info">
-                                    <div class="ai-player-name">${escHTML(p.name)}</div>
-                                    <div class="ai-player-meta">£${p.price}m · ${(p.l5?.points / g).toFixed(1)} Pts/G</div>
-                                </div>
-                                <div class="ai-player-stat">
-                                    <div class="ai-player-stat-value">${p.valueScore.toFixed(2)}</div>
-                                    <div class="ai-player-stat-label">Value</div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        }
-
-        function generateFormResponse(q) {
-            const candidates = allAnalyses.filter(p => 
-                (p.l5?.games || 0) >= 3
-            ).sort((a, b) => (b.form || 0) - (a.form || 0));
-
-            const top3 = candidates.slice(0, 3);
-
-            return `
-                <strong><i data-lucide="flame" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Hottest Form Right Now</strong>
-                <div class="ai-player-list">
-                    ${top3.map((p, i) => {
-                        const g = p.l5?.games || 1;
-                        return `
-                            <div class="ai-player-row">
-                                <span class="ai-player-rank">${i + 1}</span>
-                                <div class="ai-player-info">
-                                    <div class="ai-player-name">${escHTML(p.name)}</div>
-                                    <div class="ai-player-meta">£${p.price}m · ${escHTML(p.team)}</div>
-                                </div>
-                                <div class="ai-player-stat">
-                                    <div class="ai-player-stat-value">${p.form?.toFixed(1) || 0}</div>
-                                    <div class="ai-player-stat-label">Form</div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        }
-
-        function generateCaptainResponse() {
-            // Find eligible players with best combo of form + easy fixtures
-            const candidates = allAnalyses.filter(p => 
-                isPlayerEligible(p, { checkAvailability: true, checkStarters: true }) &&
-                p.fixtures?.avgFDR3
-            ).map(p => {
-                const g = p.l5?.games || 1;
-                const ptsPerGame = p.l5?.points / g;
-                const xGIPerGame = (p.l5?.xGI || 0) / g;
-                const fdr = p.fixtures.avgFDR3;
-                const fdrFactor = (3.5 - fdr) * 1.5;  // Smooth: +3 for FDR=1, -2.25 for FDR=5
-                const homeBonus = (p.fixtures.next3?.[0]?.isHome) ? 0.5 : 0;
-                return { ...p, captainScore: ptsPerGame + (xGIPerGame * 3) + fdrFactor + homeBonus };
-            }).sort((a, b) => b.captainScore - a.captainScore);
-
-            const top3 = candidates.slice(0, 3);
-
-            return `
-                <strong><i data-lucide="crown" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Captain Picks This Week</strong>
-                <div class="ai-player-list">
-                    ${top3.map((p, i) => {
-                        const g = p.l5?.games || 1;
-                        return `
-                            <div class="ai-player-row">
-                                <span class="ai-player-rank">${i + 1}</span>
-                                <div class="ai-player-info">
-                                    <div class="ai-player-name">${escHTML(p.name)}</div>
-                                    <div class="ai-player-meta">${p.fixtures?.fixtureString?.split(',')[0] || 'N/A'} · ${(p.l5?.points / g).toFixed(1)} Pts/G</div>
-                                </div>
-                                <div class="ai-player-stat">
-                                    <div class="ai-player-stat-value" style="color: var(--color-warning);">${p.captainScore.toFixed(1)}</div>
-                                    <div class="ai-player-stat-label">Score</div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-                <div style="margin-top: 8px; font-size: 10px; color: var(--text-muted);">
-                    Score = Pts/G + Fixture Bonus
-                </div>
-            `;
-        }
-    </script>
+    <script src="scripts/players-ai.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="scripts/common.js"></script>
     <script>

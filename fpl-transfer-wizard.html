@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
     <title>EasyFPL — Transfer Wizard</title>
     <meta name="description" content="Plan your FPL transfers with confidence — compare replacements, check fixture swings, budget impact, and find the best value picks for every position.">
     <meta name="theme-color" content="#0a0f1a">
@@ -111,7 +112,7 @@
     // ===== DATA LOADING =====
     async function loadAllData() {
         showLoading(true, 'Loading FPL bootstrap data...');
-        const bootData = await (await fetch('data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000))).json();
+        const bootData = await DataCache.fetchJSON(DATA_URLS.bootstrap);
         const currEvent = bootData.events.find(e => e.is_current);
         currentGW = currEvent ? currEvent.id : 1;
         teams = {};
@@ -123,12 +124,12 @@
         });
 
         showLoading(true, 'Loading fixtures...');
-        const fixturesData = await (await fetch('data/fixtures.json?v=' + Math.floor(Date.now()/300000))).json();
+        const fixturesData = await DataCache.fetchJSON(DATA_URLS.fixtures);
         processFixtures(fixturesData);
 
         showLoading(true, 'Loading detailed player data...');
         let playersDataRaw = [];
-        try { playersDataRaw = await (await fetch('data/players-data.json?v=' + Math.floor(Date.now()/300000))).json(); } catch(e) {}
+        try { playersDataRaw = await DataCache.fetchJSON(DATA_URLS.players); } catch(e) {}
         if (playersDataRaw?.metadata?.lastUpdated && window.updateDataFreshness) window.updateDataFreshness(playersDataRaw.metadata.lastUpdated);
         playerHistory = {};
         const playersList = Array.isArray(playersDataRaw) ? playersDataRaw : (playersDataRaw?.players || []);

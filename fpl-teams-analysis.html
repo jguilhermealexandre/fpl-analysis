@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
     <title>EasyFPL — Team Analysis</title>
     <meta name="description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth analysis for smarter FPL decisions.">
     <meta name="theme-color" content="#0a0f1a">
@@ -55,7 +56,14 @@
         <!-- Content Area -->
         <div id="content-area">
             <div class="teams-grid" id="teams-grid">
-                <!-- Teams will be rendered here -->
+                <div class="skeleton-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;width:100%;">
+                    <div class="skeleton-card"><div class="skeleton skeleton-title" style="width:60%"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:80%"></div><div class="skeleton skeleton-text" style="width:40%"></div></div>
+                    <div class="skeleton-card"><div class="skeleton skeleton-title" style="width:60%"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:80%"></div><div class="skeleton skeleton-text" style="width:40%"></div></div>
+                    <div class="skeleton-card"><div class="skeleton skeleton-title" style="width:60%"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:80%"></div><div class="skeleton skeleton-text" style="width:40%"></div></div>
+                    <div class="skeleton-card"><div class="skeleton skeleton-title" style="width:60%"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:80%"></div><div class="skeleton skeleton-text" style="width:40%"></div></div>
+                    <div class="skeleton-card"><div class="skeleton skeleton-title" style="width:60%"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:80%"></div><div class="skeleton skeleton-text" style="width:40%"></div></div>
+                    <div class="skeleton-card"><div class="skeleton skeleton-title" style="width:60%"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:80%"></div><div class="skeleton skeleton-text" style="width:40%"></div></div>
+                </div>
             </div>
         </div>
     </main>
@@ -132,17 +140,10 @@
             try {
                 showLoading(true);
 
-                const [bootstrapRes, fixturesRes] = await Promise.all([
-                    fetch(BOOTSTRAP_URL),
-                    fetch(FIXTURES_URL)
+                const [bootstrapData, fixturesData] = await Promise.all([
+                    DataCache.fetchJSON(BOOTSTRAP_URL),
+                    DataCache.fetchJSON(FIXTURES_URL)
                 ]);
-
-                if (!bootstrapRes.ok || !fixturesRes.ok) {
-                    throw new Error('Failed to load data — make sure data/ folder contains bootstrap-static.json and fixtures.json');
-                }
-
-                const bootstrapData = await bootstrapRes.json();
-                const fixturesData = await fixturesRes.json();
                 
                 // Store fixtures globally (includes stats array with goals, assists, cards, bonus etc.)
                 window.rawFixturesData = fixturesData;
@@ -171,6 +172,12 @@
             } catch (error) {
                 console.error('Error:', error);
                 showLoading(false);
+                document.getElementById('teams-grid').innerHTML = renderErrorState(
+                    'Failed to load team data',
+                    'Check your connection and try again.',
+                    'loadData'
+                );
+                initIcons();
             }
         }
 

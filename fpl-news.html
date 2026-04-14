@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
     <title>EasyFPL — PL News Hub</title>
     <meta name="description" content="Stay on top of Fantasy Premier League news — injury updates, press-conference summaries, lineup predictions, and transfer rumours that affect your FPL squad.">
     <meta name="theme-color" content="#0a0f1a">
@@ -503,7 +504,16 @@
 
     <!-- News Content -->
     <div id="newsDisplay">
-        <div class="news-container"><div class="news-loading"><div class="spinner"></div> Loading news...</div></div>
+        <div class="news-container">
+            <div class="skeleton-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:16px 0;">
+                <div class="skeleton-card"><div class="skeleton skeleton-text" style="height:120px;margin-bottom:12px"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:60%"></div></div>
+                <div class="skeleton-card"><div class="skeleton skeleton-text" style="height:120px;margin-bottom:12px"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:60%"></div></div>
+                <div class="skeleton-card"><div class="skeleton skeleton-text" style="height:120px;margin-bottom:12px"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:60%"></div></div>
+                <div class="skeleton-card"><div class="skeleton skeleton-text" style="height:120px;margin-bottom:12px"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:60%"></div></div>
+                <div class="skeleton-card"><div class="skeleton skeleton-text" style="height:120px;margin-bottom:12px"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:60%"></div></div>
+                <div class="skeleton-card"><div class="skeleton skeleton-text" style="height:120px;margin-bottom:12px"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:60%"></div></div>
+            </div>
+        </div>
     </div>
 
     <script src="scripts/common.js"></script>
@@ -1015,7 +1025,7 @@
 
             try {
                 const [bootData, rawExternal] = await Promise.all([
-                    fetch('data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000)).then(r => { if (!r.ok) throw new Error('Data load failed'); return r.json(); }),
+                    DataCache.fetchJSON(DATA_URLS.bootstrap),
                     fetchExternalNews()
                 ]);
 
@@ -1334,7 +1344,12 @@
 
             } catch (err) {
                 console.error('News init error:', err);
-                container.innerHTML = `<div class="news-container"><div class="news-loading" style="color:var(--color-error)">Failed to load news. Please try again later.</div></div>`;
+                container.innerHTML = renderErrorState(
+                    'Failed to load news',
+                    'We couldn\u2019t fetch the latest articles. Please try again later.',
+                    'renderNews'
+                );
+                initIcons();
             }
         }
 
