@@ -86,6 +86,11 @@
     --radius-lg: 12px;
     --radius-xl: 16px;
     --radius-full: 9999px;
+
+    /* Chart colors */
+    --chart-grid: rgba(0, 0, 0, 0.05);
+    --chart-text: #4B5563;
+    --chart-tooltip-bg: #1F2937;
 }
 
 /* ===== RESET & BASE ===== */
@@ -639,6 +644,89 @@ body {
     animation: shimmer 1.5s infinite;
     border-radius: var(--radius-md);
 }
+.skeleton-text {
+    height: 14px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+.skeleton-text:last-child { margin-bottom: 0; width: 60%; }
+.skeleton-title {
+    height: 20px;
+    width: 40%;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+.skeleton-circle {
+    border-radius: 50%;
+}
+.skeleton-card {
+    padding: 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+.skeleton-container {
+    transition: opacity 300ms ease;
+}
+.skeleton-container.hidden {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+}
+
+/* ===== EMPTY / ERROR STATES ===== */
+.state-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 24px;
+    min-height: 200px;
+}
+.state-message-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    font-size: 28px;
+}
+.state-message-icon.error { background: rgba(239, 68, 68, 0.10); color: var(--color-error); }
+.state-message-icon.empty { background: var(--surface-2); color: var(--text-muted); }
+.state-message-icon.info { background: rgba(59, 130, 246, 0.10); color: var(--color-info); }
+.state-message-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+.state-message-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    max-width: 360px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+.state-message .btn {
+    margin-top: 4px;
+}
 
 /* ===== BADGES ===== */
 .badge {
@@ -914,6 +1002,171 @@ body {
     --color-rivals-muted: rgba(99, 102, 241, 0.10);
     --color-rivals-glow: rgba(99, 102, 241, 0.18);
     --color-rivals-text: #3730A3;
+}
+
+/* ===== DARK THEME ===== */
+[data-theme="dark"] {
+    /* Surfaces — Slate dark */
+    --surface-bg: #0F172A;
+    --surface-0: #1E293B;
+    --surface-1: #1E293B;
+    --surface-2: #334155;
+    --surface-3: #475569;
+    --surface-4: #64748B;
+
+    /* Primary accent — stays emerald, lighter text variant */
+    --color-primary-text: #6EE7B7;
+
+    /* Text hierarchy — light on dark */
+    --text-primary: #F1F5F9;
+    --text-secondary: #CBD5E1;
+    --text-muted: #64748B;
+
+    /* Borders — inverted */
+    --border-subtle: rgba(255, 255, 255, 0.04);
+    --border-default: rgba(255, 255, 255, 0.08);
+    --border-emphasis: rgba(255, 255, 255, 0.15);
+
+    /* Tool accent text — lighter for dark backgrounds */
+    --color-wizard-text: #C4B5FD;
+    --color-myteam-text: #FDA4AF;
+    --color-players-text: #93C5FD;
+    --color-teams-text: #FCD34D;
+    --color-rivals-text: #A5B4FC;
+
+    /* Chart colors */
+    --chart-grid: rgba(255, 255, 255, 0.06);
+    --chart-text: #CBD5E1;
+    --chart-tooltip-bg: #334155;
+
+    color-scheme: dark;
+}
+
+/* Body gradient */
+[data-theme="dark"] body {
+    background: linear-gradient(135deg, #0F172A 0%, #0F172A 40%, #111827 70%, #0F172A 100%);
+}
+
+/* Nav */
+[data-theme="dark"] .top-nav {
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(12px);
+}
+[data-theme="dark"] .mobile-nav {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+}
+[data-theme="dark"] .nav-dropdown-menu {
+    background: #1E293B;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Loading overlay */
+[data-theme="dark"] .loading-overlay {
+    background: rgba(15, 23, 42, 0.85);
+}
+
+/* Buttons — secondary/ghost */
+[data-theme="dark"] .btn-secondary {
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+[data-theme="dark"] .btn-ghost {
+    color: var(--text-secondary);
+}
+[data-theme="dark"] .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+}
+
+/* Inputs */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="search"],
+[data-theme="dark"] select {
+    background: var(--surface-0);
+    color: var(--text-primary);
+    border-color: var(--border-default);
+}
+
+/* Badge dark text overrides */
+[data-theme="dark"] .badge-fdr-1 { color: #065F46; }
+[data-theme="dark"] .badge-fdr-2 { color: #065F46; }
+[data-theme="dark"] .badge-fdr-3 { color: #1F2937; }
+[data-theme="dark"] .badge-fdr-4 { color: #7C2D12; }
+[data-theme="dark"] .badge-fdr-5 { color: #7F1D1D; }
+
+/* Status bar */
+[data-theme="dark"] .status-bar {
+    background: var(--surface-0);
+    border-color: var(--border-default);
+}
+
+/* Toast */
+[data-theme="dark"] .toast {
+    background: var(--surface-1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Tab bar */
+[data-theme="dark"] .tab-bar {
+    background: var(--surface-0);
+}
+[data-theme="dark"] .tabs-container {
+    background: rgba(15, 23, 42, 0.95);
+}
+
+/* Skeleton shimmer — darker base */
+[data-theme="dark"] .skeleton {
+    background: var(--surface-2);
+}
+[data-theme="dark"] .skeleton::after {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+}
+
+/* Theme toggle */
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 200ms ease;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+.theme-toggle:hover {
+    background: var(--color-primary-muted);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+.theme-toggle .icon {
+    width: 16px;
+    height: 16px;
+}
+/* Show/hide sun/moon based on theme */
+[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: inline-block; }
+.theme-toggle .icon-sun { display: inline-block; }
+.theme-toggle .icon-moon { display: none; }
+
+@media (max-width: 768px) {
+    .theme-toggle {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 1001;
+        background: var(--surface-1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
 }
 
 /* ===== GLOBAL FOOTER ===== */
