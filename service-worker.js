@@ -1,4 +1,4 @@
-const CACHE_NAME = 'easyfpl-v1';
+const CACHE_NAME = 'easyfpl-v2';
 
 const STATIC_ASSETS = [
   '/',
@@ -23,6 +23,18 @@ const STATIC_ASSETS = [
   '/footer.html',
 ];
 
+// Strip the "redirected" flag so cached responses can be served for navigations
+function cleanResponse(response) {
+  if (response.redirected) {
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  }
+  return response;
+}
+
 // Install — pre-cache static shell
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -43,30 +55,50 @@ self.addEventListener('activate', event => {
 
 // Fetch strategy
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
   const url = new URL(event.request.url);
 
-  // Data files & API calls → network-first, fall back to cache
+  // 1) Data files & API calls → network-first, fall back to cache
   if (url.pathname.startsWith('/data/') || url.hostname.includes('workers.dev') || url.hostname.includes('rss2json')) {
     event.respondWith(
       fetch(event.request)
         .then(response => {
-          const clone = response.clone();
+          const safe = cleanResponse(response);
+          const clone = safe.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return response;
+          return safe;
         })
         .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Static assets & pages → cache-first, fall back to network
-  if (event.request.method === 'GET' && url.origin === self.location.origin) {
+  // 2) Navigation requests → network-first, cache by pathname only (strips hash/query)
+  if (event.request.mode === 'navigate') {
+    const cacheKey = url.origin + url.pathname;
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const safe = cleanResponse(response);
+          const clone = safe.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(cacheKey, clone));
+          return safe;
+        })
+        .catch(() => caches.match(cacheKey))
+    );
+    return;
+  }
+
+  // 3) Static assets → cache-first with network update
+  if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(event.request).then(cached => {
         const networkFetch = fetch(event.request).then(response => {
-          const clone = response.clone();
+          const safe = cleanResponse(response);
+          const clone = safe.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return response;
+          return safe;
         });
         return cached || networkFetch;
       })
