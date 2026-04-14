@@ -643,6 +643,10 @@
         .chart-toggle { position: absolute; top: var(--space-4); right: var(--space-4); display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius-md); padding: 2px; z-index: 2; }
         .chart-toggle button { padding: 4px 12px; border: none; background: transparent; border-radius: var(--radius-sm); font-family: inherit; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all 150ms; }
         .chart-toggle button.active { background: var(--surface-1); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .chart-visibility { position: absolute; top: var(--space-4); left: var(--space-4); display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius-md); padding: 2px; z-index: 2; }
+        .chart-visibility button { padding: 4px 10px; border: none; background: transparent; border-radius: var(--radius-sm); font-family: inherit; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all 150ms; }
+        .chart-visibility button:hover { background: var(--surface-1); color: var(--text-primary); }
+        .chart-visibility button.active { background: var(--surface-1); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .momentum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); }
         .momentum-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); }
         .momentum-card .mc-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-2); }
@@ -877,6 +881,10 @@
                     <h2><i data-lucide="line-chart" style="width:20px;height:20px;display:inline;"></i> Points Progression</h2>
                 </div>
                 <div class="chart-container">
+                    <div class="chart-visibility">
+                        <button class="active" onclick="chartShowAll(this)">All</button>
+                        <button onclick="chartShowOnlyMe(this)">Only Me</button>
+                    </div>
                     <div class="chart-toggle">
                         <button class="active" data-mode="absolute" onclick="toggleChartMode('absolute')">Total Points</button>
                         <button data-mode="gap" onclick="toggleChartMode('gap')">Gap to Leader</button>
@@ -1781,6 +1789,29 @@
             document.querySelectorAll('.chart-toggle button').forEach(b => b.classList.remove('active'));
             document.querySelector(`.chart-toggle button[data-mode="${mode}"]`).classList.add('active');
             renderPointsChart(mode);
+            // Reset visibility to All on mode switch
+            document.querySelectorAll('.chart-visibility button').forEach(b => b.classList.remove('active'));
+            document.querySelector('.chart-visibility button:first-child')?.classList.add('active');
+        }
+
+        function chartShowOnlyMe(btn) {
+            if (!raceChart) return;
+            raceChart.data.datasets.forEach((ds, i) => {
+                raceChart.setDatasetVisibility(i, ds.label.startsWith('⭐'));
+            });
+            raceChart.update();
+            document.querySelectorAll('.chart-visibility button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function chartShowAll(btn) {
+            if (!raceChart) return;
+            raceChart.data.datasets.forEach((ds, i) => {
+                raceChart.setDatasetVisibility(i, true);
+            });
+            raceChart.update();
+            document.querySelectorAll('.chart-visibility button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
         }
         
         function renderLeagueTable() {
