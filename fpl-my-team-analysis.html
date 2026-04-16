@@ -3471,7 +3471,20 @@
             html += `<th rowspan="2" style="min-width:140px;">Player</th>`;
             html += `<th colspan="3" class="planner-col-group planner-col-season" style="border-bottom:1px solid rgba(96,165,250,0.15);" title="Full-season averages">Season</th>`;
             html += `<th colspan="3" class="planner-col-group planner-col-recent" style="border-bottom:1px solid rgba(74,222,128,0.15);" title="Averages over the last 6 gameweeks">Last 6 GWs</th>`;
-            gwNumbers.forEach(gw => { html += `<th rowspan="2" class="planner-fdr" title="Fixture Difficulty Rating for GW${gw}">GW${gw}</th>`; });
+            // Detect DGWs for table headers
+            const headerSquad = getDraftSquad(ds.selectedGW);
+            const headerTeamIds = new Set(headerSquad.map(p => p.teamId));
+            const headerDgwSet = new Set();
+            headerTeamIds.forEach(tid => {
+                const tf = teamFixtures6[tid] || [];
+                gwNumbers.forEach(g => {
+                    if (tf.filter(f => f.event === g).length > 1) headerDgwSet.add(g);
+                });
+            });
+            gwNumbers.forEach(gw => {
+                const dgwLabel = headerDgwSet.has(gw) ? ' <span style="font-size:0.5rem;color:var(--color-info);font-weight:700;">DGW</span>' : '';
+                html += `<th rowspan="2" class="planner-fdr" title="Fixture Difficulty Rating for GW${gw}${headerDgwSet.has(gw) ? ' (Double Gameweek)' : ''}">GW${gw}${dgwLabel}</th>`;
+            });
             html += `<th rowspan="2" style="width:30px;">↕</th>`;
             html += `<th rowspan="2" style="width:40px;">Act</th>`;
             html += `</tr><tr>`;
@@ -3555,6 +3568,16 @@
             let html = '';
             // GW pills
             html += `<div class="draft-gw-pills">`;
+            // Detect which GWs are DGWs for any squad player
+            const squadTeamIds = new Set(lineup.map(p => p.teamId));
+            const dgwSet = new Set();
+            squadTeamIds.forEach(tid => {
+                const tf = teamFixtures6[tid] || [];
+                ds.gwNumbers.forEach(g => {
+                    if (tf.filter(f => f.event === g).length > 1) dgwSet.add(g);
+                });
+            });
+
             ds.gwNumbers.forEach(g => {
                 const active = g === gw ? 'active' : '';
                 const gwTransfers = (ds.transfers[g] || []).length;
@@ -3565,6 +3588,7 @@
                     const chipLabels = { wildcard: 'WC', benchboost: 'BB', freehit: 'FH', triplecaptain: 'TC' };
                     badges += `<span class="draft-pill-badge chip-badge">${chipLabels[gwChip] || '?'}</span>`;
                 }
+                if (dgwSet.has(g)) badges += `<span class="draft-pill-badge dgw-badge">DGW</span>`;
                 html += `<button class="draft-gw-pill ${active}" onclick="switchDraftGW(${g})">GW${g}${badges}</button>`;
             });
             html += `</div>`;
@@ -3636,7 +3660,7 @@
             const renderNode = (p) => {
                 const posClass = `pos-${POSITION_CONFIG[p.position]?.class || 'mid'}`;
                 const fixtures = teamFixtures6[p.teamId] || [];
-                const fix = fixtures.find(f => f.event === gw);
+                const gwFixtures = fixtures.filter(f => f.event === gw);
                 const injured = p.status === 'i' || p.status === 'u';
 
                 let swapClass = '';
@@ -3660,8 +3684,16 @@
                 if (p.isTransferIn) node += `<span class="draft-pitch-new-badge">NEW</span>`;
                 node += `<button class="draft-pitch-transfer-btn" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" title="Transfer ${escHTML(p.name)}" aria-label="Transfer ${escHTML(p.name)}">↔</button>`;
                 node += `</div>`;
-                // FDR chip
-                if (fix) {
+                // FDR chip(s) — handle DGW
+                if (gwFixtures.length > 1) {
+                    node += `<div class="planner-fdr-stack">`;
+                    gwFixtures.forEach(fix => {
+                        const fdrClass = `fdr-${fix.difficulty || 3}`;
+                        node += `<div class="planner-fdr-chip ${fdrClass}">${escHTML(fix.opponent || '?')}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
+                    });
+                    node += `</div>`;
+                } else if (gwFixtures.length === 1) {
+                    const fix = gwFixtures[0];
                     const fdrClass = `fdr-${fix.difficulty || 3}`;
                     node += `<div class="planner-fdr-chip ${fdrClass}">${escHTML(fix.opponent || '?')}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
                 } else {
@@ -3773,8 +3805,16 @@
 
             // FDR cells
             gwNumbers.forEach(gw => {
-                const fix = fixtures.find(f => f.event === gw);
-                if (fix) {
+                const gwFixtures = fixtures.filter(f => f.event === gw);
+                if (gwFixtures.length > 1) {
+                    row += `<td class="planner-fdr"><div class="planner-fdr-cell-stack">`;
+                    gwFixtures.forEach(fix => {
+                        const fdrClass = `fdr-${fix.difficulty || 3}`;
+                        row += `<div class="planner-fdr-cell ${fdrClass}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
+                    });
+                    row += `</div></td>`;
+                } else if (gwFixtures.length === 1) {
+                    const fix = gwFixtures[0];
                     const fdrClass = `fdr-${fix.difficulty || 3}`;
                     row += `<td class="planner-fdr"><div class="planner-fdr-cell ${fdrClass}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div></td>`;
                 } else {
@@ -3940,7 +3980,7 @@
                 const renderMiniNode = (p) => {
                     const posClass = `pos-${POSITION_CONFIG[p.position]?.class || 'mid'}`;
                     const fixtures = teamFixtures6[p.teamId] || [];
-                    const fix = fixtures.find(f => f.event === compareGW);
+                    const gwFixtures = fixtures.filter(f => f.event === compareGW);
                     const injured = p.status === 'i' || p.status === 'u';
                     let node = `<div class="planner-pitch-player" title="${escHTML(p.name)} — ${escHTML(p.team)}">`;
                     node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
@@ -3949,7 +3989,15 @@
                     if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
                     if (p.isTransferIn) node += `<span class="draft-pitch-new-badge">NEW</span>`;
                     node += `</div>`;
-                    if (fix) {
+                    if (gwFixtures.length > 1) {
+                        node += `<div class="planner-fdr-stack">`;
+                        gwFixtures.forEach(fix => {
+                            const fdrClass = `fdr-${fix.difficulty || 3}`;
+                            node += `<div class="planner-fdr-chip ${fdrClass}">${escHTML(fix.opponent || '?')}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
+                        });
+                        node += `</div>`;
+                    } else if (gwFixtures.length === 1) {
+                        const fix = gwFixtures[0];
                         const fdrClass = `fdr-${fix.difficulty || 3}`;
                         node += `<div class="planner-fdr-chip ${fdrClass}">${escHTML(fix.opponent || '?')}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
                     }
