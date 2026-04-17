@@ -30,6 +30,25 @@ function updateThemeIcon() {
     });
 }
 
+// ===== DENSITY =====
+(function initDensity() {
+    var saved = localStorage.getItem('easyfpl_density');
+    if (saved === 'compact') {
+        document.documentElement.setAttribute('data-density', 'compact');
+    }
+})();
+
+function toggleDensity() {
+    var isCompact = document.documentElement.getAttribute('data-density') === 'compact';
+    if (isCompact) {
+        document.documentElement.removeAttribute('data-density');
+        localStorage.removeItem('easyfpl_density');
+    } else {
+        document.documentElement.setAttribute('data-density', 'compact');
+        localStorage.setItem('easyfpl_density', 'compact');
+    }
+}
+
 function getChartTheme() {
     const s = getComputedStyle(document.documentElement);
     return {
@@ -291,24 +310,348 @@ function loadNav() {
             const page = location.pathname.split('/').pop() || 'index.html';
             const topLink = document.querySelector(`.nav-links a.nav-link[href="${page}"]`);
             if (topLink) topLink.classList.add('active');
+            // For mega menu triggers, match by data-mega attr → page prefix
+            const megaMap = { 'fpl-my-team-analysis.html': 'myteam', 'fpl-players-analysis.html': 'players', 'fpl-teams-analysis.html': 'teams', 'fpl-league-rivals.html': 'rivals' };
+            const megaKey = megaMap[page];
+            if (megaKey) {
+                const trigger = document.querySelector(`.nav-dropdown[data-mega="${megaKey}"] .nav-mega-trigger`);
+                if (trigger) trigger.classList.add('active');
+            }
             const mobileLink = document.querySelector(`.mobile-nav a.mobile-nav-item[href="${page}"]`);
             if (mobileLink) mobileLink.classList.add('active');
 
             // Initialize Team ID widget from localStorage
             const savedId = getSavedTeamId();
-            if (savedId) showNavTeamBadge(savedId);
+            if (savedId) {
+                showNavTeamBadge(savedId);
+                // Also sync drawer Team ID
+                const drawerBadge = document.getElementById('drawerTidBadge');
+                const drawerInput = document.getElementById('drawerTidInput');
+                const drawerDisplay = document.getElementById('drawerTeamIdDisplay');
+                if (drawerBadge && drawerInput && drawerDisplay) {
+                    drawerDisplay.textContent = savedId;
+                    drawerBadge.classList.remove('hidden');
+                    drawerInput.classList.add('hidden');
+                }
+            }
 
-            // Keyboard handler for Team ID input
+            // Keyboard handler for Team ID inputs
             const navInput = document.getElementById('navTeamIdInput');
             if (navInput) {
                 navInput.addEventListener('keypress', e => {
                     if (e.key === 'Enter') submitTeamIdNav();
                 });
             }
+            const drawerInput = document.getElementById('drawerTeamIdInput');
+            if (drawerInput) {
+                drawerInput.addEventListener('keypress', e => {
+                    if (e.key === 'Enter') submitTeamIdDrawer();
+                });
+            }
 
             // Initialize icons in the newly injected nav
             if (window.lucide) lucide.createIcons();
+
+            // Setup mega menu interactions
+            initMegaMenu();
+
+            // Setup collapsing tab bar
+            initTabAutoHide();
         });
+}
+
+// ===== MEGA MENU =====
+function initMegaMenu() {
+    const dropdowns = document.querySelectorAll('.nav-dropdown[data-mega]');
+    const backdrop = document.querySelector('.mega-backdrop');
+    let openTimer = null;
+    let closeTimer = null;
+    let currentOpen = null;
+
+    function openPanel(dd) {
+        clearTimeout(closeTimer);
+        if (currentOpen && currentOpen !== dd) {
+            currentOpen.classList.remove('open');
+            const oldTrigger = currentOpen.querySelector('.nav-mega-trigger');
+            if (oldTrigger) oldTrigger.setAttribute('aria-expanded', 'false');
+        }
+        dd.classList.add('open');
+        const trigger = dd.querySelector('.nav-mega-trigger');
+        if (trigger) trigger.setAttribute('aria-expanded', 'true');
+        if (backdrop) backdrop.classList.add('visible');
+        currentOpen = dd;
+    }
+
+    function closeAll() {
+        clearTimeout(openTimer);
+        clearTimeout(closeTimer);
+        dropdowns.forEach(dd => {
+            dd.classList.remove('open');
+            const trigger = dd.querySelector('.nav-mega-trigger');
+            if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        });
+        if (backdrop) backdrop.classList.remove('visible');
+        currentOpen = null;
+    }
+
+    function scheduleClose() {
+        clearTimeout(openTimer);
+        closeTimer = setTimeout(closeAll, 400);
+    }
+
+    dropdowns.forEach(dd => {
+        // Hover: open with 150ms delay, close with 400ms delay
+        dd.addEventListener('mouseenter', () => {
+            clearTimeout(closeTimer);
+            openTimer = setTimeout(() => openPanel(dd), 150);
+        });
+        dd.addEventListener('mouseleave', () => {
+            clearTimeout(openTimer);
+            scheduleClose();
+        });
+
+        const panel = dd.querySelector('.mega-menu-panel');
+        if (panel) {
+            panel.addEventListener('mouseenter', () => clearTimeout(closeTimer));
+            panel.addEventListener('mouseleave', scheduleClose);
+        }
+
+        // Click trigger to toggle (for touch/keyboard)
+        const trigger = dd.querySelector('.nav-mega-trigger');
+        if (trigger) {
+            trigger.addEventListener('click', e => {
+                e.preventDefault();
+                if (dd.classList.contains('open')) {
+                    closeAll();
+                } else {
+                    openPanel(dd);
+                }
+            });
+
+            // Keyboard: Escape closes, arrow keys navigate items
+            trigger.addEventListener('keydown', e => {
+                if (e.key === 'Escape') {
+                    closeAll();
+                    trigger.focus();
+                }
+                if (e.key === 'ArrowDown' && dd.classList.contains('open')) {
+                    e.preventDefault();
+                    const firstItem = panel ? panel.querySelector('.mega-item') : null;
+                    if (firstItem) firstItem.focus();
+                }
+            });
+        }
+
+        // Keyboard nav within panel items
+        if (panel) {
+            panel.addEventListener('keydown', e => {
+                const items = Array.from(panel.querySelectorAll('.mega-item'));
+                const idx = items.indexOf(document.activeElement);
+                if (e.key === 'ArrowDown' && idx < items.length - 1) {
+                    e.preventDefault();
+                    items[idx + 1].focus();
+                } else if (e.key === 'ArrowUp' && idx > 0) {
+                    e.preventDefault();
+                    items[idx - 1].focus();
+                } else if (e.key === 'ArrowUp' && idx === 0) {
+                    e.preventDefault();
+                    const trig = dd.querySelector('.nav-mega-trigger');
+                    if (trig) trig.focus();
+                } else if (e.key === 'Escape') {
+                    closeAll();
+                    const trig = dd.querySelector('.nav-mega-trigger');
+                    if (trig) trig.focus();
+                }
+            });
+        }
+    });
+
+    // Backdrop click closes
+    if (backdrop) {
+        backdrop.addEventListener('click', closeAll);
+    }
+
+    // Close on outside click
+    document.addEventListener('click', e => {
+        if (currentOpen && !e.target.closest('.nav-dropdown[data-mega]') && !e.target.closest('.mega-backdrop')) {
+            closeAll();
+        }
+    });
+}
+
+// ===== MOBILE DRAWER =====
+function toggleMobileDrawer() {
+    const drawer = document.getElementById('mobileDrawer');
+    const backdrop = document.getElementById('mobileDrawerBackdrop');
+    if (!drawer) return;
+    const isOpen = drawer.classList.contains('open');
+    if (isOpen) {
+        closeMobileDrawer();
+    } else {
+        drawer.classList.add('open');
+        if (backdrop) backdrop.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        // Focus the close button
+        const closeBtn = drawer.querySelector('.drawer-close');
+        if (closeBtn) closeBtn.focus();
+    }
+}
+
+function closeMobileDrawer() {
+    const drawer = document.getElementById('mobileDrawer');
+    const backdrop = document.getElementById('mobileDrawerBackdrop');
+    if (drawer) drawer.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function toggleDrawerGroup(btn) {
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!expanded));
+}
+
+function submitTeamIdDrawer() {
+    const input = document.getElementById('drawerTeamIdInput');
+    if (!input) return;
+    const val = input.value.trim();
+    if (!val) return;
+    localStorage.setItem('fpl_team_id', val);
+    // Sync to nav widget
+    showNavTeamBadge(val);
+    // Update drawer display
+    const badge = document.getElementById('drawerTidBadge');
+    const form = document.getElementById('drawerTidInput');
+    const display = document.getElementById('drawerTeamIdDisplay');
+    if (badge && form && display) {
+        display.textContent = val;
+        badge.classList.remove('hidden');
+        form.classList.add('hidden');
+    }
+    closeMobileDrawer();
+    location.reload();
+}
+
+// ===== COLLAPSING TAB BAR =====
+function initTabAutoHide() {
+    const tabs = document.querySelector('.tabs-container');
+    if (!tabs) return;
+
+    let lastY = window.scrollY;
+    let ticking = false;
+    const DELTA = 30;
+
+    window.addEventListener('scroll', () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+            const currentY = window.scrollY;
+            if (currentY > lastY + DELTA && currentY > 120) {
+                tabs.classList.add('tabs-hidden');
+            } else if (currentY < lastY - DELTA || currentY < 60) {
+                tabs.classList.remove('tabs-hidden');
+            }
+            lastY = currentY;
+            ticking = false;
+        });
+    }, { passive: true });
+}
+
+// ===== JARGON DICTIONARY =====
+var FPL_JARGON = {
+    'xG': 'Expected Goals \u2014 the quality of scoring chances a player has had',
+    'xGA': 'Expected Goals Against \u2014 the quality of chances conceded by a team',
+    'xGI': 'Expected Goal Involvements \u2014 xG + xA combined',
+    'xGC': 'Expected Goals Conceded \u2014 xG faced while the player is on the pitch',
+    'xA': 'Expected Assists \u2014 the quality of chances created for teammates',
+    'FDR': 'Fixture Difficulty Rating \u2014 how tough upcoming opponents are (1 = easy, 5 = hard)',
+    'ICT': 'Influence, Creativity & Threat \u2014 the official FPL index measuring player impact',
+    'BPS': 'Bonus Point System \u2014 determines which players earn bonus points each match',
+    'EO': 'Effective Ownership \u2014 the % of active managers who own or captain a player',
+    'VAPM': 'Value Added Per Million \u2014 points scored relative to player price',
+    'ITB': 'In The Bank \u2014 remaining transfer budget',
+    'CS': 'Clean Sheet \u2014 no goals conceded',
+    'GW': 'Gameweek \u2014 a round of Premier League fixtures',
+    'DGW': 'Double Gameweek \u2014 a gameweek where a team plays twice',
+    'BGW': 'Blank Gameweek \u2014 a gameweek where a team does not play',
+    'PP90': 'Points Per 90 Minutes \u2014 scoring rate normalized by playing time',
+    'NPxG': 'Non-Penalty Expected Goals \u2014 xG excluding penalties',
+    'xPts': 'Expected Points \u2014 projected FPL points based on fixture difficulty and form',
+};
+
+function annotateStatTerms(root) {
+    if (!root) root = document;
+    root.querySelectorAll('[data-term]').forEach(function(el) {
+        var term = el.getAttribute('data-term');
+        var tip = FPL_JARGON[term];
+        if (tip && !el.getAttribute('data-tip')) {
+            el.setAttribute('data-tip', tip);
+            if (!el.classList.contains('stat-tip') && !el.classList.contains('stat-tip-btn')) {
+                el.classList.add('stat-tip');
+            }
+        }
+    });
+    // Handle mobile tap-to-toggle for info buttons
+    root.querySelectorAll('.stat-tip-btn[data-term]').forEach(function(btn) {
+        if (btn._tipBound) return;
+        btn._tipBound = true;
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var wasActive = btn.classList.contains('active');
+            document.querySelectorAll('.stat-tip-btn.active').forEach(function(b) { b.classList.remove('active'); });
+            if (!wasActive) btn.classList.add('active');
+        });
+    });
+}
+
+// Close toggletips on outside click
+document.addEventListener('click', function() {
+    document.querySelectorAll('.stat-tip-btn.active').forEach(function(b) { b.classList.remove('active'); });
+});
+
+// ===== FEATURE DISCOVERY HINTS =====
+var HINTS_STORAGE_KEY = 'easyfpl_hints_seen';
+
+function getSeenHints() {
+    try {
+        var raw = localStorage.getItem(HINTS_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch(e) { return {}; }
+}
+
+function markHintSeen(hintKey) {
+    var seen = getSeenHints();
+    seen[hintKey] = Date.now();
+    try { localStorage.setItem(HINTS_STORAGE_KEY, JSON.stringify(seen)); } catch(e) {}
+}
+
+/**
+ * Show a one-time pulsating hint dot on an element.
+ * @param {string} targetSelector - CSS selector for the element to attach the hint to.
+ * @param {string} hintKey - Unique key for this hint (stored in localStorage).
+ * @param {string} message - Short tooltip message shown on hover/click.
+ * @returns {boolean} true if hint was shown, false if already seen.
+ */
+function showFeatureHint(targetSelector, hintKey, message) {
+    if (getSeenHints()[hintKey]) return false;
+    var target = document.querySelector(targetSelector);
+    if (!target) return false;
+
+    // Ensure positioned parent
+    var pos = getComputedStyle(target).position;
+    if (pos === 'static') target.style.position = 'relative';
+
+    var dot = document.createElement('span');
+    dot.className = 'feature-hint-dot';
+    dot.setAttribute('data-hint', message);
+    dot.setAttribute('aria-label', message);
+    dot.addEventListener('click', function(e) {
+        e.stopPropagation();
+        markHintSeen(hintKey);
+        dot.classList.add('feature-hint-fade');
+        setTimeout(function() { dot.remove(); }, 300);
+    });
+    target.appendChild(dot);
+    return true;
 }
 
 // ===== SERVICE WORKER =====

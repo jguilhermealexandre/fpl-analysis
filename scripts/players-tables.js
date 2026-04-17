@@ -44,40 +44,40 @@ const COLUMN_DEFS = {
     
     // Goals
     goals: { label: 'G', key: 'l5.goals', sortable: true, tip: 'Goals scored (L5)' },
-    xG: { label: 'xG', key: 'l5.xG', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals (L5)' },
+    xG: { label: 'xG', key: 'l5.xG', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals (L5)', term: 'xG' },
     xGG: { label: 'xG/G', key: 'xgPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xG per game' },
     bcm: { label: 'BCM', key: 'l5.bigChancesMissed', sortable: true, tip: 'Big chances missed (L5). Null = estimated from xG', estimated: '_bigChancesMissedEst' },
     
     // Assists/Creativity
     assists: { label: 'A', key: 'l5.assists', sortable: true, tip: 'Assists (L5)' },
-    xA: { label: 'xA', key: 'l5.xA', sortable: true, format: v => v.toFixed(2), tip: 'Expected assists (L5)' },
+    xA: { label: 'xA', key: 'l5.xA', sortable: true, format: v => v.toFixed(2), tip: 'Expected assists (L5)', term: 'xA' },
     xAG: { label: 'xA/G', key: 'xaPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xA per game' },
     kp: { label: 'KP', key: 'l5.keyPasses', sortable: true, tip: 'Key passes (L5). Null = estimated from xA', estimated: '_keyPassesEst' },
     bcc: { label: 'BCC', key: 'l5.bigChancesCreated', sortable: true, tip: 'Big chances created (L5). Null = estimated from xA', estimated: '_bigChancesCreatedEst' },
     
     // Combined Expected
-    xGI: { label: 'xGI', key: 'l5.xGI', sortable: true, format: v => v.toFixed(2), tip: 'Expected goal involvement (L5)' },
+    xGI: { label: 'xGI', key: 'l5.xGI', sortable: true, format: v => v.toFixed(2), tip: 'Expected goal involvement (L5)', term: 'xGI' },
     xGIG: { label: 'xGI/G', key: 'xgiPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xGI per game', highlight: v => v >= 0.5 ? 'good' : v >= 0.25 ? '' : 'bad' },
     
     // Defending
-    cs: { label: 'CS', key: 'l5.cleanSheets', sortable: true, tip: 'Clean sheets (L5)' },
+    cs: { label: 'CS', key: 'l5.cleanSheets', sortable: true, tip: 'Clean sheets (L5)', term: 'CS' },
     gc: { label: 'GC', key: 'l5.goalsConceded', sortable: true, tip: 'Goals conceded (L5)' },
-    xGC: { label: 'xGC', key: 'l5.xGC', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals conceded (L5)' },
+    xGC: { label: 'xGC', key: 'l5.xGC', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals conceded (L5)', term: 'xGC' },
     saves: { label: 'Saves', key: 'l5.saves', sortable: true, tip: 'Saves made (L5)' },
     penSaved: { label: 'Pen S', key: 'l5.penaltiesSaved', sortable: true, tip: 'Penalties saved (L5)' },
     
     // Bonus
     bonus: { label: 'Bonus', key: 'l5.bonus', sortable: true, tip: 'Bonus points (L5)' },
-    bps: { label: 'BPS', key: 'l5.bps', sortable: true, tip: 'Bonus points system score (L5)' },
+    bps: { label: 'BPS', key: 'l5.bps', sortable: true, tip: 'Bonus points system score (L5)', term: 'BPS' },
     
     // ICT Index
-    ict: { label: 'ICT', key: 'l5.ict', sortable: true, format: v => v.toFixed(1), tip: 'ICT Index (L5)' },
+    ict: { label: 'ICT', key: 'l5.ict', sortable: true, format: v => v.toFixed(1), tip: 'ICT Index (L5)', term: 'ICT' },
     influence: { label: 'Infl', key: 'l5.influence', sortable: true, format: v => v.toFixed(1), tip: 'Influence score (L5)' },
     creativity: { label: 'Creat', key: 'l5.creativity', sortable: true, format: v => v.toFixed(1), tip: 'Creativity score (L5)' },
     threat: { label: 'Threat', key: 'l5.threat', sortable: true, format: v => v.toFixed(1), tip: 'Threat score (L5)' },
     
     // Fixtures
-    fdr: { label: 'FDR', key: 'fdr', sortable: true, type: 'fdr', tip: 'Fixture difficulty (next 3)' },
+    fdr: { label: 'FDR', key: 'fdr', sortable: true, type: 'fdr', tip: 'Fixture difficulty (next 3)', term: 'FDR' },
     fixtures: { label: 'Next 3', key: 'fixtureString', sortable: false, type: 'fixtures', tip: 'Upcoming fixtures' }
 };
 
@@ -377,7 +377,8 @@ function renderTableHeader(position) {
         const sortIcon = isSorted ? (state.sortDir === 'asc' ? '↑' : '↓') : '↕';
         let tip = col.tip || col.label;
         if (position === 'ALL' && tip.includes('(L5)')) tip = tip.replace('(L5)', '(' + tfLabel + ')');
-        return `<th class="${isSorted ? 'sorted' : ''}" onclick="sortTable('${position}', '${colKey}')" title="${tip}">
+        const termAttr = col.term ? ` data-term="${col.term}"` : '';
+        return `<th class="${isSorted ? 'sorted' : ''}" onclick="sortTable('${position}', '${colKey}')" title="${tip}"${termAttr}>
             ${col.label}<span class="sort-icon">${sortIcon}</span>
         </th>`;
     }).join('');
@@ -850,6 +851,7 @@ function refreshTable(position) {
     if (pagination) pagination.innerHTML = renderPagination(position, tableData[position]?.length || 0);
     updateFilterButtons(position);
     if (typeof lucide !== 'undefined') lucide.createIcons();
+    if (head && typeof annotateStatTerms === 'function') annotateStatTerms(head);
 }
 
 function updateFilterButtons(position) {
