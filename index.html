@@ -90,6 +90,11 @@
             gap: 64px;
         }
 
+        .hero-logged-in .hero-inner {
+            padding: 40px 24px 32px;
+            gap: 32px;
+        }
+
         .hero-text {
             flex: 1;
             min-width: 0;
@@ -417,6 +422,7 @@
         @media (max-width: 768px) {
             .hero-banner { min-height: auto; }
             .hero-inner { padding: 48px 20px 40px; flex-direction: column; text-align: center; }
+            .hero-logged-in .hero-inner { padding: 28px 20px 24px; }
             .hero-text { text-align: center; }
             .hero-subtitle { margin-left: auto; margin-right: auto; }
             .hero-title { font-size: 36px; letter-spacing: -1px; }
@@ -1382,6 +1388,88 @@
 
         /* ===== ONBOARDING (hidden, kept for JS compatibility) ===== */
         .onboarding-card { display: none; }
+
+        /* ===== WELCOME BANNER ===== */
+        .welcome-banner {
+            background: linear-gradient(180deg, #111827 0%, var(--surface-0) 100%);
+            border-bottom: 1px solid var(--border-default);
+            padding: 40px 24px;
+        }
+        .welcome-banner.hidden { display: none; }
+        .welcome-banner-inner {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .welcome-banner-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .welcome-banner-title {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .welcome-banner-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .welcome-banner-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+        .welcome-banner-close:hover { color: var(--text-primary); background: var(--surface-2); }
+        .welcome-paths {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .welcome-path-card {
+            padding: 20px 16px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: 12px;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            display: block;
+        }
+        .welcome-path-card:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 1px var(--color-primary);
+        }
+        .welcome-path-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .welcome-path-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .welcome-path-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        @media (max-width: 640px) {
+            .welcome-paths { grid-template-columns: 1fr; }
+            .welcome-banner { padding: 28px 16px; }
+        }
 
         /* ===== "HOW IT WORKS" SECTION ===== */
         .how-it-works {
@@ -2519,6 +2607,44 @@
         </div>
     </div>
 
+    <!-- First-Visit Welcome Banner (shown once, dismissible) -->
+    <div class="welcome-banner hidden" id="welcomeBanner">
+        <div class="welcome-banner-inner">
+            <div class="welcome-banner-header">
+                <div>
+                    <h2 class="welcome-banner-title">Welcome to EasyFPL</h2>
+                    <p class="welcome-banner-subtitle">Not sure where to start? Here are three ways in — no account needed.</p>
+                </div>
+                <button class="welcome-banner-close" onclick="dismissWelcomeBanner()" aria-label="Dismiss welcome banner">
+                    <i data-lucide="x" style="width:18px;height:18px;"></i>
+                </button>
+            </div>
+            <div class="welcome-paths">
+                <a href="fpl-players-analysis.html" class="welcome-path-card">
+                    <div class="welcome-path-icon" style="background:var(--color-primary-muted);">
+                        <i data-lucide="bar-chart-3" style="width:24px;height:24px;color:var(--color-primary);"></i>
+                    </div>
+                    <div class="welcome-path-label">Browse Player Stats</div>
+                    <div class="welcome-path-desc">No Team ID needed — compare xG, form, and fixtures for every player.</div>
+                </a>
+                <a href="fpl-teams-analysis.html" class="welcome-path-card">
+                    <div class="welcome-path-icon" style="background:rgba(59,130,246,0.10);">
+                        <i data-lucide="layout-grid" style="width:24px;height:24px;color:#3B82F6;"></i>
+                    </div>
+                    <div class="welcome-path-label">Explore Team Analysis</div>
+                    <div class="welcome-path-desc">See defensive and attacking stats for all 20 Premier League teams.</div>
+                </a>
+                <div class="welcome-path-card welcome-path-cta" onclick="document.getElementById('closingCta').scrollIntoView({behavior:'smooth'});" style="cursor:pointer;">
+                    <div class="welcome-path-icon" style="background:var(--color-wizard-muted);">
+                        <i data-lucide="wand-2" style="width:24px;height:24px;color:var(--color-wizard);"></i>
+                    </div>
+                    <div class="welcome-path-label">Link Your Team</div>
+                    <div class="welcome-path-desc">Enter your Team ID to unlock personalized squad analysis and the Transfer Wizard.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- How It Works -->
     <section class="how-it-works" id="howItWorks">
         <div class="how-it-works-inner">
@@ -2876,6 +3002,25 @@
     <script>
         initIcons();
 
+        // ===== FIRST-VISIT WELCOME BANNER =====
+        function dismissWelcomeBanner() {
+            var el = document.getElementById('welcomeBanner');
+            if (el) el.classList.add('hidden');
+            try { localStorage.setItem('easyfpl_visited', '1'); } catch(e) {}
+        }
+        (function() {
+            try {
+                var visited = localStorage.getItem('easyfpl_visited');
+                var hasTeam = localStorage.getItem('fpl_team_id');
+                if (!visited && !hasTeam) {
+                    var el = document.getElementById('welcomeBanner');
+                    if (el) el.classList.remove('hidden');
+                    // Mark visited after first view
+                    localStorage.setItem('easyfpl_visited', '1');
+                }
+            } catch(e) {}
+        })();
+
         function onTeamIdSubmitted(teamId) {
             activateTeamPage(teamId);
         }
@@ -2927,6 +3072,8 @@
 
         function activateTeamPage(teamId) {
             document.getElementById('onboardingCard').classList.add('hidden');
+            var wb = document.getElementById('welcomeBanner');
+            if (wb) wb.classList.add('hidden');
             // Swap hero: hide generic, show personalized
             document.getElementById('heroGeneric').classList.add('hidden');
             document.getElementById('heroMockup').classList.add('hidden');

@@ -39,7 +39,26 @@
             <span class="manager-stat">Bank: <strong id="bankDisplay">-</strong></span>
             <span class="manager-stat">GW: <strong id="gwDisplay">-</strong></span>
         </div>
-        <div class="status" id="status">Enter your FPL Team ID to get started with the wizard</div>
+        <div class="status" id="status" style="display:none;"></div>
+
+        <!-- Empty state for no Team ID -->
+        <div class="wizard-empty-state" id="wizardEmptyState">
+            <div class="wizard-empty-icon">
+                <i data-lucide="wand-2" style="width:36px;height:36px;color:var(--color-wizard);"></i>
+            </div>
+            <h2 class="wizard-empty-title">Ready to Find Your Best Transfers?</h2>
+            <p class="wizard-empty-desc">The FPL Wizard analyzes your squad and guides you through transfers, lineup picks, and captain choices — step by step.</p>
+            <div class="wizard-empty-features">
+                <div class="wizard-empty-feat"><i data-lucide="repeat" style="width:16px;height:16px;color:var(--color-info);"></i> Smart transfer suggestions</div>
+                <div class="wizard-empty-feat"><i data-lucide="users" style="width:16px;height:16px;color:var(--color-success);"></i> Optimal lineup builder</div>
+                <div class="wizard-empty-feat"><i data-lucide="crown" style="width:16px;height:16px;color:var(--color-warning);"></i> Captain pick analysis</div>
+            </div>
+            <button class="btn btn-primary wizard-empty-cta" onclick="document.getElementById('teamIdInput').focus();document.getElementById('teamIdInput').scrollIntoView({behavior:'smooth',block:'center'});">Enter Team ID to Start</button>
+            <details class="wizard-empty-help">
+                <summary>How do I find my Team ID?</summary>
+                <p>Go to <strong>fantasy.premierleague.com</strong> → Pick Team → look at your browser URL:<br><code>fantasy.premierleague.com/entry/<strong>XXXXXX</strong>/event/...</code><br>The number is your Team ID.</p>
+            </details>
+        </div>
 
         <!-- Landing Screen -->
         <div id="wizardLanding" class="wizard-landing" style="display:none;"></div>
@@ -640,6 +659,10 @@
     async function loadTeamById() {
         const teamId=document.getElementById('teamIdInput').value.trim();
         if(!teamId||isNaN(teamId)){updateStatus('Please enter a valid Team ID','error');return;}
+        var emptyEl = document.getElementById('wizardEmptyState');
+        if (emptyEl) emptyEl.style.display = 'none';
+        var statusEl = document.getElementById('status');
+        if (statusEl) statusEl.style.display = '';
         const btn=document.getElementById('loadTeamBtn');
         btn.disabled=true; btn.textContent='Loading...';
         try {
@@ -1577,6 +1600,10 @@
     <script src="scripts/common.js"></script>
     <script>
         initIcons();
+        // Feature discovery hint for density toggle
+        setTimeout(function() {
+            showFeatureHint('.density-toggle', 'hint_density', 'Toggle compact mode for denser tables');
+        }, 2000);
         // Re-render Lucide icons after dynamic content updates
         const _origRender = window.renderWizardLanding;
         if (_origRender) {
@@ -1592,6 +1619,8 @@
             if (savedTeamId && /^\d+$/.test(savedTeamId)) {
                 var input = document.getElementById('teamIdInput');
                 if (input) input.value = savedTeamId;
+                var emptyEl = document.getElementById('wizardEmptyState');
+                if (emptyEl) emptyEl.style.display = 'none';
                 loadTeamById();
             }
         } catch(e) {

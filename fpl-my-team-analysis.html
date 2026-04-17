@@ -48,17 +48,34 @@
 
         <!-- Landing Page (shown when no team ID is cached) -->
         <div id="landingPage" style="display:none;">
-            <div style="text-align:center;padding:80px 20px;max-width:480px;margin:0 auto;">
+            <div style="text-align:center;padding:60px 20px 40px;max-width:540px;margin:0 auto;">
                 <div style="width:72px;height:72px;border-radius:50%;background:var(--color-primary-muted);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
                     <i data-lucide="users" style="width:36px;height:36px;color:var(--color-primary);"></i>
                 </div>
                 <h2 style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-bottom:8px;">Welcome to My Team Analysis</h2>
                 <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:24px;">Get squad verdicts, gameweek planning, transfer suggestions, and lineup recommendations — all personalized for your FPL team.</p>
-                <div style="padding:16px 20px;background:var(--surface-1);border:1px solid var(--border-default);border-radius:12px;display:inline-flex;align-items:center;gap:12px;">
-                    <i data-lucide="arrow-up-right" style="width:20px;height:20px;color:var(--color-primary);flex-shrink:0;"></i>
-                    <span style="font-size:13px;color:var(--text-secondary);">Enter your <strong style="color:var(--text-primary);">Team ID</strong> in the top navigation bar to get started</span>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+                    <div style="padding:16px 12px;background:var(--surface-1);border:1px solid var(--border-default);border-radius:12px;text-align:center;">
+                        <i data-lucide="clipboard-list" style="width:24px;height:24px;color:var(--color-primary);margin-bottom:8px;"></i>
+                        <div style="font-size:13px;font-weight:600;color:var(--text-primary);">Squad Verdicts</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Keep, sell, or watch</div>
+                    </div>
+                    <div style="padding:16px 12px;background:var(--surface-1);border:1px solid var(--border-default);border-radius:12px;text-align:center;">
+                        <i data-lucide="calendar" style="width:24px;height:24px;color:var(--color-info);margin-bottom:8px;"></i>
+                        <div style="font-size:13px;font-weight:600;color:var(--text-primary);">GW Planner</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Plan 6 weeks ahead</div>
+                    </div>
+                    <div style="padding:16px 12px;background:var(--surface-1);border:1px solid var(--border-default);border-radius:12px;text-align:center;">
+                        <i data-lucide="wand-2" style="width:24px;height:24px;color:var(--color-wizard);margin-bottom:8px;"></i>
+                        <div style="font-size:13px;font-weight:600;color:var(--text-primary);">Lineup Wizard</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Auto-optimize your XI</div>
+                    </div>
                 </div>
-                <p style="font-size:12px;color:var(--text-muted);margin-top:16px;">Find your Team ID in your FPL URL: fantasy.premierleague.com/entry/<strong>XXXXXX</strong>/event/...</p>
+                <button class="btn btn-primary" onclick="var i=document.getElementById('navTeamIdInput');if(i){i.focus();i.scrollIntoView({behavior:'smooth',block:'center'});}" style="margin-bottom:16px;padding:10px 24px;font-size:14px;">Enter Your Team ID</button>
+                <details style="text-align:left;max-width:360px;margin:0 auto;">
+                    <summary style="font-size:12px;color:var(--text-muted);cursor:pointer;padding:8px 0;">How do I find my Team ID?</summary>
+                    <p style="font-size:12px;color:var(--text-muted);line-height:1.5;padding:4px 0 8px;">Go to <strong style="color:var(--text-secondary);">fantasy.premierleague.com</strong> → Pick Team → look at your URL:<br><code style="font-size:11px;background:var(--surface-2);padding:2px 6px;border-radius:4px;">fantasy.premierleague.com/entry/<strong>XXXXXX</strong>/event/...</code></p>
+                </details>
             </div>
         </div>
 
@@ -2657,17 +2674,39 @@
             const gws = ds.gwNumbers;
             let currentSquad = ds.originalSquad.map(p => ({ ...p }));
 
+            // Snapshot current lineup customisations before rebuild
+            // (empty on first load / loadDraftSlot — their manual restore still works)
+            const savedMods = {};
+            gws.forEach(gw => {
+                const existing = ds.lineups[gw];
+                if (existing && existing.length) {
+                    savedMods[gw] = {};
+                    existing.forEach(p => {
+                        savedMods[gw][p.id] = {
+                            onBench: p.onBench,
+                            isCaptain: p.isCaptain,
+                            isVice: p.isVice,
+                            pickPosition: p.pickPosition
+                        };
+                    });
+                }
+            });
+
             // Track cumulative transfers (except free hit GWs)
             let carrySquad = currentSquad.map(p => ({ ...p }));
 
             gws.forEach(gw => {
                 const chip = ds.chips[gw];
+                // Build out→in map for this GW so transfer-in players inherit
+                // the outgoing player's *customised* slot (not the original one)
+                const gwTransfers = ds.transfers[gw] || [];
+                const outToIn = {};
+                gwTransfers.forEach(t => { outToIn[t.outId] = t.inId; });
 
                 if (chip === 'freehit') {
                     // Free Hit: start from carrySquad but don't update it
                     let fhSquad = carrySquad.map(p => ({ ...p }));
                     // Apply this GW's transfers
-                    const gwTransfers = ds.transfers[gw] || [];
                     gwTransfers.forEach(t => {
                         const idx = fhSquad.findIndex(p => p.id === t.outId);
                         if (idx >= 0) {
@@ -2693,7 +2732,6 @@
                     // carrySquad unchanged — next GW reverts
                 } else {
                     // Normal/Wildcard: apply transfers to carry squad
-                    const gwTransfers = ds.transfers[gw] || [];
                     gwTransfers.forEach(t => {
                         const idx = carrySquad.findIndex(p => p.id === t.outId);
                         if (idx >= 0) {
@@ -2716,6 +2754,41 @@
                         }
                     });
                     ds.lineups[gw] = carrySquad.map(p => ({ ...p }));
+                }
+
+                // Restore lineup customisations for surviving players
+                const mods = savedMods[gw];
+                if (mods) {
+                    const lineup = ds.lineups[gw];
+                    lineup.forEach(p => {
+                        // Direct match — player survived from previous lineup
+                        let mod = mods[p.id];
+                        // Transfer-in — inherit the outgoing player's customised slot
+                        if (!mod && p.isTransferIn) {
+                            const outId = Object.keys(outToIn).find(k => Number(outToIn[k]) === p.id);
+                            if (outId) mod = mods[Number(outId)];
+                        }
+                        if (mod) {
+                            p.onBench = mod.onBench;
+                            p.pickPosition = mod.pickPosition;
+                            // Only restore captain/vice for surviving players, not transfer-ins
+                            if (mods[p.id]) {
+                                p.isCaptain = mod.isCaptain;
+                                p.isVice = mod.isVice;
+                            }
+                        }
+                    });
+                    // Ensure exactly 1 captain & 1 vice after restore
+                    const hasCaptain = lineup.some(p => p.isCaptain);
+                    const hasVice = lineup.some(p => p.isVice);
+                    if (!hasCaptain) {
+                        const starters = lineup.filter(p => !p.onBench).sort((a, b) => (b.price || 0) - (a.price || 0));
+                        if (starters.length) starters[0].isCaptain = true;
+                    }
+                    if (!hasVice) {
+                        const starters = lineup.filter(p => !p.onBench && !p.isCaptain).sort((a, b) => (b.price || 0) - (a.price || 0));
+                        if (starters.length) starters[0].isVice = true;
+                    }
                 }
             });
         }
