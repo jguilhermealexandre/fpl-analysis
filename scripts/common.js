@@ -30,25 +30,6 @@ function updateThemeIcon() {
     });
 }
 
-// ===== DENSITY =====
-(function initDensity() {
-    var saved = localStorage.getItem('easyfpl_density');
-    if (saved === 'compact') {
-        document.documentElement.setAttribute('data-density', 'compact');
-    }
-})();
-
-function toggleDensity() {
-    var isCompact = document.documentElement.getAttribute('data-density') === 'compact';
-    if (isCompact) {
-        document.documentElement.removeAttribute('data-density');
-        localStorage.removeItem('easyfpl_density');
-    } else {
-        document.documentElement.setAttribute('data-density', 'compact');
-        localStorage.setItem('easyfpl_density', 'compact');
-    }
-}
-
 function getChartTheme() {
     const s = getComputedStyle(document.documentElement);
     return {
