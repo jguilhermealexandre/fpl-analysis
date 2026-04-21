@@ -155,30 +155,30 @@
             <button class="tab" data-position="CHARTS" data-desc="Interactive scatter plots to visually identify value picks, underperformers, regression candidates, and differentials.">Charts</button>
             <button class="tab" data-position="ROUTES" data-desc="Players with the most diverse ways to score FPL points. More routes = more reliable returns." data-has-pos="true">Routes to Points</button>
             <button class="tab" data-position="ALL" data-desc="Full stats table for all players — sortable, filterable by position, with shortlist support." data-has-pos="false">All Players</button>
-            <div class="tabs-right-controls">
-                <div class="pos-pills" id="posPills">
-                    <button class="pos-pill active" data-pos="GK" onclick="switchGlobalPosition('GK', this)">GK</button>
-                    <button class="pos-pill" data-pos="DEF" onclick="switchGlobalPosition('DEF', this)">DEF</button>
-                    <button class="pos-pill" data-pos="MID" onclick="switchGlobalPosition('MID', this)">MID</button>
-                    <button class="pos-pill" data-pos="FWD" onclick="switchGlobalPosition('FWD', this)">FWD</button>
-                </div>
-                <div class="pos-pills" id="catPills" style="margin-left:0;">
-                    <button class="pos-pill cat-pill active budget" data-cat="budget" onclick="switchGlobalCategory('budget', this)"><i data-lucide="coins" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Budget</button>
-                    <button class="pos-pill cat-pill premium" data-cat="premium" onclick="switchGlobalCategory('premium', this)"><i data-lucide="star" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Premium</button>
-                    <button class="pos-pill cat-pill differential" data-cat="differential" onclick="switchGlobalCategory('differential', this)"><i data-lucide="gem" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i>Differentials</button>
-                </div>
+        </div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+        <div class="filter-bar-inner">
+            <div class="fp-group" id="posPills">
+                <button class="fp-pill active" data-pos="GK" onclick="switchGlobalPosition('GK', this)">GK</button>
+                <button class="fp-pill" data-pos="DEF" onclick="switchGlobalPosition('DEF', this)">DEF</button>
+                <button class="fp-pill" data-pos="MID" onclick="switchGlobalPosition('MID', this)">MID</button>
+                <button class="fp-pill" data-pos="FWD" onclick="switchGlobalPosition('FWD', this)">FWD</button>
+            </div>
+            <div class="filter-bar-divider" id="catDivider"></div>
+            <div class="fc-group" id="catPills">
+                <button class="fc-chip active" data-cat="budget" onclick="switchGlobalCategory('budget', this)"><i data-lucide="coins" class="fc-icon"></i>Budget</button>
+                <button class="fc-chip" data-cat="premium" onclick="switchGlobalCategory('premium', this)"><i data-lucide="star" class="fc-icon"></i>Premium</button>
+                <button class="fc-chip" data-cat="differential" onclick="switchGlobalCategory('differential', this)"><i data-lucide="gem" class="fc-icon"></i>Differentials</button>
             </div>
         </div>
     </div>
 
     <main class="content">
-        <header class="page-header">
-            <div class="page-header-inner">
-                <h1 class="page-title">Players Analysis</h1>
-                <p class="page-subtitle" id="pageSubtitle">Position-specific recommendations split by budget, premium, and differential tiers using form, fixtures, and value.</p>
-                <span class="no-id-badge"><i data-lucide="unlock" class="no-id-badge-icon"></i> No Team ID needed — explore freely</span>
-            </div>
-        </header>
+        <div class="page-header">
+            <p class="page-subtitle" id="pageSubtitle">Position-specific recommendations split by budget, premium, and differential tiers using form, fixtures, and value.</p>
+        </div>
         <div class="position-section active" id="section-RECOMMENDATIONS">
             <div class="skeleton-container skeleton-grid" style="padding:16px 0;">
                 <div class="skeleton-card"><div class="skeleton-row"><div class="skeleton skeleton-circle" style="width:36px;height:36px;flex-shrink:0"></div><div style="flex:1"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text" style="width:70%"></div></div></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text" style="width:50%"></div></div>
@@ -313,16 +313,20 @@
 
             // Show/hide position pills based on tab
             const posPills = document.getElementById('posPills');
+            const filterBar = document.getElementById('filterBar');
             if (posPills) {
                 const hasPos = tab.dataset.hasPos === 'true';
                 posPills.classList.toggle('hidden', !hasPos);
+                // Hide entire filter bar when no filters apply (ALL tab has its own toolbar)
+                if (filterBar) filterBar.style.display = (pos === 'ALL') ? 'none' : '';
             }
 
-            // Show/hide category pills (only on Recommendations tab)
+            // Show/hide category pills (only on Recommendations, Rising, Purple Patch)
             const catPills = document.getElementById('catPills');
-            if (catPills) {
-                catPills.style.display = (pos === 'RECOMMENDATIONS') ? '' : 'none';
-            }
+            const catDivider = document.getElementById('catDivider');
+            const showCats = ['RECOMMENDATIONS', 'RISING', 'PURPLE_PATCH'].includes(pos);
+            if (catPills) catPills.style.display = showCats ? '' : 'none';
+            if (catDivider) catDivider.style.display = showCats ? '' : 'none';
 
             // Update hash
             const hash = TAB_TO_HASH[pos];
@@ -1827,27 +1831,7 @@
         }
 
         function getRecWhyBadge(p, pos) {
-            const games = p.l5?.games || 1;
-            const rwPtsPerGame = p.history ? recencyWeightedAvg(p.history, 'total_points') : (p.l5?.points || 0) / games;
-            const avgFdr = p.fixtures?.avgFDR3 || 3;
-            const value = rwPtsPerGame / Math.max(p.price, 3.5);
-            const risingScore = (window._risingFormScores && window._risingFormScores[p.id]) || 0;
-
-            // Form Monster: high recent form or strong rising form signal
-            if (rwPtsPerGame >= 5.5 || risingScore >= 8) {
-                return `<span class="rec-why-badge form-monster"><i data-lucide="flame" style="width:10px;height:10px;"></i> Form Monster</span>`;
-            }
-            // Fixture Target: easy upcoming fixtures or improving swing
-            const swing = fixtureSwingData[p.teamId];
-            if (avgFdr <= 2.5 || (swing && swing.direction === 'improving' && Math.abs(swing.swing) >= 0.5)) {
-                return `<span class="rec-why-badge fixture-target"><i data-lucide="crosshair" style="width:10px;height:10px;"></i> Fixture Target</span>`;
-            }
-            // Budget Enabler: great value per million
-            if (value >= 1.0 && p.price <= 6.5) {
-                return `<span class="rec-why-badge budget-enabler"><i data-lucide="piggy-bank" style="width:10px;height:10px;"></i> Budget Enabler</span>`;
-            }
-            // Algorithmic Pick: default
-            return `<span class="rec-why-badge algorithmic"><i data-lucide="cpu" style="width:10px;height:10px;"></i> Algorithmic Pick</span>`;
+            return '';
         }
 
         function renderRecCard(p, rank, pos, isDifferential = false) {
@@ -1891,9 +1875,6 @@
                                     <div class="rec-card-team">${escHTML(p.team)} &middot; \u00a3${p.price.toFixed(1)}m</div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="rec-card-top-right">
-                            ${whyBadge}
                         </div>
                     </div>
                     <div class="rec-stat-row">
@@ -1959,8 +1940,8 @@
         }
 
         function syncGlobalCatPills(category) {
-            document.querySelectorAll('#catPills .cat-pill').forEach(p => p.classList.remove('active'));
-            const pill = document.querySelector(`#catPills .cat-pill[data-cat="${category}"]`);
+            document.querySelectorAll('#catPills .fc-chip').forEach(p => p.classList.remove('active'));
+            const pill = document.querySelector(`#catPills .fc-chip[data-cat="${category}"]`);
             if (pill) pill.classList.add('active');
         }
 
@@ -1972,9 +1953,9 @@
         function switchGlobalPosition(pos, btn) {
             activeGlobalPosition = pos;
             // Update position pills
-            document.querySelectorAll('#posPills .pos-pill').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('#posPills .fp-pill').forEach(p => p.classList.remove('active'));
             if (btn) btn.classList.add('active');
-            else document.querySelector(`#posPills .pos-pill[data-pos="${pos}"]`)?.classList.add('active');
+            else document.querySelector(`#posPills .fp-pill[data-pos="${pos}"]`)?.classList.add('active');
 
             // Switch Recommendations panel
             document.querySelectorAll('[id^="rec-panel-"]').forEach(p => p.classList.remove('active'));
@@ -5272,10 +5253,6 @@
     <script>
         loadNav();
         initIcons();
-        // Feature discovery hints
-        setTimeout(function() {
-            showFeatureHint('.density-toggle', 'hint_density', 'Toggle compact mode for denser tables');
-        }, 2000);
     </script>
     <script>loadFooter();</script>
 </body>
