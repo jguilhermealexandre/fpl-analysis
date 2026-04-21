@@ -647,6 +647,153 @@ body {
 .tabs .tab.active { color: var(--color-success); border-bottom-color: var(--color-success); background: transparent; box-shadow: none; }
 .tabs .tab:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* ===== FILTER BAR (unified component) ===== */
+.filter-bar {
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-default);
+    position: sticky;
+    top: 96px;
+    z-index: 98;
+}
+.filter-bar-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+/* Primary segmented pills — always visible, filled active state */
+.fp-group {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    flex-shrink: 0;
+}
+.fp-pill {
+    padding: 5px 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    transition: all 150ms ease-out;
+    letter-spacing: 0.02em;
+}
+.fp-pill:hover {
+    color: var(--text-primary);
+    background: var(--surface-3);
+}
+.fp-pill.active {
+    color: #fff;
+    background: var(--color-primary);
+    box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+}
+/* Secondary outlined chips — togglable, lighter visual weight */
+.fc-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.fc-chip {
+    padding: 4px 12px;
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms ease-out;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+.fc-chip:hover {
+    color: var(--text-primary);
+    border-color: var(--border-emphasis);
+    background: var(--surface-2);
+}
+.fc-chip.active {
+    background: rgba(16, 185, 129, 0.10);
+    color: var(--color-primary);
+    border-color: rgba(16, 185, 129, 0.35);
+}
+.fc-chip .fc-icon { width: 12px; height: 12px; display: inline-block; vertical-align: middle; }
+/* Divider between filter groups */
+.filter-bar-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border-default);
+    flex-shrink: 0;
+}
+.filter-bar-spacer { flex: 1; min-width: 0; }
+/* Expandable secondary row */
+.filter-bar-secondary {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 8px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+}
+.filter-bar-secondary.visible { display: flex; }
+/* Filters toggle button */
+.fb-toggle {
+    padding: 4px 12px;
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms ease-out;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.fb-toggle:hover {
+    color: var(--text-primary);
+    border-color: var(--border-emphasis);
+    background: var(--surface-2);
+}
+.fb-toggle.active {
+    background: rgba(16, 185, 129, 0.10);
+    color: var(--color-primary);
+    border-color: rgba(16, 185, 129, 0.35);
+}
+.fb-badge {
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 8px;
+    min-width: 16px;
+    text-align: center;
+}
+@media (max-width: 768px) {
+    .filter-bar-inner { padding: 6px 16px; gap: 8px; overflow-x: auto; }
+    .filter-bar-secondary { padding: 0 16px 6px; }
+    .fp-pill { padding: 4px 10px; font-size: 10px; }
+    .fc-chip { padding: 3px 10px; font-size: 10px; }
+    .fb-toggle { padding: 3px 10px; font-size: 10px; }
+}
+
 /* ===== SKELETON LOADING ===== */
 .skeleton {
     background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
@@ -763,31 +910,6 @@ body {
 .badge-error {
     background: rgba(239, 68, 68, 0.10);
     color: #991B1B;
-}
-
-/* ===== NO-ID-NEEDED BADGE ===== */
-.no-id-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 12px;
-    background: rgba(16, 185, 129, 0.08);
-    border: 1px solid rgba(16, 185, 129, 0.15);
-    border-radius: var(--radius-full);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--color-primary-text);
-    margin-top: 8px;
-}
-.no-id-badge-icon {
-    width: 12px;
-    height: 12px;
-    flex-shrink: 0;
-}
-[data-theme="dark"] .no-id-badge {
-    background: rgba(16, 185, 129, 0.10);
-    border-color: rgba(16, 185, 129, 0.20);
-    color: #6EE7B7;
 }
 
 /* ===== STAT TOOLTIPS ===== */
@@ -1568,42 +1690,6 @@ body {
         width: 28px;
         height: 28px;
     }
-}
-
-/* Density toggle (mirrors theme-toggle style) */
-.density-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: none;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: all 200ms ease;
-    margin-right: 8px;
-    flex-shrink: 0;
-}
-.density-toggle:hover {
-    background: var(--color-primary-muted);
-    color: var(--color-primary);
-    border-color: var(--color-primary);
-}
-.density-toggle .icon { width: 16px; height: 16px; }
-/* Show rows-3 (comfortable) by default, rows-4 (compact) when active */
-.density-toggle .icon-comfortable { display: inline-block; }
-.density-toggle .icon-compact { display: none; }
-[data-density="compact"] .density-toggle .icon-comfortable { display: none; }
-[data-density="compact"] .density-toggle .icon-compact { display: inline-block; }
-[data-density="compact"] .density-toggle {
-    background: var(--color-primary-muted);
-    color: var(--color-primary);
-    border-color: var(--color-primary);
-}
-@media (max-width: 768px) {
-    .density-toggle { width: 28px; height: 28px; }
 }
 
 /* ===== FEATURE DISCOVERY HINTS ===== */
