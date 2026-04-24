@@ -534,12 +534,6 @@
             return `${days}d ago`;
         }
 
-        function escHTML(str) {
-            const d = document.createElement('div');
-            d.textContent = str || '';
-            return d.innerHTML;
-        }
-
         // ===== TEAM DATA =====
         let teamsMap = {};  // id → { id, code, name, short_name }
         let teamLookup = {}; // lowercase name/alias → team object
@@ -1051,10 +1045,9 @@
                 const savedTeamId = localStorage.getItem('fpl_team_id');
                 if (savedTeamId && /^\d+$/.test(savedTeamId)) {
                     try {
-                        const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
                         const currEvent = bootData.events.find(e => e.is_current);
                         const currentGW = currEvent ? currEvent.id : 1;
-                        const picksRes = await fetch(`${WORKER_URL}/api/entry/${encodeURIComponent(savedTeamId)}/event/${currentGW}/picks/`);
+                        const picksRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${encodeURIComponent(savedTeamId)}/event/${currentGW}/picks/`);
                         if (picksRes.ok) {
                             const picksData = await picksRes.json();
                             (picksData.picks || []).forEach(pk => squadIds.add(pk.element));

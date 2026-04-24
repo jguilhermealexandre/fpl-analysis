@@ -581,6 +581,21 @@
                 picksData = await picksRes.json();
                 managerHistory = await histRes.json();
 
+                // Free Hit fix: if FH was active this GW, the picks endpoint returns
+                // the temporary FH squad. Load the real squad from the previous GW instead.
+                if (picksData.active_chip === 'freehit' && currentGW > 1) {
+                    console.log(`[FH] Free Hit detected in GW${currentGW}, loading real squad from GW${currentGW - 1}`);
+                    const realPicksRes = await fetchWithProxy(
+                        `https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW - 1}/picks/`
+                    );
+                    const realPicksData = await realPicksRes.json();
+                    picksData = {
+                        ...picksData,
+                        picks: realPicksData.picks,
+                        entry_history: { ...picksData.entry_history, bank: realPicksData.entry_history?.bank }
+                    };
+                }
+
                 selectedPlayers = picksData.picks.map(pick => {
                     const player = allPlayersById[pick.element];
                     if (!player) return null;
