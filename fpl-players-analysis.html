@@ -19,6 +19,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/common.css">
     <link rel="stylesheet" href="styles/players.css">
+    <style>
+        /* Sticky header for All Players table */
+        #section-ALL table thead th {
+            position: sticky;
+            top: var(--all-players-sticky-top, 0px);
+            z-index: 20;
+            background: var(--surface-1, #131b2b);
+            box-shadow: 0 1px 0 var(--border-default, rgba(255,255,255,0.08));
+        }
+    </style>
 </head>
 <body>
     <div class="loading-overlay" id="loadingOverlay">
@@ -5255,5 +5265,27 @@
         initIcons();
     </script>
     <script>loadFooter();</script>
+    <script>
+        function updateAllPlayersHeaderOffset() {
+            const nav = document.querySelector('.top-nav');
+            const tabsContainer = document.querySelector('.tabs-container');
+            let offset = 0;
+            if (nav) {
+                const s = window.getComputedStyle(nav);
+                if (s.position === 'sticky' || s.position === 'fixed') {
+                    offset += nav.getBoundingClientRect().height;
+                }
+            }
+            if (tabsContainer) {
+                const s = window.getComputedStyle(tabsContainer);
+                if (s.position === 'sticky' || s.position === 'fixed') {
+                    offset += tabsContainer.getBoundingClientRect().height;
+                }
+            }
+            document.documentElement.style.setProperty('--all-players-sticky-top', offset + 'px');
+        }
+        document.addEventListener('DOMContentLoaded', updateAllPlayersHeaderOffset);
+        window.addEventListener('resize', updateAllPlayersHeaderOffset);
+    </script>
 </body>
 </html>
