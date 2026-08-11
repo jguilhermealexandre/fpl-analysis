@@ -98,12 +98,112 @@ function renderEmptyState(title, message, icon) {
 
 // ===== API PROXY =====
 const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
+const DEMO_TEAM_ID = '0'; // reserved sentinel — real FPL entry IDs start at 1
 
 async function fetchWithProxy(url) {
     const apiPath = url.replace('https://fantasy.premierleague.com/', '');
+    if (apiPath.startsWith(`api/entry/${DEMO_TEAM_ID}/`) || apiPath === `api/entry/${DEMO_TEAM_ID}`) {
+        return getDemoResponse(apiPath);
+    }
     const res = await fetch(`${WORKER_URL}/${apiPath}`, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res;
+}
+
+// ===== DEMO TEAM MOCK DATA =====
+let _demoBootstrapPromise = null;
+let _demoSquadPromise = null;
+
+function _getDemoBootstrap() {
+    if (!_demoBootstrapPromise) {
+        _demoBootstrapPromise = fetch(DATA_URLS.bootstrap)
+            .then(r => { if (!r.ok) throw new Error('bootstrap unavailable'); return r.json(); });
+    }
+    return _demoBootstrapPromise;
+}
+
+function _buildDemoSquad() {
+    if (!_demoSquadPromise) {
+        _demoSquadPromise = _getDemoBootstrap().then(bootData => {
+            const byPos = { 1: [], 2: [], 3: [], 4: [] };
+            bootData.elements
+                .filter(p => p.status === 'a')
+                .forEach(p => byPos[p.element_type].push(p));
+            [1, 2, 3, 4].forEach(pos => byPos[pos].sort((a, b) =>
+                (b.total_points - a.total_points) || (b.now_cost - a.now_cost)));
+
+            const gks = byPos[1].slice(0, 2);
+            const defs = byPos[2].slice(0, 5);
+            const mids = byPos[3].slice(0, 5);
+            const fwds = byPos[4].slice(0, 3);
+
+            // Starting XI (4-4-2): GK[0], top 4 DEF, top 4 MID, top 2 FWD
+            const starters = [gks[0], ...defs.slice(0, 4), ...mids.slice(0, 4), ...fwds.slice(0, 2)];
+            const bench = [gks[1], defs[4], mids[4], fwds[2]];
+
+            const captain = [...mids.slice(0, 4), ...fwds.slice(0, 2)]
+                .sort((a, b) => b.total_points - a.total_points)[0];
+            const vice = starters.find(p => p.id !== captain.id && p.element_type !== 1);
+
+            let position = 1;
+            const picks = [...starters, ...bench].map(p => {
+                const isStarter = starters.includes(p);
+                return {
+                    element: p.id,
+                    position: position++,
+                    multiplier: !isStarter ? 0 : (p.id === captain.id ? 2 : 1),
+                    is_captain: p.id === captain.id,
+                    is_vice_captain: p.id === vice.id,
+                    selling_price: p.now_cost
+                };
+            });
+
+            const bank = 5; // £0.5m
+            const value = picks.reduce((sum, pk) => {
+                const el = bootData.elements.find(e => e.id === pk.element);
+                return sum + (el ? el.now_cost : 0);
+            }, 0) + bank;
+
+            return { picks, bank, value };
+        }).catch(() => ({ picks: [], bank: 0, value: 0 }));
+    }
+    return _demoSquadPromise;
+}
+
+async function getDemoResponse(apiPath) {
+    let body;
+
+    if (/^api\/entry\/0\/event\/\d+\/picks\/$/.test(apiPath)) {
+        const { picks, bank, value } = await _buildDemoSquad();
+        body = {
+            active_chip: null,
+            picks,
+            entry_history: { bank, points: 63, rank: 1850342, value }
+        };
+    } else if (apiPath === 'api/entry/0/history/') {
+        body = {
+            current: [
+                { event: 1, points: 58, total_points: 58, rank: 2100000, overall_rank: 2100000, bank: 5, value: 1000, event_transfers: 0, points_on_bench: 6 },
+                { event: 2, points: 63, total_points: 121, rank: 1850342, overall_rank: 1850342, bank: 5, value: 1002, event_transfers: 1, points_on_bench: 4 }
+            ],
+            past: [],
+            chips: []
+        };
+    } else if (apiPath === 'api/entry/0/transfers-latest/') {
+        body = []; // never read by any call site
+    } else {
+        body = {
+            id: 0,
+            player_first_name: 'Demo',
+            player_last_name: 'Manager',
+            name: 'Demo Team FC',
+            summary_overall_points: 121,
+            summary_overall_rank: 1850342,
+            summary_event_points: 63
+        };
+    }
+
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
 
 // ===== DATA CACHE (IndexedDB) =====
@@ -210,6 +310,15 @@ function clearTeamId() {
     localStorage.removeItem('fpl_team_id');
 }
 
+function loadDemoTeam() {
+    saveTeamId(DEMO_TEAM_ID);
+    location.reload();
+}
+
+function _formatTeamIdLabel(id) {
+    return id === DEMO_TEAM_ID ? 'DEMO' : id;
+}
+
 // ===== NAV TEAM ID WIDGET =====
 function submitTeamIdNav() {
     const input = document.getElementById('navTeamIdInput');
@@ -231,9 +340,11 @@ function showNavTeamBadge(teamId) {
     const inputEl = document.getElementById('navTidInput');
     const badgeEl = document.getElementById('navTidBadge');
     const displayEl = document.getElementById('teamIdDisplay');
+    const badgeInner = badgeEl ? badgeEl.querySelector('.nav-tid-badge') : null;
     if (inputEl) inputEl.classList.add('hidden');
     if (badgeEl) badgeEl.classList.remove('hidden');
-    if (displayEl) displayEl.textContent = teamId;
+    if (displayEl) displayEl.textContent = _formatTeamIdLabel(teamId);
+    if (badgeInner) badgeInner.classList.toggle('nav-tid-badge--demo', teamId === DEMO_TEAM_ID);
 }
 
 function showNavTeamInput() {
@@ -310,7 +421,8 @@ function loadNav() {
                 const drawerInput = document.getElementById('drawerTidInput');
                 const drawerDisplay = document.getElementById('drawerTeamIdDisplay');
                 if (drawerBadge && drawerInput && drawerDisplay) {
-                    drawerDisplay.textContent = savedId;
+                    drawerDisplay.textContent = _formatTeamIdLabel(savedId);
+                    drawerBadge.querySelector('.nav-tid-badge')?.classList.toggle('nav-tid-badge--demo', savedId === DEMO_TEAM_ID);
                     drawerBadge.classList.remove('hidden');
                     drawerInput.classList.add('hidden');
                 }
@@ -504,7 +616,8 @@ function submitTeamIdDrawer() {
     const form = document.getElementById('drawerTidInput');
     const display = document.getElementById('drawerTeamIdDisplay');
     if (badge && form && display) {
-        display.textContent = val;
+        display.textContent = _formatTeamIdLabel(val);
+        badge.querySelector('.nav-tid-badge')?.classList.toggle('nav-tid-badge--demo', val === DEMO_TEAM_ID);
         badge.classList.remove('hidden');
         form.classList.add('hidden');
     }
