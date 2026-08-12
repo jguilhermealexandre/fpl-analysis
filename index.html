@@ -2695,6 +2695,7 @@
                 <input type="text" id="onboardingInput" placeholder="Enter your Team ID" inputmode="numeric">
                 <button class="btn btn-primary btn-sm" onclick="submitFromOnboarding()">Load</button>
             </div>
+            <div id="onboardingError" class="hidden" style="color:var(--color-error);font-size:12px;margin-top:8px;"></div>
             <div class="onboarding-hint">
                 <i data-lucide="info" style="width:12px;height:12px;display:inline;vertical-align:-2px;margin-right:2px;color:var(--text-muted)"></i>
                 Find your ID at <a href="https://fantasy.premierleague.com" target="_blank">fantasy.premierleague.com</a> → My Team → URL number
@@ -3077,6 +3078,8 @@
         }
 
         function activateTeamPage(teamId) {
+            const errEl = document.getElementById('onboardingError');
+            if (errEl) errEl.classList.add('hidden');
             document.getElementById('onboardingCard').classList.add('hidden');
             var wb = document.getElementById('welcomeBanner');
             if (wb) wb.classList.add('hidden');
@@ -4270,7 +4273,14 @@
                 });
             } catch (err) {
                 console.error('Ticker load error:', err);
-                tickerLoading.innerHTML = `<span style="color:var(--color-error);font-size:12px;">Could not load team data</span>`;
+                const friendly = err.message === 'HTTP 404'
+                    ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
+                    : 'Something went wrong loading your team. Please try again.';
+                clearTeamId();
+                showNavTeamInput();
+                if (typeof onTeamIdCleared === 'function') onTeamIdCleared();
+                const errEl = document.getElementById('onboardingError');
+                if (errEl) { errEl.textContent = friendly; errEl.classList.remove('hidden'); }
             }
         }
 

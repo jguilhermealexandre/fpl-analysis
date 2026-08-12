@@ -90,6 +90,7 @@
         let currentView = 'rankings';
         let rankingsSort = 'attack';
         let currentGW = 1;
+        let isPreseason = false; // true when no gameweek has finished yet — stats shown are last season's carryover
         window.rawFixturesData = [];
         window.teamXgData = {};      // Per-GW xG/xGC aggregated by team
         window.playerElements = [];  // Raw bootstrap elements (for season xG)
@@ -143,9 +144,10 @@
                 const fixturesWithStats = fixturesData.filter(f => f.stats && f.stats.length > 0);
                 console.log(`📊 Loaded ${fixturesData.length} fixtures (${fixturesWithStats.length} with detailed stats)`);
 
-                currentGW = bootstrapData.events.find(e => e.is_current)?.id || 
+                currentGW = bootstrapData.events.find(e => e.is_current)?.id ||
                                   bootstrapData.events.find(e => e.is_next)?.id || 1;
                 document.getElementById('currentGW').textContent = `GW${currentGW}`;
+                isPreseason = bootstrapData.events.every(e => !e.finished);
 
                 // ===== BUILD TEAM xG DATA =====
                 // Try loading players-data.json for per-GW xG (gold standard)
@@ -886,6 +888,13 @@
                 case 'stats':
                     renderStatsTable(contentArea);
                     break;
+            }
+
+            if (isPreseason) {
+                contentArea.insertAdjacentHTML('afterbegin', `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
+                    <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
+                    <span>Showing 2025/26 season stats — will update once GW1 is played.</span>
+                </div>`);
             }
 
             // Initialize Lucide icons in dynamically rendered content

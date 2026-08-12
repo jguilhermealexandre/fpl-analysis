@@ -230,6 +230,7 @@
         let currentGameweek = null;
         let currentPhase = 'mid';
         let allAnalyses = [];
+        let isPreseason = false; // true when no gameweek has finished yet — analyses fall back to lastSeason data
         let currentPosition = 'RECOMMENDATIONS';
 
         // Shortlist state (persisted to localStorage)
@@ -416,58 +417,87 @@
                 // Compute team-level scores (attack, defense, form, fixtures) — 3-component xG model
                 computeTeamScores(staticData.teams, fixturesData);
 
-                // Process players
-                const analyses = [];
-                for (const player of staticData.players) {
-                    if (player.history && player.history.length > 0) {
-                        const season = calculateStats(player.history, false);
-                        const l5 = calculateStats(player.history, true);
-                        
-                        if (season && l5) {
-                            const playerFixtures = teamFixtures[player.team] || [];
-                            let fixtureData = null;
-                            
-                            if (playerFixtures.length > 0) {
-                                const next3 = playerFixtures.slice(0, 3);
-                                const next5 = playerFixtures.slice(0, 5);
-                                const avgFDR3 = next3.reduce((s, f) => s + f.difficulty, 0) / next3.length;
-                                const avgFDR5 = next5.reduce((s, f) => s + f.difficulty, 0) / next5.length;
-                                
-                                fixtureData = {
-                                    avgFDR3, avgFDR5, next3, next5,
-                                    fixtureString: next3.map(f => `${teams[f.opponent]?.short_name || '???'}(${f.isHome ? 'H' : 'A'})`).join(', ')
-                                };
-                            }
-                            
-                            // Merge availability from bootstrap data
-                            const bootInfo = bootstrapElements[player.id];
-                            const chanceNextRound = bootInfo?.chanceNextRound;
-                            const playerStatus = bootInfo?.status || 'a';
-                            const playerNews = bootInfo?.news || '';
+                // Detect preseason: true until at least one gameweek has finished
+                isPreseason = !bootData || !bootData.events || bootData.events.every(e => !e.finished);
 
-                            analyses.push({
-                                id: player.id,
-                                name: player.name,
-                                fullName: player.fullName || player.name,
-                                position: player.position,
-                                team: teams[player.team]?.short_name || '???',
-                                teamId: player.team,
-                                teamCode: teams[player.team]?.code,
-                                price: player.price / 10,
-                                form: parseFloat(player.form) || 0,
-                                selectedBy: parseFloat(player.ownership) || 0,
-                                totalPoints: player.totalPoints,
-                                season, l5, fixtures: fixtureData,
-                                history: player.history,
-                                // Availability fields
-                                status: playerStatus,
-                                news: playerNews,
-                                chanceNextRound: chanceNextRound,
-                                // Team-level scores
-                                teamScores: teamAnalysis[player.team] || null
-                            });
-                        }
+                // Build a history lookup from players-data.json (current-season per-GW logs, may be empty pre-season)
+                const historyById = {};
+                (staticData.players || []).forEach(p => { historyById[p.id] = p.history || []; });
+
+                // Process players — source the roster from bootstrap (always complete, 568 players)
+                // and merge in current-season history by id when available. This keeps the page
+                // working immediately even if players-data.json hasn't caught up yet.
+                const analyses = [];
+                for (const player of (bootData?.elements || [])) {
+                    const history = historyById[player.id] || [];
+                    const season = calculateStats(history, false);
+                    const l5 = calculateStats(history, true);
+
+                    const playerFixtures = teamFixtures[player.team] || [];
+                    let fixtureData = null;
+
+                    if (playerFixtures.length > 0) {
+                        const next3 = playerFixtures.slice(0, 3);
+                        const next5 = playerFixtures.slice(0, 5);
+                        const avgFDR3 = next3.reduce((s, f) => s + f.difficulty, 0) / next3.length;
+                        const avgFDR5 = next5.reduce((s, f) => s + f.difficulty, 0) / next5.length;
+
+                        fixtureData = {
+                            avgFDR3, avgFDR5, next3, next5,
+                            fixtureString: next3.map(f => `${teams[f.opponent]?.short_name || '???'}(${f.isHome ? 'H' : 'A'})`).join(', ')
+                        };
                     }
+
+                    // Last season's cumulative stats — still sitting in bootstrap-static.json's
+                    // season-total fields until FPL rolls them over for the new season.
+                    const lastSeason = {
+                        totalPoints: player.total_points || 0,
+                        minutes: player.minutes || 0,
+                        goals: player.goals_scored || 0,
+                        assists: player.assists || 0,
+                        cleanSheets: player.clean_sheets || 0,
+                        goalsConceded: player.goals_conceded || 0,
+                        saves: player.saves || 0,
+                        bonus: player.bonus || 0,
+                        bps: player.bps || 0,
+                        xG: parseFloat(player.expected_goals) || 0,
+                        xA: parseFloat(player.expected_assists) || 0,
+                        xGI: parseFloat(player.expected_goal_involvements) || 0,
+                        ictIndex: parseFloat(player.ict_index) || 0,
+                        starts: player.starts || 0
+                    };
+
+                    analyses.push({
+                        id: player.id,
+                        name: player.web_name,
+                        fullName: `${player.first_name} ${player.second_name}`,
+                        position: player.element_type,
+                        team: teams[player.team]?.short_name || '???',
+                        teamId: player.team,
+                        teamCode: teams[player.team]?.code,
+                        price: player.now_cost / 10,
+                        form: parseFloat(player.form) || 0,
+                        selectedBy: parseFloat(player.selected_by_percent) || 0,
+                        totalPoints: player.total_points,
+                        season, l5, fixtures: fixtureData,
+                        history,
+                        lastSeason,
+                        // Availability fields
+                        status: player.status || 'a',
+                        news: player.news || '',
+                        chanceNextRound: player.chance_of_playing_next_round,
+                        // Team-level scores
+                        teamScores: teamAnalysis[player.team] || null
+                    });
+                }
+
+                // Preseason: the "All Players" table (createTable) filters on l5.games >= 1 and
+                // reads a wide set of l5/season fields. Rather than rewrite its ~40 columns, feed it
+                // a last-season-shaped stand-in so the existing table code works unchanged — both
+                // "L5" and "Season" columns will show identical last-season totals during preseason,
+                // which the season-notice banner above the table explains.
+                if (isPreseason) {
+                    analyses.forEach(p => { p.season = p.l5 = lastSeasonAsStatsShape(p.lastSeason); });
                 }
 
                 allAnalyses = analyses;
@@ -488,7 +518,9 @@
                 document.getElementById('section-RISING').innerHTML = generateRisingForm(analyses);
                 document.getElementById('section-PURPLE_PATCH').innerHTML = generatePurplePatch(analyses);
                 document.getElementById('section-ROUTES').innerHTML = generateRoutesToPoints(analyses);
-                document.getElementById('section-ALL').innerHTML = createTable('ALL', analyses);
+                document.getElementById('section-ALL').innerHTML =
+                    (isPreseason ? renderSeasonNotice('Showing 2025/26 season totals in the L5 &amp; Season columns — this season’s per-gameweek data isn’t available until GW1.') : '')
+                    + createTable('ALL', analyses);
 
                 // Toxic List (hidden by default — revealed via triple-click easter egg)
                 const toxicPlayers = generateToxicList(allAnalyses);
@@ -872,6 +904,43 @@
             console.log('Team analysis computed for', Object.keys(teamAnalysis).length, 'teams (3-component xG model)');
         }
 
+        // Wraps a player's lastSeason cumulative totals in the same shape calculateStats()
+        // returns, so preseason code paths that expect a season/l5 object (e.g. the All
+        // Players table) can consume last-season data without any changes of their own.
+        function lastSeasonAsStatsShape(lastSeason) {
+            const ls = lastSeason || {};
+            return {
+                games: 1,
+                minutes: ls.minutes || 0,
+                points: ls.totalPoints || 0,
+                goals: ls.goals || 0,
+                assists: ls.assists || 0,
+                cleanSheets: ls.cleanSheets || 0,
+                goalsConceded: ls.goalsConceded || 0,
+                saves: ls.saves || 0,
+                bonus: ls.bonus || 0,
+                bps: ls.bps || 0,
+                xG: ls.xG || 0,
+                xA: ls.xA || 0,
+                xGI: ls.xGI || 0,
+                xGC: 0,
+                penaltiesSaved: 0,
+                penaltiesMissed: 0,
+                bigChancesCreated: null,
+                _bigChancesCreatedEst: Math.round((ls.xA || 0) * 2),
+                bigChancesMissed: null,
+                _bigChancesMissedEst: Math.round((ls.xG || 0) * 0.8),
+                keyPasses: null,
+                _keyPassesEst: Math.round((ls.xA || 0) * 5),
+                ict: ls.ictIndex || 0,
+                influence: 0,
+                creativity: 0,
+                threat: 0,
+                homeSplit: null,
+                awaySplit: null
+            };
+        }
+
         function calculateStats(history, last5 = false) {
             const games = last5 ? history.slice(-5) : history;
             if (games.length === 0) return null;
@@ -1128,7 +1197,66 @@
         // ============================================
         // ROUTES TO POINTS
         // ============================================
+        // Preseason fallback: route diversity computed from last season's raw totals
+        // instead of the blended L5/season model (which needs current-season data).
+        function renderLastSeasonRoutes(analyses) {
+            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const banner = renderSeasonNotice('Routes to Points blends recent and season-long trends, which need this season’s data. Showing last season’s route breakdown instead.');
+
+            const scored = analyses
+                .filter(p => p.status === 'a')
+                .map(p => {
+                    const ls = p.lastSeason || {};
+                    const pos = posMap[p.position];
+                    const routes = [];
+                    if ((ls.goals || 0) >= 3) routes.push({ label: 'Goals', detail: `${ls.goals} last season` });
+                    if ((ls.assists || 0) >= 3) routes.push({ label: 'Assists', detail: `${ls.assists} last season` });
+                    if ((pos === 'GK' || pos === 'DEF') && (ls.cleanSheets || 0) >= 5) routes.push({ label: 'Clean Sheets', detail: `${ls.cleanSheets} last season` });
+                    if ((ls.bonus || 0) >= 8) routes.push({ label: 'Bonus', detail: `${ls.bonus} last season` });
+                    return { ...p, routes };
+                })
+                .filter(p => p.routes.length >= 2)
+                .sort((a, b) => (b.lastSeason?.totalPoints || 0) - (a.lastSeason?.totalPoints || 0));
+
+            const posColors = { GK: '#FBBF24', DEF: '#34D399', MID: '#60A5FA', FWD: '#F87171' };
+            const cards = scored.slice(0, 24).map((p, i) => `
+                <div class="route-card" onclick="openPlayerModal(${p.id})">
+                    ${getStarHtml(p.id, 'shortlist-star-card')}
+                    <div class="route-card-top">
+                        <div class="route-card-rank">${i + 1}</div>
+                        <div class="route-card-player">
+                            <div class="route-card-name">${escHTML(p.name)}</div>
+                            <div class="route-card-meta">
+                                <span class="route-pos-badge" style="background: ${posColors[posMap[p.position]]}20; color: ${posColors[posMap[p.position]]}">${posMap[p.position]}</span>
+                                ${escHTML(p.team)} &middot; £${p.price.toFixed(1)}m
+                            </div>
+                        </div>
+                        <div class="route-card-score" title="Number of distinct scoring routes last season">
+                            <div class="route-score-number">${p.routes.length}</div>
+                            <div class="route-score-label">routes</div>
+                        </div>
+                    </div>
+                    <div class="route-card-bars">
+                        ${p.routes.map(r => `
+                            <div class="route-bar-row" title="${r.label}: ${r.detail}">
+                                <span class="route-bar-name">${r.label}</span>
+                                <span class="route-bar-detail">${r.detail}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="route-card-footer">
+                        <span>${p.lastSeason?.totalPoints || 0} pts (25/26)</span>
+                    </div>
+                </div>
+            `).join('');
+
+            return `${banner}<div class="routes-grid">${cards || '<div class="no-players">No players with 2+ last-season routes found</div>'}</div>`;
+        }
+
         function generateRoutesToPoints(analyses) {
+            if (isPreseason) {
+                return renderLastSeasonRoutes(analyses);
+            }
             const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
 
             // FPL point values per route (used to weight composite score)
@@ -1402,6 +1530,9 @@
         const BUDGET_CAPS = { GK: 5.0, DEF: 5.0, MID: 7.5, FWD: 7.0 };
 
         function generateRecommendations(analyses) {
+            if (isPreseason) {
+                return renderLastSeasonRecommendations(analyses);
+            }
             // Build each position's HTML but wrap in tab panels
             const positions = [
                 { pos: 'GK', icon: '<i data-lucide="hand" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', title: 'Goalkeepers', budgetCap: BUDGET_CAPS.GK, metrics: ['cs','saves','gc','ptsG'], budgetDesc: 'High save count, rotation options', premiumDesc: 'Clean sheet magnets from top defenses' },
@@ -1422,6 +1553,77 @@
                     </label>
                 </div>
                 ${panels}
+            `;
+        }
+
+        // Preseason fallback: last season's cumulative top scorers by position, clearly labeled.
+        // Not the live momentum-based algorithm above — just a simple reference list, since
+        // there's no current-season form/fixture data to power real recommendations yet.
+        function renderLastSeasonRecommendations(analyses) {
+            const positions = [
+                { pos: 'GK', posId: 1, title: 'Goalkeepers' },
+                { pos: 'DEF', posId: 2, title: 'Defenders' },
+                { pos: 'MID', posId: 3, title: 'Midfielders' },
+                { pos: 'FWD', posId: 4, title: 'Forwards' }
+            ];
+            const active = activeGlobalPosition || 'GK';
+            const banner = renderSeasonNotice('Recommendations use this season’s form &amp; fixtures — not available until GW1. Showing last season’s top performers by position instead.');
+            const panels = positions.map(({ pos, posId, title }) => {
+                const top = analyses
+                    .filter(a => a.position === posId && a.status === 'a')
+                    .sort((a, b) => (b.lastSeason?.totalPoints || 0) - (a.lastSeason?.totalPoints || 0))
+                    .slice(0, 8);
+                const cards = top.length > 0
+                    ? top.map((p, i) => renderLastSeasonCard(p, i + 1)).join('')
+                    : '<div class="no-players">No last-season data found</div>';
+                return `<div class="sub-tab-panel ${pos === active ? 'active' : ''}" id="rec-panel-${pos}">
+                    <div class="pos-rec-section">
+                        <h3 style="font-size:13px;color:var(--text-secondary);margin:8px 0;">${title} — Top Points, 2025/26</h3>
+                        <div class="rec-category-panel active">${cards}</div>
+                    </div>
+                </div>`;
+            }).join('');
+            return banner + panels;
+        }
+
+        function renderSeasonNotice(message) {
+            return `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
+                <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
+                <span>${message}</span>
+            </div>`;
+        }
+
+        function renderLastSeasonCard(p, rank) {
+            const ls = p.lastSeason || {};
+            const next3 = p.fixtures?.next3 || [];
+            const fixChips = next3.slice(0, 3).map(f => {
+                const oppName = (f.opponent && teams[f.opponent]) ? teams[f.opponent].short_name : '???';
+                const d = f.difficulty || 3;
+                const cls = d <= 1 ? 'fdr-1' : d <= 2 ? 'fdr-2' : d <= 3 ? 'fdr-3' : d <= 4 ? 'fdr-4' : 'fdr-5';
+                const venue = f.isHome ? 'H' : 'A';
+                return `<span class="rec-fix-chip ${cls}"><span class="gw-label">GW${f.event || ''}</span>${escHTML(oppName)} (${venue})</span>`;
+            }).join('');
+            return `
+                <div class="rec-card" style="position:relative;" onclick="openPlayerModal(${p.id})">
+                    ${getStarHtml(p.id, 'shortlist-star-card')}
+                    <div class="rec-card-top-row">
+                        <div class="rec-card-top-left">
+                            <div class="rec-card-rank">${rank}</div>
+                            <div class="rec-card-main">
+                                <div class="rec-card-header">
+                                    <div class="rec-card-name">${escHTML(p.name)}</div>
+                                    <div class="rec-card-team">${escHTML(p.team)} &middot; £${p.price.toFixed(1)}m</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rec-card-metrics">
+                        <div class="rec-metric"><span class="rec-metric-value">${ls.totalPoints || 0}</span><span class="rec-metric-label">Pts (25/26)</span></div>
+                        <div class="rec-metric"><span class="rec-metric-value">${ls.goals || 0}</span><span class="rec-metric-label">Goals</span></div>
+                        <div class="rec-metric"><span class="rec-metric-value">${ls.assists || 0}</span><span class="rec-metric-label">Assists</span></div>
+                    </div>
+                    ${fixChips ? `<div class="rec-fix-row">${fixChips}</div>` : ''}
+                </div>
             `;
         }
 
@@ -2098,6 +2300,13 @@
          * Window sizes: team xG uses 6-game (matches teams-analysis), player stats uses 3-game.
          */
         function generateRisingForm(analyses) {
+            if (isPreseason) {
+                return renderEmptyState(
+                    'Rising Form needs this season’s data',
+                    'This tracks week-to-week momentum, which isn’t available until gameweeks start being played. Check back after GW1.',
+                    'trending-up'
+                );
+            }
             const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
 
             const scored = analyses
@@ -2770,6 +2979,13 @@
          * Generates the Purple Patch tab content.
          */
         function generatePurplePatch(analyses) {
+            if (isPreseason) {
+                return renderEmptyState(
+                    'Purple Patch needs this season’s data',
+                    'Hot-streak detection relies on recent-game trends, which don’t exist until gameweeks start being played. Check back after GW1.',
+                    'flame'
+                );
+            }
             const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
 
             const scored = analyses
@@ -4100,10 +4316,21 @@
             
             const container = document.getElementById('playerChartsGrid');
             const history = player.history || [];
-            
-            // Generate mock history if not available (for demo purposes)
-            let chartHistory = history.length > 0 ? history : generateMockHistory(player, pos);
-            
+
+            if (history.length === 0) {
+                const ls = player.lastSeason;
+                container.innerHTML = renderEmptyState(
+                    'No gameweek data yet this season',
+                    ls
+                        ? `Trend charts need this season's per-gameweek data, not available until GW1. Last season (2025/26): ${ls.totalPoints || 0} pts, ${ls.goals || 0} goals, ${ls.assists || 0} assists.`
+                        : 'Trend charts need this season’s per-gameweek data, which isn’t available until GW1.',
+                    'bar-chart-3'
+                );
+                return;
+            }
+
+            let chartHistory = history;
+
             // Limit based on mode
             if (mode === 'last5') {
                 chartHistory = chartHistory.slice(-5);
@@ -4212,32 +4439,6 @@
             });
         }
         
-        function generateMockHistory(player, pos) {
-            // Generate realistic mock history based on player stats
-            const games = 10;
-            const history = [];
-            const l5 = player.l5 || {};
-            const avgPts = (l5.points || 20) / (l5.games || 5);
-            const avgMins = (l5.minutes || 400) / (l5.games || 5);
-            
-            for (let i = 0; i < games; i++) {
-                const variance = 0.5 + Math.random();
-                history.push({
-                    round: i + 1,
-                    total_points: Math.round(avgPts * variance),
-                    minutes: Math.min(90, Math.round(avgMins * (0.8 + Math.random() * 0.25))),
-                    goals_scored: Math.random() > 0.7 ? Math.floor(Math.random() * 2) + 1 : 0,
-                    assists: Math.random() > 0.8 ? 1 : 0,
-                    clean_sheets: Math.random() > 0.6 ? 1 : 0,
-                    saves: pos === 'GK' ? Math.floor(Math.random() * 5) + 1 : 0,
-                    expected_goals: ((l5.xG || 0) / (l5.games || 1) * variance).toFixed(2),
-                    expected_assists: ((l5.xA || 0) / (l5.games || 1) * variance).toFixed(2),
-                    expected_goal_involvements: ((l5.xGI || 0) / (l5.games || 1) * variance).toFixed(2)
-                });
-            }
-            
-            return history;
-        }
         
         function closePlayerModal() {
             document.getElementById('playerModal')?.classList.remove('show');
@@ -4279,8 +4480,19 @@
         const POSITION_STYLES = { 'GK': 'circle', 'DEF': 'rect', 'MID': 'triangle', 'FWD': 'rectRot' };
 
         function generateCharts(analyses) {
+            if (isPreseason) {
+                const banner = renderSeasonNotice('Form &amp; trend charts need this season’s game-by-game data, which isn’t available until GW1. Showing last season’s top scorers instead.');
+                requestAnimationFrame(() => createLastSeasonChart(analyses));
+                return `${banner}
+                    <div class="chart-category">
+                        <h3 class="chart-category-title"><i data-lucide="trending-up" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Top Points — 2025/26 Season</h3>
+                        <div class="chart-card" style="height:520px;">
+                            <div class="chart-container" style="height:480px;"><canvas id="lastSeasonPointsChart"></canvas></div>
+                        </div>
+                    </div>`;
+            }
             const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            
+
             const validPlayers = analyses
                 .filter(p => p.l5 && p.l5.games >= 3 && p.season && p.season.games >= 5)
                 .map(p => {
@@ -4685,6 +4897,50 @@
             });
         }
         
+        function createLastSeasonChart(analyses) {
+            applyChartDefaults();
+            const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const top = analyses
+                .filter(p => p.status === 'a' && (p.lastSeason?.totalPoints || 0) > 0)
+                .sort((a, b) => b.lastSeason.totalPoints - a.lastSeason.totalPoints)
+                .slice(0, 15);
+
+            const ctx = document.getElementById('lastSeasonPointsChart')?.getContext('2d');
+            if (!ctx) return;
+            if (chartInstances.lastSeasonPoints) chartInstances.lastSeasonPoints.destroy();
+
+            const ct = getChartTheme();
+            chartInstances.lastSeasonPoints = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: top.map(p => p.name),
+                    datasets: [{
+                        data: top.map(p => p.lastSeason.totalPoints),
+                        backgroundColor: top.map(p => POSITION_COLORS[positionMap[p.position]].bg),
+                        borderColor: top.map(p => POSITION_COLORS[positionMap[p.position]].border),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: c => `${c.raw} pts (2025/26)`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: ct.grid }, ticks: { color: ct.text }, title: { display: true, text: 'Total Points (2025/26)', color: ct.text } },
+                        y: { grid: { color: ct.grid }, ticks: { color: ct.text, font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
         function createAllCharts(players) {
             applyChartDefaults();
             const baseOptions = {

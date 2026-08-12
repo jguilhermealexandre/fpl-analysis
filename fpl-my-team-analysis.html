@@ -629,7 +629,13 @@
                 if (window._pendingTab) { switchTab(window._pendingTab); window._pendingTab = null; }
             } catch (error) {
                 console.error('Error loading team:', error);
-                updateStatus(error.message || 'Failed to load team', 'error');
+                const friendly = error.message === 'HTTP 404'
+                    ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
+                    : 'Something went wrong loading your team. Please try again.';
+                updateStatus(friendly, 'error');
+                document.getElementById('managerInfo').classList.add('hidden');
+                document.getElementById('tabBar').classList.remove('visible');
+                document.getElementById('landingPage').style.display = '';
             } finally {
                 showLoading(false);
             }
