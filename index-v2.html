@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="v2-theme">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +19,7 @@
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/common.css">
-    <link rel="stylesheet" href="styles/sidebar-nav.css">
+    <link rel="stylesheet" href="styles/v2-design.css">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -2417,46 +2417,7 @@
 </head>
 <body>
 
-    <!-- ===== V2 SIDEBAR NAV (design preview — replaces top nav.html) ===== -->
-    <aside class="v2-sidebar">
-        <a href="index-v2.html" class="v2-sidebar-logo"><i data-lucide="zap" class="icon"></i> <span>Easy<b>FPL</b></span></a>
-
-        <nav class="v2-sidebar-nav">
-            <div class="v2-sidebar-group-label">Menu</div>
-            <a href="index-v2.html" class="v2-nav-item active"><i data-lucide="layout-dashboard" class="icon"></i> <span>Dashboard</span></a>
-            <a href="fpl-my-team-analysis.html" class="v2-nav-item"><i data-lucide="users" class="icon"></i> <span>My Team</span></a>
-            <a href="fpl-players-analysis.html" class="v2-nav-item"><i data-lucide="user-search" class="icon"></i> <span>Players</span></a>
-            <a href="fpl-teams-analysis.html" class="v2-nav-item"><i data-lucide="bar-chart-3" class="icon"></i> <span>Teams</span></a>
-            <a href="fpl-league-rivals.html" class="v2-nav-item"><i data-lucide="trophy" class="icon"></i> <span>Rivals</span></a>
-            <a href="fpl-news.html" class="v2-nav-item"><i data-lucide="newspaper" class="icon"></i> <span>News</span></a>
-        </nav>
-
-        <div class="v2-sidebar-bottom">
-            <!-- Team ID widget — same ids/handlers as nav.html so common.js works unchanged -->
-            <div class="v2-sidebar-team-id">
-                <div id="navTidInput">
-                    <div class="v2-tid-form">
-                        <input type="text" id="navTeamIdInput" placeholder="Team ID" inputmode="numeric">
-                        <button class="btn btn-primary btn-sm" onclick="submitTeamIdNav()">Go</button>
-                    </div>
-                </div>
-                <div id="navTidBadge" class="hidden">
-                    <span class="nav-tid-badge">
-                        <i data-lucide="user" class="icon"></i>
-                        ID: <span id="teamIdDisplay"></span>
-                        <button class="nav-tid-change" onclick="changeTeamIdNav()" title="Change Team ID" aria-label="Change Team ID">
-                            <i data-lucide="pencil" class="icon"></i>
-                        </button>
-                    </span>
-                </div>
-            </div>
-            <button class="v2-nav-item theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">
-                <i data-lucide="sun" class="icon icon-sun"></i>
-                <i data-lucide="moon" class="icon icon-moon"></i>
-                <span>Theme</span>
-            </button>
-        </div>
-    </aside>
+    <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
 
     <div class="v2-main-content">
 
@@ -3055,6 +3016,7 @@
     </div><!-- /.v2-main-content -->
 
     <script src="scripts/common.js"></script>
+    <script src="scripts/sidebar-nav.js"></script>
     <script>
         initIcons();
 
@@ -4359,14 +4321,10 @@
             if (e.key === 'Enter') submitFromClosingCta();
         });
 
-        // V2: sidebar is inline (no nav.html fetch needed) — just sync the team-ID
-        // widget and check for a saved team ID directly.
-        (function() {
+        // V2: load the shared sidebar partial, then check for a saved team ID.
+        loadSidebarNav().then(() => {
             const savedTeamId = getSavedTeamId();
-            if (savedTeamId) {
-                showNavTeamBadge(savedTeamId);
-                activateTeamPage(savedTeamId);
-            }
-        })();
+            if (savedTeamId) activateTeamPage(savedTeamId);
+        });
     </script>
     <!-- V2: no footer.html — dashboard-app shell doesn't use a marketing footer -->

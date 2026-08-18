@@ -1,0 +1,420 @@
+/* ============================================
+   EasyFPL — V2 Design Preview (sidebar nav + flyout sub-nav + palette)
+   Scoped entirely to .v2-theme (set on <html> by every *-v2.html page) —
+   does not affect any other page sharing common.css.
+   ============================================ */
+
+:root {
+    --v2-sidebar-w: 232px;
+    --v2-sidebar-w-collapsed: 76px;
+}
+
+/* ===== NEW COLOR PALETTE (values only — same variable names as common.css,
+   so every existing component picks these up automatically) ===== */
+.v2-theme {
+    --surface-bg: #F7F5F0;
+    --surface-0: #FFFFFF;
+    --surface-1: #FFFFFF;
+    --surface-2: #F1F0EA;
+    --surface-3: #E8E6DE;
+    --surface-4: #DEDCD2;
+
+    --color-primary: #1B5E42;
+    --color-primary-hover: #164A35;
+    --color-primary-muted: rgba(27, 94, 66, 0.10);
+    --color-primary-glow: rgba(27, 94, 66, 0.25);
+    --color-primary-text: #1B5E42;
+
+    --text-primary: #1A1D1B;
+    --text-secondary: #5B6660;
+    --text-muted: #8C948E;
+
+    --border-subtle: #EDEBE3;
+    --border-default: #E2DFD5;
+    --border-emphasis: #C9C6BA;
+
+    /* New secondary accent (maroon) — not in the base palette, used for
+       featured/highlight moments (banners, star badges). */
+    --color-accent-2: #7A2233;
+    --color-accent-2-hover: #631B29;
+    --color-accent-2-muted: rgba(122, 34, 51, 0.10);
+    --color-accent-2-text: #7A2233;
+}
+
+.v2-theme[data-theme="dark"] {
+    --surface-bg: #0F1512;
+    --surface-0: #141B17;
+    --surface-1: #182019;
+    --surface-2: #212B24;
+    --surface-3: #2A362E;
+    --surface-4: #344239;
+
+    --color-primary: #3FA576;
+    --color-primary-hover: #4FBA88;
+    --color-primary-muted: rgba(63, 165, 118, 0.16);
+    --color-primary-glow: rgba(63, 165, 118, 0.3);
+    --color-primary-text: #5FC090;
+
+    --text-primary: #EDF2EF;
+    --text-secondary: #B7C2BB;
+    --text-muted: #7C8983;
+
+    --border-subtle: #212B24;
+    --border-default: #2A362E;
+    --border-emphasis: #344239;
+
+    --color-accent-2: #C1495F;
+    --color-accent-2-hover: #D4738A;
+    --color-accent-2-muted: rgba(193, 73, 95, 0.18);
+    --color-accent-2-text: #D4738A;
+}
+
+/* ===== SIDEBAR SHELL ===== */
+.v2-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--v2-sidebar-w);
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-default);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 14px;
+    gap: 20px;
+    z-index: 50;
+    overflow-y: visible;
+}
+
+.v2-sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.v2-sidebar-logo .icon {
+    width: 20px;
+    height: 20px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.v2-sidebar-logo b {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+.v2-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+}
+
+.v2-sidebar-group-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0 10px;
+    margin-bottom: 6px;
+}
+
+.v2-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font-body);
+}
+
+.v2-nav-item .icon {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+
+.v2-nav-item:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+
+.v2-nav-item.active {
+    background: var(--color-primary-muted);
+    color: var(--color-primary-text);
+}
+
+.v2-nav-item.active .icon {
+    color: var(--color-primary);
+}
+
+/* ===== FLYOUT SUB-NAV ===== */
+.v2-nav-group {
+    position: relative;
+}
+
+.v2-flyout-toggle {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+.v2-flyout-toggle .icon {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.15s ease;
+}
+
+.v2-nav-group.open .v2-flyout-toggle .icon {
+    transform: rotate(90deg);
+}
+
+.v2-flyout-toggle:hover {
+    background: var(--surface-3);
+}
+
+.v2-flyout-panel {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 0;
+    min-width: 480px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    padding: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 4px 20px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-6px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 60;
+}
+
+.v2-nav-group.open .v2-flyout-panel {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+}
+
+.v2-flyout-group-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 4px 8px;
+}
+
+.v2-flyout-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.v2-flyout-item:hover {
+    background: var(--surface-2);
+}
+
+.v2-flyout-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.v2-flyout-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.v2-flyout-desc {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 1px;
+}
+
+/* ===== SIDEBAR BOTTOM (team ID + theme toggle) ===== */
+.v2-sidebar-bottom {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-default);
+    flex-shrink: 0;
+}
+
+.v2-sidebar-team-id #navTidInput {
+    padding: 0 2px;
+}
+
+.v2-tid-form {
+    display: flex;
+    gap: 6px;
+}
+
+.v2-tid-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.v2-sidebar-team-id #navTidBadge {
+    padding: 0 2px;
+}
+
+.v2-sidebar-team-id .nav-tid-badge {
+    width: 100%;
+    justify-content: space-between;
+}
+
+.v2-nav-item.theme-toggle {
+    justify-content: flex-start;
+}
+
+.v2-nav-item.theme-toggle .icon-moon {
+    display: none;
+}
+
+[data-theme="dark"] .v2-nav-item.theme-toggle .icon-sun {
+    display: none;
+}
+
+[data-theme="dark"] .v2-nav-item.theme-toggle .icon-moon {
+    display: inline-block;
+}
+
+/* ===== MAIN CONTENT OFFSET ===== */
+.v2-main-content {
+    margin-left: var(--v2-sidebar-w);
+    min-height: 100vh;
+    background: var(--surface-bg);
+}
+
+/* ===== LIGHT CARD-AESTHETIC BOOST (scoped, doesn't touch other pages) ===== */
+.v2-main-content .hss-card,
+.v2-main-content .hero-squad-panel,
+.v2-main-content .hero-deadline-banner,
+.v2-main-content .rec-card,
+.v2-main-content .route-card,
+.v2-main-content .chart-card,
+.v2-main-content .stats-container,
+.v2-main-content .teams-grid > * {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border-radius: var(--radius-xl);
+}
+
+[data-theme="dark"] .v2-main-content .hss-card,
+[data-theme="dark"] .v2-main-content .hero-squad-panel,
+[data-theme="dark"] .v2-main-content .hero-deadline-banner,
+[data-theme="dark"] .v2-main-content .rec-card,
+[data-theme="dark"] .v2-main-content .route-card,
+[data-theme="dark"] .v2-main-content .chart-card,
+[data-theme="dark"] .v2-main-content .stats-container {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== RESPONSIVE: icon-only rail on narrow screens ===== */
+@media (max-width: 900px) {
+    .v2-sidebar {
+        width: var(--v2-sidebar-w-collapsed);
+        padding: 20px 10px;
+        align-items: center;
+    }
+
+    .v2-sidebar-logo span,
+    .v2-nav-item span,
+    .v2-sidebar-group-label {
+        display: none;
+    }
+
+    .v2-nav-item {
+        justify-content: center;
+        padding: 10px;
+        width: 44px;
+    }
+
+    .v2-flyout-toggle {
+        display: none;
+    }
+
+    .v2-nav-group:hover .v2-flyout-panel {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0);
+    }
+
+    .v2-main-content {
+        margin-left: var(--v2-sidebar-w-collapsed);
+    }
+
+    /* Team ID widget stays usable in collapsed mode — stacked, full-width
+       within the narrow rail, instead of being hidden with no alternative. */
+    .v2-tid-form {
+        flex-direction: column;
+    }
+
+    .v2-tid-form input {
+        width: 56px;
+        font-size: 10px;
+        padding: 5px 6px;
+        text-align: center;
+    }
+
+    .v2-tid-form .btn {
+        padding: 5px 6px;
+        font-size: 11px;
+    }
+
+    .v2-sidebar-team-id .nav-tid-badge {
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 6px 4px;
+        font-size: 9px;
+    }
+}
