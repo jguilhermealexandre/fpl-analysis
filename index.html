@@ -2575,8 +2575,8 @@
                     <div class="headlines-list" id="headlinesList"></div>
                 </section>
                 <div class="hero-quick-actions">
-                    <a href="fpl-transfer-wizard.html" class="btn btn-primary btn-sm"><i data-lucide="wand-2" class="icon"></i> Open Wizard</a>
-                    <a href="fpl-my-team-analysis.html" class="btn btn-secondary btn-sm"><i data-lucide="users" class="icon"></i> View Squad</a>
+                    <!-- WIZARD DISABLED: <a href="fpl-transfer-wizard.html" class="btn btn-primary btn-sm"><i data-lucide="wand-2" class="icon"></i> Open Wizard</a> -->
+                    <a href="fpl-my-team-analysis.html" class="btn btn-primary btn-sm"><i data-lucide="users" class="icon"></i> View Squad</a>
                     <a href="fpl-my-team-analysis.html#transfers" class="btn btn-secondary btn-sm"><i data-lucide="trending-up" class="icon"></i> Transfers</a>
                     <a href="fpl-players-analysis.html" class="btn btn-secondary btn-sm"><i data-lucide="user-search" class="icon"></i> Scout Players</a>
                     <a href="fpl-league-rivals.html" class="btn btn-secondary btn-sm"><i data-lucide="trophy" class="icon"></i> Rivals</a>
@@ -2711,7 +2711,9 @@
     </main>
 
     <!-- Feature Showcase: Transfer Wizard -->
-    <section class="feature-showcase reveal-on-scroll" id="featureWizard">
+    <!-- WIZARD DISABLED: kept in DOM (not commented out) because onTeamIdCleared()/activateTeamPage()
+         toggle this id's class list directly; style override below forces it hidden regardless. -->
+    <section class="feature-showcase reveal-on-scroll" id="featureWizard" style="display:none !important;">
         <div class="feature-showcase-inner">
             <div class="feature-text">
                 <div class="feature-showcase-badge feature-showcase-badge--wizard">
@@ -4260,17 +4262,24 @@
                     squadIds,
                     shortlistIds
                 });
+                // DASHBOARD WIDGETS DISABLED: Market Watch is built inside renderHeroStats above
+                // (it also builds Summary Stats + Squad Panel, which must stay visible), so it's
+                // force-hidden here rather than skipping the whole call.
+                document.getElementById('heroMarketWidget').classList.add('hidden');
 
-                renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank: bank.toFixed(1), allPlayers });
+                // DASHBOARD WIDGETS DISABLED: renderActionCentre(...) also populates the Wizard
+                // starter CTA (#gwWizardCta) internally, so skipping this call disables both.
+                // renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank: bank.toFixed(1), allPlayers });
                 renderPriceTicker(allPlayers, squad);
 
-                // Fetch external news (non-blocking) and render strip + headlines
-                fetchExternalNews().then(externalItems => {
-                    renderNewsStrip(allPlayers, squad, externalItems);
-                    renderHeadlinesWidget(externalItems, bootData.teams);
-                }).catch(() => {
-                    renderNewsStrip(allPlayers, squad, []);
-                });
+                // DASHBOARD WIDGETS DISABLED: News Hub (news strip + headlines widget). Commented
+                // out (not just hidden) to also avoid firing the 4 external RSS fetches for nothing.
+                // fetchExternalNews().then(externalItems => {
+                //     renderNewsStrip(allPlayers, squad, externalItems);
+                //     renderHeadlinesWidget(externalItems, bootData.teams);
+                // }).catch(() => {
+                //     renderNewsStrip(allPlayers, squad, []);
+                // });
             } catch (err) {
                 console.error('Ticker load error:', err);
                 const friendly = err.message === 'HTTP 404'
