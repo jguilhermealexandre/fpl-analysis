@@ -1950,7 +1950,7 @@
                         { key: 'bps', label: 'BPS', title: 'Total Bonus Point System Score' },
                         { key: 'bpspg', label: 'BPS/G', title: 'Avg BPS per Game', decimals: 0 },
                         { key: 'gAndA', label: 'G+A', title: 'Goals + Assists' },
-                        { key: 'gapg_combined', label: 'GA/G', title: 'Goals + Assists per Game', decimals: 2 },
+                        { key: 'gapg_combined', label: 'G+A/G', title: 'Goals + Assists per Game', decimals: 2 },
                         { key: 'csBonus', label: 'CS+SVS', title: 'Clean Sheets + Total Saves (Defender Value)' },
                     ]
                 },
@@ -1960,10 +1960,8 @@
                     cols: [
                         { key: 'xGpg', label: 'xG/G', title: 'Expected Goals per Game (from real Opta xG)', decimals: 2 },
                         { key: 'npxGpg', label: 'NPxG/G', title: 'Non-Penalty xG per Game (~90% of xG)', decimals: 2 },
-                        { key: 'gpg', label: 'G/G', title: 'Actual Goals per Game', decimals: 2 },
                         { key: 'xGdiffTotal', label: 'G-xG', title: 'Goals minus xG (+ = overperforming, lucky)', decimals: 1 },
                         { key: 'xGCpg', label: 'xGC/G', title: 'Expected Goals Conceded per Game', decimals: 2, inverted: true },
-                        { key: 'gapg', label: 'GA/G', title: 'Actual Goals Conceded per Game', decimals: 2, inverted: true },
                         { key: 'xGCdiffTotal', label: 'GA-xGC', title: 'Goals Conceded minus xGC (- = overperforming defense)', decimals: 1, inverted: true },
                         { key: 'netXGpg', label: 'Net xG/G', title: 'xG minus xGC per Game (overall xG balance)', decimals: 2 },
                         { key: 'r6xGpg', label: 'L6 xG/G', title: 'Last 6 Games xG per Game (recency)', decimals: 2 },
@@ -2003,12 +2001,17 @@
             const cats = getStatsColumns();
             const catKeys = Object.keys(cats);
 
-            // Lazily initialize statsVisibleCols with all column keys
+            // Lazily initialize statsVisibleCols with a curated, FPL-relevant default set.
+            // Everything else (discipline, betting %, home/away splits, raw totals, etc.)
+            // stays available via the column picker below, just off by default.
             if (!statsVisibleCols) {
-                statsVisibleCols = new Set();
-                Object.values(cats).forEach(group => {
-                    group.cols.forEach(c => statsVisibleCols.add(c.key));
-                });
+                statsVisibleCols = new Set([
+                    'ppg', 'form',           // Overall — standings context, recent results
+                    'xGpg', 'gpg', 'xGCpg',  // Attack/xG — attacking & defensive quality
+                    'csPct',                 // Defense — clean sheet frequency
+                    'bnspg', 'gAndA',        // FPL Points — bonus tendency, combined returns
+                    'r6xGpg', 'r6gapg'       // xG — last-6-games trend, most transfer-actionable
+                ]);
             }
 
             // Build Column Selector popover HTML
