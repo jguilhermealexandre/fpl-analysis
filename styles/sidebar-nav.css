@@ -1,0 +1,214 @@
+/* ============================================
+   EasyFPL — V2 Sidebar Nav Design Preview
+   Reuses common.css theme variables only — no new palette.
+   Scoped to index-v2.html; does not affect any other page.
+   ============================================ */
+
+:root {
+    --v2-sidebar-w: 232px;
+    --v2-sidebar-w-collapsed: 76px;
+}
+
+/* ===== SIDEBAR SHELL ===== */
+.v2-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--v2-sidebar-w);
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-default);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 14px;
+    gap: 20px;
+    z-index: 50;
+    overflow-y: auto;
+}
+
+.v2-sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.v2-sidebar-logo .icon {
+    width: 20px;
+    height: 20px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.v2-sidebar-logo b {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+.v2-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.v2-sidebar-group-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0 10px;
+    margin-bottom: 6px;
+}
+
+.v2-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font-body);
+}
+
+.v2-nav-item .icon {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+
+.v2-nav-item:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+
+.v2-nav-item.active {
+    background: var(--color-primary-muted);
+    color: var(--color-primary-text);
+}
+
+.v2-nav-item.active .icon {
+    color: var(--color-primary);
+}
+
+/* ===== SIDEBAR BOTTOM (team ID + theme toggle) ===== */
+.v2-sidebar-bottom {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-default);
+    flex-shrink: 0;
+}
+
+.v2-sidebar-team-id #navTidInput {
+    padding: 0 2px;
+}
+
+.v2-tid-form {
+    display: flex;
+    gap: 6px;
+}
+
+.v2-tid-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.v2-sidebar-team-id #navTidBadge {
+    padding: 0 2px;
+}
+
+.v2-sidebar-team-id .nav-tid-badge {
+    width: 100%;
+    justify-content: space-between;
+}
+
+.v2-nav-item.theme-toggle {
+    justify-content: flex-start;
+}
+
+.v2-nav-item.theme-toggle .icon-moon {
+    display: none;
+}
+
+[data-theme="dark"] .v2-nav-item.theme-toggle .icon-sun {
+    display: none;
+}
+
+[data-theme="dark"] .v2-nav-item.theme-toggle .icon-moon {
+    display: inline-block;
+}
+
+/* ===== MAIN CONTENT OFFSET ===== */
+.v2-main-content {
+    margin-left: var(--v2-sidebar-w);
+    min-height: 100vh;
+}
+
+/* Existing top-nav/mobile-nav related paddings on .main-content don't apply here —
+   this page uses its own .v2-main-content wrapper, common.css rules targeting
+   .main-content don't match it, so no conflict. */
+
+/* ===== LIGHT CARD-ASTHETIC BOOST (scoped, doesn't touch other pages) ===== */
+.v2-main-content .hss-card,
+.v2-main-content .hero-squad-panel,
+.v2-main-content .hero-deadline-banner {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border-radius: var(--radius-xl);
+}
+
+[data-theme="dark"] .v2-main-content .hss-card,
+[data-theme="dark"] .v2-main-content .hero-squad-panel,
+[data-theme="dark"] .v2-main-content .hero-deadline-banner {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== RESPONSIVE: icon-only rail on narrow screens ===== */
+@media (max-width: 900px) {
+    .v2-sidebar {
+        width: var(--v2-sidebar-w-collapsed);
+        padding: 20px 10px;
+        align-items: center;
+    }
+
+    .v2-sidebar-logo span,
+    .v2-nav-item span,
+    .v2-sidebar-group-label,
+    .v2-sidebar-team-id {
+        display: none;
+    }
+
+    .v2-nav-item {
+        justify-content: center;
+        padding: 10px;
+        width: 44px;
+    }
+
+    .v2-main-content {
+        margin-left: var(--v2-sidebar-w-collapsed);
+    }
+}
