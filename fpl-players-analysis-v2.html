@@ -30,6 +30,24 @@
             background: var(--surface-1, #131b2b);
             box-shadow: 0 1px 0 var(--border-default, rgba(255,255,255,0.08));
         }
+
+        /* players.css's .table-section-wrapper breaks out to 100vw via a negative
+           margin that assumes .content is centered on the viewport — true on the old
+           top-nav layout, but in the sidebar layout .content sits inside .v2-main-content
+           (offset by the fixed sidebar's width), so that math pushes the table left,
+           under the sidebar, and off the right edge of the screen. Full-bleed relative
+           to .v2-main-content instead, toggled by activateTab() when the ALL tab is active. */
+        .v2-main-content .content.content--full-bleed {
+            max-width: none;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        .v2-main-content .content.content--full-bleed .position-section.table-section-wrapper {
+            width: 100%;
+            max-width: none;
+            margin-left: 0;
+            padding: 24px;
+        }
     </style>
 </head>
 <body>
@@ -319,6 +337,9 @@
             
             document.querySelectorAll('.position-section').forEach(s => s.classList.remove('active'));
             document.getElementById(`section-${pos}`)?.classList.add('active');
+
+            // ALL tab's table breaks out to full-bleed width (see <style> block for why)
+            document.querySelector('main.content')?.classList.toggle('content--full-bleed', pos === 'ALL');
 
             // Update page subtitle with tab description
             const desc = tab.dataset.desc;
