@@ -142,7 +142,11 @@
                     <div class="player-name" id="detailPlayerName">-</div>
                     <div class="player-meta" id="detailPlayerMeta">-</div>
                 </div>
-                <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close detail panel">&times;</button>
+                <div class="detail-header-actions">
+                    <button class="detail-nav-btn" onclick="navigateDetailPanel(-1)" aria-label="Previous player"><i data-lucide="chevron-up" class="icon"></i></button>
+                    <button class="detail-nav-btn" onclick="navigateDetailPanel(1)" aria-label="Next player"><i data-lucide="chevron-down" class="icon"></i></button>
+                    <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close detail panel">&times;</button>
+                </div>
             </div>
             <div class="detail-body" id="detailBody">
                 <!-- Populated by JS -->
@@ -1114,13 +1118,12 @@
 
             const teamHealth = Math.max(0, Math.min(100, Math.round(healthScore)));
 
-            // Recommendations-first order: pitch/bench snapshot, then what to actually do
-            // about it (lineup swaps, transfers), then everything else worth knowing,
-            // then the players nothing needs doing about.
+            // Recommendations-first order: pitch/bench snapshot (with its own compact lineup
+            // alert baked in), then what to actually do about it (transfers), then everything
+            // else worth knowing, then the players nothing needs doing about.
             let html = '';
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthFactors);
-            html += renderLineupOptimizer();
-            html += renderTransferSuggestions();
+            html += renderTransferAnalysis();
             html += renderNeedsAttentionFeed();
             html += renderSquadOverviewStrip();
 
@@ -1207,6 +1210,7 @@
             };
 
             return `
+            <div class="squad-hint-banner"><span>👆</span> Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
             <div class="team-overview">
                 <div class="health-ring-container">
                     <div class="health-ring">
@@ -1227,6 +1231,7 @@
                         ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">\u2605 ${stars.length} Star</span>` : ''}
                         <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">\u25cf ${holds.length} Hold</span>
                     </div>
+                    ${renderLineupAlert()}
                 </div>
                 <div class="pitch-container">
                     <div class="pitch-rows">
@@ -1324,114 +1329,120 @@
             return parts.slice(0, 2).join(' — ');
         }
 
-        function renderLineupSuggestionCard(s) {
-            const b = s.bench.player, st = s.starter.player;
-            return `<div class="lo-card">
-                <div class="lo-card-pair">
-                    <div class="lo-card-side" data-compare-row>
-                        <input type="checkbox" class="compare-checkbox" data-player-id="${b.id}" onchange="onCompareCheckboxChange(${b.id})">
-                        <div class="lo-card-player" onclick="openDetailPanel(${b.id})">
-                            <span class="lo-card-tag bench">Bench</span>
-                            <span class="lo-card-name">${escHTML(b.name)}</span>
-                            <span class="lo-card-score">${s.benchScore.toFixed(1)} xPts</span>
-                        </div>
-                    </div>
-                    <div class="lo-card-arrow"><i data-lucide="arrow-left-right" class="icon"></i></div>
-                    <div class="lo-card-side" data-compare-row>
-                        <input type="checkbox" class="compare-checkbox" data-player-id="${st.id}" onchange="onCompareCheckboxChange(${st.id})">
-                        <div class="lo-card-player" onclick="openDetailPanel(${st.id})">
-                            <span class="lo-card-tag starter">Starting</span>
-                            <span class="lo-card-name">${escHTML(st.name)}</span>
-                            <span class="lo-card-score">${s.starterScore.toFixed(1)} xPts</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="lo-card-reason">${lineupSwapReason(s)}</div>
-                <button class="lo-card-compare-btn" onclick="openPairCompare(${b.id}, ${st.id})">Compare in full <i data-lucide="arrow-right" class="icon"></i></button>
-            </div>`;
-        }
-
-        function renderLineupOptimizer() {
+        // Compact version of the old standalone Lineup Optimizer section, folded directly
+        // into the health-ring column: an affirmation when the XI is already best, or a
+        // couple of tight one-line swap suggestions (capped, not a full card list) otherwise.
+        function renderLineupAlert() {
             const suggestions = computeLineupSuggestions();
-            const body = suggestions.length
-                ? suggestions.map(renderLineupSuggestionCard).join('')
-                : `<div class="lo-empty"><i data-lucide="check-circle" class="icon"></i> Your strongest 11 are already out there.</div>`;
-            return `<div class="lo-section">
-                <div class="lo-header">
-                    <i data-lucide="repeat" class="icon"></i>
-                    <span class="lo-title">Lineup Optimizer</span>
-                    <span class="lo-subtitle">Bench players projected to outscore a starter</span>
-                </div>
-                <div class="lo-list">${body}</div>
+            if (!suggestions.length) {
+                return `<div class="lineup-alert good"><i data-lucide="check-circle" class="icon"></i> Best XI already selected</div>`;
+            }
+            const rows = suggestions.slice(0, 2).map(s => {
+                const b = s.bench.player, st = s.starter.player;
+                return `<div class="lineup-alert-row">
+                    <span class="lineup-alert-text"><strong>${escHTML(b.name)}</strong> (bench) may outscore <strong>${escHTML(st.name)}</strong></span>
+                    <button class="lineup-alert-compare" onclick="openPairCompare(${b.id}, ${st.id})">Compare</button>
+                </div>`;
+            }).join('');
+            return `<div class="lineup-alert warn">
+                <div class="lineup-alert-head"><i data-lucide="repeat" class="icon"></i> Lineup check</div>
+                ${rows}
             </div>`;
         }
 
         // ===== PHASE 2: TRANSFER SUGGESTIONS =====
-        function computeTransferSuggestions() {
-            const worthy = [...analysisResults]
-                .filter(a => a.sellRating >= 38)
-                .sort((a, b) => b.sellRating - a.sellRating)
-                .slice(0, 5);
-            return worthy.map(a => {
-                const replacements = findReplacements(a.player, 5);
-                if (!replacements.length) return null;
-                return { out: a, replacements, best: replacements[0] };
-            }).filter(Boolean);
+        // ===== TRANSFER ANALYSIS: button-triggered shopping list (replaces the old
+        // always-visible OUT->IN Transfer Suggestions cards) =====
+        // Scores non-owned, available, minutes>=100 candidates per position using the same
+        // composite formula already proven in findReplacements() (form/ppg/epNext/fixture
+        // ease/team-quality bonuses) rather than porting the Players page's much heavier
+        // calculatePositionScore() engine — see plan groundwork for why.
+        function computeTransferAnalysisTargets() {
+            const squadIds = new Set(selectedPlayers.map(p => p.id));
+            const candidatesByPos = { 1: [], 2: [], 3: [], 4: [] };
+            allPlayers.forEach(p => {
+                if (squadIds.has(p.id)) return;
+                if (!(p.status === 'a' || p.status === 'd') || p.minutes < 100) return;
+                candidatesByPos[p.position].push(p);
+            });
+
+            [1, 2, 3, 4].forEach(pos => {
+                candidatesByPos[pos].forEach(c => {
+                    const fdr = c.fixtures.length >= 3
+                        ? c.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / 3 : 3;
+                    const cTA = teamAnalysis[c.teamId];
+                    let teamBonus = 0;
+                    if (cTA) {
+                        teamBonus += (cTA.formRating - 50) / 25;
+                        if (c.position >= 3) teamBonus += (cTA.attackPower - 50) / 25;
+                        if (c.position <= 2) teamBonus += (cTA.defensePower - 50) / 25;
+                        teamBonus += (cTA.fixtureScore - 50) / 25;
+                    }
+                    c._score = (c.form * 3) + (c.ppg * 2.5) + (c.epNext * 2) + ((5 - fdr) * 2.5) + teamBonus + (c.ownership > 15 ? 1 : 0);
+                    c._fdr = fdr;
+                });
+                candidatesByPos[pos].sort((a, b) => b._score - a._score);
+            });
+
+            // Base slots per position (7 total), plus one bonus slot for whichever position
+            // has the most sell/monitor-flagged squad players — 7-8 targets, weighted toward
+            // the squad's actual weak spots rather than a flat split.
+            const slots = { 1: 1, 2: 2, 3: 2, 4: 2 };
+            const weakCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            analysisResults.forEach(a => {
+                if (a.verdict === 'sell' || a.verdict === 'monitor') weakCounts[a.player.position]++;
+            });
+            const neediest = [1, 2, 3, 4]
+                .filter(pos => candidatesByPos[pos].length > slots[pos])
+                .sort((a, b) => weakCounts[b] - weakCounts[a])[0];
+            if (neediest && weakCounts[neediest] > 0) slots[neediest]++;
+
+            const targets = [];
+            [1, 2, 3, 4].forEach(pos => candidatesByPos[pos].slice(0, slots[pos]).forEach(c => targets.push(c)));
+            return targets;
         }
 
-        function transferEdgeReason(outA, candidate) {
-            const parts = [];
-            const priceDelta = candidate.price - (outA.player.sellPrice || outA.player.price);
-            parts.push(`${priceDelta >= 0 ? '+' : ''}£${priceDelta.toFixed(1)}m`);
-            if ((candidate.form || 0) > (outA.player.form || 0) + 0.3) parts.push(`form ${candidate.form.toFixed(1)} vs ${outA.player.form.toFixed(1)}`);
-            const candFdr = candidate._fdr != null ? candidate._fdr : 3;
-            if (candFdr < (outA.player.avgFDR || 3) - 0.3) parts.push('easier fixtures');
-            return parts.slice(0, 2).join(' · ') || 'Better all-round profile';
-        }
-
-        function renderTransferSuggestionCard(s) {
-            const outP = s.out.player, inP = s.best;
-            const altButtons = s.replacements.slice(1, 5).map(alt =>
-                `<button class="ts-alt-btn" onclick="openPairCompare(${outP.id}, ${alt.id})">${escHTML(alt.name)}</button>`
+        function renderTransferAnalysisCard(p) {
+            const posConfig = POSITION_CONFIG[p.position];
+            const fixChips = (p.fixtures || []).slice(0, 3).map(f =>
+                `<span class="fixture-chip fdr-${f.difficulty}" style="padding:1px 4px;font-size:9px;border-radius:3px;">${escHTML(f.opponent)}</span>`
             ).join('');
-            return `<div class="ts-card">
-                <div class="ts-pair">
-                    <div class="ts-side out" data-compare-row>
-                        <input type="checkbox" class="compare-checkbox" data-player-id="${outP.id}" onchange="onCompareCheckboxChange(${outP.id})">
-                        <div class="ts-player" onclick="openDetailPanel(${outP.id})">
-                            <span class="ts-tag out">Out</span>
-                            <span class="ts-name">${escHTML(outP.name)}</span>
-                            <span class="ts-detail">${escHTML(s.out.verdictReason)}</span>
-                        </div>
+            return `<div class="ta-card" data-compare-row>
+                <input type="checkbox" class="compare-checkbox" data-player-id="${p.id}" onchange="onCompareCheckboxChange(${p.id})">
+                <div class="ta-card-body" onclick="openDetailPanel(${p.id})">
+                    <div class="ta-card-top">
+                        <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
+                        <span class="ta-card-name">${escHTML(p.name)}</span>
+                        <span class="ta-card-price">£${p.price.toFixed(1)}m</span>
                     </div>
-                    <div class="ts-arrow"><i data-lucide="arrow-right" class="icon"></i></div>
-                    <div class="ts-side in" data-compare-row>
-                        <input type="checkbox" class="compare-checkbox" data-player-id="${inP.id}" onchange="onCompareCheckboxChange(${inP.id})">
-                        <div class="ts-player" onclick="openDetailPanel(${inP.id})">
-                            <span class="ts-tag in">In</span>
-                            <span class="ts-name">${escHTML(inP.name)}</span>
-                            <span class="ts-detail">${transferEdgeReason(s.out, inP)}</span>
-                        </div>
-                    </div>
+                    <div class="ta-card-meta">${escHTML(p.team)} · Form ${p.form.toFixed(1)} · ${p.ownership.toFixed(1)}% owned</div>
+                    <div class="ta-card-fixtures">${fixChips}</div>
                 </div>
-                ${altButtons ? `<div class="ts-alt-row"><span>Also consider:</span>${altButtons}</div>` : ''}
-                <button class="ts-compare-btn" onclick="openPairCompare(${outP.id}, ${inP.id})">Full Scouting Report <i data-lucide="arrow-right" class="icon"></i></button>
             </div>`;
         }
 
-        function renderTransferSuggestions() {
-            const suggestions = computeTransferSuggestions();
-            const body = suggestions.length
-                ? suggestions.map(renderTransferSuggestionCard).join('')
-                : `<div class="ts-empty"><i data-lucide="check-circle" class="icon"></i> No urgent transfers — your squad's holding up well.</div>`;
-            return `<div class="ts-section">
-                <div class="ts-header">
-                    <i data-lucide="repeat" class="icon"></i>
-                    <span class="ts-title">Transfer Suggestions</span>
-                    <span class="ts-subtitle">Your shakiest picks, paired with the best replacement</span>
-                </div>
-                <div class="ts-list">${body}</div>
+        function renderTransferAnalysis() {
+            return `<div class="ta-section">
+                <button class="ta-toggle-btn" onclick="toggleTransferAnalysis()">
+                    <i data-lucide="search" class="icon"></i>
+                    <span>Transfer Analysis — see 7-8 recommended targets</span>
+                    <span class="verdict-toggle" id="ta-body-toggle">▶</span>
+                </button>
+                <div class="ta-body" id="ta-body" style="display:none;"></div>
             </div>`;
+        }
+
+        function toggleTransferAnalysis() {
+            const body = document.getElementById('ta-body');
+            if (body.style.display === 'none' && !body.dataset.rendered) {
+                const targets = computeTransferAnalysisTargets();
+                body.innerHTML = targets.length
+                    ? `<div class="ta-list">${targets.map(renderTransferAnalysisCard).join('')}</div>`
+                    : `<div class="ta-empty"><i data-lucide="check-circle" class="icon"></i> No strong targets found right now.</div>`;
+                body.dataset.rendered = '1';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+            toggleSection('ta-body');
         }
 
         // ===== PHASE 3: NEEDS ATTENTION FEED =====
@@ -2071,6 +2082,7 @@
             if (!analysis) return;
             const { player, verdict, verdictReason, recommendation, concerns, positives, sellRating, keyMetric, fixtures } = analysis;
             const posConfig = POSITION_CONFIG[player.position];
+            document.getElementById('detailPanel').dataset.playerId = playerId;
             const gamesPlayed = Math.max(currentGW - 1, 1);
             const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
             const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
@@ -2093,9 +2105,12 @@
                 <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100</div>
             </div>`;
 
-            // Key Statistics with visual bars
+            // Key Statistics with visual bars \u2014 stats/labels below are already position-branched
+            // (xGI/90 only for MID/FWD, CS/Saves vs Goals/Assists below); label the section so
+            // that's obvious rather than incidental.
+            const statsScopeLabel = player.position === 1 ? 'Goalkeeping' : player.position === 2 ? 'Defensive' : 'Attacking';
             html += `<div class="detail-section">
-                <div class="detail-section-title">\ud83d\udcca Key Statistics</div>
+                <div class="detail-section-title">\ud83d\udcca Key Statistics <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div class="detail-stats-grid">
                     ${renderDetailStat('Form', player.form.toFixed(1), player.form / 10, player.form >= 5 ? 'var(--verdict-hold)' : player.form < 3 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${posConfig.short} median: ${posConfig.formMedian}`)}
                     ${renderDetailStat('Pts/Game', player.ppg.toFixed(1), player.ppg / 10, player.ppg >= 5 ? 'var(--verdict-hold)' : player.ppg < 3 ? 'var(--verdict-sell)' : 'var(--text-primary)', `Total: ${player.points} pts`)}
@@ -2108,7 +2123,7 @@
 
             // Season numbers
             html += `<div class="detail-section">
-                <div class="detail-section-title">\ud83d\udcc8 Season Numbers</div>
+                <div class="detail-section-title">\ud83d\udcc8 Season Numbers <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                     ${player.position >= 3 ? `
                         <div class="metric-box"><div class="metric-label">Goals</div><div class="metric-value neutral">${player.goals}</div></div>
@@ -2251,6 +2266,18 @@
         function closeDetailPanel(event) {
             if (event && event.target !== event.currentTarget) return;
             document.getElementById('detailOverlay').classList.remove('show');
+        }
+
+        // Cycle to the previous/next player in pitch order (GK->DEF->MID->FWD->bench),
+        // so the panel can be paged through without closing it — the panel is a
+        // non-blocking companion drawer, so this is the fast path for browsing.
+        function navigateDetailPanel(direction) {
+            const ordered = [...analysisResults].sort((a, b) => a.player.pickPosition - b.player.pickPosition);
+            if (!ordered.length) return;
+            const currentId = parseInt(document.getElementById('detailPanel').dataset.playerId, 10);
+            const idx = ordered.findIndex(a => a.player.id === currentId);
+            const nextIdx = idx === -1 ? 0 : (idx + direction + ordered.length) % ordered.length;
+            openDetailPanel(ordered[nextIdx].player.id);
         }
 
         function findReplacements(player, count = 5) {
