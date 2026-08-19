@@ -418,3 +418,31 @@
         font-size: 9px;
     }
 }
+
+/* ===== STICKY-OFFSET FIX =====
+   Several shared/page components are position:sticky with a hardcoded
+   top offset sized to clear the old 56px .top-nav bar (e.g. tabs-container
+   at top:56px, filter-bar at top:91px = 56 + tabs-container's own height).
+   The sidebar layout has no top bar, so every one of these offsets is
+   subtracted by exactly 56px here — preserving how they stack relative
+   to each other, just removing the space that used to be reserved for
+   the nav that no longer exists in this layout. */
+.v2-main-content .tabs-container {
+    top: 0;
+}
+
+.v2-main-content .tabs-container.tabs-hidden ~ .filter-bar {
+    top: 0;
+}
+
+.v2-main-content .filter-bar {
+    top: 35px; /* was 91px (56px nav + 35px tabs-container height) */
+}
+
+.v2-main-content .tw-budget-bar-top {
+    top: 0;
+}
+
+.v2-main-content .tw-scout-col {
+    top: 64px; /* was 120px (56px nav + 64px budget bar) */
+}
