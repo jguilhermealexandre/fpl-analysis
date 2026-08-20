@@ -3039,7 +3039,7 @@
             <!-- Personalized hero (logged-in state) -->
             <div class="hero-personalized hidden" id="heroPersonalized">
                 <div class="hero-greeting">
-                    <div class="hero-greeting-text v2-page-heading">Welcome back, <span id="heroManagerName">Manager</span></div>
+                    <div class="hero-greeting-text v2-page-heading" id="heroTeamName">My Team</div>
                     <div class="hero-greeting-gw" id="heroGwBadge">GW1</div>
                 </div>
                 <!-- Top row: Squad Snapshot (left) + unified info panel (right) -->
@@ -3896,10 +3896,10 @@
         }
 
         // ===== STATUS STRIP: deadline hero + GW points / rank / league / value =====
-        function renderStatusStrip({ firstName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta,
+        function renderStatusStrip({ teamName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta,
                                      pointsDiff, deadlineTime, deadlineGW, avgFDR, captainRec, leagueInfo }) {
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-            el('heroManagerName', firstName);
+            el('heroTeamName', teamName || 'My Team');
             el('heroGwBadge', 'GW' + currentGW);
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
 
@@ -4693,7 +4693,7 @@
                 }
 
                 renderStatusStrip({
-                    firstName: managerData.player_first_name,
+                    teamName: managerData.name,
                     currentGW,
                     rank: rankRaw,
                     totalPoints: totalPointsRaw,
