@@ -68,6 +68,7 @@ function initSidebarCollapse() {
     });
 
     button.addEventListener('click', () => {
+        document.documentElement.classList.add('v2-sidebar-resizing');
         const collapsed = document.documentElement.classList.toggle('v2-sidebar-collapsed');
         try {
             localStorage.setItem('easyfpl-sidebar-collapsed', String(collapsed));
@@ -75,6 +76,9 @@ function initSidebarCollapse() {
             // The visual toggle still works when persistence is unavailable.
         }
         syncButton();
+        window.setTimeout(() => {
+            document.documentElement.classList.remove('v2-sidebar-resizing');
+        }, 520);
     });
 
     syncButton();
