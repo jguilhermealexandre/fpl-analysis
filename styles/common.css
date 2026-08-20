@@ -69,6 +69,13 @@
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
+    /* Responsive tracking scale — use only these five values site-wide. */
+    --tracking-2xl: -2px;
+    --tracking-xl: -1.5px;
+    --tracking-lg: -1px;
+    --tracking-md: -0.5px;
+    --tracking-base: 0;
+
     /* Spacing scale */
     --space-1: 0.25rem;
     --space-2: 0.5rem;
@@ -107,7 +114,7 @@
 }
 
 body {
-    background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 30%, #FFFFFF 70%, #EFF6FF 100%);
+    background: linear-gradient(145deg, #E4F4EA 0%, #F0FAF4 42%, #FFFFFF 72%, #EAF7F0 100%);
     background-attachment: fixed;
     color: var(--text-primary);
     font-family: var(--font-body);
@@ -638,10 +645,12 @@ body {
     gap: 8px;
     overflow-x: auto;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    min-height: 56px;
 }
 .tabs .tab {
-    padding: 12px 18px;
+    min-height: 56px;
+    padding: 16px 18px;
     border-bottom: 3px solid transparent;
     border-radius: 0;
     background: transparent;
@@ -658,7 +667,7 @@ body {
     background: var(--surface-1);
     border-bottom: 1px solid var(--border-default);
     position: sticky;
-    top: 91px;
+    top: 112px;
     z-index: 40;
     transition: top 300ms ease-out;
 }
@@ -1578,7 +1587,7 @@ body {
 
 /* Body gradient */
 [data-theme="dark"] body {
-    background: linear-gradient(135deg, #0F172A 0%, #0F172A 40%, #111827 70%, #0F172A 100%);
+    background: linear-gradient(145deg, #061812 0%, #0A2118 48%, #0E2B20 100%);
 }
 
 /* Nav */
@@ -1934,5 +1943,144 @@ body {
         flex-direction: column;
         align-items: flex-start;
         padding: 16px 16px 72px;
+    }
+}
+
+/* ===== GLOBAL TYPOGRAPHY SYSTEM =====
+   Every rendered label resolves to one of the two approved weights. */
+body,
+body * {
+    font-weight: 400 !important;
+}
+
+body :is(
+    h1, h2, h3, h4, h5, h6,
+    strong, b, th, label, summary, button,
+    .btn, .tab, .nav-link,
+    [class*="title"], [class*="heading"], [class*="header"],
+    [class*="name"], [class*="value"], [class*="score"],
+    [class*="rank"], [class*="badge"], [class*="pill"],
+    [class*="chip"], [class*="label"], [class*="active"]
+) {
+    font-weight: 600 !important;
+}
+
+/* Discrete responsive tracking shared by every page and nested text node. */
+body {
+    letter-spacing: var(--tracking-base) !important;
+}
+
+body * {
+    letter-spacing: inherit !important;
+}
+
+.hero-title {
+    letter-spacing: var(--tracking-2xl) !important;
+}
+
+h2 {
+    letter-spacing: var(--tracking-xl) !important;
+}
+
+h3,
+.hero-greeting-text {
+    letter-spacing: var(--tracking-lg) !important;
+}
+
+h4 {
+    letter-spacing: var(--tracking-md) !important;
+}
+
+.v2-dlh-countdown,
+.hdb-countdown {
+    letter-spacing: var(--tracking-xl) !important;
+}
+
+/* All tool-page headers match the dashboard greeting. */
+body h1:not(.hero-title),
+.page-title,
+.news-page-title {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    text-align: left !important;
+    font-family: var(--font-display) !important;
+    font-size: 28px !important;
+    line-height: 1.2 !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.5px !important;
+    color: rgba(16, 185, 129, 0.80) !important;
+}
+
+body h1:not(.hero-title) svg,
+.page-title svg,
+.news-page-title svg {
+    width: 26px !important;
+    height: 26px !important;
+    flex: 0 0 26px;
+    color: rgba(16, 185, 129, 0.80) !important;
+}
+
+.faq-hero,
+.hiw-hero {
+    text-align: left !important;
+}
+
+.faq-hero h1,
+.hiw-hero h1 {
+    width: calc(100% - 48px);
+    max-width: 1352px;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+@media (max-width: 768px) {
+    :root {
+        --tracking-2xl: -1.5px;
+        --tracking-xl: -1px;
+        --tracking-lg: -0.5px;
+        --tracking-md: 0;
+    }
+
+    body h1:not(.hero-title),
+    .page-title,
+    .news-page-title {
+        gap: 10px;
+        font-size: 22px !important;
+    }
+
+    body h1:not(.hero-title) svg,
+    .page-title svg,
+    .news-page-title svg {
+        width: 22px !important;
+        height: 22px !important;
+        flex-basis: 22px;
+    }
+
+    .faq-hero h1,
+    .hiw-hero h1 {
+        width: calc(100% - 32px);
+    }
+
+    .tabs {
+        padding: 0 16px;
+    }
+
+    .tabs .tab {
+        min-height: 52px;
+        padding: 14px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --tracking-2xl: -1px;
+        --tracking-xl: -0.5px;
+        --tracking-lg: 0;
+        --tracking-md: 0;
     }
 }
