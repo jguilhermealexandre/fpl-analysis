@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="manifest.json">
-    <title>EasyFPL — Team Analysis (Design Preview)</title>
+    <title>EasyFPL — Teams Analysis (Design Preview)</title>
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth analysis for smarter FPL decisions.">
     <meta name="theme-color" content="#0a0f1a">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a0f1a'/><text x='50' y='72' font-size='65' font-family='Arial,sans-serif' font-weight='bold' fill='%2300DC82' text-anchor='middle'>e</text></svg>">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="EasyFPL">
-    <meta property="og:title" content="EasyFPL — Team Analysis">
+    <meta property="og:title" content="EasyFPL — Teams Analysis">
     <meta property="og:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <meta property="og:url" content="https://easyfpl.com/fpl-teams-analysis.html">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="EasyFPL — Team Analysis">
+    <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/common.css">
@@ -39,7 +39,7 @@
     <!-- Sub-Nav Tabs -->
     <div class="tabs-container">
         <div class="tabs" id="viewTabs">
-            <button class="tab active" data-view="rankings">Team Rankings</button>
+            <button class="tab active" data-view="rankings">Teams Rankings</button>
             <button class="tab" data-view="swings">Fixture Swings</button>
             <button class="tab" data-view="calendar">Full Calendar</button>
             <button class="tab" data-view="stats">Stats Table</button>
@@ -49,8 +49,9 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="header-row">
-            <h1 class="page-title v2-page-heading"><i data-lucide="shield" class="icon"></i> Team Analysis</h1>
+            <h1 class="page-title v2-page-heading"><i data-lucide="shield" class="icon"></i> Teams Analysis</h1>
         </div>
+        <div class="v2-page-hint hidden" id="seasonNotice">Showing 2025/26 season stats — will update once GW1 is played.</div>
         <span id="currentGW" style="display:none"></span>
         <!-- Content Area -->
         <div id="content-area">
@@ -901,12 +902,7 @@
                     break;
             }
 
-            if (isPreseason) {
-                contentArea.insertAdjacentHTML('afterbegin', `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
-                    <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
-                    <span>Showing 2025/26 season stats — will update once GW1 is played.</span>
-                </div>`);
-            }
+            document.getElementById('seasonNotice').classList.toggle('hidden', !isPreseason);
 
             // Initialize Lucide icons in dynamically rendered content
             if (typeof lucide !== 'undefined') lucide.createIcons();
