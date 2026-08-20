@@ -33,11 +33,55 @@ function loadSidebarNav() {
             if (window.lucide) lucide.createIcons();
 
             initSidebarFlyout();
+            initV2PageEntrance();
         })
         .catch(error => {
             console.warn('Sidebar navigation could not be loaded:', error);
             return null;
         });
+}
+
+// One calm entrance sequence shared by every V2 page: navigation first,
+// heading second, then the page's primary content blocks in visual order.
+function initV2PageEntrance() {
+    if (document.body.classList.contains('v2-sequence-ready')) return;
+
+    const sidebar = document.querySelector('.v2-sidebar');
+    const heading = document.querySelector('.v2-page-heading');
+    if (sidebar) sidebar.classList.add('v2-enter-sidebar');
+    if (heading) heading.classList.add('v2-enter-heading');
+
+    const selectors = [
+        '.hero-personalized > .v2-top-row',
+        '.hero-personalized > .v2-attention-grid',
+        '.hero-personalized > .v2-quick-actions',
+        '.hero-personalized > .headlines-widget',
+        'main.main-content > .v2-page-hint',
+        'main.main-content > #content-area',
+        'main.main-content > .tab-content:not(.hidden)',
+        'main.main-content > *:not(.header-row):not(.loading-overlay)',
+        'main.content > *:not(.v2-page-heading)',
+        '.hero-banner .hero-inner > *',
+        '.news-page-header > .news-page-sub',
+        '#newsDisplay > .news-container',
+        '.faq-container > *',
+        '.how-it-works-container > *'
+    ];
+
+    const blocks = [...new Set(selectors.flatMap(selector =>
+        [...document.querySelectorAll(selector)]
+    ))].filter(element => element !== heading);
+
+    blocks.forEach((element, index) => {
+        element.classList.add('v2-enter-block');
+        element.style.setProperty('--v2-enter-order', Math.min(index, 7));
+    });
+
+    // Start on the next painted frame so the browser always has a stable
+    // initial state to animate from instead of flashing final content first.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.body.classList.add('v2-sequence-ready');
+    }));
 }
 
 // Flyout sub-nav — same hover/click-toggle pattern as the top nav's
