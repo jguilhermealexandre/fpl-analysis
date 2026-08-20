@@ -952,10 +952,66 @@
         .v2-league-prompt-dismiss { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; display: flex; }
         .v2-league-prompt-dismiss .icon { width: 14px; height: 14px; }
 
+        /* --- Unified top row: Squad Snapshot (left) + info panel (right) --- */
+        .v2-top-row {
+            display: grid;
+            grid-template-columns: 1.7fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+            text-align: left;
+            align-items: start;
+        }
+        .v2-info-panel {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Deadline card becomes the panel's header (flat, keeps its top accent bar) */
+        .v2-info-panel .v2-deadline-hero {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            background: transparent;
+            padding: 18px 18px 15px;
+        }
+        .v2-info-panel .v2-dlh-countdown { font-size: 30px; }
+        .v2-info-panel .v2-dlh-bottom { margin-top: 2px; }
+        /* Stats become flat divided rows inside the panel */
+        .v2-info-panel .v2-status-stack { gap: 0; }
+        .v2-info-panel .v2-stat-card,
+        .v2-info-panel .v2-league-card {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            background: transparent;
+            border-top: 1px solid var(--border-subtle);
+            padding: 13px 18px;
+        }
+        .v2-info-panel .v2-stat-card--minor { padding: 11px 18px; }
+        .v2-info-panel #v2LeagueSlot .v2-league-prompt {
+            border: none;
+            border-top: 1px solid var(--border-subtle);
+            border-radius: 0;
+            background: transparent;
+            padding: 13px 18px;
+        }
+        /* Quick Actions as a full-width row of cards */
+        .v2-qa-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
         @media (max-width: 900px) {
+            .v2-top-row { grid-template-columns: 1fr; }
             .v2-status-strip { grid-template-columns: 1fr; }
             .v2-attention-grid { grid-template-columns: 1fr; }
             .v2-dashboard-main { grid-template-columns: 1fr; }
+            .v2-qa-cards { grid-template-columns: 1fr; }
         }
 
         /* --- Deadline Countdown Banner --- */
@@ -2982,20 +3038,22 @@
                     <div class="hero-greeting-text">Welcome back, <span id="heroManagerName">Manager</span></div>
                     <div class="hero-greeting-gw" id="heroGwBadge">GW1</div>
                 </div>
-                <!-- Status Strip: deadline hero + points/rank/league stack -->
-                <div class="v2-status-strip">
-                    <div class="v2-deadline-hero" id="v2DeadlineHero"></div>
-                    <div class="v2-status-stack" id="v2StatusStack"></div>
+                <!-- Top row: Squad Snapshot (left) + unified info panel (right) -->
+                <div class="v2-top-row">
+                    <div class="v2-pitch-wrap" id="v2PitchWrap"></div>
+                    <aside class="v2-info-panel">
+                        <div class="v2-deadline-hero" id="v2DeadlineHero"></div>
+                        <div class="v2-status-stack" id="v2StatusStack"></div>
+                    </aside>
                 </div>
 
                 <!-- Needs Your Attention: Starting XI | Transfers -->
                 <div class="v2-attention-grid" id="v2AttentionGrid"></div>
 
-                <!-- Pitch view + Quick Actions -->
-                <div class="v2-dashboard-main">
-                    <div class="v2-pitch-wrap" id="v2PitchWrap"></div>
-                    <div class="v2-quick-actions">
-                        <div class="v2-section-label">Quick Actions</div>
+                <!-- Quick Actions (full-width row) -->
+                <div class="v2-quick-actions">
+                    <div class="v2-section-label">Quick Actions</div>
+                    <div class="v2-qa-cards">
                         <a href="fpl-my-team-analysis-v2.html#lineup" class="v2-qa-card">
                             <div class="v2-qa-icon"><i data-lucide="wand-2" class="icon"></i></div>
                             <div class="v2-qa-text"><span class="v2-qa-title">Review Lineup</span><span class="v2-qa-desc">Optimize your starting XI</span></div>
