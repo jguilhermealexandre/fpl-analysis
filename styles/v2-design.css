@@ -9,6 +9,23 @@
     --v2-sidebar-w-collapsed: 76px;
 }
 
+/* Calm, single-stage page reveal. Space is reserved from the first frame, so
+   the layout cannot jump while the sidebar and page resources settle. */
+html.v2-theme .v2-main-content {
+    opacity: 0;
+    visibility: hidden;
+}
+
+html.v2-theme.v2-shell-ready .v2-main-content {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 480ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.v2-theme.v2-shell-ready .v2-main-content { transition: none; }
+}
+
 /* ===== NEW COLOR PALETTE (values only — same variable names as common.css,
    so every existing component picks these up automatically) ===== */
 .v2-theme {
