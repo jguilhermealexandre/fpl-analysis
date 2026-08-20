@@ -4118,6 +4118,35 @@
         }
 
         // ===== PITCH / FORMATION VIEW =====
+        async function loadDashboardJerseyNumbers({ bootData, picks, playersById, teams }) {
+            const season = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
+            const cacheKey = `pl_jersey_numbers_${season}`;
+            let jerseyNumbers = {};
+            try { jerseyNumbers = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch (_) {}
+
+            const teamCodes = [...new Set((picks || []).map(pick => {
+                const player = playersById[pick.element];
+                return player ? teams[player.teamId]?.code : null;
+            }).filter(Boolean))];
+
+            await Promise.all(teamCodes.map(async teamCode => {
+                try {
+                    const url = `https://sdp-prem-prod.premier-league-prod.pulselive.com/api/v2/competitions/8/seasons/${season}/teams/${teamCode}/squad`;
+                    const response = await fetch(url);
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    (data.players || []).forEach(player => {
+                        if (player.id != null && player.shirtNum != null) jerseyNumbers[String(player.id)] = player.shirtNum;
+                    });
+                } catch (error) {
+                    console.warn(`[Dashboard jerseys] Could not load team ${teamCode}:`, error);
+                }
+            }));
+
+            try { localStorage.setItem(cacheKey, JSON.stringify(jerseyNumbers)); } catch (_) {}
+            return jerseyNumbers;
+        }
+
         function renderPitchView({ squad, analysisResults }) {
             const wrap = document.getElementById('v2PitchWrap');
             if (!squad || !squad.length) { wrap.innerHTML = ''; return; }
@@ -4146,7 +4175,7 @@
                 }
                 const posLabel = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position] || '';
                 return `<div class="v2-pitch-token">
-                    <div class="v2-pitch-token-circle${ringClass}" style="background:${posColorVar[p.position] || 'var(--position-mid)'};">${esc((p.name || '?').charAt(0).toUpperCase())}${badge}</div>
+                    <div class="v2-pitch-token-circle${ringClass}" style="background:${posColorVar[p.position] || 'var(--position-mid)'};">${p.squadNumber ?? '—'}${badge}</div>
                     <span class="v2-pitch-token-name">${esc(p.name)}</span>
                     <span class="v2-pitch-token-pos">${posLabel}</span>
                     ${statusIcon}
@@ -4474,7 +4503,8 @@
 
                 // Build full player data
                 const allPlayers = bootData.elements.map(p => ({
-                    id: p.id, name: p.web_name, teamId: p.team,
+                    id: p.id, code: p.code, name: p.web_name, teamId: p.team,
+                    squadNumber: p.squad_number,
                     team: teams[p.team]?.short_name || 'N/A',
                     position: p.element_type, price: p.now_cost / 10,
                     form: parseFloat(p.form) || 0, points: p.total_points,
@@ -4494,6 +4524,13 @@
 
                 const playersById = {};
                 allPlayers.forEach(p => { playersById[p.id] = p; });
+
+                const jerseyNumbers = await loadDashboardJerseyNumbers({ bootData, picks: picksData.picks, playersById, teams });
+                allPlayers.forEach(player => {
+                    if (player.squadNumber == null && jerseyNumbers[String(player.code)] != null) {
+                        player.squadNumber = jerseyNumbers[String(player.code)];
+                    }
+                });
 
                 const posAvg = computePositionAverages(allPlayers);
                 const teamAnalysis = computeTeamScores(bootData.teams, fixturesData);
