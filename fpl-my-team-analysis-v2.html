@@ -1220,12 +1220,13 @@
             };
 
             const pitchCompareBox = (p) => `<input type="checkbox" class="compare-checkbox pitch-compare-checkbox" data-player-id="${p.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${p.id})">`;
+            const pitchPositionColor = { 1: 'var(--position-gk)', 2: 'var(--position-def)', 3: 'var(--position-mid)', 4: 'var(--position-fwd)' };
             const pitchNode = (a) => {
                 const p = a.player;
                 const injured = p.status === 'i' || p.status === 'u';
                 return `<div class="pitch-player" data-compare-row onclick="openDetailPanel(${p.id})">
                     ${pitchCompareBox(p)}
-                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}">
+                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="background:${pitchPositionColor[p.position] || 'var(--position-mid)'};">
                         ${jerseyNumberLabel(p)}
                         ${p.isCaptain ? '<span class="captain-badge">C</span>' : ''}
                         ${p.isVice ? '<span class="captain-badge" style="background:var(--text-muted);color:white;">V</span>' : ''}
@@ -1241,7 +1242,7 @@
                 const injured = p.status === 'i' || p.status === 'u';
                 return `<div class="pitch-player" data-compare-row onclick="openDetailPanel(${p.id})" style="opacity:0.7;">
                     ${pitchCompareBox(p)}
-                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="width:36px;height:36px;font-size:9px;">
+                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="background:${pitchPositionColor[p.position] || 'var(--position-mid)'};">
                         ${jerseyNumberLabel(p)}
                         ${injuryBadge(p)}
                         ${marketBadge(p)}
@@ -1251,7 +1252,6 @@
             };
 
             return `
-            <div class="squad-hint-banner"><span>👆</span> Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
             <div class="team-overview">
                 <div class="health-ring-container">
                     <div class="health-ring">
@@ -1274,15 +1274,18 @@
                     </div>
                     ${renderLineupAlert()}
                 </div>
-                <div class="pitch-container">
-                    <div class="pitch-rows">
-                        <div class="pitch-row">${fwds.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${mids.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${defs.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${gks.map(pitchNode).join('')}</div>
-                        <div class="pitch-row bench-row">
-                            <span class="bench-label">Bench</span>
-                            ${benchPlayers.map(benchNode).join('')}
+                <div class="squad-lineup-column">
+                    <div class="squad-hint-banner"><span>👆</span> Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
+                    <div class="pitch-container">
+                        <div class="pitch-rows">
+                            <div class="pitch-row">${fwds.map(pitchNode).join('')}</div>
+                            <div class="pitch-row">${mids.map(pitchNode).join('')}</div>
+                            <div class="pitch-row">${defs.map(pitchNode).join('')}</div>
+                            <div class="pitch-row">${gks.map(pitchNode).join('')}</div>
+                            <div class="pitch-row bench-row">
+                                <span class="bench-label">Bench</span>
+                                ${benchPlayers.map(benchNode).join('')}
+                            </div>
                         </div>
                     </div>
                 </div>
