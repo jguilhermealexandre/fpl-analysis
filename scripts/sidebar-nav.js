@@ -4,9 +4,22 @@
    Only used by *-v2.html pages — no effect on the live site.
    ============================================ */
 
-// Compatibility with cached/deploying versions of v2-design.css that gate
-// visibility on this class. Set it immediately; there is no animation or wait.
-document.documentElement.classList.add('v2-shell-ready');
+function scheduleV2PageReveal() {
+    if (window.__v2RevealScheduled) return;
+    window.__v2RevealScheduled = true;
+
+    const reveal = () => setTimeout(() => {
+        document.documentElement.classList.add('v2-shell-ready');
+    }, 180);
+
+    if (document.readyState === 'complete') reveal();
+    else window.addEventListener('load', reveal, { once: true });
+
+    // Network errors must never be able to leave the page hidden.
+    setTimeout(() => document.documentElement.classList.add('v2-shell-ready'), 1500);
+}
+
+scheduleV2PageReveal();
 
 function loadSidebarNav() {
     return fetch('sidebar-nav.html')
