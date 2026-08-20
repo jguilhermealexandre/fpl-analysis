@@ -2444,37 +2444,44 @@
             })));
         }
 
-        function createMomentumBadgeMarker(team) {
-            const marker = document.createElement('canvas');
-            marker.width = 38;
-            marker.height = 38;
-            const markerCtx = marker.getContext('2d');
+        const momentumBadgePlugin = {
+            id: 'momentumBadges',
+            afterDatasetsDraw(chart) {
+                const meta = chart.getDatasetMeta(0);
+                const points = chart.data.datasets[0].data;
+                const chartCtx = chart.ctx;
 
-            markerCtx.beginPath();
-            markerCtx.arc(19, 19, 18, 0, Math.PI * 2);
-            markerCtx.fillStyle = '#F1F1EF';
-            markerCtx.fill();
-            markerCtx.strokeStyle = '#E4E4E1';
-            markerCtx.lineWidth = 1;
-            markerCtx.stroke();
+                meta.data.forEach((element, index) => {
+                    const team = points[index]?.teamData;
+                    if (!team || element.skip) return;
 
-            const img = badgeImages.get(team.id);
-            if (img && img.complete && img.naturalWidth > 0) {
-                const maxSize = 25;
-                const scale = Math.min(maxSize / img.naturalWidth, maxSize / img.naturalHeight);
-                const width = img.naturalWidth * scale;
-                const height = img.naturalHeight * scale;
-                markerCtx.drawImage(img, (38 - width) / 2, (38 - height) / 2, width, height);
-            } else {
-                markerCtx.fillStyle = '#636363';
-                markerCtx.font = '600 8px Inter, sans-serif';
-                markerCtx.textAlign = 'center';
-                markerCtx.textBaseline = 'middle';
-                markerCtx.fillText(team.shortName || '?', 19, 19);
+                    chartCtx.save();
+                    chartCtx.beginPath();
+                    chartCtx.arc(element.x, element.y, 18, 0, Math.PI * 2);
+                    chartCtx.fillStyle = '#F1F1EF';
+                    chartCtx.fill();
+                    chartCtx.strokeStyle = '#E4E4E1';
+                    chartCtx.lineWidth = 1;
+                    chartCtx.stroke();
+
+                    const img = badgeImages.get(team.id);
+                    if (img && img.complete && img.naturalWidth > 0) {
+                        const maxSize = 26;
+                        const scale = Math.min(maxSize / img.naturalWidth, maxSize / img.naturalHeight);
+                        const width = img.naturalWidth * scale;
+                        const height = img.naturalHeight * scale;
+                        chartCtx.drawImage(img, element.x - width / 2, element.y - height / 2, width, height);
+                    } else {
+                        chartCtx.fillStyle = '#636363';
+                        chartCtx.font = '600 8px Inter, sans-serif';
+                        chartCtx.textAlign = 'center';
+                        chartCtx.textBaseline = 'middle';
+                        chartCtx.fillText(team.shortName || '?', element.x, element.y);
+                    }
+                    chartCtx.restore();
+                });
             }
-
-            return marker;
-        }
+        };
 
         function renderMomentumMatrix() {
             return `
@@ -2526,14 +2533,13 @@
 
         function renderMomentumTooltip(context) {
             const { chart, tooltip } = context;
-            const container = chart.canvas.parentElement;
-            let card = container.querySelector('.momentum-hover-card');
+            let card = document.querySelector('.momentum-hover-card');
 
             if (!card) {
                 card = document.createElement('div');
                 card.className = 'momentum-hover-card';
                 card.setAttribute('role', 'tooltip');
-                container.appendChild(card);
+                document.body.appendChild(card);
             }
 
             if (!tooltip || tooltip.opacity === 0 || !tooltip.dataPoints?.length) {
@@ -2549,13 +2555,14 @@
 
             const gap = 14;
             const cardWidth = 196;
-            let left = chart.canvas.offsetLeft + tooltip.caretX + gap;
-            if (left + cardWidth > container.clientWidth - 8) {
-                left = chart.canvas.offsetLeft + tooltip.caretX - cardWidth - gap;
+            const canvasRect = chart.canvas.getBoundingClientRect();
+            let left = canvasRect.left + tooltip.caretX + gap;
+            if (left + cardWidth > window.innerWidth - 8) {
+                left = canvasRect.left + tooltip.caretX - cardWidth - gap;
             }
             const top = Math.max(8, Math.min(
-                chart.canvas.offsetTop + tooltip.caretY - 34,
-                container.clientHeight - 76
+                canvasRect.top + tooltip.caretY - 34,
+                window.innerHeight - 76
             ));
 
             card.style.left = `${left}px`;
@@ -2566,6 +2573,7 @@
         async function initMomentumChart() {
             const canvas = document.getElementById('momentumChart');
             if (!canvas || typeof Chart === 'undefined') return;
+            document.querySelector('.momentum-hover-card')?.remove();
 
             if (momentumChart) {
                 momentumChart.destroy();
@@ -2607,18 +2615,17 @@
             const textColor = style.getPropertyValue('--text-secondary').trim() || '#6B7280';
             const mutedColor = style.getPropertyValue('--text-muted').trim() || '#9CA3AF';
 
-            const pointStyles = dataPoints.map(point => createMomentumBadgeMarker(point.teamData));
-
             momentumChart = new Chart(ctx, {
                 type: 'scatter',
+                plugins: [momentumBadgePlugin],
                 data: {
                     datasets: [{
                         data: dataPoints,
-                        pointStyle: pointStyles,
+                        pointStyle: 'circle',
                         pointRadius: 19,
                         pointHoverRadius: 21,
-                        pointBackgroundColor: '#F1F1EF',
-                        pointBorderColor: '#E4E4E1',
+                        pointBackgroundColor: 'rgba(0,0,0,0.001)',
+                        pointBorderColor: 'transparent',
                         pointBorderWidth: 0,
                         pointHoverBorderWidth: 2,
                         pointHoverBorderColor: '#ffffff',
