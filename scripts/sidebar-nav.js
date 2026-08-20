@@ -33,6 +33,23 @@ function loadSidebarNav() {
             if (window.lucide) lucide.createIcons();
 
             initSidebarFlyout();
+        })
+        .catch(error => {
+            console.warn('Sidebar navigation could not be loaded:', error);
+            return null;
+        })
+        .then(async result => {
+            // Avoid flashing the pre-sidebar layout or swapping fonts in view.
+            // Never hold the page longer than a short, fixed setup window.
+            if (document.fonts?.ready) {
+                await Promise.race([
+                    document.fonts.ready,
+                    new Promise(resolve => setTimeout(resolve, 350))
+                ]);
+            }
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            document.documentElement.classList.add('v2-shell-ready');
+            return result;
         });
 }
 
