@@ -227,6 +227,38 @@
             const number = player?.squadNumber ?? player?.squad_number;
             return number === null || number === undefined || number === '' ? '—' : String(number);
         }
+
+        async function loadPremierLeagueJerseyNumbers(picks, season) {
+            const cachedKey = `pl_jersey_numbers_${season}`;
+            let jerseyNumbers = {};
+            try { jerseyNumbers = JSON.parse(localStorage.getItem(cachedKey) || '{}'); } catch (_) {}
+
+            const teamCodes = [...new Set((picks || []).map(pick => {
+                const player = allPlayersById[pick.element];
+                return player ? teams[player.teamId]?.code : null;
+            }).filter(Boolean))];
+
+            await Promise.all(teamCodes.map(async teamCode => {
+                try {
+                    const url = `https://sdp-prem-prod.premier-league-prod.pulselive.com/api/v2/competitions/8/seasons/${season}/teams/${teamCode}/squad`;
+                    const response = await fetch(url);
+                    if (!response.ok) return;
+                    const squad = await response.json();
+                    (squad.players || []).forEach(player => {
+                        if (player.id != null && player.shirtNum != null) jerseyNumbers[String(player.id)] = player.shirtNum;
+                    });
+                } catch (error) {
+                    console.warn(`[Jersey numbers] Could not load team ${teamCode}:`, error);
+                }
+            }));
+
+            try { localStorage.setItem(cachedKey, JSON.stringify(jerseyNumbers)); } catch (_) {}
+            allPlayers.forEach(player => {
+                if (player.squadNumber == null && jerseyNumbers[String(player.code)] != null) {
+                    player.squadNumber = jerseyNumbers[String(player.code)];
+                }
+            });
+        }
         let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
         let positionAverages = {};
         let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
@@ -590,7 +622,7 @@
 
                 // Build players with ALL available data
                 allPlayers = bootData.elements.map(p => ({
-                    id: p.id, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
+                    id: p.id, code: p.code, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
                     squadNumber: p.squad_number,
                     team: teams[p.team]?.short_name || 'N/A', teamId: p.team,
                     position: p.element_type, price: p.now_cost / 10,
@@ -665,6 +697,9 @@
                         entry_history: { ...picksData.entry_history, bank: realPicksData.entry_history?.bank }
                     };
                 }
+
+                const premierLeagueSeason = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
+                await loadPremierLeagueJerseyNumbers(picksData.picks, premierLeagueSeason);
 
                 selectedPlayers = picksData.picks.map(pick => {
                     const player = allPlayersById[pick.element];
