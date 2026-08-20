@@ -2423,29 +2423,58 @@
         // ===== ADVANCED xG TABLE — removed; columns merged into Stats Table =====
 
         // ===== MOMENTUM MATRIX =====
-        const TEAM_COLORS = {
-            'ARS': '#EF0107', 'AVL': '#670E36', 'BOU': '#DA291C', 'BRE': '#E30613',
-            'BHA': '#0057B8', 'CHE': '#034694', 'CRY': '#1B458F', 'EVE': '#003399',
-            'FUL': '#000000', 'IPS': '#0044AA', 'LEI': '#003090', 'LIV': '#C8102E',
-            'MCI': '#6CABDD', 'MUN': '#DA291C', 'NEW': '#241F20', 'NFO': '#E53233',
-            'SOU': '#D71920', 'TOT': '#132257', 'WHU': '#7A263A', 'WOL': '#FDB913',
-            // Promoted teams fallback
-            'LEE': '#FFCD00', 'BUR': '#6C1D45', 'SHU': '#EE2737', 'LUT': '#F78F1E'
-        };
-
         let momentumMetric = 'net'; // 'net', 'attack', 'defense'
         let momentumChart = null;
         let badgeImages = new Map();
 
         function preloadTeamBadges(teams) {
-            teams.forEach(team => {
-                if (team.badgeUrl && !badgeImages.has(team.id)) {
-                    const img = new Image(20, 20);
+            return Promise.all(teams.map(team => new Promise(resolve => {
+                if (!team.badgeUrl) { resolve(); return; }
+
+                let img = badgeImages.get(team.id);
+                if (!img) {
+                    img = new Image();
                     img.crossOrigin = 'anonymous';
-                    img.src = team.badgeUrl;
                     badgeImages.set(team.id, img);
+                    img.src = team.badgeUrl;
                 }
-            });
+
+                if (img.complete) { resolve(); return; }
+                img.addEventListener('load', resolve, { once: true });
+                img.addEventListener('error', resolve, { once: true });
+            })));
+        }
+
+        function createMomentumBadgeMarker(team) {
+            const marker = document.createElement('canvas');
+            marker.width = 38;
+            marker.height = 38;
+            const markerCtx = marker.getContext('2d');
+
+            markerCtx.beginPath();
+            markerCtx.arc(19, 19, 18, 0, Math.PI * 2);
+            markerCtx.fillStyle = '#F1F1EF';
+            markerCtx.fill();
+            markerCtx.strokeStyle = '#E4E4E1';
+            markerCtx.lineWidth = 1;
+            markerCtx.stroke();
+
+            const img = badgeImages.get(team.id);
+            if (img && img.complete && img.naturalWidth > 0) {
+                const maxSize = 25;
+                const scale = Math.min(maxSize / img.naturalWidth, maxSize / img.naturalHeight);
+                const width = img.naturalWidth * scale;
+                const height = img.naturalHeight * scale;
+                markerCtx.drawImage(img, (38 - width) / 2, (38 - height) / 2, width, height);
+            } else {
+                markerCtx.fillStyle = '#636363';
+                markerCtx.font = '600 8px Inter, sans-serif';
+                markerCtx.textAlign = 'center';
+                markerCtx.textBaseline = 'middle';
+                markerCtx.fillText(team.shortName || '?', 19, 19);
+            }
+
+            return marker;
         }
 
         function renderMomentumMatrix() {
@@ -2496,7 +2525,7 @@
             }
         }
 
-        function initMomentumChart() {
+        async function initMomentumChart() {
             const canvas = document.getElementById('momentumChart');
             if (!canvas || typeof Chart === 'undefined') return;
 
@@ -2505,22 +2534,20 @@
                 momentumChart = null;
             }
 
-            const ctx = canvas.getContext('2d');
+            // Wait for badge assets before drawing. If the user changes view
+            // while they load, abandon this now-stale chart instance.
+            await preloadTeamBadges(allTeamsData);
+            if (!canvas.isConnected) return;
 
-            // Ensure badges are preloaded
-            preloadTeamBadges(allTeamsData);
+            const ctx = canvas.getContext('2d');
 
             const dataPoints = allTeamsData.map(team => {
                 const xVal = 6 - parseFloat(team.avgFdr); // invert: low FDR → right side
                 const yVal = getMomentumY(team);
-                const color = TEAM_COLORS[team.shortName] || '#888888';
                 return {
                     x: xVal,
                     y: yVal,
                     teamData: team,
-                    backgroundColor: color,
-                    borderColor: color,
-                    badgeImg: badgeImages.get(team.id) || null,
                 };
             });
 
@@ -2542,12 +2569,7 @@
             const textColor = style.getPropertyValue('--text-secondary').trim() || '#6B7280';
             const mutedColor = style.getPropertyValue('--text-muted').trim() || '#9CA3AF';
 
-            // Build pointStyle array: use badge Image if loaded, else colored circle fallback
-            const pointStyles = dataPoints.map(p => {
-                const img = p.badgeImg;
-                if (img && img.complete && img.naturalWidth > 0) return img;
-                return 'circle';
-            });
+            const pointStyles = dataPoints.map(point => createMomentumBadgeMarker(point.teamData));
 
             momentumChart = new Chart(ctx, {
                 type: 'scatter',
@@ -2555,10 +2577,10 @@
                     datasets: [{
                         data: dataPoints,
                         pointStyle: pointStyles,
-                        pointRadius: 14,
-                        pointHoverRadius: 18,
-                        pointBackgroundColor: dataPoints.map(p => p.backgroundColor),
-                        pointBorderColor: dataPoints.map(p => p.borderColor),
+                        pointRadius: 19,
+                        pointHoverRadius: 21,
+                        pointBackgroundColor: '#F1F1EF',
+                        pointBorderColor: '#E4E4E1',
                         pointBorderWidth: 0,
                         pointHoverBorderWidth: 2,
                         pointHoverBorderColor: '#ffffff',
