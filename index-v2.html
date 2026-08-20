@@ -492,10 +492,11 @@
         .hero-greeting {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 10px;
             margin-bottom: 24px;
             flex-wrap: wrap;
+            text-align: left;
         }
 
         .hero-greeting-text {
@@ -575,11 +576,7 @@
             transition: border-color 0.3s, background 0.3s;
         }
         .v2-deadline-hero::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 4px;
-            background: linear-gradient(90deg, var(--color-primary), #34D399);
-            transition: background 0.3s;
+            display: none;
         }
         .v2-deadline-hero.dl-soon::before { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
         .v2-deadline-hero.dl-urgent::before { background: linear-gradient(90deg, #EF4444, #F87171); }
@@ -712,7 +709,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 600;
             letter-spacing: -0.5px;
             color: var(--text-primary);
@@ -781,14 +778,14 @@
             justify-content: space-between;
             margin-bottom: 10px;
         }
-        .v2-pitch-title { font-size: 18px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); }
+        .v2-pitch-title { font-size: 17px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); }
         .v2-pitch-formation { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-full); }
         .v2-pitch {
             position: relative;
             width: 100%;
             aspect-ratio: 16 / 11.5;
             border-radius: var(--radius-lg);
-            background: repeating-linear-gradient(90deg, #CFEBD0 0, #CFEBD0 12.5%, #C4E5C6 12.5%, #C4E5C6 25%);
+            background: repeating-linear-gradient(0deg, #CFEBD0 0, #CFEBD0 12.5%, #C4E5C6 12.5%, #C4E5C6 25%);
             overflow: hidden;
             border: none;
         }
@@ -832,8 +829,8 @@
             max-width: 96px;
         }
         .v2-pitch-token-circle {
-            width: 46px;
-            height: 46px;
+            width: 33px;
+            height: 33px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -841,12 +838,10 @@
             font-size: 14px;
             font-weight: 600;
             color: #fff;
-            border: 3px solid #FFFFFF;
+            border: none;
             box-shadow: 0 2px 6px rgba(0,0,0,0.18);
             position: relative;
         }
-        .v2-pitch-token-circle.verdict-ring-sell    { border-color: var(--verdict-sell); }
-        .v2-pitch-token-circle.verdict-ring-monitor { border-color: var(--verdict-monitor); }
         .v2-pitch-token-badge {
             position: absolute;
             top: -5px; right: -5px;
@@ -862,7 +857,7 @@
             border: 1.5px solid #fff;
         }
         .v2-pitch-token-name {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 600;
             color: #17301F;
             text-shadow: none;
@@ -893,7 +888,7 @@
         .v2-pitch-bench-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; align-self: center; flex-shrink: 0; margin-right: 2px; }
         .v2-pitch-bench .v2-pitch-token-circle { width: 28px; height: 28px; font-size: 9px; }
         .v2-pitch-bench .v2-pitch-token { flex-shrink: 0; width: auto; }
-        .v2-pitch-bench .v2-pitch-token-name { color: var(--text-secondary); text-shadow: none; font-size: 9px; }
+        .v2-pitch-bench .v2-pitch-token-name { color: var(--text-secondary); text-shadow: none; font-size: 11px; }
 
         .v2-quick-actions {
             display: flex;
@@ -2195,7 +2190,7 @@
             background: var(--surface-0);
             border-bottom: 1px solid var(--border-default);
             overflow: hidden;
-            height: 36px;
+            height: 56px;
             display: flex;
             align-items: center;
         }
@@ -2286,7 +2281,7 @@
             to { transform: translateX(-50%); }
         }
         @media (max-width: 768px) {
-            .ticker-bar { height: 32px; top: 0; }
+            .ticker-bar { height: 56px; top: 0; }
             .ticker-item { font-size: 11px; padding: 0 14px; }
         }
 
@@ -3044,7 +3039,7 @@
             <!-- Personalized hero (logged-in state) -->
             <div class="hero-personalized hidden" id="heroPersonalized">
                 <div class="hero-greeting">
-                    <div class="hero-greeting-text">Welcome back, <span id="heroManagerName">Manager</span></div>
+                    <div class="hero-greeting-text v2-page-heading" id="heroTeamName">My Team</div>
                     <div class="hero-greeting-gw" id="heroGwBadge">GW1</div>
                 </div>
                 <!-- Top row: Squad Snapshot (left) + unified info panel (right) -->
@@ -3901,10 +3896,10 @@
         }
 
         // ===== STATUS STRIP: deadline hero + GW points / rank / league / value =====
-        function renderStatusStrip({ firstName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta,
+        function renderStatusStrip({ teamName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta,
                                      pointsDiff, deadlineTime, deadlineGW, avgFDR, captainRec, leagueInfo }) {
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-            el('heroManagerName', firstName);
+            el('heroTeamName', teamName || 'My Team');
             el('heroGwBadge', 'GW' + currentGW);
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
 
@@ -4119,6 +4114,35 @@
         }
 
         // ===== PITCH / FORMATION VIEW =====
+        async function loadDashboardJerseyNumbers({ bootData, picks, playersById, teams }) {
+            const season = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
+            const cacheKey = `pl_jersey_numbers_${season}`;
+            let jerseyNumbers = {};
+            try { jerseyNumbers = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch (_) {}
+
+            const teamCodes = [...new Set((picks || []).map(pick => {
+                const player = playersById[pick.element];
+                return player ? teams[player.teamId]?.code : null;
+            }).filter(Boolean))];
+
+            await Promise.all(teamCodes.map(async teamCode => {
+                try {
+                    const url = `https://sdp-prem-prod.premier-league-prod.pulselive.com/api/v2/competitions/8/seasons/${season}/teams/${teamCode}/squad`;
+                    const response = await fetch(url);
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    (data.players || []).forEach(player => {
+                        if (player.id != null && player.shirtNum != null) jerseyNumbers[String(player.id)] = player.shirtNum;
+                    });
+                } catch (error) {
+                    console.warn(`[Dashboard jerseys] Could not load team ${teamCode}:`, error);
+                }
+            }));
+
+            try { localStorage.setItem(cacheKey, JSON.stringify(jerseyNumbers)); } catch (_) {}
+            return jerseyNumbers;
+        }
+
         function renderPitchView({ squad, analysisResults }) {
             const wrap = document.getElementById('v2PitchWrap');
             if (!squad || !squad.length) { wrap.innerHTML = ''; return; }
@@ -4147,7 +4171,7 @@
                 }
                 const posLabel = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position] || '';
                 return `<div class="v2-pitch-token">
-                    <div class="v2-pitch-token-circle${ringClass}" style="background:${posColorVar[p.position] || 'var(--position-mid)'};">${esc((p.name || '?').charAt(0).toUpperCase())}${badge}</div>
+                    <div class="v2-pitch-token-circle${ringClass}" style="background:${posColorVar[p.position] || 'var(--position-mid)'};">${p.squadNumber ?? '—'}${badge}</div>
                     <span class="v2-pitch-token-name">${esc(p.name)}</span>
                     <span class="v2-pitch-token-pos">${posLabel}</span>
                     ${statusIcon}
@@ -4475,7 +4499,8 @@
 
                 // Build full player data
                 const allPlayers = bootData.elements.map(p => ({
-                    id: p.id, name: p.web_name, teamId: p.team,
+                    id: p.id, code: p.code, name: p.web_name, teamId: p.team,
+                    squadNumber: p.squad_number,
                     team: teams[p.team]?.short_name || 'N/A',
                     position: p.element_type, price: p.now_cost / 10,
                     form: parseFloat(p.form) || 0, points: p.total_points,
@@ -4495,6 +4520,13 @@
 
                 const playersById = {};
                 allPlayers.forEach(p => { playersById[p.id] = p; });
+
+                const jerseyNumbers = await loadDashboardJerseyNumbers({ bootData, picks: picksData.picks, playersById, teams });
+                allPlayers.forEach(player => {
+                    if (player.squadNumber == null && jerseyNumbers[String(player.code)] != null) {
+                        player.squadNumber = jerseyNumbers[String(player.code)];
+                    }
+                });
 
                 const posAvg = computePositionAverages(allPlayers);
                 const teamAnalysis = computeTeamScores(bootData.teams, fixturesData);
@@ -4661,7 +4693,7 @@
                 }
 
                 renderStatusStrip({
-                    firstName: managerData.player_first_name,
+                    teamName: managerData.name,
                     currentGW,
                     rank: rankRaw,
                     totalPoints: totalPointsRaw,

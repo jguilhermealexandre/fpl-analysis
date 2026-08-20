@@ -46,9 +46,9 @@
     <main class="main-content">
         <!-- Header Row -->
         <div class="header-row">
-            <h1 class="page-title"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
-            <button class="btn btn-secondary" id="settingsBtn" onclick="openSettings()" style="margin-left:auto;" aria-label="Analysis settings" title="Analysis settings"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
+            <h1 class="page-title v2-page-heading"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
         </div>
+        <div class="squad-hint-banner v2-page-hint hidden" id="squadHintBanner">Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
         <!-- Hidden input used by loadTeamById() -->
         <input type="hidden" id="teamIdInput">
 
@@ -58,7 +58,7 @@
                 <div style="width:72px;height:72px;border-radius:50%;background:var(--color-primary-muted);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
                     <i data-lucide="users" style="width:36px;height:36px;color:var(--color-primary);"></i>
                 </div>
-                <h2 style="font-family:var(--font-display);font-size:24px;font-weight: 600;margin-bottom:8px;">Welcome to My Team Analysis</h2>
+                <h2 style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-bottom:8px;">Welcome to My Team Analysis</h2>
                 <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:24px;">Get squad verdicts, gameweek planning, transfer suggestions, and lineup recommendations — all personalized for your FPL team.</p>
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
                     <div style="padding:16px 12px;background:var(--surface-1);border:1px solid var(--border-default);border-radius:12px;text-align:center;">
@@ -222,6 +222,43 @@
 
         // ===== STATE =====
         let allPlayers = [], allPlayersById = {}, teams = {}, teamFixtures = {};
+
+        function jerseyNumberLabel(player) {
+            const number = player?.squadNumber ?? player?.squad_number;
+            return number === null || number === undefined || number === '' ? '—' : String(number);
+        }
+
+        async function loadPremierLeagueJerseyNumbers(picks, season) {
+            const cachedKey = `pl_jersey_numbers_${season}`;
+            let jerseyNumbers = {};
+            try { jerseyNumbers = JSON.parse(localStorage.getItem(cachedKey) || '{}'); } catch (_) {}
+
+            const teamCodes = [...new Set((picks || []).map(pick => {
+                const player = allPlayersById[pick.element];
+                return player ? teams[player.teamId]?.code : null;
+            }).filter(Boolean))];
+
+            await Promise.all(teamCodes.map(async teamCode => {
+                try {
+                    const url = `https://sdp-prem-prod.premier-league-prod.pulselive.com/api/v2/competitions/8/seasons/${season}/teams/${teamCode}/squad`;
+                    const response = await fetch(url);
+                    if (!response.ok) return;
+                    const squad = await response.json();
+                    (squad.players || []).forEach(player => {
+                        if (player.id != null && player.shirtNum != null) jerseyNumbers[String(player.id)] = player.shirtNum;
+                    });
+                } catch (error) {
+                    console.warn(`[Jersey numbers] Could not load team ${teamCode}:`, error);
+                }
+            }));
+
+            try { localStorage.setItem(cachedKey, JSON.stringify(jerseyNumbers)); } catch (_) {}
+            allPlayers.forEach(player => {
+                if (player.squadNumber == null && jerseyNumbers[String(player.code)] != null) {
+                    player.squadNumber = jerseyNumbers[String(player.code)];
+                }
+            });
+        }
         let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
         let positionAverages = {};
         let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
@@ -585,7 +622,8 @@
 
                 // Build players with ALL available data
                 allPlayers = bootData.elements.map(p => ({
-                    id: p.id, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
+                    id: p.id, code: p.code, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
+                    squadNumber: p.squad_number,
                     team: teams[p.team]?.short_name || 'N/A', teamId: p.team,
                     position: p.element_type, price: p.now_cost / 10,
                     form: parseFloat(p.form) || 0, points: p.total_points,
@@ -660,6 +698,9 @@
                     };
                 }
 
+                const premierLeagueSeason = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
+                await loadPremierLeagueJerseyNumbers(picksData.picks, premierLeagueSeason);
+
                 selectedPlayers = picksData.picks.map(pick => {
                     const player = allPlayersById[pick.element];
                     if (!player) return null;
@@ -668,7 +709,7 @@
                         sellPrice: pick.selling_price / 10, multiplier: pick.multiplier };
                 }).filter(p => p !== null);
 
-                document.getElementById('managerInfo').classList.remove('hidden');
+                document.getElementById('squadHintBanner').classList.remove('hidden');
                 document.getElementById('managerName').textContent = `${managerData.player_first_name} ${managerData.player_last_name}`;
                 document.getElementById('overallRank').textContent = managerData.summary_overall_rank?.toLocaleString() || '-';
                 document.getElementById('totalPoints').textContent = managerData.summary_overall_points?.toLocaleString() || '-';
@@ -693,6 +734,7 @@
                     : 'Something went wrong loading your team. Please try again.';
                 updateStatus(friendly, 'error');
                 document.getElementById('managerInfo').classList.add('hidden');
+                document.getElementById('squadHintBanner').classList.add('hidden');
                 document.getElementById('tabBar').classList.remove('visible');
                 document.getElementById('landingPage').style.display = '';
             } finally {
@@ -1123,7 +1165,6 @@
             // else worth knowing, then the players nothing needs doing about.
             let html = '';
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthFactors);
-            html += renderTransferAnalysis();
             html += renderNeedsAttentionFeed();
             html += renderSquadOverviewStrip();
 
@@ -1179,72 +1220,97 @@
             };
 
             const pitchCompareBox = (p) => `<input type="checkbox" class="compare-checkbox pitch-compare-checkbox" data-player-id="${p.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${p.id})">`;
+            const pitchPositionColor = { 1: 'var(--position-gk)', 2: 'var(--position-def)', 3: 'var(--position-mid)', 4: 'var(--position-fwd)' };
             const pitchNode = (a) => {
                 const p = a.player;
                 const injured = p.status === 'i' || p.status === 'u';
                 return `<div class="pitch-player" data-compare-row onclick="openDetailPanel(${p.id})">
-                    ${pitchCompareBox(p)}
-                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}">
-                        ${escHTML(p.team)}
+                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="--player-color:${pitchPositionColor[p.position] || 'var(--position-mid)'};background:var(--player-color);">
+                        ${jerseyNumberLabel(p)}
                         ${p.isCaptain ? '<span class="captain-badge">C</span>' : ''}
                         ${p.isVice ? '<span class="captain-badge" style="background:var(--text-muted);color:white;">V</span>' : ''}
                         ${injuryBadge(p)}
                         ${marketBadge(p)}
                     </div>
                     <div class="pitch-player-name">${escHTML(p.name)}</div>
-                    <div class="pitch-player-pts">${p.form}</div>
+                    <div class="pitch-player-pts">${POSITION_CONFIG[p.position]?.short || ''}</div>
+                    ${pitchCompareBox(p)}
                 </div>`;
             };
             const benchNode = (a) => {
                 const p = a.player;
                 const injured = p.status === 'i' || p.status === 'u';
                 return `<div class="pitch-player" data-compare-row onclick="openDetailPanel(${p.id})" style="opacity:0.7;">
-                    ${pitchCompareBox(p)}
-                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="width:36px;height:36px;font-size:9px;">
-                        ${escHTML(p.team)}
+                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="--player-color:${pitchPositionColor[p.position] || 'var(--position-mid)'};background:var(--player-color);">
+                        ${jerseyNumberLabel(p)}
                         ${injuryBadge(p)}
                         ${marketBadge(p)}
                     </div>
                     <div class="pitch-player-name">${escHTML(p.name)}</div>
+                    ${pitchCompareBox(p)}
                 </div>`;
             };
 
             return `
-            <div class="squad-hint-banner"><span>👆</span> Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
-            <div class="team-overview">
-                <div class="health-ring-container">
-                    <div class="health-ring">
-                        <svg viewBox="0 0 120 120">
-                            <circle class="health-ring-track" cx="60" cy="60" r="54"/>
-                            <circle class="health-ring-fill" id="healthRingFill" cx="60" cy="60" r="54"
-                                stroke="${healthColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"
-                                style="transform:rotate(-90deg);transform-origin:center;"/>
-                            <text x="60" y="55" text-anchor="middle" fill="${healthColor}" font-size="30" font-weight="700" font-family="var(--font-mono)">${health}</text>
-                            <text x="60" y="72" text-anchor="middle" fill="var(--text-muted)" font-size="10" font-weight="600">HEALTH</text>
-                        </svg>
-                    </div>
-                    <div class="health-sublabel">${healthText}</div>
-                    ${healthFactors && healthFactors.length ? `<div class="health-factors">${healthFactors.map(f => `<div class="health-factor ${f.impact}">${f.icon} ${escHTML(f.text)}</div>`).join('')}</div>` : ''}
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
-                        ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">\u25cf ${sells.length} Sell</span>` : ''}
-                        ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">\u25cf ${monitors.length} Monitor</span>` : ''}
-                        ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">\u2605 ${stars.length} Star</span>` : ''}
-                        <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">\u25cf ${holds.length} Hold</span>
-                    </div>
-                    ${renderLineupAlert()}
-                </div>
-                <div class="pitch-container">
-                    <div class="pitch-rows">
-                        <div class="pitch-row">${fwds.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${mids.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${defs.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${gks.map(pitchNode).join('')}</div>
-                        <div class="pitch-row bench-row">
-                            <span class="bench-label">Bench</span>
-                            ${benchPlayers.map(benchNode).join('')}
+            <div class="my-team-dashboard-top">
+                <div class="squad-lineup-column">
+                    <div class="squad-lineup-header"><span>Squad Snapshot</span><span>${defs.length}-${mids.length}-${fwds.length}</span></div>
+                    <div class="pitch-container">
+                        <div class="pitch-rows">
+                            <div class="pitch-row">${fwds.map(pitchNode).join('')}</div>
+                            <div class="pitch-row">${mids.map(pitchNode).join('')}</div>
+                            <div class="pitch-row">${defs.map(pitchNode).join('')}</div>
+                            <div class="pitch-row">${gks.map(pitchNode).join('')}</div>
                         </div>
                     </div>
+                    <div class="pitch-bench">
+                        <span class="bench-label">Bench</span>
+                        ${benchPlayers.map(benchNode).join('')}
+                    </div>
                 </div>
+                <aside class="my-team-side-panel">
+                    <div class="strategy-preset-toggle" aria-label="Analysis strategy">
+                        <button class="strategy-preset-tab${activePreset === 'aggressive' ? ' active' : ''}" data-strategy-preset="aggressive" onclick="applyPreset('aggressive')" type="button">
+                            <i data-lucide="flame"></i><span>Aggressive</span><span class="strategy-preset-description">Quick sell triggers</span>
+                        </button>
+                        <button class="strategy-preset-tab${activePreset === 'balanced' ? ' active' : ''}" data-strategy-preset="balanced" onclick="applyPreset('balanced')" type="button">
+                            <i data-lucide="scale"></i><span>Balanced</span><span class="strategy-preset-description">Default settings</span>
+                        </button>
+                        <button class="strategy-preset-tab${activePreset === 'patient' ? ' active' : ''}" data-strategy-preset="patient" onclick="applyPreset('patient')" type="button">
+                            <i data-lucide="clock"></i><span>Patient</span><span class="strategy-preset-description">Hold through dips</span>
+                        </button>
+                    </div>
+                    <div class="manager-info">
+                        <span class="manager-name">${escHTML(`${managerData.player_first_name || ''} ${managerData.player_last_name || ''}`.trim() || 'Manager')}</span>
+                        <span class="manager-stat">Rank <strong>${managerData.summary_overall_rank?.toLocaleString() || '-'}</strong></span>
+                        <span class="manager-stat">Points <strong>${managerData.summary_overall_points?.toLocaleString() || '-'}</strong></span>
+                        <span class="manager-stat">Bank <strong>£${(picksData.entry_history?.bank / 10 || 0).toFixed(1)}m</strong></span>
+                    </div>
+                    <div class="health-ring-container">
+                        <div class="health-panel-title">Squad Health</div>
+                        <div class="health-ring">
+                            <svg viewBox="0 0 120 120">
+                                <circle class="health-ring-track" cx="60" cy="60" r="54"/>
+                                <circle class="health-ring-fill" id="healthRingFill" cx="60" cy="60" r="54"
+                                    stroke="${healthColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"
+                                    style="transform:rotate(-90deg);transform-origin:center;"/>
+                                <text x="60" y="55" text-anchor="middle" fill="${healthColor}" font-size="30" font-weight="700" font-family="var(--font-mono)">${health}</text>
+                                <text x="60" y="72" text-anchor="middle" fill="var(--text-muted)" font-size="10" font-weight="600">HEALTH</text>
+                            </svg>
+                        </div>
+                        <div class="health-sublabel">${healthText}</div>
+                        ${healthFactors && healthFactors.length ? `<div class="health-factors">${healthFactors.map(f => `<div class="health-factor ${f.impact}">${f.icon} ${escHTML(f.text)}</div>`).join('')}</div>` : ''}
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+                            ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">\u25cf ${sells.length} Sell</span>` : ''}
+                            ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">\u25cf ${monitors.length} Monitor</span>` : ''}
+                            ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">\u2605 ${stars.length} Star</span>` : ''}
+                            <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">\u25cf ${holds.length} Hold</span>
+                        </div>
+                        ${renderLineupAlert()}
+                    </div>
+                </aside>
+            </div>
+            <div class="my-team-analysis-grid">
                 ${(() => {
                     const falling = analysisResults.filter(a => getPressure(a.player) < -0.015);
                     const rising = analysisResults.filter(a => getPressure(a.player) > 0.015);
@@ -1262,10 +1328,11 @@
                     };
                     const rows = falling.map(a => mwRow(a,'fall')).join('') + rising.map(a => mwRow(a,'rise')).join('');
                     return `<div class="market-watch-panel">
-                        <div class="mw-header">\ud83d\udcc8 Market Watch</div>
+                        <div class="mw-header">Market Watch</div>
                         ${rows || '<div class="mw-empty">All prices stable</div>'}
                     </div>`;
                 })()}
+                ${renderTransferAnalysis()}
             </div>`;
         }
 
@@ -1422,27 +1489,17 @@
         }
 
         function renderTransferAnalysis() {
+            const targets = computeTransferAnalysisTargets();
             return `<div class="ta-section">
-                <button class="ta-toggle-btn" onclick="toggleTransferAnalysis()">
+                <div class="ta-section-header">
                     <i data-lucide="search" class="icon"></i>
-                    <span>Transfer Analysis — see 7-8 recommended targets</span>
-                    <span class="verdict-toggle" id="ta-body-toggle">▶</span>
-                </button>
-                <div class="ta-body" id="ta-body" style="display:none;"></div>
-            </div>`;
-        }
-
-        function toggleTransferAnalysis() {
-            const body = document.getElementById('ta-body');
-            if (body.style.display === 'none' && !body.dataset.rendered) {
-                const targets = computeTransferAnalysisTargets();
-                body.innerHTML = targets.length
+                    <span>Transfer Analysis</span>
+                </div>
+                <div class="ta-body">${targets.length
                     ? `<div class="ta-list">${targets.map(renderTransferAnalysisCard).join('')}</div>`
-                    : `<div class="ta-empty"><i data-lucide="check-circle" class="icon"></i> No strong targets found right now.</div>`;
-                body.dataset.rendered = '1';
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-            toggleSection('ta-body');
+                    : `<div class="ta-empty"><i data-lucide="check-circle" class="icon"></i> No strong targets found right now.</div>`}
+                </div>
+            </div>`;
         }
 
         // ===== PHASE 3: NEEDS ATTENTION FEED =====
@@ -1607,8 +1664,6 @@
 
             const hashMap = { team: 'squad', transfers: 'transfers', news: 'news', draft: 'draft', transfer: 'transfer', lineup: 'lineup' };
             history.replaceState(null, '', '#' + (hashMap[tab] || tab));
-
-            document.getElementById('settingsBtn').style.display = (tab === 'team') ? '' : 'none';
 
             if (tab === 'team') {
                 teamDisplay.style.display = '';
@@ -2628,7 +2683,7 @@
                 const homeCSPct = ss && ss.homeP > 0 ? Math.round((ss.homeCS / ss.homeP) * 100) : null;
                 const awayCSPct = ss && ss.awayP > 0 ? Math.round((ss.awayCS / ss.awayP) * 100) : null;
                 function sc(label, value, color) {
-                    return `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.58rem;text-transform:uppercase;letter-spacing:0.3px;">${label}</div><div style="font-family:var(--font-mono);font-weight: 600;font-size:0.78rem;color:${color || 'var(--text-primary)'};">${value}</div></div>`;
+                    return `<div style="text-align:center;"><div style="color:var(--text-muted);font-size:0.58rem;text-transform:uppercase;letter-spacing:0.3px;">${label}</div><div style="font-family:var(--font-mono);font-weight:700;font-size:0.78rem;color:${color || 'var(--text-primary)'};">${value}</div></div>`;
                 }
                 function pw(v) { return v > 60 ? 'var(--color-success)' : v < 40 ? 'var(--color-error)' : 'var(--text-secondary)'; }
                 let html = `<div class="h2h-card"><div class="h2h-header"><div class="h2h-header-teams">${team.short_name || team.name}</div></div><div class="h2h-body">`;
@@ -3144,7 +3199,7 @@
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
                     ${posStats.map(s => `<div style="text-align:center;background:var(--surface-0);padding:6px;border-radius:var(--radius-sm);">
                         <div style="font-size:0.6rem;color:var(--text-muted);">${s.label}</div>
-                        <div style="font-family:var(--font-mono);font-weight: 600;font-size:0.85rem;">${s.season}</div>
+                        <div style="font-family:var(--font-mono);font-weight:700;font-size:0.85rem;">${s.season}</div>
                         <div style="font-size:0.6rem;color:var(--text-muted);">L6: ${s.recent}</div>
                     </div>`).join('')}
                 </div>
@@ -3295,7 +3350,7 @@
                 </table>
 
                 <div style="margin-top:12px;">
-                    <button class="planner-reset-btn" style="width:100%;padding:10px;font-size:0.85rem;font-weight: 600;background:var(--color-success);color:#fff;border-color:var(--color-success);border-radius:var(--radius-md);" onclick="confirmDraftTransfer(${current.id}, ${replacement.id})">
+                    <button class="planner-reset-btn" style="width:100%;padding:10px;font-size:0.85rem;font-weight:700;background:var(--color-success);color:#fff;border-color:var(--color-success);border-radius:var(--radius-md);" onclick="confirmDraftTransfer(${current.id}, ${replacement.id})">
                         ✓ Confirm Transfer: ${escHTML(current.name)} → ${escHTML(replacement.name)}
                     </button>
                 </div>
@@ -3756,7 +3811,7 @@
                 });
             });
             gwNumbers.forEach(gw => {
-                const dgwLabel = headerDgwSet.has(gw) ? ' <span style="font-size:0.5rem;color:var(--color-info);font-weight: 600;">DGW</span>' : '';
+                const dgwLabel = headerDgwSet.has(gw) ? ' <span style="font-size:0.5rem;color:var(--color-info);font-weight:700;">DGW</span>' : '';
                 html += `<th rowspan="2" class="planner-fdr" title="Fixture Difficulty Rating for GW${gw}${headerDgwSet.has(gw) ? ' (Double Gameweek)' : ''}">GW${gw}${dgwLabel}</th>`;
             });
             html += `<th rowspan="2" style="width:30px;">↕</th>`;
@@ -3911,7 +3966,7 @@
             html += `</div>`;
             if (activeChip) {
                 const chipNames = { wildcard: 'Wildcard', freehit: 'Free Hit', benchboost: 'Bench Boost', triplecaptain: 'Triple Captain' };
-                html += `<span style="font-size:0.75rem;font-weight: 600;color:var(--color-primary);">✓ ${chipNames[activeChip]} active for GW${gw}</span>`;
+                html += `<span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">✓ ${chipNames[activeChip]} active for GW${gw}</span>`;
             }
             html += `</div>`;
             return html;
@@ -3946,7 +4001,7 @@
 
                 let node = `<div class="planner-pitch-player ${swapClass}" onclick="handleDraftPitchClick(${p.id})" title="${escHTML(p.name)} — ${POSITION_CONFIG[p.position]?.short || ''} · ${escHTML(p.team)}">`;
                 node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
-                node += escHTML(p.team);
+                node += jerseyNumberLabel(p);
                 if (p.isCaptain) {
                     if (activeChip === 'triplecaptain') {
                         node += `<span class="planner-pitch-captain" style="background:#8B5CF6;">3×</span>`;
@@ -4199,7 +4254,7 @@
             // GW selector for comparison
             const gwNums = getActiveDraft().gwNumbers;
             html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">`;
-            html += `<span style="font-size:0.78rem;font-weight: 600;color:var(--text-primary);">Comparing GW:</span>`;
+            html += `<span style="font-size:0.78rem;font-weight:700;color:var(--text-primary);">Comparing GW:</span>`;
             html += `<div class="draft-gw-pills">`;
             gwNums.forEach(g => {
                 const active = g === compareGW ? 'active' : '';
@@ -4246,7 +4301,7 @@
                 if (hitCost > 0) html += `<span class="draft-compare-meta-item" style="color:var(--color-error);">⚠️ <strong>-${hitCost}pts</strong></span>`;
                 if (activeChip) {
                     const chipLabels = { wildcard: 'WC', benchboost: 'BB', freehit: 'FH', triplecaptain: 'TC' };
-                    html += `<span class="draft-compare-meta-item" style="color:var(--color-primary);font-weight: 600;">${chipLabels[activeChip]}</span>`;
+                    html += `<span class="draft-compare-meta-item" style="color:var(--color-primary);font-weight:700;">${chipLabels[activeChip]}</span>`;
                 }
                 html += `</div>`;
 
@@ -4258,7 +4313,7 @@
                     const injured = p.status === 'i' || p.status === 'u';
                     let node = `<div class="planner-pitch-player" title="${escHTML(p.name)} — ${escHTML(p.team)}">`;
                     node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
-                    node += escHTML(p.team);
+                    node += jerseyNumberLabel(p);
                     if (p.isCaptain) node += `<span class="planner-pitch-captain">C</span>`;
                     if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
                     if (p.isTransferIn) node += `<span class="draft-pitch-new-badge">NEW</span>`;
@@ -4298,7 +4353,7 @@
                 // Transfers for this GW
                 if (gwTransfers.length > 0) {
                     html += `<div class="draft-compare-transfers">`;
-                    html += `<div style="font-size:0.7rem;font-weight: 600;color:var(--text-primary);margin-bottom:4px;">🔄 Transfers</div>`;
+                    html += `<div style="font-size:0.7rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;">🔄 Transfers</div>`;
                     gwTransfers.forEach(t => {
                         html += `<div class="draft-compare-transfer-item"><span style="color:var(--color-error);">${t.outName}</span> → <span style="color:var(--color-success);">${t.inName}</span></div>`;
                     });
@@ -5855,7 +5910,7 @@
                 totalScoreAfter += replScore;
 
                 transfersHtml += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface-2);border-radius:var(--radius-md);">' +
-                    '<span style="font-size:10px;font-weight: 600;padding:2px 6px;border-radius:3px;background:var(--surface-3);color:var(--text-muted);">' + posName + '</span>' +
+                    '<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;background:var(--surface-3);color:var(--text-muted);">' + posName + '</span>' +
                     '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:12px;color:var(--color-error);">' + sold.name +
                     ' <span style="font-weight:400;color:var(--text-muted);font-size:10px;">' + sold.team + ' · £' + (sold.sellPrice || sold.price).toFixed(1) + 'm</span></div></div>' +
                     '<div style="color:var(--text-muted);font-size:16px;flex-shrink:0;">→</div>' +
@@ -5874,15 +5929,15 @@
                 '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">' +
                 '<div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:var(--radius-md);">' +
                 '<div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Transfers</div>' +
-                '<div style="font-size:18px;font-weight: 600;font-family:var(--font-mono);">' + transferState.pending.length + '</div></div>' +
+                '<div style="font-size:18px;font-weight:700;font-family:var(--font-mono);">' + transferState.pending.length + '</div></div>' +
                 '<div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:var(--radius-md);">' +
                 '<div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Hit Cost</div>' +
-                '<div style="font-size:18px;font-weight: 600;font-family:var(--font-mono);' + (hit > 0 ? 'color:var(--color-error)' : '') + '">' + (hit > 0 ? '-' : '') + hit + ' pts</div></div>' +
+                '<div style="font-size:18px;font-weight:700;font-family:var(--font-mono);' + (hit > 0 ? 'color:var(--color-error)' : '') + '">' + (hit > 0 ? '-' : '') + hit + ' pts</div></div>' +
                 '<div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:var(--radius-md);">' +
                 '<div style="font-size:10px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Remaining ITB</div>' +
-                '<div style="font-size:18px;font-weight: 600;font-family:var(--font-mono);' + (itb < 0 ? 'color:var(--color-error)' : 'color:var(--color-success)') + '">£' + itb.toFixed(1) + 'm</div></div>' +
+                '<div style="font-size:18px;font-weight:700;font-family:var(--font-mono);' + (itb < 0 ? 'color:var(--color-error)' : 'color:var(--color-success)') + '">£' + itb.toFixed(1) + 'm</div></div>' +
                 '</div>' +
-                '<div style="font-weight: 600;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px;">Transfers ' +
+                '<div style="font-weight:700;font-size:13px;margin-bottom:8px;display:flex;align-items:center;gap:8px;">Transfers ' +
                 '<span style="font-family:var(--font-mono);font-size:12px;padding:2px 8px;border-radius:var(--radius-sm);' + deltaStyle + ';background:' + deltaBg + ';">' +
                 (scoreDelta >= 0 ? '+' : '') + scoreDelta.toFixed(1) + ' score</span></div>' +
                 '<div style="display:flex;flex-direction:column;gap:8px;">' + transfersHtml + '</div>' +
@@ -5927,6 +5982,9 @@
             activePreset = preset;
             localStorage.setItem('fpl_analysis_settings', JSON.stringify(userSettings));
             localStorage.setItem('fpl_active_preset', preset);
+            document.querySelectorAll('.strategy-preset-tab').forEach(button => {
+                button.classList.toggle('active', button.dataset.strategyPreset === preset);
+            });
             closeSettings();
             
             if (selectedPlayers.length > 0) {
@@ -6344,12 +6402,12 @@
             const starters = squad.filter(p => !p.onBench).sort((a, b) => a.pos - b.pos || b.lwScore - a.lwScore);
             const benchPlayers = squad.filter(p => p.onBench).sort((a, b) => a.pickPos - b.pickPos);
 
-            html += `<div style="margin-bottom:16px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight: 600;margin-bottom:8px;padding-left:4px;"><i data-lucide="users" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Current Starting XI</div>`;
+            html += `<div style="margin-bottom:16px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:700;margin-bottom:8px;padding-left:4px;"><i data-lucide="users" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Current Starting XI</div>`;
             html += `<div class="lw-squad-grid">`;
             starters.forEach(p => { html += renderLWPlayerCard(p); });
             html += `</div></div>`;
 
-            html += `<div style="margin-bottom:16px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight: 600;margin-bottom:8px;padding-left:4px;"><i data-lucide="clipboard-list" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Bench</div>`;
+            html += `<div style="margin-bottom:16px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:700;margin-bottom:8px;padding-left:4px;"><i data-lucide="clipboard-list" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Bench</div>`;
             html += `<div class="lw-squad-grid">`;
             benchPlayers.forEach(p => { html += renderLWPlayerCard(p); });
             html += `</div></div>`;
@@ -6375,7 +6433,7 @@
 
             return `<div class="lw-player-card ${isExcluded ? 'excluded' : 'available'}" onclick="toggleLWExclude(${p.id})">
                 <div class="lw-toggle">${isExcluded ? '✗' : '✓'}</div>
-                <div style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight: 600;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                <div style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</div>
                 <div class="lw-info">
                     <div class="lw-name">${statusIcon} ${escHTML(p.web_name)}</div>
                     <div class="lw-meta">
@@ -6466,7 +6524,7 @@
 
             // ── FULL-WIDTH HEADER (above grid so intel and pitch align) ──
             let topBar = '';
-            topBar += `<div style="font-size:18px;font-weight: 600;font-family:var(--font-display);margin-bottom:4px;"><i data-lucide="layout-grid" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Optimal Lineup — GW${currentGW}</div>`;
+            topBar += `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:4px;"><i data-lucide="layout-grid" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Optimal Lineup — GW${currentGW}</div>`;
             topBar += `<div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex-wrap:wrap;">
                 <span>Formation: <strong style="color:var(--text-primary);">${formation}</strong></span>
                 <span>·</span>
@@ -6547,8 +6605,8 @@
             const isSelected = lineupState.selectedPlayers.includes(p.id);
 
             return `<div class="lw-pitch-player ${isBench ? 'bench' : ''}" onclick="handleLWRowClick(${p.id})" title="${escHTML(p.web_name)} · Score: ${p.lwScore}" style="${isSelected ? 'background:rgba(167,139,250,0.2);box-shadow:0 0 0 2px #A78BFA;border-radius:8px;' : ''}">
-                ${benchOrder ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight: 600;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${benchOrder}</div>` : ''}
-                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                ${benchOrder ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${benchOrder}</div>` : ''}
+                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${jerseyNumberLabel(p)}</div>
                 <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
                 ${fx ? `<div style="display:flex;align-items:center;gap:2px;justify-content:center;"><span class="fdr-dot fdr-${fx.difficulty}" style="width:6px;height:6px;"></span><span style="font-size:8px;color:rgba(255,255,255,0.7);">${escHTML(fx.opponent)}</span></div>` : ''}
                 <div class="lw-pitch-score" style="color:${sc};">${p.lwScore}</div>
@@ -6673,7 +6731,7 @@
             // Captain candidates — top outfield players by score
             const capCandidates = xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore).slice(0, 5);
 
-            let html = `<div style="font-size:18px;font-weight: 600;font-family:var(--font-display);margin-bottom:16px;"><i data-lucide="crown" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Captain Selection</div>`;
+            let html = `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:16px;"><i data-lucide="crown" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Captain Selection</div>`;
             html += `<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Pick your captain (2x points) and vice-captain (backup). Ranked by lineup score.</div>`;
 
             capCandidates.forEach((p, i) => {
@@ -6687,7 +6745,7 @@
 
                 html += `<div class="lw-captain-card ${isCap ? 'selected-captain' : isVC ? 'selected-vc' : ''}">
                     <div class="lw-captain-rank" style="background:${i === 0 ? 'rgba(245,158,11,0.15);color:#F59E0B' : i === 1 ? 'rgba(156,163,175,0.15);color:#9CA3AF' : i === 2 ? 'rgba(217,119,6,0.15);color:#D97706' : 'var(--surface-3);color:var(--text-muted)'}">${i + 1}</div>
-                    <div style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight: 600;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                    <div style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</div>
                     <div class="lw-captain-info">
                         <div class="lw-captain-name">${escHTML(p.web_name)}</div>
                         <div class="lw-captain-meta">
@@ -6697,7 +6755,7 @@
                             ${fx ? `<span class="fixture-chip fdr-${fx.difficulty}" style="font-size:10px;padding:1px 5px;">${escHTML(fx.opponent)}(${fx.isHome ? 'H' : 'A'})</span>` : ''}
                         </div>
                     </div>
-                    <div style="font-family:var(--font-mono);font-weight: 600;font-size:14px;color:${p.lwScore >= 30 ? 'var(--color-success)' : 'var(--text-primary)'}">${p.lwScore}</div>
+                    <div style="font-family:var(--font-mono);font-weight:700;font-size:14px;color:${p.lwScore >= 30 ? 'var(--color-success)' : 'var(--text-primary)'}">${p.lwScore}</div>
                     <div class="lw-captain-actions">
                         <button class="lw-cap-btn ${isCap ? 'active-c' : ''}" onclick="event.stopPropagation();setLWCaptain(${p.id})">C</button>
                         <button class="lw-cap-btn ${isVC ? 'active-vc' : ''}" onclick="event.stopPropagation();setLWViceCaptain(${p.id})">VC</button>
@@ -6706,17 +6764,17 @@
             });
 
             // ── Final Summary ──
-            html += `<div style="margin-top:24px;font-size:18px;font-weight: 600;font-family:var(--font-display);margin-bottom:16px;"><i data-lucide="check-circle" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Recommended Lineup Summary</div>`;
+            html += `<div style="margin-top:24px;font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:16px;"><i data-lucide="check-circle" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Recommended Lineup Summary</div>`;
 
             // Formation + captain display
             const capPlayer = lineupState.squad.find(p => p.id === lineupState.captain);
             const vcPlayer = lineupState.squad.find(p => p.id === lineupState.viceCaptain);
             html += `<div class="lw-final-section">
                 <div style="display:flex;gap:24px;flex-wrap:wrap;">
-                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Formation</span><div style="font-size:24px;font-weight: 600;font-family:var(--font-mono);">${lineupState.formation}</div></div>
-                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Captain</span><div style="font-size:16px;font-weight: 600;color:#F59E0B;"><i data-lucide="crown" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> ${capPlayer?.web_name || '-'}</div></div>
-                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Vice-Captain</span><div style="font-size:16px;font-weight: 600;color:#9CA3AF;">${vcPlayer?.web_name || '-'}</div></div>
-                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Total Score</span><div style="font-size:24px;font-weight: 600;font-family:var(--font-mono);color:var(--color-success);">${xi.reduce((s, p) => s + p.lwScore, 0)}</div></div>
+                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Formation</span><div style="font-size:24px;font-weight:700;font-family:var(--font-mono);">${lineupState.formation}</div></div>
+                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Captain</span><div style="font-size:16px;font-weight:700;color:#F59E0B;"><i data-lucide="crown" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> ${capPlayer?.web_name || '-'}</div></div>
+                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Vice-Captain</span><div style="font-size:16px;font-weight:700;color:#9CA3AF;">${vcPlayer?.web_name || '-'}</div></div>
+                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Total Score</span><div style="font-size:24px;font-weight:700;font-family:var(--font-mono);color:var(--color-success);">${xi.reduce((s, p) => s + p.lwScore, 0)}</div></div>
                 </div>
             </div>`;
 
@@ -6740,8 +6798,8 @@
                 const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
                 const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
                 return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;opacity:0.6;position:relative;">
-                    <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight: 600;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${i + 1}</div>
-                    <div class="lw-pitch-node" style="background:rgba(0,0,0,0.2);border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                    <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${i + 1}</div>
+                    <div class="lw-pitch-node" style="background:rgba(0,0,0,0.2);border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${jerseyNumberLabel(p)}</div>
                     <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
                 </div>`;
             }).join('')}</div>`;
@@ -6769,8 +6827,8 @@
 
             return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;position:relative;">
                 ${isCap ? '<div style="position:absolute;top:-6px;right:-2px;font-size:12px;"><i data-lucide="crown" style="width:12px;height:12px;color:#F59E0B;"></i></div>' : ''}
-                ${isVC ? '<div style="position:absolute;top:-6px;right:-2px;font-size:10px;color:#9CA3AF;font-weight: 600;">VC</div>' : ''}
-                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};${isCap ? 'box-shadow:0 0 8px rgba(245,158,11,0.5);' : ''}">${posNames[p.pos]}</div>
+                ${isVC ? '<div style="position:absolute;top:-6px;right:-2px;font-size:10px;color:#9CA3AF;font-weight:700;">VC</div>' : ''}
+                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};${isCap ? 'box-shadow:0 0 8px rgba(245,158,11,0.5);' : ''}">${jerseyNumberLabel(p)}</div>
                 <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
             </div>`;
         }
@@ -6941,7 +6999,7 @@
             let html = `<div class="lw-ctx-panel">`;
             // Header
             html += `<div class="lw-ctx-header">
-                <span style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight: 600;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</span>
+                <span style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</span>
                 <div class="lw-ctx-header-name">${escHTML(p.web_name)}</div>
                 <span style="font-size:11px;color:var(--text-muted);">${escHTML(p.team)} · £${p.price.toFixed(1)}m</span>
                 <button class="lw-ctx-header-close" onclick="lineupState.selectedPlayers=[];updateLWContextPanel();">✕</button>
@@ -6952,7 +7010,7 @@
             // AI Score Breakdown
             html += `<div class="lw-ctx-section">`;
             html += `<div class="lw-ctx-section-title"><i data-lucide="brain" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> AI Score Breakdown</div>`;
-            html += `<div style="text-align:center;margin-bottom:10px;"><span style="font-family:var(--font-mono);font-size:24px;font-weight: 600;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.lwScore}</span><span style="font-size:11px;color:var(--text-muted);margin-left:4px;">pts</span></div>`;
+            html += `<div style="text-align:center;margin-bottom:10px;"><span style="font-family:var(--font-mono);font-size:24px;font-weight:700;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.lwScore}</span><span style="font-size:11px;color:var(--text-muted);margin-left:4px;">pts</span></div>`;
             html += scoreBar('Exp Pts', detailed.ep, 15, 'var(--color-info)');
             html += scoreBar('Form', detailed.form, 15, '#A78BFA');
             html += scoreBar('Fixture', detailed.fixture, 10, 'var(--color-success)');
@@ -7149,7 +7207,7 @@
 
             let html = `<div class="lw-ctx-panel">`;
             html += `<div class="lw-ctx-header" style="justify-content:space-between;">
-                <span style="font-weight: 600;font-size:13px;">Side-by-Side Comparison</span>
+                <span style="font-weight:700;font-size:13px;">Side-by-Side Comparison</span>
                 <button class="lw-ctx-header-close" onclick="lineupState.selectedPlayers=[];updateLWContextPanel();">✕</button>
             </div>`;
 
@@ -7157,17 +7215,17 @@
             html += `<div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border-subtle);">`;
             [p1, p2].forEach(p => {
                 html += `<div style="text-align:center;padding:10px 8px;${p === p1 ? 'border-right:1px solid var(--border-subtle);' : ''}">
-                    <span style="padding:1px 5px;border-radius:3px;font-size:9px;font-weight: 600;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</span>
-                    <div style="font-weight: 600;font-size:13px;margin-top:4px;">${escHTML(p.web_name)}</div>
+                    <span style="padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</span>
+                    <div style="font-weight:700;font-size:13px;margin-top:4px;">${escHTML(p.web_name)}</div>
                     <div style="font-size:10px;color:var(--text-muted);">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
-                    <div style="font-family:var(--font-mono);font-size:18px;font-weight: 600;margin-top:4px;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.lwScore}</div>
+                    <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;margin-top:4px;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.lwScore}</div>
                 </div>`;
             });
             html += `</div>`;
 
             // Comparison stats
             html += `<div style="padding:12px 16px;">`;
-            html += `<div style="font-size:10px;font-weight: 600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">Key Metrics</div>`;
+            html += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">Key Metrics</div>`;
             const int = v => Math.round(v).toString();
             html += statRow('Form', parseFloat(p1.form), parseFloat(p2.form), v => v.toFixed(1));
             html += statRow('PPG', p1.points / gp, p2.points / gp, v => v.toFixed(1));
@@ -7178,7 +7236,7 @@
             html += statRow('ICT', p1.ictIndex, p2.ictIndex, v => v.toFixed(0));
 
             // Score factor comparison
-            html += `<div style="font-size:10px;font-weight: 600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin:12px 0 6px;">Score Factors</div>`;
+            html += `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin:12px 0 6px;">Score Factors</div>`;
             html += statRow('EP', d1.ep, d2.ep, v => v.toFixed(1));
             html += statRow('Form', d1.form, d2.form, v => v.toFixed(1));
             html += statRow('Fixture', d1.fixture, d2.fixture, v => v.toFixed(1));

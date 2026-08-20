@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="manifest.json">
-    <title>EasyFPL — Team Analysis (Design Preview)</title>
+    <title>EasyFPL — Teams Analysis (Design Preview)</title>
     <meta name="robots" content="noindex, nofollow">
     <meta name="description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth analysis for smarter FPL decisions.">
     <meta name="theme-color" content="#0a0f1a">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a0f1a'/><text x='50' y='72' font-size='65' font-family='Arial,sans-serif' font-weight='bold' fill='%2300DC82' text-anchor='middle'>e</text></svg>">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="EasyFPL">
-    <meta property="og:title" content="EasyFPL — Team Analysis">
+    <meta property="og:title" content="EasyFPL — Teams Analysis">
     <meta property="og:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <meta property="og:url" content="https://easyfpl.com/fpl-teams-analysis.html">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="EasyFPL — Team Analysis">
+    <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/common.css">
@@ -39,7 +39,7 @@
     <!-- Sub-Nav Tabs -->
     <div class="tabs-container">
         <div class="tabs" id="viewTabs">
-            <button class="tab active" data-view="rankings">Team Rankings</button>
+            <button class="tab active" data-view="rankings">Teams Rankings</button>
             <button class="tab" data-view="swings">Fixture Swings</button>
             <button class="tab" data-view="calendar">Full Calendar</button>
             <button class="tab" data-view="stats">Stats Table</button>
@@ -48,6 +48,10 @@
 
     <!-- Main Content -->
     <main class="main-content">
+        <div class="header-row">
+            <h1 class="page-title v2-page-heading"><i data-lucide="shield" class="icon"></i> Teams Analysis</h1>
+        </div>
+        <div class="v2-page-hint hidden" id="seasonNotice">Showing 2025/26 season stats — will update once GW1 is played.</div>
         <span id="currentGW" style="display:none"></span>
         <!-- Content Area -->
         <div id="content-area">
@@ -898,12 +902,7 @@
                     break;
             }
 
-            if (isPreseason) {
-                contentArea.insertAdjacentHTML('afterbegin', `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
-                    <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
-                    <span>Showing 2025/26 season stats — will update once GW1 is played.</span>
-                </div>`);
-            }
+            document.getElementById('seasonNotice').classList.toggle('hidden', !isPreseason);
 
             // Initialize Lucide icons in dynamically rendered content
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1063,7 +1062,7 @@
                                                         <span>GW${run.startGW}–${run.endGW}</span>
                                                         <span>•</span>
                                                         <span>${run.homeCount}H ${run.length - run.homeCount}A</span>
-                                                        <span style="font-size: 8px; padding: 1px 4px; border-radius: 3px; background: ${tier.bg}; color: ${tier.color}; font-weight: 600;">${tier.label}</span>
+                                                        <span style="font-size: 8px; padding: 1px 4px; border-radius: 3px; background: ${tier.bg}; color: ${tier.color}; font-weight: 700;">${tier.label}</span>
                                                     </div>
                                                 </div>
                                                 <div class="swings-run-mini-fdr">
@@ -2424,30 +2423,65 @@
         // ===== ADVANCED xG TABLE — removed; columns merged into Stats Table =====
 
         // ===== MOMENTUM MATRIX =====
-        const TEAM_COLORS = {
-            'ARS': '#EF0107', 'AVL': '#670E36', 'BOU': '#DA291C', 'BRE': '#E30613',
-            'BHA': '#0057B8', 'CHE': '#034694', 'CRY': '#1B458F', 'EVE': '#003399',
-            'FUL': '#000000', 'IPS': '#0044AA', 'LEI': '#003090', 'LIV': '#C8102E',
-            'MCI': '#6CABDD', 'MUN': '#DA291C', 'NEW': '#241F20', 'NFO': '#E53233',
-            'SOU': '#D71920', 'TOT': '#132257', 'WHU': '#7A263A', 'WOL': '#FDB913',
-            // Promoted teams fallback
-            'LEE': '#FFCD00', 'BUR': '#6C1D45', 'SHU': '#EE2737', 'LUT': '#F78F1E'
-        };
-
         let momentumMetric = 'net'; // 'net', 'attack', 'defense'
         let momentumChart = null;
         let badgeImages = new Map();
 
         function preloadTeamBadges(teams) {
-            teams.forEach(team => {
-                if (team.badgeUrl && !badgeImages.has(team.id)) {
-                    const img = new Image(20, 20);
-                    img.crossOrigin = 'anonymous';
-                    img.src = team.badgeUrl;
+            return Promise.all(teams.map(team => new Promise(resolve => {
+                if (!team.badgeUrl) { resolve(); return; }
+
+                let img = badgeImages.get(team.id);
+                if (!img) {
+                    img = new Image();
                     badgeImages.set(team.id, img);
+                    img.src = team.badgeUrl;
                 }
-            });
+
+                if (img.complete) { resolve(); return; }
+                img.addEventListener('load', resolve, { once: true });
+                img.addEventListener('error', resolve, { once: true });
+            })));
         }
+
+        const momentumBadgePlugin = {
+            id: 'momentumBadges',
+            afterDatasetsDraw(chart) {
+                const meta = chart.getDatasetMeta(0);
+                const points = chart.data.datasets[0].data;
+                const chartCtx = chart.ctx;
+
+                meta.data.forEach((element, index) => {
+                    const team = points[index]?.teamData;
+                    if (!team || element.skip) return;
+
+                    chartCtx.save();
+                    chartCtx.beginPath();
+                    chartCtx.arc(element.x, element.y, 18, 0, Math.PI * 2);
+                    chartCtx.fillStyle = '#F1F1EF';
+                    chartCtx.fill();
+                    chartCtx.strokeStyle = '#E4E4E1';
+                    chartCtx.lineWidth = 1;
+                    chartCtx.stroke();
+
+                    const img = badgeImages.get(team.id);
+                    if (img && img.complete && img.naturalWidth > 0) {
+                        const maxSize = 26;
+                        const scale = Math.min(maxSize / img.naturalWidth, maxSize / img.naturalHeight);
+                        const width = img.naturalWidth * scale;
+                        const height = img.naturalHeight * scale;
+                        chartCtx.drawImage(img, element.x - width / 2, element.y - height / 2, width, height);
+                    } else {
+                        chartCtx.fillStyle = '#636363';
+                        chartCtx.font = '600 8px Inter, sans-serif';
+                        chartCtx.textAlign = 'center';
+                        chartCtx.textBaseline = 'middle';
+                        chartCtx.fillText(team.shortName || '?', element.x, element.y);
+                    }
+                    chartCtx.restore();
+                });
+            }
+        };
 
         function renderMomentumMatrix() {
             return `
@@ -2497,31 +2531,81 @@
             }
         }
 
-        function initMomentumChart() {
+        function renderMomentumTooltip(context) {
+            const { chart, tooltip } = context;
+            let card = document.querySelector('.momentum-hover-card');
+
+            if (!card) {
+                card = document.createElement('div');
+                card.className = 'momentum-hover-card';
+                card.setAttribute('role', 'tooltip');
+                document.body.appendChild(card);
+            }
+
+            if (!tooltip || tooltip.opacity === 0 || !tooltip.dataPoints?.length) {
+                card.classList.remove('visible');
+                return;
+            }
+
+            const team = tooltip.dataPoints[0].raw.teamData;
+            const changedTeam = card.dataset.teamId !== String(team.id);
+            card.dataset.teamId = String(team.id);
+            card.innerHTML = `
+                <div class="momentum-hover-name">${escHTML(team.name)}</div>
+                <div class="momentum-hover-meta"><strong>FDR ${team.avgFdr}</strong><span>•</span><span>${team.wins ?? 0}W ${team.draws ?? 0}D ${team.losses ?? 0}L</span></div>
+            `;
+
+            const gap = 26;
+            const cardWidth = 196;
+            const canvasRect = chart.canvas.getBoundingClientRect();
+            let left = canvasRect.left + tooltip.caretX + gap;
+            let cardSide = 'points-right';
+            if (left + cardWidth > window.innerWidth - 8) {
+                left = canvasRect.left + tooltip.caretX - cardWidth - gap;
+                cardSide = 'points-left';
+            }
+            const top = Math.max(8, Math.min(
+                canvasRect.top + tooltip.caretY - 34,
+                window.innerHeight - 76
+            ));
+
+            card.style.left = `${left}px`;
+            card.style.top = `${top}px`;
+            card.classList.remove('points-left', 'points-right');
+            card.classList.add(cardSide);
+            if (changedTeam) {
+                card.classList.remove('visible');
+                void card.offsetWidth;
+                card.classList.add('visible');
+            } else {
+                card.classList.add('visible');
+            }
+        }
+
+        async function initMomentumChart() {
             const canvas = document.getElementById('momentumChart');
             if (!canvas || typeof Chart === 'undefined') return;
+            document.querySelector('.momentum-hover-card')?.remove();
 
             if (momentumChart) {
                 momentumChart.destroy();
                 momentumChart = null;
             }
 
-            const ctx = canvas.getContext('2d');
+            // Wait for badge assets before drawing. If the user changes view
+            // while they load, abandon this now-stale chart instance.
+            await preloadTeamBadges(allTeamsData);
+            if (!canvas.isConnected) return;
 
-            // Ensure badges are preloaded
-            preloadTeamBadges(allTeamsData);
+            const ctx = canvas.getContext('2d');
 
             const dataPoints = allTeamsData.map(team => {
                 const xVal = 6 - parseFloat(team.avgFdr); // invert: low FDR → right side
                 const yVal = getMomentumY(team);
-                const color = TEAM_COLORS[team.shortName] || '#888888';
                 return {
                     x: xVal,
                     y: yVal,
                     teamData: team,
-                    backgroundColor: color,
-                    borderColor: color,
-                    badgeImg: badgeImages.get(team.id) || null,
                 };
             });
 
@@ -2543,23 +2627,17 @@
             const textColor = style.getPropertyValue('--text-secondary').trim() || '#6B7280';
             const mutedColor = style.getPropertyValue('--text-muted').trim() || '#9CA3AF';
 
-            // Build pointStyle array: use badge Image if loaded, else colored circle fallback
-            const pointStyles = dataPoints.map(p => {
-                const img = p.badgeImg;
-                if (img && img.complete && img.naturalWidth > 0) return img;
-                return 'circle';
-            });
-
             momentumChart = new Chart(ctx, {
                 type: 'scatter',
+                plugins: [momentumBadgePlugin],
                 data: {
                     datasets: [{
                         data: dataPoints,
-                        pointStyle: pointStyles,
-                        pointRadius: 14,
-                        pointHoverRadius: 18,
-                        pointBackgroundColor: dataPoints.map(p => p.backgroundColor),
-                        pointBorderColor: dataPoints.map(p => p.borderColor),
+                        pointStyle: 'circle',
+                        pointRadius: 19,
+                        pointHoverRadius: 21,
+                        pointBackgroundColor: 'rgba(0,0,0,0.001)',
+                        pointBorderColor: 'transparent',
                         pointBorderWidth: 0,
                         pointHoverBorderWidth: 2,
                         pointHoverBorderColor: '#ffffff',
@@ -2571,23 +2649,13 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            callbacks: {
-                                label: function(ctx) {
-                                    const t = ctx.raw.teamData;
-                                    const xg = t.seasonXg;
-                                    const metricVal = getMomentumY(t).toFixed(2);
-                                    return [
-                                        t.name,
-                                        `FDR: ${t.avgFdr} | Ease: ${ctx.raw.x.toFixed(1)}`,
-                                        `${getMomentumYLabel().split('(')[0].trim()}: ${metricVal}`
-                                    ];
-                                }
+                            enabled: false,
+                            external: renderMomentumTooltip,
+                            animations: {
+                                x: { duration: 0 },
+                                y: { duration: 0 },
+                                opacity: { duration: 0 },
                             },
-                            backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                            titleFont: { family: 'Inter', weight: '600' },
-                            bodyFont: { family: 'Inter', size: 12 },
-                            padding: 10,
-                            cornerRadius: 8,
                         },
                         annotation: {
                             annotations: {
@@ -3245,7 +3313,7 @@
                     <div class="modal-title">${escHTML(run.teamName)}</div>
                     <div class="modal-subtitle" style="display:flex;align-items:center;gap:8px;">
                         <span>GW${run.startGW} → GW${run.endGW}</span>
-                        <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: ${tier.bg}; color: ${tier.color}; font-weight: 600;">${tier.label}</span>
+                        <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: ${tier.bg}; color: ${tier.color}; font-weight: 700;">${tier.label}</span>
                     </div>
                 </div>
                 <button class="modal-close" onclick="closeModal()">✕</button>
@@ -3333,7 +3401,7 @@
                             const effFdr = getEffectiveFdr(f);
                             return `
                             <div style="flex: 1; height: ${24 + effFdr * 8}px; border-radius: var(--radius-sm); background: ${getFdrColor(effFdr)}; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px;">
-                                <span style="font-size: 8px; font-weight: 600; color: ${getFdrTextColor(effFdr)}">${escHTML(f.opponent)}</span>
+                                <span style="font-size: 8px; font-weight: 700; color: ${getFdrTextColor(effFdr)}">${escHTML(f.opponent)}</span>
                             </div>`;
                         }).join('')}
                     </div>
@@ -3463,14 +3531,14 @@
                                 <span style="font-size: 11px; color: var(--text-muted);">GW${currentGW+5}–${currentGW+9} avg</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: var(--space-3); justify-content: center;">
-                                <span style="font-family: 'Space Grotesk'; font-size: 22px; font-weight: 600; color: ${parseFloat(s.longSwing.currentFdr) <= 2.8 ? 'var(--color-success)' : parseFloat(s.longSwing.currentFdr) >= 3.5 ? 'var(--color-error)' : 'var(--text-primary)'}">${s.longSwing.currentFdr}</span>
+                                <span style="font-family: 'Space Grotesk'; font-size: 22px; font-weight: 700; color: ${parseFloat(s.longSwing.currentFdr) <= 2.8 ? 'var(--color-success)' : parseFloat(s.longSwing.currentFdr) >= 3.5 ? 'var(--color-error)' : 'var(--text-primary)'}">${s.longSwing.currentFdr}</span>
                                 <span style="font-size: 18px; color: ${swingColor};">${isImproving ? '→' : '→'}</span>
-                                <span style="font-family: 'Space Grotesk'; font-size: 22px; font-weight: 600; color: ${parseFloat(s.longSwing.futureFdr) <= 2.8 ? 'var(--color-success)' : parseFloat(s.longSwing.futureFdr) >= 3.5 ? 'var(--color-error)' : 'var(--text-primary)'}">${s.longSwing.futureFdr}</span>
+                                <span style="font-family: 'Space Grotesk'; font-size: 22px; font-weight: 700; color: ${parseFloat(s.longSwing.futureFdr) <= 2.8 ? 'var(--color-success)' : parseFloat(s.longSwing.futureFdr) >= 3.5 ? 'var(--color-error)' : 'var(--text-primary)'}">${s.longSwing.futureFdr}</span>
                             </div>
                         </div>
                         <div style="display: flex; gap: 2px;">
                             ${s.allFutureFixtures.map((f, i) => `
-                                <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 600; background: ${getFdrColor(getEffectiveFdr(f))}; color: ${getFdrTextColor(getEffectiveFdr(f))}; ${i === 4 ? 'border-left: 2px solid var(--surface-1); border-right: 2px solid var(--surface-1);' : ''}">
+                                <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 700; background: ${getFdrColor(getEffectiveFdr(f))}; color: ${getFdrTextColor(getEffectiveFdr(f))}; ${i === 4 ? 'border-left: 2px solid var(--surface-1); border-right: 2px solid var(--surface-1);' : ''}">
                                     ${escHTML(f.opponent)}
                                 </div>
                             `).join('')}
@@ -3538,7 +3606,7 @@
                     <div class="analysis-team-list">
                         ${top5.map((team, i) => `
                             <div class="analysis-team-item">
-                                <span style="font-size: 12px; font-weight: 600; color: ${i < 3 ? 'var(--color-warning)' : 'var(--text-muted)'}; width: 20px;">${i + 1}</span>
+                                <span style="font-size: 12px; font-weight: 700; color: ${i < 3 ? 'var(--color-warning)' : 'var(--text-muted)'}; width: 20px;">${i + 1}</span>
                                 <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="analysis-team-badge" onerror="this.style.display='none'">
                                 <div class="analysis-team-info">
                                     <div class="analysis-team-name">${escHTML(team.name)}</div>
