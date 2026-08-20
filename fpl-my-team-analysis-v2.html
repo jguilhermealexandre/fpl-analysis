@@ -1254,35 +1254,6 @@
 
             return `
             <div class="my-team-dashboard-top">
-                <aside class="my-team-side-panel">
-                <div class="manager-info">
-                    <span class="manager-name">${escHTML(`${managerData.player_first_name || ''} ${managerData.player_last_name || ''}`.trim() || 'Manager')}</span>
-                    <span class="manager-stat">Rank <strong>${managerData.summary_overall_rank?.toLocaleString() || '-'}</strong></span>
-                    <span class="manager-stat">Points <strong>${managerData.summary_overall_points?.toLocaleString() || '-'}</strong></span>
-                    <span class="manager-stat">Bank <strong>£${(picksData.entry_history?.bank / 10 || 0).toFixed(1)}m</strong></span>
-                </div>
-                <div class="health-ring-container">
-                    <div class="health-ring">
-                        <svg viewBox="0 0 120 120">
-                            <circle class="health-ring-track" cx="60" cy="60" r="54"/>
-                            <circle class="health-ring-fill" id="healthRingFill" cx="60" cy="60" r="54"
-                                stroke="${healthColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"
-                                style="transform:rotate(-90deg);transform-origin:center;"/>
-                            <text x="60" y="55" text-anchor="middle" fill="${healthColor}" font-size="30" font-weight="700" font-family="var(--font-mono)">${health}</text>
-                            <text x="60" y="72" text-anchor="middle" fill="var(--text-muted)" font-size="10" font-weight="600">HEALTH</text>
-                        </svg>
-                    </div>
-                    <div class="health-sublabel">${healthText}</div>
-                    ${healthFactors && healthFactors.length ? `<div class="health-factors">${healthFactors.map(f => `<div class="health-factor ${f.impact}">${f.icon} ${escHTML(f.text)}</div>`).join('')}</div>` : ''}
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
-                        ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">\u25cf ${sells.length} Sell</span>` : ''}
-                        ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">\u25cf ${monitors.length} Monitor</span>` : ''}
-                        ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">\u2605 ${stars.length} Star</span>` : ''}
-                        <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">\u25cf ${holds.length} Hold</span>
-                    </div>
-                    ${renderLineupAlert()}
-                </div>
-                </aside>
                 <div class="squad-lineup-column">
                     <div class="squad-lineup-header"><span>Squad Snapshot</span><span>${defs.length}-${mids.length}-${fwds.length}</span></div>
                     <div class="pitch-container">
@@ -1298,6 +1269,36 @@
                         ${benchPlayers.map(benchNode).join('')}
                     </div>
                 </div>
+                <aside class="my-team-side-panel">
+                    <div class="manager-info">
+                        <span class="manager-name">${escHTML(`${managerData.player_first_name || ''} ${managerData.player_last_name || ''}`.trim() || 'Manager')}</span>
+                        <span class="manager-stat">Rank <strong>${managerData.summary_overall_rank?.toLocaleString() || '-'}</strong></span>
+                        <span class="manager-stat">Points <strong>${managerData.summary_overall_points?.toLocaleString() || '-'}</strong></span>
+                        <span class="manager-stat">Bank <strong>£${(picksData.entry_history?.bank / 10 || 0).toFixed(1)}m</strong></span>
+                    </div>
+                    <div class="health-ring-container">
+                        <div class="health-panel-title">Squad Health</div>
+                        <div class="health-ring">
+                            <svg viewBox="0 0 120 120">
+                                <circle class="health-ring-track" cx="60" cy="60" r="54"/>
+                                <circle class="health-ring-fill" id="healthRingFill" cx="60" cy="60" r="54"
+                                    stroke="${healthColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"
+                                    style="transform:rotate(-90deg);transform-origin:center;"/>
+                                <text x="60" y="55" text-anchor="middle" fill="${healthColor}" font-size="30" font-weight="700" font-family="var(--font-mono)">${health}</text>
+                                <text x="60" y="72" text-anchor="middle" fill="var(--text-muted)" font-size="10" font-weight="600">HEALTH</text>
+                            </svg>
+                        </div>
+                        <div class="health-sublabel">${healthText}</div>
+                        ${healthFactors && healthFactors.length ? `<div class="health-factors">${healthFactors.map(f => `<div class="health-factor ${f.impact}">${f.icon} ${escHTML(f.text)}</div>`).join('')}</div>` : ''}
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+                            ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">\u25cf ${sells.length} Sell</span>` : ''}
+                            ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">\u25cf ${monitors.length} Monitor</span>` : ''}
+                            ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">\u2605 ${stars.length} Star</span>` : ''}
+                            <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">\u25cf ${holds.length} Hold</span>
+                        </div>
+                        ${renderLineupAlert()}
+                    </div>
+                </aside>
             </div>
             <div class="my-team-analysis-grid">
                 ${(() => {
