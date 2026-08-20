@@ -4,6 +4,10 @@
    Only used by *-v2.html pages — no effect on the live site.
    ============================================ */
 
+// Compatibility with cached/deploying versions of v2-design.css that gate
+// visibility on this class. Set it immediately; there is no animation or wait.
+document.documentElement.classList.add('v2-shell-ready');
+
 function loadSidebarNav() {
     return fetch('sidebar-nav.html')
         .then(r => r.text())
