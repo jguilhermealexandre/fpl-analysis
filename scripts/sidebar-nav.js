@@ -4,6 +4,15 @@
    Only used by *-v2.html pages — no effect on the live site.
    ============================================ */
 
+// Restore the rail preference before the injected sidebar is painted.
+try {
+    if (localStorage.getItem('easyfpl-sidebar-collapsed') === 'true') {
+        document.documentElement.classList.add('v2-sidebar-collapsed');
+    }
+} catch (error) {
+    // Storage can be unavailable in strict/private browser contexts.
+}
+
 function loadSidebarNav() {
     return fetch('sidebar-nav.html')
         .then(r => r.text())
@@ -32,6 +41,7 @@ function loadSidebarNav() {
 
             if (window.lucide) lucide.createIcons();
 
+            initSidebarCollapse();
             initSidebarFlyout();
             initV2PageEntrance();
         })
@@ -39,6 +49,35 @@ function loadSidebarNav() {
             console.warn('Sidebar navigation could not be loaded:', error);
             return null;
         });
+}
+
+function initSidebarCollapse() {
+    const button = document.getElementById('v2SidebarCollapse');
+    if (!button) return;
+
+    const syncButton = () => {
+        const collapsed = document.documentElement.classList.contains('v2-sidebar-collapsed');
+        button.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        button.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+        button.setAttribute('aria-expanded', String(!collapsed));
+    };
+
+    document.querySelectorAll('.v2-nav-item[data-page]').forEach(item => {
+        const label = item.querySelector(':scope > span')?.textContent?.trim();
+        if (label) item.title = label;
+    });
+
+    button.addEventListener('click', () => {
+        const collapsed = document.documentElement.classList.toggle('v2-sidebar-collapsed');
+        try {
+            localStorage.setItem('easyfpl-sidebar-collapsed', String(collapsed));
+        } catch (error) {
+            // The visual toggle still works when persistence is unavailable.
+        }
+        syncButton();
+    });
+
+    syncButton();
 }
 
 // One calm entrance sequence shared by every V2 page: navigation first,
