@@ -2525,6 +2525,45 @@
             }
         }
 
+        function renderMomentumTooltip(context) {
+            const { chart, tooltip } = context;
+            const container = chart.canvas.parentElement;
+            let card = container.querySelector('.momentum-hover-card');
+
+            if (!card) {
+                card = document.createElement('div');
+                card.className = 'momentum-hover-card';
+                card.setAttribute('role', 'tooltip');
+                container.appendChild(card);
+            }
+
+            if (!tooltip || tooltip.opacity === 0 || !tooltip.dataPoints?.length) {
+                card.classList.remove('visible');
+                return;
+            }
+
+            const team = tooltip.dataPoints[0].raw.teamData;
+            card.innerHTML = `
+                <div class="momentum-hover-name">${escHTML(team.name)}</div>
+                <div class="momentum-hover-meta"><strong>FDR ${team.avgFdr}</strong><span>•</span><span>${team.wins ?? 0}W ${team.draws ?? 0}D ${team.losses ?? 0}L</span></div>
+            `;
+
+            const gap = 14;
+            const cardWidth = 196;
+            let left = chart.canvas.offsetLeft + tooltip.caretX + gap;
+            if (left + cardWidth > container.clientWidth - 8) {
+                left = chart.canvas.offsetLeft + tooltip.caretX - cardWidth - gap;
+            }
+            const top = Math.max(8, Math.min(
+                chart.canvas.offsetTop + tooltip.caretY - 34,
+                container.clientHeight - 76
+            ));
+
+            card.style.left = `${left}px`;
+            card.style.top = `${top}px`;
+            card.classList.add('visible');
+        }
+
         async function initMomentumChart() {
             const canvas = document.getElementById('momentumChart');
             if (!canvas || typeof Chart === 'undefined') return;
@@ -2592,23 +2631,13 @@
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            callbacks: {
-                                label: function(ctx) {
-                                    const t = ctx.raw.teamData;
-                                    const xg = t.seasonXg;
-                                    const metricVal = getMomentumY(t).toFixed(2);
-                                    return [
-                                        t.name,
-                                        `FDR: ${t.avgFdr} | Ease: ${ctx.raw.x.toFixed(1)}`,
-                                        `${getMomentumYLabel().split('(')[0].trim()}: ${metricVal}`
-                                    ];
-                                }
+                            enabled: false,
+                            external: renderMomentumTooltip,
+                            animations: {
+                                x: { duration: 0 },
+                                y: { duration: 0 },
+                                opacity: { duration: 0 },
                             },
-                            backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                            titleFont: { family: 'Inter', weight: '600' },
-                            bodyFont: { family: 'Inter', size: 12 },
-                            padding: 10,
-                            cornerRadius: 8,
                         },
                         annotation: {
                             annotations: {
