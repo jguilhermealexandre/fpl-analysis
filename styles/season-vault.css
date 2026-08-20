@@ -1,0 +1,331 @@
+/* ============================================
+   Season Vault — private prediction league
+   Teal accent, layered on styles/common.css
+   ============================================ */
+
+:root {
+    --color-predictions: #14B8A6;
+    --color-predictions-muted: rgba(20, 184, 166, 0.10);
+    --color-predictions-glow: rgba(20, 184, 166, 0.20);
+    --color-predictions-text: #0F766E;
+}
+
+[data-theme="dark"] {
+    --color-predictions: #2DD4BF;
+    --color-predictions-muted: rgba(45, 212, 191, 0.12);
+    --color-predictions-glow: rgba(45, 212, 191, 0.20);
+    --color-predictions-text: #5EEAD4;
+}
+
+.sv-hero {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--space-10) 24px var(--space-6);
+}
+
+.sv-hero-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-xl);
+    background: var(--color-predictions-muted);
+    color: var(--color-predictions);
+    margin-bottom: var(--space-4);
+}
+
+.sv-hero h1 {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.sv-hero p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 560px;
+}
+
+.sv-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px var(--space-12);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+
+.sv-section {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+}
+
+.sv-section-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+.sv-section-title .icon {
+    color: var(--color-predictions);
+}
+
+.sv-section-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: -8px;
+    margin-bottom: var(--space-4);
+}
+
+/* ===== LEADERBOARD ===== */
+.sv-leaderboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.sv-leader-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 2fr auto auto auto;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--surface-0);
+}
+
+.sv-leader-row-crowd {
+    margin-top: var(--space-2);
+    border: 1px dashed var(--color-predictions);
+    background: var(--color-predictions-muted);
+}
+
+.sv-rank-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.sv-leader-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sv-leader-bar-wrap {
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--surface-3);
+    overflow: hidden;
+}
+
+.sv-leader-bar {
+    height: 100%;
+    background: var(--color-predictions);
+    border-radius: var(--radius-full);
+    transition: width 400ms ease-out;
+}
+
+.sv-leader-bar-crowd {
+    background: repeating-linear-gradient(
+        45deg,
+        var(--color-predictions),
+        var(--color-predictions) 6px,
+        var(--color-predictions-text) 6px,
+        var(--color-predictions-text) 12px
+    );
+}
+
+.sv-leader-score {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.sv-leader-max {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.sv-leader-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.sv-leader-perfect {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--color-primary);
+    white-space: nowrap;
+}
+
+/* ===== REAL TABLE ===== */
+.sv-real-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.sv-real-table th {
+    text-align: left;
+    padding: var(--space-2) var(--space-3);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.sv-real-table td {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+.sv-team-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.sv-pos {
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+}
+
+.sv-points {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* ===== HARDEST TO PREDICT ===== */
+.sv-hard-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.sv-hard-row {
+    display: grid;
+    grid-template-columns: 1.4fr 2fr auto;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.sv-hard-team {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.sv-hard-bar-wrap {
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--surface-3);
+    overflow: hidden;
+}
+
+.sv-hard-bar {
+    height: 100%;
+    background: var(--fdr-5);
+    border-radius: var(--radius-full);
+}
+
+.sv-hard-value {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* ===== HEATMAP ===== */
+.sv-heatmap-scroll {
+    overflow-x: auto;
+}
+
+.sv-heatmap {
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.sv-heatmap th,
+.sv-heatmap td {
+    padding: 4px 6px;
+    text-align: center;
+}
+
+.sv-heat-name {
+    text-align: left !important;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    padding-right: var(--space-3) !important;
+}
+
+.sv-heat-cell {
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    min-width: 28px;
+}
+
+.sv-heatmap-legend {
+    margin-top: var(--space-4);
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ===== WARNINGS / NOTICES ===== */
+.sv-unmatched-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid var(--color-error);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ===== GRID LAYOUT FOR SECONDARY STATS ===== */
+.sv-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+}
+
+@media (max-width: 800px) {
+    .sv-grid-2 {
+        grid-template-columns: 1fr;
+    }
+    .sv-leader-row {
+        grid-template-columns: 24px 1fr auto;
+    }
+    .sv-leader-bar-wrap,
+    .sv-leader-meta {
+        display: none;
+    }
+}
