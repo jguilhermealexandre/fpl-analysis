@@ -4,6 +4,10 @@
    Only used by *-v2.html pages — no effect on the live site.
    ============================================ */
 
+// Safety fallback: a failed or unusually slow partial must never leave the
+// complete application hidden.
+setTimeout(() => document.documentElement.classList.add('v2-app-ready'), 2500);
+
 function loadSidebarNav() {
     return fetch('sidebar-nav.html')
         .then(r => r.text())
@@ -33,9 +37,13 @@ function loadSidebarNav() {
             if (window.lucide) lucide.createIcons();
 
             initSidebarFlyout();
+            requestAnimationFrame(() => {
+                document.documentElement.classList.add('v2-app-ready');
+            });
         })
         .catch(error => {
             console.warn('Sidebar navigation could not be loaded:', error);
+            document.documentElement.classList.add('v2-app-ready');
             return null;
         });
 }
