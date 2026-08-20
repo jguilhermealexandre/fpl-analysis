@@ -84,6 +84,21 @@ function initSidebarCollapse() {
     syncButton();
 }
 
+function toggleThemeSmooth() {
+    const root = document.documentElement;
+    if (root.classList.contains('v2-theme-transition')) return;
+
+    root.classList.add('v2-theme-transition');
+    if (!document.startViewTransition) {
+        toggleTheme();
+        window.setTimeout(() => root.classList.remove('v2-theme-transition'), 650);
+        return;
+    }
+
+    const transition = document.startViewTransition(() => toggleTheme());
+    transition.finished.finally(() => root.classList.remove('v2-theme-transition'));
+}
+
 // One calm entrance sequence shared by every V2 page: navigation first,
 // heading second, then the page's primary content blocks in visual order.
 function initV2PageEntrance() {
