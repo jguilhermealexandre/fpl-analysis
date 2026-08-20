@@ -88,6 +88,12 @@ function initV2PageEntrance() {
     const sidebar = document.querySelector('.v2-sidebar');
     const heading = document.querySelector('.v2-page-heading');
     if (sidebar) sidebar.classList.add('v2-enter-sidebar');
+    document.querySelectorAll(
+        '.v2-main-content > .tabs-container, ' +
+        '.v2-main-content > .ticker-bar, ' +
+        '.v2-main-content > .news-strip, ' +
+        '.v2-main-content > .price-ticker-bar'
+    ).forEach(bar => bar.classList.add('v2-enter-topbar'));
     if (heading) heading.classList.add('v2-enter-heading');
 
     const selectors = [
