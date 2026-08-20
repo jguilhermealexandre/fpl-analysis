@@ -33,6 +33,7 @@ function loadSidebarNav() {
             if (window.lucide) lucide.createIcons();
 
             initSidebarFlyout();
+            initV2PageTransitions();
         })
         .catch(error => {
             console.warn('Sidebar navigation could not be loaded:', error);
@@ -51,6 +52,31 @@ function loadSidebarNav() {
             document.documentElement.classList.add('v2-shell-ready');
             return result;
         });
+}
+
+function initV2PageTransitions() {
+    if (window.__v2PageTransitionsReady) return;
+    window.__v2PageTransitionsReady = true;
+
+    document.addEventListener('click', event => {
+        const link = event.target.closest('.v2-sidebar a[href]');
+        if (!link || event.defaultPrevented || event.button !== 0) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        if (link.target && link.target !== '_self') return;
+
+        const destination = new URL(link.href, location.href);
+        if (destination.origin !== location.origin) return;
+        if (destination.href === location.href || destination.hash && destination.pathname === location.pathname) return;
+
+        event.preventDefault();
+        document.documentElement.classList.add('v2-page-leaving');
+        setTimeout(() => { location.href = destination.href; }, 110);
+    });
+
+    // A page restored from the browser's back/forward cache must be visible again.
+    window.addEventListener('pageshow', () => {
+        document.documentElement.classList.remove('v2-page-leaving');
+    });
 }
 
 // Flyout sub-nav — same hover/click-toggle pattern as the top nav's
