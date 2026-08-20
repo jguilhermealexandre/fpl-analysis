@@ -9,6 +9,15 @@
 
 const PREDICTIONS_URL = 'data/predictions.json';
 
+// Local copy of the site's amber "not live yet" banner pattern — not a call
+// to common.js's renderSeasonNotice, since that helper isn't deployed yet.
+function svSeasonNotice(message) {
+    return `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
+        <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
+        <span>${message}</span>
+    </div>`;
+}
+
 // Casual/alternate labels a friend might type in a CSV, mapped to short_name.
 const TEAM_ALIASES = {
     'spurs': 'TOT', 'tottenham': 'TOT', 'tottenhamhotspur': 'TOT',
@@ -302,7 +311,7 @@ async function initSeasonVault() {
         const allUnmatched = scoredFriends.flatMap(f => f.unmatched.map(label => `${f.name}: "${label}"`));
 
         document.getElementById('sv-notice').innerHTML = isLive ? '' :
-            renderSeasonNotice(`Standings for ${escHTML(predictions.season)} aren't live yet — scores will populate automatically once real match results start coming in.`);
+            svSeasonNotice(`Standings for ${escHTML(predictions.season)} aren't live yet — scores will populate automatically once real match results start coming in.`);
 
         if (allUnmatched.length) {
             document.getElementById('sv-warning').innerHTML = `<div class="sv-unmatched-warning">
