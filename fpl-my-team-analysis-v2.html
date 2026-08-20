@@ -47,7 +47,6 @@
         <!-- Header Row -->
         <div class="header-row">
             <h1 class="page-title v2-page-heading"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
-            <button class="btn btn-secondary" id="settingsBtn" onclick="openSettings()" style="margin-left:auto;" aria-label="Analysis settings" title="Analysis settings"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
         </div>
         <div class="squad-hint-banner hidden" id="squadHintBanner">Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
         <!-- Hidden input used by loadTeamById() -->
@@ -1270,6 +1269,17 @@
                     </div>
                 </div>
                 <aside class="my-team-side-panel">
+                    <div class="strategy-preset-toggle" aria-label="Analysis strategy">
+                        <button class="strategy-preset-tab${activePreset === 'aggressive' ? ' active' : ''}" data-strategy-preset="aggressive" onclick="applyPreset('aggressive')" type="button">
+                            <i data-lucide="flame"></i><span>Aggressive</span><span class="strategy-preset-description">— Quick sell triggers</span>
+                        </button>
+                        <button class="strategy-preset-tab${activePreset === 'balanced' ? ' active' : ''}" data-strategy-preset="balanced" onclick="applyPreset('balanced')" type="button">
+                            <i data-lucide="scale"></i><span>Balanced</span><span class="strategy-preset-description">— Default settings</span>
+                        </button>
+                        <button class="strategy-preset-tab${activePreset === 'patient' ? ' active' : ''}" data-strategy-preset="patient" onclick="applyPreset('patient')" type="button">
+                            <i data-lucide="clock"></i><span>Patient</span><span class="strategy-preset-description">— Hold through dips</span>
+                        </button>
+                    </div>
                     <div class="manager-info">
                         <span class="manager-name">${escHTML(`${managerData.player_first_name || ''} ${managerData.player_last_name || ''}`.trim() || 'Manager')}</span>
                         <span class="manager-stat">Rank <strong>${managerData.summary_overall_rank?.toLocaleString() || '-'}</strong></span>
@@ -1654,8 +1664,6 @@
 
             const hashMap = { team: 'squad', transfers: 'transfers', news: 'news', draft: 'draft', transfer: 'transfer', lineup: 'lineup' };
             history.replaceState(null, '', '#' + (hashMap[tab] || tab));
-
-            document.getElementById('settingsBtn').style.display = (tab === 'team') ? '' : 'none';
 
             if (tab === 'team') {
                 teamDisplay.style.display = '';
@@ -5974,6 +5982,9 @@
             activePreset = preset;
             localStorage.setItem('fpl_analysis_settings', JSON.stringify(userSettings));
             localStorage.setItem('fpl_active_preset', preset);
+            document.querySelectorAll('.strategy-preset-tab').forEach(button => {
+                button.classList.toggle('active', button.dataset.strategyPreset === preset);
+            });
             closeSettings();
             
             if (selectedPlayers.length > 0) {
