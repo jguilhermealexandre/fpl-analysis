@@ -66,32 +66,23 @@ html.v2-theme body * {
     }
 }
 
-/* Let the browser preserve the outgoing frame until the incoming page is
-   ready. Unlike the old JS opacity cycle, this never exposes a blank shell. */
-@view-transition {
-    navigation: auto;
+/* Sidebar and page content enter as one complete application shell. */
+html.v2-theme body {
+    opacity: 0;
 }
 
-::view-transition-old(root) {
-    animation: v2-page-out 180ms ease-in both;
+html.v2-theme.v2-app-ready body {
+    opacity: 1;
+    animation: v2-app-enter 480ms ease-out both;
 }
 
-::view-transition-new(root) {
-    animation: v2-page-in 520ms ease-out both;
-}
-
-@keyframes v2-page-out {
-    to { opacity: 0.72; }
-}
-
-@keyframes v2-page-in {
-    from { opacity: 0.72; }
+@keyframes v2-app-enter {
+    from { opacity: 0; }
     to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    ::view-transition-old(root),
-    ::view-transition-new(root) { animation: none; }
+    html.v2-theme.v2-app-ready body { animation: none; }
 }
 
 /* ===== NEW COLOR PALETTE (values only — same variable names as common.css,
