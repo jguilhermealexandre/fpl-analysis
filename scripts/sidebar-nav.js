@@ -113,13 +113,6 @@ function initV2PageEntrance() {
         '.news-page-header > .news-page-sub',
         '#content-area > *:not(.skeleton-container)',
         '#newsDisplay > *:not(.skeleton-container)',
-        '.teams-grid > *:not(.skeleton-container)',
-        '.news-grid > *',
-        '.nhg-grid > *',
-        '.nha-grid > *',
-        '.summary-grid > *',
-        '.player-grid > *',
-        '.steps-grid > *',
         '.faq-container > *',
         '.how-it-works-container > *',
         '.how-it-works-content > *'
@@ -147,9 +140,9 @@ function initV2PageEntrance() {
 
     // Start on the next painted frame so the browser always has a stable
     // initial state to animate from instead of flashing final content first.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
         document.body.classList.add('v2-sequence-ready');
-    }));
+    });
 
     // API-backed pages replace skeletons after the initial shell is ready.
     // Animate those real panels when they arrive, using the same visual rhythm.
