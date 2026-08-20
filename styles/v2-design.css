@@ -66,16 +66,14 @@ html.v2-theme body * {
     }
 }
 
-/* One overlapping transition for the complete page. The outgoing snapshot
-   remains underneath the incoming page, so navigation never exposes an
-   empty frame and the sidebar is not animated separately. */
+/* The page shell owns navigation animation. Disabling the browser snapshot
+   transition prevents a second full-page fade from washing over it. */
 @view-transition {
-    navigation: auto;
+    navigation: none;
 }
 
 ::view-transition-group(root) {
-    animation-duration: 950ms;
-    animation-timing-function: ease-out;
+    animation: none;
 }
 
 ::view-transition-old(root) {
@@ -84,13 +82,22 @@ html.v2-theme body * {
 }
 
 ::view-transition-new(root) {
-    animation: v2-page-new 950ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: none;
     mix-blend-mode: normal;
 }
 
-@keyframes v2-page-new {
-    from { opacity: 0; }
-    to { opacity: 1; }
+/* Reserve the final layout before sidebar-nav.js starts the reveal. This is
+   what prevents already-visible content from blinking out and back in. */
+.v2-theme body:not(.v2-sequence-ready) .v2-page-heading,
+.v2-theme body:not(.v2-sequence-ready) .v2-main-content > .tabs-container,
+.v2-theme body:not(.v2-sequence-ready) .v2-main-content > .ticker-bar,
+.v2-theme body:not(.v2-sequence-ready) .v2-main-content > .news-strip,
+.v2-theme body:not(.v2-sequence-ready) .v2-main-content > .price-ticker-bar,
+.v2-theme body:not(.v2-sequence-ready) main.main-content > *:not(.header-row):not(.loading-overlay),
+.v2-theme body:not(.v2-sequence-ready) main.content > *:not(.v2-page-heading),
+.v2-theme body:not(.v2-sequence-ready) .hero-banner .hero-inner > *,
+.v2-theme body:not(.v2-sequence-ready) #newsDisplay {
+    opacity: 0;
 }
 
 /* Shared staged page entrance. Elements are marked by sidebar-nav.js only
@@ -104,31 +111,31 @@ html.v2-theme body * {
 }
 
 .v2-enter-topbar {
-    transform: translateY(-10px);
+    transform: translateY(-6px);
     will-change: opacity, transform;
 }
 
 .v2-sequence-ready .v2-enter-sidebar {
-    animation: v2-sidebar-enter 900ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+    animation: v2-sidebar-enter 720ms cubic-bezier(0.22, 1, 0.36, 1) 20ms both;
 }
 
 .v2-sequence-ready .v2-enter-topbar {
-    animation: v2-topbar-enter 980ms cubic-bezier(0.22, 1, 0.36, 1) 360ms both;
+    animation: v2-topbar-enter 760ms cubic-bezier(0.22, 1, 0.36, 1) 180ms both;
 }
 
 .v2-sequence-ready .v2-enter-heading {
-    animation: v2-content-enter 980ms cubic-bezier(0.22, 1, 0.36, 1) 640ms both;
+    animation: v2-content-enter 800ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both;
 }
 
 .v2-sequence-ready .v2-enter-block {
-    animation: v2-content-enter 1080ms cubic-bezier(0.22, 1, 0.36, 1)
-        calc(880ms + (var(--v2-enter-order, 0) * 140ms)) both;
+    animation: v2-content-enter 860ms cubic-bezier(0.22, 1, 0.36, 1)
+        calc(480ms + (var(--v2-enter-order, 0) * 90ms)) both;
 }
 
 /* Content arriving from an API joins the sequence at once rather than waiting
    through the shell's initial delay again. */
 .v2-sequence-ready .v2-enter-block.v2-enter-late {
-    animation-delay: calc(120ms + (var(--v2-enter-order, 0) * 110ms));
+    animation-delay: calc(40ms + (var(--v2-enter-order, 0) * 80ms));
 }
 
 @keyframes v2-sidebar-enter {
@@ -137,13 +144,27 @@ html.v2-theme body * {
 }
 
 @keyframes v2-topbar-enter {
-    from { opacity: 0; transform: translateY(-10px); }
+    from { opacity: 0; transform: translateY(-6px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes v2-content-enter {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Older page styles contain their own entrance animations. The shared shell
+   replaces them on V2 pages so panels never animate twice. */
+.v2-theme .my-team-dashboard-top,
+.v2-theme .squad-alerts-panel,
+.v2-theme .transfer-rec,
+.v2-theme .verdict-section,
+.v2-theme .lo-section,
+.v2-theme .ts-section,
+.v2-theme .na-section,
+.v2-theme .so-section,
+.v2-theme .ta-section {
+    animation: none !important;
 }
 
 /* Players and Teams already reserve their final layout with skeleton content.
