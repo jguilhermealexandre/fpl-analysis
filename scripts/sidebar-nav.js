@@ -10,8 +10,12 @@ function loadSidebarNav() {
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
 
-            // Mark the current page's nav item active
-            const page = location.pathname.split('/').pop() || 'index-v2.html';
+            // Mark the current page's nav item active.
+            // Normalize so clean URLs (e.g. "/index-v2" on Pages) still match
+            // the data-page values (which include ".html").
+            let page = location.pathname.split('/').pop() || 'index-v2.html';
+            if (page === '' || page === 'index-v2') page = 'index-v2.html';
+            if (!page.endsWith('.html')) page += '.html';
             const activeItem = document.querySelector(`.v2-nav-item[data-page="${page}"]`);
             if (activeItem) activeItem.classList.add('active');
 
