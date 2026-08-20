@@ -49,6 +49,7 @@
             <h1 class="page-title"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
             <button class="btn btn-secondary" id="settingsBtn" onclick="openSettings()" style="margin-left:auto;" aria-label="Analysis settings" title="Analysis settings"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
         </div>
+        <div class="squad-hint-banner hidden" id="squadHintBanner">Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
         <!-- Hidden input used by loadTeamById() -->
         <input type="hidden" id="teamIdInput">
 
@@ -709,7 +710,7 @@
                         sellPrice: pick.selling_price / 10, multiplier: pick.multiplier };
                 }).filter(p => p !== null);
 
-                document.getElementById('managerInfo').classList.remove('hidden');
+                document.getElementById('squadHintBanner').classList.remove('hidden');
                 document.getElementById('managerName').textContent = `${managerData.player_first_name} ${managerData.player_last_name}`;
                 document.getElementById('overallRank').textContent = managerData.summary_overall_rank?.toLocaleString() || '-';
                 document.getElementById('totalPoints').textContent = managerData.summary_overall_points?.toLocaleString() || '-';
@@ -734,6 +735,7 @@
                     : 'Something went wrong loading your team. Please try again.';
                 updateStatus(friendly, 'error');
                 document.getElementById('managerInfo').classList.add('hidden');
+                document.getElementById('squadHintBanner').classList.add('hidden');
                 document.getElementById('tabBar').classList.remove('visible');
                 document.getElementById('landingPage').style.display = '';
             } finally {
@@ -1164,7 +1166,6 @@
             // else worth knowing, then the players nothing needs doing about.
             let html = '';
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthFactors);
-            html += renderTransferAnalysis();
             html += renderNeedsAttentionFeed();
             html += renderSquadOverviewStrip();
 
@@ -1234,7 +1235,7 @@
                         ${marketBadge(p)}
                     </div>
                     <div class="pitch-player-name">${escHTML(p.name)}</div>
-                    <div class="pitch-player-pts">${p.form}</div>
+                    <div class="pitch-player-pts">${POSITION_CONFIG[p.position]?.short || ''}</div>
                 </div>`;
             };
             const benchNode = (a) => {
@@ -1252,7 +1253,14 @@
             };
 
             return `
-            <div class="team-overview">
+            <div class="my-team-dashboard-top">
+                <aside class="my-team-side-panel">
+                <div class="manager-info">
+                    <span class="manager-name">${escHTML(`${managerData.player_first_name || ''} ${managerData.player_last_name || ''}`.trim() || 'Manager')}</span>
+                    <span class="manager-stat">Rank <strong>${managerData.summary_overall_rank?.toLocaleString() || '-'}</strong></span>
+                    <span class="manager-stat">Points <strong>${managerData.summary_overall_points?.toLocaleString() || '-'}</strong></span>
+                    <span class="manager-stat">Bank <strong>£${(picksData.entry_history?.bank / 10 || 0).toFixed(1)}m</strong></span>
+                </div>
                 <div class="health-ring-container">
                     <div class="health-ring">
                         <svg viewBox="0 0 120 120">
@@ -1274,21 +1282,24 @@
                     </div>
                     ${renderLineupAlert()}
                 </div>
+                </aside>
                 <div class="squad-lineup-column">
-                    <div class="squad-hint-banner"><span>👆</span> Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
+                    <div class="squad-lineup-header"><span>Squad Snapshot</span><span>${defs.length}-${mids.length}-${fwds.length}</span></div>
                     <div class="pitch-container">
                         <div class="pitch-rows">
                             <div class="pitch-row">${fwds.map(pitchNode).join('')}</div>
                             <div class="pitch-row">${mids.map(pitchNode).join('')}</div>
                             <div class="pitch-row">${defs.map(pitchNode).join('')}</div>
                             <div class="pitch-row">${gks.map(pitchNode).join('')}</div>
-                            <div class="pitch-row bench-row">
-                                <span class="bench-label">Bench</span>
-                                ${benchPlayers.map(benchNode).join('')}
-                            </div>
                         </div>
                     </div>
+                    <div class="pitch-bench">
+                        <span class="bench-label">Bench</span>
+                        ${benchPlayers.map(benchNode).join('')}
+                    </div>
                 </div>
+            </div>
+            <div class="my-team-analysis-grid">
                 ${(() => {
                     const falling = analysisResults.filter(a => getPressure(a.player) < -0.015);
                     const rising = analysisResults.filter(a => getPressure(a.player) > 0.015);
@@ -1306,10 +1317,11 @@
                     };
                     const rows = falling.map(a => mwRow(a,'fall')).join('') + rising.map(a => mwRow(a,'rise')).join('');
                     return `<div class="market-watch-panel">
-                        <div class="mw-header">\ud83d\udcc8 Market Watch</div>
+                        <div class="mw-header">Market Watch</div>
                         ${rows || '<div class="mw-empty">All prices stable</div>'}
                     </div>`;
                 })()}
+                ${renderTransferAnalysis()}
             </div>`;
         }
 
@@ -1466,27 +1478,17 @@
         }
 
         function renderTransferAnalysis() {
+            const targets = computeTransferAnalysisTargets();
             return `<div class="ta-section">
-                <button class="ta-toggle-btn" onclick="toggleTransferAnalysis()">
+                <div class="ta-section-header">
                     <i data-lucide="search" class="icon"></i>
-                    <span>Transfer Analysis — see 7-8 recommended targets</span>
-                    <span class="verdict-toggle" id="ta-body-toggle">▶</span>
-                </button>
-                <div class="ta-body" id="ta-body" style="display:none;"></div>
-            </div>`;
-        }
-
-        function toggleTransferAnalysis() {
-            const body = document.getElementById('ta-body');
-            if (body.style.display === 'none' && !body.dataset.rendered) {
-                const targets = computeTransferAnalysisTargets();
-                body.innerHTML = targets.length
+                    <span>Transfer Analysis</span>
+                </div>
+                <div class="ta-body">${targets.length
                     ? `<div class="ta-list">${targets.map(renderTransferAnalysisCard).join('')}</div>`
-                    : `<div class="ta-empty"><i data-lucide="check-circle" class="icon"></i> No strong targets found right now.</div>`;
-                body.dataset.rendered = '1';
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-            toggleSection('ta-body');
+                    : `<div class="ta-empty"><i data-lucide="check-circle" class="icon"></i> No strong targets found right now.</div>`}
+                </div>
+            </div>`;
         }
 
         // ===== PHASE 3: NEEDS ATTENTION FEED =====
