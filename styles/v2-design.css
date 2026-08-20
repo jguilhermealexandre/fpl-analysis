@@ -66,29 +66,33 @@ html.v2-theme body * {
     }
 }
 
-/* Calm, single-stage page reveal. Space is reserved from the first frame, so
-   the layout cannot jump while the sidebar and page resources settle. */
-html.v2-theme .v2-main-content {
-    opacity: 0;
-    visibility: hidden;
+/* Let the browser preserve the outgoing frame until the incoming page is
+   ready. Unlike the old JS opacity cycle, this never exposes a blank shell. */
+@view-transition {
+    navigation: auto;
 }
 
-html.v2-theme.v2-shell-ready .v2-main-content {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 720ms ease-out;
+::view-transition-old(root) {
+    animation: v2-page-out 180ms ease-in both;
 }
 
-html.v2-theme.v2-page-leaving .v2-main-content {
-    opacity: 0 !important;
-    pointer-events: none;
-    transition: opacity 240ms ease-in !important;
+::view-transition-new(root) {
+    animation: v2-page-in 520ms ease-out both;
+}
+
+@keyframes v2-page-out {
+    to { opacity: 0.72; }
+}
+
+@keyframes v2-page-in {
+    from { opacity: 0.72; }
+    to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    html.v2-theme.v2-shell-ready .v2-main-content { transition: none; }
-    html.v2-theme.v2-page-leaving .v2-main-content { transition: none !important; }
     .v2-sidebar { transition: none !important; }
+    ::view-transition-old(root),
+    ::view-transition-new(root) { animation: none; }
 }
 
 /* ===== NEW COLOR PALETTE (values only — same variable names as common.css,
