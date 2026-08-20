@@ -66,23 +66,42 @@ html.v2-theme body * {
     }
 }
 
-/* Sidebar and page content enter as one complete application shell. */
-html.v2-theme body {
-    opacity: 0;
+/* One overlapping transition for the complete page. The outgoing snapshot
+   remains underneath the incoming page, so navigation never exposes an
+   empty frame and the sidebar is not animated separately. */
+@view-transition {
+    navigation: auto;
 }
 
-html.v2-theme.v2-app-ready body {
-    opacity: 1;
-    animation: v2-app-enter 480ms ease-out both;
+::view-transition-group(root) {
+    animation-duration: 340ms;
+    animation-timing-function: ease-out;
 }
 
-@keyframes v2-app-enter {
+::view-transition-old(root) {
+    animation: v2-page-old 280ms ease-in both;
+    mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+    animation: v2-page-new 340ms ease-out both;
+    mix-blend-mode: normal;
+}
+
+@keyframes v2-page-old {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes v2-page-new {
     from { opacity: 0; }
     to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    html.v2-theme.v2-app-ready body { animation: none; }
+    ::view-transition-group(root),
+    ::view-transition-old(root),
+    ::view-transition-new(root) { animation: none; }
 }
 
 /* ===== NEW COLOR PALETTE (values only — same variable names as common.css,
