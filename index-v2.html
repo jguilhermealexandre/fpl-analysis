@@ -712,10 +712,10 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 13px;
+            font-size: 16px;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         .v2-attn-col-header .icon { width: 15px; height: 15px; color: var(--text-muted); }
         .v2-attn-col-count {
@@ -780,18 +780,16 @@
             justify-content: space-between;
             margin-bottom: 10px;
         }
-        .v2-pitch-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+        .v2-pitch-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
         .v2-pitch-formation { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-muted); background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-full); }
         .v2-pitch {
             position: relative;
             width: 100%;
-            aspect-ratio: 16 / 10.5;
+            aspect-ratio: 16 / 11.5;
             border-radius: var(--radius-lg);
-            background:
-                repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 2px),
-                linear-gradient(180deg, #1c8a4f 0%, #16703f 50%, #1c8a4f 100%);
+            background: repeating-linear-gradient(90deg, #CFEBD0 0, #CFEBD0 12.5%, #C4E5C6 12.5%, #C4E5C6 25%);
             overflow: hidden;
-            border: 2px solid rgba(255,255,255,0.25);
+            border: none;
         }
         .v2-pitch::before {
             content: '';
@@ -828,22 +826,22 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2px;
+            gap: 4px;
             width: 15%;
-            max-width: 78px;
+            max-width: 96px;
         }
         .v2-pitch-token-circle {
-            width: 34px;
-            height: 34px;
+            width: 46px;
+            height: 46px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
+            font-size: 14px;
             font-weight: 800;
             color: #fff;
-            border: 2.5px solid rgba(255,255,255,0.85);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+            border: 3px solid #FFFFFF;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.18);
             position: relative;
         }
         .v2-pitch-token-circle.verdict-ring-sell    { border-color: var(--verdict-sell); }
@@ -863,15 +861,25 @@
             border: 1.5px solid #fff;
         }
         .v2-pitch-token-name {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
-            color: #fff;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+            color: #17301F;
+            text-shadow: none;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 100%;
+            line-height: 1.15;
         }
+        .v2-pitch-token-pos {
+            font-size: 8.5px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: #5E6E62;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+        .v2-pitch-bench .v2-pitch-token-pos { display: none; }
         .v2-pitch-token-status { color: #FCA5A5; }
         .v2-pitch-bench {
             margin-top: 10px;
@@ -4136,9 +4144,11 @@
                 } else if (p.status === 'd') {
                     statusIcon = '<i data-lucide="alert-triangle" class="v2-pitch-token-status icon" style="width:11px;height:11px;color:#FBBF24;"></i>';
                 }
+                const posLabel = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position] || '';
                 return `<div class="v2-pitch-token">
                     <div class="v2-pitch-token-circle${ringClass}" style="background:${posColorVar[p.position] || 'var(--position-mid)'};">${esc((p.name || '?').charAt(0).toUpperCase())}${badge}</div>
                     <span class="v2-pitch-token-name">${esc(p.name)}</span>
+                    <span class="v2-pitch-token-pos">${posLabel}</span>
                     ${statusIcon}
                 </div>`;
             }
