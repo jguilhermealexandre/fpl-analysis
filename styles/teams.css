@@ -209,7 +209,8 @@
     min-width: 0;
 }
 
-.team-name {
+.team-name,
+.momentum-hover-name {
     font-weight: 600;
     font-size: 14px;
     color: var(--text-primary);
@@ -2415,6 +2416,66 @@
     width: 100% !important;
     height: 100% !important;
 }
+
+.momentum-hover-card {
+    position: fixed;
+    z-index: 1000;
+    width: 196px;
+    min-height: 68px;
+    display: block;
+    padding: 11px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--surface-1);
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.96);
+    transition: opacity 140ms ease-out, transform 140ms ease-out, visibility 140ms ease-out;
+    overflow: visible;
+}
+
+.momentum-hover-card.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+.momentum-hover-card.points-right { transform-origin: left center; }
+.momentum-hover-card.points-left { transform-origin: right center; }
+.momentum-hover-card::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 18px;
+    background: var(--surface-1);
+    transform: translateY(-50%);
+}
+.momentum-hover-card.points-right::before {
+    left: -12px;
+    clip-path: polygon(100% 0, 0 50%, 100% 100%);
+    filter: drop-shadow(-1px 0 0 var(--border-subtle));
+}
+.momentum-hover-card.points-left::before {
+    right: -12px;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+    filter: drop-shadow(1px 0 0 var(--border-subtle));
+}
+.momentum-hover-name {
+    margin-bottom: 7px;
+}
+.momentum-hover-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
+.momentum-hover-meta strong { color: var(--text-muted); font-weight: 600; }
 
 .scout-report-panel {
     background: var(--surface-0);

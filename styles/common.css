@@ -69,6 +69,13 @@
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
+    /* Responsive tracking scale — use only these five values site-wide. */
+    --tracking-2xl: -2px;
+    --tracking-xl: -1.5px;
+    --tracking-lg: -1px;
+    --tracking-md: -0.5px;
+    --tracking-base: 0;
+
     /* Spacing scale */
     --space-1: 0.25rem;
     --space-2: 0.5rem;
@@ -107,7 +114,7 @@
 }
 
 body {
-    background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 30%, #FFFFFF 70%, #EFF6FF 100%);
+    background: linear-gradient(145deg, #E4F4EA 0%, #F0FAF4 42%, #FFFFFF 72%, #EAF7F0 100%);
     background-attachment: fixed;
     color: var(--text-primary);
     font-family: var(--font-body);
@@ -635,20 +642,21 @@ body {
     margin: 0 auto;
     padding: 0 24px;
     display: flex;
-    gap: 4px;
+    gap: 8px;
     overflow-x: auto;
-    align-items: stretch;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 56px;
 }
 .tabs .tab {
-    padding: 18px 18px;
+    min-height: 56px;
+    padding: 16px 18px;
     border-bottom: 3px solid transparent;
     border-radius: 0;
     background: transparent;
     font-size: 14px;
     font-weight: 600;
     letter-spacing: -0.2px;
-    display: flex;
-    align-items: center;
 }
 .tabs .tab:hover:not(:disabled) { color: var(--text-primary); border-bottom-color: var(--border-emphasis); background: transparent; }
 .tabs .tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); background: transparent; box-shadow: none; }
@@ -659,7 +667,7 @@ body {
     background: var(--surface-1);
     border-bottom: 1px solid var(--border-default);
     position: sticky;
-    top: 91px;
+    top: 112px;
     z-index: 40;
     transition: top 300ms ease-out;
 }
@@ -1541,21 +1549,29 @@ body {
 
 /* ===== DARK THEME ===== */
 [data-theme="dark"] {
-    /* Surfaces — Slate dark */
-    --surface-bg: #0F172A;
-    --surface-0: #1E293B;
-    --surface-1: #1E293B;
-    --surface-2: #334155;
-    --surface-3: #475569;
-    --surface-4: #64748B;
+    /* Surfaces — sampled from the supplied dark UI reference */
+    --surface-bg: #15191F;
+    --surface-0: #15191F;
+    --surface-1: #1B2027;
+    --surface-2: #232A33;
+    --surface-3: #2E3742;
+    --surface-4: #3A4552;
 
-    /* Primary accent — stays emerald, lighter text variant */
-    --color-primary-text: #6EE7B7;
+    /* Reference accents */
+    --color-primary: #00E57D;
+    --color-primary-hover: #2AED97;
+    --color-primary-muted: rgba(0, 229, 125, 0.14);
+    --color-primary-glow: rgba(0, 229, 125, 0.28);
+    --color-primary-text: #00E57D;
+    --color-success: #00E57D;
+    --color-warning: #FFB000;
+    --color-error: #FF4D5A;
+    --color-info: #939CAA;
 
     /* Text hierarchy — light on dark */
-    --text-primary: #F1F5F9;
-    --text-secondary: #CBD5E1;
-    --text-muted: #64748B;
+    --text-primary: #F4F5F7;
+    --text-secondary: #C5CBD4;
+    --text-muted: #939CAA;
 
     /* Borders — inverted */
     --border-subtle: rgba(255, 255, 255, 0.04);
@@ -1571,24 +1587,24 @@ body {
 
     /* Chart colors */
     --chart-grid: rgba(255, 255, 255, 0.06);
-    --chart-text: #CBD5E1;
-    --chart-tooltip-bg: #334155;
+    --chart-text: #939CAA;
+    --chart-tooltip-bg: #232A33;
 
     color-scheme: dark;
 }
 
 /* Body gradient */
 [data-theme="dark"] body {
-    background: linear-gradient(135deg, #0F172A 0%, #0F172A 40%, #111827 70%, #0F172A 100%);
+    background: linear-gradient(145deg, #15191F 0%, #17201D 52%, #18241F 100%);
 }
 
 /* Nav */
 [data-theme="dark"] .top-nav {
-    background: rgba(15, 23, 42, 0.92);
+    background: rgba(21, 25, 31, 0.94);
     backdrop-filter: blur(12px);
 }
 [data-theme="dark"] .mobile-nav {
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(21, 25, 31, 0.96);
     backdrop-filter: blur(12px);
 }
 [data-theme="dark"] .mega-menu-panel {
@@ -1935,5 +1951,154 @@ body {
         flex-direction: column;
         align-items: flex-start;
         padding: 16px 16px 72px;
+    }
+}
+
+/* ===== GLOBAL TYPOGRAPHY SYSTEM =====
+   Every rendered label resolves to one of the two approved weights. */
+body {
+    font-weight: 400 !important;
+}
+
+body :is(
+    h1, h2, h3, h4, h5, h6,
+    strong, b, th, label, summary, button,
+    .btn, .tab, .nav-link,
+    [class*="title"], [class*="heading"], [class*="header"],
+    [class*="name"], [class*="value"], [class*="score"],
+    [class*="rank"], [class*="badge"], [class*="pill"],
+    [class*="chip"], [class*="label"], [class*="active"]
+) {
+    font-weight: 600 !important;
+}
+
+/* Preserve emphasis declared inline by older page templates while keeping the
+   design system restricted to its two supported weights. */
+body :is(
+    [style*="font-weight: 500"], [style*="font-weight:500"],
+    [style*="font-weight: 600"], [style*="font-weight:600"],
+    [style*="font-weight: 700"], [style*="font-weight:700"],
+    [style*="font-weight: 800"], [style*="font-weight:800"],
+    [style*="font-weight: 900"], [style*="font-weight:900"]
+) {
+    font-weight: 600 !important;
+}
+
+/* Discrete responsive tracking shared by every page and nested text node. */
+body {
+    letter-spacing: var(--tracking-base) !important;
+}
+
+body * {
+    letter-spacing: inherit !important;
+}
+
+.hero-title {
+    letter-spacing: var(--tracking-2xl) !important;
+}
+
+h2 {
+    letter-spacing: var(--tracking-xl) !important;
+}
+
+h3,
+.hero-greeting-text {
+    letter-spacing: var(--tracking-lg) !important;
+}
+
+h4 {
+    letter-spacing: var(--tracking-md) !important;
+}
+
+/* Keep headings readable and consistent at every viewport size. */
+body :is(
+    h1, h2, h3, h4, h5, h6,
+    [class*="title"], [class*="heading"]
+) {
+    letter-spacing: -0.5px !important;
+}
+
+.v2-dlh-countdown,
+.hdb-countdown {
+    letter-spacing: var(--tracking-xl) !important;
+}
+
+/* All tool-page headers match the dashboard greeting. */
+body h1:not(.hero-title),
+.page-title,
+.news-page-title {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0;
+    width: 100%;
+    margin: 0 !important;
+    text-align: left !important;
+    font-family: var(--font-display) !important;
+    font-size: 28px !important;
+    line-height: 1.2 !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.5px !important;
+    color: var(--text-primary) !important;
+}
+
+body h1:not(.hero-title) svg,
+.page-title svg,
+.news-page-title svg,
+body h1:not(.hero-title) > .icon,
+.page-title > .icon,
+.news-page-title > .icon {
+    display: none !important;
+}
+
+.faq-hero,
+.hiw-hero {
+    text-align: left !important;
+}
+
+.faq-hero h1,
+.hiw-hero h1 {
+    width: calc(100% - 48px);
+    max-width: 1352px;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+@media (max-width: 768px) {
+    :root {
+        --tracking-2xl: -1.5px;
+        --tracking-xl: -1px;
+        --tracking-lg: -0.5px;
+        --tracking-md: 0;
+    }
+
+    body h1:not(.hero-title),
+    .page-title,
+    .news-page-title {
+        gap: 0;
+        font-size: 22px !important;
+    }
+
+    .faq-hero h1,
+    .hiw-hero h1 {
+        width: calc(100% - 32px);
+    }
+
+    .tabs {
+        padding: 0 16px;
+    }
+
+    .tabs .tab {
+        min-height: 52px;
+        padding: 14px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --tracking-2xl: -1px;
+        --tracking-xl: -0.5px;
+        --tracking-lg: 0;
+        --tracking-md: 0;
     }
 }
