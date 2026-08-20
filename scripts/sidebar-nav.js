@@ -57,31 +57,66 @@ function initV2PageEntrance() {
         '.hero-personalized > .v2-quick-actions',
         '.hero-personalized > .headlines-widget',
         'main.main-content > .v2-page-hint',
-        'main.main-content > #content-area',
-        'main.main-content > .tab-content:not(.hidden)',
-        'main.main-content > *:not(.header-row):not(.loading-overlay)',
-        'main.content > *:not(.v2-page-heading)',
+        'main.main-content > .tab-content:not(.hidden) > *',
+        'main.main-content > *:not(.header-row):not(.loading-overlay):not(.tab-content):not(#content-area)',
+        'main.content > *:not(.v2-page-heading):not(.skeleton-container)',
         '.hero-banner .hero-inner > *',
         '.news-page-header > .news-page-sub',
-        '#newsDisplay > .news-container',
+        '#content-area > *:not(.skeleton-container)',
+        '#newsDisplay > *:not(.skeleton-container)',
+        '.teams-grid > *:not(.skeleton-container)',
+        '.news-grid > *',
+        '.nhg-grid > *',
+        '.nha-grid > *',
+        '.summary-grid > *',
+        '.player-grid > *',
+        '.steps-grid > *',
         '.faq-container > *',
-        '.how-it-works-container > *'
+        '.how-it-works-container > *',
+        '.how-it-works-content > *'
     ];
+    const selectorList = selectors.join(',');
 
-    const blocks = [...new Set(selectors.flatMap(selector =>
-        [...document.querySelectorAll(selector)]
-    ))].filter(element => element !== heading);
+    function isEntranceBlock(element) {
+        return element instanceof HTMLElement &&
+            element !== heading &&
+            !element.classList.contains('hidden') &&
+            !element.classList.contains('skeleton-container') &&
+            !element.closest('.modal-overlay, .loading-overlay');
+    }
 
-    blocks.forEach((element, index) => {
-        element.classList.add('v2-enter-block');
-        element.style.setProperty('--v2-enter-order', Math.min(index, 7));
-    });
+    function registerBlocks(elements, late = false) {
+        [...new Set(elements)].filter(isEntranceBlock).forEach((element, index) => {
+            if (element.classList.contains('v2-enter-block')) return;
+            element.classList.add('v2-enter-block');
+            if (late) element.classList.add('v2-enter-late');
+            element.style.setProperty('--v2-enter-order', Math.min(index, 7));
+        });
+    }
+
+    registerBlocks(document.querySelectorAll(selectorList));
 
     // Start on the next painted frame so the browser always has a stable
     // initial state to animate from instead of flashing final content first.
     requestAnimationFrame(() => requestAnimationFrame(() => {
         document.body.classList.add('v2-sequence-ready');
     }));
+
+    // API-backed pages replace skeletons after the initial shell is ready.
+    // Animate those real panels when they arrive, using the same visual rhythm.
+    const observer = new MutationObserver(mutations => {
+        const addedBlocks = [];
+        mutations.forEach(mutation => mutation.addedNodes.forEach(node => {
+            if (!(node instanceof HTMLElement)) return;
+            if (node.matches(selectorList)) addedBlocks.push(node);
+            addedBlocks.push(...node.querySelectorAll(selectorList));
+        }));
+        if (addedBlocks.length) registerBlocks(addedBlocks, true);
+    });
+    observer.observe(document.querySelector('.v2-main-content') || document.body, {
+        childList: true,
+        subtree: true
+    });
 }
 
 // Flyout sub-nav — same hover/click-toggle pattern as the top nav's
