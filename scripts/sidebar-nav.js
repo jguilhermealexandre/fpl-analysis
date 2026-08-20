@@ -27,6 +27,12 @@ function loadSidebarNav() {
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
 
+            // Paint the injected rail once in its hidden state before revealing
+            // it, so completing the fetch never produces a visible pop.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                document.documentElement.classList.add('v2-sidebar-ready');
+            }));
+
             // Mark the current page's nav item active.
             // Normalize so clean URLs (e.g. "/index-v2" on Pages) still match
             // the data-page values (which include ".html").
@@ -54,6 +60,7 @@ function loadSidebarNav() {
         })
         .catch(error => {
             console.warn('Sidebar navigation could not be loaded:', error);
+            document.documentElement.classList.add('v2-sidebar-ready');
             return null;
         });
 }
