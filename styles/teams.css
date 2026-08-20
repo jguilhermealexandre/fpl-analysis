@@ -2421,16 +2421,45 @@
     z-index: 1000;
     width: 196px;
     min-height: 68px;
-    display: none;
+    display: block;
     padding: 11px 12px;
     border: 1px solid var(--border-subtle);
     border-radius: 8px;
     background: var(--surface-1);
     box-shadow: var(--shadow-md);
     pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.96);
+    transition: opacity 140ms ease-out, transform 140ms ease-out, visibility 140ms ease-out;
 }
 
-.momentum-hover-card.visible { display: block; }
+.momentum-hover-card.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+.momentum-hover-card.points-right { transform-origin: left center; }
+.momentum-hover-card.points-left { transform-origin: right center; }
+.momentum-hover-card::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    background: var(--surface-1);
+    transform: translateY(-50%) rotate(45deg);
+}
+.momentum-hover-card.points-right::before {
+    left: -7px;
+    border-left: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+}
+.momentum-hover-card.points-left::before {
+    right: -7px;
+    border-top: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--border-subtle);
+}
 .momentum-hover-name {
     margin-bottom: 7px;
     color: var(--text-primary);
