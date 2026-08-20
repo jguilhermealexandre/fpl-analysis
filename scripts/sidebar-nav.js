@@ -10,13 +10,13 @@ function scheduleV2PageReveal() {
 
     const reveal = () => setTimeout(() => {
         document.documentElement.classList.add('v2-shell-ready');
-    }, 180);
+    }, 350);
 
     if (document.readyState === 'complete') reveal();
     else window.addEventListener('load', reveal, { once: true });
 
     // Network errors must never be able to leave the page hidden.
-    setTimeout(() => document.documentElement.classList.add('v2-shell-ready'), 1500);
+    setTimeout(() => document.documentElement.classList.add('v2-shell-ready'), 2500);
 }
 
 scheduleV2PageReveal();
@@ -50,11 +50,36 @@ function loadSidebarNav() {
             if (window.lucide) lucide.createIcons();
 
             initSidebarFlyout();
+            initCalmPageExit();
         })
         .catch(error => {
             console.warn('Sidebar navigation could not be loaded:', error);
             return null;
         });
+}
+
+function initCalmPageExit() {
+    if (window.__v2CalmExitReady) return;
+    window.__v2CalmExitReady = true;
+
+    document.addEventListener('click', event => {
+        const link = event.target.closest('.v2-sidebar a[href]');
+        if (!link || event.defaultPrevented || event.button !== 0) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        if (link.target && link.target !== '_self') return;
+
+        const destination = new URL(link.href, location.href);
+        if (destination.origin !== location.origin || destination.href === location.href) return;
+        if (destination.hash && destination.pathname === location.pathname) return;
+
+        event.preventDefault();
+        document.documentElement.classList.add('v2-page-leaving');
+        setTimeout(() => { location.href = destination.href; }, 280);
+    });
+
+    window.addEventListener('pageshow', () => {
+        document.documentElement.classList.remove('v2-page-leaving');
+    });
 }
 
 // Flyout sub-nav — same hover/click-toggle pattern as the top nav's
