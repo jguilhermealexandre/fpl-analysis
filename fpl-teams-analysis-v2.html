@@ -2548,17 +2548,21 @@
             }
 
             const team = tooltip.dataPoints[0].raw.teamData;
+            const changedTeam = card.dataset.teamId !== String(team.id);
+            card.dataset.teamId = String(team.id);
             card.innerHTML = `
                 <div class="momentum-hover-name">${escHTML(team.name)}</div>
                 <div class="momentum-hover-meta"><strong>FDR ${team.avgFdr}</strong><span>•</span><span>${team.wins ?? 0}W ${team.draws ?? 0}D ${team.losses ?? 0}L</span></div>
             `;
 
-            const gap = 14;
+            const gap = 26;
             const cardWidth = 196;
             const canvasRect = chart.canvas.getBoundingClientRect();
             let left = canvasRect.left + tooltip.caretX + gap;
+            let cardSide = 'points-right';
             if (left + cardWidth > window.innerWidth - 8) {
                 left = canvasRect.left + tooltip.caretX - cardWidth - gap;
+                cardSide = 'points-left';
             }
             const top = Math.max(8, Math.min(
                 canvasRect.top + tooltip.caretY - 34,
@@ -2567,7 +2571,15 @@
 
             card.style.left = `${left}px`;
             card.style.top = `${top}px`;
-            card.classList.add('visible');
+            card.classList.remove('points-left', 'points-right');
+            card.classList.add(cardSide);
+            if (changedTeam) {
+                card.classList.remove('visible');
+                void card.offsetWidth;
+                card.classList.add('visible');
+            } else {
+                card.classList.add('visible');
+            }
         }
 
         async function initMomentumChart() {
