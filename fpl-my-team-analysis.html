@@ -1220,6 +1220,18 @@
             return '';
         }
 
+        // Actual, already-confirmed price move this gameweek (costChangeEvent) — distinct
+        // from marketBadge() above, which predicts a LIKELY upcoming change from transfer
+        // momentum. Used next to price in the squad table and replacement panels.
+        function priceChangeBadge(p) {
+            const change = (p.costChangeEvent || 0) / 10;
+            if (change === 0) return '';
+            const dir = change > 0 ? 'up' : 'down';
+            const arrow = change > 0 ? '▲' : '▼';
+            const verb = change > 0 ? 'risen' : 'dropped';
+            return `<span class="price-change-badge ${dir}" title="Price has ${verb} by £${Math.abs(change).toFixed(1)}m this gameweek">${arrow}</span>`;
+        }
+
         function renderTeamOverview(health, sells, monitors, holds, stars, healthFactors) {
             const circumference = 2 * Math.PI * 54;
             const healthColor = health >= 75 ? 'var(--verdict-hold)' : health >= 50 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
@@ -1645,7 +1657,7 @@
                         <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
                         <div class="sq-row-name-block">
                             <div class="sq-row-name" onclick="event.stopPropagation(); openDetailPanel(${player.id})" title="View player profile">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}</div>
-                            <div class="sq-row-team">${escHTML(player.team)} · £${player.price.toFixed(1)}m ${renderTeamBadges(player)}</div>
+                            <div class="sq-row-team">${escHTML(player.team)} · £${player.price.toFixed(1)}m ${priceChangeBadge(player)} ${renderTeamBadges(player)}</div>
                         </div>
                     </div>
                     <div class="sq-row-stats">
@@ -2065,7 +2077,7 @@
                         <div class="tw-market-rank">${i + 1}</div>
                         <span class="tw-market-name">${escHTML(c.name)}</span>
                         <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${escHTML(teamName)}</span>
-                        <span class="tw-market-price">£${c.price.toFixed(1)}m</span>
+                        <span class="tw-market-price">£${c.price.toFixed(1)}m ${priceChangeBadge(c)}</span>
                         <span class="tw-market-stat" style="color:${(c.form || 0) >= 5 ? 'var(--color-success)' : 'var(--text-secondary)'};">${(c.form || 0).toFixed(1)}</span>
                         <span class="tw-market-score" title="AI Transfer Score">${(c._transferScore || 0).toFixed(0)}</span>
                         <div class="tw-market-row-detail">${fdrHtml}</div>
@@ -3704,7 +3716,7 @@
                             <div class="tw-market-rank">${i + 1}</div>
                             <span class="tw-market-name">${escHTML(r.name)}</span>
                             <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${escHTML(r.team)}</span>
-                            <span class="tw-market-price">£${r.price.toFixed(1)}m</span>
+                            <span class="tw-market-price">£${r.price.toFixed(1)}m ${priceChangeBadge(r)}</span>
                             <span class="tw-market-score" title="AI Projected Score">${r._score.toFixed(0)}</span>
                             <div class="tw-market-row-detail">${fdrHtml}</div>
                         </div>`;
@@ -5676,7 +5688,7 @@
                         '<div class="tw-market-rank">' + (i + 1) + '</div>' +
                         '<span class="tw-market-name">' + c.name + '</span>' +
                         '<span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">' + teamName + '</span>' +
-                        '<span class="tw-market-price">£' + c.price.toFixed(1) + 'm</span>' +
+                        '<span class="tw-market-price">£' + c.price.toFixed(1) + 'm ' + priceChangeBadge(c) + '</span>' +
                         '<span class="tw-market-stat" style="color:' + ((c.form || 0) >= 5 ? 'var(--color-success)' : 'var(--text-secondary)') + ';">' + (c.form || 0).toFixed(1) + '</span>' +
                         '<span class="tw-market-score" title="AI Score">' + score.toFixed(0) + '</span>' +
                         '<div class="tw-market-row-detail">' + miniStats +
