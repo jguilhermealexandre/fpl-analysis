@@ -29,10 +29,8 @@
         <div class="tabs">
             <button class="tab active" onclick="switchTab('team')" id="tabTeam">Squad Analysis</button>
             <button class="tab" onclick="switchTab('transfers')" id="tabTransfers">Transfers</button>
-            <button class="tab hidden" onclick="switchTab('news')" id="tabNews">News</button>
+            <button class="tab" onclick="switchTab('news')" id="tabNews">News</button>
             <button class="tab" onclick="switchTab('draft')" id="tabDraft">GW Draft</button>
-            <button class="tab hidden" onclick="switchTab('transfer')" id="tabTransfer">Transfer Wizard</button>
-            <button class="tab hidden" onclick="switchTab('lineup')" id="tabLineup">Lineup Wizard</button>
         </div>
     </div>
 
@@ -182,6 +180,9 @@
         // ===== STATE =====
         let allPlayers = [], allPlayersById = {}, teams = {}, teamFixtures = {};
         let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
+        // True until GW1 has been played — read by analyzePlayer() to fall back to last
+        // season's data instead of the (genuinely zero right now) current-season form.
+        let isPreseason = false;
         let positionAverages = {};
         let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
         let fixtureSwingData = {}; // Fixture swing detection per team
@@ -517,6 +518,7 @@
                 bootData.teams.forEach(t => { teams[t.id] = t; });
                 const currEvent = bootData.events.find(e => e.is_current);
                 currentGW = currEvent ? currEvent.id : 1;
+                isPreseason = bootData.events.every(e => !e.finished);
                 allFixtures = fixturesData;
                 processFixtures(fixturesData);
                 processFixtures6(fixturesData);
@@ -575,14 +577,31 @@
                 buildTeamXgData(bootData.elements);
                 console.log('[xG] Team xG data built for', Object.keys(teamXgData).length, 'teams');
 
-                // Fetch manager + picks + history in parallel
+                // Fetch the manager profile first, on its own — a failure here means a
+                // genuinely invalid team ID. Picks/history are fetched separately below so a
+                // preseason "picks not available yet" 404 (which happens for every valid team
+                // right now, since no gameweek has been played) can be told apart from that.
                 showLoading(true, `Loading team for GW${currentGW}...`);
-                const [mgrRes, picksRes, histRes] = await Promise.all([
-                    fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`),
-                    fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`),
-                    fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`)
-                ]);
+                const mgrRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`);
                 managerData = await mgrRes.json();
+
+                let picksRes, histRes;
+                try {
+                    [picksRes, histRes] = await Promise.all([
+                        fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`),
+                        fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`)
+                    ]);
+                } catch (picksErr) {
+                    const seasonNotStarted = !bootData.events.some(e => e.is_current || e.finished);
+                    if (seasonNotStarted) {
+                        localStorage.setItem('fpl_team_id', teamId);
+                        showNavTeamBadge(teamId);
+                        updateStatus(`${managerData.player_first_name} ${managerData.player_last_name}'s team is saved and ready — GW${currentGW} picks aren't available until the deadline passes.`, 'info');
+                        document.getElementById('landingPage').style.display = 'none';
+                        return;
+                    }
+                    throw picksErr;
+                }
                 picksData = await picksRes.json();
                 managerHistory = await histRes.json();
 
@@ -682,8 +701,13 @@
             let reasons = [], concerns = [], positives = [];
             const posAvg = positionAverages[player.position] || { form: 3, ppg: 3, ppm: 15, xGIPer90: 0.3 };
             const posConfig = POSITION_CONFIG[player.position];
-            const gamesPlayed = Math.max(currentGW - 1, 1);
+            // Preseason: currentGW-1 is 0 and player.form is already reset to 0.0 by FPL —
+            // used as-is that's not "no data", it's a uniform false "poor form" flag on every
+            // player plus an absurd minutes-per-game (last season's full total / 1). Fall back
+            // to last season's real points-per-game and a starts-based games-played estimate.
+            const gamesPlayed = isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
             const minsPerGame = player.minutes / gamesPlayed;
+            const effectiveForm = isPreseason ? player.ppg : player.form;
             const isPremium = player.price >= 10.0;
             const isMidPremium = player.price >= 7.5;
             const isBudget = player.price <= 5.5;
@@ -711,21 +735,21 @@
             }
 
             // 2. FORM (Continuous — position-adjusted, asymmetric sensitivity)
-            const formDelta = player.form - posConfig.formMedian;
+            const formDelta = effectiveForm - posConfig.formMedian;
             // Linear: each 1.0 of formDelta = ~10 points; capped at ±30
             const rawFormPenalty = Math.max(-30, Math.min(30, Math.round(-formDelta * 10)));
             const formPenalty = sensAdj(rawFormPenalty, userSettings.formWeight);
             sellRating += formPenalty;
 
             if (formDelta <= -1.5) {
-                concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${player.form.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian} — consider selling before price drops` });
+                concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${effectiveForm.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian} — consider selling before price drops` });
                 reasons.push('Form collapsed');
             } else if (formDelta <= -0.5) {
-                concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${player.form.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian} — monitor next 2 GWs` });
+                concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${effectiveForm.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian} — monitor next 2 GWs` });
             } else if (formDelta >= 2.5) {
-                positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${player.form.toFixed(1)} — top 5% of ${posConfig.short}s. Strong captain option` });
+                positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${effectiveForm.toFixed(1)} — top 5% of ${posConfig.short}s. Strong captain option` });
             } else if (formDelta >= 1.0) {
-                positives.push({ type: 'positive', title: 'Good Form', text: `Form ${player.form.toFixed(1)} — above ${posConfig.short} average, keep starting` });
+                positives.push({ type: 'positive', title: 'Good Form', text: `Form ${effectiveForm.toFixed(1)} — above ${posConfig.short} average, keep starting` });
             }
 
             // 3. FIXTURES (Continuous — near fixtures weighted more)
@@ -819,11 +843,11 @@
             else if (isMidPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.2);
             sellRating += sensAdj(rawValuePenalty, userSettings.valueWeight);
 
-            if (isPremium && player.form < posConfig.formMedian) {
+            if (isPremium && effectiveForm < posConfig.formMedian) {
                 sellRating += sensAdj(5); // Extra premium penalty
                 concerns.push({ type: 'critical', title: 'Premium Underperforming', text: `£${player.price.toFixed(1)}m price tag not justified (${ppm.toFixed(1)} pts/£m vs avg ${posAvg.ppm.toFixed(1)}) — sell to free up funds for better options` });
                 if (!reasons.length) reasons.push('Premium not delivering');
-            } else if (isMidPremium && player.form < posConfig.formMedian - 0.5) {
+            } else if (isMidPremium && effectiveForm < posConfig.formMedian - 0.5) {
                 concerns.push({ type: 'warning', title: 'Mid-Premium Underperforming', text: `£${player.price.toFixed(1)}m with poor form — downgrade to fund upgrades elsewhere` });
             } else if (ppmDelta > 3) {
                 positives.push({ type: 'positive', title: 'Great Value', text: `${ppm.toFixed(1)} pts/£m — well above ${posConfig.short} average (${posAvg.ppm.toFixed(1)})` });
@@ -955,7 +979,7 @@
                 verdictReason = reasons[0] || 'Some concerns — monitor closely';
                 const fixNote = avgFDR <= 2.8 ? ' Fixtures improve soon — hold for now.' : avgFDR >= 3.5 ? ' Tough fixtures ahead — consider selling.' : '';
                 recommendation = `Reassess after GW${nextGW}.${fixNote}`;
-            } else if (sellRating <= 20 && player.form >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
+            } else if (sellRating <= 20 && effectiveForm >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
                 verdict = 'star';
                 verdictReason = positives.length > 0 ? positives[0].text : 'Top performer — team cornerstone';
                 recommendation = `Captain candidate GW${nextGW}${nextOpp ? ` vs ${nextOpp}` : ''}. Lock in and don't overthink.`;
@@ -970,7 +994,7 @@
         }
 
         function buildKeyMetrics(player, posConfig, minsPerGame, avgFDR) {
-            const form = player.form;
+            const form = isPreseason ? player.ppg : player.form;
             const ta = teamAnalysis[player.teamId];
             if (player.position <= 2) {
                 return {
@@ -1061,23 +1085,11 @@
 
             let html = '';
 
+            if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthFactors);
             html += renderSquadAlertsPanel();
             html += renderPriceAlerts();
-
-            // Sell section
-            if (sells.length > 0) {
-                html += renderVerdictSection('sell', 'Action Required', sells, true);
-            }
-            if (monitors.length > 0) {
-                html += renderVerdictSection('monitor', 'Keep Watching', monitors, true);
-            }
-            if (stars.length > 0) {
-                html += renderVerdictSection('star', 'Star Performers', stars, false);
-            }
-            if (holds.length > 0) {
-                html += renderVerdictSection('hold', 'Solid Squad', holds, false);
-            }
+            html += renderSquadTable();
 
             document.getElementById('teamDisplay').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1313,7 +1325,7 @@
                         ${marketBadge(p)}
                     </div>
                     <div class="pitch-player-name">${escHTML(p.name)}</div>
-                    <div class="pitch-player-pts">${p.form}</div>
+                    <div class="pitch-player-pts">${isPreseason ? p.ppg.toFixed(1) : p.form}</div>
                 </div>`;
             };
             const benchNode = (a) => {
@@ -1363,110 +1375,124 @@
                         </div>
                     </div>
                 </div>
-                ${(() => {
-                    const falling = analysisResults.filter(a => getPressure(a.player) < -0.015);
-                    const rising = analysisResults.filter(a => getPressure(a.player) > 0.015);
-                    const mwRow = (a, dir) => {
-                        const p = a.player;
-                        const net = (p.transfersIn||0) - (p.transfersOut||0);
-                        const arrow = dir === 'fall' ? '\u25bc' : '\u25b2';
-                        const col = dir === 'fall' ? 'var(--verdict-sell)' : '#16a34a';
-                        return `<div class="mw-row">
-                            <span class="mw-arrow" style="color:${col}">${arrow}</span>
-                            <span class="mw-name">${escHTML(p.name)}</span>
-                            <span class="mw-price">\u00a3${p.price}m</span>
-                            <span class="mw-net" style="color:${col}">${net > 0 ? '+' : ''}${(net/1000).toFixed(0)}k</span>
-                        </div>`;
-                    };
-                    const rows = falling.map(a => mwRow(a,'fall')).join('') + rising.map(a => mwRow(a,'rise')).join('');
-                    return `<div class="market-watch-panel">
-                        <div class="mw-header">\ud83d\udcc8 Market Watch</div>
-                        ${rows || '<div class="mw-empty">All prices stable</div>'}
-                    </div>`;
-                })()}
             </div>`;
         }
 
-        function renderTransferRecommendation(topSell, replacement) {
-            const p = topSell.player;
-            const bank = (picksData?.entry_history?.bank || 0) / 10;
-            const savings = (p.sellPrice - replacement.price + bank).toFixed(1);
-            const isPositive = parseFloat(savings) >= 0;
+        // ===== SQUAD TABLE (position-grouped, replaces the old verdict-grouped sections) =====
+
+        function computePlayerGamesPlayed(player) {
+            return isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
+        }
+
+        // Position-specific 5-stat set. Columns 1-2 (Form, Next-5 FDR) are shared
+        // across all positions; columns 3-5 vary per the spec's table.
+        function computePlayerStatColumns(player) {
+            const gamesPlayed = computePlayerGamesPlayed(player);
+            const mins = player.minutes || 0;
+            const per90 = val => mins > 0 ? ((val || 0) / mins) * 90 : 0;
+            const csPercent = gamesPlayed > 0 ? Math.round(((player.cleanSheets || 0) / gamesPlayed) * 100) : 0;
+
+            const cols = {
+                form: (isPreseason ? player.ppg : player.form).toFixed(1),
+                fdr: (player.avgFDR || 3).toFixed(1),
+            };
+            if (player.position === 1) { // GK
+                cols.stat3 = { label: 'CS%', value: `${csPercent}%` };
+                cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2) };
+                cols.stat5 = { label: 'Sv/90', value: per90(player.saves).toFixed(2) };
+            } else if (player.position === 2) { // DEF
+                cols.stat3 = { label: 'CS%', value: `${csPercent}%` };
+                cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2) };
+                cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+            } else if (player.position === 3) { // MID
+                cols.stat3 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+                cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2) };
+                cols.stat5 = { label: 'xA/90', value: per90(player.xA).toFixed(2) };
+            } else { // FWD
+                cols.stat3 = { label: 'Goals', value: String(player.goals || 0) };
+                cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2) };
+                cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+            }
+            return cols;
+        }
+
+        // Team form + fixture swing badges shown next to the team name \u2014 same
+        // underlying data (teamAnalysis, fixtureSwingData) already used in the
+        // detail panel/scouting report, just surfaced here as compact badges.
+        function renderTeamBadges(player) {
+            const ta = teamAnalysis[player.teamId];
+            let formBadge = '';
+            if (ta) {
+                const good = ta.formRating >= 55, bad = ta.formRating < 40;
+                const cls = good ? 'good' : bad ? 'bad' : 'warning';
+                const dot = good ? '\ud83d\udfe2' : bad ? '\ud83d\udd34' : '\ud83d\udfe1';
+                const label = good ? 'Good' : bad ? 'Struggling' : 'Average';
+                formBadge = `<span class="team-form-badge ${cls}" title="W${ta.wins} D${ta.draws} L${ta.losses} last 5">${dot} ${label}</span>`;
+            }
+            const swing = fixtureSwingData[player.teamId];
+            const swingBadge = swing
+                ? `<span class="swing-badge ${swing.direction}">${swing.direction === 'improving' ? '\u25b2' : '\u25bc'} GW${swing.swingGW}</span>`
+                : '';
+            return formBadge + swingBadge;
+        }
+
+        function renderSquadRow(analysis) {
+            const { player, verdict, fixtures } = analysis;
+            const cols = computePlayerStatColumns(player);
+            const fixtureChips = fixtures.slice(0, 5).map(f => `<div class="fixture-chip fdr-${f.difficulty}"><span class="fixture-team">${escHTML(f.opponent)}</span></div>`).join('');
+            const rowFlagClass = verdict === 'sell' ? 'sq-row-sell' : verdict === 'monitor' ? 'sq-row-monitor' : '';
+            const hazardIcon = verdict === 'sell' ? '<i data-lucide="alert-triangle" class="sq-hazard-icon" title="Flagged: high sell rating"></i>' : '';
+
             return `
-            <div class="transfer-rec">
-                <div class="transfer-rec-header">
-                    <span style="font-size:20px;">\u26a1</span>
-                    <span class="transfer-rec-title">Top Transfer Recommendation</span>
-                </div>
-                <div class="transfer-rec-body">
-                    <div class="transfer-player-out" onclick="openDetailPanel(${p.id})" style="cursor:pointer;">
-                        <div class="transfer-dir out">Transfer Out</div>
-                        <div class="transfer-name">${escHTML(p.name)}</div>
-                        <div class="transfer-meta">${escHTML(p.team)} \u00b7 \u00a3${p.sellPrice.toFixed(1)}m \u00b7 Form ${p.form.toFixed(1)}</div>
-                    </div>
-                    <div class="transfer-arrow">\u2192</div>
-                    <div class="transfer-player-in">
-                        <div class="transfer-dir in">Transfer In</div>
-                        <div class="transfer-name">${escHTML(replacement.name)}</div>
-                        <div class="transfer-meta">${escHTML(replacement.team)} \u00b7 \u00a3${replacement.price.toFixed(1)}m \u00b7 Form ${replacement.form.toFixed(1)}</div>
-                    </div>
-                    <div class="transfer-savings">
-                        <div class="transfer-savings-val" style="color:${isPositive ? 'var(--color-success)' : 'var(--color-error)'}">
-                            ${isPositive ? '+' : ''}\u00a3${savings}m
+            <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''}" data-player-id="${player.id}">
+                <div class="sq-row-clickable" onclick="toggleInlineExpansion(${player.id})">
+                    <div class="sq-row-main">
+                        ${hazardIcon}
+                        <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
+                        <div class="sq-row-name-block">
+                            <div class="sq-row-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${player.isVice ? '\ud83c\udd65 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}</div>
+                            <div class="sq-row-team">${escHTML(player.team)} \u00b7 \u00a3${player.price.toFixed(1)}m ${renderTeamBadges(player)}</div>
                         </div>
-                        <div class="transfer-savings-label">${isPositive ? 'Freed Up' : 'Extra Cost'}</div>
                     </div>
+                    <div class="sq-row-stats">
+                        <div class="sq-stat"><span class="sq-stat-label">Form</span><span class="sq-stat-value">${cols.form}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">Nxt5 FDR</span><span class="sq-stat-value">${cols.fdr}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat3.label}</span><span class="sq-stat-value">${cols.stat3.value}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat4.label}</span><span class="sq-stat-value">${cols.stat4.value}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat5.label}</span><span class="sq-stat-value">${cols.stat5.value}</span></div>
+                    </div>
+                    <div class="sq-row-fixtures">${fixtureChips}</div>
+                    <span class="sq-row-chevron" id="sq-chevron-${player.id}"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
                 </div>
-            </div>`;
+                <button class="sq-transfer-btn" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
+                    <i data-lucide="repeat" style="width:14px;height:14px;"></i>
+                </button>
+            </div>
+            <div class="sq-inline-expansion" id="sq-expand-${player.id}" style="display:none"></div>`;
         }
 
-        function renderVerdictSection(type, title, items, useFullCards) {
-            const labels = { sell: '\ud83d\udd34', monitor: '\ud83d\udfe1', hold: '\ud83d\udfe2', star: '\u2b50' };
+        function renderPositionGroup(pos, items) {
+            if (!items.length) return '';
             return `
-            <div class="verdict-section">
-                <div class="verdict-header" onclick="toggleSection('${type}-section')">
-                    <span class="verdict-badge ${type}">${labels[type]} ${type === 'star' ? 'Star' : type.charAt(0).toUpperCase() + type.slice(1)}</span>
-                    <span class="verdict-title">${title}</span>
-                    <span class="verdict-count">${items.length} player${items.length > 1 ? 's' : ''}</span>
-                    <span class="verdict-toggle" id="${type}-section-toggle">\u25bc</span>
-                </div>
-                <div class="squad-verdict-list" id="${type}-section">
-                    ${items.map(a => renderCompactRow(a)).join('')}
-                </div>
+            <div class="sq-position-group">
+                <div class="sq-position-header">${POSITION_CONFIG[pos].name}s <span class="sq-position-count">${items.length}</span></div>
+                ${items.map(renderSquadRow).join('')}
             </div>`;
         }
 
-        function renderCompactRow(analysis) {
-            const { player, verdict, verdictReason, recommendation, keyMetric, fixtures } = analysis;
-            const posConfig = POSITION_CONFIG[player.position];
-            const formClass = player.form >= posConfig.formMedian + 1.5 ? 'star' : player.form >= posConfig.formMedian + 0.5 ? 'good' : player.form < posConfig.formMedian - 0.5 ? 'bad' : 'warning';
-            const fixtureChips = fixtures.slice(0, 5).map(f => `<span class="fixture-chip fdr-${f.difficulty}" style="padding:2px 4px;font-size:9px;border-radius:3px;"><span class="fixture-team" style="font-size:9px;">${escHTML(f.opponent)}</span></span>`).join('');
-
-            return `
-            <div class="squad-row ${verdict}" onclick="openDetailPanel(${player.id})">
-                <div class="squad-row-main">
-                    <span class="position-badge ${posConfig.class}" style="width:28px;text-align:center;">${posConfig.short}</span>
-                    <div class="squad-row-name">
-                        <span style="font-weight:600;font-size:13px;">${player.isCaptain ? '\ud83d\udc51 ' : ''}${escHTML(player.name)}</span>
-                        <span style="font-size:11px;color:var(--text-muted);">${escHTML(player.team)} \u00b7 \u00a3${player.price.toFixed(1)}m${player.onBench ? ' \u00b7 Bench' : ''}</span>
-                    </div>
-                </div>
-                <div class="squad-row-stats">
-                    <div class="squad-row-stat">
-                        <span style="font-size:10px;color:var(--text-muted);">Form</span>
-                        <span class="metric-value ${formClass}" style="font-size:13px;">${player.form.toFixed(1)}</span>
-                    </div>
-                    <div class="squad-row-stat">
-                        <span style="font-size:10px;color:var(--text-muted);">${keyMetric.secondary?.label || keyMetric.tertiary?.label || 'PPG'}</span>
-                        <span class="metric-value ${keyMetric.secondary?.status || keyMetric.tertiary?.status || 'neutral'}" style="font-size:13px;">${keyMetric.secondary?.value || keyMetric.tertiary?.value || player.ppg.toFixed(1)}</span>
-                    </div>
-                    <div class="squad-row-fixtures">${fixtureChips}</div>
-                </div>
-                <div class="squad-row-verdict">
-                    <div class="verdict-chip ${verdict}" style="font-size:10px;padding:3px 8px;">${verdict === 'star' ? '\u2605' : verdict}</div>
-                </div>
-            </div>`;
+        function renderSquadTable() {
+            const groups = [1, 2, 3, 4].map(pos => ({
+                pos,
+                items: analysisResults.filter(a => a.player.position === pos)
+                    .sort((a, b) => a.player.pickPosition - b.player.pickPosition),
+            }));
+            return `<div class="sq-table">${groups.map(g => renderPositionGroup(g.pos, g.items)).join('')}</div>`;
         }
+
+        // Phase 2/3 will replace these stubs with the real inline accordion and
+        // transfer side-panel implementations.
+        function toggleInlineExpansion(playerId) { /* Phase 2 */ }
+        function openTransferPanel(playerId) { /* Phase 3 */ }
 
         function toggleSection(sectionId) {
             const section = document.getElementById(sectionId);
@@ -1488,33 +1514,29 @@
         let draftTabRendered = false;
         function switchTab(tab) {
             if (tab === 'squadplanner') tab = 'draft';
+            // Transfer Wizard and Lineup Wizard are no longer separate tab destinations —
+            // their content now lives inside Transfers and the Squad detail panel/pitch respectively.
+            if (tab === 'transfer') tab = 'transfers';
+            if (tab === 'lineup') tab = 'team';
             const teamDisplay = document.getElementById('teamDisplay');
-            const transferMarketDisplay = document.getElementById('transferMarketDisplay');
             const newsDisplay = document.getElementById('newsDisplay');
             const transferDisplay = document.getElementById('transferDisplay');
-            const lineupDisplay = document.getElementById('lineupDisplay');
             const draftDisplay = document.getElementById('draftDisplay');
             const tabTeam = document.getElementById('tabTeam');
             const tabTransfers = document.getElementById('tabTransfers');
             const tabNews = document.getElementById('tabNews');
-            const tabTransfer = document.getElementById('tabTransfer');
-            const tabLineup = document.getElementById('tabLineup');
             const tabDraft = document.getElementById('tabDraft');
 
             teamDisplay.style.display = 'none';
-            transferMarketDisplay.style.display = 'none';
             newsDisplay.style.display = 'none';
             transferDisplay.style.display = 'none';
-            lineupDisplay.style.display = 'none';
             draftDisplay.style.display = 'none';
             tabTeam.classList.remove('active');
             tabTransfers.classList.remove('active');
             tabNews.classList.remove('active');
-            tabTransfer.classList.remove('active');
-            tabLineup.classList.remove('active');
             tabDraft.classList.remove('active');
 
-            const hashMap = { team: 'squad', transfers: 'transfers', news: 'news', draft: 'draft', transfer: 'transfer', lineup: 'lineup' };
+            const hashMap = { team: 'squad', transfers: 'transfers', news: 'news', draft: 'draft' };
             history.replaceState(null, '', '#' + (hashMap[tab] || tab));
 
             document.getElementById('settingsBtn').style.display = (tab === 'team') ? '' : 'none';
@@ -1523,21 +1545,13 @@
                 teamDisplay.style.display = '';
                 tabTeam.classList.add('active');
             } else if (tab === 'transfers') {
-                transferMarketDisplay.style.display = '';
+                transferDisplay.style.display = '';
                 tabTransfers.classList.add('active');
-                if (!transferMarketRendered) renderTransferMarket();
+                if (!transferRendered) renderTransferWizard();
             } else if (tab === 'news') {
                 newsDisplay.style.display = '';
                 tabNews.classList.add('active');
                 if (!newsRendered) renderNewsTab();
-            } else if (tab === 'transfer') {
-                transferDisplay.style.display = '';
-                tabTransfer.classList.add('active');
-                if (!transferRendered) renderTransferWizard();
-            } else if (tab === 'lineup') {
-                lineupDisplay.style.display = '';
-                tabLineup.classList.add('active');
-                if (!lineupRendered) renderInlineLineupWizard();
             } else if (tab === 'draft') {
                 draftDisplay.style.display = '';
                 tabDraft.classList.add('active');
@@ -1547,7 +1561,7 @@
 
         // Activate tab from hash on load
         (function() {
-            const hashToTab = { squad: 'team', transfers: 'transfers', news: 'news', draft: 'draft', squadplanner: 'draft', transfer: 'transfer', lineup: 'lineup' };
+            const hashToTab = { squad: 'team', transfers: 'transfers', news: 'news', draft: 'draft', squadplanner: 'draft', transfer: 'transfers', lineup: 'team' };
             const hash = window.location.hash.replace('#', '');
             if (hashToTab[hash]) {
                 // Defer until after data loads — store desired tab
@@ -2013,6 +2027,21 @@
                 <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100</div>
             </div>`;
 
+            // AI Score Breakdown — the "why" behind the verdict, one glance below it
+            const lwDetailed = computeQuickLineupScoreDetailed(player);
+            html += `<div class="detail-section">
+                <div class="detail-section-title" data-term="xPts">🧠 AI Score Breakdown</div>
+                <div style="text-align:center;margin-bottom:10px;"><span style="font-family:var(--font-mono);font-size:24px;font-weight:700;color:${lwDetailed.total >= 30 ? 'var(--color-success)' : lwDetailed.total >= 10 ? '#F59E0B' : 'var(--color-error)'};">${lwDetailed.total}</span><span style="font-size:11px;color:var(--text-muted);margin-left:4px;">pts</span></div>
+                ${renderScoreBar('Exp Pts', lwDetailed.ep, 15, 'var(--color-info)')}
+                ${renderScoreBar('Form', lwDetailed.form, 15, '#A78BFA')}
+                ${renderScoreBar('Fixture', lwDetailed.fixture, 10, 'var(--color-success)')}
+                ${renderScoreBar('Home', lwDetailed.home, 2, '#F59E0B')}
+                ${renderScoreBar('xGI/90', lwDetailed.xgi, 10, '#EC4899')}
+                ${renderScoreBar('Minutes', lwDetailed.minutes, 5, '#06B6D4')}
+                ${renderScoreBar('PPG', lwDetailed.ppg, 10, '#8B5CF6')}
+                ${lwDetailed.doubtful !== 0 ? renderScoreBar('Doubtful', lwDetailed.doubtful, 20, 'var(--color-error)') : ''}
+            </div>`;
+
             // Key Statistics with visual bars
             html += `<div class="detail-section">
                 <div class="detail-section-title">\ud83d\udcca Key Statistics</div>
@@ -2076,6 +2105,24 @@
                     </div>
                     ` : ''}
                     ${swingHtml}
+                </div>`;
+            }
+
+            // Scouting Report — Routes to Points, Rising Form Signals, Home/Away splits, xG regression.
+            // Reuses the same per-player intel builders as the (now-merged) Lineup Wizard context panel
+            // instead of re-implementing them, since `player` here already matches the shape they expect.
+            const scoutingHtml = [
+                lwBuildSingleRoutes(player),
+                lwBuildSingleRisingForm(player),
+                lwBuildSingleSplits(player),
+                lwBuildSingleXgRegression(player)
+            ].filter(Boolean).join('');
+            if (scoutingHtml) {
+                html += `<div class="detail-section">
+                    <div class="detail-section-title" onclick="toggleSection('scouting-report-section')" style="cursor:pointer;display:flex;align-items:center;gap:6px;">
+                        🔬 Scouting Report <span class="verdict-toggle" id="scouting-report-section-toggle" style="margin-left:auto;">▼</span>
+                    </div>
+                    <div id="scouting-report-section">${scoutingHtml}</div>
                 </div>`;
             }
 
@@ -3067,7 +3114,7 @@
             } else {
                 dropdown.innerHTML = results.map(p => `<div class="planner-search-item" onclick="selectDraftReplacement(${p.id})">
                     <div><span class="planner-search-item-name">${escHTML(p.name)}</span></div>
-                    <span class="planner-search-item-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${p.form} form</span>
+                    <span class="planner-search-item-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${isPreseason ? p.ppg.toFixed(1) : p.form} form</span>
                 </div>`).join('');
             }
             dropdown.classList.add('show');
@@ -5041,7 +5088,7 @@
             // ── Section 1: Core Stats ──
             let coreHtml = '';
             coreHtml += compRow('Price', soldPrice, candPrice, false, '£' + soldPrice.toFixed(1) + 'm', '£' + candPrice.toFixed(1) + 'm');
-            coreHtml += compRow('Form', sold.form || 0, candidate.form || 0, true);
+            coreHtml += compRow('Form', (isPreseason ? sold.ppg : sold.form) || 0, (isPreseason ? candidate.ppg : candidate.form) || 0, true);
             coreHtml += compRow('PPG', sold.ppg || 0, candidate.ppg || 0, true);
             coreHtml += compRow('Pts (L5)', soldRecent?.points || 0, candRecent?.points || 0, true, fmtV(soldRecent?.points, 0), fmtV(candRecent?.points, 0));
             coreHtml += compRow('Mins/G', soldRecent ? soldRecent.minutes / soldRecent.games : 0, candRecent ? candRecent.minutes / candRecent.games : 0, true, fmtV(soldRecent ? soldRecent.minutes / soldRecent.games : 0, 0), fmtV(candRecent ? candRecent.minutes / candRecent.games : 0, 0));
@@ -6208,7 +6255,7 @@
                     </div>
                 </div>
                 <div class="lw-stats">
-                    <div class="lw-stat"><div class="lw-stat-val">${p.form}</div><div class="lw-stat-label">Form</div></div>
+                    <div class="lw-stat"><div class="lw-stat-val">${isPreseason ? p.ppg.toFixed(1) : p.form}</div><div class="lw-stat-label">Form</div></div>
                     <div class="lw-stat"><div class="lw-stat-val">${p.ppg.toFixed(1)}</div><div class="lw-stat-label">PPG</div></div>
                     <div class="lw-stat"><div class="lw-stat-val" style="color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'}">${p.lwScore}</div><div class="lw-stat-label" title="Lineup Score = EP×3 + Form×2 + (3−FDR)×5 + Home×2 + xGI/90×10 + Minutes bonus + PPG×1.5">Score</div></div>
                 </div>
@@ -6280,7 +6327,7 @@
                         <div class="lw-row-player-team">${escHTML(p.team)}</div>
                     </div>
                     <div class="lw-row-fixture">${fx ? `<span class="fdr-dot fdr-${fx.difficulty}"></span><span>${escHTML(fx.opponent)}</span><span style="font-size:9px;color:var(--text-muted);">${fx.isHome ? 'H' : 'A'}</span>` : '<span style="color:var(--text-muted);">-</span>'}</div>
-                    <div class="lw-row-stat">${p.form}</div>
+                    <div class="lw-row-stat">${isPreseason ? p.ppg.toFixed(1) : p.form}</div>
                     <div class="lw-row-stat">${(p.epNext || 0).toFixed(1)}</div>
                     <div class="lw-row-stat" style="color:${sc};font-size:13px;">${p.lwScore}</div>
                 </div>`;
@@ -6514,7 +6561,7 @@
                         <div class="lw-captain-name">${escHTML(p.web_name)}</div>
                         <div class="lw-captain-meta">
                             <span>${escHTML(p.team)}</span>
-                            <span>Form ${p.form}</span>
+                            <span>Form ${isPreseason ? p.ppg.toFixed(1) : p.form}</span>
                             <span>xGI/90 ${xgi}</span>
                             ${fx ? `<span class="fixture-chip fdr-${fx.difficulty}" style="font-size:10px;padding:1px 5px;">${escHTML(fx.opponent)}(${fx.isHome ? 'H' : 'A'})</span>` : ''}
                         </div>
@@ -6745,7 +6792,10 @@
             const detailed = computeQuickLineupScoreDetailed(p);
             const ta = teamAnalysis[p.teamId];
             const fx = p.fixtures || [];
-            const gamesPlayed = Math.max(currentGW - 1, 1);
+            // Preseason: currentGW-1 is 0, so dividing p.points (last season's full total)
+            // by gamesPlayed=1 would mislabel a season total as "PPG" — fall back to a
+            // starts-based games-played estimate like the main analysis engine does.
+            const gamesPlayed = isPreseason ? Math.max(p.starts || Math.round(p.minutes / 90), 1) : Math.max(currentGW - 1, 1);
             const xGIPer90 = p.minutes > 0 ? ((p.xGI / p.minutes) * 90) : 0;
             const mpg = (p.minutes || 0) / gamesPlayed;
 
@@ -6804,8 +6854,8 @@
             html += `<div class="lw-ctx-section">`;
             html += `<div class="lw-ctx-section-title"><i data-lucide="bar-chart-3" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Season Stats</div>`;
             html += `<div class="lw-ctx-stat-grid">`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.form}</div><div class="lw-ctx-stat-box-label">Form</div></div>`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${(p.points / gamesPlayed).toFixed(1)}</div><div class="lw-ctx-stat-box-label">PPG</div></div>`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${isPreseason ? p.ppg.toFixed(1) : p.form}</div><div class="lw-ctx-stat-box-label">Form</div></div>`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${(isPreseason ? p.ppg : (p.points / gamesPlayed)).toFixed(1)}</div><div class="lw-ctx-stat-box-label">PPG</div></div>`;
             html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${xGIPer90.toFixed(2)}</div><div class="lw-ctx-stat-box-label">xGI/90</div></div>`;
             if (p.pos >= 3) {
                 html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.goals}</div><div class="lw-ctx-stat-box-label">Goals</div></div>`;
