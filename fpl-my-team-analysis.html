@@ -3689,18 +3689,26 @@
 
             html += `<div id="draftTransferComparison"></div>`;
 
-            // Quick suggestions
+            // Quick suggestions — AI-ranked, one click swaps the player in immediately
+            // (unlike the manual Search results above, which go through the compare-then-
+            // confirm flow via selectDraftReplacement, since these are already AI-vetted).
             const squad2 = getDraftSquad(gw);
             const suggestions = findDraftReplacements(player, squad2, 8);
             if (suggestions.length > 0) {
                 html += `<div class="detail-section">
                     <div class="detail-section-title"><i data-lucide="zap" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Top Suggestions</div>
-                    ${suggestions.map(r => `<div class="planner-search-item" onclick="selectDraftReplacement(${r.id})" style="cursor:pointer;background:var(--surface-0);border-radius:var(--radius-sm);margin-bottom:4px;">
-                        <div>
-                            <span class="planner-search-item-name">${escHTML(r.name)}</span>
-                            <span class="planner-search-item-meta">${escHTML(r.team)} · £${r.price.toFixed(1)}m · ${r.form} form</span>
-                        </div>
-                    </div>`).join('')}
+                    ${suggestions.map((r, i) => {
+                        const nextF = (r.fixtures || [])[0];
+                        const fdrHtml = nextF ? `<span class="fdr-dot fdr-${nextF.difficulty}"></span> ${escHTML(nextF.opponent)} (${nextF.isHome ? 'H' : 'A'})` : 'No fixture';
+                        return `<div class="tw-market-row" onclick="confirmDraftTransfer(${player.id}, ${r.id})" title="Click to swap in ${escHTML(r.name)}">
+                            <div class="tw-market-rank">${i + 1}</div>
+                            <span class="tw-market-name">${escHTML(r.name)}</span>
+                            <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${escHTML(r.team)}</span>
+                            <span class="tw-market-price">£${r.price.toFixed(1)}m</span>
+                            <span class="tw-market-score" title="AI Projected Score">${r._score.toFixed(0)}</span>
+                            <div class="tw-market-row-detail">${fdrHtml}</div>
+                        </div>`;
+                    }).join('')}
                 </div>`;
             }
 
