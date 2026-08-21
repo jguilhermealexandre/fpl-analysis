@@ -1179,7 +1179,9 @@
             if (sqChartInstance) { sqChartInstance.destroy(); sqChartInstance = null; }
             document.getElementById('teamDisplay').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            if (sqChartExpanded) initSquadChart();
+            // Same timing safety as toggleSquadChart(): give the freshly-inserted
+            // grid-collapse container a moment to lay out before Chart.js measures it.
+            if (sqChartExpanded) setTimeout(initSquadChart, 320);
             if (typeof onCompareSelectionChange === 'function') onCompareSelectionChange();
             document.getElementById('status').style.display = 'none';
 
@@ -1764,8 +1766,13 @@
         }
 
         function renderSquadChartWidget() {
-            const metricOptions = Object.keys(SQ_CHART_METRICS)
-                .map(k => `<option value="${k}">${SQ_CHART_METRICS[k].label}</option>`).join('');
+            // Mark the current metric `selected` directly in the markup so the
+            // dropdowns show the right pair immediately on render — not only after
+            // initSquadChart() runs and corrects .value in JS (e.g. before Chart.js
+            // has finished loading, the <select>s would otherwise default to the
+            // first metric in SQ_CHART_METRICS for both axes: "Price (£m)" vs "Price (£m)").
+            const metricOptions = selected => Object.keys(SQ_CHART_METRICS)
+                .map(k => `<option value="${k}" ${k === selected ? 'selected' : ''}>${SQ_CHART_METRICS[k].label}</option>`).join('');
             return `<div class="sq-chart-widget">
                 <div class="sq-chart-header" onclick="toggleSquadChart()">
                     <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i>
@@ -1778,9 +1785,9 @@
                             <button class="sq-chart-pill" onclick="setSquadChartMetrics('xgi90','points')">xGI/90 vs Points</button>
                             <button class="sq-chart-pill" onclick="setSquadChartMetrics('value','ownership')">Value vs Ownership</button>
                             <span class="sq-chart-axis-picker">
-                                <select id="sq-chart-x-select" onchange="onSquadChartMetricChange()">${metricOptions}</select>
+                                <select id="sq-chart-x-select" onchange="onSquadChartMetricChange()">${metricOptions(sqChartXMetric)}</select>
                                 <span>vs</span>
-                                <select id="sq-chart-y-select" onchange="onSquadChartMetricChange()">${metricOptions}</select>
+                                <select id="sq-chart-y-select" onchange="onSquadChartMetricChange()">${metricOptions(sqChartYMetric)}</select>
                             </span>
                         </div>
                         <div class="sq-chart-canvas-wrap" id="sq-chart-canvas-wrap"><canvas id="sqChartCanvas"></canvas></div>
@@ -1842,9 +1849,18 @@
             }));
         }
 
-        function initSquadChart() {
+        function initSquadChart(attempt) {
+            attempt = attempt || 0;
             const canvas = document.getElementById('sqChartCanvas');
-            if (!canvas || typeof Chart === 'undefined') return;
+            if (!canvas) return;
+            if (typeof Chart === 'undefined') {
+                // Chart.js loads via a <script> tag near the end of the document — on a
+                // slow connection it can still be mid-download when squad data finishes
+                // loading first. Retry briefly instead of silently leaving the widget
+                // blank forever.
+                if (attempt < 20) setTimeout(() => initSquadChart(attempt + 1), 150);
+                return;
+            }
             const xSel = document.getElementById('sq-chart-x-select');
             const ySel = document.getElementById('sq-chart-y-select');
             if (xSel) xSel.value = sqChartXMetric;
