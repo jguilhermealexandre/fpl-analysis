@@ -1716,24 +1716,29 @@
 
         // Shared stat catalog for the X/Y metric pickers — any pair is "available for
         // free" since this only ever plots the ~15 squad players (cheap either way).
+        // `format` renders a raw metric value for axis ticks/tooltips — keeps each
+        // metric's own natural precision (whole counts for points/minutes, % for
+        // ownership, currency for price, 2dp for the small per-90 rates) instead of
+        // Chart.js's default tick formatting, which shows the same decimal places
+        // for every metric regardless of scale (e.g. "0.10, 0.20" for xGI/90).
         const SQ_CHART_METRICS = {
-            price: { label: 'Price (£m)', get: p => p.price },
-            ownership: { label: 'Ownership %', get: p => p.ownership },
-            form: { label: 'Form', get: p => isPreseason ? p.ppg : p.form },
-            ppg: { label: 'Pts/Game', get: p => p.ppg },
-            points: { label: 'Total Points', get: p => p.points },
-            minutes: { label: 'Minutes', get: p => p.minutes },
-            xg: { label: 'xG', get: p => p.xG },
-            xa: { label: 'xA', get: p => p.xA },
-            xgi: { label: 'xGI', get: p => p.xGI },
-            xgi90: { label: 'xGI/90', get: p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0 },
-            xgc: { label: 'xGC', get: p => p.xGC },
-            ict: { label: 'ICT Index', get: p => p.ictIndex },
-            bonus: { label: 'Bonus', get: p => p.bonus },
-            bps: { label: 'BPS', get: p => p.bps },
-            goals: { label: 'Goals', get: p => p.goals },
-            assists: { label: 'Assists', get: p => p.assists },
-            value: { label: 'Value (pts/£m)', get: p => p.price > 0 ? p.points / p.price : 0 },
+            price: { label: 'Price (£m)', get: p => p.price, format: v => `£${Number(v.toFixed(1))}m` },
+            ownership: { label: 'Ownership %', get: p => p.ownership, format: v => `${Number(v.toFixed(1))}%` },
+            form: { label: 'Form', get: p => isPreseason ? p.ppg : p.form, format: v => Number(v.toFixed(1)) },
+            ppg: { label: 'Pts/Game', get: p => p.ppg, format: v => Number(v.toFixed(1)) },
+            points: { label: 'Total Points', get: p => p.points, format: v => Math.round(v) },
+            minutes: { label: 'Minutes', get: p => p.minutes, format: v => Math.round(v) },
+            xg: { label: 'xG', get: p => p.xG, format: v => Number(v.toFixed(2)) },
+            xa: { label: 'xA', get: p => p.xA, format: v => Number(v.toFixed(2)) },
+            xgi: { label: 'xGI', get: p => p.xGI, format: v => Number(v.toFixed(2)) },
+            xgi90: { label: 'xGI/90', get: p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0, format: v => Number(v.toFixed(2)) },
+            xgc: { label: 'xGC', get: p => p.xGC, format: v => Number(v.toFixed(2)) },
+            ict: { label: 'ICT Index', get: p => p.ictIndex, format: v => Number(v.toFixed(1)) },
+            bonus: { label: 'Bonus', get: p => p.bonus, format: v => Math.round(v) },
+            bps: { label: 'BPS', get: p => p.bps, format: v => Math.round(v) },
+            goals: { label: 'Goals', get: p => p.goals, format: v => Math.round(v) },
+            assists: { label: 'Assists', get: p => p.assists, format: v => Math.round(v) },
+            value: { label: 'Value (pts/£m)', get: p => p.price > 0 ? p.points / p.price : 0, format: v => Number(v.toFixed(1)) },
         };
 
         function getFilteredSquad() {
@@ -1878,6 +1883,13 @@
             if (xSel) xSel.value = sqChartXMetric;
             if (ySel) ySel.value = sqChartYMetric;
 
+            // applyChartDefaults()/scatterTooltipStyle() (scripts/common.js) are the same
+            // theme-aware defaults and tooltip card used by every scatter chart on the
+            // Players Analysis Charts tab — reused here rather than re-styled from scratch
+            // so this widget renders at the same quality bar.
+            if (typeof applyChartDefaults === 'function') applyChartDefaults();
+            const tooltipStyle = typeof scatterTooltipStyle === 'function' ? scatterTooltipStyle() : {};
+
             sqChartInstance = new Chart(canvas.getContext('2d'), {
                 type: 'scatter',
                 data: { datasets: buildSquadChartDatasets() },
@@ -1887,19 +1899,29 @@
                     plugins: {
                         legend: { position: 'top', labels: { color: 'var(--text-secondary)', usePointStyle: true } },
                         tooltip: {
+                            ...tooltipStyle,
                             callbacks: {
                                 title: ctx => ctx[0]?.raw ? `${ctx[0].raw.name} (${ctx[0].raw.team})` : '',
                                 label: ctx => {
                                     const r = ctx.raw;
                                     if (!r) return '';
-                                    return [`${SQ_CHART_METRICS[sqChartXMetric].label}: ${r.x.toFixed(2)}`, `${SQ_CHART_METRICS[sqChartYMetric].label}: ${r.y.toFixed(2)}`];
+                                    return [
+                                        `${SQ_CHART_METRICS[sqChartXMetric].label}: ${SQ_CHART_METRICS[sqChartXMetric].format(r.x)}`,
+                                        `${SQ_CHART_METRICS[sqChartYMetric].label}: ${SQ_CHART_METRICS[sqChartYMetric].format(r.y)}`
+                                    ];
                                 }
                             }
                         }
                     },
                     scales: {
-                        x: { title: { display: true, text: SQ_CHART_METRICS[sqChartXMetric].label } },
-                        y: { title: { display: true, text: SQ_CHART_METRICS[sqChartYMetric].label } }
+                        x: {
+                            title: { display: true, text: SQ_CHART_METRICS[sqChartXMetric].label },
+                            ticks: { callback: v => SQ_CHART_METRICS[sqChartXMetric].format(v) }
+                        },
+                        y: {
+                            title: { display: true, text: SQ_CHART_METRICS[sqChartYMetric].label },
+                            ticks: { callback: v => SQ_CHART_METRICS[sqChartYMetric].format(v) }
+                        }
                     }
                 }
             });

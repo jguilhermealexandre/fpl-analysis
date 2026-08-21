@@ -2823,12 +2823,22 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     min-height: 0;
 }
 
+/* Guarantee the chart's real 400px+ height actually propagates through the
+   grid-collapse trick above once expanded — .sq-chart-body-inner's min-height:0
+   (needed so the *closed* state can collapse to near-zero) would otherwise cap
+   the grid row's automatic minimum size regardless of the canvas wrap's own
+   min-height below, leaving the "expanded" accordion visually collapsed. */
+.sq-chart-body-outer.open .sq-chart-body-inner {
+    min-height: 400px;
+}
+
 .sq-chart-controls {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
     padding: 14px 16px 12px;
+    margin-bottom: 16px;
 }
 
 .sq-chart-pill {
@@ -2863,6 +2873,13 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     background: var(--surface-1);
     color: var(--text-primary);
     font-size: 11px;
+    transition: border-color 150ms ease;
+}
+
+.sq-chart-axis-picker select:hover,
+.sq-chart-axis-picker select:focus {
+    border-color: var(--color-primary);
+    outline: none;
 }
 
 .sq-chart-canvas-wrap {

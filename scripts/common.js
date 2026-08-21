@@ -46,6 +46,23 @@ function applyChartDefaults() {
     Chart.defaults.scale.grid.color = ct.grid;
 }
 
+// Shared scatter-chart tooltip styling — the dark, high-contrast card (title in
+// green, one line per stat, no color swatch) used across every scatter chart in
+// the Players Analysis Charts tab. Pulled out here so other pages' scatter
+// widgets (e.g. My Team's Visual Analysis) render tooltips of the same quality
+// instead of falling back to Chart.js's plain default tooltip.
+function scatterTooltipStyle() {
+    return {
+        backgroundColor: 'rgba(13, 17, 23, 0.95)',
+        titleColor: '#4ade80',
+        bodyColor: 'rgba(255,255,255,0.87)',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        padding: 12,
+        displayColors: false
+    };
+}
+
 // ===== SKELETON LOADING =====
 function createSkeletonCards(count, container) {
     let html = '<div class="skeleton-container skeleton-grid" id="skeleton-loader">';
