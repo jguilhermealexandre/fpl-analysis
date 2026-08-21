@@ -1,7 +1,7 @@
 /* ============================================
    EasyFPL — Shared AI Scouting Report / Compare Engine
-   Used by fpl-players-analysis-v2.html (All Players table) and
-   fpl-my-team-analysis-v2.html (Squad Analysis). Fully deterministic —
+   Used by fpl-players-analysis.html (All Players table) and
+   fpl-my-team-analysis.html (Squad Analysis). Fully deterministic —
    no API calls, everything here is stats + template logic.
 
    Callers must have these in scope before this script runs:

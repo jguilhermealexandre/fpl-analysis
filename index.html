@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="v2-theme">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,8 +16,9 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/common.css">
+    <link rel="stylesheet" href="styles/v2-design.css">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -29,7 +30,7 @@
         }
 
         .hero-banner.hero-logged-in {
-            background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 30%, #FFFFFF 70%, #EFF6FF 100%);
+            background: transparent;
             min-height: auto;
         }
         .hero-banner.hero-logged-in::before,
@@ -38,7 +39,7 @@
             display: none;
         }
         [data-theme="dark"] .hero-banner.hero-logged-in {
-            background: linear-gradient(135deg, #0F172A 0%, #0F172A 40%, #111827 70%, #0F172A 100%);
+            background: transparent;
         }
 
         .hero-banner::before {
@@ -91,7 +92,8 @@
         }
 
         .hero-logged-in .hero-inner {
-            padding: 40px 24px 32px;
+            max-width: 1440px;
+            padding: 40px 32px 32px;
             gap: 32px;
         }
 
@@ -122,7 +124,7 @@
         .hero-title {
             font-family: var(--font-display);
             font-size: 56px;
-            font-weight: 700;
+            font-weight: 600;
             color: #fff;
             letter-spacing: -1.5px;
             line-height: 1.1;
@@ -160,7 +162,7 @@
             color: #fff;
             font-family: var(--font-display);
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 600;
             border: none;
             border-radius: var(--radius-lg);
             cursor: pointer;
@@ -279,7 +281,7 @@
         .mockup-dash-logo {
             font-family: var(--font-display);
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 600;
             color: #fff;
         }
 
@@ -329,7 +331,7 @@
 
         .mockup-sq-pos {
             font-size: 8px;
-            font-weight: 700;
+            font-weight: 600;
             padding: 2px 6px;
             border-radius: 4px;
             min-width: 26px;
@@ -350,7 +352,7 @@
 
         .mockup-sq-verdict {
             font-size: 8px;
-            font-weight: 700;
+            font-weight: 600;
             padding: 2px 8px;
             border-radius: 9999px;
             text-transform: uppercase;
@@ -375,7 +377,7 @@
             align-items: center;
             justify-content: center;
             font-size: 8px;
-            font-weight: 700;
+            font-weight: 600;
             color: #fff;
         }
 
@@ -404,7 +406,7 @@
         .mockup-stat-val {
             font-family: var(--font-display);
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 600;
             color: #fff;
         }
 
@@ -489,17 +491,24 @@
         .hero-greeting {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
+            justify-content: space-between;
+            gap: 16px;
             margin-bottom: 24px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            text-align: left;
+            min-width: 0;
         }
 
         .hero-greeting-text {
             font-family: var(--font-display);
             font-size: 28px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .hero-greeting-text span {
@@ -509,12 +518,18 @@
         .hero-greeting-gw {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 4px;
-            padding: 4px 12px;
+            flex: 0 0 auto;
+            margin-left: auto;
+            padding: 8px 18px;
             background: var(--color-primary-muted);
             border: 1px solid rgba(16, 185, 129, 0.20);
             border-radius: var(--radius-full);
-            font-size: 12px;
+            font-family: var(--font-display);
+            font-size: var(--v2-page-title-size);
+            line-height: 0.95;
+            letter-spacing: var(--v2-page-title-spacing);
             font-weight: 600;
             color: var(--color-primary-text);
         }
@@ -529,11 +544,490 @@
             border-radius: var(--radius-full);
             font-family: var(--font-display);
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--color-primary-text);
         }
         .hero-deadline-badge .icon { width: 14px; height: 14px; }
         .hero-deadline-badge.hidden { display: none; }
+
+        /* ============================================
+           V2 DASHBOARD — Status Strip / Attention / Pitch / Quick Actions / League
+           ============================================ */
+        .v2-section-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            text-align: left;
+        }
+
+        /* --- Status Strip --- */
+        .v2-status-strip {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .v2-deadline-hero {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s, background 0.3s;
+        }
+        .v2-deadline-hero::before {
+            display: none;
+        }
+        .v2-deadline-hero.dl-soon::before { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
+        .v2-deadline-hero.dl-urgent::before { background: linear-gradient(90deg, #EF4444, #F87171); }
+        .v2-deadline-hero.dl-urgent { animation: dlPulse 2s ease-in-out infinite; }
+        @keyframes dlPulse {
+            0%, 100% { box-shadow: var(--shadow-sm); }
+            50% { box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
+        }
+        .v2-dlh-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .v2-dlh-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .v2-dlh-date {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .v2-dlh-countdown {
+            font-family: var(--font-body);
+            font-size: 40px;
+            font-weight: 600;
+            line-height: 1.1;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+            font-variant-numeric: proportional-nums;
+        }
+        .v2-deadline-hero.dl-soon .v2-dlh-countdown { color: #D97706; }
+        .v2-deadline-hero.dl-urgent .v2-dlh-countdown { color: #DC2626; }
+        .v2-dlh-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .v2-dlh-fdr {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .v2-dlh-fdr.fdr-easy   { background: rgba(16,185,129,0.10); color: #059669; }
+        .v2-dlh-fdr.fdr-medium { background: rgba(245,158,11,0.10); color: #D97706; }
+        .v2-dlh-fdr.fdr-hard   { background: rgba(239,68,68,0.10);  color: #DC2626; }
+        .v2-dlh-captain {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .v2-dlh-captain strong { color: var(--text-primary); }
+
+        .v2-status-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .v2-stat-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex: 1;
+        }
+        .v2-stat-card--minor { padding: 9px 16px; }
+        .v2-stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 2px;
+        }
+        .v2-stat-label .icon { width: 12px; height: 12px; }
+        .v2-stat-value {
+            font-family: var(--font-mono);
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .v2-stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+        .v2-stat-delta {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 8px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .v2-stat-delta .icon { width: 11px; height: 11px; }
+        .v2-stat-delta.up { background: rgba(16,185,129,0.12); color: #059669; }
+        .v2-stat-delta.down { background: rgba(239,68,68,0.12); color: #DC2626; }
+        .v2-stat-delta.flat { background: var(--surface-2); color: var(--text-muted); }
+        .v2-stat-card--minor .v2-stat-value { font-size: 15px; }
+
+        /* --- Needs Your Attention --- */
+        .v2-attention-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .v2-attn-col {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 16px 18px;
+        }
+        .v2-attn-col-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .v2-attn-col-header .icon { width: 15px; height: 15px; color: var(--text-muted); }
+        .v2-attn-col-count {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            background: var(--surface-2);
+            color: var(--text-muted);
+        }
+        .v2-attn-col-count.has-items { background: rgba(239,68,68,0.12); color: #DC2626; }
+        a.v2-attn-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: var(--radius-md);
+            border-left: 3px solid var(--verdict-monitor);
+            background: var(--verdict-monitor-bg);
+            margin-bottom: 6px;
+            text-decoration: none;
+            transition: filter 0.15s;
+        }
+        a.v2-attn-row:hover { filter: brightness(0.97); }
+        a.v2-attn-row:last-child { margin-bottom: 0; }
+        a.v2-attn-row.sev-sell { border-left-color: var(--verdict-sell); background: var(--verdict-sell-bg); }
+        .v2-attn-row-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+        .v2-attn-row-reason { font-size: 11.5px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .v2-attn-row-arrow { color: var(--text-muted); flex-shrink: 0; }
+        .v2-attn-row-arrow .icon { width: 13px; height: 13px; }
+        .v2-attn-empty {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 10px;
+            border-radius: var(--radius-md);
+            background: rgba(16,185,129,0.06);
+            color: #059669;
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+        .v2-attn-empty .icon { width: 15px; height: 15px; }
+
+        /* --- Pitch view + Quick Actions --- */
+        .v2-dashboard-main {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 16px;
+            text-align: left;
+        }
+        .v2-pitch-wrap {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            padding: 16px 18px 18px;
+        }
+        .v2-pitch-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .v2-pitch-title { font-size: 17px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); }
+        .v2-pitch-formation { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-full); }
+        .v2-pitch {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 11.5;
+            border-radius: var(--radius-lg);
+            background: repeating-linear-gradient(0deg, #CFEBD0 0, #CFEBD0 12.5%, #C4E5C6 12.5%, #C4E5C6 25%);
+            overflow: hidden;
+            border: none;
+        }
+        .v2-pitch::before {
+            content: '';
+            position: absolute;
+            left: 6%; right: 6%; top: 50%;
+            border-top: 2px solid rgba(255,255,255,0.35);
+        }
+        .v2-pitch::after {
+            content: '';
+            position: absolute;
+            left: 50%; top: 50%;
+            width: 15%; aspect-ratio: 1;
+            border: 2px solid rgba(255,255,255,0.35);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .v2-pitch-box {
+            position: absolute;
+            left: 27%; width: 46%;
+            height: 13%;
+            border: 2px solid rgba(255,255,255,0.35);
+            border-top: none;
+        }
+        .v2-pitch-box.top { top: 0; border-top: none; border-bottom: 2px solid rgba(255,255,255,0.35); border-top-width: 0; transform: rotate(180deg); }
+        .v2-pitch-box.bottom { bottom: 0; }
+        .v2-pitch-row {
+            position: absolute;
+            left: 0; right: 0;
+            display: flex;
+            justify-content: space-evenly;
+            align-items: center;
+        }
+        .v2-pitch-token {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            width: 15%;
+            max-width: 96px;
+        }
+        .v2-pitch-token-circle {
+            width: 33px;
+            height: 33px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+            position: relative;
+        }
+        .v2-pitch-token-badge {
+            position: absolute;
+            top: -5px; right: -5px;
+            width: 15px; height: 15px;
+            border-radius: 50%;
+            background: #FBBF24;
+            color: #1f2937;
+            font-size: 9px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1.5px solid #fff;
+        }
+        .v2-pitch-token-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #17301F;
+            text-shadow: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            line-height: 1.15;
+        }
+        .v2-pitch-token-pos {
+            font-size: 8.5px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: #5E6E62;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+        .v2-pitch-bench .v2-pitch-token-pos { display: none; }
+        .v2-pitch-token-status { color: #FCA5A5; }
+        .v2-pitch-bench {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--border-default);
+            overflow-x: auto;
+        }
+        .v2-pitch-bench-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; align-self: center; flex-shrink: 0; margin-right: 2px; }
+        .v2-pitch-bench .v2-pitch-token-circle { width: 28px; height: 28px; font-size: 9px; }
+        .v2-pitch-bench .v2-pitch-token { flex-shrink: 0; width: auto; }
+        .v2-pitch-bench .v2-pitch-token-name { color: var(--text-secondary); text-shadow: none; font-size: 11px; }
+
+        .v2-quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .v2-qa-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 12px 14px;
+            text-decoration: none;
+            transition: border-color 0.15s, transform 0.15s;
+        }
+        .v2-qa-card:hover { border-color: var(--color-primary); transform: translateX(2px); }
+        .v2-qa-icon {
+            width: 34px; height: 34px;
+            border-radius: var(--radius-md);
+            background: var(--color-primary-muted);
+            color: var(--color-primary-text);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .v2-qa-icon .icon { width: 16px; height: 16px; }
+        .v2-qa-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+        .v2-qa-title { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+        .v2-qa-desc { font-size: 11px; color: var(--text-muted); }
+        .v2-qa-arrow { width: 14px; height: 14px; color: var(--text-muted); flex-shrink: 0; }
+
+        /* --- Mini-league card --- */
+        .v2-league-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .v2-league-card:hover { border-color: var(--color-primary); }
+        .v2-league-name { font-size: 11px; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .v2-league-name .icon { width: 12px; height: 12px; }
+        .v2-league-rank { font-family: var(--font-mono); font-size: 20px; font-weight: 600; color: var(--text-primary); }
+        .v2-league-gap { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+        .v2-league-prompt {
+            background: var(--surface-2);
+            border: 1px dashed var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: space-between;
+        }
+        .v2-league-prompt-text { font-size: 11.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        .v2-league-prompt-text .icon { width: 14px; height: 14px; color: var(--text-muted); }
+        .v2-league-prompt-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .v2-league-prompt-actions a { font-size: 11.5px; font-weight: 600; color: var(--color-primary-text); text-decoration: none; }
+        .v2-league-prompt-dismiss { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; display: flex; }
+        .v2-league-prompt-dismiss .icon { width: 14px; height: 14px; }
+
+        /* --- Unified top row: Squad Snapshot (left) + info panel (right) --- */
+        .v2-top-row {
+            display: grid;
+            grid-template-columns: 1.7fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+            text-align: left;
+            align-items: start;
+        }
+        .v2-info-panel {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Deadline card becomes the panel's header (flat, keeps its top accent bar) */
+        .v2-info-panel .v2-deadline-hero {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            background: transparent;
+            padding: 18px 18px 15px;
+        }
+        .v2-info-panel .v2-dlh-countdown { font-size: 30px; }
+        .v2-info-panel .v2-dlh-bottom { margin-top: 2px; }
+        /* Stats become flat divided rows inside the panel */
+        .v2-info-panel .v2-status-stack { gap: 0; }
+        .v2-info-panel .v2-stat-card,
+        .v2-info-panel .v2-league-card {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            background: transparent;
+            border-top: 1px solid var(--border-subtle);
+            padding: 13px 18px;
+        }
+        .v2-info-panel .v2-stat-card--minor { padding: 11px 18px; }
+        .v2-info-panel #v2LeagueSlot .v2-league-prompt {
+            border: none;
+            border-top: 1px solid var(--border-subtle);
+            border-radius: 0;
+            background: transparent;
+            padding: 13px 18px;
+        }
+        /* Quick Actions as a full-width row of cards */
+        .v2-qa-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .v2-top-row { grid-template-columns: 1fr; }
+            .v2-status-strip { grid-template-columns: 1fr; }
+            .v2-attention-grid { grid-template-columns: 1fr; }
+            .v2-dashboard-main { grid-template-columns: 1fr; }
+            .v2-qa-cards { grid-template-columns: 1fr; }
+        }
 
         /* --- Deadline Countdown Banner --- */
         .hero-deadline-banner {
@@ -566,7 +1060,7 @@
 
         .hdb-label {
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
@@ -581,7 +1075,7 @@
         .hdb-countdown {
             font-family: var(--font-display);
             font-size: 26px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
             letter-spacing: -0.02em;
             flex-shrink: 0;
@@ -597,7 +1091,7 @@
             padding: 4px 10px;
             border-radius: var(--radius-full);
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             flex-shrink: 0;
         }
 
@@ -634,7 +1128,7 @@
 
         .hss-label {
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
@@ -649,7 +1143,7 @@
         .hss-value {
             font-family: var(--font-display);
             font-size: 22px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
             line-height: 1.2;
             letter-spacing: -0.02em;
@@ -672,7 +1166,7 @@
             align-items: center;
             gap: 3px;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 600;
             font-family: var(--font-mono);
             padding: 2px 8px;
             border-radius: var(--radius-full);
@@ -717,7 +1211,7 @@
         }
         .hss-gw-rank strong {
             font-family: var(--font-mono);
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
         }
 
@@ -732,7 +1226,7 @@
         .hsp-health-score {
             font-family: var(--font-display);
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 600;
             line-height: 1;
         }
 
@@ -780,7 +1274,7 @@
 
         .hmw-title {
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
@@ -792,7 +1286,7 @@
             align-items: center;
             gap: 3px;
             font-size: 9px;
-            font-weight: 700;
+            font-weight: 600;
             color: #10B981;
             background: rgba(16,185,129,0.1);
             padding: 1px 6px;
@@ -853,7 +1347,7 @@
             padding: 3px 8px;
             border-radius: var(--radius-full);
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 600;
         }
 
         .hip-verdict-pill.star    { background: rgba(139,92,246,0.10); color: #8B5CF6; }
@@ -896,7 +1390,7 @@
 
         .hsp-title {
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
@@ -923,7 +1417,7 @@
             gap: 8px;
             padding: 3px 0;
             font-size: 9px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--text-muted);
@@ -942,7 +1436,7 @@
             gap: 8px;
             padding: 6px 0 2px;
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.08em;
         }
@@ -965,7 +1459,7 @@
             padding: 2px 0;
             border-radius: var(--radius-sm);
             font-size: 9px;
-            font-weight: 700;
+            font-weight: 600;
             flex-shrink: 0;
         }
 
@@ -1004,7 +1498,7 @@
             padding: 1px 5px;
             border-radius: var(--radius-sm);
             font-size: 8px;
-            font-weight: 700;
+            font-weight: 600;
             min-width: 24px;
             line-height: 1.3;
         }
@@ -1017,7 +1511,7 @@
 
         .hsp-captain {
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--color-teams);
             flex-shrink: 0;
         }
@@ -1057,7 +1551,7 @@
 
         .hip-title {
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
@@ -1097,7 +1591,7 @@
 
         .hip-alert-chip {
             font-size: 9px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             padding: 2px 8px;
             border-radius: var(--radius-full);
@@ -1158,7 +1652,7 @@
             padding: 2px 6px;
             border-radius: var(--radius-sm);
             font-size: 9px;
-            font-weight: 700;
+            font-weight: 600;
             min-width: 28px;
         }
 
@@ -1215,7 +1709,7 @@
         .gac-title {
             font-family: var(--font-display);
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
             flex: 1;
         }
@@ -1223,7 +1717,7 @@
         .gac-subtitle {
             font-size: 11px;
             color: var(--text-muted);
-            font-weight: 500;
+            font-weight: 600;
         }
 
         .gac-items {
@@ -1252,7 +1746,7 @@
 
         .gac-urgency {
             font-size: 9px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.04em;
             padding: 3px 8px;
@@ -1409,7 +1903,7 @@
         .welcome-banner-title {
             font-family: var(--font-display);
             font-size: 22px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
             margin-bottom: 4px;
         }
@@ -1488,7 +1982,7 @@
         .how-it-works-header h2 {
             font-family: var(--font-display);
             font-size: 36px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
             margin-bottom: 12px;
             letter-spacing: -0.5px;
@@ -1546,7 +2040,7 @@
         .step-badge {
             display: inline-block;
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
             color: var(--color-primary);
@@ -1558,7 +2052,7 @@
         .step-card h3 {
             font-family: var(--font-display);
             font-size: 20px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
             margin-bottom: 10px;
         }
@@ -1607,7 +2101,7 @@
         .headlines-title {
             font-family: var(--font-display);
             font-size: 15px;
-            font-weight: 700;
+            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -1683,7 +2177,7 @@
         }
         .hl-source {
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
@@ -1702,12 +2196,12 @@
         /* ===== TICKER SUB-NAV BAR ===== */
         .ticker-bar {
             position: sticky;
-            top: 56px;
+            top: 0; /* was 56px, sized for the old .top-nav bar — sidebar layout has none */
             z-index: 99;
             background: var(--surface-0);
             border-bottom: 1px solid var(--border-default);
             overflow: hidden;
-            height: 36px;
+            height: 56px;
             display: flex;
             align-items: center;
         }
@@ -1733,7 +2227,7 @@
             gap: 5px;
             padding: 0 20px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--text-secondary);
         }
         .ticker-item .icon {
@@ -1748,7 +2242,7 @@
         }
         .ticker-stat-value {
             font-family: var(--font-display);
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
         }
         .ticker-flag {
@@ -1771,7 +2265,7 @@
             color: #B91C1C;
         }
         .ticker-manager {
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
             font-family: var(--font-display);
         }
@@ -1798,7 +2292,7 @@
             to { transform: translateX(-50%); }
         }
         @media (max-width: 768px) {
-            .ticker-bar { height: 32px; top: 56px; }
+            .ticker-bar { height: 56px; top: 0; }
             .ticker-item { font-size: 11px; padding: 0 14px; }
         }
 
@@ -1836,7 +2330,7 @@
             padding: 5px 12px;
             border-radius: var(--radius-full);
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 16px;
@@ -1853,7 +2347,7 @@
         .feature-showcase h2 {
             font-family: var(--font-display);
             font-size: 32px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-primary);
             letter-spacing: -0.5px;
             line-height: 1.2;
@@ -2006,7 +2500,7 @@
 
         .fm-value {
             font-family: var(--font-display);
-            font-weight: 700;
+            font-weight: 600;
             font-size: 12px;
         }
 
@@ -2097,7 +2591,7 @@
         .testimonials-header h2 {
             font-family: var(--font-display);
             font-size: 32px;
-            font-weight: 700;
+            font-weight: 600;
             color: #fff;
             margin-bottom: 8px;
             letter-spacing: -0.5px;
@@ -2164,7 +2658,7 @@
             justify-content: center;
             font-family: var(--font-display);
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 600;
             color: #fff;
             flex-shrink: 0;
         }
@@ -2176,7 +2670,7 @@
         .testimonial-name {
             font-family: var(--font-display);
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 600;
             color: #fff;
         }
 
@@ -2219,7 +2713,7 @@
         .closing-cta h2 {
             font-family: var(--font-display);
             font-size: 36px;
-            font-weight: 700;
+            font-weight: 600;
             color: #fff;
             margin-bottom: 16px;
             letter-spacing: -0.5px;
@@ -2319,7 +2813,7 @@
         .news-strip-track { display: flex; width: max-content; gap: 12px; align-items: center; animation: news-scroll 30s linear infinite; }
         .news-strip:hover .news-strip-track { animation-play-state: paused; }
         .news-strip-content { display: inline-flex; align-items: center; gap: 12px; padding: 0 12px; }
-        .news-strip-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); white-space: nowrap; padding-right: 4px; border-right: 1px solid var(--border-default); margin-right: 4px; }
+        .news-strip-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); white-space: nowrap; padding-right: 4px; border-right: 1px solid var(--border-default); margin-right: 4px; }
         .news-strip-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; background: var(--surface-2); border: 1px solid var(--border-default); border-radius: 9999px; font-size: 11px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; transition: all 150ms; }
         .news-strip-item:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
         .news-strip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
@@ -2354,7 +2848,7 @@
         .price-ticker-bar.hidden { display: none !important; }
         .price-ticker-label {
             font-size: 9px;
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-muted);
@@ -2389,7 +2883,7 @@
             font-family: var(--font-mono);
             font-weight: 600;
         }
-        .pticker-name { font-family: var(--font-display); font-weight: 700; font-size: 10px; }
+        .pticker-name { font-family: var(--font-display); font-weight: 600; font-size: 10px; }
         .pticker-price { font-size: 11px; }
         .pticker-arrow { font-size: 9px; }
         .pticker-item.bull { color: #10B981; }
@@ -2414,6 +2908,10 @@
     </style>
 </head>
 <body>
+
+    <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
+
+    <div class="v2-main-content">
 
     <!-- Ticker Sub-Nav (shown when team is loaded) -->
     <div class="ticker-bar hidden" id="tickerBar">
@@ -2552,19 +3050,40 @@
             <!-- Personalized hero (logged-in state) -->
             <div class="hero-personalized hidden" id="heroPersonalized">
                 <div class="hero-greeting">
-                    <div class="hero-greeting-text">Welcome back, <span id="heroManagerName">Manager</span></div>
+                    <div class="hero-greeting-text v2-page-heading" id="heroTeamName">My Team</div>
                     <div class="hero-greeting-gw" id="heroGwBadge">GW1</div>
                 </div>
-                <div class="hero-dashboard" id="heroDashboard">
-                    <div class="dashboard-main">
-                        <div class="hero-deadline-banner" id="heroDeadlineBanner"></div>
-                        <div class="hero-squad-panel" id="heroSquadPanel"></div>
-                    </div>
-                    <div class="dashboard-sidebar">
-                        <div class="hero-summary-stats" id="heroSummaryStats"></div>
-                        <div class="gw-action-centre hidden" id="gwActionCentre"></div>
-                        <div class="hero-market-widget hidden" id="heroMarketWidget"></div>
-                        <div class="gac-wizard-cta hidden" id="gwWizardCta"></div>
+                <!-- Top row: Squad Snapshot (left) + unified info panel (right) -->
+                <div class="v2-top-row">
+                    <div class="v2-pitch-wrap" id="v2PitchWrap"></div>
+                    <aside class="v2-info-panel">
+                        <div class="v2-deadline-hero" id="v2DeadlineHero"></div>
+                        <div class="v2-status-stack" id="v2StatusStack"></div>
+                    </aside>
+                </div>
+
+                <!-- Needs Your Attention: Starting XI | Transfers -->
+                <div class="v2-attention-grid" id="v2AttentionGrid"></div>
+
+                <!-- Quick Actions (full-width row) -->
+                <div class="v2-quick-actions">
+                    <div class="v2-section-label">Quick Actions</div>
+                    <div class="v2-qa-cards">
+                        <a href="fpl-my-team-analysis.html#lineup" class="v2-qa-card">
+                            <div class="v2-qa-icon"><i data-lucide="wand-2" class="icon"></i></div>
+                            <div class="v2-qa-text"><span class="v2-qa-title">Review Lineup</span><span class="v2-qa-desc">Optimize your starting XI</span></div>
+                            <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
+                        </a>
+                        <a href="fpl-my-team-analysis.html#transfers" class="v2-qa-card">
+                            <div class="v2-qa-icon"><i data-lucide="repeat" class="icon"></i></div>
+                            <div class="v2-qa-text"><span class="v2-qa-title">See Transfers</span><span class="v2-qa-desc">Price changes &amp; suggestions</span></div>
+                            <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
+                        </a>
+                        <a href="fpl-my-team-analysis.html#draft" class="v2-qa-card">
+                            <div class="v2-qa-icon"><i data-lucide="clipboard-list" class="icon"></i></div>
+                            <div class="v2-qa-text"><span class="v2-qa-title">Plan Next 6 GWs</span><span class="v2-qa-desc">GW Draft planner</span></div>
+                            <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
+                        </a>
                     </div>
                 </div>
                 <section class="headlines-widget hidden" id="headlinesWidget">
@@ -2574,13 +3093,6 @@
                     </div>
                     <div class="headlines-list" id="headlinesList"></div>
                 </section>
-                <div class="hero-quick-actions">
-                    <!-- WIZARD DISABLED: <a href="fpl-transfer-wizard.html" class="btn btn-primary btn-sm"><i data-lucide="wand-2" class="icon"></i> Open Wizard</a> -->
-                    <a href="fpl-my-team-analysis.html" class="btn btn-primary btn-sm"><i data-lucide="users" class="icon"></i> View Squad</a>
-                    <a href="fpl-my-team-analysis.html#transfers" class="btn btn-secondary btn-sm"><i data-lucide="trending-up" class="icon"></i> Transfers</a>
-                    <a href="fpl-players-analysis.html" class="btn btn-secondary btn-sm"><i data-lucide="user-search" class="icon"></i> Scout Players</a>
-                    <a href="fpl-league-rivals.html" class="btn btn-secondary btn-sm"><i data-lucide="trophy" class="icon"></i> Rivals</a>
-                </div>
             </div>
         </div>
     </section>
@@ -3007,7 +3519,10 @@
         </div>
     </section>
 
+    </div><!-- /.v2-main-content -->
+
     <script src="scripts/common.js"></script>
+    <script src="scripts/sidebar-nav.js"></script>
     <script>
         initIcons();
 
@@ -3038,9 +3553,6 @@
             document.getElementById('onboardingCard').classList.remove('hidden');
             document.getElementById('tickerBar').classList.add('hidden');
             document.getElementById('newsStrip').classList.add('hidden');
-            document.getElementById('gwActionCentre').classList.add('hidden');
-            document.getElementById('gwWizardCta').classList.add('hidden');
-            document.getElementById('heroMarketWidget').classList.add('hidden');
             document.getElementById('headlinesWidget').classList.add('hidden');
             // Swap hero: show generic, hide personalized
             document.getElementById('heroGeneric').classList.remove('hidden');
@@ -3151,17 +3663,13 @@
 
                 const fplAttackStrength = (team.strength_attack_home + team.strength_attack_away) / 2;
                 const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));
+                const goalRate = Math.min(1, avgGoals / 2.0);
+                const attackPower = Math.round(Math.min(100, Math.max(0, (goalRate * 0.55 + fplAttNorm * 0.45) * 100)));
+
                 const fplDefenseStrength = (team.strength_defence_home + team.strength_defence_away) / 2;
                 const fplDefNorm = Math.min(1, Math.max(0, (fplDefenseStrength - 900) / 500));
-                // Preseason: pastFixtures is empty, so avgGoals/avgConceded default to 0/0 —
-                // that's not "no signal", it actively biases attackPower down and defensePower
-                // up (every team would look great defensively for having "conceded nothing").
-                // Lean entirely on FPL's own preseason strength ratings instead until real
-                // fixtures have been played.
-                const goalRate = Math.min(1, avgGoals / 2.0);
-                const attackPower = Math.round(Math.min(100, Math.max(0, (isPreseason ? fplAttNorm : (goalRate * 0.55 + fplAttNorm * 0.45)) * 100)));
                 const concedeRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.0)));
-                const defensePower = Math.round(Math.min(100, Math.max(0, (isPreseason ? fplDefNorm : (concedeRate * 0.55 + fplDefNorm * 0.45)) * 100)));
+                const defensePower = Math.round(Math.min(100, Math.max(0, (concedeRate * 0.55 + fplDefNorm * 0.45) * 100)));
 
                 // Form Rating
                 const formWeights = [5, 4, 3, 2, 1];
@@ -3221,14 +3729,8 @@
             let sellRating = 40;
             let topConcern = '';
             const posConfig = POSITION_CONFIG[player.position];
-            // Preseason: currentGW-1 is 0 (no gameweek played), and player.form is already
-            // reset to 0.0 by FPL — using them as-is would divide last season's full minutes
-            // by 1 (absurd per-game figures) and flag every single player as "poor form"
-            // uniformly. Fall back to last season's real points-per-game (still populated)
-            // and a starts-based games-played estimate instead.
-            const gamesPlayed = isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
+            const gamesPlayed = Math.max(currentGW - 1, 1);
             const minsPerGame = player.minutes / gamesPlayed;
-            const effectiveForm = isPreseason ? player.ppg : player.form;
             const isPremium = player.price >= 10.0;
             const isMidPremium = player.price >= 7.5;
             const ta = teamAnalysis[player.teamId];
@@ -3253,7 +3755,7 @@
             }
 
             // 2. FORM
-            const formDelta = effectiveForm - posConfig.formMedian;
+            const formDelta = player.form - posConfig.formMedian;
             const rawFormPenalty = Math.max(-30, Math.min(30, Math.round(-formDelta * 10)));
             sellRating += sensAdj(rawFormPenalty, settings.formWeight);
             if (!topConcern && formDelta <= -1.5) topConcern = 'Poor Form';
@@ -3306,7 +3808,7 @@
             if (isPremium) rawValuePenalty = Math.round(rawValuePenalty * settings.premiumHarshness);
             else if (isMidPremium) rawValuePenalty = Math.round(rawValuePenalty * 1.2);
             sellRating += sensAdj(rawValuePenalty, settings.valueWeight);
-            if (isPremium && effectiveForm < posConfig.formMedian) {
+            if (isPremium && player.form < posConfig.formMedian) {
                 sellRating += sensAdj(5);
                 if (!topConcern) topConcern = 'Premium Underperforming';
             }
@@ -3347,7 +3849,7 @@
             let verdict;
             if (sellRating >= 55) verdict = 'sell';
             else if (sellRating >= 38) verdict = 'monitor';
-            else if (sellRating <= 20 && effectiveForm >= posConfig.formMedian + 1.5 && minsPerGame >= 75) verdict = 'star';
+            else if (sellRating <= 20 && player.form >= posConfig.formMedian + 1.5 && minsPerGame >= 75) verdict = 'star';
             else verdict = 'hold';
 
             return { name: player.name, verdict, sellRating, topConcern };
@@ -3404,22 +3906,16 @@
             });
         }
 
-        // ===== PERSONALIZED HERO STATS =====
-        function renderHeroStats({ firstName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta, prevRank,
-                                   squad, analysisResults, flagged,
-                                   avgManagerTotal, pointsDiff, deadlineTime, deadlineGW, avgFDR,
-                                   priceDropRisk, priceRiseTargets, healthScore, healthDeductions, captainRec,
-                                   squadIds, shortlistIds }) {
+        // ===== STATUS STRIP: deadline hero + GW points / rank / league / value =====
+        function renderStatusStrip({ teamName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta,
+                                     pointsDiff, deadlineTime, deadlineGW, avgFDR, captainRec, leagueInfo }) {
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-            el('heroManagerName', firstName);
+            el('heroTeamName', teamName || 'My Team');
             el('heroGwBadge', 'GW' + currentGW);
-
-            const posShort = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const posClass = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
 
-            // ===== DEADLINE COUNTDOWN BANNER =====
-            const bannerEl = document.getElementById('heroDeadlineBanner');
+            // ===== DEADLINE HERO CARD =====
+            const heroEl = document.getElementById('v2DeadlineHero');
             if (deadlineTime) {
                 const dlDate = new Date(deadlineTime);
                 const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -3431,21 +3927,23 @@
                 const dlMin = String(dlDate.getUTCMinutes()).padStart(2, '0');
                 const fdrLabel = avgFDR <= 2.5 ? 'Easy' : avgFDR <= 3.5 ? 'Medium' : 'Hard';
                 const fdrClass = avgFDR <= 2.5 ? 'fdr-easy' : avgFDR <= 3.5 ? 'fdr-medium' : 'fdr-hard';
-                bannerEl.innerHTML = `
-                    <div class="hdb-icon"><i data-lucide="clock" class="icon"></i></div>
-                    <div class="hdb-info">
-                        <div class="hdb-label">GW${deadlineGW} Deadline</div>
-                        <div class="hdb-date">${dlDay} ${dlDateNum} ${dlMonth} · ${dlHour}:${dlMin} UTC</div>
+                heroEl.innerHTML = `
+                    <div class="v2-dlh-top">
+                        <span class="v2-dlh-label">GW${deadlineGW} Deadline</span>
+                        <span class="v2-dlh-date">${dlDay} ${dlDateNum} ${dlMonth} · ${dlHour}:${dlMin} UTC</span>
                     </div>
-                    <div class="hdb-countdown" id="deadlineCountdown">Loading...</div>
-                    <span class="hdb-fdr-outlook ${fdrClass}">FDR ${avgFDR.toFixed(1)} · ${fdrLabel}</span>`;
+                    <div class="v2-dlh-countdown" id="v2DeadlineCountdown">Loading…</div>
+                    <div class="v2-dlh-bottom">
+                        <span class="v2-dlh-fdr ${fdrClass}">Fixture outlook: ${fdrLabel} (FDR ${avgFDR.toFixed(1)})</span>
+                        ${captainRec ? `<span class="v2-dlh-captain"><i data-lucide="crown" class="icon" style="width:12px;height:12px;color:#F59E0B;vertical-align:-2px;"></i> Captain pick: <strong>${esc(captainRec.name)}</strong> vs ${esc(captainRec.opponent)}</span>` : ''}
+                    </div>`;
                 if (deadlineInterval) clearInterval(deadlineInterval);
                 function updateCountdown() {
                     const now = Date.now();
                     const diff = dlDate.getTime() - now;
-                    const cdEl = document.getElementById('deadlineCountdown');
+                    const cdEl = document.getElementById('v2DeadlineCountdown');
                     if (!cdEl) return;
-                    if (diff <= 0) { cdEl.textContent = 'LOCKED'; cdEl.className = 'hdb-countdown urgent'; return; }
+                    if (diff <= 0) { cdEl.textContent = 'LOCKED'; heroEl.className = 'v2-deadline-hero dl-urgent'; return; }
                     const days = Math.floor(diff / 86400000);
                     const hrs = Math.floor((diff % 86400000) / 3600000);
                     const mins = Math.floor((diff % 3600000) / 60000);
@@ -3455,325 +3953,262 @@
                     else if (hrs > 0) text = `${hrs}h ${mins}m ${secs}s`;
                     else text = `${mins}m ${secs}s`;
                     cdEl.textContent = text;
-                    cdEl.className = 'hdb-countdown' + (diff < 7200000 ? ' urgent' : diff < 86400000 ? ' soon' : '');
+                    heroEl.className = 'v2-deadline-hero' + (diff < 7200000 ? ' dl-urgent' : diff < 86400000 ? ' dl-soon' : '');
                 }
                 updateCountdown();
                 deadlineInterval = setInterval(updateCountdown, 1000);
             } else {
-                bannerEl.innerHTML = `
-                    <div class="hdb-icon"><i data-lucide="clock" class="icon"></i></div>
-                    <div class="hdb-info">
-                        <div class="hdb-label">Deadline</div>
-                        <div class="hdb-date">No upcoming deadline</div>
-                    </div>`;
+                heroEl.className = 'v2-deadline-hero';
+                heroEl.innerHTML = `
+                    <div class="v2-dlh-top"><span class="v2-dlh-label">Deadline</span></div>
+                    <div class="v2-dlh-countdown" style="font-size:20px;color:var(--text-muted);">No upcoming deadline</div>`;
             }
 
-            // ===== SUMMARY STATS (right column) =====
+            // ===== STATUS STACK =====
             const diffSign = pointsDiff >= 0 ? '+' : '';
-            const diffClass = pointsDiff > 0 ? 'positive' : pointsDiff < 0 ? 'negative' : 'neutral';
-            const rankDisplay = rank ? rank.toLocaleString() : '-';
 
-            // Rank arrow
-            let rankArrowHtml = '';
+            let rankDeltaHtml = '';
             if (rankDelta !== null) {
-                if (rankDelta > 0) {
-                    rankArrowHtml = `<span class="hss-rank-arrow up"><i data-lucide="trending-up" class="icon"></i> \u2191${Math.abs(rankDelta).toLocaleString()}</span>`;
-                } else if (rankDelta < 0) {
-                    rankArrowHtml = `<span class="hss-rank-arrow down"><i data-lucide="trending-down" class="icon"></i> \u2193${Math.abs(rankDelta).toLocaleString()}</span>`;
-                } else {
-                    rankArrowHtml = `<span class="hss-rank-arrow" style="color:var(--text-muted);background:var(--surface-2);">\u2014 No change</span>`;
-                }
+                if (rankDelta > 0) rankDeltaHtml = `<span class="v2-stat-delta up"><i data-lucide="trending-up" class="icon"></i>${Math.abs(rankDelta).toLocaleString()}</span>`;
+                else if (rankDelta < 0) rankDeltaHtml = `<span class="v2-stat-delta down"><i data-lucide="trending-down" class="icon"></i>${Math.abs(rankDelta).toLocaleString()}</span>`;
+                else rankDeltaHtml = `<span class="v2-stat-delta flat">— No change</span>`;
             } else {
-                rankArrowHtml = `<span class="hss-rank-arrow new-player">NEW</span>`;
+                rankDeltaHtml = `<span class="v2-stat-delta flat">NEW</span>`;
             }
 
-            let statsHtml = '';
-            // Card 1: Points
-            statsHtml += `<div class="hss-card hss-card--points">
-                <div class="hss-label"><i data-lucide="bar-chart-2" class="icon" style="color:#3B82F6;"></i> Total Points</div>
-                <div class="hss-value">${totalPoints ? totalPoints.toLocaleString() : '-'} <span class="hss-diff ${diffClass}">${diffSign}${pointsDiff} vs avg</span></div>
-                <div class="hss-secondary">GW${currentGW}: ${gwPoints} pts</div>
-            </div>`;
-            // Card 2: Rank
-            const gwRankLine = gwRank ? `<div class="hss-gw-rank"><i data-lucide="zap" class="icon" style="width:12px;height:12px;color:#F59E0B;"></i> GW${currentGW} rank: <strong>${gwRank.toLocaleString()}</strong></div>` : '';
-            statsHtml += `<div class="hss-card hss-card--rank">
-                <div class="hss-label"><i data-lucide="trophy" class="icon" style="color:#10B981;"></i> Overall Rank</div>
-                <div class="hss-value">${rankDisplay} ${rankArrowHtml}</div>
-                ${prevRank ? `<div class="hss-secondary">Previous: ${prevRank.toLocaleString()}</div>` : ''}
-                ${gwRankLine}
-            </div>`;
-            // Card 3: Value & Bank
-            statsHtml += `<div class="hss-card hss-card--value">
-                <div class="hss-label"><i data-lucide="wallet" class="icon" style="color:#F59E0B;"></i> Squad Value</div>
-                <div class="hss-value">\u00A3${squadValue.toFixed(1)}m</div>
-                <div class="hss-secondary">\u00A3${bank}m <abbr title="In The Bank — remaining transfer budget">ITB</abbr> · \u00A3${(squadValue + parseFloat(bank)).toFixed(1)}m total</div>
-            </div>`;
-            document.getElementById('heroSummaryStats').innerHTML = statsHtml;
-
-            // ===== MARKET WATCH WIDGET =====
-            const dropCount = priceDropRisk.length;
-            const riseCount = priceRiseTargets.length;
-            const _sqIds = squadIds || new Set();
-            const _slIds = shortlistIds || new Set();
-            const mktWidget = document.getElementById('heroMarketWidget');
-            let marketHtml = '';
-            function mktRow(p, direction) {
-                const isFall = direction === 'fall';
-                const netK = Math.round(Math.abs(p.transfersOut - p.transfersIn) / 1000);
-                const arrow = isFall ? '\u25BC' : '\u25B2';
-                const color = isFall ? '#EF4444' : '#10B981';
-                const flowText = isFall ? `${netK}k out` : `+${netK}k in`;
-                const pc = posClass[p.position] || 'mid';
-                const ps = posShort[p.position] || 'MID';
-                const badge = _sqIds.has(p.id) ? '<span style="font-size:9px;color:#F59E0B;" title="In your squad">\u2605</span>'
-                    : _slIds.has(p.id) ? '<span style="font-size:9px;color:#3B82F6;" title="Shortlisted">\u2606</span>' : '';
-                return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;font-size:11px;">
-                    <span style="color:${color};font-weight:700;font-size:10px;">${arrow}</span>
-                    <span class="hsp-pos ${pc}" style="font-size:8px;padding:1px 4px;min-width:22px;text-align:center;border-radius:3px;">${ps}</span>
-                    ${badge}
-                    <span style="font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</span>
-                    <span style="font-family:var(--font-mono);font-size:10px;color:${color};">\u00A3${p.price.toFixed(1)}m</span>
-                    <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);">${flowText}</span>
-                </div>`;
-            }
-            let listHtml = '';
-            priceDropRisk.slice(0, 5).forEach(p => { listHtml += mktRow(p, 'fall'); });
-            priceRiseTargets.slice(0, 5).forEach(p => { listHtml += mktRow(p, 'rise'); });
-            if (dropCount === 0 && riseCount === 0) {
-                const hasSL = _slIds.size > 0;
-                listHtml = hasSL
-                    ? `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px 0;">No price movement in your squad or shortlist</div>`
-                    : `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:6px 0;">No price movement in your squad<br><a href="fpl-players-analysis.html" style="color:var(--color-primary);font-weight:600;text-decoration:none;font-size:10px;">Shortlist players to track more \u2192</a></div>`;
-            }
-            const liveSignal = (dropCount + riseCount) > 0 ? '<span class="hmw-live"><span class="hmw-live-dot"></span>LIVE</span>' : '';
-            mktWidget.innerHTML = `
-                <div class="hmw-header">
-                    <div class="hmw-icon"><i data-lucide="trending-up" class="icon"></i></div>
-                    <span class="hmw-title">Market Watch</span>
-                    ${liveSignal}
+            let stackHtml = '';
+            stackHtml += `<div class="v2-stat-card">
+                <div>
+                    <div class="v2-stat-label"><i data-lucide="zap" class="icon"></i> GW${currentGW} Points</div>
+                    <div class="v2-stat-value">${gwPoints}</div>
+                    ${gwRank ? `<div class="v2-stat-sub">GW rank: ${gwRank.toLocaleString()}</div>` : ''}
                 </div>
-                <div class="hmw-subtitle">${dropCount} falling \u00b7 ${riseCount} rising</div>
-                <div class="hmw-list">${listHtml}</div>
-                <div class="hmw-footer"><a href="fpl-my-team-analysis.html#squad">View Price Watch \u2192</a></div>`;
-            mktWidget.classList.remove('hidden');
-
-            // ===== SQUAD PANEL =====
-            const starters = squad.filter(p => p.pickPosition <= 11);
-            const bench = squad.filter(p => p.pickPosition >= 12);
-            const verdictMap = {};
-            analysisResults.forEach((a, i) => { if (squad[i]) verdictMap[squad[i].id] = a; });
-
-            function playerRow(p, isBench) {
-                const pc = posClass[p.position] || 'mid';
-                const ps = posShort[p.position] || 'MID';
-                const a = verdictMap[p.id];
-                const verdict = a ? a.verdict : 'hold';
-                let badges = '';
-                if (p.isCaptain) badges += '<span class="hsp-captain">C</span>';
-                else if (p.isViceCaptain) badges += '<span class="hsp-captain">V</span>';
-                let statusIcon = '';
-                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                    statusIcon = '<i data-lucide="circle-x" class="hsp-status-icon injured"></i>';
-                } else if (p.status === 'd') {
-                    statusIcon = '<i data-lucide="alert-triangle" class="hsp-status-icon doubtful"></i>';
-                }
-                const fixes = (p.fixtures || []).slice(0, 3);
-                let fixHtml = '';
-                if (fixes.length) {
-                    fixHtml = '<span class="hsp-fixtures">' + fixes.map(f => {
-                        const fdr = Math.max(1, Math.min(5, f.difficulty || 3));
-                        return `<span class="hsp-fdr fdr-${fdr}">${esc(f.opponent)}${f.isHome ? '' : '(A)'}</span>`;
-                    }).join('') + '</span>';
-                }
-                return `<div class="hsp-row${isBench ? ' hsp-bench' : ''}">
-                    <span class="hsp-pos ${pc}">${ps}</span>
-                    <span class="hsp-name">${esc(p.name)}</span>
-                    <span class="hsp-team">${esc(p.team)}</span>
-                    ${badges}${statusIcon}
-                    <span class="hsp-verdict-dot ${verdict}"></span>
-                    ${fixHtml}
-                </div>`;
-            }
-
-            // Group starters by position
-            const posGroups = { 1: [], 2: [], 3: [], 4: [] };
-            const posLabels = { 1: 'Goalkeepers', 2: 'Defenders', 3: 'Midfielders', 4: 'Forwards' };
-            const posClasses = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
-            starters.forEach(p => { if (posGroups[p.position]) posGroups[p.position].push(p); });
-
-            // Health score for squad panel header
-            const scoreClass = healthScore >= 70 ? 'score-good' : healthScore >= 45 ? 'score-ok' : 'score-bad';
-            const counts = { star: 0, hold: 0, monitor: 0, sell: 0 };
-            analysisResults.forEach(a => { if (counts[a.verdict] !== undefined) counts[a.verdict]++; });
-            let verdictBar = '';
-            [['star','Star'],['hold','Hold'],['monitor','Monitor'],['sell','Sell']].forEach(([k,label]) => {
-                if (counts[k] > 0) verdictBar += `<span class="hip-verdict-pill ${k}"><span class="hvp-count">${counts[k]}</span> ${label}</span>`;
-            });
-
-            let squadHtml = isPreseason ? renderSeasonNotice('Showing 2025/26 form &amp; team strength — this season’s data isn’t available until GW1.') : '';
-            squadHtml += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                <span class="hsp-title" style="margin-bottom:0;">My Squad</span>
-                <div class="hsp-health-bar">
-                    <span class="hsp-health-score ${scoreClass}">${healthScore}</span>
-                    <span class="hsp-health-label">Health</span>
-                </div>
-                <div class="hip-verdict-bar" style="margin-top:0;margin-left:auto;">${verdictBar}</div>
             </div>`;
-            [1, 2, 3, 4].forEach(pos => {
-                const group = posGroups[pos];
-                if (!group.length) return;
-                squadHtml += `<div class="hsp-position-header ${posClasses[pos]}">${posLabels[pos]}</div>`;
-                group.forEach(p => { squadHtml += playerRow(p, false); });
-            });
-            squadHtml += '<div class="hsp-bench-sep">Bench</div>';
-            bench.forEach(p => { squadHtml += playerRow(p, true); });
-            document.getElementById('heroSquadPanel').innerHTML = squadHtml;
+            stackHtml += `<div class="v2-stat-card">
+                <div>
+                    <div class="v2-stat-label"><i data-lucide="trophy" class="icon"></i> Overall Rank</div>
+                    <div class="v2-stat-value">${rank ? rank.toLocaleString() : '-'}</div>
+                    <div class="v2-stat-sub">${totalPoints ? totalPoints.toLocaleString() : '-'} pts · ${diffSign}${pointsDiff} vs avg</div>
+                </div>
+                ${rankDeltaHtml}
+            </div>`;
+            stackHtml += `<div id="v2LeagueSlot"></div>`;
+            stackHtml += `<div class="v2-stat-card v2-stat-card--minor">
+                <div>
+                    <div class="v2-stat-label"><i data-lucide="wallet" class="icon"></i> Squad Value</div>
+                    <div class="v2-stat-value">£${squadValue.toFixed(1)}m</div>
+                </div>
+                <div class="v2-stat-sub">£${bank}m ITB</div>
+            </div>`;
+            document.getElementById('v2StatusStack').innerHTML = stackHtml;
+            renderLeagueSlot(leagueInfo);
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // ===== GW ACTION CENTRE =====
-        function renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank, allPlayers }) {
+        // ===== MINI-LEAGUE CARD =====
+        function renderLeagueSlot(leagueInfo) {
+            const slot = document.getElementById('v2LeagueSlot');
+            if (!slot) return;
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
-            const posShort = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const container = document.getElementById('gwActionCentre');
-            const ctaEl = document.getElementById('gwWizardCta');
-            const items = [];
-
-            // 1. INJURIES (unavailable)
-            squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's').forEach(p => {
-                const pos = posMap[p.position] || 'MID';
-                const maxPrice = Math.ceil(p.price + 0.5);
-                items.push({
-                    cls: 'gac-critical', urgCls: 'u-injury', urgLabel: '\uD83D\uDEA8 Injury',
-                    player: p.name, issue: p.news || 'Unavailable',
-                    actions: [
-                        { label: '\uD83D\uDD0D Find Replacements', href: `fpl-players-analysis.html#all?pos=${pos}&max=${maxPrice}`, primary: true },
-                        { label: '\uD83D\uDCCB View Squad', href: 'fpl-my-team-analysis.html', primary: false }
-                    ]
-                });
-            });
-
-            // 2. DOUBTFUL
-            squad.filter(p => p.status === 'd').forEach(p => {
-                const pos = posMap[p.position] || 'MID';
-                const maxPrice = Math.ceil(p.price + 0.5);
-                const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance)` : '';
-                items.push({
-                    cls: 'gac-warning', urgCls: 'u-doubtful', urgLabel: '\u26A0\uFE0F Doubtful',
-                    player: p.name, issue: (p.news || 'Flagged') + chance,
-                    actions: [
-                        { label: '\uD83D\uDD0D Find Replacements', href: `fpl-players-analysis.html#all?pos=${pos}&max=${maxPrice}`, primary: true },
-                        { label: '\uD83D\uDCCB View Squad', href: 'fpl-my-team-analysis.html', primary: false }
-                    ]
-                });
-            });
-
-            // 3. PRICE DROPS (squad players at risk)
-            priceDropRisk.forEach(p => {
-                const net = Math.round((p.transfersOut - p.transfersIn) / 1000);
-                items.push({
-                    cls: 'gac-critical', urgCls: 'u-price', urgLabel: '\uD83D\uDCC9 Price Drop',
-                    player: p.name, issue: `${net}k net transfers out \u2014 price drop likely`,
-                    actions: [
-                        { label: '\uD83D\uDCCA View Options', href: 'fpl-my-team-analysis.html#transfers', primary: true }
-                    ]
-                });
-            });
-
-            // 4. POOR FORM (sell-rated, non-injured)
-            const sellPlayers = flagged.filter(a => a.verdict === 'sell' && !squad.find(p => p.id === a.id && (p.status === 'i' || p.status === 'u' || p.status === 's')));
-            sellPlayers.slice(0, 3).forEach(a => {
-                const p = squad.find(sp => sp.id === a.id) || allPlayers.find(ap => ap.id === a.id);
-                const pos = p ? posMap[p.position] || 'MID' : 'MID';
-                items.push({
-                    cls: 'gac-warning', urgCls: 'u-form', urgLabel: '\u26A0\uFE0F Poor Form',
-                    player: a.name, issue: a.topConcern || 'Rated SELL',
-                    actions: [
-                        { label: `\uD83D\uDD0D Compare ${pos}s`, href: `fpl-players-analysis.html#all?pos=${pos}`, primary: true },
-                        { label: '\uD83D\uDCCB View Squad', href: 'fpl-my-team-analysis.html', primary: false }
-                    ]
-                });
-            });
-
-            // 5. CAPTAIN
-            if (captainRec) {
-                items.push({
-                    cls: 'gac-purple', urgCls: 'u-captain', urgLabel: '\uD83D\uDC51 Captain',
-                    player: captainRec.name, issue: `Form ${captainRec.form} vs ${captainRec.opponent}`,
-                    actions: [
-                        { label: '\u00A9\uFE0F Set in Wizard', href: 'fpl-transfer-wizard.html', primary: true },
-                        { label: '\uD83D\uDD04 Alternatives', href: 'fpl-my-team-analysis.html#lineup', primary: false }
-                    ]
-                });
-            }
-
-            // 6. PRICE RISES (targets not in squad)
-            priceRiseTargets.forEach(p => {
-                items.push({
-                    cls: 'gac-success', urgCls: 'u-rise', urgLabel: '\uD83D\uDCC8 Rising',
-                    player: p.name, issue: `\u00A3${p.price.toFixed(1)}m \u2014 trending up`,
-                    actions: [
-                        { label: '\uD83D\uDCCA Scout Player', href: 'fpl-players-analysis.html#all?sort=form', primary: true }
-                    ]
-                });
-            });
-
-            // ALL CLEAR fallback
-            if (items.length === 0) {
-                items.push({
-                    cls: 'gac-success', urgCls: 'u-clear', urgLabel: '\u2705 All Clear',
-                    player: 'No issues', issue: 'Your squad looks great \u2014 no urgent actions needed.',
-                    actions: []
-                });
-            }
-
-            // Count flags for header
-            const flagCount = squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's' || p.status === 'd').length;
-            const actionCount = items.filter(i => i.urgCls !== 'u-clear').length;
-            const subtitle = actionCount > 0 ? `${actionCount} item${actionCount !== 1 ? 's' : ''} need${actionCount === 1 ? 's' : ''} attention` : 'All clear';
-
-            let html = `<div class="gac-header">
-                <div class="gac-header-icon"><i data-lucide="zap" class="icon"></i></div>
-                <div class="gac-title">GW${currentGW} Action Centre</div>
-                <div class="gac-subtitle">${subtitle}</div>
-            </div>
-            <div class="gac-items">`;
-
-            items.slice(0, 8).forEach(item => {
-                let actionsHtml = '';
-                item.actions.forEach(a => {
-                    const btnClass = a.primary ? 'gac-btn gac-btn-primary' : 'gac-btn gac-btn-secondary';
-                    actionsHtml += `<a href="${esc(a.href)}" class="${btnClass}">${a.label}</a>`;
-                });
-                html += `<div class="gac-item ${item.cls}">
-                    <span class="gac-urgency ${item.urgCls}">${item.urgLabel}</span>
-                    <div class="gac-detail">
-                        <div class="gac-player">${esc(item.player)}</div>
-                        <div class="gac-issue">${esc(item.issue)}</div>
+            if (!leagueInfo) {
+                if (localStorage.getItem('fpl_league_prompt_dismissed') === '1') { slot.innerHTML = ''; return; }
+                slot.innerHTML = `<div class="v2-league-prompt" id="v2LeaguePrompt">
+                    <span class="v2-league-prompt-text"><i data-lucide="trophy" class="icon"></i> Track a mini-league to compare against friends</span>
+                    <div class="v2-league-prompt-actions">
+                        <a href="fpl-league-rivals.html">Add league →</a>
+                        <button type="button" class="v2-league-prompt-dismiss" onclick="dismissLeaguePrompt()" aria-label="Dismiss"><i data-lucide="x" class="icon"></i></button>
                     </div>
-                    <div class="gac-actions">${actionsHtml}</div>
                 </div>`;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+            let deltaHtml = '';
+            if (leagueInfo.lastRank != null && leagueInfo.lastRank > 0) {
+                const d = leagueInfo.lastRank - leagueInfo.rank;
+                if (d > 0) deltaHtml = `<span class="v2-stat-delta up"><i data-lucide="trending-up" class="icon"></i>${d}</span>`;
+                else if (d < 0) deltaHtml = `<span class="v2-stat-delta down"><i data-lucide="trending-down" class="icon"></i>${Math.abs(d)}</span>`;
+                else deltaHtml = `<span class="v2-stat-delta flat">—</span>`;
+            }
+            slot.innerHTML = `<a href="fpl-league-rivals.html" class="v2-league-card">
+                <div>
+                    <div class="v2-league-name"><i data-lucide="trophy" class="icon"></i> ${esc(leagueInfo.name)}</div>
+                    <div class="v2-league-rank">#${leagueInfo.rank ? leagueInfo.rank.toLocaleString() : '-'}</div>
+                    <div class="v2-league-gap" id="v2LeagueGap">Loading gap to 1st…</div>
+                </div>
+                ${deltaHtml}
+            </a>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function dismissLeaguePrompt() {
+            localStorage.setItem('fpl_league_prompt_dismissed', '1');
+            const el = document.getElementById('v2LeaguePrompt');
+            if (el) el.remove();
+        }
+
+        async function loadLeagueGap(leagueId, teamId, ownTotalFallback) {
+            try {
+                const res = await fetchWithProxy(`https://fantasy.premierleague.com/api/leagues-classic/${leagueId}/standings/`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const results = (data.standings && data.standings.results) || [];
+                const leader = results[0];
+                const gapEl = document.getElementById('v2LeagueGap');
+                if (!gapEl || !leader) return;
+                const own = results.find(r => String(r.entry) === String(teamId));
+                const ownTotal = own ? own.total : ownTotalFallback;
+                const gap = leader.total - ownTotal;
+                gapEl.textContent = gap <= 0 ? '🏆 Leading the league!' : `${gap.toLocaleString()} pts behind 1st`;
+            } catch (e) {
+                const gapEl = document.getElementById('v2LeagueGap');
+                if (gapEl) gapEl.textContent = '';
+            }
+        }
+
+        // ===== NEEDS YOUR ATTENTION =====
+        function renderAttentionGrid({ squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets }) {
+            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+
+            const xiItems = [];
+            squad.filter(p => p.pickPosition <= 11).forEach(p => {
+                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                    xiItems.push({ name: p.name, reason: p.news || 'Unavailable — find a replacement', severity: 'sell' });
+                } else if (p.status === 'd') {
+                    const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance)` : '';
+                    xiItems.push({ name: p.name, reason: (p.news || 'Doubtful') + chance, severity: 'monitor' });
+                }
             });
-
-            html += '</div>';
-            container.innerHTML = html;
-            container.classList.remove('hidden');
-
-            // Wizard CTA banner
-            if (actionCount > 0) {
-                const bankDisplay = parseFloat(bank).toFixed(1);
-                ctaEl.innerHTML = `
-                    <div class="gac-wizard-cta-text">
-                        <strong>You have ${flagCount} flag${flagCount !== 1 ? 's' : ''} and \u00A3${bankDisplay}m in the bank.</strong> Let\u2019s prep your squad for GW${currentGW}.
-                    </div>
-                    <a href="fpl-transfer-wizard.html" class="btn btn-sm">Start GW${currentGW} Wizard \u2192</a>`;
-                ctaEl.classList.remove('hidden');
-            } else {
-                ctaEl.classList.add('hidden');
+            const currentCaptain = squad.find(p => p.isCaptain);
+            if (captainRec && currentCaptain && captainRec.name !== currentCaptain.name) {
+                xiItems.push({ name: currentCaptain.name, reason: `${captainRec.name} (form ${captainRec.form}) may be the sharper armband pick vs ${captainRec.opponent}`, severity: 'monitor' });
             }
 
+            const txItems = [];
+            squad.forEach((p, i) => {
+                const a = analysisResults[i];
+                if (a && a.verdict === 'sell') txItems.push({ name: p.name, reason: a.topConcern || 'Rated Sell — consider moving on', severity: 'sell' });
+            });
+            priceDropRisk.forEach(p => {
+                const net = Math.round(Math.abs(p.transfersOut - p.transfersIn) / 1000);
+                txItems.push({ name: p.name, reason: `${net}k net transfers out — price drop likely`, severity: 'monitor' });
+            });
+            priceRiseTargets.slice(0, 2).forEach(p => {
+                const net = Math.round(Math.abs(p.transfersIn - p.transfersOut) / 1000);
+                txItems.push({ name: p.name, reason: `+${net}k in — rising, good time to buy`, severity: 'monitor' });
+            });
+
+            function renderCol(items, iconName, title, emptyText, linkBase) {
+                let rowsHtml = '';
+                if (items.length === 0) {
+                    rowsHtml = `<div class="v2-attn-empty"><i data-lucide="check-circle" class="icon"></i> ${emptyText}</div>`;
+                } else {
+                    items.slice(0, 6).forEach(it => {
+                        rowsHtml += `<a href="${linkBase}" class="v2-attn-row${it.severity === 'sell' ? ' sev-sell' : ''}">
+                            <span class="v2-attn-row-name">${esc(it.name)}</span>
+                            <span class="v2-attn-row-reason">${esc(it.reason)}</span>
+                            <span class="v2-attn-row-arrow"><i data-lucide="arrow-right" class="icon"></i></span>
+                        </a>`;
+                    });
+                }
+                const countBadge = items.length > 0 ? `<span class="v2-attn-col-count has-items">${items.length}</span>` : `<span class="v2-attn-col-count">0</span>`;
+                return `<div class="v2-attn-col">
+                    <div class="v2-attn-col-header"><i data-lucide="${iconName}" class="icon"></i> ${title}${countBadge}</div>
+                    ${rowsHtml}
+                </div>`;
+            }
+
+            const html = renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup')
+                       + renderCol(txItems, 'repeat', 'Transfers', 'No urgent transfer actions right now', 'fpl-my-team-analysis.html#transfers');
+            document.getElementById('v2AttentionGrid').innerHTML = html;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // ===== PITCH / FORMATION VIEW =====
+        async function loadDashboardJerseyNumbers({ bootData, picks, playersById, teams }) {
+            const season = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
+            const cacheKey = `pl_jersey_numbers_${season}`;
+            let jerseyNumbers = {};
+            try { jerseyNumbers = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch (_) {}
+
+            const teamCodes = [...new Set((picks || []).map(pick => {
+                const player = playersById[pick.element];
+                return player ? teams[player.teamId]?.code : null;
+            }).filter(Boolean))];
+
+            await Promise.all(teamCodes.map(async teamCode => {
+                try {
+                    const url = `https://sdp-prem-prod.premier-league-prod.pulselive.com/api/v2/competitions/8/seasons/${season}/teams/${teamCode}/squad`;
+                    const response = await fetch(url);
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    (data.players || []).forEach(player => {
+                        if (player.id != null && player.shirtNum != null) jerseyNumbers[String(player.id)] = player.shirtNum;
+                    });
+                } catch (error) {
+                    console.warn(`[Dashboard jerseys] Could not load team ${teamCode}:`, error);
+                }
+            }));
+
+            try { localStorage.setItem(cacheKey, JSON.stringify(jerseyNumbers)); } catch (_) {}
+            return jerseyNumbers;
+        }
+
+        function renderPitchView({ squad, analysisResults }) {
+            const wrap = document.getElementById('v2PitchWrap');
+            if (!squad || !squad.length) { wrap.innerHTML = ''; return; }
+            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+            const posColorVar = { 1: 'var(--position-gk)', 2: 'var(--position-def)', 3: 'var(--position-mid)', 4: 'var(--position-fwd)' };
+            const verdictMap = {};
+            analysisResults.forEach((a, i) => { if (squad[i]) verdictMap[squad[i].id] = a; });
+
+            const starters = squad.filter(p => p.pickPosition <= 11).sort((a, b) => a.pickPosition - b.pickPosition);
+            const bench = squad.filter(p => p.pickPosition >= 12).sort((a, b) => a.pickPosition - b.pickPosition);
+
+            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            starters.forEach(p => { if (counts[p.position] !== undefined) counts[p.position]++; });
+            const formationStr = `${counts[2]}-${counts[3]}-${counts[4]}`;
+
+            function pitchToken(p) {
+                const a = verdictMap[p.id];
+                const verdict = a ? a.verdict : 'hold';
+                const ringClass = verdict === 'sell' ? ' verdict-ring-sell' : verdict === 'monitor' ? ' verdict-ring-monitor' : '';
+                const badge = p.isCaptain ? '<span class="v2-pitch-token-badge">C</span>' : p.isViceCaptain ? '<span class="v2-pitch-token-badge">V</span>' : '';
+                let statusIcon = '';
+                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                    statusIcon = '<i data-lucide="circle-x" class="v2-pitch-token-status icon" style="width:11px;height:11px;"></i>';
+                } else if (p.status === 'd') {
+                    statusIcon = '<i data-lucide="alert-triangle" class="v2-pitch-token-status icon" style="width:11px;height:11px;color:#FBBF24;"></i>';
+                }
+                const posLabel = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position] || '';
+                return `<div class="v2-pitch-token">
+                    <div class="v2-pitch-token-circle${ringClass}" style="background:${posColorVar[p.position] || 'var(--position-mid)'};">${p.squadNumber ?? '—'}${badge}</div>
+                    <span class="v2-pitch-token-name">${esc(p.name)}</span>
+                    <span class="v2-pitch-token-pos">${posLabel}</span>
+                    ${statusIcon}
+                </div>`;
+            }
+
+            // Rows top-to-bottom: forwards, midfielders, defenders, goalkeeper (attack up top, keeper near own goal)
+            const rowTops = [14, 38, 62, 86];
+            const rowOrder = [4, 3, 2, 1];
+            let pitchHtml = '';
+            rowOrder.forEach((pos, idx) => {
+                const group = starters.filter(p => p.position === pos);
+                if (!group.length) return;
+                pitchHtml += `<div class="v2-pitch-row" style="top:${rowTops[idx]}%;">${group.map(pitchToken).join('')}</div>`;
+            });
+
+            let benchHtml = '<span class="v2-pitch-bench-label">Bench</span>';
+            bench.forEach(p => { benchHtml += pitchToken(p); });
+
+            wrap.innerHTML = `
+                <div class="v2-pitch-header">
+                    <span class="v2-pitch-title">Squad Snapshot</span>
+                    <span class="v2-pitch-formation">${formationStr}</span>
+                </div>
+                <div class="v2-pitch">${pitchHtml}</div>
+                <div class="v2-pitch-bench">${benchHtml}</div>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -4041,10 +4476,6 @@
 
         // ===== LOAD TICKER (main data loader) =====
         let deadlineInterval = null;
-        // True until the first gameweek of the season has been played — read by
-        // analyzePlayerForTicker()/computeTeamScores() to fall back to last-season data
-        // instead of the (genuinely zero right now) current-season form/fixture history.
-        let isPreseason = false;
         async function loadTicker(teamId) {
             const tickerBar = document.getElementById('tickerBar');
             const tickerLoading = document.getElementById('tickerLoading');
@@ -4068,33 +4499,9 @@
                 const currEvent = bootData.events.find(e => e.is_current);
                 const nextEvent = bootData.events.find(e => e.is_next);
                 const currentGW = currEvent ? currEvent.id : 1;
-                isPreseason = bootData.events.every(e => !e.finished);
 
-                let picksData;
-                try {
-                    const picksRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`);
-                    picksData = await picksRes.json();
-                } catch (picksErr) {
-                    // Team ID itself is valid (managerData above already resolved) — the picks
-                    // endpoint 404s for everyone right now because no gameweek has been played
-                    // yet. This is NOT "invalid team ID": don't wipe the saved team ID or bounce
-                    // back to the marketing landing page, just say so honestly and stop here.
-                    const seasonNotStarted = !bootData.events.some(e => e.is_current || e.finished);
-                    if (seasonNotStarted) {
-                        const dlDate = nextEvent ? new Date(nextEvent.deadline_time) : null;
-                        const dlText = dlDate ? dlDate.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC' : 'soon';
-                        document.getElementById('tickerLoading').style.display = 'none';
-                        document.getElementById('tickerTrack').style.display = 'none';
-                        document.getElementById('tickerBar').insertAdjacentHTML('beforeend', `
-                            <div class="ticker-preseason-notice" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text-secondary);font-size:13px;">
-                                <i data-lucide="calendar-clock" style="width:16px;height:16px;flex-shrink:0;"></i>
-                                <span>Season starts soon — GW${nextEvent ? nextEvent.id : 1} deadline is ${dlText}. Your team (ID ${escHTML(String(teamId))}) is saved and ready.</span>
-                            </div>`);
-                        if (typeof lucide !== 'undefined') lucide.createIcons();
-                        return;
-                    }
-                    throw picksErr;
-                }
+                const picksRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`);
+                const picksData = await picksRes.json();
 
                 const teams = {};
                 bootData.teams.forEach(t => { teams[t.id] = t; });
@@ -4103,7 +4510,8 @@
 
                 // Build full player data
                 const allPlayers = bootData.elements.map(p => ({
-                    id: p.id, name: p.web_name, teamId: p.team,
+                    id: p.id, code: p.code, name: p.web_name, teamId: p.team,
+                    squadNumber: p.squad_number,
                     team: teams[p.team]?.short_name || 'N/A',
                     position: p.element_type, price: p.now_cost / 10,
                     form: parseFloat(p.form) || 0, points: p.total_points,
@@ -4123,6 +4531,13 @@
 
                 const playersById = {};
                 allPlayers.forEach(p => { playersById[p.id] = p; });
+
+                const jerseyNumbers = await loadDashboardJerseyNumbers({ bootData, picks: picksData.picks, playersById, teams });
+                allPlayers.forEach(player => {
+                    if (player.squadNumber == null && jerseyNumbers[String(player.code)] != null) {
+                        player.squadNumber = jerseyNumbers[String(player.code)];
+                    }
+                });
 
                 const posAvg = computePositionAverages(allPlayers);
                 const teamAnalysis = computeTeamScores(bootData.teams, fixturesData);
@@ -4274,8 +4689,22 @@
                     flagged
                 );
 
-                renderHeroStats({
-                    firstName: managerData.player_first_name,
+                // --- Mini-league card data (free from managerData.leagues.classic) ---
+                let leagueInfo = null;
+                const classicLeagues = (managerData.leagues && managerData.leagues.classic) || [];
+                if (teamId === DEMO_TEAM_ID) {
+                    const demoLeague = classicLeagues[0];
+                    if (demoLeague) leagueInfo = { id: demoLeague.id, name: demoLeague.name, rank: demoLeague.entry_rank, lastRank: demoLeague.entry_last_rank };
+                } else {
+                    const savedLeagueId = localStorage.getItem('fpl_league_id');
+                    if (savedLeagueId) {
+                        const match = classicLeagues.find(l => String(l.id) === String(savedLeagueId));
+                        if (match) leagueInfo = { id: match.id, name: match.name, rank: match.entry_rank, lastRank: match.entry_last_rank };
+                    }
+                }
+
+                renderStatusStrip({
+                    teamName: managerData.name,
                     currentGW,
                     rank: rankRaw,
                     totalPoints: totalPointsRaw,
@@ -4284,31 +4713,17 @@
                     bank: bank.toFixed(1),
                     squadValue,
                     rankDelta,
-                    prevRank,
-                    squad,
-                    analysisResults,
-                    flagged,
-                    avgManagerTotal,
                     pointsDiff,
                     deadlineTime,
                     deadlineGW,
                     avgFDR,
-                    priceDropRisk,
-                    priceRiseTargets,
-                    healthScore,
-                    healthDeductions,
                     captainRec,
-                    squadIds,
-                    shortlistIds
+                    leagueInfo
                 });
-                // DASHBOARD WIDGETS DISABLED: Market Watch is built inside renderHeroStats above
-                // (it also builds Summary Stats + Squad Panel, which must stay visible), so it's
-                // force-hidden here rather than skipping the whole call.
-                document.getElementById('heroMarketWidget').classList.add('hidden');
+                if (leagueInfo) loadLeagueGap(leagueInfo.id, teamId, totalPointsRaw);
 
-                // DASHBOARD WIDGETS DISABLED: renderActionCentre(...) also populates the Wizard
-                // starter CTA (#gwWizardCta) internally, so skipping this call disables both.
-                // renderActionCentre({ currentGW, squad, flagged, analysisResults, priceDropRisk, priceRiseTargets, captainRec, bank: bank.toFixed(1), allPlayers });
+                renderAttentionGrid({ squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets });
+                renderPitchView({ squad, analysisResults });
                 renderPriceTicker(allPlayers, squad);
 
                 // DASHBOARD WIDGETS DISABLED: News Hub (news strip + headlines widget). Commented
@@ -4351,12 +4766,10 @@
             if (e.key === 'Enter') submitFromClosingCta();
         });
 
-        // On page load: load nav then check for saved team ID
-        loadNav().then(() => {
-            const savedTeamId = localStorage.getItem('fpl_team_id');
-            if (savedTeamId && /^\d+$/.test(savedTeamId)) {
-                activateTeamPage(savedTeamId);
-            }
+        // V2: load the shared sidebar partial, then check for a saved team ID.
+        loadSidebarNav().then(() => {
+            const savedTeamId = getSavedTeamId();
+            if (savedTeamId) activateTeamPage(savedTeamId);
         });
     </script>
-    <script>loadFooter();</script>
+    <!-- V2: no footer.html — dashboard-app shell doesn't use a marketing footer -->

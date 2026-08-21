@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="v2-theme">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,16 +21,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/common.css">
     <link rel="stylesheet" href="styles/my-team.css">
+    <link rel="stylesheet" href="styles/v2-design.css">
+    <link rel="stylesheet" href="styles/compare-report.css">
 </head>
 <body>
+
+    <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
+    <div class="v2-main-content">
 
     <!-- Sub-Nav Tabs (hidden until data loads) -->
     <div class="tabs-container" id="tabBar">
         <div class="tabs">
             <button class="tab active" onclick="switchTab('team')" id="tabTeam">Squad Analysis</button>
             <button class="tab" onclick="switchTab('transfers')" id="tabTransfers">Transfers</button>
-            <button class="tab" onclick="switchTab('news')" id="tabNews">News</button>
+            <button class="tab hidden" onclick="switchTab('news')" id="tabNews">News</button>
             <button class="tab" onclick="switchTab('draft')" id="tabDraft">GW Draft</button>
+            <button class="tab" onclick="switchTab('transfer')" id="tabTransfer">Transfer Wizard</button>
+            <button class="tab" onclick="switchTab('lineup')" id="tabLineup">Lineup Wizard</button>
         </div>
     </div>
 
@@ -38,9 +45,10 @@
     <main class="main-content">
         <!-- Header Row -->
         <div class="header-row">
-            <h1 class="page-title"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
+            <h1 class="page-title v2-page-heading"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
             <button class="btn btn-secondary" id="settingsBtn" onclick="openSettings()" style="margin-left:auto;" aria-label="Analysis settings" title="Analysis settings"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
         </div>
+        <div class="squad-hint-banner v2-page-hint hidden" id="squadHintBanner">Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
         <!-- Hidden input used by loadTeamById() -->
         <input type="hidden" id="teamIdInput">
 
@@ -134,10 +142,43 @@
                     <div class="player-name" id="detailPlayerName">-</div>
                     <div class="player-meta" id="detailPlayerMeta">-</div>
                 </div>
-                <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close detail panel">&times;</button>
+                <div class="detail-header-actions">
+                    <button class="detail-nav-btn" onclick="navigateDetailPanel(-1)" aria-label="Previous player"><i data-lucide="chevron-up" class="icon"></i></button>
+                    <button class="detail-nav-btn" onclick="navigateDetailPanel(1)" aria-label="Next player"><i data-lucide="chevron-down" class="icon"></i></button>
+                    <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close detail panel">&times;</button>
+                </div>
             </div>
             <div class="detail-body" id="detailBody">
                 <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Compare Bar -->
+    <div class="compare-bar" id="compareBar">
+        <div class="compare-bar-content">
+            <div class="compare-bar-info">
+                <span class="compare-bar-icon"><i data-lucide="scale" style="width:18px;height:18px;"></i></span>
+                <span class="compare-bar-text">Compare <strong id="compareCount">0</strong> players</span>
+            </div>
+            <div class="compare-players-list" id="comparePlayersList"></div>
+            <div class="compare-bar-actions">
+                <button class="compare-btn clear" onclick="clearCompare()">Clear</button>
+                <button class="compare-btn primary" onclick="showCompareModal()">Compare Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compare Modal -->
+    <div class="compare-modal" id="compareModal">
+        <div class="compare-modal-backdrop" onclick="closeCompareModal()"></div>
+        <div class="compare-modal-container">
+            <div class="compare-modal-header">
+                <h2><i data-lucide="brain" style="width:20px;height:20px;display:inline;"></i> AI Scouting Report</h2>
+                <button class="compare-modal-close" onclick="closeCompareModal()" aria-label="Close player comparison">×</button>
+            </div>
+            <div class="compare-modal-body" id="compareModalContent">
+                <!-- Content generated by JS -->
             </div>
         </div>
     </div>
@@ -174,15 +215,52 @@
         </div>
     </div>
 
+    </div><!-- /.v2-main-content -->
+
     <script>
         // ===== CONFIGURATION =====
 
         // ===== STATE =====
         let allPlayers = [], allPlayersById = {}, teams = {}, teamFixtures = {};
+
+        function jerseyNumberLabel(player) {
+            const number = player?.squadNumber ?? player?.squad_number;
+            return number === null || number === undefined || number === '' ? '—' : String(number);
+        }
+
+        async function loadPremierLeagueJerseyNumbers(picks, season) {
+            const cachedKey = `pl_jersey_numbers_${season}`;
+            let jerseyNumbers = {};
+            try { jerseyNumbers = JSON.parse(localStorage.getItem(cachedKey) || '{}'); } catch (_) {}
+
+            const teamCodes = [...new Set((picks || []).map(pick => {
+                const player = allPlayersById[pick.element];
+                return player ? teams[player.teamId]?.code : null;
+            }).filter(Boolean))];
+
+            await Promise.all(teamCodes.map(async teamCode => {
+                try {
+                    const url = `https://sdp-prem-prod.premier-league-prod.pulselive.com/api/v2/competitions/8/seasons/${season}/teams/${teamCode}/squad`;
+                    const response = await fetch(url);
+                    if (!response.ok) return;
+                    const squad = await response.json();
+                    (squad.players || []).forEach(player => {
+                        if (player.id != null && player.shirtNum != null) jerseyNumbers[String(player.id)] = player.shirtNum;
+                    });
+                } catch (error) {
+                    console.warn(`[Jersey numbers] Could not load team ${teamCode}:`, error);
+                }
+            }));
+
+            try { localStorage.setItem(cachedKey, JSON.stringify(jerseyNumbers)); } catch (_) {}
+            allPlayers.forEach(player => {
+                if (player.squadNumber == null && jerseyNumbers[String(player.code)] != null) {
+                    player.squadNumber = jerseyNumbers[String(player.code)];
+                }
+            });
+        }
         let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
-        // True until GW1 has been played — read by analyzePlayer() to fall back to last
-        // season's data instead of the (genuinely zero right now) current-season form.
-        let isPreseason = false;
+        let isPreseason = false; // true when no gameweek has finished yet — stats shown are last season's carryover
         let positionAverages = {};
         let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
         let fixtureSwingData = {}; // Fixture swing detection per team
@@ -485,9 +563,25 @@
                 const totalCS = homeStats.cleanSheets + awayStats.cleanSheets;
                 const csRate = gamesPlayed > 0 ? totalCS / gamesPlayed : 0;
 
+                // xG trend data (ported from fpl-players-analysis.html's computeTeamScores,
+                // so the shared AI Scouting Report's Team Context section has real data here too)
+                const seasonXg = getTeamSeasonXg(teamId);
+                const recent6Xg = getTeamXgWindow(teamId, 6);
+                let xgTrend = 'stable', xgcTrend = 'stable';
+                if (recent6Xg && seasonXg && (seasonXg.games || 0) >= 10) {
+                    const xgDelta = recent6Xg.xGpg - seasonXg.xGpg;
+                    if (xgDelta > 0.25) xgTrend = 'rising';
+                    else if (xgDelta < -0.25) xgTrend = 'falling';
+                    const xgcDelta = recent6Xg.xGCpg - seasonXg.xGCpg;
+                    if (xgcDelta < -0.20) xgcTrend = 'improving';
+                    else if (xgcDelta > 0.20) xgcTrend = 'worsening';
+                }
+
                 teamAnalysis[teamId] = {
                     attackPower, defensePower, formRating, fixtureScore,
                     attackPowerHome, attackPowerAway, defensePowerHome, defensePowerAway,
+                    xgTrend, xgcTrend, xgTrendDelta: recent6Xg && seasonXg ? recent6Xg.xGpg - seasonXg.xGpg : 0,
+                    xgcTrendDelta: recent6Xg && seasonXg ? seasonXg.xGCpg - recent6Xg.xGCpg : 0,
                     avgGoals, avgConceded, avgFdr, csRate, totalCS,
                     wins, draws, losses, gamesPlayed,
                     teamName: team.short_name || team.name
@@ -530,7 +624,8 @@
 
                 // Build players with ALL available data
                 allPlayers = bootData.elements.map(p => ({
-                    id: p.id, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
+                    id: p.id, code: p.code, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
+                    squadNumber: p.squad_number,
                     team: teams[p.team]?.short_name || 'N/A', teamId: p.team,
                     position: p.element_type, price: p.now_cost / 10,
                     form: parseFloat(p.form) || 0, points: p.total_points,
@@ -569,39 +664,24 @@
                 allPlayersById = {};
                 allPlayers.forEach(p => allPlayersById[p.id] = p);
                 computePositionAverages();
+
+                // Build team xG data before computeTeamScores() — it now reads teamXgData
+                // (via getTeamXgWindow/getTeamSeasonXg) to compute xgTrend/xgcTrend per team.
+                buildTeamXgData(bootData.elements);
+                console.log('[xG] Team xG data built for', Object.keys(teamXgData).length, 'teams');
+
                 computeTeamScores(bootData.teams, fixturesData);
                 buildFixtureSwingData(bootData.teams, fixturesData);
                 seasonStats = calculateBasicSeasonStats(bootData.teams, fixturesData);
 
-                // Build team xG data for draft & analysis
-                buildTeamXgData(bootData.elements);
-                console.log('[xG] Team xG data built for', Object.keys(teamXgData).length, 'teams');
-
-                // Fetch the manager profile first, on its own — a failure here means a
-                // genuinely invalid team ID. Picks/history are fetched separately below so a
-                // preseason "picks not available yet" 404 (which happens for every valid team
-                // right now, since no gameweek has been played) can be told apart from that.
+                // Fetch manager + picks + history in parallel
                 showLoading(true, `Loading team for GW${currentGW}...`);
-                const mgrRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`);
+                const [mgrRes, picksRes, histRes] = await Promise.all([
+                    fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`),
+                    fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`),
+                    fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`)
+                ]);
                 managerData = await mgrRes.json();
-
-                let picksRes, histRes;
-                try {
-                    [picksRes, histRes] = await Promise.all([
-                        fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`),
-                        fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`)
-                    ]);
-                } catch (picksErr) {
-                    const seasonNotStarted = !bootData.events.some(e => e.is_current || e.finished);
-                    if (seasonNotStarted) {
-                        localStorage.setItem('fpl_team_id', teamId);
-                        showNavTeamBadge(teamId);
-                        updateStatus(`${managerData.player_first_name} ${managerData.player_last_name}'s team is saved and ready — GW${currentGW} picks aren't available until the deadline passes.`, 'info');
-                        document.getElementById('landingPage').style.display = 'none';
-                        return;
-                    }
-                    throw picksErr;
-                }
                 picksData = await picksRes.json();
                 managerHistory = await histRes.json();
 
@@ -620,6 +700,9 @@
                     };
                 }
 
+                const premierLeagueSeason = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
+                await loadPremierLeagueJerseyNumbers(picksData.picks, premierLeagueSeason);
+
                 selectedPlayers = picksData.picks.map(pick => {
                     const player = allPlayersById[pick.element];
                     if (!player) return null;
@@ -629,6 +712,7 @@
                 }).filter(p => p !== null);
 
                 document.getElementById('managerInfo').classList.remove('hidden');
+                document.getElementById('squadHintBanner').classList.remove('hidden');
                 document.getElementById('managerName').textContent = `${managerData.player_first_name} ${managerData.player_last_name}`;
                 document.getElementById('overallRank').textContent = managerData.summary_overall_rank?.toLocaleString() || '-';
                 document.getElementById('totalPoints').textContent = managerData.summary_overall_points?.toLocaleString() || '-';
@@ -643,6 +727,7 @@
                 lineupRendered = false;
                 draftTabRendered = false;
                 newsRendered = false;
+                resetSnapshotState();
                 transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null };
                 document.getElementById('tabBar').classList.add('visible');
                 if (window._pendingTab) { switchTab(window._pendingTab); window._pendingTab = null; }
@@ -653,6 +738,7 @@
                     : 'Something went wrong loading your team. Please try again.';
                 updateStatus(friendly, 'error');
                 document.getElementById('managerInfo').classList.add('hidden');
+                document.getElementById('squadHintBanner').classList.add('hidden');
                 document.getElementById('tabBar').classList.remove('visible');
                 document.getElementById('landingPage').style.display = '';
             } finally {
@@ -1084,15 +1170,17 @@
             const teamHealth = Math.max(0, Math.min(100, Math.round(healthScore)));
 
             let html = '';
-
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthFactors);
-            html += renderSquadAlertsPanel();
-            html += renderPriceAlerts();
-            html += renderSquadTable();
+            html += renderSquadFilterBar();
+            html += renderSquadChartWidget();
+            html += `<div id="sq-table-wrap">${renderSquadTable()}</div>`;
 
+            if (sqChartInstance) { sqChartInstance.destroy(); sqChartInstance = null; }
             document.getElementById('teamDisplay').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            if (sqChartExpanded) initSquadChart();
+            if (typeof onCompareSelectionChange === 'function') onCompareSelectionChange();
             document.getElementById('status').style.display = 'none';
 
             // Animate health ring
@@ -1106,176 +1194,28 @@
             });
         }
 
-        function renderSquadAlertsPanel() {
-            const squadPlayers = selectedPlayers || [];
-            const injuryAlerts = squadPlayers.filter(p => p.news && p.news.trim()).sort((a, b) => {
-                const aChance = a.chanceNextRound ?? 100;
-                const bChance = b.chanceNextRound ?? 100;
-                return aChance - bChance;
-            });
-            // Poor form starters (form < 3.0, no injury news already shown)
-            const poorFormAlerts = squadPlayers.filter(p => {
-                const form = parseFloat(p.form);
-                return form < 3.0 && !p.onBench && !(p.news && p.news.trim());
-            }).sort((a, b) => parseFloat(a.form) - parseFloat(b.form));
-            const alerts = [...injuryAlerts, ...poorFormAlerts];
-            if (!alerts.length) return '';
-            let html = `<div class="squad-alerts-panel">`;
-            html += `<div class="squad-alerts-header" onclick="toggleSection('squad-alerts-body')">`;
-            html += `<span style="display:flex;align-items:center;gap:6px;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Squad Alerts (${alerts.length})</span>`;
-            html += `<span class="verdict-toggle" id="squad-alerts-body-toggle">▼</span></div>`;
-            html += `<div class="squad-alerts-body" id="squad-alerts-body">`;
-            alerts.forEach(p => {
-                const chance = p.chanceNextRound;
-                let statusClass = 'status-ok';
-                let statusIcon = '\u2713';
-                if (chance !== null && chance !== undefined) {
-                    if (chance === 0) { statusClass = 'status-injured'; statusIcon = '\u2717'; }
-                    else if (chance <= 50) { statusClass = 'status-injured'; statusIcon = '!'; }
-                    else if (chance <= 75) { statusClass = 'status-doubt'; statusIcon = '?'; }
-                } else if (p.status === 'i' || p.status === 'u') {
-                    statusClass = 'status-injured'; statusIcon = '\u2717';
-                } else if (p.status === 'd') {
-                    statusClass = 'status-doubt'; statusIcon = '?';
-                }
-                const isFormAlert = !(p.news && p.news.trim()) && parseFloat(p.form) < 3.0;
-                if (isFormAlert) {
-                    statusClass = 'status-doubt';
-                    statusIcon = '📉';
-                }
-                const chanceText = chance !== null && chance !== undefined && !isFormAlert ? `<div class="squad-alert-chance" style="color:${chance <= 25 ? '#EF4444' : chance <= 75 ? '#D97706' : '#10B981'};">${chance}% chance of playing</div>` : '';
-                const detailText = isFormAlert ? `Form: ${parseFloat(p.form).toFixed(1)} — starter in poor form` : escHTML(p.news);
-                html += `<div class="squad-alert-item">
-                    <div class="squad-alert-status ${statusClass}">${statusIcon}</div>
-                    <div class="squad-alert-info">
-                        <div class="squad-alert-name">${escHTML(p.name)} <span style="font-weight:400;color:var(--text-muted);">${escHTML(p.team)}</span></div>
-                        <div class="squad-alert-detail">${detailText}</div>
-                        ${chanceText}
-                    </div>
-                </div>`;
-            });
-            html += `</div></div>`;
-            return html;
+        // Shared by the Squad Snapshot cards below (hoisted out of renderTeamOverview
+        // since renderSnapshotCard is a top-level function that needs them too).
+        const SNAPSHOT_TOTAL_FPL = 11000000;
+        function getTransferPressure(p) {
+            const owners = SNAPSHOT_TOTAL_FPL * ((p.ownership || 0) / 100);
+            if (!owners) return 0;
+            return ((p.transfersIn || 0) - (p.transfersOut || 0)) / owners;
         }
-
-        function renderPriceAlerts() {
-            const squad = selectedPlayers || [];
-            if (!squad.length || !allPlayers || !allPlayers.length) return '';
-
-            const totalFpl = 11000000; // approx total FPL managers
-            function pressure(p) {
-                const owners = Math.max(totalFpl * (p.ownership / 100), 1);
-                const net = p.transfersIn - p.transfersOut;
-                return net / owners;
+        function injuryBadge(p) {
+            if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                return `<span class="pitch-injury-badge">OUT</span>`;
             }
-            function volBars(p) {
-                const total = p.transfersIn + p.transfersOut;
-                const maxVol = 200000;
-                const h = Math.min(Math.round((total / maxVol) * 16), 16);
-                const isBull = p.transfersIn > p.transfersOut;
-                const cls = isBull ? 'bull' : 'bear';
-                return `<div class="price-card-volume">` +
-                    [4,8,12,16].map(step => `<div class="price-vol-bar ${h >= step ? cls : ''}" style="height:${step}px;"></div>`).join('') +
-                    `</div>`;
+            if (p.status === 'd' && p.chanceNextRound != null && p.chanceNextRound < 100) {
+                return `<span class="pitch-injury-badge doubt">${p.chanceNextRound}%</span>`;
             }
-
-            const squadWithPressure = squad.map(p => ({
-                ...p,
-                pr: pressure(p),
-                net: p.transfersIn - p.transfersOut,
-                gwChange: (p.costChangeEvent || 0) / 10
-            }));
-
-            const dropping = squadWithPressure.filter(p => p.pr < -0.015 || p.gwChange < 0).sort((a, b) => a.pr - b.pr);
-            const rising = squadWithPressure.filter(p => p.pr > 0.015 || p.gwChange > 0).sort((a, b) => b.pr - a.pr);
-            const stable = squadWithPressure.filter(p => !dropping.includes(p) && !rising.includes(p));
-
-            if (dropping.length === 0 && rising.length === 0) return '';
-
-            // Ticker strip — top movers (prioritize drops, limit rises)
-            const tickerPlayers = [...dropping.slice(0, 4), ...rising.slice(0, 2)];
-            let tickerHtml = '';
-            tickerPlayers.forEach(p => {
-                const cls = p.pr < -0.015 ? 'bear' : p.pr > 0.015 ? 'bull' : 'flat';
-                const arrow = cls === 'bear' ? '▼' : cls === 'bull' ? '▲' : '–';
-                const netK = Math.round(p.net / 1000);
-                const sign = netK > 0 ? '+' : '';
-                tickerHtml += `<div class="price-ticker-item">
-                    <span class="price-ticker-name">${escHTML(p.name)}</span>
-                    <span class="price-ticker-val ${cls}">£${p.price.toFixed(1)}m</span>
-                    <span class="price-ticker-arrow ${cls}">${arrow}</span>
-                    <span style="font-size:9px;color:var(--text-muted);">${sign}${netK}k</span>
-                </div>`;
-            });
-
-            let html = `<div class="price-watch-panel">`;
-            // Header
-            html += `<div class="price-watch-header" onclick="toggleSection('priceWatchBody')">
-                <span style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;font-family:var(--font-display);">
-                    <i data-lucide="trending-up" style="width:16px;height:16px;"></i> Price Watch
-                </span>
-                <span class="price-watch-live"><span class="price-watch-dot"></span> LIVE</span>
-                <span style="flex:1;"></span>
-                <span style="font-size:11px;color:var(--text-muted);">${dropping.length} at risk · ${rising.length} rising</span>
-                <span class="verdict-toggle" id="priceWatchBody-toggle">▼</span>
-            </div>`;
-
-            // Ticker strip
-            html += `<div class="price-ticker-strip">${tickerHtml}</div>`;
-
-            // Body
-            html += `<div class="price-watch-body" id="priceWatchBody">`;
-
-            // Dropping section
-            if (dropping.length > 0) {
-                html += `<div class="price-watch-section-title"><span style="color:#EF4444;">▼</span> At Risk — Sell Pressure</div>`;
-                html += `<div class="price-watch-grid">`;
-                dropping.forEach(p => {
-                    const netK = Math.round(Math.abs(p.net) / 1000);
-                    html += `<div class="price-card bear-card">
-                        <div class="price-card-arrow bear">▼</div>
-                        <div class="price-card-info">
-                            <div class="price-card-name">${escHTML(p.name)}</div>
-                            <div class="price-card-team">${escHTML(p.team || '')}</div>
-                            <div class="price-card-meta">
-                                <span>${netK}k net out</span>
-                                <span>${p.ownership.toFixed(1)}% owned</span>
-                                ${p.gwChange !== 0 ? `<span style="color:#EF4444;font-weight:700;">${p.gwChange > 0 ? '+' : ''}${p.gwChange.toFixed(1)}m this GW</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="price-card-price bear">£${p.price.toFixed(1)}m</div>
-                        ${volBars(p)}
-                    </div>`;
-                });
-                html += `</div>`;
-            }
-
-            // Rising section (capped at 3)
-            if (rising.length > 0) {
-                html += `<div class="price-watch-section-title"><span style="color:#10B981;">▲</span> Rising — Buy Pressure${rising.length > 3 ? ` (top 3 of ${rising.length})` : ''}</div>`;
-                html += `<div class="price-watch-grid">`;
-                rising.slice(0, 3).forEach(p => {
-                    const netK = Math.round(p.net / 1000);
-                    html += `<div class="price-card bull-card">
-                        <div class="price-card-arrow bull">▲</div>
-                        <div class="price-card-info">
-                            <div class="price-card-name">${escHTML(p.name)}</div>
-                            <div class="price-card-team">${escHTML(p.team || '')}</div>
-                            <div class="price-card-meta">
-                                <span>+${netK}k net in</span>
-                                <span>${p.ownership.toFixed(1)}% owned</span>
-                                ${p.gwChange !== 0 ? `<span style="color:#10B981;font-weight:700;">+${p.gwChange.toFixed(1)}m this GW</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="price-card-price bull">£${p.price.toFixed(1)}m</div>
-                        ${volBars(p)}
-                    </div>`;
-                });
-                html += `</div>`;
-            }
-
-            html += `</div></div>`;
-            return html;
+            return '';
+        }
+        function marketBadge(p) {
+            const pr = getTransferPressure(p);
+            if (pr > 0.015) return `<span class="pitch-market-badge rising">&#9650;</span>`;
+            if (pr < -0.015) return `<span class="pitch-market-badge falling">&#9660;</span>`;
+            return '';
         }
 
         function renderTeamOverview(health, sells, monitors, holds, stars, healthFactors) {
@@ -1283,65 +1223,8 @@
             const healthColor = health >= 75 ? 'var(--verdict-hold)' : health >= 50 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
             const healthText = health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape' : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed';
 
-            const startersSorted = analysisResults.filter(a => !a.player.onBench).sort((a, b) => a.player.pickPosition - b.player.pickPosition);
-            const benchPlayers = analysisResults.filter(a => a.player.onBench).sort((a, b) => a.player.pickPosition - b.player.pickPosition);
-            const gks = startersSorted.filter(a => a.player.position === 1);
-            const defs = startersSorted.filter(a => a.player.position === 2);
-            const mids = startersSorted.filter(a => a.player.position === 3);
-            const fwds = startersSorted.filter(a => a.player.position === 4);
-
-            const totalFpl = 11000000;
-            const getPressure = (p) => {
-                const owners = totalFpl * ((p.ownership || 0) / 100);
-                if (!owners) return 0;
-                return ((p.transfersIn || 0) - (p.transfersOut || 0)) / owners;
-            };
-
-            const injuryBadge = (p) => {
-                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                    return `<span class="pitch-injury-badge">OUT</span>`;
-                }
-                if (p.status === 'd' && p.chanceNextRound != null && p.chanceNextRound < 100) {
-                    return `<span class="pitch-injury-badge doubt">${p.chanceNextRound}%</span>`;
-                }
-                return '';
-            };
-            const marketBadge = (p) => {
-                const pr = getPressure(p);
-                if (pr > 0.015) return `<span class="pitch-market-badge rising">&#9650;</span>`;
-                if (pr < -0.015) return `<span class="pitch-market-badge falling">&#9660;</span>`;
-                return '';
-            };
-
-            const pitchNode = (a) => {
-                const p = a.player;
-                const injured = p.status === 'i' || p.status === 'u';
-                return `<div class="pitch-player" onclick="openDetailPanel(${p.id})">
-                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}">
-                        ${escHTML(p.team)}
-                        ${p.isCaptain ? '<span class="captain-badge">C</span>' : ''}
-                        ${p.isVice ? '<span class="captain-badge" style="background:var(--text-muted);color:white;">V</span>' : ''}
-                        ${injuryBadge(p)}
-                        ${marketBadge(p)}
-                    </div>
-                    <div class="pitch-player-name">${escHTML(p.name)}</div>
-                    <div class="pitch-player-pts">${isPreseason ? p.ppg.toFixed(1) : p.form}</div>
-                </div>`;
-            };
-            const benchNode = (a) => {
-                const p = a.player;
-                const injured = p.status === 'i' || p.status === 'u';
-                return `<div class="pitch-player" onclick="openDetailPanel(${p.id})" style="opacity:0.7;">
-                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="width:36px;height:36px;font-size:9px;">
-                        ${escHTML(p.team)}
-                        ${injuryBadge(p)}
-                        ${marketBadge(p)}
-                    </div>
-                    <div class="pitch-player-name">${escHTML(p.name)}</div>
-                </div>`;
-            };
-
             return `
+            <div class="squad-hint-banner"><span>👆</span> Click a player, then another in the same position to swap · C/V toggles set captain &amp; vice · ✨ Auto-Optimize builds a valid lineup for you</div>
             <div class="team-overview">
                 <div class="health-ring-container">
                     <div class="health-ring">
@@ -1357,28 +1240,340 @@
                     <div class="health-sublabel">${healthText}</div>
                     ${healthFactors && healthFactors.length ? `<div class="health-factors">${healthFactors.map(f => `<div class="health-factor ${f.impact}">${f.icon} ${escHTML(f.text)}</div>`).join('')}</div>` : ''}
                     <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
-                        ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">\u25cf ${sells.length} Sell</span>` : ''}
-                        ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">\u25cf ${monitors.length} Monitor</span>` : ''}
-                        ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">\u2605 ${stars.length} Star</span>` : ''}
-                        <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">\u25cf ${holds.length} Hold</span>
+                        ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">● ${sells.length} Sell</span>` : ''}
+                        ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">● ${monitors.length} Monitor</span>` : ''}
+                        ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">★ ${stars.length} Star</span>` : ''}
+                        <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">● ${holds.length} Hold</span>
                     </div>
+                    ${renderLineupAlert()}
                 </div>
+                ${renderSnapshotBody()}
+            </div>`;
+        }
+
+        // ===== PHASE 5: INTERACTIVE SQUAD SNAPSHOT (replaces the static pitch) =====
+        let snapshotXI = new Set();          // player ids in the projected starting XI
+        let snapshotBenchOrder = [];          // ordered player ids, GK-last convention (matches solveQuickLineup)
+        let snapshotCaptainId = null;
+        let snapshotViceId = null;
+        let snapshotExcluded = new Set();     // player ids excluded from Auto-Optimize consideration
+        let snapshotSwapSource = null;        // player id mid same-position swap, or null
+        let snapshotOptimizeSummary = '';
+        let snapshotInitialized = false;
+
+        // Only called from the team-reload flow (new team load / team switch) — NOT on
+        // every re-render, so manual swaps/captain choices survive incidental re-renders
+        // (e.g. applying a settings preset just re-scores verdicts, it doesn't reset the squad).
+        function resetSnapshotState() {
+            snapshotXI = new Set();
+            snapshotBenchOrder = [];
+            snapshotCaptainId = null;
+            snapshotViceId = null;
+            snapshotExcluded = new Set();
+            snapshotSwapSource = null;
+            snapshotOptimizeSummary = '';
+            snapshotInitialized = false;
+        }
+
+        function initSnapshotIfNeeded() {
+            if (snapshotInitialized) return;
+            snapshotXI = new Set(analysisResults.filter(a => !a.player.onBench).map(a => a.player.id));
+            snapshotBenchOrder = analysisResults.filter(a => a.player.onBench)
+                .sort((a, b) => a.player.pickPosition - b.player.pickPosition).map(a => a.player.id);
+            const capA = analysisResults.find(a => a.player.isCaptain);
+            const viceA = analysisResults.find(a => a.player.isVice);
+            snapshotCaptainId = capA ? capA.player.id : null;
+            snapshotViceId = viceA ? viceA.player.id : null;
+            snapshotInitialized = true;
+        }
+
+        function getSquadAnalysisMap() {
+            return new Map(analysisResults.map(a => [a.player.id, a]));
+        }
+
+        function computeProjectedXIScore() {
+            const analysisMap = getSquadAnalysisMap();
+            let total = 0;
+            snapshotXI.forEach(id => {
+                const a = analysisMap.get(id);
+                if (!a) return;
+                const s = computeQuickLineupScoreDetailed(a.player).total;
+                total += (id === snapshotCaptainId) ? s * 2 : s;
+            });
+            return Math.round(total);
+        }
+
+        function renderSnapshotBody() {
+            initSnapshotIfNeeded();
+            const analysisMap = getSquadAnalysisMap();
+            const xiAnalyses = [...snapshotXI].map(id => analysisMap.get(id)).filter(Boolean);
+            const benchAnalyses = snapshotBenchOrder.map(id => analysisMap.get(id)).filter(Boolean);
+            const byPos = pos => xiAnalyses.filter(a => a.player.position === pos);
+            const projectedScore = computeProjectedXIScore();
+
+            return `
+            <div class="sq-snapshot" id="sq-snapshot-body">
+                <div class="sq-snapshot-toolbar">
+                    <button class="btn btn-primary sq-optimize-btn" onclick="runAutoOptimize()">✨ Auto-Optimize GW Lineup</button>
+                    <div class="sq-snapshot-score">Projected Starting XI Score: <strong>${projectedScore}</strong> pts</div>
+                </div>
+                ${snapshotOptimizeSummary ? `<div class="sq-optimize-summary"><i data-lucide="sparkles" style="width:13px;height:13px;flex-shrink:0;"></i> ${snapshotOptimizeSummary}</div>` : ''}
                 <div class="pitch-container">
                     <div class="pitch-rows">
-                        <div class="pitch-row">${fwds.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${mids.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${defs.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${gks.map(pitchNode).join('')}</div>
+                        <div class="pitch-row">${byPos(4).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                        <div class="pitch-row">${byPos(3).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                        <div class="pitch-row">${byPos(2).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                        <div class="pitch-row">${byPos(1).map(a => renderSnapshotCard(a, false)).join('')}</div>
                         <div class="pitch-row bench-row">
                             <span class="bench-label">Bench</span>
-                            ${benchPlayers.map(benchNode).join('')}
+                            ${benchAnalyses.map(a => renderSnapshotCard(a, true)).join('')}
                         </div>
                     </div>
                 </div>
             </div>`;
         }
 
-        // ===== SQUAD TABLE (position-grouped, replaces the old verdict-grouped sections) =====
+        function renderSnapshotCard(a, isBench) {
+            const p = a.player;
+            const injured = p.status === 'i' || p.status === 'u';
+            const isCap = p.id === snapshotCaptainId;
+            const isVice = p.id === snapshotViceId;
+            const isExcluded = snapshotExcluded.has(p.id);
+            const isSwapSelected = snapshotSwapSource === p.id;
+            const predictedScore = computeQuickLineupScoreDetailed(p).total;
+            const nextFx = (p.fixtures || [])[0];
+            const nextFxText = nextFx ? `${nextFx.isHome ? 'vs' : '@'} ${escHTML(nextFx.opponent)}` : 'No fixture';
+
+            return `<div class="pitch-player snapshot-player ${isSwapSelected ? 'swap-selected' : ''} ${isExcluded ? 'excluded' : ''}" onclick="snapshotSwapClick(${p.id})">
+                <div class="snapshot-cv-toggles">
+                    <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make captain (doubles predicted score)">C</button>
+                    <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make vice-captain">V</button>
+                </div>
+                <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="${isBench ? 'width:36px;height:36px;font-size:9px;' : ''}">
+                    ${escHTML(p.team)}
+                    ${injuryBadge(p)}
+                    ${marketBadge(p)}
+                </div>
+                <div class="pitch-player-name">${escHTML(p.name)}</div>
+                <div class="pitch-player-fixture">${nextFxText}</div>
+                <div class="pitch-player-pts" title="Predicted GW score">${predictedScore}</div>
+                <label class="snapshot-exclude" onclick="event.stopPropagation()" title="Exclude from Auto-Optimize">
+                    <input type="checkbox" ${isExcluded ? 'checked' : ''} onchange="toggleSnapshotExclude(${p.id})"> excl.
+                </label>
+            </div>`;
+        }
+
+        function refreshSnapshot() {
+            const el = document.getElementById('sq-snapshot-body');
+            if (el) el.outerHTML = renderSnapshotBody();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Click-to-swap: first click selects a source player, a second click on a
+        // different player in the SAME POSITION performs the swap (XI<->bench or
+        // reorders bench), clicking the same player again cancels. Cross-position
+        // formation changes are handled separately by Auto-Optimize (solveQuickLineup),
+        // so same-position-only here means we never need to re-validate formation legality.
+        function snapshotSwapClick(playerId) {
+            if (snapshotSwapSource === null) {
+                snapshotSwapSource = playerId;
+                refreshSnapshot();
+                return;
+            }
+            const sourceId = snapshotSwapSource;
+            snapshotSwapSource = null;
+            if (sourceId === playerId) { refreshSnapshot(); return; }
+
+            const analysisMap = getSquadAnalysisMap();
+            const srcA = analysisMap.get(sourceId);
+            const tgtA = analysisMap.get(playerId);
+            if (!srcA || !tgtA || srcA.player.position !== tgtA.player.position) {
+                updateStatus('Swaps must be between players in the same position', 'error');
+                refreshSnapshot();
+                return;
+            }
+
+            const srcInXI = snapshotXI.has(sourceId);
+            const tgtInXI = snapshotXI.has(playerId);
+            if (srcInXI === tgtInXI) {
+                if (!srcInXI) {
+                    const i = snapshotBenchOrder.indexOf(sourceId), j = snapshotBenchOrder.indexOf(playerId);
+                    [snapshotBenchOrder[i], snapshotBenchOrder[j]] = [snapshotBenchOrder[j], snapshotBenchOrder[i]];
+                }
+            } else if (srcInXI) {
+                snapshotXI.delete(sourceId); snapshotXI.add(playerId);
+                snapshotBenchOrder[snapshotBenchOrder.indexOf(playerId)] = sourceId;
+            } else {
+                snapshotXI.delete(playerId); snapshotXI.add(sourceId);
+                snapshotBenchOrder[snapshotBenchOrder.indexOf(sourceId)] = playerId;
+            }
+            snapshotOptimizeSummary = '';
+            refreshSnapshot();
+        }
+
+        function toggleSnapshotExclude(playerId) {
+            if (snapshotExcluded.has(playerId)) snapshotExcluded.delete(playerId);
+            else snapshotExcluded.add(playerId);
+            refreshSnapshot();
+        }
+
+        function setSnapshotCaptain(playerId) {
+            if (snapshotViceId === playerId) snapshotViceId = null;
+            snapshotCaptainId = playerId;
+            refreshSnapshot();
+        }
+
+        function setSnapshotVice(playerId) {
+            if (snapshotCaptainId === playerId) snapshotCaptainId = null;
+            snapshotViceId = playerId;
+            refreshSnapshot();
+        }
+
+        // ✨ Auto-Optimize: reuses the Lineup Wizard's formation-valid solver
+        // (solveQuickLineup already only tries real FPL formations — 1 GK, min 3 DEF,
+        // min 1 FWD — never a blind top-11-scorers pick) over the SAME predicted-score
+        // function driving every card, so the button and the numbers agree.
+        function runAutoOptimize() {
+            const pool = analysisResults.map(a => {
+                const p = a.player;
+                const detailed = computeQuickLineupScoreDetailed(p);
+                return Object.assign({}, p, {
+                    pos: p.position,
+                    lwScore: snapshotExcluded.has(p.id) ? -100 : detailed.total,
+                    _detailed: detailed
+                });
+            });
+            const result = solveQuickLineup(pool);
+            snapshotXI = new Set(result.xi.map(p => p.id));
+            snapshotBenchOrder = result.bench.map(p => p.id);
+
+            const sortedXI = [...result.xi].sort((a, b) => b.lwScore - a.lwScore);
+            snapshotCaptainId = sortedXI[0] ? sortedXI[0].id : null;
+            snapshotViceId = sortedXI[1] ? sortedXI[1].id : null;
+
+            snapshotOptimizeSummary = buildOptimizeSummary(sortedXI, result.bench);
+            refreshSnapshot();
+            updateStatus(`Lineup optimized (${result.formation})`, 'success');
+        }
+
+        function buildOptimizeSummary(xiSorted, bench) {
+            const parts = [];
+            const cap = xiSorted[0];
+            if (cap) {
+                const d = cap._detailed;
+                const factors = [
+                    { key: 'matchup', label: 'a favorable team matchup' },
+                    { key: 'xgi', label: 'strong underlying stats (xGI)' },
+                    { key: 'form', label: 'strong recent form' },
+                    { key: 'fixture', label: 'an easy fixture' },
+                    { key: 'ep', label: 'a high expected-points projection' }
+                ];
+                const top = factors.reduce((best, f) => d[f.key] > d[best.key] ? f : best, factors[0]);
+                parts.push(`${escHTML(cap.name)} captained due to ${top.label}.`);
+            }
+            const toughBench = bench
+                .filter(p => p.lwScore > -100)
+                .filter(p => p._detailed && (p._detailed.matchup < -1.5 || p._detailed.fixture < -3))
+                .sort((a, b) => b.lwScore - a.lwScore)[0];
+            if (toughBench) {
+                parts.push(`${escHTML(toughBench.name)} benched due to a tough matchup/fixture.`);
+            }
+            return parts.join(' ');
+        }
+
+        // ===== SHARED: open the AI Scouting Report modal for 2+ specific players =====
+        // Replaces the current compareList with exactly these players and opens the modal —
+        // used by Lineup Optimizer / Transfer Suggestions "Compare"/"Full Scouting Report"
+        // buttons, and by the detail panel's "Full Comparison" button.
+        function openPairCompare(...ids) {
+            const players = ids.map(buildComparePlayer).filter(Boolean);
+            if (players.length < 2) return;
+            compareList = players.slice(0, MAX_COMPARE);
+            updateCompareBar();
+            if (typeof onCompareSelectionChange === 'function') onCompareSelectionChange();
+            showCompareModal();
+        }
+
+        // ===== PHASE 1: LINEUP OPTIMIZER ("11 vs. bench") =====
+        const POS_SHORT_MAP = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+
+        function projectedScore(player) {
+            try {
+                const cp = buildComparePlayer(player.id);
+                if (cp && cp.l5 && cp.l5.games > 0) return calculateExpectedPoints(cp, POS_SHORT_MAP[player.position]);
+            } catch (e) { /* fall through to form-based estimate */ }
+            return player.form || 0;
+        }
+
+        function computeLineupSuggestions() {
+            const starters = analysisResults.filter(a => !a.player.onBench);
+            const bench = analysisResults.filter(a => a.player.onBench);
+            const suggestions = [];
+
+            bench.forEach(benchA => {
+                const samePos = starters.filter(a => a.player.position === benchA.player.position);
+                if (!samePos.length) return;
+
+                const benchScore = projectedScore(benchA.player);
+                let weakest = null, weakestScore = Infinity;
+                samePos.forEach(starterA => {
+                    const score = projectedScore(starterA.player);
+                    if (score < weakestScore) { weakest = starterA; weakestScore = score; }
+                });
+
+                if (weakest && benchScore - weakestScore >= 1.0) {
+                    suggestions.push({ bench: benchA, starter: weakest, benchScore, starterScore: weakestScore, delta: benchScore - weakestScore });
+                }
+            });
+
+            suggestions.sort((a, b) => b.delta - a.delta);
+            return suggestions.slice(0, 5);
+        }
+
+        function lineupSwapReason(s) {
+            const b = s.bench.player, st = s.starter.player;
+            const parts = [];
+            if (st.status === 'i' || st.status === 'u' || st.status === 's') parts.push(`${escHTML(st.name)} is unavailable`);
+            else if (st.status === 'd') parts.push(`${escHTML(st.name)} is a doubt`);
+            if (b.minsPerGame >= 60 && (b.form || 0) > (st.form || 0) + 0.5) parts.push(`better recent form (${b.form.toFixed(1)} vs ${st.form.toFixed(1)})`);
+            if ((b.avgFDR || 3) < (st.avgFDR || 3) - 0.4) parts.push('easier upcoming fixtures');
+            if (!parts.length) parts.push(`${s.benchScore.toFixed(1)} projected pts vs ${s.starterScore.toFixed(1)}`);
+            return parts.slice(0, 2).join(' — ');
+        }
+
+        // Compact version of the old standalone Lineup Optimizer section, folded directly
+        // into the health-ring column: an affirmation when the XI is already best, or a
+        // couple of tight one-line swap suggestions (capped, not a full card list) otherwise.
+        function renderLineupAlert() {
+            const suggestions = computeLineupSuggestions();
+            if (!suggestions.length) {
+                return `<div class="lineup-alert good"><i data-lucide="check-circle" class="icon"></i> Best XI already selected</div>`;
+            }
+            const rows = suggestions.slice(0, 2).map(s => {
+                const b = s.bench.player, st = s.starter.player;
+                return `<div class="lineup-alert-row">
+                    <span class="lineup-alert-text"><strong>${escHTML(b.name)}</strong> (bench) may outscore <strong>${escHTML(st.name)}</strong></span>
+                    <button class="lineup-alert-compare" onclick="openPairCompare(${b.id}, ${st.id})">Compare</button>
+                </div>`;
+            }).join('');
+            return `<div class="lineup-alert warn">
+                <div class="lineup-alert-head"><i data-lucide="repeat" class="icon"></i> Lineup check</div>
+                ${rows}
+            </div>`;
+        }
+
+        // Amber "showing last season's data" banner — shared pattern used across the site's
+        // other pages during preseason; this file doesn't pull it from common.js so it's a
+        // local copy, same markup as elsewhere.
+        function renderSeasonNotice(message) {
+            return `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
+                <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
+                <span>${message}</span>
+            </div>`;
+        }
+
+        // ===== SQUAD TABLE (position-grouped, replaces the old Transfer Analysis /
+        // Needs Attention feed / Squad Overview strip sections) =====
 
         function computePlayerGamesPlayed(player) {
             return isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
@@ -1416,22 +1611,20 @@
             return cols;
         }
 
-        // Team form + fixture swing badges shown next to the team name \u2014 same
-        // underlying data (teamAnalysis, fixtureSwingData) already used in the
-        // detail panel/scouting report, just surfaced here as compact badges.
+        // Team form + fixture swing badges shown next to the team name.
         function renderTeamBadges(player) {
             const ta = teamAnalysis[player.teamId];
             let formBadge = '';
             if (ta) {
                 const good = ta.formRating >= 55, bad = ta.formRating < 40;
                 const cls = good ? 'good' : bad ? 'bad' : 'warning';
-                const dot = good ? '\ud83d\udfe2' : bad ? '\ud83d\udd34' : '\ud83d\udfe1';
+                const dot = good ? '🟢' : bad ? '🔴' : '🟡';
                 const label = good ? 'Good' : bad ? 'Struggling' : 'Average';
                 formBadge = `<span class="team-form-badge ${cls}" title="W${ta.wins} D${ta.draws} L${ta.losses} last 5">${dot} ${label}</span>`;
             }
             const swing = fixtureSwingData[player.teamId];
             const swingBadge = swing
-                ? `<span class="swing-badge ${swing.direction}">${swing.direction === 'improving' ? '\u25b2' : '\u25bc'} GW${swing.swingGW}</span>`
+                ? `<span class="swing-badge ${swing.direction}">${swing.direction === 'improving' ? '▲' : '▼'} GW${swing.swingGW}</span>`
                 : '';
             return formBadge + swingBadge;
         }
@@ -1444,14 +1637,15 @@
             const hazardIcon = verdict === 'sell' ? '<i data-lucide="alert-triangle" class="sq-hazard-icon" title="Flagged: high sell rating"></i>' : '';
 
             return `
-            <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''}" data-player-id="${player.id}">
+            <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''}" data-player-id="${player.id}" data-compare-row>
+                <input type="checkbox" class="compare-checkbox sq-compare-checkbox" data-player-id="${player.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${player.id})">
                 <div class="sq-row-clickable" onclick="toggleInlineExpansion(${player.id})">
                     <div class="sq-row-main">
                         ${hazardIcon}
                         <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
                         <div class="sq-row-name-block">
-                            <div class="sq-row-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${player.isVice ? '\ud83c\udd65 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}</div>
-                            <div class="sq-row-team">${escHTML(player.team)} \u00b7 \u00a3${player.price.toFixed(1)}m ${renderTeamBadges(player)}</div>
+                            <div class="sq-row-name">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}</div>
+                            <div class="sq-row-team">${escHTML(player.team)} · £${player.price.toFixed(1)}m ${renderTeamBadges(player)}</div>
                         </div>
                     </div>
                     <div class="sq-row-stats">
@@ -1481,18 +1675,398 @@
         }
 
         function renderSquadTable() {
+            const filtered = getFilteredSquad();
             const groups = [1, 2, 3, 4].map(pos => ({
                 pos,
-                items: analysisResults.filter(a => a.player.position === pos)
+                items: filtered.filter(a => a.player.position === pos)
                     .sort((a, b) => a.player.pickPosition - b.player.pickPosition),
             }));
             return `<div class="sq-table">${groups.map(g => renderPositionGroup(g.pos, g.items)).join('')}</div>`;
         }
 
+        // ===== SHARED FILTER STATE + VISUAL ANALYSIS SCATTER WIDGET (Phase 4) =====
+        // The filter bar drives both the table above and the chart below from one
+        // shared state, per the spec's "filtering the table re-renders the chart" ask.
+        let squadFilterPos = 'all'; // 'all' | 1 | 2 | 3 | 4
+        let squadFilterMaxPrice = null;
+        let sqChartExpanded = localStorage.getItem('fpl_charts_expanded') === '1';
+        let sqChartInstance = null;
+        let sqChartXMetric = 'xgi90';
+        let sqChartYMetric = 'points';
+
+        const SQ_POSITION_COLORS = {
+            1: { bg: 'rgba(251, 191, 36, 0.8)', border: '#fbbf24' },
+            2: { bg: 'rgba(52, 211, 153, 0.8)', border: '#34d399' },
+            3: { bg: 'rgba(96, 165, 250, 0.8)', border: '#60a5fa' },
+            4: { bg: 'rgba(248, 113, 113, 0.8)', border: '#f87171' },
+        };
+        const SQ_POSITION_STYLES = { 1: 'circle', 2: 'rect', 3: 'triangle', 4: 'rectRot' };
+
+        // Shared stat catalog for the X/Y metric pickers — any pair is "available for
+        // free" since this only ever plots the ~15 squad players (cheap either way).
+        const SQ_CHART_METRICS = {
+            price: { label: 'Price (£m)', get: p => p.price },
+            ownership: { label: 'Ownership %', get: p => p.ownership },
+            form: { label: 'Form', get: p => isPreseason ? p.ppg : p.form },
+            ppg: { label: 'Pts/Game', get: p => p.ppg },
+            points: { label: 'Total Points', get: p => p.points },
+            minutes: { label: 'Minutes', get: p => p.minutes },
+            xg: { label: 'xG', get: p => p.xG },
+            xa: { label: 'xA', get: p => p.xA },
+            xgi: { label: 'xGI', get: p => p.xGI },
+            xgi90: { label: 'xGI/90', get: p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0 },
+            xgc: { label: 'xGC', get: p => p.xGC },
+            ict: { label: 'ICT Index', get: p => p.ictIndex },
+            bonus: { label: 'Bonus', get: p => p.bonus },
+            bps: { label: 'BPS', get: p => p.bps },
+            goals: { label: 'Goals', get: p => p.goals },
+            assists: { label: 'Assists', get: p => p.assists },
+            value: { label: 'Value (pts/£m)', get: p => p.price > 0 ? p.points / p.price : 0 },
+        };
+
+        function getFilteredSquad() {
+            return analysisResults.filter(a => {
+                if (squadFilterPos !== 'all' && a.player.position !== squadFilterPos) return false;
+                if (squadFilterMaxPrice != null && a.player.price > squadFilterMaxPrice) return false;
+                return true;
+            });
+        }
+
+        function renderSquadFilterBar() {
+            const positions = [{ v: 'all', l: 'All' }, { v: 1, l: 'GK' }, { v: 2, l: 'DEF' }, { v: 3, l: 'MID' }, { v: 4, l: 'FWD' }];
+            return `<div class="sq-filter-bar">
+                <div class="sq-filter-pills">
+                    ${positions.map(p => `<button class="sq-filter-pill ${squadFilterPos === p.v ? 'active' : ''}" onclick="setSquadFilterPos('${p.v}')">${p.l}</button>`).join('')}
+                </div>
+                <div class="sq-filter-price">
+                    <label for="sq-filter-price-input">Max £</label>
+                    <input type="number" id="sq-filter-price-input" step="0.5" min="4" max="15" placeholder="Any" value="${squadFilterMaxPrice ?? ''}" oninput="setSquadFilterMaxPrice(this.value)">
+                </div>
+            </div>`;
+        }
+
+        function rerenderSquadFilteredViews() {
+            const tableWrap = document.getElementById('sq-table-wrap');
+            if (tableWrap) tableWrap.innerHTML = renderSquadTable();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            updateSquadChart();
+        }
+
+        function setSquadFilterPos(pos) {
+            squadFilterPos = pos === 'all' ? 'all' : parseInt(pos, 10);
+            document.querySelectorAll('.sq-filter-pill').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = [...document.querySelectorAll('.sq-filter-pill')].find(btn => btn.textContent === (squadFilterPos === 'all' ? 'All' : POSITION_CONFIG[squadFilterPos].short));
+            if (activeBtn) activeBtn.classList.add('active');
+            rerenderSquadFilteredViews();
+        }
+
+        function setSquadFilterMaxPrice(val) {
+            squadFilterMaxPrice = val ? parseFloat(val) : null;
+            rerenderSquadFilteredViews();
+        }
+
+        function renderSquadChartWidget() {
+            const metricOptions = Object.keys(SQ_CHART_METRICS)
+                .map(k => `<option value="${k}">${SQ_CHART_METRICS[k].label}</option>`).join('');
+            return `<div class="sq-chart-widget">
+                <div class="sq-chart-header" onclick="toggleSquadChart()">
+                    <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i>
+                    <span class="sq-chart-header-title">Visual Analysis</span>
+                    <span class="sq-chart-chevron ${sqChartExpanded ? 'open' : ''}" id="sq-chart-chevron"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+                </div>
+                <div class="sq-chart-body-outer ${sqChartExpanded ? 'open' : ''}" id="sq-chart-body">
+                    <div class="sq-chart-body-inner">
+                        <div class="sq-chart-controls">
+                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('xgi90','points')">xGI/90 vs Points</button>
+                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('value','ownership')">Value vs Ownership</button>
+                            <span class="sq-chart-axis-picker">
+                                <select id="sq-chart-x-select" onchange="onSquadChartMetricChange()">${metricOptions}</select>
+                                <span>vs</span>
+                                <select id="sq-chart-y-select" onchange="onSquadChartMetricChange()">${metricOptions}</select>
+                            </span>
+                        </div>
+                        <div class="sq-chart-canvas-wrap" id="sq-chart-canvas-wrap"><canvas id="sqChartCanvas"></canvas></div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function toggleSquadChart() {
+            sqChartExpanded = !sqChartExpanded;
+            localStorage.setItem('fpl_charts_expanded', sqChartExpanded ? '1' : '0');
+            const body = document.getElementById('sq-chart-body');
+            const chevron = document.getElementById('sq-chart-chevron');
+            if (body) body.classList.toggle('open', sqChartExpanded);
+            if (chevron) chevron.classList.toggle('open', sqChartExpanded);
+            if (sqChartExpanded && !sqChartInstance) {
+                // Wait for the CSS grid-row expand transition (300ms) so the canvas has a
+                // real size before Chart.js measures it — initializing mid-transition would
+                // otherwise size the chart to a near-zero box.
+                setTimeout(initSquadChart, 320);
+            }
+        }
+
+        function setSquadChartMetrics(xKey, yKey) {
+            sqChartXMetric = xKey;
+            sqChartYMetric = yKey;
+            const xSel = document.getElementById('sq-chart-x-select');
+            const ySel = document.getElementById('sq-chart-y-select');
+            if (xSel) xSel.value = xKey;
+            if (ySel) ySel.value = yKey;
+            updateSquadChart();
+        }
+
+        function onSquadChartMetricChange() {
+            const xSel = document.getElementById('sq-chart-x-select');
+            const ySel = document.getElementById('sq-chart-y-select');
+            sqChartXMetric = xSel ? xSel.value : sqChartXMetric;
+            sqChartYMetric = ySel ? ySel.value : sqChartYMetric;
+            updateSquadChart();
+        }
+
+        function buildSquadChartDatasets() {
+            const xDef = SQ_CHART_METRICS[sqChartXMetric];
+            const yDef = SQ_CHART_METRICS[sqChartYMetric];
+            const filtered = getFilteredSquad();
+            return [1, 2, 3, 4].map(pos => ({
+                label: POSITION_CONFIG[pos].short,
+                data: filtered.filter(a => a.player.position === pos).map(a => ({
+                    x: xDef.get(a.player),
+                    y: yDef.get(a.player),
+                    name: a.player.name,
+                    team: a.player.team,
+                })),
+                backgroundColor: SQ_POSITION_COLORS[pos].bg,
+                borderColor: SQ_POSITION_COLORS[pos].border,
+                pointStyle: SQ_POSITION_STYLES[pos],
+                pointRadius: 7,
+                pointHoverRadius: 11,
+            }));
+        }
+
+        function initSquadChart() {
+            const canvas = document.getElementById('sqChartCanvas');
+            if (!canvas || typeof Chart === 'undefined') return;
+            const xSel = document.getElementById('sq-chart-x-select');
+            const ySel = document.getElementById('sq-chart-y-select');
+            if (xSel) xSel.value = sqChartXMetric;
+            if (ySel) ySel.value = sqChartYMetric;
+
+            sqChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'scatter',
+                data: { datasets: buildSquadChartDatasets() },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: 'var(--text-secondary)', usePointStyle: true } },
+                        tooltip: {
+                            callbacks: {
+                                title: ctx => ctx[0]?.raw ? `${ctx[0].raw.name} (${ctx[0].raw.team})` : '',
+                                label: ctx => {
+                                    const r = ctx.raw;
+                                    if (!r) return '';
+                                    return [`${SQ_CHART_METRICS[sqChartXMetric].label}: ${r.x.toFixed(2)}`, `${SQ_CHART_METRICS[sqChartYMetric].label}: ${r.y.toFixed(2)}`];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: SQ_CHART_METRICS[sqChartXMetric].label } },
+                        y: { title: { display: true, text: SQ_CHART_METRICS[sqChartYMetric].label } }
+                    }
+                }
+            });
+
+            const wrap = document.getElementById('sq-chart-canvas-wrap');
+            if (wrap && typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(() => { if (sqChartInstance) sqChartInstance.resize(); }).observe(wrap);
+            }
+        }
+
+        function updateSquadChart() {
+            if (!sqChartInstance) return;
+            sqChartInstance.data.datasets = buildSquadChartDatasets();
+            sqChartInstance.options.scales.x.title.text = SQ_CHART_METRICS[sqChartXMetric].label;
+            sqChartInstance.options.scales.y.title.text = SQ_CHART_METRICS[sqChartYMetric].label;
+            sqChartInstance.update();
+        }
+
         // Phase 2/3 will replace these stubs with the real inline accordion and
         // transfer side-panel implementations.
-        function toggleInlineExpansion(playerId) { /* Phase 2 */ }
-        function openTransferPanel(playerId) { /* Phase 3 */ }
+        // ===== INLINE ACCORDION EXPANSION (Phase 2) =====
+        // Reuses openDetailPanel's Key Statistics/Season Numbers/Team Context markup and
+        // the Lineup Wizard's AI Score Breakdown / Routes to Points / Rising Form Signals /
+        // home-away splits / xG-regression builders (computeQuickLineupScoreDetailed,
+        // lwBuildSingleRoutes, lwBuildSingleRisingForm, lwBuildSingleSplits,
+        // lwBuildSingleXgRegression — all confirmed to already accept this page's flat
+        // `player` shape, no adaptation needed) instead of re-deriving any of it.
+        function scoreBarHTML(label, value, maxVal, color) {
+            const pct = Math.min(Math.max(Math.abs(value) / maxVal * 100, 0), 100);
+            const isNeg = value < 0;
+            return `<div class="lw-ctx-score-row">
+                <div class="lw-ctx-score-label">${label}</div>
+                <div class="lw-ctx-score-bar"><div class="lw-ctx-score-bar-fill" style="width:${pct}%;background:${isNeg ? 'var(--color-error)' : color};"></div></div>
+                <div class="lw-ctx-score-val" style="color:${isNeg ? 'var(--color-error)' : value > 0 ? color : 'var(--text-muted)'}">${value > 0 ? '+' : ''}${value.toFixed(1)}</div>
+            </div>`;
+        }
+
+        function renderInlineExpansion(playerId) {
+            const analysis = analysisResults.find(a => a.player.id === playerId);
+            if (!analysis) return '';
+            const { player, verdict, fixtures } = analysis;
+            const gamesPlayed = computePlayerGamesPlayed(player);
+            const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
+            const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
+            const effForm = isPreseason ? player.ppg : player.form;
+            const detailed = computeQuickLineupScoreDetailed(player);
+
+            // Card 1: Expanded Stats & Underlying
+            const card1 = `<div class="sq-exp-card">
+                <div class="sq-exp-card-title">📊 Expanded Stats &amp; Underlying</div>
+                <div class="detail-stats-grid">
+                    ${renderDetailStat('Form', effForm.toFixed(1), effForm / 10, effForm >= 5 ? 'var(--verdict-hold)' : effForm < 3 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${POSITION_CONFIG[player.position].short} median: ${POSITION_CONFIG[player.position].formMedian}`)}
+                    ${renderDetailStat('Pts/Game', player.ppg.toFixed(1), player.ppg / 10, player.ppg >= 5 ? 'var(--verdict-hold)' : player.ppg < 3 ? 'var(--verdict-sell)' : 'var(--text-primary)', `Total: ${player.points} pts`)}
+                    ${renderDetailStat('Mins/Game', minsPerGame.toFixed(0), minsPerGame / 90, minsPerGame >= 80 ? 'var(--verdict-hold)' : minsPerGame < 60 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${player.starts} starts in ${gamesPlayed} GWs`)}
+                    ${player.position >= 3 ? renderDetailStat('xGI/90', xGIPer90.toFixed(2), xGIPer90, xGIPer90 >= 0.5 ? 'var(--verdict-hold)' : xGIPer90 < 0.25 ? 'var(--verdict-sell)' : 'var(--text-primary)', `${player.goals}G ${player.assists}A (${player.xG.toFixed(1)}xG ${player.xA.toFixed(1)}xA)`) : ''}
+                </div>
+                <div style="text-align:center;margin:10px 0;">
+                    <span style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:${detailed.total >= 30 ? 'var(--color-success)' : detailed.total >= 10 ? '#F59E0B' : 'var(--color-error)'};">${detailed.total}</span>
+                    <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">predicted score breakdown</span>
+                </div>
+                ${scoreBarHTML('Exp Pts', detailed.ep, 15, 'var(--color-info)')}
+                ${scoreBarHTML('Form', detailed.form, 15, '#A78BFA')}
+                ${scoreBarHTML('Fixture', detailed.fixture, 10, 'var(--color-success)')}
+                ${scoreBarHTML('xGI/90', detailed.xgi, 10, '#EC4899')}
+                ${scoreBarHTML('Minutes', detailed.minutes, 5, '#06B6D4')}
+                ${lwBuildSingleXgRegression(player)}
+                ${lwBuildSingleRoutes(player)}
+            </div>`;
+
+            // Card 2: Team Context & Schedule
+            const ta = teamAnalysis[player.teamId];
+            const ss = seasonStats[player.teamId];
+            const swingInfo = fixtureSwingData[player.teamId];
+            const fixtureChips = fixtures.map(f => `
+                <div class="fixture-chip fdr-${f.difficulty}" style="flex:1;min-width:48px;padding:6px 3px;">
+                    <span style="display:block;font-size:8px;color:rgba(255,255,255,0.5);">GW${f.event}</span>
+                    <span class="fixture-team">${escHTML(f.opponent)}</span>
+                    <span class="fixture-venue">${f.isHome ? 'H' : 'A'}</span>
+                </div>`).join('');
+            const card2 = ta ? `<div class="sq-exp-card">
+                <div class="sq-exp-card-title">🛡️ Team Context &amp; Schedule — ${escHTML(player.team)}</div>
+                <div class="detail-stats-grid">
+                    ${renderDetailStat('Attack', ta.attackPower.toString(), ta.attackPower / 100, ta.attackPower >= 60 ? 'var(--verdict-hold)' : ta.attackPower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${ta.avgGoals.toFixed(1)} goals/game`)}
+                    ${renderDetailStat('Defence', ta.defensePower.toString(), ta.defensePower / 100, ta.defensePower >= 60 ? 'var(--verdict-hold)' : ta.defensePower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${ta.avgConceded.toFixed(1)} conceded/game`)}
+                </div>
+                ${ss ? `<div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                    <div class="metric-box"><div class="metric-label">Season</div><div class="metric-value neutral" style="font-size:11px;">W${ss.wins} D${ss.draws} L${ss.losses}</div></div>
+                    <div class="metric-box"><div class="metric-label">GF/GA</div><div class="metric-value neutral" style="font-size:11px;">${ss.goalsFor}/${ss.goalsAgainst}</div></div>
+                    <div class="metric-box"><div class="metric-label">CS%</div><div class="metric-value ${ss.csPercent >= 35 ? 'good' : ss.csPercent < 20 ? 'bad' : 'neutral'}">${ss.csPercent}%</div></div>
+                </div>` : ''}
+                ${swingInfo ? `<div style="margin-top:8px;padding:6px 10px;border-radius:var(--radius-sm);background:${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)'};font-size:11px;color:${swingInfo.direction === 'improving' ? 'var(--color-success)' : 'var(--color-error)'}">${swingInfo.direction === 'improving' ? '▲' : '▼'} Fixtures ${swingInfo.direction} from GW${swingInfo.swingGW}: FDR ${swingInfo.currentFdr} → ${swingInfo.futureFdr}</div>` : ''}
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${fixtureChips}</div>
+                ${lwBuildSingleRisingForm(player)}
+                ${lwBuildSingleSplits(player)}
+            </div>` : '';
+
+            // Card 3: Quick Replacement Candidates (sell/monitor only, top 3)
+            let card3 = '';
+            if (verdict === 'sell' || verdict === 'monitor') {
+                const replacements = findReplacements(player, 3);
+                if (replacements.length) {
+                    card3 = `<div class="sq-exp-card sq-exp-card-full">
+                        <div class="sq-exp-card-title">⚡ Quick Replacement Candidates</div>
+                        ${replacements.map((r, i) => {
+                            const rNet = (r.transfersIn || 0) - (r.transfersOut || 0);
+                            return `
+                            <div class="sq-replacement-row">
+                                <span class="sq-replacement-rank">${i + 1}</span>
+                                <span class="sq-replacement-name">${escHTML(r.name)}</span>
+                                <span class="sq-replacement-meta">${escHTML(r.team)} · £${r.price.toFixed(1)}m · Form ${r.form.toFixed(1)} · ${rNet > 0 ? '+' : ''}${(rNet / 1000).toFixed(0)}k</span>
+                                <button class="card-btn" onclick="openPairCompare(${player.id}, ${r.id})">Compare</button>
+                                <button class="card-btn primary" onclick="openTransferPanel(${player.id})">Transfer</button>
+                            </div>`;
+                        }).join('')}
+                    </div>`;
+                }
+            }
+
+            return `<div class="sq-exp-grid">${card1}${card2}</div>${card3}`;
+        }
+
+        function toggleInlineExpansion(playerId) {
+            const el = document.getElementById(`sq-expand-${playerId}`);
+            const chevron = document.getElementById(`sq-chevron-${playerId}`);
+            if (!el) return;
+            const isOpen = el.style.display !== 'none';
+            if (isOpen) {
+                el.style.display = 'none';
+            } else {
+                if (!el.dataset.rendered) {
+                    el.innerHTML = renderInlineExpansion(playerId);
+                    el.dataset.rendered = '1';
+                }
+                el.style.display = '';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+            if (chevron) chevron.classList.toggle('open', !isOpen);
+        }
+
+        // ===== TRANSFER SIDE PANEL (Phase 3) =====
+        // Reuses the same slide-out shell as openDetailPanel (#detailOverlay/#detailPanel),
+        // just populated with transfer-focused content instead — driven by the Transfer
+        // Wizard's actual scoring engine (calculateTransferScore via findTransferCandidates),
+        // not the lighter findReplacements() formula used by Phase 2's inline quick-list.
+        function openTransferPanel(playerId) {
+            const analysis = analysisResults.find(a => a.player.id === playerId);
+            if (!analysis) return;
+            const { player } = analysis;
+            const bank = (picksData?.entry_history?.bank || 0) / 10;
+            const sellPrice = player.sellPrice || player.price;
+            const maxPrice = sellPrice + bank;
+            const excludeIds = new Set(selectedPlayers.map(p => p.id));
+            const candidates = findTransferCandidates(player.position, maxPrice, excludeIds).slice(0, 10);
+
+            document.getElementById('detailPanel').dataset.playerId = playerId;
+            document.getElementById('detailPlayerName').textContent = `Replace ${player.name}`;
+            document.getElementById('detailPlayerMeta').innerHTML = `
+                <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
+                Budget £${maxPrice.toFixed(1)}m (sell £${sellPrice.toFixed(1)}m + bank £${bank.toFixed(1)}m)
+            `;
+
+            let html = `<div class="detail-section">
+                <div class="detail-section-title">⚡ AI-Ranked Replacements</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Recency-weighted form, fixture-adjusted opponent matchup, and team context — same engine as the Transfer Wizard.</div>`;
+
+            if (!candidates.length) {
+                html += `<div class="tw-market-empty">No affordable candidates found at this position right now.</div>`;
+            } else {
+                html += candidates.map((c, i) => {
+                    const teamName = c.team || teams[c.teamId]?.short_name || '';
+                    const fixes = teamFixtures[c.teamId] || c.fixtures || [];
+                    const nextF = fixes[0];
+                    const fdrHtml = nextF ? `<span class="fdr-dot fdr-${nextF.difficulty}"></span> ${escHTML(nextF.opponent)} (${nextF.isHome ? 'H' : 'A'})` : '';
+                    return `<div class="tw-market-row" onclick="openPairCompare(${player.id}, ${c.id})">
+                        <div class="tw-market-rank">${i + 1}</div>
+                        <span class="tw-market-name">${escHTML(c.name)}</span>
+                        <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${escHTML(teamName)}</span>
+                        <span class="tw-market-price">£${c.price.toFixed(1)}m</span>
+                        <span class="tw-market-stat" style="color:${(c.form || 0) >= 5 ? 'var(--color-success)' : 'var(--text-secondary)'};">${(c.form || 0).toFixed(1)}</span>
+                        <span class="tw-market-score" title="AI Transfer Score">${(c._transferScore || 0).toFixed(0)}</span>
+                        <div class="tw-market-row-detail">${fdrHtml}</div>
+                    </div>`;
+                }).join('');
+            }
+            html += `</div>
+            <div class="detail-section">
+                <button class="btn btn-secondary" style="width:100%;" onclick="closeDetailPanel(); switchTab('transfer');">Build a full transfer plan in Transfer Wizard →</button>
+            </div>`;
+
+            document.getElementById('detailBody').innerHTML = html;
+            document.getElementById('detailOverlay').classList.add('show');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
 
         function toggleSection(sectionId) {
             const section = document.getElementById(sectionId);
@@ -1514,29 +2088,33 @@
         let draftTabRendered = false;
         function switchTab(tab) {
             if (tab === 'squadplanner') tab = 'draft';
-            // Transfer Wizard and Lineup Wizard are no longer separate tab destinations —
-            // their content now lives inside Transfers and the Squad detail panel/pitch respectively.
-            if (tab === 'transfer') tab = 'transfers';
-            if (tab === 'lineup') tab = 'team';
             const teamDisplay = document.getElementById('teamDisplay');
+            const transferMarketDisplay = document.getElementById('transferMarketDisplay');
             const newsDisplay = document.getElementById('newsDisplay');
             const transferDisplay = document.getElementById('transferDisplay');
+            const lineupDisplay = document.getElementById('lineupDisplay');
             const draftDisplay = document.getElementById('draftDisplay');
             const tabTeam = document.getElementById('tabTeam');
             const tabTransfers = document.getElementById('tabTransfers');
             const tabNews = document.getElementById('tabNews');
+            const tabTransfer = document.getElementById('tabTransfer');
+            const tabLineup = document.getElementById('tabLineup');
             const tabDraft = document.getElementById('tabDraft');
 
             teamDisplay.style.display = 'none';
+            transferMarketDisplay.style.display = 'none';
             newsDisplay.style.display = 'none';
             transferDisplay.style.display = 'none';
+            lineupDisplay.style.display = 'none';
             draftDisplay.style.display = 'none';
             tabTeam.classList.remove('active');
             tabTransfers.classList.remove('active');
             tabNews.classList.remove('active');
+            tabTransfer.classList.remove('active');
+            tabLineup.classList.remove('active');
             tabDraft.classList.remove('active');
 
-            const hashMap = { team: 'squad', transfers: 'transfers', news: 'news', draft: 'draft' };
+            const hashMap = { team: 'squad', transfers: 'transfers', news: 'news', draft: 'draft', transfer: 'transfer', lineup: 'lineup' };
             history.replaceState(null, '', '#' + (hashMap[tab] || tab));
 
             document.getElementById('settingsBtn').style.display = (tab === 'team') ? '' : 'none';
@@ -1545,13 +2123,21 @@
                 teamDisplay.style.display = '';
                 tabTeam.classList.add('active');
             } else if (tab === 'transfers') {
-                transferDisplay.style.display = '';
+                transferMarketDisplay.style.display = '';
                 tabTransfers.classList.add('active');
-                if (!transferRendered) renderTransferWizard();
+                if (!transferMarketRendered) renderTransferMarket();
             } else if (tab === 'news') {
                 newsDisplay.style.display = '';
                 tabNews.classList.add('active');
                 if (!newsRendered) renderNewsTab();
+            } else if (tab === 'transfer') {
+                transferDisplay.style.display = '';
+                tabTransfer.classList.add('active');
+                if (!transferRendered) renderTransferWizard();
+            } else if (tab === 'lineup') {
+                lineupDisplay.style.display = '';
+                tabLineup.classList.add('active');
+                if (!lineupRendered) renderInlineLineupWizard();
             } else if (tab === 'draft') {
                 draftDisplay.style.display = '';
                 tabDraft.classList.add('active');
@@ -1561,7 +2147,7 @@
 
         // Activate tab from hash on load
         (function() {
-            const hashToTab = { squad: 'team', transfers: 'transfers', news: 'news', draft: 'draft', squadplanner: 'draft', transfer: 'transfers', lineup: 'team' };
+            const hashToTab = { squad: 'team', transfers: 'transfers', news: 'news', draft: 'draft', squadplanner: 'draft', transfer: 'transfer', lineup: 'lineup' };
             const hash = window.location.hash.replace('#', '');
             if (hashToTab[hash]) {
                 // Defer until after data loads — store desired tab
@@ -2005,6 +2591,7 @@
             if (!analysis) return;
             const { player, verdict, verdictReason, recommendation, concerns, positives, sellRating, keyMetric, fixtures } = analysis;
             const posConfig = POSITION_CONFIG[player.position];
+            document.getElementById('detailPanel').dataset.playerId = playerId;
             const gamesPlayed = Math.max(currentGW - 1, 1);
             const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
             const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
@@ -2027,24 +2614,12 @@
                 <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100</div>
             </div>`;
 
-            // AI Score Breakdown — the "why" behind the verdict, one glance below it
-            const lwDetailed = computeQuickLineupScoreDetailed(player);
+            // Key Statistics with visual bars \u2014 stats/labels below are already position-branched
+            // (xGI/90 only for MID/FWD, CS/Saves vs Goals/Assists below); label the section so
+            // that's obvious rather than incidental.
+            const statsScopeLabel = player.position === 1 ? 'Goalkeeping' : player.position === 2 ? 'Defensive' : 'Attacking';
             html += `<div class="detail-section">
-                <div class="detail-section-title" data-term="xPts">🧠 AI Score Breakdown</div>
-                <div style="text-align:center;margin-bottom:10px;"><span style="font-family:var(--font-mono);font-size:24px;font-weight:700;color:${lwDetailed.total >= 30 ? 'var(--color-success)' : lwDetailed.total >= 10 ? '#F59E0B' : 'var(--color-error)'};">${lwDetailed.total}</span><span style="font-size:11px;color:var(--text-muted);margin-left:4px;">pts</span></div>
-                ${renderScoreBar('Exp Pts', lwDetailed.ep, 15, 'var(--color-info)')}
-                ${renderScoreBar('Form', lwDetailed.form, 15, '#A78BFA')}
-                ${renderScoreBar('Fixture', lwDetailed.fixture, 10, 'var(--color-success)')}
-                ${renderScoreBar('Home', lwDetailed.home, 2, '#F59E0B')}
-                ${renderScoreBar('xGI/90', lwDetailed.xgi, 10, '#EC4899')}
-                ${renderScoreBar('Minutes', lwDetailed.minutes, 5, '#06B6D4')}
-                ${renderScoreBar('PPG', lwDetailed.ppg, 10, '#8B5CF6')}
-                ${lwDetailed.doubtful !== 0 ? renderScoreBar('Doubtful', lwDetailed.doubtful, 20, 'var(--color-error)') : ''}
-            </div>`;
-
-            // Key Statistics with visual bars
-            html += `<div class="detail-section">
-                <div class="detail-section-title">\ud83d\udcca Key Statistics</div>
+                <div class="detail-section-title">\ud83d\udcca Key Statistics <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div class="detail-stats-grid">
                     ${renderDetailStat('Form', player.form.toFixed(1), player.form / 10, player.form >= 5 ? 'var(--verdict-hold)' : player.form < 3 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${posConfig.short} median: ${posConfig.formMedian}`)}
                     ${renderDetailStat('Pts/Game', player.ppg.toFixed(1), player.ppg / 10, player.ppg >= 5 ? 'var(--verdict-hold)' : player.ppg < 3 ? 'var(--verdict-sell)' : 'var(--text-primary)', `Total: ${player.points} pts`)}
@@ -2057,7 +2632,7 @@
 
             // Season numbers
             html += `<div class="detail-section">
-                <div class="detail-section-title">\ud83d\udcc8 Season Numbers</div>
+                <div class="detail-section-title">\ud83d\udcc8 Season Numbers <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                     ${player.position >= 3 ? `
                         <div class="metric-box"><div class="metric-label">Goals</div><div class="metric-value neutral">${player.goals}</div></div>
@@ -2105,24 +2680,6 @@
                     </div>
                     ` : ''}
                     ${swingHtml}
-                </div>`;
-            }
-
-            // Scouting Report — Routes to Points, Rising Form Signals, Home/Away splits, xG regression.
-            // Reuses the same per-player intel builders as the (now-merged) Lineup Wizard context panel
-            // instead of re-implementing them, since `player` here already matches the shape they expect.
-            const scoutingHtml = [
-                lwBuildSingleRoutes(player),
-                lwBuildSingleRisingForm(player),
-                lwBuildSingleSplits(player),
-                lwBuildSingleXgRegression(player)
-            ].filter(Boolean).join('');
-            if (scoutingHtml) {
-                html += `<div class="detail-section">
-                    <div class="detail-section-title" onclick="toggleSection('scouting-report-section')" style="cursor:pointer;display:flex;align-items:center;gap:6px;">
-                        🔬 Scouting Report <span class="verdict-toggle" id="scouting-report-section-toggle" style="margin-left:auto;">▼</span>
-                    </div>
-                    <div id="scouting-report-section">${scoutingHtml}</div>
                 </div>`;
             }
 
@@ -2178,6 +2735,7 @@
                             <tr class="${(best._fdr || 3) < (player.avgFDR || 3) ? 'better' : ''}"><td>FDR</td><td class="current">${(player.avgFDR || 3).toFixed(1)}</td><td class="replacement">${(best._fdr || 3).toFixed(1)}</td></tr>
                             <tr class="${best.price < player.price ? 'better' : ''}"><td>Price</td><td class="current">\u00a3${player.price.toFixed(1)}m</td><td class="replacement">\u00a3${best.price.toFixed(1)}m</td></tr>
                         </table>
+                        <button class="ts-compare-btn" style="margin-top:10px;" onclick="openPairCompare(${player.id}, ${best.id})">Full Comparison <i data-lucide="arrow-right" class="icon"></i></button>
                     </div>`;
 
                     if (replacements.length > 1) {
@@ -2219,6 +2777,18 @@
             document.getElementById('detailOverlay').classList.remove('show');
         }
 
+        // Cycle to the previous/next player in pitch order (GK->DEF->MID->FWD->bench),
+        // so the panel can be paged through without closing it — the panel is a
+        // non-blocking companion drawer, so this is the fast path for browsing.
+        function navigateDetailPanel(direction) {
+            const ordered = [...analysisResults].sort((a, b) => a.player.pickPosition - b.player.pickPosition);
+            if (!ordered.length) return;
+            const currentId = parseInt(document.getElementById('detailPanel').dataset.playerId, 10);
+            const idx = ordered.findIndex(a => a.player.id === currentId);
+            const nextIdx = idx === -1 ? 0 : (idx + direction + ordered.length) % ordered.length;
+            openDetailPanel(ordered[nextIdx].player.id);
+        }
+
         function findReplacements(player, count = 5) {
             const bank = (picksData?.entry_history?.bank || 0) / 10;
             const maxPrice = (player.sellPrice || player.price) + bank + 0.5;
@@ -2245,6 +2815,63 @@
             });
             candidates.sort((a, b) => b._score - a._score);
             return candidates.slice(0, count);
+        }
+
+        // ===== SHARED AI SCOUTING REPORT — ADAPTER (scripts/compare-report.js) =====
+        // Builds a player object shaped the way generateComparisonReport() expects
+        // (l5/season windowed stats, history[], structured fixtures, teamScores) from
+        // this page's flat allPlayers/playersDetailData pipeline. Works for squad members
+        // and findReplacements() candidates alike — both live in the same allPlayers pool.
+        function buildComparePlayer(playerId) {
+            const base = allPlayersById[playerId];
+            if (!base) return null;
+
+            const history = (playersDetailData?.players || []).find(p => p.id === playerId)?.history || [];
+            const l5 = calculateStats(history, true);
+            const season = calculateStats(history, false);
+
+            // teamFixtures is keyed by numeric team id (base.teamId), not base.team (short name).
+            // Each entry's `.opponent` here is the short-name string; the report expects the
+            // numeric id instead (it looks opponents up via teams[f.opponent]), so remap to
+            // the numeric `.opponentId` — getting this backwards silently blanks fixture chips.
+            const rawFixtures = teamFixtures[base.teamId] || [];
+            const remap = f => ({ opponent: f.opponentId, difficulty: f.difficulty, isHome: f.isHome, event: f.event });
+            const next3 = rawFixtures.slice(0, 3).map(remap);
+            const next5 = rawFixtures.slice(0, 5).map(remap);
+            const fixtures = next3.length > 0 ? {
+                avgFDR3: next3.reduce((s, f) => s + f.difficulty, 0) / next3.length,
+                avgFDR5: next5.reduce((s, f) => s + f.difficulty, 0) / next5.length,
+                next3, next5,
+                fixtureString: next3.map(f => `${teams[f.opponent]?.short_name || '???'}(${f.isHome ? 'H' : 'A'})`).join(', ')
+            } : null;
+
+            return {
+                ...base,
+                selectedBy: base.ownership,
+                totalPoints: base.points,
+                l5, season, history, fixtures,
+                teamScores: teamAnalysis[base.teamId]
+            };
+        }
+
+        // This page's hook into the shared compare-report.js engine.
+        function onCompareCheckboxChange(playerId) {
+            const player = buildComparePlayer(playerId);
+            if (player) toggleComparePlayer(player);
+        }
+
+        // Called by the shared engine after compareList changes. Cheap partial update —
+        // syncs checked/disabled state and the .selected-row highlight on every currently
+        // rendered compare checkbox, without re-rendering any section's HTML.
+        function onCompareSelectionChange() {
+            document.querySelectorAll('.compare-checkbox[data-player-id]').forEach(cb => {
+                const id = parseInt(cb.dataset.playerId, 10);
+                const isSelected = compareList.some(p => p.id === id);
+                cb.checked = isSelected;
+                cb.disabled = !isSelected && compareList.length >= MAX_COMPARE;
+                const row = cb.closest('[data-compare-row]');
+                if (row) row.classList.toggle('selected-row', isSelected);
+            });
         }
 
         // ===== TEAM XG ENGINE =====
@@ -2330,14 +2957,24 @@
                 acc.goals += d.goals; acc.conceded += d.conceded;
                 return acc;
             }, { xG: 0, xA: 0, xGC: 0, goals: 0, conceded: 0 });
-            return { games: n, xGpg: totals.xG / n, xGCpg: totals.xGC / n, gpg: totals.goals / n, gapg: totals.conceded / n };
+            return {
+                games: n, xGpg: totals.xG / n, xGCpg: totals.xGC / n,
+                gpg: totals.goals / n, gapg: totals.conceded / n,
+                totalXg: totals.xG, totalGoals: totals.goals,
+                totalXgc: totals.xGC, totalConceded: totals.conceded
+            };
         }
 
         function getTeamSeasonXg(teamId) {
             const data = teamXgData[teamId];
             if (!data) return null;
             const g = data.seasonGames || 1;
-            return { games: data.seasonGames, xGpg: data.seasonXg / g, xGCpg: data.seasonXgc / g, gpg: data.seasonGoals / g, gapg: data.seasonConceded / g };
+            return {
+                games: data.seasonGames, xGpg: data.seasonXg / g, xGCpg: data.seasonXgc / g,
+                gpg: data.seasonGoals / g, gapg: data.seasonConceded / g,
+                totalXg: data.seasonXg, totalGoals: data.seasonGoals,
+                totalXgc: data.seasonXgc, totalConceded: data.seasonConceded
+            };
         }
 
         // Process fixtures for next 6 GWs
@@ -3114,7 +3751,7 @@
             } else {
                 dropdown.innerHTML = results.map(p => `<div class="planner-search-item" onclick="selectDraftReplacement(${p.id})">
                     <div><span class="planner-search-item-name">${escHTML(p.name)}</span></div>
-                    <span class="planner-search-item-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${isPreseason ? p.ppg.toFixed(1) : p.form} form</span>
+                    <span class="planner-search-item-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${p.form} form</span>
                 </div>`).join('');
             }
             dropdown.classList.add('show');
@@ -3818,7 +4455,7 @@
 
                 let node = `<div class="planner-pitch-player ${swapClass}" onclick="handleDraftPitchClick(${p.id})" title="${escHTML(p.name)} — ${POSITION_CONFIG[p.position]?.short || ''} · ${escHTML(p.team)}">`;
                 node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
-                node += escHTML(p.team);
+                node += jerseyNumberLabel(p);
                 if (p.isCaptain) {
                     if (activeChip === 'triplecaptain') {
                         node += `<span class="planner-pitch-captain" style="background:#8B5CF6;">3×</span>`;
@@ -4130,7 +4767,7 @@
                     const injured = p.status === 'i' || p.status === 'u';
                     let node = `<div class="planner-pitch-player" title="${escHTML(p.name)} — ${escHTML(p.team)}">`;
                     node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
-                    node += escHTML(p.team);
+                    node += jerseyNumberLabel(p);
                     if (p.isCaptain) node += `<span class="planner-pitch-captain">C</span>`;
                     if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
                     if (p.isTransferIn) node += `<span class="draft-pitch-new-badge">NEW</span>`;
@@ -4252,8 +4889,11 @@
 
         // ===== TRANSFER WIZARD ENGINE =====
 
-        // Recency-weighted average (ported from players-analysis)
-        function recencyWeightedAvg(history, key, n = 5) {
+        // Recency-weighted average, Transfer Wizard flavor: pre-filters to played-minutes
+        // games before windowing. Named distinctly from the shared recencyWeightedAvg() in
+        // scripts/compare-report.js (which windows raw, unfiltered history) to avoid the two
+        // same-named function declarations silently overriding each other at global scope.
+        function twRecencyWeightedAvg(history, key, n = 5) {
             if (!history || history.length === 0) return 0;
             const played = history.filter(h => h.minutes > 0);
             const window = played.slice(-n);
@@ -4296,11 +4936,11 @@
             const nailedBonus = Math.min(5, Math.max(0, (minsPerGame - 60) / 4));
 
             // ── Recency-weighted per-game stats (most recent games count more) ──
-            const rwPtsPerGame = history.length > 0 ? recencyWeightedAvg(history, 'total_points') : (recent ? recent.ppg : player.ppg);
-            const rwXGI = history.length > 0 ? recencyWeightedAvg(history, 'expected_goal_involvements') : (recent ? recent.xGIPer90 : (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0));
-            const rwXG = history.length > 0 ? recencyWeightedAvg(history, 'expected_goals') : (recent ? recent.xGPer90 : (player.minutes > 0 ? (player.xG / player.minutes) * 90 : 0));
-            const rwXA = history.length > 0 ? recencyWeightedAvg(history, 'expected_assists') : (recent ? recent.xAPer90 : (player.minutes > 0 ? (player.xA / player.minutes) * 90 : 0));
-            const rwBonus = history.length > 0 ? recencyWeightedAvg(history, 'bonus') : (recent ? (recent.bonus / recentGames) : (player.bonus / seasonGames));
+            const rwPtsPerGame = history.length > 0 ? twRecencyWeightedAvg(history, 'total_points') : (recent ? recent.ppg : player.ppg);
+            const rwXGI = history.length > 0 ? twRecencyWeightedAvg(history, 'expected_goal_involvements') : (recent ? recent.xGIPer90 : (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0));
+            const rwXG = history.length > 0 ? twRecencyWeightedAvg(history, 'expected_goals') : (recent ? recent.xGPer90 : (player.minutes > 0 ? (player.xG / player.minutes) * 90 : 0));
+            const rwXA = history.length > 0 ? twRecencyWeightedAvg(history, 'expected_assists') : (recent ? recent.xAPer90 : (player.minutes > 0 ? (player.xA / player.minutes) * 90 : 0));
+            const rwBonus = history.length > 0 ? twRecencyWeightedAvg(history, 'bonus') : (recent ? (recent.bonus / recentGames) : (player.bonus / seasonGames));
             const csPerGame = recent ? (recent.cs / recentGames) : (player.cleanSheets / Math.max(player.starts || seasonGames, 1));
 
             const value = rwPtsPerGame / Math.max(player.price, 3.5);
@@ -5088,7 +5728,7 @@
             // ── Section 1: Core Stats ──
             let coreHtml = '';
             coreHtml += compRow('Price', soldPrice, candPrice, false, '£' + soldPrice.toFixed(1) + 'm', '£' + candPrice.toFixed(1) + 'm');
-            coreHtml += compRow('Form', (isPreseason ? sold.ppg : sold.form) || 0, (isPreseason ? candidate.ppg : candidate.form) || 0, true);
+            coreHtml += compRow('Form', sold.form || 0, candidate.form || 0, true);
             coreHtml += compRow('PPG', sold.ppg || 0, candidate.ppg || 0, true);
             coreHtml += compRow('Pts (L5)', soldRecent?.points || 0, candRecent?.points || 0, true, fmtV(soldRecent?.points, 0), fmtV(candRecent?.points, 0));
             coreHtml += compRow('Mins/G', soldRecent ? soldRecent.minutes / soldRecent.games : 0, candRecent ? candRecent.minutes / candRecent.games : 0, true, fmtV(soldRecent ? soldRecent.minutes / soldRecent.games : 0, 0), fmtV(candRecent ? candRecent.minutes / candRecent.games : 0, 0));
@@ -5796,6 +6436,9 @@
             activePreset = preset;
             localStorage.setItem('fpl_analysis_settings', JSON.stringify(userSettings));
             localStorage.setItem('fpl_active_preset', preset);
+            document.querySelectorAll('.strategy-preset-tab').forEach(button => {
+                button.classList.toggle('active', button.dataset.strategyPreset === preset);
+            });
             closeSettings();
             
             if (selectedPlayers.length > 0) {
@@ -6255,7 +6898,7 @@
                     </div>
                 </div>
                 <div class="lw-stats">
-                    <div class="lw-stat"><div class="lw-stat-val">${isPreseason ? p.ppg.toFixed(1) : p.form}</div><div class="lw-stat-label">Form</div></div>
+                    <div class="lw-stat"><div class="lw-stat-val">${p.form}</div><div class="lw-stat-label">Form</div></div>
                     <div class="lw-stat"><div class="lw-stat-val">${p.ppg.toFixed(1)}</div><div class="lw-stat-label">PPG</div></div>
                     <div class="lw-stat"><div class="lw-stat-val" style="color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'}">${p.lwScore}</div><div class="lw-stat-label" title="Lineup Score = EP×3 + Form×2 + (3−FDR)×5 + Home×2 + xGI/90×10 + Minutes bonus + PPG×1.5">Score</div></div>
                 </div>
@@ -6327,7 +6970,7 @@
                         <div class="lw-row-player-team">${escHTML(p.team)}</div>
                     </div>
                     <div class="lw-row-fixture">${fx ? `<span class="fdr-dot fdr-${fx.difficulty}"></span><span>${escHTML(fx.opponent)}</span><span style="font-size:9px;color:var(--text-muted);">${fx.isHome ? 'H' : 'A'}</span>` : '<span style="color:var(--text-muted);">-</span>'}</div>
-                    <div class="lw-row-stat">${isPreseason ? p.ppg.toFixed(1) : p.form}</div>
+                    <div class="lw-row-stat">${p.form}</div>
                     <div class="lw-row-stat">${(p.epNext || 0).toFixed(1)}</div>
                     <div class="lw-row-stat" style="color:${sc};font-size:13px;">${p.lwScore}</div>
                 </div>`;
@@ -6417,7 +7060,7 @@
 
             return `<div class="lw-pitch-player ${isBench ? 'bench' : ''}" onclick="handleLWRowClick(${p.id})" title="${escHTML(p.web_name)} · Score: ${p.lwScore}" style="${isSelected ? 'background:rgba(167,139,250,0.2);box-shadow:0 0 0 2px #A78BFA;border-radius:8px;' : ''}">
                 ${benchOrder ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${benchOrder}</div>` : ''}
-                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${jerseyNumberLabel(p)}</div>
                 <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
                 ${fx ? `<div style="display:flex;align-items:center;gap:2px;justify-content:center;"><span class="fdr-dot fdr-${fx.difficulty}" style="width:6px;height:6px;"></span><span style="font-size:8px;color:rgba(255,255,255,0.7);">${escHTML(fx.opponent)}</span></div>` : ''}
                 <div class="lw-pitch-score" style="color:${sc};">${p.lwScore}</div>
@@ -6561,7 +7204,7 @@
                         <div class="lw-captain-name">${escHTML(p.web_name)}</div>
                         <div class="lw-captain-meta">
                             <span>${escHTML(p.team)}</span>
-                            <span>Form ${isPreseason ? p.ppg.toFixed(1) : p.form}</span>
+                            <span>Form ${p.form}</span>
                             <span>xGI/90 ${xgi}</span>
                             ${fx ? `<span class="fixture-chip fdr-${fx.difficulty}" style="font-size:10px;padding:1px 5px;">${escHTML(fx.opponent)}(${fx.isHome ? 'H' : 'A'})</span>` : ''}
                         </div>
@@ -6610,7 +7253,7 @@
                 const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
                 return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;opacity:0.6;position:relative;">
                     <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${i + 1}</div>
-                    <div class="lw-pitch-node" style="background:rgba(0,0,0,0.2);border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                    <div class="lw-pitch-node" style="background:rgba(0,0,0,0.2);border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${jerseyNumberLabel(p)}</div>
                     <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
                 </div>`;
             }).join('')}</div>`;
@@ -6639,7 +7282,7 @@
             return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;position:relative;">
                 ${isCap ? '<div style="position:absolute;top:-6px;right:-2px;font-size:12px;"><i data-lucide="crown" style="width:12px;height:12px;color:#F59E0B;"></i></div>' : ''}
                 ${isVC ? '<div style="position:absolute;top:-6px;right:-2px;font-size:10px;color:#9CA3AF;font-weight:700;">VC</div>' : ''}
-                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};${isCap ? 'box-shadow:0 0 8px rgba(245,158,11,0.5);' : ''}">${posNames[p.pos]}</div>
+                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};${isCap ? 'box-shadow:0 0 8px rgba(245,158,11,0.5);' : ''}">${jerseyNumberLabel(p)}</div>
                 <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
             </div>`;
         }
@@ -6749,7 +7392,7 @@
 
         // ── LINEUP WIZARD: Detailed Score Breakdown ──
         function computeQuickLineupScoreDetailed(p) {
-            const result = { total: 0, ep: 0, form: 0, fixture: 0, home: 0, xgi: 0, minutes: 0, ppg: 0, doubtful: 0 };
+            const result = { total: 0, ep: 0, form: 0, fixture: 0, home: 0, xgi: 0, minutes: 0, ppg: 0, doubtful: 0, matchup: 0 };
             if (p.status === 'i' || p.status === 'u' || p.status === 's') { result.total = -100; return result; }
             if (p.status === 'd') result.doubtful = -20;
             result.ep = Math.round((p.epNext || 0) * 3 * 10) / 10;
@@ -6762,7 +7405,16 @@
             if (mpg >= 85) result.minutes = 3;
             else if (mpg < 45) result.minutes = -5;
             result.ppg = Math.round((p.points / Math.max(currentGW - 1, 1)) * 1.5 * 10) / 10;
-            result.total = Math.round(result.ep + result.form + result.fixture + result.home + result.xgi + result.minutes + result.ppg + result.doubtful);
+            // Team Attack/Defense power vs. the next opponent's respective rating — the
+            // explicit team-context matchup factor section 9 asks for, on top of the
+            // generic FDR-based `fixture` term above. Same teamAnalysis data already used
+            // everywhere else on this page (detail panel, calculateTransferScore, etc.).
+            if (fx.length > 0 && fx[0].opponentId && teamAnalysis[fx[0].opponentId]) {
+                const opp = teamAnalysis[fx[0].opponentId];
+                const relevantOppPower = (p.position <= 2) ? (opp.attackPower || 50) : (opp.defensePower || 50);
+                result.matchup = Math.round(((50 - relevantOppPower) / 50) * 6 * 10) / 10;
+            }
+            result.total = Math.round(result.ep + result.form + result.fixture + result.home + result.xgi + result.minutes + result.ppg + result.doubtful + result.matchup);
             return result;
         }
 
@@ -6792,10 +7444,7 @@
             const detailed = computeQuickLineupScoreDetailed(p);
             const ta = teamAnalysis[p.teamId];
             const fx = p.fixtures || [];
-            // Preseason: currentGW-1 is 0, so dividing p.points (last season's full total)
-            // by gamesPlayed=1 would mislabel a season total as "PPG" — fall back to a
-            // starts-based games-played estimate like the main analysis engine does.
-            const gamesPlayed = isPreseason ? Math.max(p.starts || Math.round(p.minutes / 90), 1) : Math.max(currentGW - 1, 1);
+            const gamesPlayed = Math.max(currentGW - 1, 1);
             const xGIPer90 = p.minutes > 0 ? ((p.xGI / p.minutes) * 90) : 0;
             const mpg = (p.minutes || 0) / gamesPlayed;
 
@@ -6854,8 +7503,8 @@
             html += `<div class="lw-ctx-section">`;
             html += `<div class="lw-ctx-section-title"><i data-lucide="bar-chart-3" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Season Stats</div>`;
             html += `<div class="lw-ctx-stat-grid">`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${isPreseason ? p.ppg.toFixed(1) : p.form}</div><div class="lw-ctx-stat-box-label">Form</div></div>`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${(isPreseason ? p.ppg : (p.points / gamesPlayed)).toFixed(1)}</div><div class="lw-ctx-stat-box-label">PPG</div></div>`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.form}</div><div class="lw-ctx-stat-box-label">Form</div></div>`;
+            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${(p.points / gamesPlayed).toFixed(1)}</div><div class="lw-ctx-stat-box-label">PPG</div></div>`;
             html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${xGIPer90.toFixed(2)}</div><div class="lw-ctx-stat-box-label">xGI/90</div></div>`;
             if (p.pos >= 3) {
                 html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.goals}</div><div class="lw-ctx-stat-box-label">Goals</div></div>`;
@@ -7196,11 +7845,14 @@
             document.getElementById('teamIdInput').value = '';
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="scripts/compare-report.js"></script>
     <script src="scripts/common.js"></script>
+    <script src="scripts/sidebar-nav.js"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
-    loadNav().then(function() {
+    loadSidebarNav().then(function() {
         try {
             var savedTeamId = localStorage.getItem('fpl_team_id');
             if (savedTeamId && /^\d+$/.test(savedTeamId)) {
@@ -7216,6 +7868,6 @@
         }
     });
     </script>
-    <script>loadFooter();</script>
+    <!-- V2: no footer.html — dashboard-app shell doesn't use a marketing footer -->
 </body>
 </html>

@@ -1,7 +1,6 @@
 /* ============================================
-   EasyFPL — V2 Sidebar Nav (design preview)
+   EasyFPL — Sidebar Nav
    Fetch-injects sidebar-nav.html, mirrors loadNav()'s pattern in common.js.
-   Only used by *-v2.html pages — no effect on the live site.
    ============================================ */
 
 // Restore the rail preference before the injected sidebar is painted.
@@ -20,10 +19,10 @@ function loadSidebarNav() {
             document.body.insertAdjacentHTML('afterbegin', html);
 
             // Mark the current page's nav item active.
-            // Normalize so clean URLs (e.g. "/index-v2" on Pages) still match
+            // Normalize so clean URLs (e.g. "/index" on Pages) still match
             // the data-page values (which include ".html").
-            let page = location.pathname.split('/').pop() || 'index-v2.html';
-            if (page === '' || page === 'index-v2') page = 'index-v2.html';
+            let page = location.pathname.split('/').pop() || 'index.html';
+            if (page === '' || page === 'index') page = 'index.html';
             if (!page.endsWith('.html')) page += '.html';
             const activeItem = document.querySelector(`.v2-nav-item[data-page="${page}"]`);
             if (activeItem) activeItem.classList.add('active');
