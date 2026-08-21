@@ -1256,7 +1256,6 @@
         let snapshotBenchOrder = [];          // ordered player ids, GK-last convention (matches solveQuickLineup)
         let snapshotCaptainId = null;
         let snapshotViceId = null;
-        let snapshotExcluded = new Set();     // player ids excluded from Auto-Optimize consideration
         let snapshotSwapSource = null;        // player id mid same-position swap, or null
         let snapshotOptimizeSummary = '';
         let snapshotInitialized = false;
@@ -1269,7 +1268,6 @@
             snapshotBenchOrder = [];
             snapshotCaptainId = null;
             snapshotViceId = null;
-            snapshotExcluded = new Set();
             snapshotSwapSource = null;
             snapshotOptimizeSummary = '';
             snapshotInitialized = false;
@@ -1291,16 +1289,25 @@
             return new Map(analysisResults.map(a => [a.player.id, a]));
         }
 
+        // Realistic single-GW points projection for display — FPL's own expected-
+        // points-next-gameweek figure, already fixture- and form-aware upstream.
+        // Kept separate from computeQuickLineupScoreDetailed's total, which is a
+        // weighted ranking score (not a literal points value) used by Auto-Optimize
+        // to choose the best XI/captain.
+        function predictedGWPoints(p) {
+            return Math.round((p.epNext || 0) * 10) / 10;
+        }
+
         function computeProjectedXIScore() {
             const analysisMap = getSquadAnalysisMap();
             let total = 0;
             snapshotXI.forEach(id => {
                 const a = analysisMap.get(id);
                 if (!a) return;
-                const s = computeQuickLineupScoreDetailed(a.player).total;
+                const s = predictedGWPoints(a.player);
                 total += (id === snapshotCaptainId) ? s * 2 : s;
             });
-            return Math.round(total);
+            return Math.round(total * 10) / 10;
         }
 
         function renderSnapshotBody() {
@@ -1338,13 +1345,12 @@
             const injured = p.status === 'i' || p.status === 'u';
             const isCap = p.id === snapshotCaptainId;
             const isVice = p.id === snapshotViceId;
-            const isExcluded = snapshotExcluded.has(p.id);
             const isSwapSelected = snapshotSwapSource === p.id;
-            const predictedScore = computeQuickLineupScoreDetailed(p).total;
+            const predictedScore = predictedGWPoints(p);
             const nextFx = (p.fixtures || [])[0];
             const nextFxText = nextFx ? `${nextFx.isHome ? 'vs' : '@'} ${escHTML(nextFx.opponent)}` : 'No fixture';
 
-            return `<div class="pitch-player snapshot-player ${isSwapSelected ? 'swap-selected' : ''} ${isExcluded ? 'excluded' : ''}" onclick="snapshotSwapClick(${p.id})">
+            return `<div class="pitch-player snapshot-player ${isSwapSelected ? 'swap-selected' : ''}" onclick="snapshotSwapClick(${p.id})">
                 <div class="snapshot-cv-toggles">
                     <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make captain (doubles predicted score)">C</button>
                     <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make vice-captain">V</button>
@@ -1356,10 +1362,7 @@
                 </div>
                 <div class="pitch-player-name">${escHTML(p.name)}</div>
                 <div class="pitch-player-fixture">${nextFxText}</div>
-                <div class="pitch-player-pts" title="Predicted GW score">${predictedScore}</div>
-                <label class="snapshot-exclude" onclick="event.stopPropagation()" title="Exclude from Auto-Optimize">
-                    <input type="checkbox" ${isExcluded ? 'checked' : ''} onchange="toggleSnapshotExclude(${p.id})"> excl.
-                </label>
+                <div class="pitch-player-pts" title="Predicted GW score">${predictedScore} pts</div>
             </div>`;
         }
 
@@ -1411,12 +1414,6 @@
             refreshSnapshot();
         }
 
-        function toggleSnapshotExclude(playerId) {
-            if (snapshotExcluded.has(playerId)) snapshotExcluded.delete(playerId);
-            else snapshotExcluded.add(playerId);
-            refreshSnapshot();
-        }
-
         function setSnapshotCaptain(playerId) {
             if (snapshotViceId === playerId) snapshotViceId = null;
             snapshotCaptainId = playerId;
@@ -1431,15 +1428,16 @@
 
         // ✨ Auto-Optimize: reuses the Lineup Wizard's formation-valid solver
         // (solveQuickLineup already only tries real FPL formations — 1 GK, min 3 DEF,
-        // min 1 FWD — never a blind top-11-scorers pick) over the SAME predicted-score
-        // function driving every card, so the button and the numbers agree.
+        // min 1 FWD — never a blind top-11-scorers pick), ranking players by the
+        // weighted form/fixture/xGI/matchup score below — a richer ranking signal
+        // than the plain per-GW points projection shown on each card.
         function runAutoOptimize() {
             const pool = analysisResults.map(a => {
                 const p = a.player;
                 const detailed = computeQuickLineupScoreDetailed(p);
                 return Object.assign({}, p, {
                     pos: p.position,
-                    lwScore: snapshotExcluded.has(p.id) ? -100 : detailed.total,
+                    lwScore: detailed.total,
                     _detailed: detailed
                 });
             });
@@ -7355,20 +7353,23 @@
             if (p.status === 'd') score -= 20;
             // EP
             score += (p.epNext || 0) * 3;
-            // Form
-            score += (parseFloat(p.form) || 0) * 2;
+            // Form (preseason: FPL resets form to 0.0, fall back to last season's PPG —
+            // same pattern as analyzePlayer's effectiveForm)
+            const effectiveForm = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+            score += effectiveForm * 2;
             // Fixtures
             const fx = p.fixtures || [];
             if (fx.length > 0) { score += (3 - fx[0].difficulty) * 5; if (fx[0].isHome) score += 2; }
             // xGI
             const mins = p.minutes || 0;
             if (mins > 200) { const xgi90 = (p.xGI / mins) * 90; score += xgi90 * 10; }
-            // Minutes
-            const mpg = mins / Math.max(currentGW - 1, 1);
+            // Minutes (computePlayerGamesPlayed already handles the preseason case —
+            // last season's starts/minutes instead of dividing by 0 completed GWs)
+            const mpg = mins / computePlayerGamesPlayed(p);
             if (mpg >= 85) score += 3;
             else if (mpg < 45) score -= 5;
-            // PPG
-            score += (p.points / Math.max(currentGW - 1, 1)) * 1.5;
+            // PPG — FPL's own points-per-game, already correct pre- and in-season
+            score += (p.ppg || 0) * 1.5;
             return Math.round(score);
         }
 
@@ -7396,15 +7397,23 @@
             if (p.status === 'i' || p.status === 'u' || p.status === 's') { result.total = -100; return result; }
             if (p.status === 'd') result.doubtful = -20;
             result.ep = Math.round((p.epNext || 0) * 3 * 10) / 10;
-            result.form = Math.round((parseFloat(p.form) || 0) * 2 * 10) / 10;
+            // Preseason: FPL resets form to 0.0, fall back to last season's PPG —
+            // same pattern as analyzePlayer's effectiveForm
+            const effectiveForm = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+            result.form = Math.round(effectiveForm * 2 * 10) / 10;
             const fx = p.fixtures || [];
             if (fx.length > 0) { result.fixture = Math.round((3 - fx[0].difficulty) * 5 * 10) / 10; if (fx[0].isHome) result.home = 2; }
             const mins = p.minutes || 0;
             if (mins > 200) { result.xgi = Math.round(((p.xGI / mins) * 90) * 10 * 10) / 10; }
-            const mpg = mins / Math.max(currentGW - 1, 1);
+            // computePlayerGamesPlayed already handles the preseason case — last
+            // season's starts/minutes instead of dividing by 0 completed GWs
+            const mpg = mins / computePlayerGamesPlayed(p);
             if (mpg >= 85) result.minutes = 3;
             else if (mpg < 45) result.minutes = -5;
-            result.ppg = Math.round((p.points / Math.max(currentGW - 1, 1)) * 1.5 * 10) / 10;
+            // FPL's own points-per-game — already correct pre- and in-season, unlike
+            // dividing the raw season total by (currentGW - 1), which blows up to
+            // hundreds of "points" during preseason when currentGW - 1 is 0.
+            result.ppg = Math.round((p.ppg || 0) * 1.5 * 10) / 10;
             // Team Attack/Defense power vs. the next opponent's respective rating — the
             // explicit team-context matchup factor section 9 asks for, on top of the
             // generic FDR-based `fixture` term above. Same teamAnalysis data already used
