@@ -7,31 +7,239 @@
 :root {
     --v2-sidebar-w: 232px;
     --v2-sidebar-w-collapsed: 76px;
+    --v2-page-title-size: clamp(56px, 7.5vw, 104px);
+    --v2-page-title-spacing: -6px;
+    --v2-page-gutter: 32px;
+    --v2-page-title-top: 40px;
+}
+
+/* V2 uses one typeface throughout. This also catches older page-specific and
+   dynamically rendered rules that still name Space Grotesk, Georgia, etc. */
+html.v2-theme body,
+html.v2-theme body * {
+    font-family: var(--font-body) !important;
+}
+
+/* Keep every tool-page heading on the same grid as the dashboard greeting. */
+.v2-theme .v2-main-content > main.main-content,
+.v2-theme .v2-main-content > main.content {
+    max-width: 1440px !important;
+    padding-top: var(--v2-page-title-top) !important;
+    padding-right: var(--v2-page-gutter) !important;
+    padding-left: var(--v2-page-gutter) !important;
+}
+
+.v2-theme .news-page-header {
+    max-width: 1440px !important;
+    padding: var(--v2-page-title-top) var(--v2-page-gutter) 0 !important;
+}
+
+.v2-theme .v2-page-hint {
+    display: flex;
+    align-items: center;
+    min-height: 36px;
+    margin: 0 0 14px;
+    padding: 8px 14px;
+    border: 1px solid rgba(96, 165, 250, 0.15);
+    border-radius: var(--radius-md);
+    background: rgba(96, 165, 250, 0.06);
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.v2-theme .v2-page-heading {
+    font-family: var(--font-display) !important;
+    font-size: var(--v2-page-title-size) !important;
+    line-height: 0.95 !important;
+    font-weight: 600 !important;
+    letter-spacing: var(--v2-page-title-spacing) !important;
+    color: var(--color-primary-muted) !important;
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    :root {
+        --v2-page-title-size: clamp(46px, 13vw, 64px);
+        --v2-page-gutter: 20px;
+        --v2-page-title-top: 28px;
+    }
+}
+
+/* The page shell owns navigation animation. Disabling the browser snapshot
+   transition prevents a second full-page fade from washing over it. */
+@view-transition {
+    navigation: none;
+}
+
+::view-transition-group(root) {
+    animation: none;
+}
+
+::view-transition-old(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+html.v2-theme-transition::view-transition-old(root) {
+    animation: v2-theme-old 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    mix-blend-mode: normal;
+}
+
+html.v2-theme-transition::view-transition-new(root) {
+    animation: v2-theme-new 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    mix-blend-mode: normal;
+}
+
+@keyframes v2-theme-old {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes v2-theme-new {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Reserve the final layout before sidebar-nav.js starts the reveal. This is
+   what prevents already-visible content from blinking out and back in. */
+.v2-theme body:not(.v2-sequence-ready) .v2-page-heading,
+.v2-theme body:not(.v2-sequence-ready) .v2-main-content > .tabs-container,
+.v2-theme body:not(.v2-sequence-ready) .v2-main-content > .ticker-bar,
+.v2-theme body:not(.v2-sequence-ready) .v2-main-content > .news-strip,
+.v2-theme body:not(.v2-sequence-ready) .v2-main-content > .price-ticker-bar,
+.v2-theme body:not(.v2-sequence-ready) main.main-content > *:not(.header-row):not(.loading-overlay),
+.v2-theme body:not(.v2-sequence-ready) main.content > *:not(.v2-page-heading),
+.v2-theme body:not(.v2-sequence-ready) .hero-banner .hero-inner > *,
+.v2-theme body:not(.v2-sequence-ready) #newsDisplay {
+    opacity: 0;
+}
+
+/* Shared staged page entrance. Elements are marked by sidebar-nav.js only
+   after the sidebar and the page shell both exist, preventing partial paints. */
+.v2-enter-sidebar,
+.v2-enter-topbar,
+.v2-enter-heading,
+.v2-enter-block {
+    opacity: 0;
+    will-change: opacity;
+}
+
+.v2-enter-topbar {
+    transform: translateY(-6px);
+    will-change: opacity, transform;
+}
+
+.v2-sequence-ready .v2-enter-sidebar {
+    animation: v2-sidebar-enter 720ms cubic-bezier(0.22, 1, 0.36, 1) 20ms both;
+}
+
+.v2-sequence-ready .v2-enter-topbar {
+    animation: v2-topbar-enter 760ms cubic-bezier(0.22, 1, 0.36, 1) 180ms both;
+}
+
+.v2-sequence-ready .v2-enter-heading {
+    animation: v2-content-enter 800ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both;
+}
+
+.v2-sequence-ready .v2-enter-block {
+    animation: v2-content-enter 860ms cubic-bezier(0.22, 1, 0.36, 1)
+        calc(480ms + (var(--v2-enter-order, 0) * 90ms)) both;
+}
+
+/* Content arriving from an API joins the sequence at once rather than waiting
+   through the shell's initial delay again. */
+.v2-sequence-ready .v2-enter-block.v2-enter-late {
+    animation-delay: calc(40ms + (var(--v2-enter-order, 0) * 80ms));
+}
+
+@keyframes v2-sidebar-enter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes v2-topbar-enter {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes v2-content-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Older page styles contain their own entrance animations. The shared shell
+   replaces them on V2 pages so panels never animate twice. */
+.v2-theme .my-team-dashboard-top,
+.v2-theme .squad-alerts-panel,
+.v2-theme .transfer-rec,
+.v2-theme .verdict-section,
+.v2-theme .lo-section,
+.v2-theme .ts-section,
+.v2-theme .na-section,
+.v2-theme .so-section,
+.v2-theme .ta-section {
+    animation: none !important;
+}
+
+/* Players and Teams already reserve their final layout with skeleton content.
+   Their legacy full-viewport loaders covered that layout during navigation and
+   caused the pale/blank flash visible in recordings. */
+.v2-theme .v2-main-content > .loading-overlay {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    pointer-events: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(root),
+    ::view-transition-old(root),
+    ::view-transition-new(root) { animation: none; }
+
+    html.v2-theme-transition::view-transition-old(root),
+    html.v2-theme-transition::view-transition-new(root) {
+        animation: none !important;
+    }
+
+    .v2-enter-sidebar,
+    .v2-enter-topbar,
+    .v2-enter-heading,
+    .v2-enter-block {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
 }
 
 /* ===== NEW COLOR PALETTE (values only — same variable names as common.css,
    so every existing component picks these up automatically) ===== */
 .v2-theme {
-    --surface-bg: #F7F5F0;
+    --surface-bg: #EAEAE8;
     --surface-0: #FFFFFF;
     --surface-1: #FFFFFF;
-    --surface-2: #F1F0EA;
-    --surface-3: #E8E6DE;
-    --surface-4: #DEDCD2;
+    --surface-2: #F1F1EF;
+    --surface-3: #E6E6E3;
+    --surface-4: #D3D3D3;
 
-    --color-primary: #1B5E42;
-    --color-primary-hover: #164A35;
-    --color-primary-muted: rgba(27, 94, 66, 0.10);
-    --color-primary-glow: rgba(27, 94, 66, 0.25);
-    --color-primary-text: #1B5E42;
+    --color-primary: #10B981;
+    --color-primary-hover: #059669;
+    --color-primary-muted: rgba(16, 185, 129, 0.10);
+    --color-primary-glow: rgba(16, 185, 129, 0.25);
+    --color-primary-text: #065F46;
 
-    --text-primary: #1A1D1B;
-    --text-secondary: #5B6660;
-    --text-muted: #8C948E;
+    --text-primary: #100F0F;
+    --text-secondary: #636363;
+    --text-muted: #A4A4A4;
 
-    --border-subtle: #EDEBE3;
-    --border-default: #E2DFD5;
-    --border-emphasis: #C9C6BA;
+    --border-subtle: #EDEDEB;
+    --border-default: transparent;
+    --border-emphasis: #E4E4E1;
+    --shadow-sm: 0 1px 2px rgba(17, 15, 15, 0.05), 0 1px 3px rgba(17, 15, 15, 0.06);
 
     /* New secondary accent (maroon) — not in the base palette, used for
        featured/highlight moments (banners, star badges). */
@@ -42,26 +250,31 @@
 }
 
 .v2-theme[data-theme="dark"] {
-    --surface-bg: #0F1512;
-    --surface-0: #141B17;
-    --surface-1: #182019;
-    --surface-2: #212B24;
-    --surface-3: #2A362E;
-    --surface-4: #344239;
+    --surface-bg: #15191F;
+    --surface-0: #15191F;
+    --surface-1: #1B2027;
+    --surface-2: #232A33;
+    --surface-3: #2E3742;
+    --surface-4: #3A4552;
 
-    --color-primary: #3FA576;
-    --color-primary-hover: #4FBA88;
-    --color-primary-muted: rgba(63, 165, 118, 0.16);
-    --color-primary-glow: rgba(63, 165, 118, 0.3);
-    --color-primary-text: #5FC090;
+    --color-primary: #00E57D;
+    --color-primary-hover: #2AED97;
+    --color-primary-muted: rgba(0, 229, 125, 0.14);
+    --color-primary-glow: rgba(0, 229, 125, 0.28);
+    --color-primary-text: #00E57D;
+    --color-success: #00E57D;
+    --color-warning: #FFB000;
+    --color-error: #FF4D5A;
+    --color-info: #939CAA;
 
-    --text-primary: #EDF2EF;
-    --text-secondary: #B7C2BB;
-    --text-muted: #7C8983;
+    --text-primary: #F4F5F7;
+    --text-secondary: #C5CBD4;
+    --text-muted: #939CAA;
 
-    --border-subtle: #212B24;
-    --border-default: #2A362E;
-    --border-emphasis: #344239;
+    --border-subtle: #20262E;
+    --border-default: transparent;
+    --border-emphasis: #303944;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
 
     --color-accent-2: #C1495F;
     --color-accent-2-hover: #D4738A;
@@ -76,7 +289,7 @@
     left: 0;
     height: 100vh;
     width: var(--v2-sidebar-w);
-    background: var(--surface-1);
+    background: var(--surface-0);
     border-right: 1px solid var(--border-default);
     display: flex;
     flex-direction: column;
@@ -86,6 +299,14 @@
     overflow-y: visible;
 }
 
+.v2-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
 .v2-sidebar-logo {
     display: flex;
     align-items: center;
@@ -93,7 +314,7 @@
     padding: 0 8px;
     font-family: var(--font-display);
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-primary);
     text-decoration: none;
     flex-shrink: 0;
@@ -108,19 +329,59 @@
 
 .v2-sidebar-logo b {
     color: var(--color-primary);
-    font-weight: 700;
+    font-weight: 600;
+}
+
+.v2-sidebar-collapse {
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 180ms ease, color 180ms ease;
+}
+
+.v2-sidebar-collapse:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+
+.v2-sidebar-collapse .icon {
+    width: 17px;
+    height: 17px;
+}
+
+.v2-sidebar-collapse .v2-expand-icon {
+    display: none;
+}
+
+/* Width transitions are enabled only for a deliberate toggle click. Keeping
+   them off during startup prevents the saved state from widening on load. */
+.v2-sidebar-resizing .v2-sidebar {
+    transition: width 480ms cubic-bezier(0.22, 1, 0.36, 1),
+        padding 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.v2-sidebar-resizing .v2-main-content {
+    transition: margin-left 480ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .v2-sidebar-nav {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    overflow-y: auto;
+    overflow: visible;
 }
 
 .v2-sidebar-group-label {
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-muted);
@@ -145,13 +406,14 @@
     text-align: left;
     cursor: pointer;
     font-family: var(--font-body);
+    position: relative;
 }
 
 .v2-nav-item .icon {
     width: 17px;
     height: 17px;
     flex-shrink: 0;
-    color: var(--text-muted);
+    color: var(--color-primary);
 }
 
 .v2-nav-item:hover {
@@ -166,6 +428,18 @@
 
 .v2-nav-item.active .icon {
     color: var(--color-primary);
+}
+
+.v2-nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 62%;
+    border-radius: 0 4px 4px 0;
+    background: var(--color-primary);
 }
 
 /* ===== FLYOUT SUB-NAV ===== */
@@ -229,7 +503,7 @@
 
 .v2-flyout-group-title {
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-muted);
@@ -312,27 +586,182 @@
     justify-content: space-between;
 }
 
-.v2-nav-item.theme-toggle {
-    justify-content: flex-start;
+.v2-theme-switch {
+    width: 100%;
+    height: 38px;
+    padding: 4px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 3px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: pointer;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
 }
 
-.v2-nav-item.theme-toggle .icon-moon {
-    display: none;
+.v2-theme-switch::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: calc((100% - 11px) / 2);
+    height: 28px;
+    border-radius: var(--radius-full);
+    background: var(--surface-0);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    transform: translateX(calc(100% + 3px));
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+        background-color 260ms ease, box-shadow 260ms ease;
 }
 
-[data-theme="dark"] .v2-nav-item.theme-toggle .icon-sun {
-    display: none;
+[data-theme="dark"] .v2-theme-switch::before {
+    transform: translateX(0);
+    background: #343D49;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
 }
 
-[data-theme="dark"] .v2-nav-item.theme-toggle .icon-moon {
-    display: inline-block;
+.v2-theme-option {
+    height: 28px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 260ms ease, background 260ms ease, box-shadow 260ms ease;
+    position: relative;
+    z-index: 1;
+}
+
+.v2-theme-option .icon {
+    width: 15px;
+    height: 15px;
+}
+
+html:not([data-theme="dark"]) .v2-theme-light,
+[data-theme="dark"] .v2-theme-dark {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .v2-theme-switch {
+    background: #202730;
+    border-color: #343E4A;
+}
+
+[data-theme="dark"] .v2-theme-dark {
+    color: var(--color-primary);
 }
 
 /* ===== MAIN CONTENT OFFSET ===== */
+html.v2-theme body {
+    background: var(--surface-0);
+}
+
 .v2-main-content {
     margin-left: var(--v2-sidebar-w);
     min-height: 100vh;
-    background: var(--surface-bg);
+    background: linear-gradient(160deg, #DDEFE4 0%, #F1FAF5 48%, #FFFFFF 100%);
+    border-radius: 32px 0 0 32px;
+    background-clip: padding-box;
+}
+[data-theme="dark"] .v2-main-content {
+    background: linear-gradient(160deg, #15191F 0%, #17201D 52%, #18241F 100%);
+}
+
+/* The first sub-navigation/marquee follows the shell's curved top edge rather
+   than painting a square corner over it. */
+.v2-main-content > :is(.tabs-container, .ticker-bar, .news-strip, .price-ticker-bar):first-child {
+    border-top-left-radius: 32px;
+}
+
+@media (max-width: 768px) {
+    .v2-main-content {
+        border-radius: 24px 0 0 24px;
+    }
+
+    .v2-main-content > :is(.tabs-container, .ticker-bar, .news-strip, .price-ticker-bar):first-child {
+        border-top-left-radius: 24px;
+    }
+}
+
+/* User-controlled desktop icon rail. */
+.v2-sidebar-collapsed .v2-sidebar {
+    width: var(--v2-sidebar-w-collapsed);
+    padding: 20px 10px;
+    align-items: center;
+}
+
+.v2-sidebar-collapsed .v2-sidebar-header {
+    width: 100%;
+    justify-content: center;
+    gap: 2px;
+}
+
+.v2-sidebar-collapsed .v2-sidebar-logo {
+    padding: 0;
+}
+
+.v2-sidebar-collapsed .v2-sidebar-logo span,
+.v2-sidebar-collapsed .v2-nav-item > span,
+.v2-sidebar-collapsed .v2-sidebar-group-label,
+.v2-sidebar-collapsed .v2-sidebar-team-id {
+    display: none;
+}
+
+.v2-sidebar-collapsed .v2-sidebar-bottom {
+    width: 52px;
+}
+
+.v2-sidebar-collapsed .v2-theme-switch {
+    height: 34px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.v2-sidebar-collapsed .v2-theme-option {
+    height: 26px;
+}
+
+.v2-sidebar-collapsed .v2-theme-switch::before {
+    top: 3px;
+    left: 3px;
+    width: calc((100% - 8px) / 2);
+    height: 26px;
+    transform: translateX(calc(100% + 2px));
+}
+
+[data-theme="dark"].v2-sidebar-collapsed .v2-theme-switch::before {
+    transform: translateX(0);
+}
+
+.v2-sidebar-collapsed .v2-theme-option .icon {
+    width: 13px;
+    height: 13px;
+}
+
+.v2-sidebar-collapsed .v2-nav-item {
+    justify-content: center;
+    padding: 10px;
+    width: 44px;
+}
+
+.v2-sidebar-collapsed .v2-flyout-toggle {
+    display: none;
+}
+
+.v2-sidebar-collapsed .v2-sidebar-collapse .v2-collapse-icon {
+    display: none;
+}
+
+.v2-sidebar-collapsed .v2-sidebar-collapse .v2-expand-icon {
+    display: block;
+}
+
+.v2-sidebar-collapsed .v2-main-content {
+    margin-left: var(--v2-sidebar-w-collapsed);
 }
 
 /* ===== LIGHT CARD-AESTHETIC BOOST (scoped, doesn't touch other pages) ===== */
@@ -360,6 +789,10 @@
 
 /* ===== RESPONSIVE: icon-only rail on narrow screens ===== */
 @media (max-width: 900px) {
+    .v2-sidebar-collapse {
+        display: none;
+    }
+
     .v2-sidebar {
         width: var(--v2-sidebar-w-collapsed);
         padding: 20px 10px;

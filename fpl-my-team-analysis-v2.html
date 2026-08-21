@@ -46,9 +46,10 @@
     <main class="main-content">
         <!-- Header Row -->
         <div class="header-row">
-            <h1 class="page-title"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
+            <h1 class="page-title v2-page-heading"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
             <button class="btn btn-secondary" id="settingsBtn" onclick="openSettings()" style="margin-left:auto;" aria-label="Analysis settings" title="Analysis settings"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
         </div>
+        <div class="squad-hint-banner v2-page-hint hidden" id="squadHintBanner">Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
         <!-- Hidden input used by loadTeamById() -->
         <input type="hidden" id="teamIdInput">
 
@@ -222,6 +223,43 @@
 
         // ===== STATE =====
         let allPlayers = [], allPlayersById = {}, teams = {}, teamFixtures = {};
+
+        function jerseyNumberLabel(player) {
+            const number = player?.squadNumber ?? player?.squad_number;
+            return number === null || number === undefined || number === '' ? '—' : String(number);
+        }
+
+        async function loadPremierLeagueJerseyNumbers(picks, season) {
+            const cachedKey = `pl_jersey_numbers_${season}`;
+            let jerseyNumbers = {};
+            try { jerseyNumbers = JSON.parse(localStorage.getItem(cachedKey) || '{}'); } catch (_) {}
+
+            const teamCodes = [...new Set((picks || []).map(pick => {
+                const player = allPlayersById[pick.element];
+                return player ? teams[player.teamId]?.code : null;
+            }).filter(Boolean))];
+
+            await Promise.all(teamCodes.map(async teamCode => {
+                try {
+                    const url = `https://sdp-prem-prod.premier-league-prod.pulselive.com/api/v2/competitions/8/seasons/${season}/teams/${teamCode}/squad`;
+                    const response = await fetch(url);
+                    if (!response.ok) return;
+                    const squad = await response.json();
+                    (squad.players || []).forEach(player => {
+                        if (player.id != null && player.shirtNum != null) jerseyNumbers[String(player.id)] = player.shirtNum;
+                    });
+                } catch (error) {
+                    console.warn(`[Jersey numbers] Could not load team ${teamCode}:`, error);
+                }
+            }));
+
+            try { localStorage.setItem(cachedKey, JSON.stringify(jerseyNumbers)); } catch (_) {}
+            allPlayers.forEach(player => {
+                if (player.squadNumber == null && jerseyNumbers[String(player.code)] != null) {
+                    player.squadNumber = jerseyNumbers[String(player.code)];
+                }
+            });
+        }
         let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
         let isPreseason = false; // true when no gameweek has finished yet — stats shown are last season's carryover
         let positionAverages = {};
@@ -587,7 +625,8 @@
 
                 // Build players with ALL available data
                 allPlayers = bootData.elements.map(p => ({
-                    id: p.id, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
+                    id: p.id, code: p.code, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
+                    squadNumber: p.squad_number,
                     team: teams[p.team]?.short_name || 'N/A', teamId: p.team,
                     position: p.element_type, price: p.now_cost / 10,
                     form: parseFloat(p.form) || 0, points: p.total_points,
@@ -662,6 +701,9 @@
                     };
                 }
 
+                const premierLeagueSeason = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
+                await loadPremierLeagueJerseyNumbers(picksData.picks, premierLeagueSeason);
+
                 selectedPlayers = picksData.picks.map(pick => {
                     const player = allPlayersById[pick.element];
                     if (!player) return null;
@@ -671,6 +713,7 @@
                 }).filter(p => p !== null);
 
                 document.getElementById('managerInfo').classList.remove('hidden');
+                document.getElementById('squadHintBanner').classList.remove('hidden');
                 document.getElementById('managerName').textContent = `${managerData.player_first_name} ${managerData.player_last_name}`;
                 document.getElementById('overallRank').textContent = managerData.summary_overall_rank?.toLocaleString() || '-';
                 document.getElementById('totalPoints').textContent = managerData.summary_overall_points?.toLocaleString() || '-';
@@ -696,6 +739,7 @@
                     : 'Something went wrong loading your team. Please try again.';
                 updateStatus(friendly, 'error');
                 document.getElementById('managerInfo').classList.add('hidden');
+                document.getElementById('squadHintBanner').classList.add('hidden');
                 document.getElementById('tabBar').classList.remove('visible');
                 document.getElementById('landingPage').style.display = '';
             } finally {
@@ -4412,7 +4456,7 @@
 
                 let node = `<div class="planner-pitch-player ${swapClass}" onclick="handleDraftPitchClick(${p.id})" title="${escHTML(p.name)} — ${POSITION_CONFIG[p.position]?.short || ''} · ${escHTML(p.team)}">`;
                 node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
-                node += escHTML(p.team);
+                node += jerseyNumberLabel(p);
                 if (p.isCaptain) {
                     if (activeChip === 'triplecaptain') {
                         node += `<span class="planner-pitch-captain" style="background:#8B5CF6;">3×</span>`;
@@ -4724,7 +4768,7 @@
                     const injured = p.status === 'i' || p.status === 'u';
                     let node = `<div class="planner-pitch-player" title="${escHTML(p.name)} — ${escHTML(p.team)}">`;
                     node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
-                    node += escHTML(p.team);
+                    node += jerseyNumberLabel(p);
                     if (p.isCaptain) node += `<span class="planner-pitch-captain">C</span>`;
                     if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
                     if (p.isTransferIn) node += `<span class="draft-pitch-new-badge">NEW</span>`;
@@ -6393,6 +6437,9 @@
             activePreset = preset;
             localStorage.setItem('fpl_analysis_settings', JSON.stringify(userSettings));
             localStorage.setItem('fpl_active_preset', preset);
+            document.querySelectorAll('.strategy-preset-tab').forEach(button => {
+                button.classList.toggle('active', button.dataset.strategyPreset === preset);
+            });
             closeSettings();
             
             if (selectedPlayers.length > 0) {
@@ -7014,7 +7061,7 @@
 
             return `<div class="lw-pitch-player ${isBench ? 'bench' : ''}" onclick="handleLWRowClick(${p.id})" title="${escHTML(p.web_name)} · Score: ${p.lwScore}" style="${isSelected ? 'background:rgba(167,139,250,0.2);box-shadow:0 0 0 2px #A78BFA;border-radius:8px;' : ''}">
                 ${benchOrder ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${benchOrder}</div>` : ''}
-                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${jerseyNumberLabel(p)}</div>
                 <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
                 ${fx ? `<div style="display:flex;align-items:center;gap:2px;justify-content:center;"><span class="fdr-dot fdr-${fx.difficulty}" style="width:6px;height:6px;"></span><span style="font-size:8px;color:rgba(255,255,255,0.7);">${escHTML(fx.opponent)}</span></div>` : ''}
                 <div class="lw-pitch-score" style="color:${sc};">${p.lwScore}</div>
@@ -7207,7 +7254,7 @@
                 const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
                 return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;opacity:0.6;position:relative;">
                     <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${i + 1}</div>
-                    <div class="lw-pitch-node" style="background:rgba(0,0,0,0.2);border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${posNames[p.pos]}</div>
+                    <div class="lw-pitch-node" style="background:rgba(0,0,0,0.2);border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${jerseyNumberLabel(p)}</div>
                     <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
                 </div>`;
             }).join('')}</div>`;
@@ -7236,7 +7283,7 @@
             return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;position:relative;">
                 ${isCap ? '<div style="position:absolute;top:-6px;right:-2px;font-size:12px;"><i data-lucide="crown" style="width:12px;height:12px;color:#F59E0B;"></i></div>' : ''}
                 ${isVC ? '<div style="position:absolute;top:-6px;right:-2px;font-size:10px;color:#9CA3AF;font-weight:700;">VC</div>' : ''}
-                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};${isCap ? 'box-shadow:0 0 8px rgba(245,158,11,0.5);' : ''}">${posNames[p.pos]}</div>
+                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};${isCap ? 'box-shadow:0 0 8px rgba(245,158,11,0.5);' : ''}">${jerseyNumberLabel(p)}</div>
                 <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
             </div>`;
         }
