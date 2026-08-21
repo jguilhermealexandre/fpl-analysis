@@ -96,6 +96,17 @@ function renderEmptyState(title, message, icon) {
     </div>`;
 }
 
+// Amber "showing 2025/26 data" banner \u2014 shared across every page that falls back to
+// last-season stats during preseason (originally page-local to fpl-players-analysis.html).
+// `message` is caller-supplied and NOT escaped, matching the original \u2014 callers pass
+// static copy, never raw user/API text, here.
+function renderSeasonNotice(message) {
+    return `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
+        <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
+        <span>${message}</span>
+    </div>`;
+}
+
 // ===== API PROXY =====
 const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
 const DEMO_TEAM_ID = '0'; // reserved sentinel — real FPL entry IDs start at 1
@@ -173,22 +184,21 @@ function _buildDemoSquad() {
 async function getDemoResponse(apiPath) {
     let body;
 
+    // Preseason-honest mock data: before GW1 is played, a real manager has 0 points,
+    // 0 rank, and no gameweek history — Demo Team should show the exact same "nothing
+    // played yet, here's last season" state as a real team, not a fabricated GW1/GW2
+    // narrative. `_buildDemoSquad()`'s player selection (sorted by total_points, which
+    // are still last season's totals right now) needs no change — only the shape of
+    // "how many gameweeks has this manager played" was wrong.
     if (/^api\/entry\/0\/event\/\d+\/picks\/$/.test(apiPath)) {
         const { picks, bank, value } = await _buildDemoSquad();
         body = {
             active_chip: null,
             picks,
-            entry_history: { bank, points: 63, rank: 1850342, value }
+            entry_history: { bank, points: 0, rank: null, value }
         };
     } else if (apiPath === 'api/entry/0/history/') {
-        body = {
-            current: [
-                { event: 1, points: 58, total_points: 58, rank: 2100000, overall_rank: 2100000, bank: 5, value: 1000, event_transfers: 0, points_on_bench: 6 },
-                { event: 2, points: 63, total_points: 121, rank: 1850342, overall_rank: 1850342, bank: 5, value: 1002, event_transfers: 1, points_on_bench: 4 }
-            ],
-            past: [],
-            chips: []
-        };
+        body = { current: [], past: [], chips: [] };
     } else if (apiPath === 'api/entry/0/transfers-latest/') {
         body = []; // never read by any call site
     } else {
@@ -197,9 +207,9 @@ async function getDemoResponse(apiPath) {
             player_first_name: 'Demo',
             player_last_name: 'Manager',
             name: 'Demo Team FC',
-            summary_overall_points: 121,
-            summary_overall_rank: 1850342,
-            summary_event_points: 63
+            summary_overall_points: 0,
+            summary_overall_rank: null,
+            summary_event_points: 0
         };
     }
 

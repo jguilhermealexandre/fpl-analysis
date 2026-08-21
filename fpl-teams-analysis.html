@@ -215,6 +215,24 @@
                 if (teamXg[f.team_a]) teamXg[f.team_a].seasonConceded += f.team_h_score || 0;
             });
 
+            // Preseason: finishedFixtures is empty right now, so seasonGames/seasonConceded/
+            // seasonXgc above are all still 0 — not "no data", since seasonXg/seasonGoals ARE
+            // real last-season totals (still populated in bootstrap). Dividing those valid
+            // totals by seasonGames=0||1=1 later in getTeamSeasonXg() would inflate every
+            // per-game rate ~38x. Rebuild season games/conceded/xGC from last season's
+            // bootstrap data instead: goals conceded while a team's goalkeeper(s) were on the
+            // pitch reconstructs the season total exactly once per match (no double-counting
+            // across a keeper rotation), and a full Premier League season is always 38 games.
+            if (finishedFixtures.length === 0) {
+                teams.forEach(t => { teamXg[t.id].seasonGames = 38; });
+                (bootstrapData.elements || []).forEach(p => {
+                    if (p.element_type === 1 && teamXg[p.team]) { // Goalkeepers only
+                        teamXg[p.team].seasonConceded += p.goals_conceded || 0;
+                        teamXg[p.team].seasonXgc += parseFloat(p.expected_goals_conceded) || 0;
+                    }
+                });
+            }
+
             // 2. Try loading per-GW xG from players-data.json (much richer)
             try {
                 const playersRes = await fetch(PLAYERS_URL);
@@ -521,8 +539,11 @@
 
             // ===== CALCULATE METRICS WITH REAL xG + RECENCY WEIGHTING =====
             const gamesPlayed = pastFixtures.length || 1;
-            const avgGoals = totalGoalsScored / gamesPlayed;
-            const avgConceded = totalGoalsConceded / gamesPlayed;
+            // Preseason: pastFixtures is empty, so these would otherwise show 0.00 everywhere
+            // they're displayed (e.g. the team comparison report) — use last season's
+            // bootstrap-derived rate (now correctly computed in getTeamSeasonXg()) instead.
+            const avgGoals = (isPreseason && hasRealXg) ? seasonXg.gpg : totalGoalsScored / gamesPlayed;
+            const avgConceded = (isPreseason && hasRealXg) ? seasonXg.gapg : totalGoalsConceded / gamesPlayed;
             const cleanSheets = homeStats.cleanSheets + awayStats.cleanSheets;
 
             // FPL strength ratings (normalized 0-1 range)
@@ -543,6 +564,18 @@
                 attackPower = Math.round((
                     recentXgRate * 0.35 +
                     recent6Rate * 0.35 +
+                    fplAttNorm * 0.30
+                ) * 100);
+            } else if (hasRealXg) {
+                // No per-GW data (preseason, or this season hasn't produced any yet) but real
+                // last-season season-total xG/goals ARE available — lean on those season rates
+                // for both the "recent" and "quality" components instead of falling through to
+                // the actual-goals branch below, which would otherwise divide by 0 right now.
+                const seasonXgRate = Math.min(1, seasonXg.xGpg / 2.0);
+                const seasonGoalRate2 = Math.min(1, seasonXg.gpg / 2.0);
+                attackPower = Math.round((
+                    seasonXgRate * 0.35 +
+                    seasonGoalRate2 * 0.35 +
                     fplAttNorm * 0.30
                 ) * 100);
             } else {
@@ -570,6 +603,17 @@
                 defensePower = Math.round((
                     recentXgcRate * 0.35 +
                     recent6DefRate * 0.35 +
+                    fplDefNorm * 0.30
+                ) * 100);
+            } else if (hasRealXg) {
+                // Same reasoning as attackPower above: no per-GW data, but real season-total
+                // xGC/goals-conceded are available (including preseason, via the GK-summed
+                // fallback in buildTeamXgData()) — use season rates for both components.
+                const seasonXgcRate = Math.min(1, Math.max(0, 1 - (seasonXg.xGCpg / 2.0)));
+                const seasonGaRate2 = Math.min(1, Math.max(0, 1 - (seasonXg.gapg / 2.0)));
+                defensePower = Math.round((
+                    seasonXgcRate * 0.35 +
+                    seasonGaRate2 * 0.35 +
                     fplDefNorm * 0.30
                 ) * 100);
             } else {
