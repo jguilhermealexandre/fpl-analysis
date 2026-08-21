@@ -8,6 +8,23 @@
 // match, minus 1 per position off (min 0), summed across 20 teams = 400 max.
 
 const PREDICTIONS_URL = 'data/predictions.json';
+const SEASON_LABEL = '2026/27';
+
+// Live predictions from Supabase once configured (scripts/supabase-config.js);
+// falls back to the static file so this page keeps working either way.
+async function fetchPredictions() {
+    if (isSupabaseConfigured()) {
+        try {
+            const rows = await supabaseRequest('predictions?select=name,predictions&order=created_at.asc');
+            return { season: SEASON_LABEL, friends: rows.map(r => ({ name: r.name, predictions: r.predictions })) };
+        } catch (err) {
+            console.error('Supabase predictions fetch failed, falling back to static file:', err);
+        }
+    }
+    const res = await fetch(PREDICTIONS_URL);
+    if (!res.ok) throw new Error('predictions unavailable');
+    return res.json();
+}
 
 // Local copy of the site's amber "not live yet" banner pattern — not a call
 // to common.js's renderSeasonNotice, since that helper isn't deployed yet.
@@ -18,58 +35,9 @@ function svSeasonNotice(message) {
     </div>`;
 }
 
-// Casual/alternate labels a friend might type in a CSV, mapped to short_name.
-const TEAM_ALIASES = {
-    'spurs': 'TOT', 'tottenham': 'TOT', 'tottenhamhotspur': 'TOT',
-    'manutd': 'MUN', 'manchesterunited': 'MUN', 'united': 'MUN',
-    'mancity': 'MCI', 'manchestercity': 'MCI', 'city': 'MCI',
-    'forest': 'NFO', 'nottinghamforest': 'NFO', 'nottmforest': 'NFO',
-    'brighton': 'BHA', 'brightonhovealbion': 'BHA',
-    'villa': 'AVL', 'astonvilla': 'AVL',
-    'palace': 'CRY', 'crystalpalace': 'CRY',
-    'wolves': 'WOL', 'wolverhampton': 'WOL', 'wolverhamptonwanderers': 'WOL',
-    'westham': 'WHU', 'hammers': 'WHU',
-    'leeds': 'LEE', 'leedsunited': 'LEE',
-    'hull': 'HUL', 'hullcity': 'HUL',
-    'ipswich': 'IPS', 'ipswichtown': 'IPS',
-    'coventry': 'COV', 'coventrycity': 'COV',
-    'sunderland': 'SUN',
-    'bournemouth': 'BOU', 'afcbournemouth': 'BOU',
-    'brentford': 'BRE',
-    'chelsea': 'CHE',
-    'arsenal': 'ARS',
-    'liverpool': 'LIV',
-    'newcastle': 'NEW', 'newcastleunited': 'NEW',
-    'fulham': 'FUL',
-    'everton': 'EVE',
-};
-
-function normalizeLabel(s) {
-    return String(s).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-function buildTeamIndex(teams) {
-    const idx = {};
-    teams.forEach(team => {
-        idx[normalizeLabel(team.short_name)] = team;
-        idx[normalizeLabel(team.name)] = team;
-    });
-    Object.keys(TEAM_ALIASES).forEach(alias => {
-        const shortName = TEAM_ALIASES[alias];
-        const team = idx[normalizeLabel(shortName)];
-        if (team) idx[alias] = team;
-    });
-    return idx;
-}
-
-function matchTeam(label, teamIndex, unmatched) {
-    const team = teamIndex[normalizeLabel(label)];
-    if (!team) {
-        unmatched.push(label);
-        return null;
-    }
-    return team;
-}
+// Team-name matching (TEAM_ALIASES, normalizeLabel, buildTeamIndex, matchTeam)
+// now lives in scripts/team-matching.js, shared with predictions-submit.js —
+// season-vault-d845fb.html includes that script before this one.
 
 // Diff (0-19) -> FDR-style bucket (1 = nailed it, 5 = way off), reusing the
 // site's existing --fdr-1..5 color scale instead of inventing a new one.
@@ -171,18 +139,51 @@ function computeHardestTeams(scoredFriends) {
         .sort((a, b) => b.avgError - a.avgError);
 }
 
-function teamBadge(team, size) {
-    size = size || 20;
-    return `<img src="https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png"
-        alt="" width="${size}" height="${size}" style="vertical-align:middle;border-radius:3px;"
-        onerror="this.style.display='none'">`;
-}
+// teamBadge() now lives in scripts/team-matching.js (shared with predictions-submit.js).
 
 function medalFor(rank) {
     if (rank === 1) return '<i data-lucide="trophy" style="width:16px;height:16px;color:#F59E0B;"></i>';
     if (rank === 2) return '<i data-lucide="medal" style="width:16px;height:16px;color:#9CA3AF;"></i>';
     if (rank === 3) return '<i data-lucide="medal" style="width:16px;height:16px;color:#B45309;"></i>';
     return `<span class="sv-rank-num">${rank}</span>`;
+}
+
+// Full per-team breakdown for one friend (or the Crowd row) — reuses the
+// `rows` array scoreFriend()/computeCrowdRow() already built, just renders
+// it in full instead of only feeding the aggregate total/heatmap.
+function renderFriendDetailTable(f) {
+    const bodyRows = f.rows.map(r => {
+        if (r.unmatched) {
+            return `<tr><td colspan="5" class="sv-detail-unmatched"><i data-lucide="alert-triangle" style="width:12px;height:12px;"></i> Couldn't match "${escHTML(r.label)}"</td></tr>`;
+        }
+        const diffCell = r.diff === null ? '—' : (r.diff === 0 ? 'exact' : `±${r.diff}`);
+        const ptsCell = r.points === null ? '—' : r.points;
+        const cellClass = r.fdrBucket ? `fdr-${r.fdrBucket}` : '';
+        return `
+        <tr>
+            <td class="sv-pos">${r.predictedPosition}</td>
+            <td class="sv-team-cell">${teamBadge(r.team, 18)} ${escHTML(r.team.name)}</td>
+            <td class="sv-pos">${r.actualPosition === null ? '—' : r.actualPosition}</td>
+            <td class="sv-detail-diff ${cellClass}">${diffCell}</td>
+            <td class="sv-detail-pts ${cellClass}">${ptsCell}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+    <table class="sv-friend-detail-table">
+        <thead><tr><th>Predicted</th><th>Team</th><th>Actual</th><th>Diff</th><th>Pts</th></tr></thead>
+        <tbody>${bodyRows}</tbody>
+    </table>`;
+}
+
+// Mirrors the main site's toggleSection() convention: swap display, rotate the chevron.
+function svToggleFriendDetail(id) {
+    const el = document.getElementById(id);
+    const chevron = document.getElementById(id + '-chevron');
+    if (!el) return;
+    const isOpen = el.style.display !== 'none';
+    el.style.display = isOpen ? 'none' : '';
+    if (chevron) chevron.classList.toggle('open', !isOpen);
 }
 
 function renderLeaderboard(scoredFriends, crowdRow, isLive) {
@@ -193,29 +194,37 @@ function renderLeaderboard(scoredFriends, crowdRow, isLive) {
         const rank = i + 1;
         const pct = isLive ? Math.round((f.total / f.maxPossible) * 100) : 0;
         const behind = isLive ? leaderScore - f.total : null;
+        const detailId = `sv-friend-detail-${i}`;
         return `
-        <div class="sv-leader-row">
-            <div class="sv-leader-rank">${medalFor(rank)}</div>
-            <div class="sv-leader-name">${escHTML(f.name)}</div>
-            <div class="sv-leader-bar-wrap">
-                <div class="sv-leader-bar" style="width:${pct}%"></div>
+        <div class="sv-leader-row-wrap">
+            <div class="sv-leader-row" onclick="svToggleFriendDetail('${detailId}')">
+                <div class="sv-leader-rank">${medalFor(rank)}</div>
+                <div class="sv-leader-name">${escHTML(f.name)} <i data-lucide="chevron-down" class="sv-leader-chevron" id="${detailId}-chevron" style="width:14px;height:14px;"></i></div>
+                <div class="sv-leader-bar-wrap">
+                    <div class="sv-leader-bar" style="width:${pct}%"></div>
+                </div>
+                <div class="sv-leader-score">${isLive ? f.total : '—'}<span class="sv-leader-max">/${f.maxPossible}</span></div>
+                <div class="sv-leader-meta">${isLive ? (rank === 1 ? 'Leader' : `-${behind} pts`) : ''}</div>
+                <div class="sv-leader-perfect">${f.perfectPicks} <i data-lucide="check-circle" style="width:12px;height:12px;"></i></div>
             </div>
-            <div class="sv-leader-score">${isLive ? f.total : '—'}<span class="sv-leader-max">/${f.maxPossible}</span></div>
-            <div class="sv-leader-meta">${isLive ? (rank === 1 ? 'Leader' : `-${behind} pts`) : ''}</div>
-            <div class="sv-leader-perfect">${f.perfectPicks} <i data-lucide="check-circle" style="width:12px;height:12px;"></i></div>
+            <div class="sv-friend-detail" id="${detailId}" style="display:none">${renderFriendDetailTable(f)}</div>
         </div>`;
     }).join('');
 
+    const crowdDetailId = 'sv-friend-detail-crowd';
     const crowdHtml = crowdRow ? `
-        <div class="sv-leader-row sv-leader-row-crowd">
-            <div class="sv-leader-rank"><i data-lucide="users" style="width:16px;height:16px;color:var(--color-predictions);"></i></div>
-            <div class="sv-leader-name">${escHTML(crowdRow.name)}</div>
-            <div class="sv-leader-bar-wrap">
-                <div class="sv-leader-bar sv-leader-bar-crowd" style="width:${isLive ? Math.round((crowdRow.total / crowdRow.maxPossible) * 100) : 0}%"></div>
+        <div class="sv-leader-row-wrap">
+            <div class="sv-leader-row sv-leader-row-crowd" onclick="svToggleFriendDetail('${crowdDetailId}')">
+                <div class="sv-leader-rank"><i data-lucide="users" style="width:16px;height:16px;color:var(--color-predictions);"></i></div>
+                <div class="sv-leader-name">${escHTML(crowdRow.name)} <i data-lucide="chevron-down" class="sv-leader-chevron" id="${crowdDetailId}-chevron" style="width:14px;height:14px;"></i></div>
+                <div class="sv-leader-bar-wrap">
+                    <div class="sv-leader-bar sv-leader-bar-crowd" style="width:${isLive ? Math.round((crowdRow.total / crowdRow.maxPossible) * 100) : 0}%"></div>
+                </div>
+                <div class="sv-leader-score">${isLive ? crowdRow.total : '—'}<span class="sv-leader-max">/${crowdRow.maxPossible}</span></div>
+                <div class="sv-leader-meta">avg of all picks</div>
+                <div class="sv-leader-perfect">${crowdRow.perfectPicks} <i data-lucide="check-circle" style="width:12px;height:12px;"></i></div>
             </div>
-            <div class="sv-leader-score">${isLive ? crowdRow.total : '—'}<span class="sv-leader-max">/${crowdRow.maxPossible}</span></div>
-            <div class="sv-leader-meta">avg of all picks</div>
-            <div class="sv-leader-perfect">${crowdRow.perfectPicks} <i data-lucide="check-circle" style="width:12px;height:12px;"></i></div>
+            <div class="sv-friend-detail" id="${crowdDetailId}" style="display:none">${renderFriendDetailTable(crowdRow)}</div>
         </div>` : '';
 
     return `<div class="sv-leaderboard">${rowsHtml}</div>${crowdHtml}`;
@@ -295,7 +304,7 @@ async function initSeasonVault() {
 
     try {
         const [predictions, bootstrap] = await Promise.all([
-            fetch(PREDICTIONS_URL).then(r => { if (!r.ok) throw new Error('predictions unavailable'); return r.json(); }),
+            fetchPredictions(),
             DataCache.fetchJSON(DATA_URLS.bootstrap),
         ]);
 
