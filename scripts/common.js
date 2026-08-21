@@ -110,10 +110,12 @@ function renderSeasonNotice(message) {
 // ===== API PROXY =====
 const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
 const DEMO_TEAM_ID = '0'; // reserved sentinel — real FPL entry IDs start at 1
+const DEMO_LEAGUE_ID = '999999'; // reserved sentinel — showcases the mini-league card in demo mode
 
 async function fetchWithProxy(url) {
     const apiPath = url.replace('https://fantasy.premierleague.com/', '');
-    if (apiPath.startsWith(`api/entry/${DEMO_TEAM_ID}/`) || apiPath === `api/entry/${DEMO_TEAM_ID}`) {
+    if (apiPath.startsWith(`api/entry/${DEMO_TEAM_ID}/`) || apiPath === `api/entry/${DEMO_TEAM_ID}`
+        || apiPath === `api/leagues-classic/${DEMO_LEAGUE_ID}/standings/`) {
         return getDemoResponse(apiPath);
     }
     const res = await fetch(`${WORKER_URL}/${apiPath}`, { signal: AbortSignal.timeout(15000) });
@@ -201,6 +203,19 @@ async function getDemoResponse(apiPath) {
         body = { current: [], past: [], chips: [] };
     } else if (apiPath === 'api/entry/0/transfers-latest/') {
         body = []; // never read by any call site
+    } else if (apiPath === `api/leagues-classic/${DEMO_LEAGUE_ID}/standings/`) {
+        body = {
+            league: { id: DEMO_LEAGUE_ID, name: 'The Demo Legends' },
+            standings: {
+                results: [
+                    { entry: 111, player_name: 'Alex Rival', entry_name: 'Rival FC', rank: 1, total: 145 },
+                    { entry: 222, player_name: 'Sam Pundit', entry_name: 'Pundit XI', rank: 2, total: 138 },
+                    { entry: 333, player_name: 'Jo Tactics', entry_name: 'Tactics United', rank: 3, total: 129 },
+                    { entry: 0, player_name: 'Demo Manager', entry_name: 'Demo Team FC', rank: 4, total: 121 },
+                    { entry: 444, player_name: 'Kim Wildcard', entry_name: 'Wildcard Wanderers', rank: 5, total: 112 }
+                ]
+            }
+        };
     } else {
         body = {
             id: 0,
@@ -209,7 +224,12 @@ async function getDemoResponse(apiPath) {
             name: 'Demo Team FC',
             summary_overall_points: 0,
             summary_overall_rank: null,
-            summary_event_points: 0
+            summary_event_points: 0,
+            leagues: {
+                classic: [
+                    { id: DEMO_LEAGUE_ID, name: 'The Demo Legends', entry_rank: 4, entry_last_rank: 7 }
+                ]
+            }
         };
     }
 

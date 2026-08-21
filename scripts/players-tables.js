@@ -16,9 +16,9 @@ const ROWS_PER_PAGE_DEFAULT = 25;
 const ROWS_PER_PAGE_ALL = 50;
 function getRowsPerPage(position) { return position === 'ALL' ? ROWS_PER_PAGE_ALL : ROWS_PER_PAGE_DEFAULT; }
 
-// Compare functionality
-let compareList = [];
-const MAX_COMPARE = 5;
+// Compare functionality: compareList/MAX_COMPARE/toggleComparePlayer/removeFromCompare/
+// clearCompare/updateCompareBar now live in scripts/compare-report.js (shared with My Team).
+// onCompareCheckboxChange()/onCompareSelectionChange() below are this page's hooks into it.
 
 // Column definitions with metadata - ALL metrics from original
 const COLUMN_DEFS = {
@@ -464,7 +464,7 @@ function renderPlayerRow(p, position) {
         <input type="checkbox" class="compare-checkbox" 
             ${isSelected ? 'checked' : ''} 
             ${!isSelected && compareList.length >= 5 ? 'disabled' : ''}
-            onchange="toggleComparePlayer(${p.id}, '${position}')">
+            onchange="onCompareCheckboxChange(${p.id}, '${position}')">
     </td>`;
     const starCell = `<td style="text-align:center;">${getStarHtml(p.id)}</td>`;
     return `<tr class="${isSelected ? 'selected-row' : ''}">${checkboxCell}${starCell}${state.visibleCols.map(colKey => renderCell(p, colKey)).join('')}</tr>`;
@@ -878,55 +878,20 @@ function updateFilterButtons(position) {
 // ============================================
 // COMPARE FUNCTIONALITY
 // ============================================
-function toggleComparePlayer(playerId, position) {
+// This page's hook into the shared compare-report.js engine: resolve a
+// checkbox's playerId to the already-processed row object in tableData.ALL,
+// then hand off to the shared toggleComparePlayer(player).
+function onCompareCheckboxChange(playerId, position) {
     const players = tableData[position] || [];
     const player = players.find(p => p.id === playerId);
     if (!player) return;
-    
-    const idx = compareList.findIndex(p => p.id === playerId);
-    if (idx > -1) {
-        compareList.splice(idx, 1);
-    } else if (compareList.length < MAX_COMPARE) {
-        compareList.push(player);
-    }
-    
-    updateCompareBar();
-    // Refresh the ALL table
-    const body = document.getElementById('tableBody-ALL');
-    if (body) body.innerHTML = renderTableBody('ALL');
+    toggleComparePlayer(player);
 }
 
-function removeFromCompare(playerId) {
-    compareList = compareList.filter(p => p.id !== playerId);
-    updateCompareBar();
+// Called by the shared engine after compareList changes — refresh the ALL
+// table so checkbox/highlight state and the disabled-at-MAX_COMPARE state
+// stay in sync (identical to this page's pre-refactor behavior).
+function onCompareSelectionChange() {
     const body = document.getElementById('tableBody-ALL');
     if (body) body.innerHTML = renderTableBody('ALL');
-}
-
-function clearCompare() {
-    compareList = [];
-    updateCompareBar();
-    const body = document.getElementById('tableBody-ALL');
-    if (body) body.innerHTML = renderTableBody('ALL');
-}
-
-function updateCompareBar() {
-    const bar = document.getElementById('compareBar');
-    const count = document.getElementById('compareCount');
-    const list = document.getElementById('comparePlayersList');
-    
-    if (!bar) return;
-    
-    if (compareList.length > 0) {
-        bar.classList.add('show');
-        count.textContent = compareList.length;
-        list.innerHTML = compareList.map(p => `
-            <div class="compare-player-chip">
-                <span>${escHTML(p.name)}</span>
-                <button onclick="removeFromCompare(${p.id})">×</button>
-            </div>
-        `).join('');
-    } else {
-        bar.classList.remove('show');
-    }
 }
