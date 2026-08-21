@@ -10,12 +10,16 @@
 const PREDICTIONS_URL = 'data/predictions.json';
 const SEASON_LABEL = '2026/27';
 
-// The friends' Google Sheet is the live source of truth — one column per
-// friend, rows 2-21 are ranks 1-20 (see sheet: Rank | Reference Teams | ...
-// one column per friend). Each friend edits only their own column, locked to
-// their Google account via the sheet's own "Protect ranges" — that's the
-// real access-control guarantee here, not anything this site enforces.
-const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1WRCPhnBwvpZCWlG4lHv_jP60Jfm-jOZQyA-B3IFCDEY/export?format=csv';
+// The friends' Google Sheet is the live source of truth — ONE TAB PER
+// FRIEND (not one column — each tab has its own Rank | Actual Standings |
+// <Name> | Points columns, rows 2-21 = ranks 1-20). Each friend edits only
+// their own tab, locked to their Google account via the sheet's own
+// "Protect ranges" — that's the real access-control guarantee here, not
+// anything this site enforces. New friends just add a new tab; nothing here
+// hardcodes names or a tab count, so joining needs no code change.
+const SHEET_ID = '1WRCPhnBwvpZCWlG4lHv_jP60Jfm-jOZQyA-B3IFCDEY';
+const SHEET_TABS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview`;
+const SHEET_TAB_CSV_URL = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
 
 // Minimal CSV line parser — sufficient here since none of the real data
 // (team names, friend names) contains commas or quotes.
@@ -23,27 +27,52 @@ function parseCsv(text) {
     return text.split('\n').map(line => line.replace(/\r$/, '').split(','));
 }
 
-function parsePredictionsSheet(csvText) {
+// The tab list (name + gid per tab) isn't exposed by any documented no-auth
+// endpoint, but the plain "htmlview" page embeds it as a JS array for its own
+// tab-switcher UI — scrape that instead of hardcoding tab names. Falls back
+// to the static file entirely if this ever stops working (see fetchPredictions).
+function parseSheetTabList(html) {
+    const re = /items\.push\(\{name: "((?:[^"\\]|\\.)*)", pageUrl: "[^"]*", gid: "(\d+)"/g;
+    const tabs = [];
+    let m;
+    while ((m = re.exec(html)) !== null) {
+        tabs.push({ name: m[1].replace(/\\(.)/g, '$1'), gid: m[2] });
+    }
+    return tabs;
+}
+
+// One player's tab -> {name, predictions}. Column 2 (0-indexed) holds their
+// pick regardless of what that column's header says — the tab name (from
+// the discovered tab list) is the name of record, since that's what the
+// player themselves named their own tab.
+function parsePlayerTabCsv(csvText, tabName) {
     const rows = parseCsv(csvText);
-    if (rows.length < 2) return { season: SEASON_LABEL, friends: [] };
-
-    const header = rows[0];
-    const friendNames = header.slice(2); // columns after Rank, Reference Teams
-
-    const friendCells = friendNames.map(() => []); // one array per friend, in rank order
+    const predictions = [];
     rows.slice(1).forEach(row => {
         const rank = parseInt(row[0], 10);
         if (!rank || rank < 1 || rank > 20) return; // skips the Total row and anything stray
-        friendNames.forEach((_, i) => {
-            const cell = (row[2 + i] || '').trim();
-            if (cell) friendCells[i].push(cell);
-        });
+        const cell = (row[2] || '').trim();
+        if (cell) predictions.push(cell);
     });
+    return { name: tabName.trim(), predictions };
+}
 
-    const friends = friendNames
-        .map((name, i) => ({ name: name.trim(), predictions: friendCells[i] }))
-        .filter(f => f.name && f.predictions.length > 0); // drop empty placeholder columns
+async function fetchSheetPredictions() {
+    const tabsRes = await fetch(SHEET_TABS_URL);
+    if (!tabsRes.ok) throw new Error(`Sheet tab list HTTP ${tabsRes.status}`);
+    const tabs = parseSheetTabList(await tabsRes.text());
+    if (!tabs.length) throw new Error('No sheet tabs found');
 
+    const parsed = await Promise.all(tabs.map(async tab => {
+        const res = await fetch(SHEET_TAB_CSV_URL(tab.gid));
+        if (!res.ok) return { name: tab.name, predictions: [] };
+        return parsePlayerTabCsv(await res.text(), tab.name);
+    }));
+
+    // Drop tabs with zero filled-in picks — naturally excludes the intro/
+    // template tab (currently an example column named "Pepito") without
+    // needing to special-case it by name.
+    const friends = parsed.filter(f => f.name && f.predictions.length > 0);
     return { season: SEASON_LABEL, friends };
 }
 
@@ -51,9 +80,7 @@ function parsePredictionsSheet(csvText) {
 // (data/predictions.json) if the Sheet is unreachable for any reason.
 async function fetchPredictions() {
     try {
-        const res = await fetch(SHEET_CSV_URL);
-        if (!res.ok) throw new Error(`Sheet fetch HTTP ${res.status}`);
-        return parsePredictionsSheet(await res.text());
+        return await fetchSheetPredictions();
     } catch (err) {
         console.error('Google Sheet predictions fetch failed, falling back to static file:', err);
     }
