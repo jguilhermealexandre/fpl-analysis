@@ -223,6 +223,7 @@
         // ===== STATE =====
         let allPlayers = [], allPlayersById = {}, teams = {}, teamFixtures = {};
         let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
+        let isPreseason = false; // true when no gameweek has finished yet — stats shown are last season's carryover
         let positionAverages = {};
         let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
         let fixtureSwingData = {}; // Fixture swing detection per team
@@ -574,6 +575,7 @@
                 bootData.teams.forEach(t => { teams[t.id] = t; });
                 const currEvent = bootData.events.find(e => e.is_current);
                 currentGW = currEvent ? currEvent.id : 1;
+                isPreseason = bootData.events.every(e => !e.finished);
                 allFixtures = fixturesData;
                 processFixtures(fixturesData);
                 processFixtures6(fixturesData);
@@ -683,6 +685,7 @@
                 lineupRendered = false;
                 draftTabRendered = false;
                 newsRendered = false;
+                resetSnapshotState();
                 transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null };
                 document.getElementById('tabBar').classList.add('visible');
                 if (window._pendingTab) { switchTab(window._pendingTab); window._pendingTab = null; }
@@ -741,8 +744,13 @@
             let reasons = [], concerns = [], positives = [];
             const posAvg = positionAverages[player.position] || { form: 3, ppg: 3, ppm: 15, xGIPer90: 0.3 };
             const posConfig = POSITION_CONFIG[player.position];
-            const gamesPlayed = Math.max(currentGW - 1, 1);
+            // Preseason: currentGW-1 is 0 and player.form is already reset to 0.0 by FPL —
+            // used as-is that's not "no data", it's a uniform false "poor form" flag on every
+            // player plus an absurd minutes-per-game (last season's full total / 1). Fall back
+            // to last season's real points-per-game and a starts-based games-played estimate.
+            const gamesPlayed = isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
             const minsPerGame = player.minutes / gamesPlayed;
+            const effectiveForm = isPreseason ? player.ppg : player.form;
             const isPremium = player.price >= 10.0;
             const isMidPremium = player.price >= 7.5;
             const isBudget = player.price <= 5.5;
@@ -770,21 +778,21 @@
             }
 
             // 2. FORM (Continuous — position-adjusted, asymmetric sensitivity)
-            const formDelta = player.form - posConfig.formMedian;
+            const formDelta = effectiveForm - posConfig.formMedian;
             // Linear: each 1.0 of formDelta = ~10 points; capped at ±30
             const rawFormPenalty = Math.max(-30, Math.min(30, Math.round(-formDelta * 10)));
             const formPenalty = sensAdj(rawFormPenalty, userSettings.formWeight);
             sellRating += formPenalty;
 
             if (formDelta <= -1.5) {
-                concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${player.form.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian} — consider selling before price drops` });
+                concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${effectiveForm.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian} — consider selling before price drops` });
                 reasons.push('Form collapsed');
             } else if (formDelta <= -0.5) {
-                concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${player.form.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian} — monitor next 2 GWs` });
+                concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${effectiveForm.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian} — monitor next 2 GWs` });
             } else if (formDelta >= 2.5) {
-                positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${player.form.toFixed(1)} — top 5% of ${posConfig.short}s. Strong captain option` });
+                positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${effectiveForm.toFixed(1)} — top 5% of ${posConfig.short}s. Strong captain option` });
             } else if (formDelta >= 1.0) {
-                positives.push({ type: 'positive', title: 'Good Form', text: `Form ${player.form.toFixed(1)} — above ${posConfig.short} average, keep starting` });
+                positives.push({ type: 'positive', title: 'Good Form', text: `Form ${effectiveForm.toFixed(1)} — above ${posConfig.short} average, keep starting` });
             }
 
             // 3. FIXTURES (Continuous — near fixtures weighted more)
@@ -878,11 +886,11 @@
             else if (isMidPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.2);
             sellRating += sensAdj(rawValuePenalty, userSettings.valueWeight);
 
-            if (isPremium && player.form < posConfig.formMedian) {
+            if (isPremium && effectiveForm < posConfig.formMedian) {
                 sellRating += sensAdj(5); // Extra premium penalty
                 concerns.push({ type: 'critical', title: 'Premium Underperforming', text: `£${player.price.toFixed(1)}m price tag not justified (${ppm.toFixed(1)} pts/£m vs avg ${posAvg.ppm.toFixed(1)}) — sell to free up funds for better options` });
                 if (!reasons.length) reasons.push('Premium not delivering');
-            } else if (isMidPremium && player.form < posConfig.formMedian - 0.5) {
+            } else if (isMidPremium && effectiveForm < posConfig.formMedian - 0.5) {
                 concerns.push({ type: 'warning', title: 'Mid-Premium Underperforming', text: `£${player.price.toFixed(1)}m with poor form — downgrade to fund upgrades elsewhere` });
             } else if (ppmDelta > 3) {
                 positives.push({ type: 'positive', title: 'Great Value', text: `${ppm.toFixed(1)} pts/£m — well above ${posConfig.short} average (${posAvg.ppm.toFixed(1)})` });
@@ -1014,7 +1022,7 @@
                 verdictReason = reasons[0] || 'Some concerns — monitor closely';
                 const fixNote = avgFDR <= 2.8 ? ' Fixtures improve soon — hold for now.' : avgFDR >= 3.5 ? ' Tough fixtures ahead — consider selling.' : '';
                 recommendation = `Reassess after GW${nextGW}.${fixNote}`;
-            } else if (sellRating <= 20 && player.form >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
+            } else if (sellRating <= 20 && effectiveForm >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
                 verdict = 'star';
                 verdictReason = positives.length > 0 ? positives[0].text : 'Top performer — team cornerstone';
                 recommendation = `Captain candidate GW${nextGW}${nextOpp ? ` vs ${nextOpp}` : ''}. Lock in and don't overthink.`;
@@ -1029,7 +1037,7 @@
         }
 
         function buildKeyMetrics(player, posConfig, minsPerGame, avgFDR) {
-            const form = player.form;
+            const form = isPreseason ? player.ppg : player.form;
             const ta = teamAnalysis[player.teamId];
             if (player.position <= 2) {
                 return {
@@ -1118,17 +1126,17 @@
 
             const teamHealth = Math.max(0, Math.min(100, Math.round(healthScore)));
 
-            // Recommendations-first order: pitch/bench snapshot (with its own compact lineup
-            // alert baked in), then what to actually do about it (transfers), then everything
-            // else worth knowing, then the players nothing needs doing about.
             let html = '';
+            if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthFactors);
-            html += renderTransferAnalysis();
-            html += renderNeedsAttentionFeed();
-            html += renderSquadOverviewStrip();
+            html += renderSquadFilterBar();
+            html += renderSquadChartWidget();
+            html += `<div id="sq-table-wrap">${renderSquadTable()}</div>`;
 
+            if (sqChartInstance) { sqChartInstance.destroy(); sqChartInstance = null; }
             document.getElementById('teamDisplay').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            if (sqChartExpanded) initSquadChart();
             if (typeof onCompareSelectionChange === 'function') onCompareSelectionChange();
             document.getElementById('status').style.display = 'none';
 
@@ -1143,74 +1151,37 @@
             });
         }
 
+        // Shared by the Squad Snapshot cards below (hoisted out of renderTeamOverview
+        // since renderSnapshotCard is a top-level function that needs them too).
+        const SNAPSHOT_TOTAL_FPL = 11000000;
+        function getTransferPressure(p) {
+            const owners = SNAPSHOT_TOTAL_FPL * ((p.ownership || 0) / 100);
+            if (!owners) return 0;
+            return ((p.transfersIn || 0) - (p.transfersOut || 0)) / owners;
+        }
+        function injuryBadge(p) {
+            if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                return `<span class="pitch-injury-badge">OUT</span>`;
+            }
+            if (p.status === 'd' && p.chanceNextRound != null && p.chanceNextRound < 100) {
+                return `<span class="pitch-injury-badge doubt">${p.chanceNextRound}%</span>`;
+            }
+            return '';
+        }
+        function marketBadge(p) {
+            const pr = getTransferPressure(p);
+            if (pr > 0.015) return `<span class="pitch-market-badge rising">&#9650;</span>`;
+            if (pr < -0.015) return `<span class="pitch-market-badge falling">&#9660;</span>`;
+            return '';
+        }
+
         function renderTeamOverview(health, sells, monitors, holds, stars, healthFactors) {
             const circumference = 2 * Math.PI * 54;
             const healthColor = health >= 75 ? 'var(--verdict-hold)' : health >= 50 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
             const healthText = health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape' : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed';
 
-            const startersSorted = analysisResults.filter(a => !a.player.onBench).sort((a, b) => a.player.pickPosition - b.player.pickPosition);
-            const benchPlayers = analysisResults.filter(a => a.player.onBench).sort((a, b) => a.player.pickPosition - b.player.pickPosition);
-            const gks = startersSorted.filter(a => a.player.position === 1);
-            const defs = startersSorted.filter(a => a.player.position === 2);
-            const mids = startersSorted.filter(a => a.player.position === 3);
-            const fwds = startersSorted.filter(a => a.player.position === 4);
-
-            const totalFpl = 11000000;
-            const getPressure = (p) => {
-                const owners = totalFpl * ((p.ownership || 0) / 100);
-                if (!owners) return 0;
-                return ((p.transfersIn || 0) - (p.transfersOut || 0)) / owners;
-            };
-
-            const injuryBadge = (p) => {
-                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                    return `<span class="pitch-injury-badge">OUT</span>`;
-                }
-                if (p.status === 'd' && p.chanceNextRound != null && p.chanceNextRound < 100) {
-                    return `<span class="pitch-injury-badge doubt">${p.chanceNextRound}%</span>`;
-                }
-                return '';
-            };
-            const marketBadge = (p) => {
-                const pr = getPressure(p);
-                if (pr > 0.015) return `<span class="pitch-market-badge rising">&#9650;</span>`;
-                if (pr < -0.015) return `<span class="pitch-market-badge falling">&#9660;</span>`;
-                return '';
-            };
-
-            const pitchCompareBox = (p) => `<input type="checkbox" class="compare-checkbox pitch-compare-checkbox" data-player-id="${p.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${p.id})">`;
-            const pitchNode = (a) => {
-                const p = a.player;
-                const injured = p.status === 'i' || p.status === 'u';
-                return `<div class="pitch-player" data-compare-row onclick="openDetailPanel(${p.id})">
-                    ${pitchCompareBox(p)}
-                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}">
-                        ${escHTML(p.team)}
-                        ${p.isCaptain ? '<span class="captain-badge">C</span>' : ''}
-                        ${p.isVice ? '<span class="captain-badge" style="background:var(--text-muted);color:white;">V</span>' : ''}
-                        ${injuryBadge(p)}
-                        ${marketBadge(p)}
-                    </div>
-                    <div class="pitch-player-name">${escHTML(p.name)}</div>
-                    <div class="pitch-player-pts">${p.form}</div>
-                </div>`;
-            };
-            const benchNode = (a) => {
-                const p = a.player;
-                const injured = p.status === 'i' || p.status === 'u';
-                return `<div class="pitch-player" data-compare-row onclick="openDetailPanel(${p.id})" style="opacity:0.7;">
-                    ${pitchCompareBox(p)}
-                    <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="width:36px;height:36px;font-size:9px;">
-                        ${escHTML(p.team)}
-                        ${injuryBadge(p)}
-                        ${marketBadge(p)}
-                    </div>
-                    <div class="pitch-player-name">${escHTML(p.name)}</div>
-                </div>`;
-            };
-
             return `
-            <div class="squad-hint-banner"><span>👆</span> Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
+            <div class="squad-hint-banner"><span>👆</span> Click a player, then another in the same position to swap · C/V toggles set captain &amp; vice · ✨ Auto-Optimize builds a valid lineup for you</div>
             <div class="team-overview">
                 <div class="health-ring-container">
                     <div class="health-ring">
@@ -1226,47 +1197,245 @@
                     <div class="health-sublabel">${healthText}</div>
                     ${healthFactors && healthFactors.length ? `<div class="health-factors">${healthFactors.map(f => `<div class="health-factor ${f.impact}">${f.icon} ${escHTML(f.text)}</div>`).join('')}</div>` : ''}
                     <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
-                        ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">\u25cf ${sells.length} Sell</span>` : ''}
-                        ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">\u25cf ${monitors.length} Monitor</span>` : ''}
-                        ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">\u2605 ${stars.length} Star</span>` : ''}
-                        <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">\u25cf ${holds.length} Hold</span>
+                        ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">● ${sells.length} Sell</span>` : ''}
+                        ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">● ${monitors.length} Monitor</span>` : ''}
+                        ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">★ ${stars.length} Star</span>` : ''}
+                        <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">● ${holds.length} Hold</span>
                     </div>
                     ${renderLineupAlert()}
                 </div>
+                ${renderSnapshotBody()}
+            </div>`;
+        }
+
+        // ===== PHASE 5: INTERACTIVE SQUAD SNAPSHOT (replaces the static pitch) =====
+        let snapshotXI = new Set();          // player ids in the projected starting XI
+        let snapshotBenchOrder = [];          // ordered player ids, GK-last convention (matches solveQuickLineup)
+        let snapshotCaptainId = null;
+        let snapshotViceId = null;
+        let snapshotExcluded = new Set();     // player ids excluded from Auto-Optimize consideration
+        let snapshotSwapSource = null;        // player id mid same-position swap, or null
+        let snapshotOptimizeSummary = '';
+        let snapshotInitialized = false;
+
+        // Only called from the team-reload flow (new team load / team switch) — NOT on
+        // every re-render, so manual swaps/captain choices survive incidental re-renders
+        // (e.g. applying a settings preset just re-scores verdicts, it doesn't reset the squad).
+        function resetSnapshotState() {
+            snapshotXI = new Set();
+            snapshotBenchOrder = [];
+            snapshotCaptainId = null;
+            snapshotViceId = null;
+            snapshotExcluded = new Set();
+            snapshotSwapSource = null;
+            snapshotOptimizeSummary = '';
+            snapshotInitialized = false;
+        }
+
+        function initSnapshotIfNeeded() {
+            if (snapshotInitialized) return;
+            snapshotXI = new Set(analysisResults.filter(a => !a.player.onBench).map(a => a.player.id));
+            snapshotBenchOrder = analysisResults.filter(a => a.player.onBench)
+                .sort((a, b) => a.player.pickPosition - b.player.pickPosition).map(a => a.player.id);
+            const capA = analysisResults.find(a => a.player.isCaptain);
+            const viceA = analysisResults.find(a => a.player.isVice);
+            snapshotCaptainId = capA ? capA.player.id : null;
+            snapshotViceId = viceA ? viceA.player.id : null;
+            snapshotInitialized = true;
+        }
+
+        function getSquadAnalysisMap() {
+            return new Map(analysisResults.map(a => [a.player.id, a]));
+        }
+
+        function computeProjectedXIScore() {
+            const analysisMap = getSquadAnalysisMap();
+            let total = 0;
+            snapshotXI.forEach(id => {
+                const a = analysisMap.get(id);
+                if (!a) return;
+                const s = computeQuickLineupScoreDetailed(a.player).total;
+                total += (id === snapshotCaptainId) ? s * 2 : s;
+            });
+            return Math.round(total);
+        }
+
+        function renderSnapshotBody() {
+            initSnapshotIfNeeded();
+            const analysisMap = getSquadAnalysisMap();
+            const xiAnalyses = [...snapshotXI].map(id => analysisMap.get(id)).filter(Boolean);
+            const benchAnalyses = snapshotBenchOrder.map(id => analysisMap.get(id)).filter(Boolean);
+            const byPos = pos => xiAnalyses.filter(a => a.player.position === pos);
+            const projectedScore = computeProjectedXIScore();
+
+            return `
+            <div class="sq-snapshot" id="sq-snapshot-body">
+                <div class="sq-snapshot-toolbar">
+                    <button class="btn btn-primary sq-optimize-btn" onclick="runAutoOptimize()">✨ Auto-Optimize GW Lineup</button>
+                    <div class="sq-snapshot-score">Projected Starting XI Score: <strong>${projectedScore}</strong> pts</div>
+                </div>
+                ${snapshotOptimizeSummary ? `<div class="sq-optimize-summary"><i data-lucide="sparkles" style="width:13px;height:13px;flex-shrink:0;"></i> ${snapshotOptimizeSummary}</div>` : ''}
                 <div class="pitch-container">
                     <div class="pitch-rows">
-                        <div class="pitch-row">${fwds.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${mids.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${defs.map(pitchNode).join('')}</div>
-                        <div class="pitch-row">${gks.map(pitchNode).join('')}</div>
+                        <div class="pitch-row">${byPos(4).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                        <div class="pitch-row">${byPos(3).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                        <div class="pitch-row">${byPos(2).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                        <div class="pitch-row">${byPos(1).map(a => renderSnapshotCard(a, false)).join('')}</div>
                         <div class="pitch-row bench-row">
                             <span class="bench-label">Bench</span>
-                            ${benchPlayers.map(benchNode).join('')}
+                            ${benchAnalyses.map(a => renderSnapshotCard(a, true)).join('')}
                         </div>
                     </div>
                 </div>
-                ${(() => {
-                    const falling = analysisResults.filter(a => getPressure(a.player) < -0.015);
-                    const rising = analysisResults.filter(a => getPressure(a.player) > 0.015);
-                    const mwRow = (a, dir) => {
-                        const p = a.player;
-                        const net = (p.transfersIn||0) - (p.transfersOut||0);
-                        const arrow = dir === 'fall' ? '\u25bc' : '\u25b2';
-                        const col = dir === 'fall' ? 'var(--verdict-sell)' : '#16a34a';
-                        return `<div class="mw-row">
-                            <span class="mw-arrow" style="color:${col}">${arrow}</span>
-                            <span class="mw-name">${escHTML(p.name)}</span>
-                            <span class="mw-price">\u00a3${p.price}m</span>
-                            <span class="mw-net" style="color:${col}">${net > 0 ? '+' : ''}${(net/1000).toFixed(0)}k</span>
-                        </div>`;
-                    };
-                    const rows = falling.map(a => mwRow(a,'fall')).join('') + rising.map(a => mwRow(a,'rise')).join('');
-                    return `<div class="market-watch-panel">
-                        <div class="mw-header">\ud83d\udcc8 Market Watch</div>
-                        ${rows || '<div class="mw-empty">All prices stable</div>'}
-                    </div>`;
-                })()}
             </div>`;
+        }
+
+        function renderSnapshotCard(a, isBench) {
+            const p = a.player;
+            const injured = p.status === 'i' || p.status === 'u';
+            const isCap = p.id === snapshotCaptainId;
+            const isVice = p.id === snapshotViceId;
+            const isExcluded = snapshotExcluded.has(p.id);
+            const isSwapSelected = snapshotSwapSource === p.id;
+            const predictedScore = computeQuickLineupScoreDetailed(p).total;
+            const nextFx = (p.fixtures || [])[0];
+            const nextFxText = nextFx ? `${nextFx.isHome ? 'vs' : '@'} ${escHTML(nextFx.opponent)}` : 'No fixture';
+
+            return `<div class="pitch-player snapshot-player ${isSwapSelected ? 'swap-selected' : ''} ${isExcluded ? 'excluded' : ''}" onclick="snapshotSwapClick(${p.id})">
+                <div class="snapshot-cv-toggles">
+                    <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make captain (doubles predicted score)">C</button>
+                    <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make vice-captain">V</button>
+                </div>
+                <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="${isBench ? 'width:36px;height:36px;font-size:9px;' : ''}">
+                    ${escHTML(p.team)}
+                    ${injuryBadge(p)}
+                    ${marketBadge(p)}
+                </div>
+                <div class="pitch-player-name">${escHTML(p.name)}</div>
+                <div class="pitch-player-fixture">${nextFxText}</div>
+                <div class="pitch-player-pts" title="Predicted GW score">${predictedScore}</div>
+                <label class="snapshot-exclude" onclick="event.stopPropagation()" title="Exclude from Auto-Optimize">
+                    <input type="checkbox" ${isExcluded ? 'checked' : ''} onchange="toggleSnapshotExclude(${p.id})"> excl.
+                </label>
+            </div>`;
+        }
+
+        function refreshSnapshot() {
+            const el = document.getElementById('sq-snapshot-body');
+            if (el) el.outerHTML = renderSnapshotBody();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Click-to-swap: first click selects a source player, a second click on a
+        // different player in the SAME POSITION performs the swap (XI<->bench or
+        // reorders bench), clicking the same player again cancels. Cross-position
+        // formation changes are handled separately by Auto-Optimize (solveQuickLineup),
+        // so same-position-only here means we never need to re-validate formation legality.
+        function snapshotSwapClick(playerId) {
+            if (snapshotSwapSource === null) {
+                snapshotSwapSource = playerId;
+                refreshSnapshot();
+                return;
+            }
+            const sourceId = snapshotSwapSource;
+            snapshotSwapSource = null;
+            if (sourceId === playerId) { refreshSnapshot(); return; }
+
+            const analysisMap = getSquadAnalysisMap();
+            const srcA = analysisMap.get(sourceId);
+            const tgtA = analysisMap.get(playerId);
+            if (!srcA || !tgtA || srcA.player.position !== tgtA.player.position) {
+                updateStatus('Swaps must be between players in the same position', 'error');
+                refreshSnapshot();
+                return;
+            }
+
+            const srcInXI = snapshotXI.has(sourceId);
+            const tgtInXI = snapshotXI.has(playerId);
+            if (srcInXI === tgtInXI) {
+                if (!srcInXI) {
+                    const i = snapshotBenchOrder.indexOf(sourceId), j = snapshotBenchOrder.indexOf(playerId);
+                    [snapshotBenchOrder[i], snapshotBenchOrder[j]] = [snapshotBenchOrder[j], snapshotBenchOrder[i]];
+                }
+            } else if (srcInXI) {
+                snapshotXI.delete(sourceId); snapshotXI.add(playerId);
+                snapshotBenchOrder[snapshotBenchOrder.indexOf(playerId)] = sourceId;
+            } else {
+                snapshotXI.delete(playerId); snapshotXI.add(sourceId);
+                snapshotBenchOrder[snapshotBenchOrder.indexOf(sourceId)] = playerId;
+            }
+            snapshotOptimizeSummary = '';
+            refreshSnapshot();
+        }
+
+        function toggleSnapshotExclude(playerId) {
+            if (snapshotExcluded.has(playerId)) snapshotExcluded.delete(playerId);
+            else snapshotExcluded.add(playerId);
+            refreshSnapshot();
+        }
+
+        function setSnapshotCaptain(playerId) {
+            if (snapshotViceId === playerId) snapshotViceId = null;
+            snapshotCaptainId = playerId;
+            refreshSnapshot();
+        }
+
+        function setSnapshotVice(playerId) {
+            if (snapshotCaptainId === playerId) snapshotCaptainId = null;
+            snapshotViceId = playerId;
+            refreshSnapshot();
+        }
+
+        // ✨ Auto-Optimize: reuses the Lineup Wizard's formation-valid solver
+        // (solveQuickLineup already only tries real FPL formations — 1 GK, min 3 DEF,
+        // min 1 FWD — never a blind top-11-scorers pick) over the SAME predicted-score
+        // function driving every card, so the button and the numbers agree.
+        function runAutoOptimize() {
+            const pool = analysisResults.map(a => {
+                const p = a.player;
+                const detailed = computeQuickLineupScoreDetailed(p);
+                return Object.assign({}, p, {
+                    pos: p.position,
+                    lwScore: snapshotExcluded.has(p.id) ? -100 : detailed.total,
+                    _detailed: detailed
+                });
+            });
+            const result = solveQuickLineup(pool);
+            snapshotXI = new Set(result.xi.map(p => p.id));
+            snapshotBenchOrder = result.bench.map(p => p.id);
+
+            const sortedXI = [...result.xi].sort((a, b) => b.lwScore - a.lwScore);
+            snapshotCaptainId = sortedXI[0] ? sortedXI[0].id : null;
+            snapshotViceId = sortedXI[1] ? sortedXI[1].id : null;
+
+            snapshotOptimizeSummary = buildOptimizeSummary(sortedXI, result.bench);
+            refreshSnapshot();
+            updateStatus(`Lineup optimized (${result.formation})`, 'success');
+        }
+
+        function buildOptimizeSummary(xiSorted, bench) {
+            const parts = [];
+            const cap = xiSorted[0];
+            if (cap) {
+                const d = cap._detailed;
+                const factors = [
+                    { key: 'matchup', label: 'a favorable team matchup' },
+                    { key: 'xgi', label: 'strong underlying stats (xGI)' },
+                    { key: 'form', label: 'strong recent form' },
+                    { key: 'fixture', label: 'an easy fixture' },
+                    { key: 'ep', label: 'a high expected-points projection' }
+                ];
+                const top = factors.reduce((best, f) => d[f.key] > d[best.key] ? f : best, factors[0]);
+                parts.push(`${escHTML(cap.name)} captained due to ${top.label}.`);
+            }
+            const toughBench = bench
+                .filter(p => p.lwScore > -100)
+                .filter(p => p._detailed && (p._detailed.matchup < -1.5 || p._detailed.fixture < -3))
+                .sort((a, b) => b.lwScore - a.lwScore)[0];
+            if (toughBench) {
+                parts.push(`${escHTML(toughBench.name)} benched due to a tough matchup/fixture.`);
+            }
+            return parts.join(' ');
         }
 
         // ===== SHARED: open the AI Scouting Report modal for 2+ specific players =====
@@ -1350,213 +1519,510 @@
             </div>`;
         }
 
-        // ===== PHASE 2: TRANSFER SUGGESTIONS =====
-        // ===== TRANSFER ANALYSIS: button-triggered shopping list (replaces the old
-        // always-visible OUT->IN Transfer Suggestions cards) =====
-        // Scores non-owned, available, minutes>=100 candidates per position using the same
-        // composite formula already proven in findReplacements() (form/ppg/epNext/fixture
-        // ease/team-quality bonuses) rather than porting the Players page's much heavier
-        // calculatePositionScore() engine — see plan groundwork for why.
-        function computeTransferAnalysisTargets() {
-            const squadIds = new Set(selectedPlayers.map(p => p.id));
-            const candidatesByPos = { 1: [], 2: [], 3: [], 4: [] };
-            allPlayers.forEach(p => {
-                if (squadIds.has(p.id)) return;
-                if (!(p.status === 'a' || p.status === 'd') || p.minutes < 100) return;
-                candidatesByPos[p.position].push(p);
-            });
-
-            [1, 2, 3, 4].forEach(pos => {
-                candidatesByPos[pos].forEach(c => {
-                    const fdr = c.fixtures.length >= 3
-                        ? c.fixtures.slice(0, 3).reduce((s, f) => s + f.difficulty, 0) / 3 : 3;
-                    const cTA = teamAnalysis[c.teamId];
-                    let teamBonus = 0;
-                    if (cTA) {
-                        teamBonus += (cTA.formRating - 50) / 25;
-                        if (c.position >= 3) teamBonus += (cTA.attackPower - 50) / 25;
-                        if (c.position <= 2) teamBonus += (cTA.defensePower - 50) / 25;
-                        teamBonus += (cTA.fixtureScore - 50) / 25;
-                    }
-                    c._score = (c.form * 3) + (c.ppg * 2.5) + (c.epNext * 2) + ((5 - fdr) * 2.5) + teamBonus + (c.ownership > 15 ? 1 : 0);
-                    c._fdr = fdr;
-                });
-                candidatesByPos[pos].sort((a, b) => b._score - a._score);
-            });
-
-            // Base slots per position (7 total), plus one bonus slot for whichever position
-            // has the most sell/monitor-flagged squad players — 7-8 targets, weighted toward
-            // the squad's actual weak spots rather than a flat split.
-            const slots = { 1: 1, 2: 2, 3: 2, 4: 2 };
-            const weakCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-            analysisResults.forEach(a => {
-                if (a.verdict === 'sell' || a.verdict === 'monitor') weakCounts[a.player.position]++;
-            });
-            const neediest = [1, 2, 3, 4]
-                .filter(pos => candidatesByPos[pos].length > slots[pos])
-                .sort((a, b) => weakCounts[b] - weakCounts[a])[0];
-            if (neediest && weakCounts[neediest] > 0) slots[neediest]++;
-
-            const targets = [];
-            [1, 2, 3, 4].forEach(pos => candidatesByPos[pos].slice(0, slots[pos]).forEach(c => targets.push(c)));
-            return targets;
+        // Amber "showing last season's data" banner — shared pattern used across the site's
+        // other pages during preseason; this file doesn't pull it from common.js so it's a
+        // local copy, same markup as elsewhere.
+        function renderSeasonNotice(message) {
+            return `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
+                <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
+                <span>${message}</span>
+            </div>`;
         }
 
-        function renderTransferAnalysisCard(p) {
-            const posConfig = POSITION_CONFIG[p.position];
-            const fixChips = (p.fixtures || []).slice(0, 3).map(f =>
-                `<span class="fixture-chip fdr-${f.difficulty}" style="padding:1px 4px;font-size:9px;border-radius:3px;">${escHTML(f.opponent)}</span>`
-            ).join('');
-            return `<div class="ta-card" data-compare-row>
-                <input type="checkbox" class="compare-checkbox" data-player-id="${p.id}" onchange="onCompareCheckboxChange(${p.id})">
-                <div class="ta-card-body" onclick="openDetailPanel(${p.id})">
-                    <div class="ta-card-top">
-                        <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
-                        <span class="ta-card-name">${escHTML(p.name)}</span>
-                        <span class="ta-card-price">£${p.price.toFixed(1)}m</span>
+        // ===== SQUAD TABLE (position-grouped, replaces the old Transfer Analysis /
+        // Needs Attention feed / Squad Overview strip sections) =====
+
+        function computePlayerGamesPlayed(player) {
+            return isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
+        }
+
+        // Position-specific 5-stat set. Columns 1-2 (Form, Next-5 FDR) are shared
+        // across all positions; columns 3-5 vary per the spec's table.
+        function computePlayerStatColumns(player) {
+            const gamesPlayed = computePlayerGamesPlayed(player);
+            const mins = player.minutes || 0;
+            const per90 = val => mins > 0 ? ((val || 0) / mins) * 90 : 0;
+            const csPercent = gamesPlayed > 0 ? Math.round(((player.cleanSheets || 0) / gamesPlayed) * 100) : 0;
+
+            const cols = {
+                form: (isPreseason ? player.ppg : player.form).toFixed(1),
+                fdr: (player.avgFDR || 3).toFixed(1),
+            };
+            if (player.position === 1) { // GK
+                cols.stat3 = { label: 'CS%', value: `${csPercent}%` };
+                cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2) };
+                cols.stat5 = { label: 'Sv/90', value: per90(player.saves).toFixed(2) };
+            } else if (player.position === 2) { // DEF
+                cols.stat3 = { label: 'CS%', value: `${csPercent}%` };
+                cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2) };
+                cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+            } else if (player.position === 3) { // MID
+                cols.stat3 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+                cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2) };
+                cols.stat5 = { label: 'xA/90', value: per90(player.xA).toFixed(2) };
+            } else { // FWD
+                cols.stat3 = { label: 'Goals', value: String(player.goals || 0) };
+                cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2) };
+                cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+            }
+            return cols;
+        }
+
+        // Team form + fixture swing badges shown next to the team name.
+        function renderTeamBadges(player) {
+            const ta = teamAnalysis[player.teamId];
+            let formBadge = '';
+            if (ta) {
+                const good = ta.formRating >= 55, bad = ta.formRating < 40;
+                const cls = good ? 'good' : bad ? 'bad' : 'warning';
+                const dot = good ? '🟢' : bad ? '🔴' : '🟡';
+                const label = good ? 'Good' : bad ? 'Struggling' : 'Average';
+                formBadge = `<span class="team-form-badge ${cls}" title="W${ta.wins} D${ta.draws} L${ta.losses} last 5">${dot} ${label}</span>`;
+            }
+            const swing = fixtureSwingData[player.teamId];
+            const swingBadge = swing
+                ? `<span class="swing-badge ${swing.direction}">${swing.direction === 'improving' ? '▲' : '▼'} GW${swing.swingGW}</span>`
+                : '';
+            return formBadge + swingBadge;
+        }
+
+        function renderSquadRow(analysis) {
+            const { player, verdict, fixtures } = analysis;
+            const cols = computePlayerStatColumns(player);
+            const fixtureChips = fixtures.slice(0, 5).map(f => `<div class="fixture-chip fdr-${f.difficulty}"><span class="fixture-team">${escHTML(f.opponent)}</span></div>`).join('');
+            const rowFlagClass = verdict === 'sell' ? 'sq-row-sell' : verdict === 'monitor' ? 'sq-row-monitor' : '';
+            const hazardIcon = verdict === 'sell' ? '<i data-lucide="alert-triangle" class="sq-hazard-icon" title="Flagged: high sell rating"></i>' : '';
+
+            return `
+            <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''}" data-player-id="${player.id}" data-compare-row>
+                <input type="checkbox" class="compare-checkbox sq-compare-checkbox" data-player-id="${player.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${player.id})">
+                <div class="sq-row-clickable" onclick="toggleInlineExpansion(${player.id})">
+                    <div class="sq-row-main">
+                        ${hazardIcon}
+                        <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
+                        <div class="sq-row-name-block">
+                            <div class="sq-row-name">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}</div>
+                            <div class="sq-row-team">${escHTML(player.team)} · £${player.price.toFixed(1)}m ${renderTeamBadges(player)}</div>
+                        </div>
                     </div>
-                    <div class="ta-card-meta">${escHTML(p.team)} · Form ${p.form.toFixed(1)} · ${p.ownership.toFixed(1)}% owned</div>
-                    <div class="ta-card-fixtures">${fixChips}</div>
+                    <div class="sq-row-stats">
+                        <div class="sq-stat"><span class="sq-stat-label">Form</span><span class="sq-stat-value">${cols.form}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">Nxt5 FDR</span><span class="sq-stat-value">${cols.fdr}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat3.label}</span><span class="sq-stat-value">${cols.stat3.value}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat4.label}</span><span class="sq-stat-value">${cols.stat4.value}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat5.label}</span><span class="sq-stat-value">${cols.stat5.value}</span></div>
+                    </div>
+                    <div class="sq-row-fixtures">${fixtureChips}</div>
+                    <span class="sq-row-chevron" id="sq-chevron-${player.id}"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
+                </div>
+                <button class="sq-transfer-btn" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
+                    <i data-lucide="repeat" style="width:14px;height:14px;"></i>
+                </button>
+            </div>
+            <div class="sq-inline-expansion" id="sq-expand-${player.id}" style="display:none"></div>`;
+        }
+
+        function renderPositionGroup(pos, items) {
+            if (!items.length) return '';
+            return `
+            <div class="sq-position-group">
+                <div class="sq-position-header">${POSITION_CONFIG[pos].name}s <span class="sq-position-count">${items.length}</span></div>
+                ${items.map(renderSquadRow).join('')}
+            </div>`;
+        }
+
+        function renderSquadTable() {
+            const filtered = getFilteredSquad();
+            const groups = [1, 2, 3, 4].map(pos => ({
+                pos,
+                items: filtered.filter(a => a.player.position === pos)
+                    .sort((a, b) => a.player.pickPosition - b.player.pickPosition),
+            }));
+            return `<div class="sq-table">${groups.map(g => renderPositionGroup(g.pos, g.items)).join('')}</div>`;
+        }
+
+        // ===== SHARED FILTER STATE + VISUAL ANALYSIS SCATTER WIDGET (Phase 4) =====
+        // The filter bar drives both the table above and the chart below from one
+        // shared state, per the spec's "filtering the table re-renders the chart" ask.
+        let squadFilterPos = 'all'; // 'all' | 1 | 2 | 3 | 4
+        let squadFilterMaxPrice = null;
+        let sqChartExpanded = localStorage.getItem('fpl_charts_expanded') === '1';
+        let sqChartInstance = null;
+        let sqChartXMetric = 'xgi90';
+        let sqChartYMetric = 'points';
+
+        const SQ_POSITION_COLORS = {
+            1: { bg: 'rgba(251, 191, 36, 0.8)', border: '#fbbf24' },
+            2: { bg: 'rgba(52, 211, 153, 0.8)', border: '#34d399' },
+            3: { bg: 'rgba(96, 165, 250, 0.8)', border: '#60a5fa' },
+            4: { bg: 'rgba(248, 113, 113, 0.8)', border: '#f87171' },
+        };
+        const SQ_POSITION_STYLES = { 1: 'circle', 2: 'rect', 3: 'triangle', 4: 'rectRot' };
+
+        // Shared stat catalog for the X/Y metric pickers — any pair is "available for
+        // free" since this only ever plots the ~15 squad players (cheap either way).
+        const SQ_CHART_METRICS = {
+            price: { label: 'Price (£m)', get: p => p.price },
+            ownership: { label: 'Ownership %', get: p => p.ownership },
+            form: { label: 'Form', get: p => isPreseason ? p.ppg : p.form },
+            ppg: { label: 'Pts/Game', get: p => p.ppg },
+            points: { label: 'Total Points', get: p => p.points },
+            minutes: { label: 'Minutes', get: p => p.minutes },
+            xg: { label: 'xG', get: p => p.xG },
+            xa: { label: 'xA', get: p => p.xA },
+            xgi: { label: 'xGI', get: p => p.xGI },
+            xgi90: { label: 'xGI/90', get: p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0 },
+            xgc: { label: 'xGC', get: p => p.xGC },
+            ict: { label: 'ICT Index', get: p => p.ictIndex },
+            bonus: { label: 'Bonus', get: p => p.bonus },
+            bps: { label: 'BPS', get: p => p.bps },
+            goals: { label: 'Goals', get: p => p.goals },
+            assists: { label: 'Assists', get: p => p.assists },
+            value: { label: 'Value (pts/£m)', get: p => p.price > 0 ? p.points / p.price : 0 },
+        };
+
+        function getFilteredSquad() {
+            return analysisResults.filter(a => {
+                if (squadFilterPos !== 'all' && a.player.position !== squadFilterPos) return false;
+                if (squadFilterMaxPrice != null && a.player.price > squadFilterMaxPrice) return false;
+                return true;
+            });
+        }
+
+        function renderSquadFilterBar() {
+            const positions = [{ v: 'all', l: 'All' }, { v: 1, l: 'GK' }, { v: 2, l: 'DEF' }, { v: 3, l: 'MID' }, { v: 4, l: 'FWD' }];
+            return `<div class="sq-filter-bar">
+                <div class="sq-filter-pills">
+                    ${positions.map(p => `<button class="sq-filter-pill ${squadFilterPos === p.v ? 'active' : ''}" onclick="setSquadFilterPos('${p.v}')">${p.l}</button>`).join('')}
+                </div>
+                <div class="sq-filter-price">
+                    <label for="sq-filter-price-input">Max £</label>
+                    <input type="number" id="sq-filter-price-input" step="0.5" min="4" max="15" placeholder="Any" value="${squadFilterMaxPrice ?? ''}" oninput="setSquadFilterMaxPrice(this.value)">
                 </div>
             </div>`;
         }
 
-        function renderTransferAnalysis() {
-            return `<div class="ta-section">
-                <button class="ta-toggle-btn" onclick="toggleTransferAnalysis()">
-                    <i data-lucide="search" class="icon"></i>
-                    <span>Transfer Analysis — see 7-8 recommended targets</span>
-                    <span class="verdict-toggle" id="ta-body-toggle">▶</span>
-                </button>
-                <div class="ta-body" id="ta-body" style="display:none;"></div>
+        function rerenderSquadFilteredViews() {
+            const tableWrap = document.getElementById('sq-table-wrap');
+            if (tableWrap) tableWrap.innerHTML = renderSquadTable();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            updateSquadChart();
+        }
+
+        function setSquadFilterPos(pos) {
+            squadFilterPos = pos === 'all' ? 'all' : parseInt(pos, 10);
+            document.querySelectorAll('.sq-filter-pill').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = [...document.querySelectorAll('.sq-filter-pill')].find(btn => btn.textContent === (squadFilterPos === 'all' ? 'All' : POSITION_CONFIG[squadFilterPos].short));
+            if (activeBtn) activeBtn.classList.add('active');
+            rerenderSquadFilteredViews();
+        }
+
+        function setSquadFilterMaxPrice(val) {
+            squadFilterMaxPrice = val ? parseFloat(val) : null;
+            rerenderSquadFilteredViews();
+        }
+
+        function renderSquadChartWidget() {
+            const metricOptions = Object.keys(SQ_CHART_METRICS)
+                .map(k => `<option value="${k}">${SQ_CHART_METRICS[k].label}</option>`).join('');
+            return `<div class="sq-chart-widget">
+                <div class="sq-chart-header" onclick="toggleSquadChart()">
+                    <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i>
+                    <span class="sq-chart-header-title">Visual Analysis</span>
+                    <span class="sq-chart-chevron ${sqChartExpanded ? 'open' : ''}" id="sq-chart-chevron"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
+                </div>
+                <div class="sq-chart-body-outer ${sqChartExpanded ? 'open' : ''}" id="sq-chart-body">
+                    <div class="sq-chart-body-inner">
+                        <div class="sq-chart-controls">
+                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('xgi90','points')">xGI/90 vs Points</button>
+                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('value','ownership')">Value vs Ownership</button>
+                            <span class="sq-chart-axis-picker">
+                                <select id="sq-chart-x-select" onchange="onSquadChartMetricChange()">${metricOptions}</select>
+                                <span>vs</span>
+                                <select id="sq-chart-y-select" onchange="onSquadChartMetricChange()">${metricOptions}</select>
+                            </span>
+                        </div>
+                        <div class="sq-chart-canvas-wrap" id="sq-chart-canvas-wrap"><canvas id="sqChartCanvas"></canvas></div>
+                    </div>
+                </div>
             </div>`;
         }
 
-        function toggleTransferAnalysis() {
-            const body = document.getElementById('ta-body');
-            if (body.style.display === 'none' && !body.dataset.rendered) {
-                const targets = computeTransferAnalysisTargets();
-                body.innerHTML = targets.length
-                    ? `<div class="ta-list">${targets.map(renderTransferAnalysisCard).join('')}</div>`
-                    : `<div class="ta-empty"><i data-lucide="check-circle" class="icon"></i> No strong targets found right now.</div>`;
-                body.dataset.rendered = '1';
+        function toggleSquadChart() {
+            sqChartExpanded = !sqChartExpanded;
+            localStorage.setItem('fpl_charts_expanded', sqChartExpanded ? '1' : '0');
+            const body = document.getElementById('sq-chart-body');
+            const chevron = document.getElementById('sq-chart-chevron');
+            if (body) body.classList.toggle('open', sqChartExpanded);
+            if (chevron) chevron.classList.toggle('open', sqChartExpanded);
+            if (sqChartExpanded && !sqChartInstance) {
+                // Wait for the CSS grid-row expand transition (300ms) so the canvas has a
+                // real size before Chart.js measures it — initializing mid-transition would
+                // otherwise size the chart to a near-zero box.
+                setTimeout(initSquadChart, 320);
+            }
+        }
+
+        function setSquadChartMetrics(xKey, yKey) {
+            sqChartXMetric = xKey;
+            sqChartYMetric = yKey;
+            const xSel = document.getElementById('sq-chart-x-select');
+            const ySel = document.getElementById('sq-chart-y-select');
+            if (xSel) xSel.value = xKey;
+            if (ySel) ySel.value = yKey;
+            updateSquadChart();
+        }
+
+        function onSquadChartMetricChange() {
+            const xSel = document.getElementById('sq-chart-x-select');
+            const ySel = document.getElementById('sq-chart-y-select');
+            sqChartXMetric = xSel ? xSel.value : sqChartXMetric;
+            sqChartYMetric = ySel ? ySel.value : sqChartYMetric;
+            updateSquadChart();
+        }
+
+        function buildSquadChartDatasets() {
+            const xDef = SQ_CHART_METRICS[sqChartXMetric];
+            const yDef = SQ_CHART_METRICS[sqChartYMetric];
+            const filtered = getFilteredSquad();
+            return [1, 2, 3, 4].map(pos => ({
+                label: POSITION_CONFIG[pos].short,
+                data: filtered.filter(a => a.player.position === pos).map(a => ({
+                    x: xDef.get(a.player),
+                    y: yDef.get(a.player),
+                    name: a.player.name,
+                    team: a.player.team,
+                })),
+                backgroundColor: SQ_POSITION_COLORS[pos].bg,
+                borderColor: SQ_POSITION_COLORS[pos].border,
+                pointStyle: SQ_POSITION_STYLES[pos],
+                pointRadius: 7,
+                pointHoverRadius: 11,
+            }));
+        }
+
+        function initSquadChart() {
+            const canvas = document.getElementById('sqChartCanvas');
+            if (!canvas || typeof Chart === 'undefined') return;
+            const xSel = document.getElementById('sq-chart-x-select');
+            const ySel = document.getElementById('sq-chart-y-select');
+            if (xSel) xSel.value = sqChartXMetric;
+            if (ySel) ySel.value = sqChartYMetric;
+
+            sqChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'scatter',
+                data: { datasets: buildSquadChartDatasets() },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: 'var(--text-secondary)', usePointStyle: true } },
+                        tooltip: {
+                            callbacks: {
+                                title: ctx => ctx[0]?.raw ? `${ctx[0].raw.name} (${ctx[0].raw.team})` : '',
+                                label: ctx => {
+                                    const r = ctx.raw;
+                                    if (!r) return '';
+                                    return [`${SQ_CHART_METRICS[sqChartXMetric].label}: ${r.x.toFixed(2)}`, `${SQ_CHART_METRICS[sqChartYMetric].label}: ${r.y.toFixed(2)}`];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: SQ_CHART_METRICS[sqChartXMetric].label } },
+                        y: { title: { display: true, text: SQ_CHART_METRICS[sqChartYMetric].label } }
+                    }
+                }
+            });
+
+            const wrap = document.getElementById('sq-chart-canvas-wrap');
+            if (wrap && typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(() => { if (sqChartInstance) sqChartInstance.resize(); }).observe(wrap);
+            }
+        }
+
+        function updateSquadChart() {
+            if (!sqChartInstance) return;
+            sqChartInstance.data.datasets = buildSquadChartDatasets();
+            sqChartInstance.options.scales.x.title.text = SQ_CHART_METRICS[sqChartXMetric].label;
+            sqChartInstance.options.scales.y.title.text = SQ_CHART_METRICS[sqChartYMetric].label;
+            sqChartInstance.update();
+        }
+
+        // Phase 2/3 will replace these stubs with the real inline accordion and
+        // transfer side-panel implementations.
+        // ===== INLINE ACCORDION EXPANSION (Phase 2) =====
+        // Reuses openDetailPanel's Key Statistics/Season Numbers/Team Context markup and
+        // the Lineup Wizard's AI Score Breakdown / Routes to Points / Rising Form Signals /
+        // home-away splits / xG-regression builders (computeQuickLineupScoreDetailed,
+        // lwBuildSingleRoutes, lwBuildSingleRisingForm, lwBuildSingleSplits,
+        // lwBuildSingleXgRegression — all confirmed to already accept this page's flat
+        // `player` shape, no adaptation needed) instead of re-deriving any of it.
+        function scoreBarHTML(label, value, maxVal, color) {
+            const pct = Math.min(Math.max(Math.abs(value) / maxVal * 100, 0), 100);
+            const isNeg = value < 0;
+            return `<div class="lw-ctx-score-row">
+                <div class="lw-ctx-score-label">${label}</div>
+                <div class="lw-ctx-score-bar"><div class="lw-ctx-score-bar-fill" style="width:${pct}%;background:${isNeg ? 'var(--color-error)' : color};"></div></div>
+                <div class="lw-ctx-score-val" style="color:${isNeg ? 'var(--color-error)' : value > 0 ? color : 'var(--text-muted)'}">${value > 0 ? '+' : ''}${value.toFixed(1)}</div>
+            </div>`;
+        }
+
+        function renderInlineExpansion(playerId) {
+            const analysis = analysisResults.find(a => a.player.id === playerId);
+            if (!analysis) return '';
+            const { player, verdict, fixtures } = analysis;
+            const gamesPlayed = computePlayerGamesPlayed(player);
+            const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
+            const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
+            const effForm = isPreseason ? player.ppg : player.form;
+            const detailed = computeQuickLineupScoreDetailed(player);
+
+            // Card 1: Expanded Stats & Underlying
+            const card1 = `<div class="sq-exp-card">
+                <div class="sq-exp-card-title">📊 Expanded Stats &amp; Underlying</div>
+                <div class="detail-stats-grid">
+                    ${renderDetailStat('Form', effForm.toFixed(1), effForm / 10, effForm >= 5 ? 'var(--verdict-hold)' : effForm < 3 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${POSITION_CONFIG[player.position].short} median: ${POSITION_CONFIG[player.position].formMedian}`)}
+                    ${renderDetailStat('Pts/Game', player.ppg.toFixed(1), player.ppg / 10, player.ppg >= 5 ? 'var(--verdict-hold)' : player.ppg < 3 ? 'var(--verdict-sell)' : 'var(--text-primary)', `Total: ${player.points} pts`)}
+                    ${renderDetailStat('Mins/Game', minsPerGame.toFixed(0), minsPerGame / 90, minsPerGame >= 80 ? 'var(--verdict-hold)' : minsPerGame < 60 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${player.starts} starts in ${gamesPlayed} GWs`)}
+                    ${player.position >= 3 ? renderDetailStat('xGI/90', xGIPer90.toFixed(2), xGIPer90, xGIPer90 >= 0.5 ? 'var(--verdict-hold)' : xGIPer90 < 0.25 ? 'var(--verdict-sell)' : 'var(--text-primary)', `${player.goals}G ${player.assists}A (${player.xG.toFixed(1)}xG ${player.xA.toFixed(1)}xA)`) : ''}
+                </div>
+                <div style="text-align:center;margin:10px 0;">
+                    <span style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:${detailed.total >= 30 ? 'var(--color-success)' : detailed.total >= 10 ? '#F59E0B' : 'var(--color-error)'};">${detailed.total}</span>
+                    <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">predicted score breakdown</span>
+                </div>
+                ${scoreBarHTML('Exp Pts', detailed.ep, 15, 'var(--color-info)')}
+                ${scoreBarHTML('Form', detailed.form, 15, '#A78BFA')}
+                ${scoreBarHTML('Fixture', detailed.fixture, 10, 'var(--color-success)')}
+                ${scoreBarHTML('xGI/90', detailed.xgi, 10, '#EC4899')}
+                ${scoreBarHTML('Minutes', detailed.minutes, 5, '#06B6D4')}
+                ${lwBuildSingleXgRegression(player)}
+                ${lwBuildSingleRoutes(player)}
+            </div>`;
+
+            // Card 2: Team Context & Schedule
+            const ta = teamAnalysis[player.teamId];
+            const ss = seasonStats[player.teamId];
+            const swingInfo = fixtureSwingData[player.teamId];
+            const fixtureChips = fixtures.map(f => `
+                <div class="fixture-chip fdr-${f.difficulty}" style="flex:1;min-width:48px;padding:6px 3px;">
+                    <span style="display:block;font-size:8px;color:rgba(255,255,255,0.5);">GW${f.event}</span>
+                    <span class="fixture-team">${escHTML(f.opponent)}</span>
+                    <span class="fixture-venue">${f.isHome ? 'H' : 'A'}</span>
+                </div>`).join('');
+            const card2 = ta ? `<div class="sq-exp-card">
+                <div class="sq-exp-card-title">🛡️ Team Context &amp; Schedule — ${escHTML(player.team)}</div>
+                <div class="detail-stats-grid">
+                    ${renderDetailStat('Attack', ta.attackPower.toString(), ta.attackPower / 100, ta.attackPower >= 60 ? 'var(--verdict-hold)' : ta.attackPower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${ta.avgGoals.toFixed(1)} goals/game`)}
+                    ${renderDetailStat('Defence', ta.defensePower.toString(), ta.defensePower / 100, ta.defensePower >= 60 ? 'var(--verdict-hold)' : ta.defensePower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${ta.avgConceded.toFixed(1)} conceded/game`)}
+                </div>
+                ${ss ? `<div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                    <div class="metric-box"><div class="metric-label">Season</div><div class="metric-value neutral" style="font-size:11px;">W${ss.wins} D${ss.draws} L${ss.losses}</div></div>
+                    <div class="metric-box"><div class="metric-label">GF/GA</div><div class="metric-value neutral" style="font-size:11px;">${ss.goalsFor}/${ss.goalsAgainst}</div></div>
+                    <div class="metric-box"><div class="metric-label">CS%</div><div class="metric-value ${ss.csPercent >= 35 ? 'good' : ss.csPercent < 20 ? 'bad' : 'neutral'}">${ss.csPercent}%</div></div>
+                </div>` : ''}
+                ${swingInfo ? `<div style="margin-top:8px;padding:6px 10px;border-radius:var(--radius-sm);background:${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)'};font-size:11px;color:${swingInfo.direction === 'improving' ? 'var(--color-success)' : 'var(--color-error)'}">${swingInfo.direction === 'improving' ? '▲' : '▼'} Fixtures ${swingInfo.direction} from GW${swingInfo.swingGW}: FDR ${swingInfo.currentFdr} → ${swingInfo.futureFdr}</div>` : ''}
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${fixtureChips}</div>
+                ${lwBuildSingleRisingForm(player)}
+                ${lwBuildSingleSplits(player)}
+            </div>` : '';
+
+            // Card 3: Quick Replacement Candidates (sell/monitor only, top 3)
+            let card3 = '';
+            if (verdict === 'sell' || verdict === 'monitor') {
+                const replacements = findReplacements(player, 3);
+                if (replacements.length) {
+                    card3 = `<div class="sq-exp-card sq-exp-card-full">
+                        <div class="sq-exp-card-title">⚡ Quick Replacement Candidates</div>
+                        ${replacements.map((r, i) => {
+                            const rNet = (r.transfersIn || 0) - (r.transfersOut || 0);
+                            return `
+                            <div class="sq-replacement-row">
+                                <span class="sq-replacement-rank">${i + 1}</span>
+                                <span class="sq-replacement-name">${escHTML(r.name)}</span>
+                                <span class="sq-replacement-meta">${escHTML(r.team)} · £${r.price.toFixed(1)}m · Form ${r.form.toFixed(1)} · ${rNet > 0 ? '+' : ''}${(rNet / 1000).toFixed(0)}k</span>
+                                <button class="card-btn" onclick="openPairCompare(${player.id}, ${r.id})">Compare</button>
+                                <button class="card-btn primary" onclick="openTransferPanel(${player.id})">Transfer</button>
+                            </div>`;
+                        }).join('')}
+                    </div>`;
+                }
+            }
+
+            return `<div class="sq-exp-grid">${card1}${card2}</div>${card3}`;
+        }
+
+        function toggleInlineExpansion(playerId) {
+            const el = document.getElementById(`sq-expand-${playerId}`);
+            const chevron = document.getElementById(`sq-chevron-${playerId}`);
+            if (!el) return;
+            const isOpen = el.style.display !== 'none';
+            if (isOpen) {
+                el.style.display = 'none';
+            } else {
+                if (!el.dataset.rendered) {
+                    el.innerHTML = renderInlineExpansion(playerId);
+                    el.dataset.rendered = '1';
+                }
+                el.style.display = '';
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             }
-            toggleSection('ta-body');
+            if (chevron) chevron.classList.toggle('open', !isOpen);
         }
 
-        // ===== PHASE 3: NEEDS ATTENTION FEED =====
-        // Consolidates the old squad-alerts panel + price-watch panel + Sell/Monitor
-        // verdict tables into one severity-sorted, deduped-per-player card feed.
-        function computeNeedsAttention() {
-            const squadPlayers = selectedPlayers || [];
-            const itemsByPlayerId = new Map();
+        // ===== TRANSFER SIDE PANEL (Phase 3) =====
+        // Reuses the same slide-out shell as openDetailPanel (#detailOverlay/#detailPanel),
+        // just populated with transfer-focused content instead — driven by the Transfer
+        // Wizard's actual scoring engine (calculateTransferScore via findTransferCandidates),
+        // not the lighter findReplacements() formula used by Phase 2's inline quick-list.
+        function openTransferPanel(playerId) {
+            const analysis = analysisResults.find(a => a.player.id === playerId);
+            if (!analysis) return;
+            const { player } = analysis;
+            const bank = (picksData?.entry_history?.bank || 0) / 10;
+            const sellPrice = player.sellPrice || player.price;
+            const maxPrice = sellPrice + bank;
+            const excludeIds = new Set(selectedPlayers.map(p => p.id));
+            const candidates = findTransferCandidates(player.position, maxPrice, excludeIds).slice(0, 10);
 
-            function addReason(player, severity, reason, sortScore) {
-                const existing = itemsByPlayerId.get(player.id);
-                if (existing) {
-                    existing.reasons.push(reason);
-                    existing.sortScore = Math.max(existing.sortScore, sortScore);
-                    if (severity === 'sell') existing.severity = 'sell';
-                } else {
-                    itemsByPlayerId.set(player.id, { player, severity, reasons: [reason], sortScore });
-                }
+            document.getElementById('detailPanel').dataset.playerId = playerId;
+            document.getElementById('detailPlayerName').textContent = `Replace ${player.name}`;
+            document.getElementById('detailPlayerMeta').innerHTML = `
+                <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
+                Budget £${maxPrice.toFixed(1)}m (sell £${sellPrice.toFixed(1)}m + bank £${bank.toFixed(1)}m)
+            `;
+
+            let html = `<div class="detail-section">
+                <div class="detail-section-title">⚡ AI-Ranked Replacements</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Recency-weighted form, fixture-adjusted opponent matchup, and team context — same engine as the Transfer Wizard.</div>`;
+
+            if (!candidates.length) {
+                html += `<div class="tw-market-empty">No affordable candidates found at this position right now.</div>`;
+            } else {
+                html += candidates.map((c, i) => {
+                    const teamName = c.team || teams[c.teamId]?.short_name || '';
+                    const fixes = teamFixtures[c.teamId] || c.fixtures || [];
+                    const nextF = fixes[0];
+                    const fdrHtml = nextF ? `<span class="fdr-dot fdr-${nextF.difficulty}"></span> ${escHTML(nextF.opponent)} (${nextF.isHome ? 'H' : 'A'})` : '';
+                    return `<div class="tw-market-row" onclick="openPairCompare(${player.id}, ${c.id})">
+                        <div class="tw-market-rank">${i + 1}</div>
+                        <span class="tw-market-name">${escHTML(c.name)}</span>
+                        <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${escHTML(teamName)}</span>
+                        <span class="tw-market-price">£${c.price.toFixed(1)}m</span>
+                        <span class="tw-market-stat" style="color:${(c.form || 0) >= 5 ? 'var(--color-success)' : 'var(--text-secondary)'};">${(c.form || 0).toFixed(1)}</span>
+                        <span class="tw-market-score" title="AI Transfer Score">${(c._transferScore || 0).toFixed(0)}</span>
+                        <div class="tw-market-row-detail">${fdrHtml}</div>
+                    </div>`;
+                }).join('');
             }
-
-            // Injury / team news
-            squadPlayers.filter(p => p.news && p.news.trim()).forEach(p => {
-                const chance = p.chanceNextRound;
-                const critical = p.status === 'i' || p.status === 'u' || p.status === 's' || (chance != null && chance <= 50);
-                const reason = chance != null ? `${chance}% chance of playing — ${p.news}` : p.news;
-                addReason(p, critical ? 'sell' : 'monitor', reason, critical ? 100 : 70);
-            });
-
-            // Poor-form starters not already flagged by news
-            squadPlayers.filter(p => !p.onBench && parseFloat(p.form) < 3.0 && !(p.news && p.news.trim())).forEach(p => {
-                addReason(p, 'monitor', `Poor recent form (${parseFloat(p.form).toFixed(1)})`, 60);
-            });
-
-            // Sell / Monitor verdicts from the main analysis engine
-            analysisResults.forEach(a => {
-                if (a.verdict === 'sell') addReason(a.player, 'sell', a.verdictReason, 90);
-                else if (a.verdict === 'monitor') addReason(a.player, 'monitor', a.verdictReason, 50);
-            });
-
-            // Price-drop risk
-            const totalFpl = 11000000;
-            squadPlayers.forEach(p => {
-                const owners = Math.max(totalFpl * ((p.ownership || 0) / 100), 1);
-                const pr = ((p.transfersIn || 0) - (p.transfersOut || 0)) / owners;
-                const gwChange = (p.costChangeEvent || 0) / 10;
-                if (pr < -0.015 || gwChange < 0) {
-                    const netK = Math.round(Math.abs((p.transfersIn || 0) - (p.transfersOut || 0)) / 1000);
-                    addReason(p, 'monitor', `${netK}k net transfers out — price drop risk`, 40);
-                }
-            });
-
-            return [...itemsByPlayerId.values()].sort((a, b) => b.sortScore - a.sortScore);
-        }
-
-        function renderAttentionCard(item) {
-            const p = item.player;
-            const posConfig = POSITION_CONFIG[p.position];
-            return `<div class="na-card ${item.severity}" data-compare-row>
-                <input type="checkbox" class="compare-checkbox" data-player-id="${p.id}" onchange="onCompareCheckboxChange(${p.id})">
-                <div class="na-card-body" onclick="openDetailPanel(${p.id})">
-                    <div class="na-card-top">
-                        <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
-                        <span class="na-card-name">${escHTML(p.name)}</span>
-                        <span class="na-card-team">${escHTML(p.team)}${p.onBench ? ' · Bench' : ''}</span>
-                    </div>
-                    <div class="na-card-reason">${escHTML(item.reasons.slice(0, 2).join(' · '))}</div>
-                </div>
+            html += `</div>
+            <div class="detail-section">
+                <button class="btn btn-secondary" style="width:100%;" onclick="closeDetailPanel(); switchTab('transfer');">Build a full transfer plan in Transfer Wizard →</button>
             </div>`;
-        }
 
-        function renderNeedsAttentionFeed() {
-            const items = computeNeedsAttention();
-            const body = items.length
-                ? items.map(renderAttentionCard).join('')
-                : `<div class="na-empty"><i data-lucide="check-circle" class="icon"></i> No alerts — your squad's in good shape.</div>`;
-            return `<div class="na-section">
-                <div class="na-header">
-                    <i data-lucide="alert-triangle" class="icon"></i>
-                    <span class="na-title">Needs Attention</span>
-                    ${items.length ? `<span class="na-count">${items.length}</span>` : ''}
-                </div>
-                <div class="na-list">${body}</div>
-            </div>`;
-        }
-
-        // ===== PHASE 4: SQUAD OVERVIEW STRIP (Star/Hold — nothing to act on) =====
-        function renderSquadOverviewItem(a) {
-            const p = a.player;
-            const posConfig = POSITION_CONFIG[p.position];
-            return `<div class="so-item" data-compare-row>
-                <input type="checkbox" class="compare-checkbox" data-player-id="${p.id}" onchange="onCompareCheckboxChange(${p.id})">
-                <div class="so-item-body" onclick="openDetailPanel(${p.id})">
-                    <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
-                    <span class="so-item-name">${escHTML(p.name)}</span>
-                    <span class="verdict-chip ${a.verdict}">${a.verdict === 'star' ? '★' : a.verdict}</span>
-                </div>
-            </div>`;
-        }
-
-        function renderSquadOverviewStrip() {
-            const solid = analysisResults.filter(a => a.verdict === 'star' || a.verdict === 'hold');
-            if (!solid.length) return '';
-            const starCount = solid.filter(a => a.verdict === 'star').length;
-            const label = `${solid.length} player${solid.length !== 1 ? 's' : ''} look${solid.length === 1 ? 's' : ''} solid${starCount ? ` (${starCount} ★ star)` : ''} — tap to review`;
-            return `<div class="so-section">
-                <div class="so-header" onclick="toggleSection('so-body')">
-                    <i data-lucide="shield-check" class="icon"></i>
-                    <span class="so-title">${label}</span>
-                    <span class="verdict-toggle open" id="so-body-toggle">▶</span>
-                </div>
-                <div class="so-body" id="so-body" style="display:none;">
-                    ${solid.map(renderSquadOverviewItem).join('')}
-                </div>
-            </div>`;
+            document.getElementById('detailBody').innerHTML = html;
+            document.getElementById('detailOverlay').classList.add('show');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function toggleSection(sectionId) {
@@ -6880,7 +7346,7 @@
 
         // ── LINEUP WIZARD: Detailed Score Breakdown ──
         function computeQuickLineupScoreDetailed(p) {
-            const result = { total: 0, ep: 0, form: 0, fixture: 0, home: 0, xgi: 0, minutes: 0, ppg: 0, doubtful: 0 };
+            const result = { total: 0, ep: 0, form: 0, fixture: 0, home: 0, xgi: 0, minutes: 0, ppg: 0, doubtful: 0, matchup: 0 };
             if (p.status === 'i' || p.status === 'u' || p.status === 's') { result.total = -100; return result; }
             if (p.status === 'd') result.doubtful = -20;
             result.ep = Math.round((p.epNext || 0) * 3 * 10) / 10;
@@ -6893,7 +7359,16 @@
             if (mpg >= 85) result.minutes = 3;
             else if (mpg < 45) result.minutes = -5;
             result.ppg = Math.round((p.points / Math.max(currentGW - 1, 1)) * 1.5 * 10) / 10;
-            result.total = Math.round(result.ep + result.form + result.fixture + result.home + result.xgi + result.minutes + result.ppg + result.doubtful);
+            // Team Attack/Defense power vs. the next opponent's respective rating — the
+            // explicit team-context matchup factor section 9 asks for, on top of the
+            // generic FDR-based `fixture` term above. Same teamAnalysis data already used
+            // everywhere else on this page (detail panel, calculateTransferScore, etc.).
+            if (fx.length > 0 && fx[0].opponentId && teamAnalysis[fx[0].opponentId]) {
+                const opp = teamAnalysis[fx[0].opponentId];
+                const relevantOppPower = (p.position <= 2) ? (opp.attackPower || 50) : (opp.defensePower || 50);
+                result.matchup = Math.round(((50 - relevantOppPower) / 50) * 6 * 10) / 10;
+            }
+            result.total = Math.round(result.ep + result.form + result.fixture + result.home + result.xgi + result.minutes + result.ppg + result.doubtful + result.matchup);
             return result;
         }
 
