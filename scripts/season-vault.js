@@ -10,16 +10,52 @@
 const PREDICTIONS_URL = 'data/predictions.json';
 const SEASON_LABEL = '2026/27';
 
-// Live predictions from Supabase once configured (scripts/supabase-config.js);
-// falls back to the static file so this page keeps working either way.
+// The friends' Google Sheet is the live source of truth — one column per
+// friend, rows 2-21 are ranks 1-20 (see sheet: Rank | Reference Teams | ...
+// one column per friend). Each friend edits only their own column, locked to
+// their Google account via the sheet's own "Protect ranges" — that's the
+// real access-control guarantee here, not anything this site enforces.
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1WRCPhnBwvpZCWlG4lHv_jP60Jfm-jOZQyA-B3IFCDEY/export?format=csv';
+
+// Minimal CSV line parser — sufficient here since none of the real data
+// (team names, friend names) contains commas or quotes.
+function parseCsv(text) {
+    return text.split('\n').map(line => line.replace(/\r$/, '').split(','));
+}
+
+function parsePredictionsSheet(csvText) {
+    const rows = parseCsv(csvText);
+    if (rows.length < 2) return { season: SEASON_LABEL, friends: [] };
+
+    const header = rows[0];
+    const friendNames = header.slice(2); // columns after Rank, Reference Teams
+
+    const friendCells = friendNames.map(() => []); // one array per friend, in rank order
+    rows.slice(1).forEach(row => {
+        const rank = parseInt(row[0], 10);
+        if (!rank || rank < 1 || rank > 20) return; // skips the Total row and anything stray
+        friendNames.forEach((_, i) => {
+            const cell = (row[2 + i] || '').trim();
+            if (cell) friendCells[i].push(cell);
+        });
+    });
+
+    const friends = friendNames
+        .map((name, i) => ({ name: name.trim(), predictions: friendCells[i] }))
+        .filter(f => f.name && f.predictions.length > 0); // drop empty placeholder columns
+
+    return { season: SEASON_LABEL, friends };
+}
+
+// Live predictions from the Google Sheet; falls back to the static file
+// (data/predictions.json) if the Sheet is unreachable for any reason.
 async function fetchPredictions() {
-    if (isSupabaseConfigured()) {
-        try {
-            const rows = await supabaseRequest('predictions?select=name,predictions&order=created_at.asc');
-            return { season: SEASON_LABEL, friends: rows.map(r => ({ name: r.name, predictions: r.predictions })) };
-        } catch (err) {
-            console.error('Supabase predictions fetch failed, falling back to static file:', err);
-        }
+    try {
+        const res = await fetch(SHEET_CSV_URL);
+        if (!res.ok) throw new Error(`Sheet fetch HTTP ${res.status}`);
+        return parsePredictionsSheet(await res.text());
+    } catch (err) {
+        console.error('Google Sheet predictions fetch failed, falling back to static file:', err);
     }
     const res = await fetch(PREDICTIONS_URL);
     if (!res.ok) throw new Error('predictions unavailable');
@@ -36,8 +72,8 @@ function svSeasonNotice(message) {
 }
 
 // Team-name matching (TEAM_ALIASES, normalizeLabel, buildTeamIndex, matchTeam)
-// now lives in scripts/team-matching.js, shared with predictions-submit.js —
-// season-vault-d845fb.html includes that script before this one.
+// lives in scripts/team-matching.js — season-vault-d845fb.html includes that
+// script before this one.
 
 // Diff (0-19) -> FDR-style bucket (1 = nailed it, 5 = way off), reusing the
 // site's existing --fdr-1..5 color scale instead of inventing a new one.
@@ -139,7 +175,7 @@ function computeHardestTeams(scoredFriends) {
         .sort((a, b) => b.avgError - a.avgError);
 }
 
-// teamBadge() now lives in scripts/team-matching.js (shared with predictions-submit.js).
+// teamBadge() lives in scripts/team-matching.js.
 
 function medalFor(rank) {
     if (rank === 1) return '<i data-lucide="trophy" style="width:16px;height:16px;color:#F59E0B;"></i>';
@@ -299,6 +335,27 @@ function renderHeatmap(scoredFriends, teams, isLive) {
     </div>`;
 }
 
+// Informational only — the Google Sheet can't be locked remotely by this
+// site. Real enforcement is the sheet owner using Google's "Protect sheet"
+// once GW2's deadline passes; this just tells visitors where things stand.
+function renderLockCountdown(bootstrap) {
+    const gw2 = bootstrap.events && bootstrap.events[1];
+    if (!gw2 || !gw2.deadline_time) return '';
+    const deadline = new Date(gw2.deadline_time).getTime();
+    const now = Date.now();
+    if (now >= deadline) {
+        return `<div class="sv-locked-notice" style="padding:var(--space-4);">
+            <i data-lucide="lock" style="width:16px;height:16px;"></i>
+            <div>Predictions are closed for editing — the GW2 deadline has passed.</div>
+        </div>`;
+    }
+    const daysLeft = Math.max(1, Math.ceil((deadline - now) / (24 * 60 * 60 * 1000)));
+    return `<div class="sv-countdown-banner">
+        <i data-lucide="clock" style="width:13px;height:13px;"></i>
+        Predictions close in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (GW2 deadline)
+    </div>`;
+}
+
 async function initSeasonVault() {
     createSkeletonCards(6, 'sv-skeleton');
 
@@ -321,6 +378,7 @@ async function initSeasonVault() {
 
         document.getElementById('sv-notice').innerHTML = isLive ? '' :
             svSeasonNotice(`Standings for ${escHTML(predictions.season)} aren't live yet — scores will populate automatically once real match results start coming in.`);
+        document.getElementById('sv-lock-notice').innerHTML = renderLockCountdown(bootstrap);
 
         if (allUnmatched.length) {
             document.getElementById('sv-warning').innerHTML = `<div class="sv-unmatched-warning">
