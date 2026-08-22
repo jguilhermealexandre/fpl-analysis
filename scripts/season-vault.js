@@ -89,13 +89,15 @@ async function fetchPredictions() {
     return res.json();
 }
 
-// Local copy of the site's amber "not live yet" banner pattern — not a call
-// to common.js's renderSeasonNotice, since that helper isn't deployed yet.
-function svSeasonNotice(message) {
-    return `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
-        <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
-        <span>${message}</span>
-    </div>`;
+// Guards every DOM update below against a stale-cache deploy skew: plain
+// <script src> tags have no content hash, so a browser (or Cloudflare's edge)
+// can serve an old cached season-vault.js alongside a freshly-updated HTML
+// file for a window after a deploy. If that JS expects an element the new
+// HTML no longer has (or vice versa), a raw `.innerHTML =` throws and takes
+// the whole render down with it — this just skips that one update instead.
+function svSetHTML(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
 }
 
 // Team-name matching (TEAM_ALIASES, normalizeLabel, buildTeamIndex, matchTeam)
@@ -383,27 +385,27 @@ async function initSeasonVault() {
 
         const allUnmatched = scoredFriends.flatMap(f => f.unmatched.map(label => `${f.name}: "${label}"`));
 
-        document.getElementById('sv-notice').innerHTML = isLive ? '' :
-            svSeasonNotice(`Standings for ${escHTML(predictions.season)} aren't live yet — scores will populate automatically once real match results start coming in.`);
+        svSetHTML('sv-notice', isLive ? '' :
+            renderSeasonNotice(`Standings for ${escHTML(predictions.season)} aren't live yet — scores will populate automatically once real match results start coming in.`));
 
         if (allUnmatched.length) {
-            document.getElementById('sv-warning').innerHTML = `<div class="sv-unmatched-warning">
+            svSetHTML('sv-warning', `<div class="sv-unmatched-warning">
                 <i data-lucide="alert-triangle" style="width:14px;height:14px;"></i>
                 Couldn't match ${allUnmatched.length} prediction(s): ${escHTML(allUnmatched.join(', '))}
-            </div>`;
+            </div>`);
         }
 
-        document.getElementById('sv-leaderboard').innerHTML = renderLeaderboard(scoredFriends, crowdRow, isLive);
-        document.getElementById('sv-real-table').innerHTML = renderRealTable(bootstrap.teams, isLive);
-        document.getElementById('sv-hardest').innerHTML = renderHardestTeams(hardestTeams, isLive);
-        document.getElementById('sv-heatmap').innerHTML = renderHeatmap(scoredFriends, bootstrap.teams, isLive);
+        svSetHTML('sv-leaderboard', renderLeaderboard(scoredFriends, crowdRow, isLive));
+        svSetHTML('sv-real-table', renderRealTable(bootstrap.teams, isLive));
+        svSetHTML('sv-hardest', renderHardestTeams(hardestTeams, isLive));
+        svSetHTML('sv-heatmap', renderHeatmap(scoredFriends, bootstrap.teams, isLive));
 
         initIcons();
     } catch (err) {
         console.error('Season Vault failed to load:', err);
         removeSkeletons('sv-skeleton');
-        document.getElementById('sv-leaderboard').innerHTML =
-            renderErrorState('Couldn’t load the vault', 'Something went wrong loading predictions or standings data.', null);
+        svSetHTML('sv-leaderboard',
+            renderErrorState('Couldn’t load the vault', 'Something went wrong loading predictions or standings data.', null));
     }
 }
 
