@@ -252,7 +252,7 @@
         let currentGameweek = null;
         let currentPhase = 'mid';
         let allAnalyses = [];
-        let isPreseason = false; // true when no gameweek has finished yet — analyses fall back to lastSeason data
+        let isPreseason = false; // true until the season's first fixture kicks off — see computeIsPreseason() in scripts/common.js
         let currentPosition = 'RECOMMENDATIONS';
 
         // Shortlist state (persisted to localStorage)
@@ -442,8 +442,7 @@
                 // Compute team-level scores (attack, defense, form, fixtures) — 3-component xG model
                 computeTeamScores(staticData.teams, fixturesData);
 
-                // Detect preseason: true until at least one gameweek has finished
-                isPreseason = !bootData || !bootData.events || bootData.events.every(e => !e.finished);
+                isPreseason = computeIsPreseason(bootData, fixturesData);
 
                 // Build a history lookup from players-data.json (current-season per-GW logs, may be empty pre-season)
                 const historyById = {};
@@ -1531,13 +1530,6 @@
                 </div>`;
             }).join('');
             return banner + panels;
-        }
-
-        function renderSeasonNotice(message) {
-            return `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
-                <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
-                <span>${message}</span>
-            </div>`;
         }
 
         function renderLastSeasonCard(p, rank) {

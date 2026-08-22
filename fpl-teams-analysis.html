@@ -101,7 +101,7 @@
         let currentView = 'rankings';
         let rankingsSort = 'attack';
         let currentGW = 1;
-        let isPreseason = false; // true when no gameweek has finished yet — stats shown are last season's carryover
+        let isPreseason = false; // true until the season's first fixture kicks off — see computeIsPreseason() in scripts/common.js
         window.rawFixturesData = [];
         window.teamXgData = {};      // Per-GW xG/xGC aggregated by team
         window.playerElements = [];  // Raw bootstrap elements (for season xG)
@@ -158,7 +158,7 @@
                 currentGW = bootstrapData.events.find(e => e.is_current)?.id ||
                                   bootstrapData.events.find(e => e.is_next)?.id || 1;
                 document.getElementById('currentGW').textContent = `GW${currentGW}`;
-                isPreseason = bootstrapData.events.every(e => !e.finished);
+                isPreseason = computeIsPreseason(bootstrapData, fixturesData);
 
                 // ===== BUILD TEAM xG DATA =====
                 // Try loading players-data.json for per-GW xG (gold standard)

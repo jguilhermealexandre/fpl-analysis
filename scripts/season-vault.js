@@ -394,7 +394,7 @@ async function initSeasonVault() {
 
         removeSkeletons('sv-skeleton');
 
-        const isLive = !bootstrap.events.every(e => !e.finished);
+        const isLive = !computeIsPreseason(bootstrap);
         const teamIndex = buildTeamIndex(bootstrap.teams);
 
         const scoredFriends = predictions.friends.map(f => scoreFriend(f, teamIndex, isLive));

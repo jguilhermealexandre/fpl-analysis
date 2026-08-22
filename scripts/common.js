@@ -124,6 +124,24 @@ function renderSeasonNotice(message) {
     </div>`;
 }
 
+// Was previously `events.every(e => !e.finished)` on every page, independently
+// reimplemented 3-4 times. That check stays true for days after a gameweek's
+// first ball is kicked, because FPL doesn't flip an event's `finished` flag
+// until every match in it has concluded AND bonus points are confirmed — so
+// the site kept showing "not available until GW1" messaging (and stale
+// last-season fallbacks) well after real current-season results existed.
+// Considered started as soon as any fixture has actually kicked off — checked
+// two ways so callers that don't have fixtures.json handy (season-vault.js
+// only fetches bootstrap-static) still get the fix: fixturesData's `started`
+// flag when passed, and bootData.teams' `played` counts (bootstrap-static
+// updates these as soon as a team's first match is played) either way.
+function computeIsPreseason(bootData, fixturesData) {
+    if (!bootData || !bootData.events || !bootData.events.length) return true;
+    if (Array.isArray(fixturesData) && fixturesData.some(f => f.started)) return false;
+    if (Array.isArray(bootData.teams) && bootData.teams.some(t => t.played > 0)) return false;
+    return bootData.events.every(e => !e.finished);
+}
+
 // ===== API PROXY =====
 const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
 const DEMO_TEAM_ID = '0'; // reserved sentinel — real FPL entry IDs start at 1

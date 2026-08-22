@@ -260,7 +260,7 @@
             });
         }
         let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
-        let isPreseason = false; // true when no gameweek has finished yet — stats shown are last season's carryover
+        let isPreseason = false; // true until the season's first fixture kicks off — see computeIsPreseason() in scripts/common.js
         let positionAverages = {};
         let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
         let fixtureSwingData = {}; // Fixture swing detection per team
@@ -612,7 +612,7 @@
                 bootData.teams.forEach(t => { teams[t.id] = t; });
                 const currEvent = bootData.events.find(e => e.is_current);
                 currentGW = currEvent ? currEvent.id : 1;
-                isPreseason = bootData.events.every(e => !e.finished);
+                isPreseason = computeIsPreseason(bootData, fixturesData);
                 allFixtures = fixturesData;
                 processFixtures(fixturesData);
                 processFixtures6(fixturesData);
@@ -1571,16 +1571,6 @@
             return `<div class="lineup-alert warn">
                 <div class="lineup-alert-head"><i data-lucide="repeat" class="icon"></i> Lineup check</div>
                 ${rows}
-            </div>`;
-        }
-
-        // Amber "showing last season's data" banner — shared pattern used across the site's
-        // other pages during preseason; this file doesn't pull it from common.js so it's a
-        // local copy, same markup as elsewhere.
-        function renderSeasonNotice(message) {
-            return `<div class="season-notice" style="display:flex;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-warning-muted, rgba(245,158,11,0.1));border:1px solid var(--color-warning, #f59e0b);border-radius:10px;font-size:12px;color:var(--text-secondary);">
-                <i data-lucide="history" style="width:14px;height:14px;flex-shrink:0;color:var(--color-warning, #f59e0b);"></i>
-                <span>${message}</span>
             </div>`;
         }
 
