@@ -2,10 +2,13 @@
 //
 // Each friend predicted the full final PL table order before the season
 // started (data/predictions.json). Every load, we score that prediction
-// against the REAL current table in data/bootstrap-static.json (already
-// refreshed every 4h by the site's existing GitHub Action — no new data
-// source needed here). Scoring: 20 points per team for an exact position
-// match, minus 1 per position off (min 0), summed across 20 teams = 400 max.
+// against the real current table, computed ourselves from
+// data/fixtures.json (see computeRealTable below) rather than trusting
+// bootstrap-static's own team standings fields, which lag individual match
+// results by hours. Both files are already refreshed every 4h by the
+// site's existing GitHub Action — no new data source needed here. Scoring:
+// 20 points per team for an exact position match, minus 1 per position
+// off (min 0), summed across 20 teams = 400 max.
 
 const PREDICTIONS_URL = 'data/predictions.json';
 const SEASON_LABEL = '2026/27';
@@ -103,6 +106,36 @@ function svSetHTML(id, html) {
 // Team-name matching (TEAM_ALIASES, normalizeLabel, buildTeamIndex, matchTeam)
 // lives in scripts/team-matching.js — season-vault-d845fb.html includes that
 // script before this one.
+
+// bootstrap-static's own team.played/win/draw/loss/points/position fields lag
+// individual match results by hours (sometimes days) — FPL only recomputes them
+// once a gameweek is fully "checked", not as each match finishes. fixtures.json
+// updates immediately (finished_provisional flips as soon as full time is
+// blown), so recompute the real table from fixture results and overwrite
+// bootstrap's stale aggregate fields in place — every consumer below
+// (scoreFriend, renderRealTable, renderHeatmap, ...) reads team.position/
+// .played/etc. off the same team objects, so this one pass fixes all of them.
+function computeRealTable(teams, fixtures) {
+    const stats = {};
+    teams.forEach(t => { stats[t.id] = { played: 0, win: 0, draw: 0, loss: 0, points: 0, goalDiff: 0 }; });
+
+    (fixtures || []).forEach(f => {
+        if (!f.finished_provisional || f.team_h_score === null || f.team_a_score === null) return;
+        const h = stats[f.team_h], a = stats[f.team_a];
+        if (!h || !a) return;
+        h.played++; a.played++;
+        h.goalDiff += f.team_h_score - f.team_a_score;
+        a.goalDiff += f.team_a_score - f.team_h_score;
+        if (f.team_h_score > f.team_a_score) { h.win++; h.points += 3; a.loss++; }
+        else if (f.team_h_score < f.team_a_score) { a.win++; a.points += 3; h.loss++; }
+        else { h.draw++; a.draw++; h.points++; a.points++; }
+    });
+
+    teams.forEach(t => Object.assign(t, stats[t.id]));
+    [...teams]
+        .sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || a.name.localeCompare(b.name))
+        .forEach((t, i) => { t.position = i + 1; });
+}
 
 // Diff (0-19) -> FDR-style bucket (1 = nailed it, 5 = way off), reusing the
 // site's existing --fdr-1..5 color scale instead of inventing a new one.
@@ -377,6 +410,7 @@ async function initSeasonVault() {
         removeSkeletons('sv-skeleton');
 
         const isLive = !computeIsPreseason(bootstrap, fixturesData);
+        computeRealTable(bootstrap.teams, fixturesData);
         const teamIndex = buildTeamIndex(bootstrap.teams);
 
         const scoredFriends = predictions.friends.map(f => scoreFriend(f, teamIndex, isLive));
