@@ -362,39 +362,19 @@ function renderHeatmap(scoredFriends, teams, isLive) {
     </div>`;
 }
 
-// Informational only — the Google Sheet can't be locked remotely by this
-// site. Real enforcement is the sheet owner using Google's "Protect sheet"
-// once GW2's deadline passes; this just tells visitors where things stand.
-function renderLockCountdown(bootstrap) {
-    const gw2 = bootstrap.events && bootstrap.events[1];
-    if (!gw2 || !gw2.deadline_time) return '';
-    const deadline = new Date(gw2.deadline_time).getTime();
-    const now = Date.now();
-    if (now >= deadline) {
-        return `<div class="sv-locked-notice" style="padding:var(--space-4);">
-            <i data-lucide="lock" style="width:16px;height:16px;"></i>
-            <div>Predictions are closed for editing — the GW2 deadline has passed.</div>
-        </div>`;
-    }
-    const daysLeft = Math.max(1, Math.ceil((deadline - now) / (24 * 60 * 60 * 1000)));
-    return `<div class="sv-countdown-banner">
-        <i data-lucide="clock" style="width:13px;height:13px;"></i>
-        Predictions close in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (GW2 deadline)
-    </div>`;
-}
-
 async function initSeasonVault() {
     createSkeletonCards(6, 'sv-skeleton');
 
     try {
-        const [predictions, bootstrap] = await Promise.all([
+        const [predictions, bootstrap, fixturesData] = await Promise.all([
             fetchPredictions(),
             DataCache.fetchJSON(DATA_URLS.bootstrap),
+            DataCache.fetchJSON(DATA_URLS.fixtures).catch(() => []),
         ]);
 
         removeSkeletons('sv-skeleton');
 
-        const isLive = !computeIsPreseason(bootstrap);
+        const isLive = !computeIsPreseason(bootstrap, fixturesData);
         const teamIndex = buildTeamIndex(bootstrap.teams);
 
         const scoredFriends = predictions.friends.map(f => scoreFriend(f, teamIndex, isLive));
@@ -405,7 +385,6 @@ async function initSeasonVault() {
 
         document.getElementById('sv-notice').innerHTML = isLive ? '' :
             svSeasonNotice(`Standings for ${escHTML(predictions.season)} aren't live yet — scores will populate automatically once real match results start coming in.`);
-        document.getElementById('sv-lock-notice').innerHTML = renderLockCountdown(bootstrap);
 
         if (allUnmatched.length) {
             document.getElementById('sv-warning').innerHTML = `<div class="sv-unmatched-warning">
