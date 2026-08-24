@@ -684,6 +684,14 @@
 
             document.getElementById('settingsBtn').style.display = (tab === 'team') ? '' : 'none';
 
+            // The help overlay documents Squad Analysis only — swapping players on
+            // the pitch, the armband buttons, Auto-Optimize, the fixture chips — so
+            // it has nothing to say on the other tabs. Hide the button with the same
+            // rule as settings, and close the overlay if it is open when you leave.
+            const helpBtn = document.getElementById('helpBtn');
+            if (helpBtn) helpBtn.style.display = (tab === 'team') ? '' : 'none';
+            if (tab !== 'team' && typeof closeHelpOverlay === 'function') closeHelpOverlay();
+
             if (tab === 'team') {
                 teamDisplay.style.display = '';
                 tabTeam.classList.add('active');
