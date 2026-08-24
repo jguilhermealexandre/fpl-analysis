@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=5">
-    <link rel="stylesheet" href="styles/my-team.css?v=5">
-    <link rel="stylesheet" href="styles/v2-design.css?v=5">
-    <link rel="stylesheet" href="styles/compare-report.css?v=5">
+    <link rel="stylesheet" href="styles/common.css?v=6">
+    <link rel="stylesheet" href="styles/my-team.css?v=6">
+    <link rel="stylesheet" href="styles/v2-design.css?v=6">
+    <link rel="stylesheet" href="styles/compare-report.css?v=6">
 </head>
 <body>
 
@@ -517,8 +517,16 @@
                     weightSum += formWeights[i];
                     if (result === 'W') wins++; else if (result === 'D') draws++; else losses++;
                 });
-                const maxWeightedPts = 3 * weightSum;
-                const formBase = weightSum > 0 ? (weightedPts / maxWeightedPts) * 70 : 35;
+                // Map weighted points-per-game onto the 0-100 rating so that a team
+                // drawing its games lands mid-scale. The old formula scaled the
+                // win-ratio straight onto 0-70, which put an all-draws record at 23 —
+                // under the 40 "struggling" cut-off — so a single 2-2 draw in GW1 had
+                // every player on that team badged as struggling.
+                // Anchors: 0.0 ppg -> 10, 1.0 ppg (all draws) -> 50, 3.0 ppg -> 90.
+                const weightedPpg = weightSum > 0 ? weightedPts / weightSum : 1;
+                const formBase = weightedPpg <= 1
+                    ? 10 + weightedPpg * 40
+                    : 50 + ((weightedPpg - 1) / 2) * 40;
 
                 // GD bonus from last 5
                 const recentGD = last5.reduce((sum, f) => {
@@ -581,6 +589,10 @@
                     xgcTrendDelta: recent6Xg && seasonXg ? seasonXg.xGCpg - recent6Xg.xGCpg : 0,
                     avgGoals, avgConceded, avgFdr, csRate, totalCS,
                     wins, draws, losses, gamesPlayed,
+                    // Real count of completed matches. `gamesPlayed` above is
+                    // `last10.length || 1`, so it reports 1 even for a team that
+                    // hasn't kicked a ball — no good for "do we have data yet?".
+                    matchesPlayed: pastFixtures.length,
                     teamName: team.short_name || team.name
                 };
             });
@@ -1653,12 +1665,18 @@
         function renderTeamBadges(player) {
             const ta = teamAnalysis[player.teamId];
             let formBadge = '';
-            if (ta) {
+            // Only badge a team once it has actually played — with no completed
+            // matches there's no form to report, and defaulting to a verdict made
+            // every yet-to-play team look like it was struggling.
+            if (ta && ta.matchesPlayed > 0) {
                 const good = ta.formRating >= 55, bad = ta.formRating < 40;
                 const cls = good ? 'good' : bad ? 'bad' : 'warning';
                 const dot = good ? '🟢' : bad ? '🔴' : '🟡';
                 const label = good ? 'Good' : bad ? 'Struggling' : 'Average';
-                formBadge = `<span class="team-form-badge ${cls}" title="W${ta.wins} D${ta.draws} L${ta.losses} last 5">${dot} ${label}</span>`;
+                const span = ta.matchesPlayed === 1 ? 'last match' : `last ${Math.min(ta.matchesPlayed, 5)}`;
+                // Names the team explicitly — this rates the CLUB's form, not the
+                // player's, which is easy to misread sitting beside a player row.
+                formBadge = `<span class="team-form-badge ${cls}" title="${escHTML(player.team)} team form: W${ta.wins} D${ta.draws} L${ta.losses} (${span})">${dot} ${label}</span>`;
             }
             const swing = fixtureSwingData[player.teamId];
             const swingBadge = swing
@@ -1700,7 +1718,7 @@
                         <div class="sq-stat"><span class="sq-stat-label">${cols.stat6.label}</span><span class="sq-stat-value">${cols.stat6.value}</span></div>
                         <div class="sq-stat"><span class="sq-stat-label">${cols.stat7.label}</span><span class="sq-stat-value">${cols.stat7.value}</span></div>
                     </div>
-                    <div class="sq-row-fixtures">${fixtureChips}</div>
+                    <div class="sq-row-fixtures" onclick="event.stopPropagation(); openFixturePanel(${player.id})" title="View ${escHTML(player.team)}'s fixture calendar">${fixtureChips}</div>
                 </div>
                 <button class="sq-transfer-btn" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
                     <i data-lucide="repeat" style="width:14px;height:14px;"></i>
@@ -2142,6 +2160,90 @@
             // Reflect any already-selected players (and disable the rest once the
             // compare list is full) on the checkboxes we just rendered.
             if (typeof onCompareSelectionChange === 'function') onCompareSelectionChange();
+        }
+
+        // ===== FIXTURE / CALENDAR SIDE PANEL =====
+        // Same read of the schedule the Teams Analysis calendar gives you — per
+        // gameweek opponent, venue and FDR, with blanks and doubles called out —
+        // narrowed to the one team, and driven off allFixtures so it isn't capped
+        // at the 5 chips the row shows.
+        const FIXTURE_PANEL_GWS = 10;
+
+        function openFixturePanel(playerId) {
+            const analysis = analysisResults.find(a => a.player.id === playerId);
+            if (!analysis) return;
+            const { player } = analysis;
+            const teamId = player.teamId;
+
+            // Group this team's remaining fixtures by gameweek so a GW with two
+            // entries reads as a double and a GW with none reads as a blank.
+            const byGW = {};
+            (allFixtures || []).forEach(f => {
+                if (f.event == null || f.finished_provisional) return;
+                if (f.team_h !== teamId && f.team_a !== teamId) return;
+                const isHome = f.team_h === teamId;
+                (byGW[f.event] = byGW[f.event] || []).push({
+                    opponent: teams[isHome ? f.team_a : f.team_h]?.short_name || '???',
+                    isHome,
+                    difficulty: (isHome ? f.team_h_difficulty : f.team_a_difficulty) || 3
+                });
+            });
+
+            const startGW = currentGW || 1;
+            const gws = [];
+            for (let gw = startGW; gw < startGW + FIXTURE_PANEL_GWS && gw <= 38; gw++) gws.push(gw);
+
+            const rated = gws.flatMap(gw => byGW[gw] || []);
+            const avgFdr = rated.length
+                ? rated.reduce((s, f) => s + f.difficulty, 0) / rated.length
+                : 0;
+            const avgClass = avgFdr && avgFdr <= 2.5 ? 'good' : avgFdr <= 3.2 ? 'warning' : 'bad';
+
+            const rows = gws.map(gw => {
+                const list = byGW[gw] || [];
+                let cells;
+                if (!list.length) {
+                    cells = `<span class="fx-panel-blank">Blank gameweek</span>`;
+                } else {
+                    cells = list.map(f => `
+                        <span class="fixture-chip fdr-${f.difficulty}" title="FDR ${f.difficulty}">
+                            <span class="fixture-team">${escHTML(f.opponent)}</span>
+                            <span class="fixture-venue">${f.isHome ? 'H' : 'A'}</span>
+                        </span>`).join('');
+                    if (list.length > 1) cells += `<span class="fx-panel-tag">Double</span>`;
+                }
+                return `<div class="fx-panel-row">
+                    <span class="fx-panel-gw">GW${gw}</span>
+                    <span class="fx-panel-fixtures">${cells}</span>
+                </div>`;
+            }).join('');
+
+            const swing = fixtureSwingData[teamId];
+            const swingHtml = swing
+                ? `<div class="fx-panel-swing ${swing.direction}">${swing.direction === 'improving' ? '▲' : '▼'} Fixtures ${swing.direction} from GW${swing.swingGW}: FDR ${swing.currentFdr} → ${swing.futureFdr}</div>`
+                : '';
+
+            document.getElementById('detailPanel').dataset.playerId = playerId;
+            document.getElementById('detailPlayerName').textContent = `${player.team} fixtures`;
+            document.getElementById('detailPlayerMeta').innerHTML = `
+                <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
+                ${escHTML(player.name)} · next ${gws.length} gameweeks
+            `;
+            document.getElementById('detailBody').innerHTML = `
+                <div class="detail-section">
+                    <div class="detail-section-title">📅 Fixture calendar</div>
+                    <div class="fx-panel-summary">
+                        Average FDR over the next ${gws.length} GWs:
+                        <span class="fx-panel-avg ${avgClass}">${avgFdr ? avgFdr.toFixed(2) : '—'}</span>
+                    </div>
+                    ${swingHtml}
+                    <div class="fx-panel-list">${rows}</div>
+                </div>
+                <div class="detail-section">
+                    <button class="btn btn-secondary" style="width:100%;" onclick="window.location.href='fpl-teams-analysis.html#calendar'">Open the full league calendar →</button>
+                </div>`;
+            document.getElementById('detailOverlay').classList.add('show');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function toggleSection(sectionId) {
@@ -7941,9 +8043,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=5"></script>
-    <script src="scripts/common.js?v=5"></script>
-    <script src="scripts/sidebar-nav.js?v=5"></script>
+    <script src="scripts/compare-report.js?v=6"></script>
+    <script src="scripts/common.js?v=6"></script>
+    <script src="scripts/sidebar-nav.js?v=6"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
