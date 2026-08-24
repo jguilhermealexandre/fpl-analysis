@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=11">
-    <link rel="stylesheet" href="styles/my-team.css?v=11">
-    <link rel="stylesheet" href="styles/v2-design.css?v=11">
-    <link rel="stylesheet" href="styles/compare-report.css?v=11">
+    <link rel="stylesheet" href="styles/common.css?v=12">
+    <link rel="stylesheet" href="styles/my-team.css?v=12">
+    <link rel="stylesheet" href="styles/v2-design.css?v=12">
+    <link rel="stylesheet" href="styles/compare-report.css?v=12">
 </head>
 <body>
 
@@ -320,6 +320,9 @@
 
         let allFixtures = [];     // All fixtures from fixtures.json
         let managerHistory = null; // Manager history from /api/entry/{id}/history/
+        let gwEvents = [];        // bootstrap events[] — deadlines, is_current/is_next
+        let chipDefinitions = []; // bootstrap chips[] — each chip's start_event/stop_event window
+        let maxFreeTransfers = 5; // from game_settings.max_extra_free_transfers + 1
 
         // Shared state for Draft & analysis
         let playersDetailData = null; // Full players-data.json with per-GW history
@@ -688,6 +691,13 @@
                 bootData.teams.forEach(t => { teams[t.id] = t; });
                 const currEvent = bootData.events.find(e => e.is_current);
                 currentGW = currEvent ? currEvent.id : 1;
+                gwEvents = bootData.events || [];
+                chipDefinitions = bootData.chips || [];
+                // The cap on banked transfers is a game setting, not a constant —
+                // read it rather than hardcoding the current season's value.
+                if (bootData.game_settings?.max_extra_free_transfers != null) {
+                    maxFreeTransfers = bootData.game_settings.max_extra_free_transfers + 1;
+                }
                 isPreseason = computeIsPreseason(bootData, fixturesData);
                 allFixtures = fixturesData;
                 processFixtures(fixturesData);
@@ -1234,6 +1244,7 @@
             if (sqChartInstance) { sqChartInstance.destroy(); sqChartInstance = null; }
             document.getElementById('teamDisplay').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            startDeadlineCountdown();
             // Same timing safety as toggleSquadChart(): give the freshly-inserted
             // grid-collapse container a moment to lay out before Chart.js measures it.
             if (sqChartExpanded) setTimeout(initSquadChart, 320);
@@ -1327,17 +1338,235 @@
 
         // Right-hand column of the squad overview. Reads the managerData/picksData
         // globals directly (both assigned in loadTeamById before analyzeTeam() runs).
+        // ===== MANAGER PANEL DATA =====
+        // Every figure the panel shows is derived here so the render stays dumb and
+        // each derivation can be checked on its own.
+        const CHIP_LABELS = { wildcard: 'Wildcard', freehit: 'Free Hit', bboost: 'Bench Boost', '3xc': 'Triple Captain' };
+        const CHIP_ICONS  = { wildcard: '🃏', freehit: '🎲', bboost: '🪑', '3xc': '👑' };
+
+        // FPL never exposes how many free transfers you hold, so it has to be
+        // replayed from the transfer history: +1 per gameweek, capped, minus the
+        // transfers made, and gameweeks played under a Wildcard or Free Hit don't
+        // spend anything. GW1 is squad creation, which is unlimited.
+        function deriveFreeTransfers() {
+            const rows = managerHistory?.current || [];
+            if (!rows.length) return { count: 1, exact: false };
+
+            const chipByEvent = {};
+            (managerHistory?.chips || []).forEach(ch => { chipByEvent[ch.event] = ch.name; });
+
+            let ft = 1;
+            rows.forEach(row => {
+                if (row.event === 1) { ft = 1; return; }
+                const chip = chipByEvent[row.event];
+                if (chip !== 'wildcard' && chip !== 'freehit') {
+                    ft = Math.max(0, ft - (row.event_transfers || 0));
+                }
+                ft = Math.min(maxFreeTransfers, ft + 1);
+            });
+            // Only trustworthy if the history covers every gameweek up to now.
+            const exact = rows.length >= (currentGW - (rows.some(r => r.event === currentGW) ? 0 : 1));
+            return { count: ft, exact };
+        }
+
+        // A chip is available if its window covers the upcoming gameweek and the
+        // manager hasn't already played that particular one. The windows come from
+        // bootstrap (each chip is issued once per half of the season).
+        function deriveChipStatus(forGW) {
+            const used = managerHistory?.chips || [];
+            const seen = {};
+            const out = [];
+            chipDefinitions.forEach(def => {
+                if (forGW < def.start_event || forGW > def.stop_event) return;
+                if (seen[def.name]) return;
+                seen[def.name] = true;
+                const spent = used.some(u => u.name === def.name && u.event >= def.start_event && u.event <= def.stop_event);
+                out.push({ name: def.name, label: CHIP_LABELS[def.name] || def.name, icon: CHIP_ICONS[def.name] || '🎫', available: !spent });
+            });
+            return out;
+        }
+
+        // How far through the gameweek the starting XI is. Counts each player once
+        // even in a double gameweek. Players blanking this gameweek are held apart
+        // rather than folded into "played": they never play, so counting them as
+        // done overstates progress and counting them as pending never resolves.
+        function deriveLiveProgress() {
+            const ids = snapshotXI.size ? [...snapshotXI] : selectedPlayers.filter(p => !p.onBench).map(p => p.id);
+            const gwFixtures = allFixtures.filter(f => f.event === currentGW);
+            let played = 0, live = 0, toPlay = 0, blank = 0;
+
+            ids.forEach(id => {
+                const player = selectedPlayers.find(p => p.id === id) || allPlayersById[id];
+                if (!player) return;
+                const mine = gwFixtures.filter(f => f.team_h === player.teamId || f.team_a === player.teamId);
+                if (!mine.length) { blank++; return; }
+                if (mine.some(f => f.started && !f.finished_provisional)) live++;
+                else if (mine.every(f => f.finished_provisional)) played++;
+                else toPlay++;
+            });
+            return { played, live, toPlay, blank, total: played + live + toPlay };
+        }
+
+        function buildManagerPanelData() {
+            if (!managerData) return null;
+
+            const rows = managerHistory?.current || [];
+            const thisRow = rows.find(r => r.event === currentGW) || rows[rows.length - 1] || null;
+            const prevRow = rows.length > 1 ? rows[rows.length - 2] : null;
+
+            // Positive delta = climbed. FPL ranks count upward, so an improvement is
+            // a decrease, hence previous minus current.
+            const overallRank = managerData.summary_overall_rank ?? thisRow?.overall_rank ?? null;
+            const rankDelta = (prevRow && thisRow && prevRow.overall_rank && thisRow.overall_rank)
+                ? prevRow.overall_rank - thisRow.overall_rank
+                : null;
+
+            // entry_history.value is the whole team including cash — confirmed
+            // against the API, where value stays 1000 while bank varies. Subtract
+            // the bank to get what the players themselves are worth.
+            const bankTenths = picksData?.entry_history?.bank ?? thisRow?.bank ?? 0;
+            const valueTenths = picksData?.entry_history?.value ?? thisRow?.value ?? 0;
+
+            const nextEvent = gwEvents.find(e => e.is_next)
+                || gwEvents.find(e => e.id === currentGW + 1)
+                || null;
+            const currEvent = gwEvents.find(e => e.id === currentGW) || null;
+            const gwLive = !!(currEvent && !currEvent.finished);
+            const deadlineGW = nextEvent ? nextEvent.id : currentGW;
+
+            const ft = deriveFreeTransfers();
+
+            return {
+                name: `${managerData.player_first_name || ''} ${managerData.player_last_name || ''}`.trim() || 'Manager',
+                teamName: managerData.name || '',
+                gw: currentGW,
+                gwLive,
+                overallRank,
+                rankDelta,
+                gwRank: thisRow?.rank ?? managerData.summary_event_rank ?? null,
+                gwPoints: thisRow?.points ?? managerData.summary_event_points ?? null,
+                totalPoints: managerData.summary_overall_points ?? thisRow?.total_points ?? null,
+                squadValue: (valueTenths - bankTenths) / 10,
+                bank: bankTenths / 10,
+                totalValue: valueTenths / 10,
+                freeTransfers: ft.count,
+                freeTransfersExact: ft.exact,
+                transfersMade: thisRow?.event_transfers ?? 0,
+                hitCost: thisRow?.event_transfers_cost ?? 0,
+                activeChip: picksData?.active_chip || null,
+                chips: deriveChipStatus(deadlineGW),
+                deadline: nextEvent?.deadline_time || null,
+                deadlineGW,
+                progress: deriveLiveProgress()
+            };
+        }
+
+        // One timer only: every re-render clears the previous one, and the tick
+        // stops itself once the element it writes into is gone.
+        let deadlineTimer = null;
+        function startDeadlineCountdown() {
+            if (deadlineTimer) { clearInterval(deadlineTimer); deadlineTimer = null; }
+            const tick = () => {
+                const el = document.getElementById('mgrDeadline');
+                const out = el && el.querySelector('.mgr-deadline-value');
+                if (!out) { clearInterval(deadlineTimer); deadlineTimer = null; return; }
+
+                const diff = new Date(el.dataset.deadline).getTime() - Date.now();
+                if (!isFinite(diff)) { out.textContent = '—'; return; }
+                if (diff <= 0) {
+                    out.textContent = 'Locked';
+                    el.classList.add('passed');
+                    clearInterval(deadlineTimer); deadlineTimer = null;
+                    return;
+                }
+                const days = Math.floor(diff / 86400000);
+                const hrs = Math.floor(diff / 3600000) % 24;
+                const mins = Math.floor(diff / 60000) % 60;
+                const secs = Math.floor(diff / 1000) % 60;
+                out.textContent = days > 0 ? `${days}d ${hrs}h ${mins}m`
+                    : hrs > 0 ? `${hrs}h ${mins}m ${secs}s`
+                    : `${mins}m ${secs}s`;
+                el.classList.toggle('urgent', diff < 6 * 3600000);
+            };
+            tick();
+            deadlineTimer = setInterval(tick, 1000);
+        }
+
+        function fmtRank(n) { return n == null ? '—' : n.toLocaleString(); }
+
+        function renderRankDelta(delta) {
+            if (delta == null || delta === 0) return '';
+            const up = delta > 0;
+            return `<span class="mgr-delta ${up ? 'up' : 'down'}" title="${up ? 'Climbed' : 'Dropped'} ${Math.abs(delta).toLocaleString()} places since last gameweek">
+                ${up ? '▲' : '▼'} ${Math.abs(delta).toLocaleString()}</span>`;
+        }
+
         function renderManagerCard() {
-            if (!managerData) return '<div class="manager-info"></div>';
-            const name = `${managerData.player_first_name || ''} ${managerData.player_last_name || ''}`.trim() || 'Manager';
-            const rank = managerData.summary_overall_rank?.toLocaleString() || '-';
-            const points = managerData.summary_overall_points?.toLocaleString() || '-';
-            const bank = `£${(picksData?.entry_history?.bank / 10 || 0).toFixed(1)}m`;
+            const d = buildManagerPanelData();
+            if (!d) return '<div class="manager-info"></div>';
+
+            const chipsAvail = d.chips.filter(ch => ch.available);
+            const activeLabel = d.activeChip ? (CHIP_LABELS[d.activeChip] || d.activeChip) : null;
+
+            const ftNote = d.transfersMade
+                ? `${d.transfersMade} made this GW${d.hitCost ? ` · −${d.hitCost} pts` : ''}`
+                : 'No transfers made yet';
+
+            const p = d.progress;
+            const progressPct = p.total ? Math.round(((p.played + p.live * 0.5) / p.total) * 100) : 0;
+
             return `<div class="manager-info">
-                <span class="manager-name">${escHTML(name)}</span>
-                <span class="manager-stat">Rank: <strong>${rank}</strong></span>
-                <span class="manager-stat">Points: <strong>${points}</strong></span>
-                <span class="manager-stat">Bank: <strong>${bank}</strong></span>
+                <div class="manager-name">
+                    <span>${escHTML(d.name)}</span>
+                    <span class="mgr-gw">GW${d.gw}${d.gwLive ? ' · <span class="mgr-livedot">LIVE</span>' : ''}</span>
+                </div>
+
+                ${d.deadline ? `<div class="mgr-deadline" id="mgrDeadline" data-deadline="${escHTML(d.deadline)}" data-gw="${d.deadlineGW}">
+                    <span class="mgr-deadline-label">⏳ GW${d.deadlineGW} deadline</span>
+                    <span class="mgr-deadline-value">—</span>
+                </div>` : ''}
+
+                <div class="mgr-row">
+                    <span class="mgr-label">Overall rank</span>
+                    <span class="mgr-value">${fmtRank(d.overallRank)} ${renderRankDelta(d.rankDelta)}</span>
+                </div>
+                <div class="mgr-row">
+                    <span class="mgr-label">GW${d.gw} rank</span>
+                    <span class="mgr-value">${fmtRank(d.gwRank)}${d.gwPoints != null ? ` <span class="mgr-sub">${d.gwPoints} pts</span>` : ''}</span>
+                </div>
+                <div class="mgr-row">
+                    <span class="mgr-label">Total points</span>
+                    <span class="mgr-value">${fmtRank(d.totalPoints)}</span>
+                </div>
+
+                <div class="mgr-row mgr-money">
+                    <span class="mgr-label">💰 Squad · Bank</span>
+                    <span class="mgr-value">£${d.squadValue.toFixed(1)}m <span class="mgr-sep">·</span> £${d.bank.toFixed(1)}m</span>
+                </div>
+
+                <div class="mgr-row">
+                    <span class="mgr-label">🎟️ Free transfers${d.freeTransfersExact ? '' : '<span class="mgr-est" title="Estimated: FPL does not publish your free-transfer count, so it is replayed from your transfer history.">est</span>'}</span>
+                    <span class="mgr-value">${d.freeTransfers}<span class="mgr-sub">${escHTML(ftNote)}</span></span>
+                </div>
+
+                <div class="mgr-chips">
+                    <div class="mgr-chips-head">🃏 ${activeLabel ? `Active: <strong>${escHTML(activeLabel)}</strong>` : 'No chip active'}</div>
+                    <div class="mgr-chips-list">
+                        ${d.chips.length ? d.chips.map(ch => `<span class="mgr-chip ${ch.available ? 'avail' : 'used'} ${d.activeChip === ch.name ? 'active' : ''}"
+                            title="${escHTML(ch.label)} — ${d.activeChip === ch.name ? 'active this gameweek' : ch.available ? 'available' : 'already used'}">
+                            ${ch.icon} ${escHTML(ch.label)}</span>`).join('')
+                        : '<span class="mgr-chip used">None available</span>'}
+                    </div>
+                    ${d.chips.length ? `<div class="mgr-chips-note">${chipsAvail.length} of ${d.chips.length} still available</div>` : ''}
+                </div>
+
+                ${p.total ? `<div class="mgr-progress">
+                    <div class="mgr-progress-head">
+                        <span>⏱️ ${p.played}/${p.total} played</span>
+                        <span class="mgr-progress-right">${p.live ? `<span class="mgr-livedot">${p.live} live</span> · ` : ''}${p.toPlay} to play${p.blank ? ` · ${p.blank} blank` : ''}</span>
+                    </div>
+                    <div class="mgr-progress-bar"><div class="mgr-progress-fill" style="width:${progressPct}%"></div></div>
+                </div>` : ''}
             </div>`;
         }
 
@@ -8755,9 +8984,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=11"></script>
-    <script src="scripts/common.js?v=11"></script>
-    <script src="scripts/sidebar-nav.js?v=11"></script>
+    <script src="scripts/compare-report.js?v=12"></script>
+    <script src="scripts/common.js?v=12"></script>
+    <script src="scripts/sidebar-nav.js?v=12"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
