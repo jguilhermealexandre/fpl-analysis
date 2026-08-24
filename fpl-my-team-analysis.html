@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=15">
-    <link rel="stylesheet" href="styles/my-team.css?v=15">
-    <link rel="stylesheet" href="styles/v2-design.css?v=15">
-    <link rel="stylesheet" href="styles/compare-report.css?v=15">
+    <link rel="stylesheet" href="styles/common.css?v=16">
+    <link rel="stylesheet" href="styles/my-team.css?v=16">
+    <link rel="stylesheet" href="styles/v2-design.css?v=16">
+    <link rel="stylesheet" href="styles/compare-report.css?v=16">
 </head>
 <body>
 
@@ -1658,52 +1658,82 @@
         //
         // Returns the component breakdown so the same numbers can justify captaincy
         // and bench-swap advice in the insights panel.
+        // The clean-sheet and per-90 models live here rather than inline in the
+        // projection, because the fixture panel quotes the same numbers. Two copies
+        // would drift, and a panel that disagrees with the xP on the card is worse
+        // than no panel at all.
+        function cleanSheetProbFor(teamId, fdr) {
+            const ta = teamAnalysis[teamId];
+            const conceded = ta && ta.matchesPlayed > 0 ? ta.avgConceded : 1.4;
+            let csProb = 0.33 - (conceded - 1.3) * 0.16 + (3 - (fdr || 3)) * 0.06;
+            if (ta) csProb += (ta.defensePower - 50) / 600;
+            return Math.max(0.03, Math.min(0.65, csProb));
+        }
+
+        // Per-90 rates off a one-gameweek sample are wild (one goal = a huge
+        // xG/90), so regress them toward the position average until there's
+        // roughly five full matches of evidence.
+        function regressedPer90(player) {
+            const mins = player.minutes || 0;
+            const posAvg = positionAverages[player.position] || {};
+            const baseXgi = posAvg.xGIPer90 || 0.25;
+            const baseXg = baseXgi * (player.position === 4 ? 0.65 : player.position === 3 ? 0.5 : 0.25);
+            const baseXa = Math.max(0, baseXgi - baseXg);
+            const w = Math.min(1, mins / 450);
+            return {
+                xg90: w * (mins > 0 ? (player.xG / mins) * 90 : 0) + (1 - w) * baseXg,
+                xa90: w * (mins > 0 ? (player.xA / mins) * 90 : 0) + (1 - w) * baseXa
+            };
+        }
+
+        // A harder fixture suppresses attacking returns by the same factor the
+        // projection uses, so a per-fixture xGI reads on the projection's terms.
+        function fixtureAttackAdj(fdr) { return 1 + (3 - (fdr || 3)) * 0.10; }
+
+        // Expected share of a start, and the minutes that implies. A player with no
+        // minutes yet still gets a small floor rather than zero — reporting 0.00 for
+        // every fixture of an unplayed player reads as broken data, not as caution.
+        function expectedMinutesModel(player) {
+            const avail = player.status === 'd'
+                ? (player.chanceNextRound != null ? player.chanceNextRound : 50) / 100
+                : 1;
+            const games = computePlayerGamesPlayed(player);
+            const mpg = (player.minutes || 0) / Math.max(games, 1);
+            let pStart = mpg >= 80 ? 0.92 : mpg >= 60 ? 0.75 : mpg >= 30 ? 0.45 : mpg > 0 ? 0.2 : 0.08;
+            pStart *= avail;
+            // Starters play most of the match; everyone else gets a cameo.
+            const expMins = pStart * 82 + (1 - pStart) * 12;
+            return { pStart, expMins, min90: expMins / 90 };
+        }
+
         function projectPlayerPointsDetailed(player) {
             const out = { total: 0, appearance: 0, attack: 0, cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, pStart: 0 };
             if (!player) return out;
             if (player.status === 'i' || player.status === 'u' || player.status === 's') return out;
 
-            const avail = player.status === 'd'
-                ? (player.chanceNextRound != null ? player.chanceNextRound : 50) / 100
-                : 1;
-
-            const games = computePlayerGamesPlayed(player);
             const mins = player.minutes || 0;
-            const mpg = mins / Math.max(games, 1);
-            let pStart = mpg >= 80 ? 0.92 : mpg >= 60 ? 0.75 : mpg >= 30 ? 0.45 : mpg > 0 ? 0.2 : 0.08;
-            pStart *= avail;
+            const games = computePlayerGamesPlayed(player);
+            const { pStart, min90 } = expectedMinutesModel(player);
             out.pStart = pStart;
-
-            // Starters play most of the match; everyone else gets a cameo.
-            const expMins = pStart * 82 + (1 - pStart) * 12;
-            const min90 = expMins / 90;
 
             // 2 pts for 60+ minutes, 1 otherwise.
             out.appearance = pStart * 2 + (1 - pStart) * 0.5;
 
             const fx = (player.fixtures || [])[0];
             const fdr = fx ? (fx.difficulty || 3) : 3;
-            const attackAdj = 1 + (3 - fdr) * 0.10;
+            const attackAdj = fixtureAttackAdj(fdr);
 
             // Per-90 rates off a one-gameweek sample are wild (one goal = a huge
             // xG/90), so regress them toward the position average until there's
             // roughly five full matches of evidence.
-            const posAvg = positionAverages[player.position] || {};
-            const baseXgi = posAvg.xGIPer90 || 0.25;
-            const baseXg = baseXgi * (player.position === 4 ? 0.65 : player.position === 3 ? 0.5 : 0.25);
-            const baseXa = Math.max(0, baseXgi - baseXg);
-            const w = Math.min(1, mins / 450);
-            const xg90 = w * (mins > 0 ? (player.xG / mins) * 90 : 0) + (1 - w) * baseXg;
-            const xa90 = w * (mins > 0 ? (player.xA / mins) * 90 : 0) + (1 - w) * baseXa;
+            const { xg90, xa90 } = regressedPer90(player);
 
             const goalPts = player.position <= 2 ? 6 : player.position === 3 ? 5 : 4;
             out.attack = (xg90 * goalPts + xa90 * 3) * min90 * attackAdj;
 
+            const csProb = cleanSheetProbFor(player.teamId, fdr);
             const ta = teamAnalysis[player.teamId];
             const conceded = ta && ta.matchesPlayed > 0 ? ta.avgConceded : 1.4;
-            let csProb = 0.33 - (conceded - 1.3) * 0.16 + (3 - fdr) * 0.06;
-            if (ta) csProb += (ta.defensePower - 50) / 600;
-            csProb = Math.max(0.03, Math.min(0.65, csProb));
 
             const csPts = player.position <= 2 ? 4 : player.position === 3 ? 1 : 0;
             out.cleanSheet = csProb * csPts * pStart;
@@ -3389,80 +3419,352 @@
         // at the 5 chips the row shows.
         const FIXTURE_PANEL_GWS = 10;
 
-        function openFixturePanel(playerId) {
-            const analysis = analysisResults.find(a => a.player.id === playerId);
-            if (!analysis) return;
-            const { player } = analysis;
-            const teamId = player.teamId;
+        // ===== FIXTURE PANEL: calendar, rotation and pivot analysis =====
+        let fixturePanelPlayerId = null;
+        let fixtureCompareTeamId = null;
 
-            // Group this team's remaining fixtures by gameweek so a GW with two
-            // entries reads as a double and a GW with none reads as a blank.
+        // One team's remaining schedule, grouped by gameweek so a GW holding two
+        // entries reads as a double and a GW holding none reads as a blank.
+        // skipPlayed advances past gameweeks this team has already completed. The
+        // comparison and rotation calendars pass false and start from the primary
+        // team's first gameweek instead: two teams can be a gameweek apart on
+        // whether they have played yet, and lining them up by array position
+        // rather than by gameweek would compare different weeks to each other.
+        function getTeamFixtureCalendar(teamId, startGW, count, skipPlayed) {
             const byGW = {};
             (allFixtures || []).forEach(f => {
                 if (f.event == null || f.finished_provisional) return;
                 if (f.team_h !== teamId && f.team_a !== teamId) return;
                 const isHome = f.team_h === teamId;
                 (byGW[f.event] = byGW[f.event] || []).push({
+                    opponentId: isHome ? f.team_a : f.team_h,
                     opponent: teams[isHome ? f.team_a : f.team_h]?.short_name || '???',
                     isHome,
                     difficulty: (isHome ? f.team_h_difficulty : f.team_a_difficulty) || 3
                 });
             });
+            // Only unfinished fixtures were kept above, so a leading gameweek with
+            // nothing in it is one the team has already played — not a blank. Skip
+            // those, but keep genuine future blanks, which a manager must see.
+            const played = new Set();
+            (allFixtures || []).forEach(f => {
+                if (f.event == null || !f.finished_provisional) return;
+                if (f.team_h === teamId || f.team_a === teamId) played.add(f.event);
+            });
+            let first = startGW;
+            if (skipPlayed !== false) {
+                while (first <= 38 && played.has(first) && !byGW[first]) first++;
+                if (first > 38) first = startGW;
+            }
 
-            const startGW = currentGW || 1;
-            const gws = [];
-            for (let gw = startGW; gw < startGW + FIXTURE_PANEL_GWS && gw <= 38; gw++) gws.push(gw);
+            const out = [];
+            for (let gw = first; gw < first + count && gw <= 38; gw++) {
+                out.push({ gw, list: byGW[gw] || [] });
+            }
+            return out;
+        }
 
-            const rated = gws.flatMap(gw => byGW[gw] || []);
-            const avgFdr = rated.length
-                ? rated.reduce((s, f) => s + f.difficulty, 0) / rated.length
-                : 0;
-            const avgClass = avgFdr && avgFdr <= 2.5 ? 'good' : avgFdr <= 3.2 ? 'warning' : 'bad';
+        // Mean FDR across a slice. Blanks are skipped rather than scored as 3:
+        // a missing match is not an average one, and counting it as average would
+        // make a blank run look playable.
+        function calendarAvgFdr(cal, from, to) {
+            const fx = cal.slice(from, to).flatMap(e => e.list);
+            if (!fx.length) return null;
+            return fx.reduce((s, f) => s + f.difficulty, 0) / fx.length;
+        }
 
-            const rows = gws.map(gw => {
-                const list = byGW[gw] || [];
-                let cells;
-                if (!list.length) {
-                    cells = `<span class="fx-panel-blank">Blank gameweek</span>`;
-                } else {
-                    cells = list.map(f => `
-                        <span class="fixture-chip fdr-${f.difficulty}" title="FDR ${f.difficulty}">
-                            <span class="fixture-team">${escHTML(f.opponent)}</span>
-                            <span class="fixture-venue">${f.isHome ? 'H' : 'A'}</span>
-                        </span>`).join('');
-                    if (list.length > 1) cells += `<span class="fx-panel-tag">Double</span>`;
+        function fdrBand(v) {
+            if (v == null) return { cls: 'none', word: 'No fixtures' };
+            if (v <= 2.2) return { cls: 'great', word: 'Very kind' };
+            if (v <= 2.7) return { cls: 'good', word: 'Favourable' };
+            if (v <= 3.3) return { cls: 'ok', word: 'Average' };
+            if (v <= 3.8) return { cls: 'bad', word: 'Tough' };
+            return { cls: 'awful', word: 'Brutal' };
+        }
+
+        // What this particular player stands to get from a given fixture. A
+        // goalkeeper's schedule is a clean-sheet question; a forward's is a
+        // chance-creation one, so the column changes with the position.
+        function playerFixtureMetric(player, fdr) {
+            if (player.position <= 2) {
+                const pct = Math.round(cleanSheetProbFor(player.teamId, fdr) * 100);
+                return {
+                    value: `${pct}%`,
+                    cls: pct >= 35 ? 'great' : pct >= 25 ? 'good' : pct >= 15 ? 'ok' : 'bad',
+                    tip: `Estimated ${pct}% chance of a clean sheet, from ${escHTML(player.team)}'s goals conceded and defensive rating against a difficulty-${fdr} opponent.`
+                };
+            }
+            const { xg90, xa90 } = regressedPer90(player);
+            const { min90 } = expectedMinutesModel(player);
+            const xgi = (xg90 + xa90) * min90 * fixtureAttackAdj(fdr);
+            return {
+                value: xgi.toFixed(2),
+                cls: xgi >= 0.55 ? 'great' : xgi >= 0.38 ? 'good' : xgi >= 0.22 ? 'ok' : 'bad',
+                tip: `Projected ${xgi.toFixed(2)} expected goal involvements in this match, from ${escHTML(player.name)}'s per-90 rate, expected minutes, and a difficulty-${fdr} opponent.`
+            };
+        }
+
+        // Which other club's schedule best covers this one's hard weeks. For each
+        // gameweek only the easier of the two fixtures counts, since that is the
+        // one a rotating manager would actually start.
+        function findRotationPartners(teamId, startGW, count, limit) {
+            const mine = getTeamFixtureCalendar(teamId, startGW, count);
+            const soloAvg = calendarAvgFdr(mine, 0, mine.length);
+            const from = mine.length ? mine[0].gw : startGW;
+            const out = [];
+
+            Object.keys(teams).forEach(key => {
+                const otherId = parseInt(key, 10);
+                if (otherId === teamId) return;
+                const theirs = getTeamFixtureCalendar(otherId, from, mine.length, false);
+                let sum = 0, n = 0;
+                mine.forEach((entry, i) => {
+                    const a = entry.list[0], b = (theirs[i] || {}).list?.[0];
+                    const best = a && b ? Math.min(a.difficulty, b.difficulty) : (a || b || {}).difficulty;
+                    if (best != null) { sum += best; n++; }
+                });
+                if (!n) return;
+                out.push({
+                    teamId: otherId,
+                    short: teams[otherId]?.short_name || '???',
+                    name: teams[otherId]?.name || teams[otherId]?.short_name || '???',
+                    combined: sum / n,
+                    gain: soloAvg != null ? soloAvg - (sum / n) : 0
+                });
+            });
+
+            out.sort((a, b) => a.combined - b.combined);
+            return { soloAvg, partners: out.slice(0, limit || 2) };
+        }
+
+        // A pivot is where one schedule turns hard just as the other turns kind —
+        // the gameweek to move between them. Compares the three weeks either side.
+        function detectPivotWindow(calA, calB) {
+            const at = (cal, i) => (cal[i] && cal[i].list[0]) ? cal[i].list[0].difficulty : null;
+            const mean = arr => { const v = arr.filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+
+            for (let i = 2; i <= calA.length - 3; i++) {
+                const beforeA = mean([at(calA, i - 2), at(calA, i - 1)]);
+                const afterA = mean([at(calA, i), at(calA, i + 1), at(calA, i + 2)]);
+                const beforeB = mean([at(calB, i - 2), at(calB, i - 1)]);
+                const afterB = mean([at(calB, i), at(calB, i + 1), at(calB, i + 2)]);
+                if (beforeA == null || afterA == null || beforeB == null || afterB == null) continue;
+                if (afterA - beforeA > 0.5 && beforeB - afterB > 0.5) {
+                    return { gw: calA[i].gw, worsening: 'A', improving: 'B' };
                 }
-                return `<div class="fx-panel-row">
-                    <span class="fx-panel-gw">GW${gw}</span>
-                    <span class="fx-panel-fixtures">${cells}</span>
+                if (afterB - beforeB > 0.5 && beforeA - afterA > 0.5) {
+                    return { gw: calA[i].gw, worsening: 'B', improving: 'A' };
+                }
+            }
+            return null;
+        }
+
+        function openFixturePanel(playerId) {
+            fixturePanelPlayerId = playerId;
+            fixtureCompareTeamId = null;
+            renderFixturePanel();
+            document.getElementById('detailOverlay').classList.add('show');
+        }
+
+        function setFixtureCompare(value) {
+            fixtureCompareTeamId = value ? parseInt(value, 10) : null;
+            renderFixturePanel();
+        }
+
+        function autoCompareBestRotation() {
+            const analysis = analysisResults.find(a => a.player.id === fixturePanelPlayerId);
+            if (!analysis) return;
+            const { partners } = findRotationPartners(analysis.player.teamId, currentGW || 1, FIXTURE_PANEL_GWS, 1);
+            if (partners.length) {
+                fixtureCompareTeamId = partners[0].teamId;
+                renderFixturePanel();
+            }
+        }
+
+        function fxChip(f, extraClass) {
+            if (!f) return `<span class="fx-chip fdr-0">Blank</span>`;
+            return `<span class="fx-chip fdr-${f.difficulty} ${extraClass || ''}"
+                data-tooltip="${f.isHome ? 'Home to' : 'Away at'} ${escHTML(f.opponent)} — FDR ${f.difficulty}">${escHTML(f.opponent)} <span class="fx-chip-venue">${f.isHome ? 'H' : 'A'}</span></span>`;
+        }
+
+        function renderFixturePanel() {
+            const analysis = analysisResults.find(a => a.player.id === fixturePanelPlayerId);
+            if (!analysis) return;
+            const { player } = analysis;
+            const teamId = player.teamId;
+            const startGW = currentGW || 1;
+            const isDefensive = player.position <= 2;
+            const teamName = (teams[teamId] && teams[teamId].name) || player.team;
+
+            const cal = getTeamFixtureCalendar(teamId, startGW, FIXTURE_PANEL_GWS);
+            const near = calendarAvgFdr(cal, 0, 3);
+            const long = calendarAvgFdr(cal, 3, cal.length);
+            const nearBand = fdrBand(near), longBand = fdrBand(long);
+
+            // Split cards: the next three weeks are a team-selection question, the
+            // rest is a transfer-planning one, and averaging them together hides
+            // exactly the shift a manager needs to see.
+            const splitCards = `
+            <div class="fx-split">
+                <div class="fx-split-card ${nearBand.cls}">
+                    <div class="fx-split-label">Next 3 GWs</div>
+                    <div class="fx-split-value">${near != null ? near.toFixed(1) : '—'}</div>
+                    <div class="fx-split-word">${nearBand.word}</div>
+                </div>
+                <div class="fx-split-arrow">→</div>
+                <div class="fx-split-card ${longBand.cls}">
+                    <div class="fx-split-label">GW${cal[3] ? cal[3].gw : startGW + 3}–${cal[cal.length - 1].gw}</div>
+                    <div class="fx-split-value">${long != null ? long.toFixed(1) : '—'}</div>
+                    <div class="fx-split-word">${longBand.word}</div>
+                </div>
+            </div>`;
+
+            // Turn the swing into an instruction. "FDR 2.7 → 3.3" is a fact; what
+            // the manager needs is whether to hold, rotate or sell.
+            let adviceHtml = '';
+            const swingDelta = (near != null && long != null) ? long - near : 0;
+            if (near != null && long != null && Math.abs(swingDelta) >= 0.4) {
+                const hardening = swingDelta > 0;
+                const turnGW = cal[3] ? cal[3].gw : startGW + 3;
+                const worstRun = cal.slice(3, 6).flatMap(e => e.list).map(f => f.opponent).filter(Boolean);
+                adviceHtml = `<div class="fx-advice ${hardening ? 'bad' : 'good'}">
+                    <div class="fx-advice-head">${hardening ? '🔴 Schedule hardens from GW' + turnGW : '🟢 Schedule eases from GW' + turnGW}</div>
+                    <div class="fx-advice-body">${hardening
+                        ? `Start ${escHTML(player.name)} through GW${turnGW - 1}, then rotate or move them on${worstRun.length ? ` — ${escHTML(worstRun.join(', '))} follow` : ''}.`
+                        : `Hold through the tougher opening; ${escHTML(player.name)} becomes a stronger hold from GW${turnGW}.`}</div>
+                </div>`;
+            }
+
+            const metricHead = isDefensive ? 'Clean sheet' : 'xGI';
+            const rows = cal.map(entry => {
+                if (!entry.list.length) {
+                    return `<div class="fx-row blank">
+                        <span class="fx-row-gw">GW${entry.gw}</span>
+                        <span class="fx-row-fixtures"><span class="fx-chip fdr-0">Blank gameweek</span></span>
+                        <span class="fx-row-metric">—</span>
+                    </div>`;
+                }
+                const chips = entry.list.map(f => fxChip(f)).join('') + (entry.list.length > 1 ? '<span class="fx-double">Double</span>' : '');
+                // A double gameweek is two shots at the metric, so take the best
+                // fixture's value rather than the first listed.
+                const best = entry.list.reduce((a, b) => (b.difficulty < a.difficulty ? b : a));
+                const m = playerFixtureMetric(player, best.difficulty);
+                return `<div class="fx-row">
+                    <span class="fx-row-gw">GW${entry.gw}</span>
+                    <span class="fx-row-fixtures">${chips}</span>
+                    <span class="fx-row-metric ${m.cls}" data-tooltip="${escHTML(m.tip)}">${m.value}</span>
                 </div>`;
             }).join('');
 
-            const swing = fixtureSwingData[teamId];
-            const swingHtml = swing
-                ? `<div class="fx-panel-swing ${swing.direction}">${swing.direction === 'improving' ? '▲' : '▼'} Fixtures ${swing.direction} from GW${swing.swingGW}: FDR ${swing.currentFdr} → ${swing.futureFdr}</div>`
-                : '';
+            // Rotation only makes sense where managers actually rotate: cheap
+            // keepers and defenders, whose returns hinge on the clean sheet.
+            let rotationHtml = '';
+            if (isDefensive) {
+                const { soloAvg, partners } = findRotationPartners(teamId, startGW, FIXTURE_PANEL_GWS, 2);
+                if (partners.length && soloAvg != null) {
+                    rotationHtml = `<div class="detail-section">
+                        <div class="detail-section-title">🔄 Best rotation partners</div>
+                        <div class="fx-rot-note">Starting whichever has the kinder fixture each week, over the next ${cal.length} gameweeks.</div>
+                        ${partners.map(pt => `<div class="fx-rot">
+                            <span class="fx-rot-team">${escHTML(pt.name)}</span>
+                            <span class="fx-rot-fdr">${pt.combined.toFixed(1)} FDR</span>
+                            <span class="fx-rot-gain ${pt.gain > 0.15 ? 'good' : 'flat'}">${pt.gain > 0 ? `−${pt.gain.toFixed(1)} vs ${escHTML(player.team)} alone` : 'No gain'}</span>
+                            <button class="rc-btn" onclick="setFixtureCompare(${pt.teamId})">Compare</button>
+                        </div>`).join('')}
+                    </div>`;
+                }
+            }
 
-            document.getElementById('detailPanel').dataset.playerId = playerId;
-            document.getElementById('detailPlayerName').textContent = `${player.team} fixtures`;
+            const teamOptions = Object.keys(teams)
+                .map(k => parseInt(k, 10))
+                .filter(id => id !== teamId)
+                .sort((a, b) => (teams[a].short_name || '').localeCompare(teams[b].short_name || ''))
+                .map(id => `<option value="${id}" ${id === fixtureCompareTeamId ? 'selected' : ''}>${escHTML(teams[id].short_name || '')}</option>`)
+                .join('');
+
+            let compareHtml = `<div class="detail-section">
+                <div class="fx-compare-bar">
+                    <label class="fx-compare-label" for="fxCompareSelect">⚔️ Compare calendar with</label>
+                    <select id="fxCompareSelect" class="fx-compare-select" onchange="setFixtureCompare(this.value)">
+                        <option value="">Select a team…</option>
+                        ${teamOptions}
+                    </select>
+                    <button class="fx-compare-auto" onclick="autoCompareBestRotation()">✨ Best rotation</button>
+                </div>`;
+
+            if (fixtureCompareTeamId && teams[fixtureCompareTeamId]) {
+                const other = teams[fixtureCompareTeamId];
+                const calB = getTeamFixtureCalendar(fixtureCompareTeamId, cal.length ? cal[0].gw : startGW, cal.length, false);
+                const soloA = calendarAvgFdr(cal, 0, cal.length);
+                const soloB = calendarAvgFdr(calB, 0, calB.length);
+
+                let sum = 0, n = 0;
+                const matrixRows = cal.map((entry, i) => {
+                    const a = entry.list[0], b = (calB[i] || {}).list?.[0];
+                    const best = a && b ? (a.difficulty <= b.difficulty ? 'A' : 'B') : (a ? 'A' : b ? 'B' : null);
+                    const bestFdr = a && b ? Math.min(a.difficulty, b.difficulty) : (a || b || {}).difficulty;
+                    if (bestFdr != null) { sum += bestFdr; n++; }
+                    const pick = best === 'A' ? `${player.team}` : best === 'B' ? other.short_name : '—';
+                    return `<div class="fx-matrix-row">
+                        <span class="fx-matrix-gw">GW${entry.gw}</span>
+                        <span class="fx-matrix-cell ${best === 'A' ? 'win' : ''}">${fxChip(a)}</span>
+                        <span class="fx-matrix-cell ${best === 'B' ? 'win' : ''}">${fxChip(b)}</span>
+                        <span class="fx-matrix-pick">${best ? `🛡️ ${escHTML(pick)}` : '—'}</span>
+                    </div>`;
+                }).join('');
+
+                const combined = n ? sum / n : null;
+                const saving = (combined != null && soloA != null) ? soloA - combined : 0;
+                const pivot = detectPivotWindow(cal, calB);
+
+                compareHtml += `
+                <div class="fx-matrix">
+                    <div class="fx-matrix-head">
+                        <span class="fx-matrix-gw">GW</span>
+                        <span class="fx-matrix-cell">${escHTML(player.team)}</span>
+                        <span class="fx-matrix-cell">${escHTML(other.short_name || '')}</span>
+                        <span class="fx-matrix-pick">Start</span>
+                    </div>
+                    ${matrixRows}
+                </div>
+                <div class="fx-combined ${saving > 0.15 ? 'good' : 'flat'}">
+                    Rotating gives an effective <strong>${combined != null ? combined.toFixed(1) : '—'} FDR</strong>
+                    against ${escHTML(player.team)} alone at <strong>${soloA != null ? soloA.toFixed(1) : '—'}</strong>${
+                        soloB != null ? ` and ${escHTML(other.short_name || '')} alone at <strong>${soloB.toFixed(1)}</strong>` : ''}.
+                    ${saving > 0.15 ? `<span class="fx-combined-gain">Saves ${saving.toFixed(1)} FDR per gameweek.</span>` : ''}
+                </div>
+                ${pivot ? `<div class="fx-pivot">🔄 Ideal transfer pivot: <strong>GW${pivot.gw}</strong> — ${escHTML(pivot.worsening === 'A' ? player.team : (other.short_name || ''))}'s run turns hard just as ${escHTML(pivot.improving === 'A' ? player.team : (other.short_name || ''))}'s eases.</div>` : ''}`;
+            }
+            compareHtml += `</div>`;
+
+            document.getElementById('detailPanel').dataset.playerId = fixturePanelPlayerId;
+            document.getElementById('detailPlayerName').textContent = `${teamName} — fixtures`;
             document.getElementById('detailPlayerMeta').innerHTML = `
                 <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
-                ${escHTML(player.name)} · next ${gws.length} gameweeks
+                ${escHTML(player.name)} · £${player.price.toFixed(1)}m · next ${cal.length} gameweeks
             `;
             document.getElementById('detailBody').innerHTML = `
                 <div class="detail-section">
-                    <div class="detail-section-title">📅 Fixture calendar</div>
-                    <div class="fx-panel-summary">
-                        Average FDR over the next ${gws.length} GWs:
-                        <span class="fx-panel-avg ${avgClass}">${avgFdr ? avgFdr.toFixed(2) : '—'}</span>
-                    </div>
-                    ${swingHtml}
-                    <div class="fx-panel-list">${rows}</div>
+                    <div class="detail-section-title">📊 Near term vs the run ahead</div>
+                    ${splitCards}
+                    ${adviceHtml}
                 </div>
+                <div class="detail-section">
+                    <div class="detail-section-title">📅 Upcoming matches</div>
+                    <div class="fx-row fx-row-head">
+                        <span class="fx-row-gw">GW</span>
+                        <span class="fx-row-fixtures">Opponent</span>
+                        <span class="fx-row-metric" data-tooltip="${isDefensive
+                            ? 'Estimated clean-sheet probability for each match — what a defender or keeper is really being picked for.'
+                            : 'Projected expected goal involvements for each match, adjusted for the opponent.'}">${metricHead}</span>
+                    </div>
+                    <div class="fx-list">${rows}</div>
+                </div>
+                ${rotationHtml}
+                ${compareHtml}
                 <div class="detail-section">
                     <button class="btn btn-secondary" style="width:100%;" onclick="window.location.href='fpl-teams-analysis.html#calendar'">Open the full league calendar →</button>
                 </div>`;
-            document.getElementById('detailOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -9274,9 +9576,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=15"></script>
-    <script src="scripts/common.js?v=15"></script>
-    <script src="scripts/sidebar-nav.js?v=15"></script>
+    <script src="scripts/compare-report.js?v=16"></script>
+    <script src="scripts/common.js?v=16"></script>
+    <script src="scripts/sidebar-nav.js?v=16"></script>
     <script>initIcons(); initTooltips();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script

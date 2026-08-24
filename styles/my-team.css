@@ -3359,3 +3359,190 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     width: 36px;
     box-sizing: border-box;
 }
+
+/* ===== Fixture panel: split cards, heatmap rows, rotation, comparison ===== */
+.fx-split { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.fx-split-arrow { color: var(--text-muted); font-size: 14px; flex-shrink: 0; }
+
+.fx-split-card {
+    flex: 1;
+    padding: 9px 11px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default);
+    background: var(--surface-2);
+    text-align: center;
+}
+
+.fx-split-label { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.fx-split-value { font-size: 22px; font-weight: 700; font-family: var(--font-mono); line-height: 1.2; color: var(--text-primary); }
+.fx-split-word { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+
+.fx-split-card.great { border-color: var(--fdr-1); background: color-mix(in srgb, var(--fdr-1) 12%, transparent); }
+.fx-split-card.great .fx-split-value { color: var(--fdr-1); }
+.fx-split-card.good { border-color: var(--fdr-2); background: color-mix(in srgb, var(--fdr-2) 16%, transparent); }
+.fx-split-card.bad { border-color: var(--fdr-4); background: color-mix(in srgb, var(--fdr-4) 12%, transparent); }
+.fx-split-card.bad .fx-split-value { color: var(--fdr-4); }
+.fx-split-card.awful { border-color: var(--fdr-5); background: color-mix(in srgb, var(--fdr-5) 12%, transparent); }
+.fx-split-card.awful .fx-split-value { color: var(--fdr-5); }
+
+.fx-advice { padding: 9px 11px; border-radius: var(--radius-lg); border-left: 3px solid var(--border-default); background: var(--surface-2); }
+.fx-advice.bad { border-left-color: var(--fdr-5); }
+.fx-advice.good { border-left-color: var(--fdr-1); }
+.fx-advice-head { font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+.fx-advice-body { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+.fx-list { display: flex; flex-direction: column; gap: 3px; }
+
+.fx-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 64px;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 7px;
+    border-radius: var(--radius-md);
+}
+
+.fx-row:nth-child(odd) { background: var(--surface-2); }
+.fx-row.blank { opacity: .6; }
+
+.fx-row-head {
+    background: none !important;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-bottom: 2px;
+}
+
+.fx-row-gw { font-size: 10px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
+.fx-row-fixtures { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.fx-row-metric { text-align: right; font-size: 12px; font-weight: 700; font-family: var(--font-mono); cursor: help; }
+.fx-row-metric.great { color: var(--fdr-1); }
+.fx-row-metric.good { color: var(--verdict-hold); }
+.fx-row-metric.ok { color: var(--text-secondary); }
+.fx-row-metric.bad { color: var(--verdict-sell); }
+.fx-row-head .fx-row-metric { color: var(--text-muted); font-size: 9px; font-family: var(--font-sans); }
+
+/* Same FDR colour scale as the rest of the app: dark text on the light bands,
+   white only on orange and red, so every chip clears a readable contrast. */
+.fx-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: help;
+    color: #111827;
+}
+
+.fx-chip-venue { font-weight: 600; opacity: .7; font-size: 9px; }
+.fx-chip.fdr-1 { background: var(--fdr-1); }
+.fx-chip.fdr-2 { background: var(--fdr-2); }
+.fx-chip.fdr-3 { background: var(--fdr-3); }
+.fx-chip.fdr-4 { background: var(--fdr-4); color: #fff; }
+.fx-chip.fdr-5 { background: var(--fdr-5); color: #fff; }
+.fx-chip.fdr-0 { background: var(--surface-3); color: var(--text-muted); font-weight: 600; }
+
+.fx-double { font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 4px; background: var(--color-primary); color: #fff; }
+
+.fx-rot-note { font-size: 11px; color: var(--text-muted); margin-bottom: 7px; line-height: 1.5; }
+
+.fx-rot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    margin-bottom: 5px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--surface-1);
+}
+
+.fx-rot-team { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.fx-rot-fdr { font-size: 12px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
+.fx-rot-gain { font-size: 10px; margin-left: auto; }
+.fx-rot-gain.good { color: var(--verdict-hold); font-weight: 600; }
+.fx-rot-gain.flat { color: var(--text-muted); }
+.fx-rot .rc-btn { flex: 0 0 auto; }
+
+.fx-compare-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+.fx-compare-label { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+
+.fx-compare-select {
+    flex: 1;
+    min-width: 110px;
+    padding: 5px 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 11px;
+}
+
+.fx-compare-auto {
+    padding: 5px 9px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.fx-compare-auto:hover { background: var(--color-primary); color: #fff; }
+
+.fx-matrix { display: flex; flex-direction: column; gap: 3px; margin-bottom: 9px; }
+
+.fx-matrix-row, .fx-matrix-head {
+    display: grid;
+    grid-template-columns: 42px 1fr 1fr 92px;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: var(--radius-md);
+}
+
+.fx-matrix-row:nth-child(even) { background: var(--surface-2); }
+
+.fx-matrix-head {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.fx-matrix-gw { font-size: 10px; font-weight: 600; font-family: var(--font-mono); color: var(--text-muted); }
+.fx-matrix-cell { display: flex; }
+.fx-matrix-cell.win .fx-chip { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.fx-matrix-pick { font-size: 10px; font-weight: 600; color: var(--text-secondary); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.fx-combined {
+    padding: 9px 11px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    border: 1px solid var(--border-default);
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--text-muted);
+}
+
+.fx-combined strong { color: var(--text-primary); font-family: var(--font-mono); }
+.fx-combined.good { border-color: var(--verdict-hold); }
+.fx-combined-gain { display: block; margin-top: 3px; color: var(--verdict-hold); font-weight: 600; }
+
+.fx-pivot {
+    margin-top: 7px;
+    padding: 8px 11px;
+    border-radius: var(--radius-lg);
+    border-left: 3px solid var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
