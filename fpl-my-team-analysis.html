@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=3">
-    <link rel="stylesheet" href="styles/my-team.css?v=3">
-    <link rel="stylesheet" href="styles/v2-design.css?v=3">
-    <link rel="stylesheet" href="styles/compare-report.css?v=3">
+    <link rel="stylesheet" href="styles/common.css?v=4">
+    <link rel="stylesheet" href="styles/my-team.css?v=4">
+    <link rel="stylesheet" href="styles/v2-design.css?v=4">
+    <link rel="stylesheet" href="styles/compare-report.css?v=4">
 </head>
 <body>
 
@@ -1672,7 +1672,12 @@
             const cols = computePlayerStatColumns(player);
             const fixtureChips = fixtures.slice(0, 5).map(f => `<div class="fixture-chip fdr-${f.difficulty}"><span class="fixture-team">${escHTML(f.opponent)}</span></div>`).join('');
             const rowFlagClass = verdict === 'sell' ? 'sq-row-sell' : verdict === 'monitor' ? 'sq-row-monitor' : '';
-            const hazardIcon = verdict === 'sell' ? '<i data-lucide="alert-triangle" class="sq-hazard-icon" title="Flagged: high sell rating"></i>' : '';
+            // Always emit the slot, even when there's no hazard — a conditionally
+            // present icon would shift the badge/name right on flagged rows only,
+            // leaving player names unaligned down the column.
+            const hazardIcon = `<span class="sq-hazard-slot">${verdict === 'sell'
+                ? '<i data-lucide="alert-triangle" class="sq-hazard-icon" title="Flagged: high sell rating"></i>'
+                : ''}</span>`;
 
             return `
             <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''}" data-player-id="${player.id}" data-compare-row>
@@ -7909,9 +7914,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=3"></script>
-    <script src="scripts/common.js?v=3"></script>
-    <script src="scripts/sidebar-nav.js?v=3"></script>
+    <script src="scripts/compare-report.js?v=4"></script>
+    <script src="scripts/common.js?v=4"></script>
+    <script src="scripts/sidebar-nav.js?v=4"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
