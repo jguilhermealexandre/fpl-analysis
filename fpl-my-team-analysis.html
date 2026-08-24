@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=4">
-    <link rel="stylesheet" href="styles/my-team.css?v=4">
-    <link rel="stylesheet" href="styles/v2-design.css?v=4">
-    <link rel="stylesheet" href="styles/compare-report.css?v=4">
+    <link rel="stylesheet" href="styles/common.css?v=5">
+    <link rel="stylesheet" href="styles/my-team.css?v=5">
+    <link rel="stylesheet" href="styles/v2-design.css?v=5">
+    <link rel="stylesheet" href="styles/compare-report.css?v=5">
 </head>
 <body>
 
@@ -2077,6 +2077,18 @@
             const excludeIds = new Set(selectedPlayers.map(p => p.id));
             const candidates = findTransferCandidates(player.position, maxPrice, excludeIds).slice(0, 10);
 
+            // computePlayerStatColumns() reads player.avgFDR, which analyzePlayer() only
+            // sets for players in YOUR squad — candidates come straight from allPlayers,
+            // so derive it here or every candidate would show a flat placeholder 3.0.
+            candidates.forEach(c => {
+                if (c.avgFDR == null) {
+                    const fx = (teamFixtures[c.teamId] || c.fixtures || []).slice(0, 5);
+                    c.avgFDR = fx.length
+                        ? fx.reduce((s, f) => s + (f.difficulty || 3), 0) / fx.length
+                        : 3;
+                }
+            });
+
             document.getElementById('detailPanel').dataset.playerId = playerId;
             document.getElementById('detailPlayerName').textContent = `Replace ${player.name}`;
             document.getElementById('detailPlayerMeta').innerHTML = `
@@ -2084,9 +2096,11 @@
                 Budget £${maxPrice.toFixed(1)}m (sell £${sellPrice.toFixed(1)}m + bank £${bank.toFixed(1)}m)
             `;
 
+            const posShort = POSITION_CONFIG[player.position].short;
             let html = `<div class="detail-section">
                 <div class="detail-section-title">⚡ AI-Ranked Replacements</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Recency-weighted form, fixture-adjusted opponent matchup, and team context — same engine as the Transfer Wizard.</div>`;
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Recency-weighted form, fixture-adjusted opponent matchup, and team context — same engine as the Transfer Wizard. Stats shown are ${escHTML(posShort)}-specific.</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Tick players to build an AI Scouting Report, or click a row to compare it against ${escHTML(player.name)}.</div>`;
 
             if (!candidates.length) {
                 html += `<div class="tw-market-empty">No affordable candidates found at this position right now.</div>`;
@@ -2096,14 +2110,24 @@
                     const fixes = teamFixtures[c.teamId] || c.fixtures || [];
                     const nextF = fixes[0];
                     const fdrHtml = nextF ? `<span class="fdr-dot fdr-${nextF.difficulty}"></span> ${escHTML(nextF.opponent)} (${nextF.isHome ? 'H' : 'A'})` : '';
-                    return `<div class="tw-market-row" onclick="openPairCompare(${player.id}, ${c.id})">
+                    // Same position-aware stat set the squad table uses, so a candidate
+                    // is read against your own players on identical terms.
+                    const cols = computePlayerStatColumns(c);
+                    const statCells = [
+                        { label: 'Form', value: cols.form },
+                        { label: 'Nxt5 FDR', value: cols.fdr },
+                        cols.stat3, cols.stat4, cols.stat5, cols.stat6, cols.stat7
+                    ].map(s => `<div class="tw-cand-stat"><span class="tw-cand-stat-label">${escHTML(s.label)}</span><span class="tw-cand-stat-value">${escHTML(String(s.value))}</span></div>`).join('');
+
+                    return `<div class="tw-market-row tw-cand-row" data-compare-row onclick="openPairCompare(${player.id}, ${c.id})">
+                        <input type="checkbox" class="compare-checkbox" data-player-id="${c.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${c.id})" title="Add to AI Scouting Report">
                         <div class="tw-market-rank">${i + 1}</div>
                         <span class="tw-market-name">${escHTML(c.name)}</span>
                         <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${escHTML(teamName)}</span>
                         <span class="tw-market-price">£${c.price.toFixed(1)}m ${priceChangeBadge(c)}</span>
-                        <span class="tw-market-stat" style="color:${(c.form || 0) >= 5 ? 'var(--color-success)' : 'var(--text-secondary)'};">${(c.form || 0).toFixed(1)}</span>
                         <span class="tw-market-score" title="AI Transfer Score">${(c._transferScore || 0).toFixed(0)}</span>
                         <div class="tw-market-row-detail">${fdrHtml}</div>
+                        <div class="tw-cand-stats">${statCells}</div>
                     </div>`;
                 }).join('');
             }
@@ -2115,6 +2139,9 @@
             document.getElementById('detailBody').innerHTML = html;
             document.getElementById('detailOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            // Reflect any already-selected players (and disable the rest once the
+            // compare list is full) on the checkboxes we just rendered.
+            if (typeof onCompareSelectionChange === 'function') onCompareSelectionChange();
         }
 
         function toggleSection(sectionId) {
@@ -7914,9 +7941,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=4"></script>
-    <script src="scripts/common.js?v=4"></script>
-    <script src="scripts/sidebar-nav.js?v=4"></script>
+    <script src="scripts/compare-report.js?v=5"></script>
+    <script src="scripts/common.js?v=5"></script>
+    <script src="scripts/sidebar-nav.js?v=5"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
