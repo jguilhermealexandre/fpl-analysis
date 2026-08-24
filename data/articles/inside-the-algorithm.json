@@ -1,0 +1,13 @@
+{
+  "id": "inside-algorithm",
+  "title": "Inside the Algorithm: How our FPL AI predicts points",
+  "category": "Behind the Build",
+  "icon": "🔧",
+  "dek": "No black box. A component-by-component walkthrough of how every projected-points number on this site is produced, and what the model refuses to claim.",
+  "body": "## What the projection actually does\n\nEvery projected-points figure on this site comes from one function. It is worth being specific about what it does, because \"AI\" is doing a lot of unearned work in most FPL tools.\n\n### 1. Minutes first\n\nNothing else matters if a player does not play. The model estimates a probability of starting from minutes per appearance, then blends a starter's minutes with a substitute's cameo. A player with a fitness doubt has that probability scaled by his published chance of playing.\n\n### 2. Attacking returns, regressed\n\nPer-90 rates from a small sample are wild — one goal in one appearance is a huge xG/90. The model regresses each player's rate toward his position's average until there is roughly five full matches of evidence, then lets his own numbers stand alone.\n\n### 3. Clean sheets from the defence, not the fixture alone\n\nClean-sheet probability comes from goals conceded and a defensive rating, adjusted by fixture difficulty, and is capped at both ends. No defence is a certainty and none is hopeless.\n\n### 4. Then the scoring rules\n\n| Component | How it is derived |\n|---|---|\n| Appearance | Start probability against 2 points for 60 minutes, 1 otherwise |\n| Attack | Regressed xG and xA per 90, scaled by expected minutes and fixture |\n| Clean sheet | Clean-sheet probability by position value, scaled by start probability |\n| Saves | Saves per 90 divided by 3, for goalkeepers |\n| Bonus | Bonus per game, capped |\n| Conceded | Goals conceded against the chance of no clean sheet, as a negative |\n\n### What it deliberately does not do\n\nThe model uses FPL's own `ep_next` only as a floor while a player has little history, and only for the immediate gameweek. Three gameweeks out it is ignored entirely — it is an estimate for the next match and means nothing beyond it.\n\n> The projection is calibrated against FPL's published average entry score. It is a model, not a prophecy, and the numbers it produces are only as good as the sample behind them. Early in a season that sample is small, which is why this site says \"too early to rank\" rather than inventing a ranking.\n",
+  "source": "Describes the projection model in scripts/pitch-snapshot.js",
+  "slug": "inside-the-algorithm",
+  "readTime": 2,
+  "gw": null,
+  "date": "2026-08-24T20:16:44.477Z"
+}

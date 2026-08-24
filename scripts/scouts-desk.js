@@ -15,6 +15,7 @@
    ============================================ */
 
 let sdArticles = [];
+let sdArchived = false;
 let sdBoot = null, sdFixtures = null, sdHistory = null;
 
 // ---------- small helpers ----------
@@ -544,8 +545,7 @@ function renderArticlesPage() {
     const rest = sdArticles.filter(a => a !== featured);
 
     el.innerHTML = `
-        <article class="sd-featured" onclick="sdOpenArticle('${featured.id}')" tabindex="0"
-            onkeydown="if(event.key==='Enter')sdOpenArticle('${featured.id}')">
+        <a class="sd-featured" href="${sdPermalink(featured)}" onclick="return sdCardClick(event, '${featured.id}')">
             <div class="sd-featured-art" aria-hidden="true"><span class="sd-featured-glyph">${featured.icon}</span></div>
             <div class="sd-featured-body">
                 <div class="sd-tags">
@@ -556,12 +556,11 @@ function renderArticlesPage() {
                 <p class="sd-featured-dek">${escHTML(featured.dek)}</p>
                 <div class="sd-meta">${sdFormatDate(featured.date)} · ${escHTML(featured.source)}</div>
             </div>
-        </article>
+        </a>
 
         <div class="sd-grid">
             ${rest.map(a => `
-                <article class="sd-card" onclick="sdOpenArticle('${a.id}')" tabindex="0"
-                    onkeydown="if(event.key==='Enter')sdOpenArticle('${a.id}')">
+                <a class="sd-card" href="${sdPermalink(a)}" onclick="return sdCardClick(event, '${a.id}')">
                     <div class="sd-card-top">
                         <span class="sd-tag">${a.icon} ${escHTML(a.category)}</span>
                         <span class="sd-read">⏱️ ${a.readTime} min</span>
@@ -569,13 +568,41 @@ function renderArticlesPage() {
                     <h3 class="sd-card-title">${escHTML(a.title)}</h3>
                     <p class="sd-card-dek">${escHTML(a.dek)}</p>
                     <div class="sd-meta">${sdFormatDate(a.date)}</div>
-                </article>`).join('')}
+                </a>`).join('')}
         </div>`;
 }
 
-function sdOpenArticle(id) {
+// Archived articles have a real page of their own. Live-generated ones do not,
+// so they fall back to the desk itself.
+function sdPermalink(a) {
+    return a.slug ? `articles/${a.slug}.html` : 'fpl-scouts-desk.html';
+}
+
+// Plain click opens the reader; modified clicks and middle-click keep the
+// browser's own behaviour, so the permalink still works as a link.
+function sdCardClick(event, id) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return true;
+    event.preventDefault();
+    sdOpenArticle(id);
+    return false;
+}
+
+async function sdOpenArticle(id) {
     const a = sdArticles.find(x => x.id === id);
     if (!a) return;
+    // Index entries carry no body — fetch it the first time one is opened.
+    if (!a.body && a.slug) {
+        try {
+            const full = await DataCache.fetchJSON(`data/articles/${a.slug}.json?v=${CACHE_BUSTER}`);
+            a.body = full.body;
+        } catch (e) {
+            a.body = '_This article could not be loaded._';
+        }
+    }
+    sdRenderArticle(a);
+}
+
+function sdRenderArticle(a) {
     document.getElementById('sdReaderBody').innerHTML = `
         <div class="sd-tags">
             <span class="sd-tag primary">${a.icon} ${escHTML(a.category)}</span>
@@ -586,7 +613,9 @@ function sdOpenArticle(id) {
         <div class="sd-reader-meta">${sdFormatDate(a.date)} · ${escHTML(a.source)}</div>
         <div class="sd-prose">${sdMarkdown(a.body)}</div>
         <div class="sd-reader-foot">
-            Every figure in this piece was read from the live FPL dataset when the page loaded. Nothing is illustrative.
+            ${a.slug
+                ? `Published from the FPL dataset as it stood that day, and unedited since. <a class="sd-permalink" href="articles/${a.slug}.html">Permanent link</a>`
+                : 'Generated from the live FPL dataset when this page loaded.'}
         </div>`;
     document.getElementById('sdReader').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -631,23 +660,37 @@ async function initScoutsDesk() {
         ]);
         sdBoot = boot; sdFixtures = fixtures; sdHistory = players;
 
-        const built = [
-            sdGenGameweekDebrief(),
-            sdGenUnderTheHood(),
-            sdGenDifferentialWatchlist(),
-            sdGenBargainGems(),
-            sdGenPremiumDilemma(),
-            sdGenInsideAlgorithm()
-        ].filter(Boolean);
+        // The archive is the record. It is written once per gameweek by
+        // scripts/build-articles.js after the data refresh, so a gameweek's
+        // debrief stays exactly as it was published.
+        let archive = null;
+        try {
+            archive = await DataCache.fetchJSON(`data/articles/index.json?v=${CACHE_BUSTER}`);
+        } catch (e) { /* no archive yet — fall through to generating live */ }
 
-        // Dated backwards from today so the feed reads as a publication history
-        // rather than fifteen posts stamped with the same minute.
-        const now = Date.now();
-        sdArticles = built.map((a, i) => ({
-            ...a,
-            readTime: sdReadTime(a.body),
-            date: new Date(now - i * 86400000 * 2)
-        }));
+        if (archive && archive.length) {
+            sdArticles = archive.map(a => ({ ...a, id: a.slug, date: new Date(a.date) }));
+            sdArchived = true;
+        } else {
+            // Nothing built yet (first deploy, or the action has not run). Generate
+            // in the browser so the page is never empty, but these have no permalink
+            // and are replaced by the archived versions once they exist.
+            const built = [
+                sdGenGameweekDebrief(),
+                sdGenUnderTheHood(),
+                sdGenDifferentialWatchlist(),
+                sdGenBargainGems(),
+                sdGenPremiumDilemma(),
+                sdGenInsideAlgorithm()
+            ].filter(Boolean);
+            const now = Date.now();
+            sdArticles = built.map((a, i) => ({
+                ...a,
+                readTime: sdReadTime(a.body),
+                date: new Date(now - i * 86400000 * 2)
+            }));
+            sdArchived = false;
+        }
 
         document.getElementById('sdStudioList').innerHTML = SD_RECURRING.map(r =>
             `<button class="sd-gen-btn" onclick="sdGenerate('${r.key}')">
@@ -659,9 +702,12 @@ async function initScoutsDesk() {
         const rounds = sdRoundsPlayed();
         const note = document.getElementById('sdDataNote');
         if (note) {
-            note.textContent = rounds <= 2
-                ? `Generated from ${rounds} completed gameweek${rounds === 1 ? '' : 's'} — early-season samples are small, and the articles say so where it matters.`
-                : `Generated from ${rounds} completed gameweeks of live FPL data.`;
+            const sample = rounds <= 2
+                ? `Early-season samples are small, and the articles say so where it matters.`
+                : `Drawn from ${rounds} completed gameweeks of FPL data.`;
+            note.textContent = sdArchived
+                ? `${sdArticles.length} articles in the archive, each published once and kept as it was. ${sample}`
+                : `Generated live from the current FPL data — the archive has not been built yet. ${sample}`;
         }
     } catch (e) {
         console.error('Scout\'s Desk failed to load:', e);
@@ -670,6 +716,67 @@ async function initScoutsDesk() {
     }
 }
 
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') sdCloseArticle();
-});
+if (typeof document !== 'undefined') {
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') sdCloseArticle();
+    });
+}
+
+// ---------- archive ----------
+// The same generators, run at build time instead of page load, keyed by the
+// gameweek they describe. A gameweek's debrief is a permanent record of that
+// gameweek — once written it is never regenerated, which is the whole point of
+// having an archive rather than a live view.
+function sdSetData(boot, fixtures, history) {
+    sdBoot = boot; sdFixtures = fixtures; sdHistory = history;
+}
+
+function sdSlugify(s) {
+    return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// Which recurring formats are due this gameweek. Cadence is expressed against
+// the gameweek number so a build is deterministic — running the action six
+// times a day must not produce six Fixture Horizons.
+function sdRecurringDue(gw) {
+    const due = [];
+    if (gw % 4 === 0) due.push({ key: 'fixture-horizon', gen: sdGenFixtureHorizon });
+    if (gw % 2 === 0) due.push({ key: 'differential-spotlight', gen: sdGenDifferentialSpotlight });
+    if (gw % 4 === 2) due.push({ key: 'market-watch', gen: sdGenChipMarketWatch });
+    return due;
+}
+
+// Everything that should exist in the archive given the data currently loaded.
+// The builder writes only what is missing, so this can be called repeatedly.
+function sdBuildArchive() {
+    const gw = sdLastRound();
+    const out = [];
+    const push = (art, slug, dated) => {
+        if (!art) return;
+        art.slug = slug;
+        art.readTime = sdReadTime(art.body);
+        art.gw = dated ? gw : null;
+        out.push(art);
+    };
+
+    if (gw > 0) {
+        push(sdGenGameweekDebrief(), `gameweek-${gw}-debrief`, true);
+        push(sdGenUnderTheHood(), `gameweek-${gw}-under-the-hood`, true);
+        push(sdGenDifferentialWatchlist(), `gameweek-${gw}-differential-watchlist`, true);
+        push(sdGenBargainGems(), `gameweek-${gw}-bargain-gems`, true);
+        push(sdGenPremiumDilemma(), `gameweek-${gw}-premium-dilemma`, true);
+        sdRecurringDue(gw).forEach(r => push(r.gen(), `gameweek-${gw}-${r.key}`, true));
+    }
+    // No live data behind it, so it is written once and never rewritten.
+    push(sdGenInsideAlgorithm(), 'inside-the-algorithm', false);
+    return out;
+}
+
+// Node (the build script) requires this file; the browser and jsc load it as a
+// plain script and pick the same functions up as globals.
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        sdSetData, sdBuildArchive, sdMarkdown, sdReadTime, sdLastRound,
+        sdRoundsPlayed, sdSlugify, sdRecurringDue
+    };
+}

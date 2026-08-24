@@ -116,6 +116,12 @@ jobs:
           processAllPlayers().catch(console.error);
           EOF
 
+      - name: Build article archive
+        # Runs the same generators the browser uses, writing each article once,
+        # keyed by the gameweek it describes. Existing files are never rewritten,
+        # so a gameweek's debrief stays as it was published.
+        run: node scripts/build-articles.js
+
       - name: Write last-updated timestamp
         run: |
           echo "{\"lastUpdated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > data/last-updated.json
@@ -125,6 +131,7 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           git add data/players-data.json data/bootstrap-static.json data/fixtures.json data/last-updated.json
+          git add data/articles articles sitemap.xml robots.txt
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" class="v2-theme">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside the Algorithm: How our FPL AI predicts points — The Scout's Desk | Easy FPL</title>
+<meta name="description" content="No black box. A component-by-component walkthrough of how every projected-points number on this site is produced, and what the model refuses to claim.">
+<link rel="canonical" href="https://easyfpl.com/articles/inside-the-algorithm.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Inside the Algorithm: How our FPL AI predicts points">
+<meta property="og:description" content="No black box. A component-by-component walkthrough of how every projected-points number on this site is produced, and what the model refuses to claim.">
+<meta property="og:url" content="https://easyfpl.com/articles/inside-the-algorithm.html">
+<meta property="article:published_time" content="2026-08-24T20:16:44.477Z">
+<meta property="article:section" content="Behind the Build">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/common.css">
+<link rel="stylesheet" href="../styles/v2-design.css">
+<link rel="stylesheet" href="../styles/scouts-desk.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Inside the Algorithm: How our FPL AI predicts points","description":"No black box. A component-by-component walkthrough of how every projected-points number on this site is produced, and what the model refuses to claim.","datePublished":"2026-08-24T20:16:44.477Z","dateModified":"2026-08-24T20:16:44.477Z","author":{"@type":"Organization","name":"EasyFPL"},"publisher":{"@type":"Organization","name":"EasyFPL"},"mainEntityOfPage":"https://easyfpl.com/articles/inside-the-algorithm.html","articleSection":"Behind the Build"}</script>
+</head>
+<body>
+<main class="sd-standalone">
+    <nav class="sd-crumb"><a href="../fpl-scouts-desk.html">← The Scout's Desk</a></nav>
+    <article class="sd-reader-body">
+        <div class="sd-tags">
+            <span class="sd-tag primary">🔧 Behind the Build</span>
+            <span class="sd-read">⏱️ 2 min read</span>
+        </div>
+        <h1 class="sd-reader-title">Inside the Algorithm: How our FPL AI predicts points</h1>
+        <p class="sd-reader-dek">No black box. A component-by-component walkthrough of how every projected-points number on this site is produced, and what the model refuses to claim.</p>
+        <div class="sd-reader-meta">
+            <time datetime="2026-08-24T20:16:44.477Z">24 August 2026</time>
+            · Describes the projection model in scripts/pitch-snapshot.js
+        </div>
+        <div class="sd-prose"><h2>What the projection actually does</h2><p>Every projected-points figure on this site comes from one function. It is worth being specific about what it does, because &quot;AI&quot; is doing a lot of unearned work in most FPL tools.</p><h3>1. Minutes first</h3><p>Nothing else matters if a player does not play. The model estimates a probability of starting from minutes per appearance, then blends a starter's minutes with a substitute's cameo. A player with a fitness doubt has that probability scaled by his published chance of playing.</p><h3>2. Attacking returns, regressed</h3><p>Per-90 rates from a small sample are wild — one goal in one appearance is a huge xG/90. The model regresses each player's rate toward his position's average until there is roughly five full matches of evidence, then lets his own numbers stand alone.</p><h3>3. Clean sheets from the defence, not the fixture alone</h3><p>Clean-sheet probability comes from goals conceded and a defensive rating, adjusted by fixture difficulty, and is capped at both ends. No defence is a certainty and none is hopeless.</p><h3>4. Then the scoring rules</h3><div class="sd-table-wrap"><table class="sd-table"><thead><tr><th>Component</th><th>How it is derived</th></tr></thead><tbody><tr><td>Appearance</td><td>Start probability against 2 points for 60 minutes, 1 otherwise</td></tr><tr><td>Attack</td><td>Regressed xG and xA per 90, scaled by expected minutes and fixture</td></tr><tr><td>Clean sheet</td><td>Clean-sheet probability by position value, scaled by start probability</td></tr><tr><td>Saves</td><td>Saves per 90 divided by 3, for goalkeepers</td></tr><tr><td>Bonus</td><td>Bonus per game, capped</td></tr><tr><td>Conceded</td><td>Goals conceded against the chance of no clean sheet, as a negative</td></tr></tbody></table></div><h3>What it deliberately does not do</h3><p>The model uses FPL's own <code>ep_next</code> only as a floor while a player has little history, and only for the immediate gameweek. Three gameweeks out it is ignored entirely — it is an estimate for the next match and means nothing beyond it.</p><blockquote>The projection is calibrated against FPL's published average entry score. It is a model, not a prophecy, and the numbers it produces are only as good as the sample behind them. Early in a season that sample is small, which is why this site says &quot;too early to rank&quot; rather than inventing a ranking.</blockquote></div>
+        <div class="sd-reader-foot">
+            Every figure in this piece was read from the FPL dataset at the moment it was published, and has not been edited since.
+        </div>
+    </article>
+</main>
+</body>
+</html>
