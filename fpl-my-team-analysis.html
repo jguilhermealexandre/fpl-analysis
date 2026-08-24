@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=17">
-    <link rel="stylesheet" href="styles/my-team.css?v=17">
-    <link rel="stylesheet" href="styles/v2-design.css?v=17">
-    <link rel="stylesheet" href="styles/compare-report.css?v=17">
+    <link rel="stylesheet" href="styles/common.css?v=18">
+    <link rel="stylesheet" href="styles/my-team.css?v=18">
+    <link rel="stylesheet" href="styles/v2-design.css?v=18">
+    <link rel="stylesheet" href="styles/compare-report.css?v=18">
 </head>
 <body>
 
@@ -2224,6 +2224,13 @@
                 gain: afterXP - beforeXP,
                 captain: finalSorted[0] || null,
                 captainAlternatives: finalSorted.slice(1, 3),
+                // Kept for the full report: the whole XI in xP order, the bench in
+                // substitution order, and every shape the solver scored.
+                xi: finalSorted,
+                benchOrder: snapshotBenchOrder.map(id => (analysisMap.get(id) || {}).player).filter(Boolean),
+                captainShortlist: finalSorted.slice(0, 5),
+                formationScores: keptOriginal ? [] : (result.formationScores || []),
+                viceId: snapshotViceId,
                 previousCaptain: beforeCaptainId != null ? analysisMap.get(beforeCaptainId) : null,
                 benchedOut,
                 promoted: keptOriginal ? [] : result.xi.filter(p => !beforeXI.has(p.id))
@@ -2280,26 +2287,133 @@
             return fx ? `${escHTML(fx.opponent)} (${fx.isHome ? 'H' : 'A'})` : '—';
         }
 
+        // Where a player's projected points actually come from. Showing the split
+        // is the difference between "trust me, 6.2" and a number you can argue with.
+        function optXpBreakdown(p) {
+            const d = projectPlayerPointsDetailed(p);
+            const parts = [
+                { key: 'Mins', v: d.appearance },
+                { key: 'Attack', v: d.attack },
+                { key: 'CS', v: d.cleanSheet },
+                { key: 'Saves', v: d.saves },
+                { key: 'Bonus', v: d.bonus },
+                { key: 'Conceded', v: d.conceded }
+            ].filter(x => Math.abs(x.v) >= 0.05);
+            return { detailed: d, parts };
+        }
+
+        function optBreakdownBar(p) {
+            const { detailed, parts } = optXpBreakdown(p);
+            const total = Math.max(0.01, parts.filter(x => x.v > 0).reduce((s, x) => s + x.v, 0));
+            const seg = parts.filter(x => x.v > 0).map(x =>
+                `<span class="opt-seg opt-seg-${x.key.toLowerCase()}" style="width:${Math.round((x.v / total) * 100)}%"
+                    data-tooltip="${x.key}: ${x.v.toFixed(2)} xP"></span>`).join('');
+            return `<div class="opt-bar">${seg}</div>
+                <div class="opt-bar-legend">${parts.map(x => `${escHTML(x.key)} <strong>${x.v.toFixed(1)}</strong>`).join(' · ')}</div>`;
+        }
+
+        // Starter likelihood in words. A 6.0 xP player who might not start is a
+        // different proposition from a 6.0 xP nailed-on one.
+        function optMinutesRisk(p) {
+            const { pStart } = expectedMinutesModel(p);
+            const pct = Math.round(pStart * 100);
+            const cls = pct >= 80 ? 'great' : pct >= 60 ? 'good' : pct >= 35 ? 'ok' : 'bad';
+            const word = pct >= 80 ? 'Nailed' : pct >= 60 ? 'Likely' : pct >= 35 ? 'Rotation risk' : 'Unlikely';
+            return { pct, cls, word };
+        }
+
+        function optTeamContext(p, ranks) {
+            const ta = teamAnalysis[p.teamId];
+            const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
+            const ctx = fx ? opponentContext(p.teamId, fx, ranks) : null;
+            return { ta, fx, ctx };
+        }
+
         function renderOptimizeReportModal() {
             const r = snapshotOptimizeReport;
             if (!r) return '<div class="detail-section">Run Auto-Optimize to see a report.</div>';
 
-            // --- 1. Captaincy: the pick against the next two best, on the same terms.
-            const capRows = [r.captain, ...r.captainAlternatives].filter(Boolean).map((p, i) => {
+            const ranks = getDefensiveRanks();
+            const xi = (r.xi && r.xi.length) ? r.xi : [...snapshotXI].map(id => (getSquadAnalysisMap().get(id) || {}).player).filter(Boolean);
+            const bench = r.benchOrder || [];
+
+            // ---------- 1. Squad outlook: the shape of the whole lineup ----------
+            const xiXP = xi.reduce((s, p) => s + predictedGWPoints(p), 0);
+            const starts = xi.map(p => expectedMinutesModel(p).pStart);
+            const expectedAbsent = starts.reduce((s, v) => s + (1 - v), 0);
+            const doubts = xi.filter(p => p.status === 'd');
+            const nailed = starts.filter(v => v >= 0.8).length;
+            const risky = xi.filter(p => expectedMinutesModel(p).pStart < 0.6);
+
+            const byTeam = {};
+            xi.forEach(p => { byTeam[p.teamId] = (byTeam[p.teamId] || 0) + 1; });
+            const stacked = Object.keys(byTeam).filter(t => byTeam[t] >= 3)
+                .map(t => `${teams[t]?.short_name || '???'} (${byTeam[t]})`);
+
+            const fdrs = xi.map(p => optFdrFor(p));
+            const hardCount = fdrs.filter(f => f >= 4).length;
+            const easyCount = fdrs.filter(f => f <= 2).length;
+            const avgFdr = fdrs.length ? fdrs.reduce((s, f) => s + f, 0) / fdrs.length : 3;
+
+            const outlook = `
+            <div class="opt-grid">
+                <div class="opt-stat"><div class="opt-stat-v">${xiXP.toFixed(1)}</div><div class="opt-stat-l" data-tooltip="Sum of projected points across the eleven starters, before the captain's double.">XI xP</div></div>
+                <div class="opt-stat"><div class="opt-stat-v">${nailed}<span class="opt-stat-sub">/11</span></div><div class="opt-stat-l" data-tooltip="Starters with at least an 80% chance of starting, based on minutes per appearance and fitness.">Nailed on</div></div>
+                <div class="opt-stat"><div class="opt-stat-v">${expectedAbsent.toFixed(1)}</div><div class="opt-stat-l" data-tooltip="Expected number of your eleven who do not start. This is what the bench order is insurance against.">Expected absent</div></div>
+                <div class="opt-stat"><div class="opt-stat-v">${avgFdr.toFixed(1)}</div><div class="opt-stat-l" data-tooltip="Average fixture difficulty faced by the starting eleven this gameweek.">Avg FDR</div></div>
+            </div>
+            <div class="opt-why">
+                ${easyCount} of the eleven face a difficulty-2-or-easier fixture and ${hardCount} face a 4 or harder.
+                ${stacked.length ? `You are stacked on ${escHTML(stacked.join(', '))} — a strong week for them lifts the whole team, a poor one sinks it.` : 'No club supplies three or more of your starters, so the week is spread across teams.'}
+                ${doubts.length ? ` <strong>${doubts.length} carry a fitness doubt</strong> (${escHTML(doubts.map(p => p.name).join(', '))}).` : ''}
+            </div>`;
+
+            // ---------- 2. Captaincy, with the reasoning behind each candidate ----------
+            const shortlist = (r.captainShortlist && r.captainShortlist.length ? r.captainShortlist : [r.captain, ...r.captainAlternatives]).filter(Boolean);
+            const capRows = shortlist.map((p, i) => {
                 const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+                const risk = optMinutesRisk(p);
+                const { ctx } = optTeamContext(p, ranks);
+                const isVice = p.id === r.viceId;
                 return `<tr class="${i === 0 ? 'opt-pick' : ''}">
-                    <td>${i === 0 ? '👑 ' : ''}${escHTML(p.name)}${i === 0 ? ' <span class="opt-tag">AI pick</span>' : ''}</td>
+                    <td>${i === 0 ? '👑 ' : isVice ? '🅥 ' : ''}${escHTML(p.name)}${i === 0 ? ' <span class="opt-tag">AI pick</span>' : isVice ? ' <span class="opt-tag vice">Vice</span>' : ''}
+                        <div class="opt-cap-sub">${escHTML(p.team)} · ${p.ownership != null ? `${p.ownership}% owned` : ''}${ctx && ctx.ranked ? ` · opponent concedes ${ctx.conceded.toFixed(1)}/game` : ''}</div></td>
                     <td class="opt-num">${predictedGWPoints(p).toFixed(1)}</td>
                     <td class="opt-num">${form.toFixed(1)}</td>
+                    <td class="opt-num"><span class="opt-risk ${risk.cls}" data-tooltip="${risk.pct}% likely to start — ${risk.word}.">${risk.pct}%</span></td>
                     <td><span class="fixture-chip fdr-${optFdrFor(p)}">${optFixtureLabel(p)}</span></td>
                 </tr>`;
             }).join('');
 
-            const capLead = r.captain && r.captainAlternatives[0]
-                ? (predictedGWPoints(r.captain) - predictedGWPoints(r.captainAlternatives[0]))
+            const capLead = r.captain && shortlist[1]
+                ? (predictedGWPoints(r.captain) - predictedGWPoints(shortlist[1]))
                 : 0;
+            const capBreakdown = r.captain ? optBreakdownBar(r.captain) : '';
+            const capRisk = r.captain ? optMinutesRisk(r.captain) : null;
 
-            // --- 2. Bench decisions, each with the reason it lost its place.
+            // ---------- 3. The starting eleven, each with its points split ----------
+            const xiRows = xi.map(p => {
+                const risk = optMinutesRisk(p);
+                const { ctx } = optTeamContext(p, ranks);
+                const isCap = r.captain && p.id === r.captain.id;
+                return `<div class="opt-xi-row">
+                    <div class="opt-xi-head">
+                        <span class="position-badge ${POSITION_CONFIG[p.position].class}">${POSITION_CONFIG[p.position].short}</span>
+                        <span class="opt-xi-name">${isCap ? '👑 ' : p.id === r.viceId ? '🅥 ' : ''}${escHTML(p.name)}</span>
+                        <span class="opt-xi-team">${escHTML(p.team)}</span>
+                        <span class="fixture-chip fdr-${optFdrFor(p)}">${optFixtureLabel(p)}</span>
+                        <span class="opt-xi-xp">${predictedGWPoints(p).toFixed(1)}<span class="opt-xi-xp-unit">xP</span></span>
+                    </div>
+                    <div class="opt-xi-meta">
+                        <span class="opt-risk ${risk.cls}" data-tooltip="${risk.pct}% likely to start.">${risk.word} ${risk.pct}%</span>
+                        ${ctx && ctx.ranked ? `<span data-tooltip="How leaky this opponent's defence is across the league.">Opponent ${ordinal(ctx.rank)} leakiest</span>` : ''}
+                        ${p.status === 'd' ? `<span class="opt-flag">Fitness doubt${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}</span>` : ''}
+                    </div>
+                    ${optBreakdownBar(p)}
+                </div>`;
+            }).join('');
+
+            // ---------- 4. Bench decisions and the order behind them ----------
             const benchRows = r.benchedOut.length ? r.benchedOut.map(b => {
                 const p = b.player;
                 const d = b.detailed || {};
@@ -2309,6 +2423,8 @@
                 const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
                 if (form < 3) reasons.push(`weak form (${form.toFixed(1)})`);
                 if (p.status === 'd') reasons.push('fitness doubt');
+                const risk = optMinutesRisk(p);
+                if (risk.pct < 60) reasons.push(`only ${risk.pct}% likely to start`);
                 if (!reasons.length) reasons.push('a higher-projected option was available');
                 const swap = b.replacedBy
                     ? ` — ${b.shapeChange ? 'slot given to' : 'replaced by'} <strong>${escHTML(b.replacedBy.name)}</strong> (${predictedGWPoints(b.replacedBy).toFixed(1)} xP${b.shapeChange ? `, ${POS_SHORT_MAP[b.replacedBy.position]}` : ''})`
@@ -2319,23 +2435,59 @@
                 </div>`;
             }).join('') : `<div class="opt-empty">No one was dropped — your starting XI already had the best available players in it.</div>`;
 
-            // --- 3. Formation, explained by where the points actually are.
-            const xiPlayers = [...snapshotXI].map(id => getSquadAnalysisMap().get(id)).filter(Boolean).map(a => a.player);
-            const byPos = pos => xiPlayers.filter(p => p.position === pos);
+            const benchOrderHtml = bench.length ? `
+                <div class="opt-suborder">
+                    <div class="opt-suborder-head">Substitution order</div>
+                    ${bench.map((p, i) => {
+                        const risk = optMinutesRisk(p);
+                        return `<div class="opt-suborder-row">
+                            <span class="opt-suborder-n">${p.position === 1 ? 'GK' : i + 1}</span>
+                            <span class="opt-suborder-name">${escHTML(p.name)}</span>
+                            <span class="opt-suborder-team">${escHTML(p.team)}</span>
+                            <span class="fixture-chip fdr-${optFdrFor(p)}">${optFixtureLabel(p)}</span>
+                            <span class="opt-suborder-xp">${predictedGWPoints(p).toFixed(1)} xP</span>
+                            <span class="opt-risk ${risk.cls}">${risk.pct}%</span>
+                        </div>`;
+                    }).join('')}
+                    <div class="opt-why">Around <strong>${expectedAbsent.toFixed(1)}</strong> of your eleven are expected not to start, so the order above is what actually decides your auto-substitutions.</div>
+                </div>` : '';
+
+            // ---------- 5. Formation, and the shapes that lost ----------
+            const byPos = pos => xi.filter(p => p.position === pos);
             const posXP = pos => byPos(pos).reduce((s, p) => s + predictedGWPoints(p), 0);
-            const shape = describeFormation(xiPlayers);
+            const shape = describeFormation(xi);
             const blocks = [
                 { label: 'Defenders', xp: posXP(2), n: byPos(2).length },
                 { label: 'Midfielders', xp: posXP(3), n: byPos(3).length },
                 { label: 'Forwards', xp: posXP(4), n: byPos(4).length },
             ];
-            // Two different, both-useful readings: where the bulk of the points sit
-            // (which follows the shape) and which block pays best per slot. Ranking
-            // only by per-slot made a 4-5-1 claim it "leans on your forwards".
             const totalXP = blocks.reduce((s, b) => s + b.xp, 0);
             const biggest = blocks.reduce((a, b) => (b.xp > a.xp ? b : a), blocks[0]);
             const perSlot = b => (b.n ? b.xp / b.n : 0);
             const bestRate = blocks.reduce((a, b) => (perSlot(b) > perSlot(a) ? b : a), blocks[0]);
+
+            // The runners-up, so the choice reads as a decision rather than a decree.
+            const alt = (r.formationScores || []).slice(0, 4);
+            const altHtml = alt.length > 1 ? `
+                <div class="opt-alt">
+                    <div class="opt-alt-head">Shapes considered</div>
+                    ${alt.map((f, i) => `<div class="opt-alt-row ${i === 0 ? 'win' : ''}">
+                        <span>${escHTML(f.formation)}</span>
+                        <span class="opt-alt-bar"><span style="width:${Math.round((f.total / Math.max(alt[0].total, 0.01)) * 100)}%"></span></span>
+                        <span class="opt-alt-n">${f.total.toFixed(1)}${i === 0 ? '' : ` (−${(alt[0].total - f.total).toFixed(1)})`}</span>
+                    </div>`).join('')}
+                </div>` : '';
+
+            // ---------- 6. What could go wrong ----------
+            const warnings = [];
+            if (capRisk && capRisk.pct < 80) warnings.push(`Your captain is only <strong>${capRisk.pct}%</strong> likely to start — a blank there costs double.`);
+            if (risky.length) warnings.push(`<strong>${risky.length}</strong> starter${risky.length > 1 ? 's are' : ' is'} under 60% to start: ${escHTML(risky.map(p => p.name).join(', '))}.`);
+            if (hardCount >= 4) warnings.push(`<strong>${hardCount}</strong> of the eleven face a difficulty-4-or-harder fixture.`);
+            if (stacked.length) warnings.push(`Three or more starters from ${escHTML(stacked.join(', '))} concentrates your week on one result.`);
+            if (bench.filter(p => p.position !== 1).every(p => optMinutesRisk(p).pct < 50)) warnings.push('Your outfield bench is unlikely to start either, so auto-subs may not rescue a blank.');
+            const warnHtml = warnings.length
+                ? `<ul class="opt-warn">${warnings.map(w => `<li>${w}</li>`).join('')}</ul>`
+                : `<div class="opt-empty">Nothing structural to flag — the eleven are fit, spread across clubs, and mostly nailed on.</div>`;
 
             return `
             <div class="detail-section">
@@ -2348,17 +2500,31 @@
             </div>
 
             <div class="detail-section">
+                <div class="detail-section-title">🧭 Squad outlook</div>
+                ${outlook}
+            </div>
+
+            <div class="detail-section">
                 <div class="detail-section-title">👑 Captaincy decision</div>
                 <table class="opt-table">
-                    <thead><tr><th>Player</th><th class="opt-num">xP</th><th class="opt-num">Form</th><th>Fixture</th></tr></thead>
+                    <thead><tr><th>Player</th><th class="opt-num">xP</th><th class="opt-num">Form</th><th class="opt-num">Start</th><th>Fixture</th></tr></thead>
                     <tbody>${capRows}</tbody>
                 </table>
-                ${r.captain ? `<div class="opt-why">${escHTML(r.captain.name)} projects ${capLead > 0 ? `+${capLead.toFixed(1)} xP more than the next best option` : 'level with the alternatives'}, and the armband doubles it.</div>` : ''}
+                ${r.captain ? `<div class="opt-why">${escHTML(r.captain.name)} projects ${capLead > 0.05 ? `<strong>+${capLead.toFixed(1)} xP</strong> more than the next best option` : 'level with the alternatives'}, and the armband doubles it.
+                    ${capRisk ? `They are ${capRisk.pct}% likely to start.` : ''}</div>
+                    <div class="opt-capbreak"><div class="opt-capbreak-head">Where the captain's points come from</div>${capBreakdown}</div>` : ''}
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-section-title">📋 Starting eleven</div>
+                <div class="opt-why">Each bar splits that player's projection into where the points are expected to come from.</div>
+                ${xiRows}
             </div>
 
             <div class="detail-section">
                 <div class="detail-section-title">🔄 Bench decisions</div>
                 ${benchRows}
+                ${benchOrderHtml}
             </div>
 
             <div class="detail-section">
@@ -2372,6 +2538,12 @@
                         ? `Per slot your ${escHTML(bestRate.label.toLowerCase())} pay best, at ${perSlot(bestRate).toFixed(1)} xP each.`
                         : `That is also your best return per slot, at ${perSlot(biggest).toFixed(1)} xP each.`}
                 </div>
+                ${altHtml}
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-section-title">⚠️ Risks in this lineup</div>
+                ${warnHtml}
             </div>`;
         }
 
@@ -9206,16 +9378,19 @@
             squad.forEach(p => { if (p.lwScore > -100) byPos[p.pos].push(p); });
             Object.values(byPos).forEach(a => a.sort((a, b) => b.lwScore - a.lwScore));
             let bestFormation = null, bestScore = -Infinity, bestXI = null;
+            const formationScores = [];
             for (const [nD, nM, nF] of validFormations) {
                 if (byPos[1].length < 1 || byPos[2].length < nD || byPos[3].length < nM || byPos[4].length < nF) continue;
                 const xi = [byPos[1][0], ...byPos[2].slice(0, nD), ...byPos[3].slice(0, nM), ...byPos[4].slice(0, nF)];
                 const total = xi.reduce((s, p) => s + p.lwScore, 0);
+                formationScores.push({ formation: `${nD}-${nM}-${nF}`, total });
                 if (total > bestScore) { bestScore = total; bestFormation = `${nD}-${nM}-${nF}`; bestXI = xi; }
             }
+            formationScores.sort((a, b) => b.total - a.total);
             if (!bestXI) { const av = squad.filter(p => p.lwScore > -100).sort((a, b) => b.lwScore - a.lwScore); bestXI = av.slice(0, 11); bestFormation = 'N/A'; }
             const xiIds = new Set(bestXI.map(p => p.id));
             const bench = squad.filter(p => !xiIds.has(p.id)).sort((a, b) => { if (a.pos === 1 && b.pos !== 1) return 1; if (b.pos === 1 && a.pos !== 1) return -1; return b.lwScore - a.lwScore; });
-            return { xi: bestXI, bench, formation: bestFormation };
+            return { xi: bestXI, bench, formation: bestFormation, formationScores };
         }
 
         // ── LINEUP WIZARD: Detailed Score Breakdown ──
@@ -9682,9 +9857,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=17"></script>
-    <script src="scripts/common.js?v=17"></script>
-    <script src="scripts/sidebar-nav.js?v=17"></script>
+    <script src="scripts/compare-report.js?v=18"></script>
+    <script src="scripts/common.js?v=18"></script>
+    <script src="scripts/sidebar-nav.js?v=18"></script>
     <script>initIcons(); initTooltips();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
