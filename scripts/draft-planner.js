@@ -19,13 +19,30 @@
         let draftSwapSource = null;
         let draftReplacementTarget = null;
         let draftCompareMode = false;
+        // 'stats' shows the historical per-90 columns; 'xp' replaces them with a
+        // week-by-week projection, which is what a planner is actually for.
+        let draftTableView = 'stats';
+
+        function setDraftTableView(view) {
+            draftTableView = view;
+            renderSquadPlanner();
+        }
 
         function getActiveDraft() { return draftStates[activeDraftSlot]; }
 
         function initDraft(slotIndex) {
             if (slotIndex === undefined) slotIndex = activeDraftSlot;
             const gwNumbers = [];
-            const upcoming = allFixtures.filter(f => !f.finished_provisional && f.event !== null).map(f => f.event);
+            // A gameweek with any match already under way cannot be planned — its
+            // deadline has passed. Taking every gameweek with an unfinished fixture
+            // put the current one at the head of the plan, where it projected almost
+            // nothing because nine of its ten matches were already played.
+            const started = new Set(
+                allFixtures.filter(f => f.event !== null && (f.started || f.finished_provisional)).map(f => f.event)
+            );
+            const upcoming = allFixtures
+                .filter(f => !f.finished_provisional && f.event !== null && !started.has(f.event))
+                .map(f => f.event);
             const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
             for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) gwNumbers.push(uniqueGWs[i]);
             if (gwNumbers.length === 0) for (let i = currentGW + 1; i <= Math.min(currentGW + 6, 38); i++) gwNumbers.push(i);
@@ -910,9 +927,6 @@
             const ds = getActiveDraft();
             let html = '';
 
-            // Intro
-            html += `<div class="planner-intro"><span>📋</span> Plan your transfers, lineup, and chips for the next gameweeks. Create up to 3 plans to compare different strategies.</div>`;
-
             // Plan selector bar
             html += `<div id="draftPlanBar">${renderDraftPlanBar()}</div>`;
 
@@ -950,32 +964,22 @@
 
             // Player Insights tab (active by default)
             html += `<div class="hub-panel active" id="player-tab">`;
-            html += `<div class="planner-table-wrap"><table class="planner-table">`;
             const gwNumbers = ds.gwNumbers;
-            html += `<thead><tr>`;
-            html += `<th rowspan="2" style="min-width:140px;">Player</th>`;
-            html += `<th colspan="3" class="planner-col-group planner-col-season" style="border-bottom:1px solid rgba(96,165,250,0.15);" title="Full-season averages">Season</th>`;
-            html += `<th colspan="3" class="planner-col-group planner-col-recent" style="border-bottom:1px solid rgba(74,222,128,0.15);" title="Averages over the last 6 gameweeks">Last 6 GWs</th>`;
-            // Detect DGWs for table headers
-            const headerSquad = getDraftSquad(ds.selectedGW);
-            const headerTeamIds = new Set(headerSquad.map(p => p.teamId));
-            const headerDgwSet = new Set();
-            headerTeamIds.forEach(tid => {
-                const tf = teamFixtures6[tid] || [];
-                gwNumbers.forEach(g => {
-                    if (tf.filter(f => f.event === g).length > 1) headerDgwSet.add(g);
-                });
-            });
-            gwNumbers.forEach(gw => {
-                const dgwLabel = headerDgwSet.has(gw) ? ' <span style="font-size:0.5rem;color:var(--color-info);font-weight:700;">DGW</span>' : '';
-                html += `<th rowspan="2" class="planner-fdr" title="Fixture Difficulty Rating for GW${gw}${headerDgwSet.has(gw) ? ' (Double Gameweek)' : ''}">GW${gw}${dgwLabel}</th>`;
-            });
-            html += `<th rowspan="2" style="width:30px;">↕</th>`;
-            html += `<th rowspan="2" style="width:40px;">Act</th>`;
-            html += `</tr><tr>`;
-            html += `<th class="planner-col-season" style="font-size:0.55rem;" title="Season stat 1 (position-specific)">S1</th><th class="planner-col-season" style="font-size:0.55rem;" title="Season stat 2 (position-specific)">S2</th><th class="planner-col-season" style="font-size:0.55rem;" title="Season stat 3 (position-specific)">S3</th>`;
-            html += `<th class="planner-col-recent" style="font-size:0.55rem;" title="Last 6 GWs stat 1 (position-specific)">L1</th><th class="planner-col-recent" style="font-size:0.55rem;" title="Last 6 GWs stat 2 (position-specific)">L2</th><th class="planner-col-recent" style="font-size:0.55rem;" title="Last 6 GWs stat 3 (position-specific)">L3</th>`;
-            html += `</tr></thead>`;
+
+            html += `<div class="dp-table-toolbar">
+                <div class="dp-view-toggle" role="group" aria-label="Table view">
+                    <button class="dp-view-btn ${draftTableView === 'stats' ? 'active' : ''}" onclick="setDraftTableView('stats')"
+                        data-tooltip="What each player has actually done — per-90 rates for the season and the last six gameweeks.">📊 Historical stats</button>
+                    <button class="dp-view-btn ${draftTableView === 'xp' ? 'active' : ''}" onclick="setDraftTableView('xp')"
+                        data-tooltip="What each player projects for every gameweek in the plan — the quickest way to spot a benching headache.">🎯 Projected xP</button>
+                </div>
+                <span class="dp-table-hint">${draftTableView === 'stats'
+                    ? 'Stat names sit in each position header — keepers and midfielders are judged on different things.'
+                    : 'Projected points per gameweek. A dash means that club has no fixture.'}</span>
+            </div>`;
+
+            html += `<div class="planner-table-wrap"><table class="planner-table">`;
+            html += `<thead id="draftTableHead">${renderDraftTableHead()}</thead>`;
             html += `<tbody id="draftTableBody">${renderDraftTableBody()}</tbody></table></div>`;
             html += `<div id="draftTransferSummary">${renderDraftTransferSummary()}</div>`;
             html += `</div>`;
@@ -1040,6 +1044,64 @@
             return html;
         }
 
+        // Which gameweeks are doubles for anyone in this squad.
+        function draftDgwSet(lineup, gwNumbers) {
+            const set = new Set();
+            new Set(lineup.map(p => p.teamId)).forEach(tid => {
+                const tf = teamFixtures6[tid] || [];
+                gwNumbers.forEach(g => { if (tf.filter(f => f.event === g).length > 1) set.add(g); });
+            });
+            return set;
+        }
+
+        const DRAFT_CHIP_SHORT = { wildcard: 'WC', freehit: 'FH', benchboost: 'BB', triplecaptain: 'TC' };
+        const DRAFT_CHIP_NAME = { wildcard: 'Wildcard', freehit: 'Free Hit', benchboost: 'Bench Boost', triplecaptain: 'Triple Captain' };
+
+        // The whole plan on one strip. Each node carries the three things that decide
+        // a gameweek — transfers against free transfers, any points hit that creates,
+        // and the chip — plus what the lineup projects, so the cost of a move is
+        // visible next to what it buys.
+        function renderDraftTimeline() {
+            const ds = getActiveDraft();
+            const gwNumbers = ds.gwNumbers;
+            const dgw = draftDgwSet(getDraftSquad(ds.selectedGW), gwNumbers);
+
+            let planXP = 0;
+            const nodes = gwNumbers.map(g => {
+                const ft = getDraftFreeTransfers(g);
+                const used = (ds.transfers[g] || []).length;
+                const hit = getDraftHitCost(g);
+                const chip = ds.chips[g];
+                const xp = projectLineupForGW(getDraftSquad(g), g, chip);
+                planXP += xp - hit;
+
+                const active = g === ds.selectedGW;
+                const cls = ['draft-tl-node', active ? 'active' : '', hit > 0 ? 'has-hit' : '', chip ? 'has-chip' : ''].filter(Boolean).join(' ');
+
+                let badges = '';
+                if (chip) badges += `<span class="draft-tl-chip" data-tooltip="${escHTML(DRAFT_CHIP_NAME[chip])} played in GW${g}">${DRAFT_CHIP_SHORT[chip]}</span>`;
+                if (dgw.has(g)) badges += `<span class="draft-tl-dgw" data-tooltip="Double gameweek — at least one of your players has two matches.">DGW</span>`;
+
+                return `<button class="${cls}" onclick="switchDraftGW(${g})">
+                    <span class="draft-tl-gw">GW${g}${badges}</span>
+                    <span class="draft-tl-xp" data-tooltip="Projected points for this gameweek's lineup${hit > 0 ? `, before the ${hit}-point hit` : ''}.">${xp.toFixed(1)}<span class="draft-tl-xp-u">xP</span></span>
+                    <span class="draft-tl-ft ${used > ft ? 'over' : ''}" data-tooltip="${used} of ${ft} free transfer${ft === 1 ? '' : 's'} used in GW${g}.">${used}/${ft} FT</span>
+                    ${hit > 0 ? `<span class="draft-tl-hit" data-tooltip="${used} transfers against ${ft} free — each extra one costs 4 points.">−${hit} pts</span>` : ''}
+                </button>`;
+            }).join('<span class="draft-tl-link"></span>');
+
+            const totalHits = gwNumbers.reduce((s, g) => s + getDraftHitCost(g), 0);
+            return `<div class="draft-timeline">
+                <div class="draft-tl-track">${nodes}</div>
+                <div class="draft-tl-summary">
+                    <span class="draft-tl-total" data-tooltip="Projected points across all ${gwNumbers.length} planned gameweeks, after deducting every points hit.">
+                        Plan total <strong>${planXP.toFixed(1)} pts</strong>
+                    </span>
+                    ${totalHits > 0 ? `<span class="draft-tl-total-hit" data-tooltip="Total points sacrificed to extra transfers across the plan.">−${totalHits} in hits</span>` : '<span class="draft-tl-total-ok">No hits taken</span>'}
+                </div>
+            </div>`;
+        }
+
         function renderDraftToolbar() {
             const ds = getActiveDraft();
             const gw = ds.selectedGW;
@@ -1050,51 +1112,32 @@
             const hitCost = getDraftHitCost(gw);
             const numTransfers = (ds.transfers[gw] || []).length;
 
-            let html = '';
-            // GW pills
-            html += `<div class="draft-gw-pills">`;
-            // Detect which GWs are DGWs for any squad player
-            const squadTeamIds = new Set(lineup.map(p => p.teamId));
-            const dgwSet = new Set();
-            squadTeamIds.forEach(tid => {
-                const tf = teamFixtures6[tid] || [];
-                ds.gwNumbers.forEach(g => {
-                    if (tf.filter(f => f.event === g).length > 1) dgwSet.add(g);
-                });
-            });
+            let html = renderDraftTimeline();
 
-            ds.gwNumbers.forEach(g => {
-                const active = g === gw ? 'active' : '';
-                const gwTransfers = (ds.transfers[g] || []).length;
-                const gwChip = ds.chips[g];
-                let badges = '';
-                if (gwTransfers > 0) badges += `<span class="draft-pill-badge transfer-badge">${gwTransfers}</span>`;
-                if (gwChip) {
-                    const chipLabels = { wildcard: 'WC', benchboost: 'BB', freehit: 'FH', triplecaptain: 'TC' };
-                    badges += `<span class="draft-pill-badge chip-badge">${chipLabels[gwChip] || '?'}</span>`;
-                }
-                if (dgwSet.has(g)) badges += `<span class="draft-pill-badge dgw-badge">DGW</span>`;
-                html += `<button class="draft-gw-pill ${active}" onclick="switchDraftGW(${g})">GW${g}${badges}</button>`;
-            });
-            html += `</div>`;
-
-            // Formation
-            html += `<div class="planner-formation-label">${formation}</div>`;
-
-            // Meta row
-            html += `<div class="draft-meta-row">`;
-            html += `<div class="draft-meta-item">💰 <abbr title="In The Bank — remaining transfer budget">ITB</abbr>: <strong>£${budget.toFixed(1)}m</strong></div>`;
-            html += `<div class="draft-meta-item">🔄 <abbr title="Free Transfers available this gameweek">FT</abbr>: <strong>${ft}</strong> | Used: <strong>${numTransfers}</strong></div>`;
-            if (hitCost > 0) {
-                html += `<div class="draft-meta-item hit-warning">⚠️ Hit: <strong>-${hitCost}pts</strong></div>`;
-            }
-            html += `<div class="draft-meta-item" style="font-size:0.7rem;">Starting <abbr title="Free Transfers available at the start of this gameweek">FT</abbr>: <input type="number" class="draft-ft-input" value="${ds.startingFT}" min="0" max="5" onchange="updateDraftStartingFT(this.value)"></div>`;
-            html += `</div>`;
-
-            // Actions
-            html += `<div class="draft-actions">`;
-            html += `<button class="draft-action-btn danger" onclick="resetDraft()" title="Reset all draft changes" aria-label="Reset all draft changes">↩ Reset</button>`;
-            html += `</div>`;
+            // Named stat chips rather than a run of abbreviations separated by pipes.
+            html += `<div class="draft-stats-row">
+                <div class="draft-stat">
+                    <span class="draft-stat-label">In the bank</span>
+                    <span class="draft-stat-value">£${budget.toFixed(1)}m</span>
+                </div>
+                <div class="draft-stat">
+                    <span class="draft-stat-label">Free transfers</span>
+                    <span class="draft-stat-value ${numTransfers > ft ? 'over' : ''}">${numTransfers} <span class="draft-stat-sub">of ${ft} used</span></span>
+                </div>
+                <div class="draft-stat">
+                    <span class="draft-stat-label">Formation</span>
+                    <span class="draft-stat-value">${escHTML(formation)}</span>
+                </div>
+                ${hitCost > 0 ? `<div class="draft-stat hit">
+                    <span class="draft-stat-label">Points hit</span>
+                    <span class="draft-stat-value">−${hitCost} pts</span>
+                </div>` : ''}
+                <div class="draft-stat editable">
+                    <label class="draft-stat-label" for="draftStartFT" data-tooltip="Free transfers you began this plan with. FPL does not publish this, so set it if the guess is wrong.">Starting FT</label>
+                    <input id="draftStartFT" type="number" class="draft-ft-input" value="${ds.startingFT}" min="0" max="5" onchange="updateDraftStartingFT(this.value)">
+                </div>
+                <button class="draft-action-btn danger" onclick="resetDraft()" data-tooltip="Discard every change in this plan and start again from your current squad.">↩ Reset plan</button>
+            </div>`;
 
             return html;
         }
@@ -1104,27 +1147,28 @@
             const gw = ds.selectedGW;
             const activeChip = ds.chips[gw];
             const chips = [
-                { id: 'wildcard', label: '♠️ Wildcard', short: 'WC' },
-                { id: 'freehit', label: '⚡ Free Hit', short: 'FH' },
-                { id: 'benchboost', label: '📈 Bench Boost', short: 'BB' },
-                { id: 'triplecaptain', label: '👑 Triple Captain', short: 'TC' }
+                { id: 'wildcard', icon: '♠️', label: 'Wildcard' },
+                { id: 'freehit', icon: '⚡', label: 'Free Hit' },
+                { id: 'benchboost', icon: '📈', label: 'Bench Boost' },
+                { id: 'triplecaptain', icon: '👑', label: 'Triple Captain' }
             ];
 
-            let html = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">`;
-            html += `<span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">Chips:</span>`;
+            let html = `<div class="draft-chip-bar">`;
+            html += `<span class="draft-chip-bar-label">Chips for GW${gw}</span>`;
             html += `<div class="draft-chip-selector">`;
-            chips.forEach(c => {
-                const isActive = activeChip === c.id;
-                const available = isDraftChipAvailable(c.id) || isActive;
+            chips.forEach(ch => {
+                const isActive = activeChip === ch.id;
+                const available = isDraftChipAvailable(ch.id) || isActive;
                 const cls = isActive ? 'active' : (!available ? 'used' : '');
-                html += `<button class="draft-chip-btn ${cls}" onclick="${available || isActive ? `activateDraftChip('${c.id}')` : ''}" ${!available && !isActive ? 'disabled' : ''}>${c.label}</button>`;
+                const tip = isActive ? `Playing ${ch.label} in GW${gw} — click to cancel.`
+                    : available ? `Play ${ch.label} in GW${gw}.`
+                    : `${ch.label} has already been used this season.`;
+                html += `<button class="draft-chip-btn ${cls}" ${available || isActive ? `onclick="activateDraftChip('${ch.id}')"` : 'disabled'}
+                    data-tooltip="${escHTML(tip)}" aria-pressed="${isActive}">
+                    <span class="draft-chip-icon">${ch.icon}</span>${ch.label}
+                </button>`;
             });
-            html += `</div>`;
-            if (activeChip) {
-                const chipNames = { wildcard: 'Wildcard', freehit: 'Free Hit', benchboost: 'Bench Boost', triplecaptain: 'Triple Captain' };
-                html += `<span style="font-size:0.75rem;font-weight:700;color:var(--color-primary);">✓ ${chipNames[activeChip]} active for GW${gw}</span>`;
-            }
-            html += `</div>`;
+            html += `</div></div>`;
             return html;
         }
 
@@ -1142,78 +1186,103 @@
             const mids = starters.filter(p => p.position === 3);
             const fwds = starters.filter(p => p.position === 4);
 
-            const renderNode = (p) => {
+            const FDR_WORD = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+
+            // A card rather than a numbered circle: the number in the circle was a
+            // shirt number, which tells a manager nothing about whether to play them.
+            const renderNode = (p, benchIndex) => {
                 const posClass = `pos-${POSITION_CONFIG[p.position]?.class || 'mid'}`;
-                const fixtures = teamFixtures6[p.teamId] || [];
-                const gwFixtures = fixtures.filter(f => f.event === gw);
+                const gwFixtures = (teamFixtures6[p.teamId] || []).filter(f => f.event === gw);
                 const injured = p.status === 'i' || p.status === 'u';
+                const doubtful = p.status === 'd';
+                const xp = projectPlayerPointsForGW(p, gw);
 
                 let swapClass = '';
-                if (draftSwapSource === p.id) {
-                    swapClass = 'swap-selected';
-                } else if (draftSwapSource !== null) {
-                    swapClass = draftCanSwap(draftSwapSource, p.id) ? 'swap-target' : 'swap-ineligible';
-                }
+                if (draftSwapSource === p.id) swapClass = 'swap-selected';
+                else if (draftSwapSource !== null) swapClass = draftCanSwap(draftSwapSource, p.id) ? 'swap-target' : 'swap-ineligible';
 
-                let node = `<div class="planner-pitch-player ${swapClass}" onclick="handleDraftPitchClick(${p.id})" title="${escHTML(p.name)} — ${POSITION_CONFIG[p.position]?.short || ''} · ${escHTML(p.team)}">`;
-                node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
-                node += jerseyNumberLabel(p);
-                if (p.isCaptain) {
-                    if (activeChip === 'triplecaptain') {
-                        node += `<span class="planner-pitch-captain" style="background:#8B5CF6;">3×</span>`;
-                    } else {
-                        node += `<span class="planner-pitch-captain">C</span>`;
-                    }
+                const fixtureChips = gwFixtures.length
+                    ? gwFixtures.map(f => `<span class="dp-fix fdr-${f.difficulty || 3}" data-tooltip="GW${gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3} (${FDR_WORD[f.difficulty || 3] || 'Average'})">${escHTML(f.opponent || '?')} <span class="dp-fix-ha">${f.isHome ? 'H' : 'A'}</span></span>`).join('')
+                    : `<span class="dp-fix dp-fix-blank" data-tooltip="${escHTML(p.team)} have no fixture in GW${gw} — this player scores nothing.">Blank</span>`;
+
+                let badges = '';
+                if (p.isCaptain) badges += `<span class="dp-badge cap" data-tooltip="Captain — ${activeChip === 'triplecaptain' ? 'points trebled by Triple Captain' : 'points doubled'}.">${activeChip === 'triplecaptain' ? '3×' : 'C'}</span>`;
+                else if (p.isVice) badges += `<span class="dp-badge vice" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
+                if (p.isTransferIn) badges += `<span class="dp-badge in" data-tooltip="Transferred in for GW${gw} in this plan.">IN</span>`;
+                if (benchIndex != null) {
+                    const isGk = benchIndex === 'GK';
+                    badges += `<span class="dp-badge bench" data-tooltip="${isGk ? 'Reserve keeper — only comes on if your starting keeper does not play.' : `Substitution order — ${benchIndex} in line to come on.`}">${isGk ? 'GK' : 'B' + benchIndex}</span>`;
                 }
-                if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
-                if (p.isTransferIn) node += `<span class="draft-pitch-new-badge">NEW</span>`;
-                node += `<button class="draft-pitch-transfer-btn" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" title="Transfer ${escHTML(p.name)}" aria-label="Transfer ${escHTML(p.name)}">↔</button>`;
-                node += `</div>`;
-                // FDR chip(s) — handle DGW
-                if (gwFixtures.length > 1) {
-                    node += `<div class="planner-fdr-stack">`;
-                    gwFixtures.forEach(fix => {
-                        const fdrClass = `fdr-${fix.difficulty || 3}`;
-                        node += `<div class="planner-fdr-chip ${fdrClass}">${escHTML(fix.opponent || '?')}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
-                    });
-                    node += `</div>`;
-                } else if (gwFixtures.length === 1) {
-                    const fix = gwFixtures[0];
-                    const fdrClass = `fdr-${fix.difficulty || 3}`;
-                    node += `<div class="planner-fdr-chip ${fdrClass}">${escHTML(fix.opponent || '?')}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
-                } else {
-                    node += `<div class="planner-fdr-chip" style="background:var(--surface-3);color:var(--text-muted);">-</div>`;
-                }
-                node += `<div class="planner-pitch-player-name">${escHTML(p.name)}</div>`;
-                node += `</div>`;
-                return node;
+                if (injured) badges += `<span class="dp-badge out" data-tooltip="${escHTML(p.news || 'Unavailable')}">OUT</span>`;
+                else if (doubtful) badges += `<span class="dp-badge doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}${p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance of playing)` : ''}">?</span>`;
+
+                return `<div class="dp-card ${posClass} ${swapClass} ${injured ? 'is-out' : ''}" onclick="handleDraftPitchClick(${p.id})">
+                    <div class="dp-badges">${badges}</div>
+                    <button class="dp-transfer" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" data-tooltip="Transfer ${escHTML(p.name)} out for GW${gw}">↔</button>
+                    <div class="dp-name">${escHTML(p.name)}</div>
+                    <div class="dp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
+                    <div class="dp-fixtures">${fixtureChips}</div>
+                    <div class="dp-xp" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates.">${xp.toFixed(1)}<span class="dp-xp-u">xP</span></div>
+                </div>`;
             };
 
-            let html = `<div class="planner-pitch-container" style="position:relative;">`;
-            // Chip overlay
+            let html = `<div class="dp-pitch-card">`;
             if (activeChip) {
-                const chipLabels = { wildcard: 'WILDCARD', benchboost: 'BENCH BOOST', freehit: 'FREE HIT', triplecaptain: 'TRIPLE CAPTAIN' };
-                html += `<div class="draft-chip-overlay">${chipLabels[activeChip]}</div>`;
+                html += `<div class="draft-chip-overlay">${DRAFT_CHIP_NAME[activeChip].toUpperCase()}</div>`;
             }
-            html += `<div class="planner-pitch-rows">`;
-            html += `<div class="planner-pitch-row">${fwds.map(p => renderNode(p)).join('')}</div>`;
-            html += `<div class="planner-pitch-row">${mids.map(p => renderNode(p)).join('')}</div>`;
-            html += `<div class="planner-pitch-row">${defs.map(p => renderNode(p)).join('')}</div>`;
-            html += `<div class="planner-pitch-row">${gks.map(p => renderNode(p)).join('')}</div>`;
-            html += `<div class="planner-pitch-row planner-bench-row">`;
-            html += `<div class="planner-bench-tag">${activeChip === 'benchboost' ? 'Bench (Boosted!)' : 'Bench'}</div>`;
-            html += bench.map(p => renderNode(p)).join('');
+            html += `<div class="dp-pitch">`;
+            html += `<div class="dp-row">${fwds.map(p => renderNode(p)).join('')}</div>`;
+            html += `<div class="dp-row">${mids.map(p => renderNode(p)).join('')}</div>`;
+            html += `<div class="dp-row">${defs.map(p => renderNode(p)).join('')}</div>`;
+            html += `<div class="dp-row">${gks.map(p => renderNode(p)).join('')}</div>`;
             html += `</div>`;
-            html += `</div></div>`;
 
-            // Hint
+            let benchCounter = 0;
+            html += `<div class="dp-bench">
+                <div class="dp-bench-label">${activeChip === 'benchboost' ? 'Bench · boosted, these score too' : 'Bench'}</div>
+                <div class="dp-bench-row">${bench.map(p => renderNode(p, p.position === 1 ? 'GK' : ++benchCounter)).join('')}</div>
+            </div>`;
+            html += `</div>`;
+
             if (draftSwapSource !== null) {
                 const src = lineup.find(p => p.id === draftSwapSource);
-                html += `<div class="planner-lineup-hint"><span>👆</span> ${src ? src.name : 'Player'} selected — click an eligible player to swap.</div>`;
+                html += `<div class="planner-lineup-hint"><span>👆</span> ${src ? escHTML(src.name) : 'Player'} selected — click an eligible player to swap.</div>`;
             } else {
-                html += `<div class="planner-lineup-hint"><span>💡</span> Click a player to swap with bench or reorder bench priority. Use the <strong>↔</strong> button (hover on pitch, or in table) to make a transfer.</div>`;
+                html += `<div class="planner-lineup-hint"><span>💡</span> Click a player to swap with the bench or reorder it. Use <strong>↔</strong> to make a transfer.</div>`;
             }
+            return html;
+        }
 
+        // Bare stat names for a position, without the <abbr> markup the cells use.
+        function draftStatNamesFor(pos) {
+            const probe = { position: pos };
+            return getPositionStats(probe, {}, {}).map(s => {
+                const m = /<abbr[^>]*>(.*?)<\/abbr>/.exec(s.label);
+                return { text: m ? m[1] : s.label, tip: (/title="([^"]*)"/.exec(s.label) || [])[1] || '' };
+            });
+        }
+
+        // Separate from the body so switching gameweek can refresh it: the column
+        // highlight lives here, and re-rendering only the rows left it stuck on
+        // whichever gameweek happened to be selected at first paint.
+        function renderDraftTableHead() {
+            const ds = getActiveDraft();
+            const gwNumbers = ds.gwNumbers;
+            const dgwSet = draftDgwSet(getDraftSquad(ds.selectedGW), gwNumbers);
+
+            let html = `<tr><th style="min-width:150px;">Player</th>`;
+            if (draftTableView === 'stats') {
+                html += `<th colspan="3" class="planner-col-group planner-col-season" data-tooltip="Per-90 rates across the whole season.">Season</th>`;
+                html += `<th colspan="3" class="planner-col-group planner-col-recent" data-tooltip="Per-90 rates across the last six gameweeks.">Last 6 GWs</th>`;
+            }
+            gwNumbers.forEach(gw => {
+                const focus = gw === ds.selectedGW ? ' gw-column-focus' : '';
+                const dgw = dgwSet.has(gw) ? ' <span class="dp-dgw-tag">DGW</span>' : '';
+                html += `<th class="planner-fdr${focus}" data-tooltip="GW${gw}${dgwSet.has(gw) ? ' — double gameweek' : ''}. Click to plan this gameweek.">
+                    <button class="dp-gw-head" onclick="switchDraftGW(${gw})">GW${gw}${dgw}</button></th>`;
+            });
+            html += `<th style="width:34px;" data-tooltip="Swap between the XI and the bench">↕</th>`;
+            html += `<th style="width:96px;">Actions</th></tr>`;
             return html;
         }
 
@@ -1226,47 +1295,58 @@
             const bench = lineup.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
 
             const posGroups = [
-                { pos: 1, label: 'Goalkeepers', cls: 'pos-gk' },
-                { pos: 2, label: 'Defenders', cls: 'pos-def' },
-                { pos: 3, label: 'Midfielders', cls: 'pos-mid' },
-                { pos: 4, label: 'Forwards', cls: 'pos-fwd' }
+                { pos: 1, label: 'Goalkeepers' },
+                { pos: 2, label: 'Defenders' },
+                { pos: 3, label: 'Midfielders' },
+                { pos: 4, label: 'Forwards' }
             ];
 
-            const totalCols = 1 + 6 + gwNumbers.length + 1 + 1;
+            const statCols = draftTableView === 'stats' ? 6 : 0;
+            const totalCols = 1 + statCols + gwNumbers.length + 1 + 1;
+
+            // The stat names sit in the position header because each position is
+            // measured on different stats — a keeper on save percentage, a midfielder
+            // on xGI. That is why they could not live in the table header, and why
+            // they were being reprinted in all fifteen rows.
+            const groupHeader = (label, pos) => {
+                let h = `<tr class="planner-pos-header"><td class="dp-group-name" colspan="1">${escHTML(label)}</td>`;
+                if (draftTableView === 'stats') {
+                    const names = draftStatNamesFor(pos);
+                    names.forEach(n => { h += `<td class="dp-group-stat season" data-tooltip="${escHTML(n.tip)} — full season.">${escHTML(n.text)}</td>`; });
+                    names.forEach(n => { h += `<td class="dp-group-stat recent" data-tooltip="${escHTML(n.tip)} — last 6 gameweeks.">${escHTML(n.text)}</td>`; });
+                }
+                h += `<td colspan="${gwNumbers.length + 2}"></td></tr>`;
+                return h;
+            };
+
             let html = '';
-            posGroups.forEach(({ pos, label, cls }) => {
+            posGroups.forEach(({ pos, label }) => {
                 const groupPlayers = starters.filter(p => p.position === pos);
                 if (groupPlayers.length === 0) return;
-                html += `<tr class="planner-pos-header ${cls}"><td colspan="${totalCols}">${label}</td></tr>`;
+                html += groupHeader(label, pos);
                 groupPlayers.forEach(p => { html += renderDraftRow(p, gwNumbers, false); });
             });
 
             if (bench.length > 0) {
-                html += `<tr class="planner-bench-header"><td colspan="${totalCols}">Bench</td></tr>`;
+                html += `<tr class="planner-pos-header planner-bench-header"><td colspan="${totalCols}">Bench</td></tr>`;
                 bench.forEach(p => { html += renderDraftRow(p, gwNumbers, true); });
             }
             return html;
         }
 
         function renderDraftRow(player, gwNumbers, isBench) {
-            const pSeasonStats = getPlayerSeasonPer90(player);
-            const pRecentStats = getPlayerRecentStats(player.id, 6);
-            const posStats = getPositionStats(player, pSeasonStats, pRecentStats);
+            const ds = getActiveDraft();
             const fixtures = teamFixtures6[player.teamId] || [];
 
             let rowSwapClass = '';
-            if (draftSwapSource === player.id) {
-                rowSwapClass = 'planner-swap-highlight';
-            } else if (draftSwapSource !== null) {
-                rowSwapClass = draftCanSwap(draftSwapSource, player.id) ? 'planner-swap-highlight' : 'planner-swap-ineligible';
-            }
+            if (draftSwapSource === player.id) rowSwapClass = 'planner-swap-highlight';
+            else if (draftSwapSource !== null) rowSwapClass = draftCanSwap(draftSwapSource, player.id) ? 'planner-swap-highlight' : 'planner-swap-ineligible';
 
             let row = `<tr class="${isBench ? 'bench-row' : ''} ${rowSwapClass}" data-player-id="${player.id}">`;
 
-            // Player name cell
-            const captain = player.isCaptain ? '<span class="planner-captain-badge">C</span> ' : player.isVice ? '<span class="planner-captain-badge">©</span> ' : '';
+            const captain = player.isCaptain ? '<span class="planner-captain-badge">C</span> ' : player.isVice ? '<span class="planner-captain-badge">V</span> ' : '';
             const statusIcon = player.status === 'i' ? '🏥 ' : player.status === 'd' ? '⚠️ ' : '';
-            const transferBadge = player.isTransferIn ? '<span class="draft-transfer-badge">NEW</span>' : '';
+            const transferBadge = player.isTransferIn ? '<span class="draft-transfer-badge">IN</span>' : '';
 
             row += `<td><div class="planner-player">
                 <div>
@@ -1275,52 +1355,55 @@
                 </div>
             </div></td>`;
 
-            // Season stats
-            posStats.forEach(stat => {
-                const rating = rateStat(stat.sVal, stat.label, player.position);
-                row += `<td><div class="planner-stat-group"><span class="planner-stat-label">${stat.label}</span><span class="planner-stat ${rating}">${stat.season}</span></div></td>`;
-            });
+            if (draftTableView === 'stats') {
+                const pSeasonStats = getPlayerSeasonPer90(player);
+                const pRecentStats = getPlayerRecentStats(player.id, 6);
+                const posStats = getPositionStats(player, pSeasonStats, pRecentStats);
+                // Values only — the names are in the group header above.
+                posStats.forEach(stat => {
+                    row += `<td><span class="planner-stat ${rateStat(stat.sVal, stat.label, player.position)}">${stat.season}</span></td>`;
+                });
+                posStats.forEach(stat => {
+                    const trend = getTrend(stat.sVal, stat.rVal, stat.higherBetter);
+                    row += `<td><span class="planner-stat ${rateStat(stat.rVal, stat.label, player.position)}">${stat.recent}${trend.icon ? `<span class="planner-trend ${trend.cls}">${trend.icon}</span>` : ''}</span></td>`;
+                });
+            }
 
-            // Recent stats with trends
-            posStats.forEach(stat => {
-                const rating = rateStat(stat.rVal, stat.label, player.position);
-                const trend = getTrend(stat.sVal, stat.rVal, stat.higherBetter);
-                row += `<td><div class="planner-stat-group"><span class="planner-stat-label">${stat.label}</span><span class="planner-stat ${rating}">${stat.recent}${trend.icon ? `<span class="planner-trend ${trend.cls}">${trend.icon}</span>` : ''}</span></div></td>`;
-            });
-
-            // FDR cells
             gwNumbers.forEach(gw => {
+                const focus = gw === ds.selectedGW ? ' gw-column-focus' : '';
+                if (draftTableView === 'xp') {
+                    const xp = projectPlayerPointsForGW(player, gw);
+                    const cls = xp >= 5 ? 'xp-great' : xp >= 3.5 ? 'xp-good' : xp >= 2 ? 'xp-ok' : 'xp-poor';
+                    const blank = !fixtures.some(f => f.event === gw);
+                    row += `<td class="planner-fdr${focus}"><div class="dp-xp-cell ${blank ? 'xp-blank' : cls}" data-tooltip="${blank ? `${escHTML(player.team)} have no fixture in GW${gw}.` : `Projected ${xp.toFixed(1)} points for ${escHTML(player.name)} in GW${gw}.`}">${blank ? '—' : xp.toFixed(1)}</div></td>`;
+                    return;
+                }
                 const gwFixtures = fixtures.filter(f => f.event === gw);
                 if (gwFixtures.length > 1) {
-                    row += `<td class="planner-fdr"><div class="planner-fdr-cell-stack">`;
+                    row += `<td class="planner-fdr${focus}"><div class="planner-fdr-cell-stack">`;
                     gwFixtures.forEach(fix => {
-                        const fdrClass = `fdr-${fix.difficulty || 3}`;
-                        row += `<div class="planner-fdr-cell ${fdrClass}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
+                        row += `<div class="planner-fdr-cell fdr-${fix.difficulty || 3}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
                     });
                     row += `</div></td>`;
                 } else if (gwFixtures.length === 1) {
                     const fix = gwFixtures[0];
-                    const fdrClass = `fdr-${fix.difficulty || 3}`;
-                    row += `<td class="planner-fdr"><div class="planner-fdr-cell ${fdrClass}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div></td>`;
+                    row += `<td class="planner-fdr${focus}"><div class="planner-fdr-cell fdr-${fix.difficulty || 3}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div></td>`;
                 } else {
-                    row += `<td class="planner-fdr"><div class="planner-fdr-cell" style="background:var(--surface-3);color:var(--text-muted);">-</div></td>`;
+                    row += `<td class="planner-fdr${focus}"><div class="planner-fdr-cell" style="background:var(--surface-3);color:var(--text-muted);">-</div></td>`;
                 }
             });
 
-            // Swap button
             const isSwapSource = draftSwapSource === player.id;
-            const swapBtnClass = isSwapSource ? 'swap-active' : '';
-            row += `<td><button class="planner-swap-btn ${swapBtnClass}" onclick="handleDraftPitchClick(${player.id})" title="Swap between XI and bench" aria-label="Swap ${escHTML(player.name)} between XI and bench">↕</button></td>`;
+            row += `<td><button class="planner-swap-btn ${isSwapSource ? 'swap-active' : ''}" onclick="handleDraftPitchClick(${player.id})" data-tooltip="Swap ${escHTML(player.name)} between the XI and the bench">↕</button></td>`;
 
-            // Action buttons (transfer + captain)
-            row += `<td style="white-space:nowrap;">`;
-            row += `<button class="planner-swap-btn" onclick="openDraftTransferPanel(${player.id})" title="Transfer ${escHTML(player.name)}" aria-label="Transfer ${escHTML(player.name)}" style="font-size:0.6rem;width:22px;height:22px;">↔</button> `;
+            // Bigger, labelled actions — these were 22px circles.
+            row += `<td class="dp-actions"><div class="dp-act-row">`;
+            row += `<button class="dp-act" onclick="openDraftTransferPanel(${player.id})" data-tooltip="Transfer ${escHTML(player.name)} out">↔</button>`;
             if (!player.onBench) {
-                row += `<button class="planner-swap-btn" onclick="setDraftCaptain(${player.id})" title="Set as captain" aria-label="Set ${escHTML(player.name)} as captain" style="font-size:0.6rem;width:22px;height:22px;${player.isCaptain ? 'background:var(--color-captain);color:#000;border-color:var(--color-captain);' : ''}">C</button> `;
-                row += `<button class="planner-swap-btn" onclick="setDraftViceCaptain(${player.id})" title="Set as vice-captain" aria-label="Set ${escHTML(player.name)} as vice-captain" style="font-size:0.6rem;width:22px;height:22px;${player.isVice ? 'background:var(--text-muted);color:#fff;border-color:var(--text-muted);' : ''}">V</button>`;
+                row += `<button class="dp-act ${player.isCaptain ? 'is-cap' : ''}" onclick="setDraftCaptain(${player.id})" data-tooltip="Make ${escHTML(player.name)} captain — their points are doubled">C</button>`;
+                row += `<button class="dp-act ${player.isVice ? 'is-vice' : ''}" onclick="setDraftViceCaptain(${player.id})" data-tooltip="Make ${escHTML(player.name)} vice-captain — takes the armband if the captain does not play">V</button>`;
             }
-            row += `</td>`;
-
+            row += `</div></td>`;
             row += `</tr>`;
             return row;
         }
@@ -1385,6 +1468,9 @@
 
             const statsHub = document.querySelector('.gw-stats-hub');
             if (statsHub) statsHub.style.display = draftCompareMode ? 'none' : '';
+
+            const thead = document.getElementById('draftTableHead');
+            if (thead && !draftCompareMode) thead.innerHTML = renderDraftTableHead();
 
             const tbody = document.getElementById('draftTableBody');
             if (tbody && !draftCompareMode) tbody.innerHTML = renderDraftTableBody();

@@ -110,7 +110,13 @@
             return { pStart, expMins, min90: expMins / 90 };
         }
 
-        function projectPlayerPointsDetailed(player) {
+        // opts.fixture projects a specific match instead of the player's next one,
+        // which is what lets the draft planner price up GW+3. opts.applyEpFloor is
+        // separate because FPL's ep_next is an estimate for the NEXT match only —
+        // using it as a floor three gameweeks out would import a number that has
+        // nothing to do with the fixture being projected.
+        function projectPlayerPointsDetailed(player, opts) {
+            const o = opts || {};
             const out = { total: 0, appearance: 0, attack: 0, cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, pStart: 0 };
             if (!player) return out;
             if (player.status === 'i' || player.status === 'u' || player.status === 's') return out;
@@ -123,7 +129,7 @@
             // 2 pts for 60+ minutes, 1 otherwise.
             out.appearance = pStart * 2 + (1 - pStart) * 0.5;
 
-            const fx = (player.fixtures || [])[0];
+            const fx = o.fixture !== undefined ? o.fixture : (player.fixtures || [])[0];
             const fdr = fx ? (fx.difficulty || 3) : 3;
             const attackAdj = fixtureAttackAdj(fdr);
 
@@ -162,12 +168,44 @@
             // thin, treat ep_next as a floor rather than letting a fit, expected
             // starter be projected at almost nothing purely for lack of history.
             // Once there's real evidence (~5 full matches) our model stands alone.
-            if (player.status !== 'i' && player.status !== 'u' && player.status !== 's') {
+            if (o.applyEpFloor !== false && player.status !== 'i' && player.status !== 'u' && player.status !== 's') {
                 const evidence = Math.min(1, mins / 450);
                 const floor = (player.epNext || 0) * (1 - evidence);
                 out.total = Math.max(out.total, floor);
             }
             return out;
+        }
+
+        // What a player projects for one specific gameweek. A double gameweek sums
+        // both matches; a blank returns zero, which is the honest answer — a player
+        // with no fixture scores nothing, and averaging them out of the total is how
+        // a planner quietly lies about a blank.
+        function projectPlayerPointsForGW(player, gw) {
+            if (!player) return 0;
+            const all = teamFixtures6[player.teamId] || [];
+            const matches = all.filter(f => f.event === gw);
+            if (!matches.length) return 0;
+
+            // The ep_next floor is only meaningful for the very next fixture.
+            const isImmediate = all.length > 0 && all[0].event === gw;
+            const total = matches.reduce((sum, fixture) =>
+                sum + projectPlayerPointsDetailed(player, { fixture, applyEpFloor: isImmediate }).total, 0);
+            return Math.round(total * 10) / 10;
+        }
+
+        // Projected total for a lineup in a given gameweek, counting the armband and
+        // the chip in play: Bench Boost pays the bench, Triple Captain trebles.
+        function projectLineupForGW(lineup, gw, chip) {
+            if (!lineup || !lineup.length) return 0;
+            let total = 0;
+            lineup.forEach(p => {
+                const xp = projectPlayerPointsForGW(p, gw);
+                if (p.onBench && chip !== 'benchboost') return;
+                let mult = 1;
+                if (p.isCaptain) mult = chip === 'triplecaptain' ? 3 : 2;
+                total += xp * mult;
+            });
+            return Math.round(total * 10) / 10;
         }
 
         function predictedGWPoints(p) {

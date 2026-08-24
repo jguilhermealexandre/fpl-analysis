@@ -3833,3 +3833,310 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 /* Reuses .tm-ticker from Price Watch for the scroll mechanics, so both strips
    move at the same rate and there is one marquee implementation. */
 .sq-ticker-row .tm-ticker { flex: 1; min-width: 0; margin-bottom: 0; padding: 5px 0; }
+
+/* ===== GW Draft: timeline, stat chips, chip pills, pitch cards ===== */
+.draft-timeline { margin-bottom: 12px; }
+
+.draft-tl-track {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+/* The connector is what turns six buttons into one plan you read left to right. */
+.draft-tl-link {
+    flex: 0 0 14px;
+    align-self: center;
+    height: 2px;
+    background: var(--border-default);
+}
+
+.draft-tl-node {
+    flex: 1 1 0;
+    min-width: 108px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 6px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--surface-1);
+    cursor: pointer;
+    transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.draft-tl-node:hover { border-color: var(--color-primary); transform: translateY(-1px); }
+.draft-tl-node.active { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 10%, var(--surface-1)); box-shadow: 0 0 0 1px var(--color-primary) inset; }
+.draft-tl-node.has-hit { border-color: var(--verdict-sell); }
+.draft-tl-node.has-chip { border-style: dashed; }
+
+.draft-tl-gw { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: var(--text-primary); }
+.draft-tl-chip { font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; background: var(--color-primary); color: #fff; cursor: help; }
+.draft-tl-dgw { font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; background: var(--color-info); color: #fff; cursor: help; }
+.draft-tl-xp { font-size: 16px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); cursor: help; line-height: 1.1; }
+.draft-tl-xp-u { font-size: 9px; color: var(--text-muted); margin-left: 1px; }
+.draft-tl-ft { font-size: 9px; color: var(--text-muted); font-weight: 600; cursor: help; }
+.draft-tl-ft.over { color: var(--verdict-sell); }
+.draft-tl-hit { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 3px; background: var(--verdict-sell); color: #fff; cursor: help; }
+
+.draft-tl-summary { display: flex; align-items: center; gap: 12px; margin-top: 7px; font-size: 11px; }
+.draft-tl-total { color: var(--text-muted); cursor: help; }
+.draft-tl-total strong { color: var(--text-primary); font-family: var(--font-mono); font-size: 13px; }
+.draft-tl-total-hit { color: var(--verdict-sell); font-weight: 700; cursor: help; }
+.draft-tl-total-ok { color: var(--verdict-hold); font-weight: 600; }
+
+/* Named stats instead of "ITB: £0.0m | FT: 1 | Used: 0". */
+.draft-stats-row { display: flex; align-items: stretch; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+.draft-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px 11px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+}
+
+.draft-stat-label { font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.draft-stat-value { font-size: 14px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
+.draft-stat-value.over { color: var(--verdict-sell); }
+.draft-stat-sub { font-size: 10px; font-weight: 500; color: var(--text-muted); font-family: var(--font-sans); }
+.draft-stat.hit { border-color: var(--verdict-sell); background: color-mix(in srgb, var(--verdict-sell) 10%, transparent); }
+.draft-stat.hit .draft-stat-value { color: var(--verdict-sell); }
+.draft-stat.editable .draft-stat-label { cursor: help; }
+
+.draft-ft-input {
+    width: 46px;
+    padding: 2px 6px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+}
+
+/* Chips read as actions now, not labels. */
+.draft-chip-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.draft-chip-bar-label { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.draft-chip-selector { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.draft-chip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.draft-chip-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--text-primary); transform: translateY(-1px); }
+.draft-chip-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.draft-chip-btn.used, .draft-chip-btn:disabled { opacity: .4; cursor: not-allowed; text-decoration: line-through; }
+.draft-chip-icon { font-size: 12px; }
+
+/* The pitch is a contained card, so it stops reading as a second product bolted
+   onto a light page. */
+.dp-pitch-card {
+    position: relative;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-default);
+    background: linear-gradient(180deg, #14472a 0%, #1a5c36 45%, #14472a 100%);
+    box-shadow: var(--shadow-md);
+    padding: 14px 12px 12px;
+    overflow: hidden;
+}
+
+.dp-pitch { display: flex; flex-direction: column; gap: 10px; }
+.dp-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+
+.dp-bench {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(255,255,255,.25);
+}
+
+.dp-bench-label { font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.7); margin-bottom: 6px; }
+.dp-bench-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+
+.dp-card {
+    position: relative;
+    width: 116px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 7px 7px 6px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-1);
+    border: 1px solid transparent;
+    border-top: 3px solid var(--text-muted);
+    cursor: pointer;
+    transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.dp-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.dp-card.pos-gk { border-top-color: #f59e0b; }
+.dp-card.pos-def { border-top-color: #10b981; }
+.dp-card.pos-mid { border-top-color: #3b82f6; }
+.dp-card.pos-fwd { border-top-color: #ef4444; }
+.dp-card.is-out { opacity: .55; }
+.dp-card.swap-selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary); }
+.dp-card.swap-target { border-color: var(--verdict-hold); box-shadow: 0 0 0 2px var(--verdict-hold); }
+.dp-card.swap-ineligible { opacity: .35; cursor: not-allowed; }
+
+.dp-name { font-size: 12px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-meta { font-size: 9px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-fixtures { display: flex; flex-wrap: wrap; gap: 2px; margin: 2px 0 1px; }
+
+.dp-fix {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: help;
+    color: #111827;
+}
+
+.dp-fix-ha { opacity: .7; font-size: 8px; }
+.dp-fix.fdr-1 { background: var(--fdr-1); }
+.dp-fix.fdr-2 { background: var(--fdr-2); }
+.dp-fix.fdr-3 { background: var(--fdr-3); }
+.dp-fix.fdr-4 { background: var(--fdr-4); color: #fff; }
+.dp-fix.fdr-5 { background: var(--fdr-5); color: #fff; }
+.dp-fix-blank { background: var(--surface-3); color: var(--text-muted); }
+
+.dp-xp { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); cursor: help; line-height: 1.1; }
+.dp-xp-u { font-size: 9px; color: var(--text-muted); margin-left: 1px; }
+
+.dp-badges { position: absolute; top: -6px; left: 5px; display: flex; gap: 2px; z-index: 2; }
+.dp-badge { font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; cursor: help; line-height: 1.5; }
+.dp-badge.cap { background: var(--color-captain, #facc15); color: #111827; }
+.dp-badge.vice { background: var(--text-muted); color: #fff; }
+.dp-badge.in { background: var(--verdict-hold); color: #fff; }
+.dp-badge.out { background: var(--verdict-sell); color: #fff; }
+.dp-badge.doubt { background: var(--verdict-monitor); color: #111827; }
+.dp-badge.bench { background: var(--surface-3); color: var(--text-secondary); }
+
+.dp-transfer {
+    position: absolute;
+    top: -6px; right: 4px;
+    width: 19px; height: 19px;
+    border-radius: 50%;
+    border: 1px solid var(--border-default);
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 140ms ease;
+    z-index: 2;
+}
+
+.dp-card:hover .dp-transfer { opacity: 1; }
+.dp-transfer:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+@media (max-width: 640px) {
+    .dp-card { width: 96px; }
+    .draft-tl-node { min-width: 92px; }
+}
+
+/* The pitch is capped rather than filling the container: at full width a row of
+   three cards floated in the middle of an acre of green. */
+.dp-pitch, .dp-bench-row { max-width: 720px; margin-left: auto; margin-right: auto; }
+.dp-bench { max-width: 720px; margin-left: auto; margin-right: auto; }
+
+/* ===== GW Draft table ===== */
+.dp-table-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 9px; }
+.dp-view-toggle { display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; }
+
+.dp-view-btn {
+    padding: 6px 12px;
+    border: none;
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dp-view-btn + .dp-view-btn { border-left: 1px solid var(--border-default); }
+.dp-view-btn.active { background: var(--color-primary); color: #fff; }
+.dp-table-hint { font-size: 10px; color: var(--text-muted); }
+
+/* Stat names live in the position header, so the value cells carry none. */
+.planner-pos-header .dp-group-name {
+    font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--color-primary);
+}
+
+.planner-pos-header .dp-group-stat {
+    font-size: 9px; font-weight: 700; text-transform: none; letter-spacing: 0;
+    color: var(--text-muted); text-align: center; cursor: help;
+}
+
+.planner-pos-header .dp-group-stat.recent { color: var(--text-secondary); }
+
+/* One accent for every position header rather than four unrelated colours. */
+.planner-pos-header td { background: var(--surface-2); border-top: 1px solid var(--border-default); }
+.planner-bench-header td { color: var(--text-muted); }
+
+/* The gameweek being planned is highlighted down the whole table. */
+.gw-column-focus { background: color-mix(in srgb, var(--color-primary) 9%, transparent) !important; }
+th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
+
+.dp-gw-head {
+    border: none; background: none; cursor: pointer;
+    font: inherit; color: inherit; padding: 2px 4px;
+}
+
+.dp-dgw-tag { font-size: 8px; font-weight: 800; color: var(--color-info); }
+
+.dp-xp-cell {
+    padding: 4px 6px; border-radius: 5px; text-align: center;
+    font-size: 12px; font-weight: 700; font-family: var(--font-mono); cursor: help;
+}
+
+.dp-xp-cell.xp-great { background: color-mix(in srgb, var(--verdict-hold) 22%, transparent); color: var(--verdict-hold); }
+.dp-xp-cell.xp-good { background: color-mix(in srgb, var(--verdict-hold) 12%, transparent); color: var(--text-primary); }
+.dp-xp-cell.xp-ok { background: var(--surface-2); color: var(--text-secondary); }
+.dp-xp-cell.xp-poor { background: var(--surface-2); color: var(--text-muted); }
+.dp-xp-cell.xp-blank { background: var(--surface-3); color: var(--text-muted); }
+
+/* Captain and vice were 22px circles; these are real buttons. */
+.dp-act-row { display: flex; gap: 3px; }
+
+.dp-act {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-size: 12px; font-weight: 700;
+    cursor: pointer;
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.dp-act:hover { border-color: var(--color-primary); color: var(--text-primary); }
+.dp-act.is-cap { background: var(--color-captain, #facc15); border-color: var(--color-captain, #facc15); color: #111827; }
+.dp-act.is-vice { background: var(--text-muted); border-color: var(--text-muted); color: #fff; }
+
+/* The two hub tabs shared a hard edge between a white and a grey panel. */
+.gw-stats-hub .hub-tab-nav { background: transparent; border-bottom: 1px solid var(--border-default); gap: 2px; }
+.gw-stats-hub .hub-panel { background: var(--surface-1); }
+.gw-stats-hub .hub-tab { background: transparent; border: none; border-bottom: 2px solid transparent; border-radius: 0; color: var(--text-muted); }
+.gw-stats-hub .hub-tab.active { background: transparent; color: var(--color-primary); border-bottom-color: var(--color-primary); }
