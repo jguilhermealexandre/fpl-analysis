@@ -425,30 +425,81 @@
                 initDraft(activeDraftSlot);
                 loadDraft();
             }
-            transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null, marketTab: 'ai', browseSearch: '', browseSort: 'score' };
+            transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null, marketTab: 'ai', browseSearch: '', browseSort: 'score', wildcard: false, sellMode: false };
             const container = document.getElementById('transferDisplay');
 
+            // Two panes side by side rather than one panel switching between squad,
+            // market and comparison — the squad you are selling from stays visible
+            // while you shop, which is the whole point of a transfer screen.
             container.innerHTML = `
                 <div class="tw-container">
-                    <div class="tw-intro">
-                        <span><i data-lucide="repeat" style="width:20px;height:20px;"></i></span>
-                        <div>Build your transfer plan — select players to sell from your squad, then find AI-powered replacements. Up to 5 transfers with live budget tracking.</div>
-                    </div>
                     <div id="twBudgetBar"></div>
-                    <div class="tw-room-layout">
-                        <div class="tw-board-col" id="twBoardCol">
-                            <div id="twDraftBoard"></div>
-                        </div>
-                        <div class="tw-scout-col" id="twScoutCol">
-                            <div id="twScoutPanel"></div>
-                        </div>
+                    <div class="twc-body">
+                        <div class="twc-pane" id="twSquadPane"></div>
+                        <div class="twc-pane" id="twMarketPane"></div>
                     </div>
                 </div>
             `;
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            renderTWAll();
+        }
+
+        // Wildcard makes every transfer free, so the cap becomes the squad itself.
+        function twMaxTransfers() { return transferState.wildcard ? 15 : 5; }
+
+        function twToggleWildcard() {
+            transferState.wildcard = !transferState.wildcard;
+            renderTWAll();
+        }
+
+        function twToggleSellMode() {
+            transferState.sellMode = !transferState.sellMode;
+            renderTWAll();
+        }
+
+        // Sell every player in a position (or the whole squad) in one action. Pooling
+        // budget across six or eight sales one row at a time is the part of a
+        // wildcard that actually wastes time.
+        function twSellAll(position) {
+            const targets = selectedPlayers.filter(p => position ? p.position === position : true);
+            targets.forEach(p => {
+                if (transferState.pending.length >= twMaxTransfers()) return;
+                if (transferState.pending.some(s => s.soldPlayer.id === p.id)) return;
+                transferState.pending.push({ soldPlayer: p, replacement: null });
+            });
+            transferState.candidateCache = {};
+            renderTWAll();
+        }
+
+        function twClearPending() {
+            transferState.pending = [];
+            transferState.activeSlot = -1;
+            transferState.mode = 'squad';
+            transferState.previewPlayer = null;
+            transferState.candidateCache = {};
+            renderTWAll();
+        }
+
+        // The next N gameweeks nobody has kicked off yet. Both players in a
+        // comparison are scored over the same weeks, or the delta is meaningless.
+        function twPlanGWs(n) {
+            const started = new Set((allFixtures || []).filter(f => f.event !== null && (f.started || f.finished_provisional)).map(f => f.event));
+            const upcoming = [...new Set((allFixtures || [])
+                .filter(f => f.event !== null && !f.finished_provisional && !started.has(f.event))
+                .map(f => f.event))].sort((a, b) => a - b);
+            return upcoming.slice(0, n);
+        }
+
+        function twXPOver(player, gws) {
+            if (!player || typeof projectPlayerPointsForGW !== 'function') return 0;
+            return Math.round(gws.reduce((s, g) => s + projectPlayerPointsForGW(player, g), 0) * 10) / 10;
+        }
+
+        function renderTWAll() {
             renderTWBudgetBar();
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWSquadPane();
+            renderTWMarketPane();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function getTWBank() {
@@ -466,6 +517,9 @@
         }
 
         function getTWHitCost() {
+            // A wildcard makes every transfer free — showing accumulated hits during
+            // one is the single most misleading thing this screen could do.
+            if (transferState.wildcard) return 0;
             const ft = typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1;
             const count = transferState.pending.length;
             return Math.max(0, count - ft) * 4;
@@ -476,196 +530,139 @@
             if (!el) return;
             const itb = getTWLiveITB();
             const hit = getTWHitCost();
+            const wc = transferState.wildcard;
             const ft = typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1;
             const count = transferState.pending.length;
-            const allFilled = count > 0 && transferState.pending.every(s => s.replacement);
-            const hitClass = hit > 0 ? 'danger' : '';
+            const filled = transferState.pending.filter(s => s.replacement).length;
+            const allFilled = count > 0 && filled === count;
             const itbClass = itb < 0 ? 'danger' : itb < 0.5 ? 'warning' : 'success';
 
+            const cart = transferState.pending.map((s, i) => `<span class="twc-chip ${s.replacement ? 'done' : ''} ${i === transferState.activeSlot ? 'active' : ''}" onclick="twSelectSlot(${i})"
+                data-tooltip="${s.replacement ? `${escHTML(s.soldPlayer.name)} out, ${escHTML(s.replacement.name)} in` : `${escHTML(s.soldPlayer.name)} out — no replacement chosen yet`}">
+                ${escHTML(s.soldPlayer.name)}${s.replacement ? ` → ${escHTML(s.replacement.name)}` : ' → ?'}
+                <button class="twc-chip-x" onclick="event.stopPropagation();twRemoveSlot(${i})" data-tooltip="Remove this transfer">×</button>
+            </span>`).join('');
+
             el.innerHTML = `
-                <div class="tw-budget-bar-top">
-                    <div class="tw-budget-section">
-                        <div class="tw-budget-lbl">Transfers</div>
-                        <div class="tw-budget-val">${count} / ${ft} Free</div>
-                    </div>
-                    <div class="tw-budget-sep"></div>
-                    <div class="tw-budget-section">
-                        <div class="tw-budget-lbl">Point Hit</div>
-                        <div class="tw-budget-val ${hitClass}">${hit > 0 ? '-' : ''}${hit} pts</div>
-                    </div>
-                    <div class="tw-budget-sep"></div>
-                    <div class="tw-budget-section">
-                        <div class="tw-budget-lbl">In The Bank</div>
-                        <div class="tw-budget-val ${itbClass}">£${itb.toFixed(1)}m</div>
-                    </div>
-                    <div class="tw-budget-sep"></div>
-                    <div class="tw-budget-section">
-                        <div class="tw-budget-lbl">Squad Value</div>
-                        <div class="tw-budget-val">£${((picksData?.entry_history?.value || 0) / 10).toFixed(1)}m</div>
-                    </div>
-                    <button class="tw-confirm-btn" ${!allFilled ? 'disabled' : ''} onclick="twShowSummary()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"/></svg>
-                        View Summary
+                <div class="twc-head">
+                    <button class="twc-wc ${wc ? 'on' : ''}" onclick="twToggleWildcard()" aria-pressed="${wc}"
+                        data-tooltip="${wc ? 'Wildcard on — every transfer is free and the limit is your whole squad. Click to turn it off.' : 'Plan a wildcard: unlimited transfers, no points hits.'}">
+                        🃏 ${wc ? 'Wildcard on' : 'Play wildcard'}
                     </button>
-                </div>
-            `;
-        }
-
-        function renderTWDraftBoard() {
-            const el = document.getElementById('twDraftBoard');
-            if (!el) return;
-            const maxSlots = 5;
-            const pending = transferState.pending;
-
-            let slotsHtml = '';
-            if (pending.length === 0) {
-                slotsHtml = `<div style="padding:24px 14px;text-align:center;color:var(--text-muted);font-size:12px;">
-                    <i data-lucide="arrow-right-left" style="width:24px;height:24px;display:block;margin:0 auto 8px;opacity:0.3;"></i>
-                    Select players to sell from your squad →
-                </div>`;
-            } else {
-                for (let i = 0; i < pending.length; i++) {
-                    const slot = pending[i];
-                    const isActive = transferState.activeSlot === i;
-                    const isComplete = !!slot.replacement;
-                    const sold = slot.soldPlayer;
-                    const posName = ['', 'GKP', 'DEF', 'MID', 'FWD'][sold.position] || '';
-
-                    let inHtml = '';
-                    if (isComplete) {
-                        const repl = slot.replacement;
-                        inHtml = `<div class="tw-slot-in">
-                            <div class="tw-slot-in-name">${repl.name}</div>
-                            <div class="tw-slot-in-meta">${repl.team} · £${repl.price.toFixed(1)}m</div>
-                        </div>`;
-                    } else {
-                        inHtml = `<div class="tw-slot-in">
-                            <div class="tw-slot-in-empty">Click to find replacement</div>
-                        </div>`;
-                    }
-
-                    slotsHtml += `<div class="tw-slot-card${isActive ? ' active' : ''}${isComplete ? ' complete' : ''}" onclick="twSelectSlot(${i})">
-                        <div class="tw-slot-num">${i + 1}</div>
-                        <div class="tw-slot-out">
-                            <div class="tw-slot-out-name">${sold.name}</div>
-                            <div class="tw-slot-out-meta">${posName} · £${(sold.sellPrice || sold.price).toFixed(1)}m</div>
-                        </div>
-                        <div class="tw-slot-arrow">→</div>
-                        ${inHtml}
-                        <button class="tw-slot-remove" onclick="event.stopPropagation();twRemoveSlot(${i});" title="Remove transfer">×</button>
-                    </div>`;
-                }
-            }
-
-            const canAdd = pending.length < maxSlots;
-
-            el.innerHTML = `
-                <div class="tw-board">
-                    <div class="tw-board-header">
-                        <i data-lucide="clipboard-list" style="width:14px;height:14px;"></i>
-                        Transfer Plan${pending.length > 0 ? ' (' + pending.length + ')' : ''}
+                    <div class="twc-stat">
+                        <span class="twc-stat-l">Transfers</span>
+                        <span class="twc-stat-v">${count}${wc ? ` <span class="twc-unl">of 15 · unlimited</span>` : ` / ${ft} free`}</span>
                     </div>
-                    <div class="tw-board-body">
-                        ${slotsHtml}
-                        ${canAdd ? `<button class="tw-add-slot" onclick="twAddTransferSlot()">
-                            <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Transfer
-                        </button>` : ''}
+                    <div class="twc-stat">
+                        <span class="twc-stat-l">Points hit</span>
+                        <span class="twc-stat-v ${hit > 0 ? 'danger' : ''}">${wc ? 'Waived' : hit > 0 ? `−${hit} pts` : '0 pts'}</span>
                     </div>
-                    ${pending.length > 0 ? `<div class="tw-board-actions">
-                        <button class="tw-btn tw-btn-danger" onclick="twClearAll()">
-                            <i data-lucide="trash-2" style="width:12px;height:12px;"></i> Clear All
-                        </button>
-                        <button class="tw-btn tw-btn-secondary" onclick="renderTransferWizard()">
-                            <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Start Over
-                        </button>
-                    </div>` : ''}
+                    <div class="twc-stat">
+                        <span class="twc-stat-l">In the bank</span>
+                        <span class="twc-stat-v ${itbClass}">£${itb.toFixed(1)}m</span>
+                    </div>
+                    <div class="twc-actions">
+                        ${count ? `<button class="rc-btn" onclick="twOpenPreview()" data-tooltip="See the squad these transfers would leave you with, on a pitch, with its value and projection.">👁️ Preview squad</button>` : ''}
+                        ${count ? `<button class="rc-btn" onclick="twClearPending()" data-tooltip="Discard every pending transfer">Clear</button>` : ''}
+                        <button class="rc-btn primary" ${!allFilled ? 'disabled' : ''} onclick="twShowSummary()" data-tooltip="${allFilled ? 'Review the finished plan' : 'Every transfer needs a replacement before you can review'}">Summary →</button>
+                    </div>
                 </div>
-            `;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+                ${count ? `<div class="twc-cart">${cart}</div>` : ''}`;
         }
 
-        function renderTWScoutPanel() {
-            const el = document.getElementById('twScoutPanel');
+        function renderTWSquadPane() {
+            const el = document.getElementById('twSquadPane');
             if (!el) return;
-            const mode = transferState.mode;
-            if (mode === 'compare' && transferState.previewPlayer && transferState.activeSlot >= 0) {
-                renderTWComparison(el);
-            } else if (mode === 'market' && transferState.activeSlot >= 0) {
-                renderTWMarket(el);
-            } else if (mode === 'summary') {
-                twRenderSummaryPanel(el);
-            } else {
-                renderTWSquadPicker(el);
-            }
-        }
-
-        function renderTWSquadPicker(el) {
+            const gws = twPlanGWs(3);
             const filledIds = new Set(transferState.pending.filter(s => s.replacement).map(s => s.soldPlayer.id));
-            const pendingSellIds = new Set(transferState.pending.filter(s => !s.replacement).map(s => s.soldPlayer.id));
-            const totalPending = transferState.pending.length;
+            const pendingIds = new Set(transferState.pending.filter(s => !s.replacement).map(s => s.soldPlayer.id));
             const positions = [
-                { type: 1, label: 'Goalkeepers' },
-                { type: 2, label: 'Defenders' },
-                { type: 3, label: 'Midfielders' },
-                { type: 4, label: 'Forwards' }
+                { type: 1, label: 'Goalkeepers' }, { type: 2, label: 'Defenders' },
+                { type: 3, label: 'Midfielders' }, { type: 4, label: 'Forwards' }
             ];
 
-            let html = '';
-            for (const pos of positions) {
+            let rows = '';
+            positions.forEach(pos => {
                 const players = selectedPlayers.filter(p => p.position === pos.type);
-                if (players.length === 0) continue;
+                if (!players.length) return;
+                rows += `<div class="twc-group">
+                    <div class="twc-group-head">
+                        <span>${pos.label}</span>
+                        ${transferState.sellMode ? `<button class="twc-mini" onclick="twSellAll(${pos.type})" data-tooltip="Sell every ${pos.label.toLowerCase().replace(/s$/, '')} at once and pool the money">Sell all</button>` : ''}
+                    </div>`;
+                players.forEach(p => {
+                    const sold = filledIds.has(p.id), pending = pendingIds.has(p.id);
+                    const xp = twXPOver(p, gws);
+                    // Three fixtures at a glance is the context that decides a sale.
+                    const fx = (teamFixtures[p.teamId] || p.fixtures || []).slice(0, 3);
+                    const blocks = fx.length
+                        ? fx.map(f => `<span class="twc-fdr fdr-${f.difficulty || 3}" data-tooltip="${f.isHome ? 'Home to' : 'Away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3}">${escHTML((f.opponent || '?').slice(0, 3))}</span>`).join('')
+                        : '<span class="twc-fdr twc-fdr-none">—</span>';
+                    const status = p.status === 'i' || p.status === 'u' || p.status === 's' ? '<span class="twc-flag out">OUT</span>'
+                        : p.status === 'd' ? `<span class="twc-flag doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}">?</span>` : '';
 
-                html += '<div class="tw-pos-group"><div class="tw-pos-group-label">' + pos.label + '</div>';
-                for (const p of players) {
-                    const hasFill = filledIds.has(p.id);
-                    const isPending = pendingSellIds.has(p.id);
-                    const result = analysisResults?.find(r => r.player?.id === p.id || r.id === p.id);
-                    const verdict = result?.verdict || '';
-                    const verdictClass = verdict.toLowerCase().replace(/[^a-z]/g, '');
+                    rows += `<div class="twc-row ${sold ? 'is-sold' : ''} ${pending ? 'is-pending' : ''} ${transferState.sellMode ? 'sell-mode' : ''}"
+                        ${transferState.sellMode && !sold ? `onclick="twPickOutPlayer(${p.id})"` : ''}>
+                        <span class="twc-pos ${['', 'gk', 'def', 'mid', 'fwd'][p.position]}">${['', 'GK', 'DEF', 'MID', 'FWD'][p.position]}</span>
+                        <div class="twc-who">
+                            <div class="twc-name">${escHTML(p.name)}${status}</div>
+                            <div class="twc-sub">${escHTML(p.team)} · £${(p.sellPrice || p.price).toFixed(1)}m</div>
+                        </div>
+                        <div class="twc-fdrs" data-tooltip="Next three fixtures.">${blocks}</div>
+                        <div class="twc-xp" data-tooltip="Projected points over the next ${gws.length} gameweeks.">${xp.toFixed(1)}<span class="twc-xp-u">xP</span></div>
+                        ${sold ? `<span class="twc-swapped">Swapped</span>`
+                            : `<button class="twc-swap ${pending ? 'active' : ''}" onclick="event.stopPropagation();twSwapPlayer(${p.id})"
+                                data-tooltip="${pending ? 'Find a replacement for ' + escHTML(p.name) : 'Sell ' + escHTML(p.name) + ' and open the market for their position'}">🔄 ${pending ? 'Find' : 'Swap'}</button>`}
+                    </div>`;
+                });
+                rows += `</div>`;
+            });
 
-                    const fixes = teamFixtures[p.teamId] || p.fixtures || [];
-                    const nextFix = fixes[0];
-                    let fixHtml = '';
-                    if (nextFix) {
-                        fixHtml = '<span class="tw-sr-fixture"><span class="fdr-dot fdr-' + nextFix.difficulty + '"></span>' + nextFix.opponent + '(' + (nextFix.isHome ? 'H' : 'A') + ')</span>';
-                    }
+            el.innerHTML = `<div class="twc-panel">
+                <div class="twc-panel-head">
+                    <span class="twc-panel-title">👥 Your squad</span>
+                    <button class="twc-mini ${transferState.sellMode ? 'on' : ''}" onclick="twToggleSellMode()"
+                        data-tooltip="${transferState.sellMode ? 'Back to single swaps' : 'Click players to sell several at once and pool their money — useful on a wildcard'}">🗑️ ${transferState.sellMode ? 'Sell mode on' : 'Sell mode'}</button>
+                </div>
+                <div class="twc-panel-body">${rows}</div>
+            </div>`;
+        }
 
-                    let rowClass = 'tw-squad-row';
-                    if (hasFill) rowClass += ' sold';
-                    else if (isPending) rowClass += ' pending-sell';
-                    if (p.onBench && !isPending && !hasFill) rowClass += ' on-bench';
-                    const canToggle = isPending || (!hasFill && totalPending < 5);
-
-                    html += '<div class="' + rowClass + '"' + (canToggle ? ' onclick="twPickOutPlayer(' + p.id + ')"' : '') + '>' +
-                        '<span class="tw-sr-check">' + (isPending ? '✓' : hasFill ? '🔒' : '') + '</span>' +
-                        '<span class="tw-sr-pos">' + ['', 'GK', 'DEF', 'MID', 'FWD'][p.position] + '</span>' +
-                        '<span class="tw-sr-name">' + p.name + '</span>' +
-                        fixHtml +
-                        '<span class="tw-sr-pill">£' + (p.sellPrice || p.price).toFixed(1) + 'm</span>' +
-                        '<span class="tw-sr-pill">' + (p.form || 0).toFixed(1) + '</span>' +
-                        (verdict ? '<span class="tw-sr-verdict ' + verdictClass + '">' + verdict + '</span>' : '') +
-                        '</div>';
+        // One click: stage the sale and open the market for that position.
+        function twSwapPlayer(playerId) {
+            const existing = transferState.pending.findIndex(s => s.soldPlayer.id === playerId);
+            if (existing < 0) {
+                const player = selectedPlayers.find(p => p.id === playerId);
+                if (!player) return;
+                if (transferState.pending.length >= twMaxTransfers()) {
+                    updateStatus(`That is the maximum of ${twMaxTransfers()} transfers`, 'error');
+                    return;
                 }
-                html += '</div>';
+                transferState.pending.push({ soldPlayer: player, replacement: null });
             }
+            transferState.activeSlot = transferState.pending.findIndex(s => s.soldPlayer.id === playerId);
+            transferState.mode = 'market';
+            transferState.previewPlayer = null;
+            transferState.candidateCache = {};
+            transferState.marketTab = 'ai';
+            renderTWAll();
+        }
 
-            const unfilled = transferState.pending.filter(s => !s.replacement).length;
-            const footerHtml = '<div class="tw-squad-footer">' +
-                '<span class="tw-squad-count">' + totalPending + '/5 selected</span>' +
-                '<button class="tw-btn tw-btn-primary" onclick="twStartMarketForSlots()"' + (unfilled === 0 ? ' disabled' : '') + ' style="margin-left:auto;">' +
-                '<i data-lucide="search" style="width:12px;height:12px;"></i> Find Replacements' + (unfilled > 0 ? ' (' + unfilled + ')' : '') + '</button>' +
-                '</div>';
-
-            el.innerHTML = '<div class="tw-scout">' +
-                '<div class="tw-scout-header"><i data-lucide="users" style="width:14px;height:14px;"></i> Your Squad — Tap players to sell</div>' +
-                '<div class="tw-scout-body tw-squad-picker">' + html + '</div>' + footerHtml + '</div>';
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+        function renderTWMarketPane() {
+            const el = document.getElementById('twMarketPane');
+            if (!el) return;
+            const mode = transferState.mode;
+            if (mode === 'compare' && transferState.previewPlayer && transferState.activeSlot >= 0) return renderTWComparison(el);
+            if (mode === 'market' && transferState.activeSlot >= 0) return renderTWMarket(el);
+            if (mode === 'summary') return twRenderSummaryPanel(el);
+            el.innerHTML = `<div class="twc-panel"><div class="twc-panel-head"><span class="twc-panel-title">🛒 Market</span></div>
+                <div class="twc-idle">Hit <strong>🔄 Swap</strong> on any player and their replacements appear here, already filtered to their position and what you can afford.</div></div>`;
         }
 
         function renderTWMarket(el) {
             const slotIdx = transferState.activeSlot;
             if (slotIdx < 0 || !transferState.pending[slotIdx]) {
-                renderTWSquadPicker(el);
+                renderTWSquadPane();
                 return;
             }
 
@@ -754,6 +751,12 @@
                 return col.raw >= t[0] ? ' good' : col.raw <= t[1] ? ' poor' : '';
             }
 
+            // Every candidate is priced against the player being sold, over the same
+            // gameweeks, so "is this an upgrade" is answered on the card rather than
+            // left as an exercise for the reader.
+            const planGWs = twPlanGWs(3);
+            const soldXP = twXPOver(slot.soldPlayer, planGWs);
+
             let rowsHtml = '';
             if (display.length === 0) {
                 rowsHtml = '<div class="tw-market-empty">' + (tab === 'browse' && transferState.browseSearch ? 'No players match your search' : 'No candidates found within budget') + '</div>';
@@ -766,24 +769,33 @@
                     const cols = getStatCols(c);
                     const teamName = c.team || teams[c.teamId]?.short_name || '';
                     const fixes = teamFixtures[c.teamId] || c.fixtures || [];
-                    const nextF = fixes[0];
-                    const fdrHtml = nextF ? '<span class="fdr-dot fdr-' + nextF.difficulty + '"></span>' + nextF.opponent + '(' + (nextF.isHome ? 'H' : 'A') + ')' : '';
 
-                    let miniStats = '';
-                    for (const col of cols) {
-                        miniStats += '<span class="tw-market-mini-stat' + statCls(col) + '" title="' + col.label + '">' + col.val + '</span>';
-                    }
+                    const gain = twXPOver(c, planGWs) - soldXP;
+                    const gainCls = gain > 0.3 ? 'up' : gain < -0.3 ? 'down' : 'flat';
+                    const gainTxt = gain > 0.3 ? `▲ +${gain.toFixed(1)}` : gain < -0.3 ? `▼ ${gain.toFixed(1)}` : '±0.0';
 
-                    rowsHtml += '<div class="tw-market-row' + (previewed ? ' previewed' : '') + '" onclick="twPreviewPlayer(' + c.id + ')" style="' + (!affordable ? 'opacity:0.4;' : '') + '">' +
-                        '<div class="tw-market-rank">' + (i + 1) + '</div>' +
-                        '<span class="tw-market-name">' + c.name + '</span>' +
-                        '<span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">' + teamName + '</span>' +
-                        '<span class="tw-market-price">£' + c.price.toFixed(1) + 'm ' + priceChangeBadge(c) + '</span>' +
-                        '<span class="tw-market-stat" style="color:' + ((c.form || 0) >= 5 ? 'var(--color-success)' : 'var(--text-secondary)') + ';">' + (c.form || 0).toFixed(1) + '</span>' +
-                        '<span class="tw-market-score" title="AI Score">' + score.toFixed(0) + '</span>' +
-                        '<div class="tw-market-row-detail">' + miniStats +
-                        (fdrHtml ? '<span class="tw-sr-fixture" style="margin-left:auto;">' + fdrHtml + '</span>' : '') +
-                        '</div></div>';
+                    const fdrBlocks = fixes.slice(0, 3).map(f =>
+                        `<span class="twc-fdr fdr-${f.difficulty || 3}" data-tooltip="${f.isHome ? 'Home to' : 'Away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3}">${escHTML((f.opponent || '?').slice(0, 3))}</span>`).join('');
+
+                    // Labelled stats — the old row printed bare numbers with nothing
+                    // saying which was which.
+                    const stats = cols.map(col => `<span class="twc-cstat" data-tooltip="${escHTML(col.label)}">
+                        <span class="twc-cstat-l">${escHTML(col.label)}</span><span class="twc-cstat-v">${escHTML(String(col.val))}</span></span>`).join('');
+
+                    rowsHtml += `<div class="twc-card ${previewed ? 'previewed' : ''} ${!affordable ? 'unafford' : ''}" onclick="twPreviewPlayer(${c.id})">
+                        <div class="twc-card-top">
+                            <span class="twc-card-rank">${i + 1}</span>
+                            <span class="twc-card-name">${escHTML(c.name)}</span>
+                            <span class="twc-card-team">${escHTML(teamName)}</span>
+                            <span class="twc-card-price">£${c.price.toFixed(1)}m ${priceChangeBadge(c)}</span>
+                        </div>
+                        <div class="twc-card-mid">
+                            <span class="twc-delta ${gainCls}" data-tooltip="Projected over the next ${planGWs.length} gameweeks: ${escHTML(c.name)} ${twXPOver(c, planGWs).toFixed(1)} against ${escHTML(slot.soldPlayer.name)} ${soldXP.toFixed(1)}.">${gainTxt} xP</span>
+                            <span class="twc-score" data-tooltip="AI transfer score — the engine's overall ranking for your squad. A ranking, not a points prediction.">${score.toFixed(0)}</span>
+                            <span class="twc-fdrs">${fdrBlocks}</span>
+                        </div>
+                        <div class="twc-card-stats">${stats}</div>
+                    </div>`;
                 }
             }
 
@@ -817,477 +829,250 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
+        let _twRadarChart = null;
+        let _twFdrChart = null;
+
+        // Normalised 0-1 so five different units can share one radar. Each axis is
+        // divided by a strong-but-attainable value rather than by the pair's own max,
+        // which would make the weaker of two poor players look elite.
+        function twRadarAxes(p) {
+            const per90 = typeof regressedPer90 === 'function' ? regressedPer90(p) : { xg90: 0, xa90: 0 };
+            const mins = typeof expectedMinutesModel === 'function' ? expectedMinutesModel(p) : { pStart: 0 };
+            const games = typeof computePlayerGamesPlayed === 'function' ? computePlayerGamesPlayed(p) : 1;
+            const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+            return {
+                'Goal threat': Math.min(1, per90.xg90 / 0.6),
+                'Assist threat': Math.min(1, per90.xa90 / 0.4),
+                'Bonus': Math.min(1, ((p.bonus || 0) / Math.max(games, 1)) / 1.2),
+                'Minutes': mins.pStart,
+                'Form': Math.min(1, form / 8)
+            };
+        }
+
         function renderTWComparison(el) {
             const slotIdx = transferState.activeSlot;
             const slot = transferState.pending[slotIdx];
             if (!slot || !transferState.previewPlayer) { renderTWMarket(el); return; }
 
             const sold = slot.soldPlayer;
-            const candidate = transferState.previewPlayer;
-            const pos = sold.position;
-            const posName = ['', 'GK', 'DEF', 'MID', 'FWD'][pos];
-            const soldPrice = sold.sellPrice || sold.price;
-            const candPrice = candidate.price;
-            const itb = getTWLiveITB();
-            const affordable = candPrice <= itb + (slot.replacement ? slot.replacement.price : 0);
+            const cand = transferState.previewPlayer;
+            const planGWs = twPlanGWs(3);
+            const fdrGWs = twPlanGWs(5);
+            const soldXP = twXPOver(sold, planGWs);
+            const candXP = twXPOver(cand, planGWs);
+            const delta = candXP - soldXP;
+            const itb = getTWLiveITB() + (slot.replacement ? slot.replacement.price : 0);
+            const affordable = cand.price <= itb + 0.001;
 
-            // Detailed stats
-            const soldRecent = getPlayerRecentStats(sold.id, 5);
-            const candRecent = getPlayerRecentStats(candidate.id, 5);
-            const soldSeason = getPlayerSeasonPer90(sold);
-            const candSeason = getPlayerSeasonPer90(candidate);
+            const seasonS = getPlayerSeasonPer90(sold), seasonC = getPlayerSeasonPer90(cand);
+            const statsS = getPositionStats(sold, seasonS, getPlayerRecentStats(sold.id, 6));
+            const statsC = getPositionStats(cand, seasonC, getPlayerRecentStats(cand.id, 6));
 
-            function fmtV(v, dec, suf) { return v == null ? '-' : (dec === 0 ? Math.round(v) : v.toFixed(dec || 1)) + (suf || ''); }
-            function compRow(label, lv, rv, higherBetter, lfmt, rfmt) {
-                const left = lfmt || fmtV(lv);
-                const right = rfmt || fmtV(rv);
-                const lB = higherBetter ? lv > rv : lv < rv;
-                const rB = higherBetter ? rv > lv : rv < lv;
-                return '<div class="tw-compare-stat-row">' +
-                    '<div class="tw-compare-stat-val left' + (lB ? ' better' : rB ? ' worse' : '') + '">' + left + '</div>' +
-                    '<div class="tw-compare-stat-label">' + label + '</div>' +
-                    '<div class="tw-compare-stat-val right' + (rB ? ' better' : lB ? ' worse' : '') + '">' + right + '</div></div>';
-            }
-
-            // ── Section 1: Core Stats ──
-            let coreHtml = '';
-            coreHtml += compRow('Price', soldPrice, candPrice, false, '£' + soldPrice.toFixed(1) + 'm', '£' + candPrice.toFixed(1) + 'm');
-            coreHtml += compRow('Form', sold.form || 0, candidate.form || 0, true);
-            coreHtml += compRow('PPG', sold.ppg || 0, candidate.ppg || 0, true);
-            coreHtml += compRow('Pts (L5)', soldRecent?.points || 0, candRecent?.points || 0, true, fmtV(soldRecent?.points, 0), fmtV(candRecent?.points, 0));
-            coreHtml += compRow('Mins/G', soldRecent ? soldRecent.minutes / soldRecent.games : 0, candRecent ? candRecent.minutes / candRecent.games : 0, true, fmtV(soldRecent ? soldRecent.minutes / soldRecent.games : 0, 0), fmtV(candRecent ? candRecent.minutes / candRecent.games : 0, 0));
-            coreHtml += compRow('Ownership', sold.ownership || 0, candidate.ownership || 0, false, fmtV(sold.ownership, 1, '%'), fmtV(candidate.ownership, 1, '%'));
-            coreHtml += compRow('ICT', parseFloat(sold.ictIndex) || 0, parseFloat(candidate.ictIndex) || 0, true);
-            coreHtml += compRow('Transfer Score', calculateTransferScore(sold, pos), calculateTransferScore(candidate, pos), true, fmtV(calculateTransferScore(sold, pos), 0), fmtV(calculateTransferScore(candidate, pos), 0));
-
-            // ── Section 2: Position Stats (Recent + Season + Trend) ──
-            const soldPosStats = getPositionStats(sold, soldSeason, soldRecent);
-            const candPosStats = getPositionStats(candidate, candSeason, candRecent);
-            let posHtml = '';
-            for (let i = 0; i < soldPosStats.length; i++) {
-                const sp = soldPosStats[i], cp = candPosStats[i];
-                const sTrend = getTrend(sp.sVal, sp.rVal, sp.higherBetter);
-                const cTrend = getTrend(cp.sVal, cp.rVal, cp.higherBetter);
-                const lB = sp.higherBetter ? (sp.rVal || 0) > (cp.rVal || 0) : (sp.rVal || 0) < (cp.rVal || 0);
-                const rB = sp.higherBetter ? (cp.rVal || 0) > (sp.rVal || 0) : (cp.rVal || 0) < (sp.rVal || 0);
-                posHtml += '<div class="tw-compare-stat-row">' +
-                    '<div class="tw-compare-stat-val left' + (lB ? ' better' : rB ? ' worse' : '') + '">' + sp.recent +
-                    '<span class="tw-compare-trend ' + sTrend.cls + '">' + sTrend.icon + '</span>' +
-                    '<div class="tw-compare-sub">Season: ' + sp.season + '</div></div>' +
-                    '<div class="tw-compare-stat-label">' + sp.label + '</div>' +
-                    '<div class="tw-compare-stat-val right' + (rB ? ' better' : lB ? ' worse' : '') + '">' + cp.recent +
-                    '<span class="tw-compare-trend ' + cTrend.cls + '">' + cTrend.icon + '</span>' +
-                    '<div class="tw-compare-sub">Season: ' + cp.season + '</div></div></div>';
-            }
-
-            // ── Section 3: Routes to Points ──
-            function twComputeRoutes(player) {
-                const goalPts = { 1: 6, 2: 6, 3: 5, 4: 4 };
-                const csPtsMap = { 1: 4, 2: 4, 3: 1, 4: 0 };
-                const seasonGames = Math.max(currentGW - 1, 1);
-                const recent = getPlayerRecentStats(player.id, 5);
-                const rg = recent?.games || 1;
-                const blend = (rVal, sVal, sDivisor) => ((rVal || 0) / rg) * 0.6 + ((sVal || 0) / sDivisor) * 0.4;
-
-                const xGpg = blend(recent?.xG, player.xG, seasonGames);
-                const xApg = blend(recent?.xA, player.xA, seasonGames);
-                const goalsPg = blend(recent?.goals, player.goals, seasonGames);
-                const assistsPg = blend(recent?.assists, player.assists, seasonGames);
-                const csPg = blend(recent?.cs, player.cleanSheets, seasonGames);
-                const bonusPg = blend(recent?.bonus, player.bonus, seasonGames);
-                const savesPg = pos === 1 ? blend(recent?.saves, player.saves, seasonGames) : 0;
-                const creativityPg = (player.creativity || 0) / seasonGames;
-
-                const goalThresh = { 1: 0.03, 2: 0.06, 3: 0.12, 4: 0.15 }[pos];
-                const assistThresh = { 1: 0.02, 2: 0.06, 3: 0.10, 4: 0.08 }[pos];
-                const csThresh = { 1: 0.15, 2: 0.15, 3: 0.30, 4: 999 }[pos];
-                const bonusThresh = { 1: 0.3, 2: 0.3, 3: 0.4, 4: 0.5 }[pos];
-
-                const routes = [];
-                if (xGpg >= goalThresh || goalsPg >= goalThresh * 1.5) {
-                    const ceiling = pos === 4 ? 0.6 : pos === 3 ? 0.5 : 0.3;
-                    routes.push({ name: 'Goals', strength: Math.min(10, (xGpg / ceiling) * 10), detail: xGpg.toFixed(2) + ' xG/g', color: '#F87171', ptWeight: goalPts[pos] });
-                }
-                if (xApg >= assistThresh || assistsPg >= assistThresh * 1.5) {
-                    const ceiling = pos === 3 ? 0.4 : 0.3;
-                    routes.push({ name: 'Assists', strength: Math.min(10, (xApg / ceiling) * 10), detail: xApg.toFixed(2) + ' xA/g', color: '#60A5FA', ptWeight: 3 });
-                }
-                if (csPg >= csThresh) {
-                    routes.push({ name: 'Clean Sheets', strength: Math.min(10, (csPg / 0.55) * 10), detail: (csPg * 100).toFixed(0) + '% rate', color: '#34D399', ptWeight: csPtsMap[pos] });
-                }
-                if (bonusPg >= bonusThresh) {
-                    routes.push({ name: 'Bonus', strength: Math.min(10, (bonusPg / 2) * 10), detail: bonusPg.toFixed(1) + '/g', color: '#FBBF24', ptWeight: 2 });
-                }
-                if (pos === 1 && savesPg >= 2) {
-                    routes.push({ name: 'Saves', strength: Math.min(10, (savesPg / 5) * 10), detail: savesPg.toFixed(1) + '/g', color: '#A78BFA', ptWeight: 1.5 });
-                }
-                if (creativityPg >= 12 && (pos === 3 || pos === 2)) {
-                    routes.push({ name: 'Creativity', strength: Math.min(10, (creativityPg / 45) * 10), detail: creativityPg.toFixed(0) + ' crea/g', color: '#FB923C', ptWeight: 1.5 });
-                }
-                const seasonPenGoals = Math.max(0, (player.goals || 0) - (player.xG || 0));
-                const penThresholds = { 1: 999, 2: 0.5, 3: 1.0, 4: 1.5 };
-                const penAttempts = seasonPenGoals >= (penThresholds[pos] || 1) ? Math.round(seasonPenGoals) : 0;
-                if (penAttempts >= 2 && pos !== 1) {
-                    routes.push({ name: 'Penalties', strength: Math.min(10, Math.max(3, penAttempts * 2)), detail: penAttempts + ' taken', color: '#F472B6', ptWeight: goalPts[pos] * 0.76 });
-                }
-                return routes;
-            }
-
-            function renderRoutesBars(routes) {
-                if (routes.length === 0) return '<div class="tw-routes-none">No qualifying routes</div>';
-                const order = { Goals: 0, Assists: 1, 'Clean Sheets': 2, Penalties: 3, Bonus: 4, Saves: 5, Creativity: 6 };
-                const sorted = [...routes].sort((a, b) => (order[a.name] ?? 99) - (order[b.name] ?? 99));
-                return sorted.map(r =>
-                    '<div class="tw-route-bar-row">' +
-                    '<span class="tw-route-bar-name">' + r.name + '</span>' +
-                    '<div class="tw-route-bar-track"><div class="tw-route-bar-fill" style="width:' + (r.strength * 10) + '%;background:' + r.color + ';"></div></div>' +
-                    '<span class="tw-route-bar-detail">' + r.detail + '</span></div>'
-                ).join('');
-            }
-
-            const soldRoutes = twComputeRoutes(sold);
-            const candRoutes = twComputeRoutes(candidate);
-
-            const routesHtml = '<div class="tw-routes-grid">' +
-                '<div class="tw-routes-side">' +
-                '<div class="tw-routes-player-label" style="color:var(--color-error);">' + sold.name + '</div>' +
-                '<div class="tw-route-count">' + soldRoutes.length + '</div><div class="tw-route-count-label">routes</div>' +
-                renderRoutesBars(soldRoutes) + '</div>' +
-                '<div class="tw-routes-side">' +
-                '<div class="tw-routes-player-label" style="color:var(--color-success);">' + candidate.name + '</div>' +
-                '<div class="tw-route-count">' + candRoutes.length + '</div><div class="tw-route-count-label">routes</div>' +
-                renderRoutesBars(candRoutes) + '</div></div>';
-
-            // ── Section 4: Multi-Metric Trend Charts ──
-            const soldPd = playersDetailData?.players?.find(p => p.id === sold.id);
-            const candPd = playersDetailData?.players?.find(p => p.id === candidate.id);
-            const soldHist = (soldPd?.history || []).filter(h => h.minutes > 0).slice(-8);
-            const candHist = (candPd?.history || []).filter(h => h.minutes > 0).slice(-8);
-            const hasChart = soldHist.length >= 2 || candHist.length >= 2;
-
-            // Define position-specific chart metrics
-            const chartMetrics = {
-                1: [ // GK
-                    { key: 'total_points', label: 'Points', color: '#FBBF24', per90: false },
-                    { key: 'saves', label: 'Saves', color: '#A78BFA', per90: false },
-                    { key: 'expected_goals_conceded', label: 'xGC', color: '#F87171', per90: true, lowerBetter: true },
-                    { key: 'clean_sheets', label: 'CS', color: '#34D399', per90: false }
-                ],
-                2: [ // DEF
-                    { key: 'total_points', label: 'Points', color: '#FBBF24', per90: false },
-                    { key: 'expected_goals_conceded', label: 'xGC', color: '#F87171', per90: true, lowerBetter: true },
-                    { key: 'expected_goal_involvements', label: 'xGI', color: '#60A5FA', per90: true },
-                    { key: 'clean_sheets', label: 'CS', color: '#34D399', per90: false },
-                    { key: 'bonus', label: 'Bonus', color: '#FB923C', per90: false }
-                ],
-                3: [ // MID
-                    { key: 'total_points', label: 'Points', color: '#FBBF24', per90: false },
-                    { key: 'expected_goal_involvements', label: 'xGI', color: '#60A5FA', per90: true },
-                    { key: 'expected_goals', label: 'xG', color: '#F87171', per90: true },
-                    { key: 'expected_assists', label: 'xA', color: '#34D399', per90: true },
-                    { key: 'bonus', label: 'Bonus', color: '#FB923C', per90: false }
-                ],
-                4: [ // FWD
-                    { key: 'total_points', label: 'Points', color: '#FBBF24', per90: false },
-                    { key: 'expected_goals', label: 'xG', color: '#F87171', per90: true },
-                    { key: 'expected_goal_involvements', label: 'xGI', color: '#60A5FA', per90: true },
-                    { key: 'goals_scored', label: 'Goals', color: '#34D399', per90: false },
-                    { key: 'bonus', label: 'Bonus', color: '#FB923C', per90: false }
-                ]
+            const row = (label, a, b, higherBetter, tip) => {
+                const na = parseFloat(String(a).replace('%', '')) || 0;
+                const nb = parseFloat(String(b).replace('%', '')) || 0;
+                const eq = Math.abs(na - nb) < 0.005;
+                const aWins = eq ? false : (higherBetter ? na > nb : na < nb);
+                return `<div class="twh-row">
+                    <div class="twh-a ${aWins ? 'win' : ''}">${a}</div>
+                    <div class="twh-l" ${tip ? `data-tooltip="${escHTML(tip)}"` : ''}>${label}</div>
+                    <div class="twh-b ${!eq && !aWins ? 'win' : ''}">${b}</div>
+                </div>`;
             };
 
-            const metrics = chartMetrics[pos] || chartMetrics[3];
+            const mS = typeof expectedMinutesModel === 'function' ? expectedMinutesModel(sold) : { pStart: 0 };
+            const mC = typeof expectedMinutesModel === 'function' ? expectedMinutesModel(cand) : { pStart: 0 };
+            const formS = isPreseason ? (sold.ppg || 0) : (parseFloat(sold.form) || 0);
+            const formC = isPreseason ? (cand.ppg || 0) : (parseFloat(cand.form) || 0);
 
-            let chartTabsHtml = '';
-            let chartCanvasHtml = '';
-            if (hasChart) {
-                chartTabsHtml = '<div class="tw-chart-tabs">' +
-                    metrics.map((m, i) =>
-                        '<button class="tw-chart-tab' + (i === 0 ? ' active' : '') + '" onclick="twSwitchChart(' + i + ')">' + m.label + '</button>'
-                    ).join('') + '</div>';
-                chartCanvasHtml = '<div class="tw-chart-legend">' +
-                    '<span><span class="tw-chart-legend-dot" style="background:#F87171;"></span>' + sold.name + ' (solid)</span>' +
-                    '<span><span class="tw-chart-legend-dot" style="background:#60A5FA;"></span>' + candidate.name + ' (dashed)</span></div>' +
-                    '<canvas id="twTrendChart" class="tw-chart-canvas" width="460" height="140"></canvas>';
+            // The bottom line, stated first.
+            const verdict = !affordable
+                ? { cls: 'bad', text: `You cannot afford ${escHTML(cand.name)} — £${cand.price.toFixed(1)}m against £${itb.toFixed(1)}m available.` }
+                : delta > 0.3
+                    ? { cls: 'good', text: `Recommended. ${escHTML(cand.name)} projects <strong>+${delta.toFixed(1)} points</strong> more than ${escHTML(sold.name)} over the next ${planGWs.length} gameweeks${getTWHitCost() > 0 && !transferState.wildcard ? `, before the ${getTWHitCost()}-point hit this plan carries` : ''}.` }
+                    : delta < -0.3
+                        ? { cls: 'bad', text: `Not recommended. ${escHTML(cand.name)} projects <strong>${delta.toFixed(1)} points</strong> against ${escHTML(sold.name)} over the next ${planGWs.length} gameweeks.` }
+                        : { cls: 'flat', text: `Close call — about ${Math.abs(delta).toFixed(1)} points between them over the next ${planGWs.length} gameweeks. Not worth a hit on projection alone.` };
+
+            let statRows = '';
+            for (let i = 0; i < Math.min(statsS.length, statsC.length); i++) {
+                const nameMatch = /<abbr[^>]*>(.*?)<\/abbr>/.exec(statsS[i].label);
+                const tipMatch = /title="([^"]*)"/.exec(statsS[i].label);
+                statRows += row(nameMatch ? nameMatch[1] : statsS[i].label, statsS[i].season, statsC[i].season, statsS[i].higherBetter !== false, tipMatch ? tipMatch[1] : '');
             }
 
-            // ── Section 5: Team Context ──
-            const sT = teamAnalysis[sold.teamId] || {};
-            const cT = teamAnalysis[candidate.teamId] || {};
-            const sXg = getTeamSeasonXg(sold.teamId);
-            const cXg = getTeamSeasonXg(candidate.teamId);
+            el.innerHTML = `<div class="twc-panel">
+                <div class="twc-panel-head">
+                    <button class="twc-mini" onclick="twBackToMarket()" data-tooltip="Back to the replacement list">← Market</button>
+                    <span class="twc-panel-title">⚖️ ${escHTML(sold.name)} vs ${escHTML(cand.name)}</span>
+                </div>
+                <div class="twc-panel-body">
+                    <div class="twh-verdict ${verdict.cls}">
+                        <span class="twh-verdict-delta">${delta > 0 ? '▲ +' : delta < 0 ? '▼ ' : '±'}${Math.abs(delta) < 0.05 ? '0.0' : delta.toFixed(1)}</span>
+                        <span class="twh-verdict-text">${verdict.text}</span>
+                    </div>
 
-            let teamHtml = '';
-            teamHtml += compRow('Attack Power', sT.attackPower || 0, cT.attackPower || 0, true);
-            teamHtml += compRow('Defense Power', sT.defensePower || 0, cT.defensePower || 0, true);
-            teamHtml += compRow('Form Rating', sT.formRating || 0, cT.formRating || 0, true);
-            teamHtml += compRow('Fixture Score', sT.fixtureScore || 0, cT.fixtureScore || 0, true);
-            teamHtml += compRow('CS Rate', (sT.csRate || 0) * 100, (cT.csRate || 0) * 100, true, fmtV((sT.csRate || 0) * 100, 0, '%'), fmtV((cT.csRate || 0) * 100, 0, '%'));
-            teamHtml += compRow('Avg FDR', sT.avgFdr || 0, cT.avgFdr || 0, false);
-            if (sXg && cXg) {
-                teamHtml += compRow('xG/Game', sXg.xGpg, cXg.xGpg, true);
-                teamHtml += compRow('xGC/Game', sXg.xGCpg, cXg.xGCpg, false);
-            }
-            teamHtml += compRow('Atk Home', sT.attackPowerHome || 0, cT.attackPowerHome || 0, true);
-            teamHtml += compRow('Atk Away', sT.attackPowerAway || 0, cT.attackPowerAway || 0, true);
-            teamHtml += compRow('Def Home', sT.defensePowerHome || 0, cT.defensePowerHome || 0, true);
-            teamHtml += compRow('Def Away', sT.defensePowerAway || 0, cT.defensePowerAway || 0, true);
+                    <div class="twh-heads">
+                        <div class="twh-head out"><div class="twh-head-name">${escHTML(sold.name)}</div><div class="twh-head-sub">${escHTML(sold.team)} · £${(sold.sellPrice || sold.price).toFixed(1)}m · out</div></div>
+                        <div class="twh-head-vs">vs</div>
+                        <div class="twh-head in"><div class="twh-head-name">${escHTML(cand.name)}</div><div class="twh-head-sub">${escHTML(cand.team)} · £${cand.price.toFixed(1)}m · in</div></div>
+                    </div>
 
-            // ── Section 6: Fixture Comparison (next 5) ──
-            const soldFix = teamFixtures[sold.teamId] || sold.fixtures || [];
-            const candFix = teamFixtures[candidate.teamId] || candidate.fixtures || [];
-            const maxFix = Math.min(5, Math.max(soldFix.length, candFix.length));
-            let fixHtml = '';
-            for (let i = 0; i < maxFix; i++) {
-                const sf = soldFix[i], cf = candFix[i];
-                const sfText = sf ? sf.opponent + '(' + (sf.isHome ? 'H' : 'A') + ')' : '-';
-                const sfFdr = sf ? sf.difficulty : 3;
-                const cfText = cf ? cf.opponent + '(' + (cf.isHome ? 'H' : 'A') + ')' : '-';
-                const cfFdr = cf ? cf.difficulty : 3;
-                let sfCs = '', cfCs = '';
-                if (sf && sf.opponentId) sfCs = '<div class="tw-compare-sub">CS: ' + (getCleanSheetProb(sold.teamId, sf.opponentId, sf.isHome) * 100).toFixed(0) + '%</div>';
-                if (cf && cf.opponentId) cfCs = '<div class="tw-compare-sub">CS: ' + (getCleanSheetProb(candidate.teamId, cf.opponentId, cf.isHome) * 100).toFixed(0) + '%</div>';
-                fixHtml += '<div class="tw-compare-stat-row">' +
-                    '<div class="tw-compare-stat-val left"><span class="fdr-dot fdr-' + sfFdr + '"></span> ' + sfText + sfCs + '</div>' +
-                    '<div class="tw-compare-stat-label">GW' + (currentGW + 1 + i) + '</div>' +
-                    '<div class="tw-compare-stat-val right"><span class="fdr-dot fdr-' + cfFdr + '"></span> ' + cfText + cfCs + '</div></div>';
-            }
+                    <div class="twh-chart"><canvas id="twRadarCanvas"></canvas></div>
+                    <div class="twh-chart-note">Each axis is scaled against a strong benchmark, not against each other — two weak players do not both look elite.</div>
 
-            // ── Assemble ──
-            el.innerHTML = '<div class="tw-scout">' +
-                '<div class="tw-scout-header"><i data-lucide="git-compare" style="width:14px;height:14px;"></i> Head-to-Head Comparison</div>' +
-                '<div class="tw-compare-panel">' +
-                '<div class="tw-compare-header">' +
-                '<button class="tw-compare-back" onclick="twBackToMarket()"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> Back</button>' +
-                '<button class="tw-compare-pick-btn" onclick="twConfirmPick()" ' + (!affordable ? 'disabled title="Over budget"' : '') + '>' +
-                '<i data-lucide="check" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Confirm Pick</button></div>' +
-                '<div class="tw-compare-grid">' +
-                '<div class="tw-compare-col"><div class="tw-compare-player-name" style="color:var(--color-error);">' + sold.name + '</div>' +
-                '<div class="tw-compare-player-meta">' + (sold.team || '') + ' · ' + posName + ' · £' + soldPrice.toFixed(1) + 'm</div></div>' +
-                '<div class="tw-compare-vs">VS</div>' +
-                '<div class="tw-compare-col"><div class="tw-compare-player-name" style="color:var(--color-success);">' + candidate.name + '</div>' +
-                '<div class="tw-compare-player-meta">' + (candidate.team || '') + ' · ' + posName + ' · £' + candPrice.toFixed(1) + 'm</div></div></div>' +
-                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="bar-chart-2" style="width:12px;height:12px;"></i> Core Stats</div>' +
-                '<div class="tw-compare-stats">' + coreHtml + '</div></div>' +
-                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="target" style="width:12px;height:12px;"></i> Position Stats (Recent · Season)</div>' +
-                '<div class="tw-compare-stats">' + posHtml + '</div></div>' +
-                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="route" style="width:12px;height:12px;"></i> Routes to Points</div>' + routesHtml + '</div>' +
-                (hasChart ? '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> Performance Trends (Last 8 Games)</div>' +
-                '<div class="tw-chart-wrap">' + chartTabsHtml + chartCanvasHtml + '</div></div>' : '') +
-                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="shield" style="width:12px;height:12px;"></i> Team Context — ' + (sold.team || '') + ' vs ' + (candidate.team || '') + '</div>' +
-                '<div class="tw-compare-stats">' + teamHtml + '</div></div>' +
-                '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="calendar" style="width:12px;height:12px;"></i> Next Fixtures + CS Probability</div>' +
-                '<div class="tw-compare-stats">' + fixHtml + '</div></div>' +
-                twBuildRisingFormSection(sold, candidate) +
-                twBuildHomeSplitsSection(sold, candidate, pos) +
-                twBuildXgRegressionSection(sold, candidate) +
-                '</div></div>';
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+                    <div class="twh-grid">
+                        ${row(`Projected (${planGWs.length} GWs)`, soldXP.toFixed(1), candXP.toFixed(1), true, 'Projected points over the same upcoming gameweeks for both.')}
+                        ${row('Form', formS.toFixed(1), formC.toFixed(1), true, isPreseason ? 'Points per game last season.' : 'Average points over the last 30 days.')}
+                        ${row('Chance of starting', Math.round(mS.pStart * 100) + '%', Math.round(mC.pStart * 100) + '%', true, 'Likelihood of starting, from minutes per appearance and fitness.')}
+                        ${row('Price', '£' + (sold.sellPrice || sold.price).toFixed(1) + 'm', '£' + cand.price.toFixed(1) + 'm', false, 'Selling price against buying price.')}
+                        ${statRows}
+                    </div>
 
-            // Store chart data for tab switching
-            if (hasChart) {
-                window._twChartData = { soldHist, candHist, metrics, soldName: sold.name, candName: candidate.name };
-                twDrawTrendChart(0);
-            }
+                    <div class="twh-chart"><canvas id="twFdrCanvas"></canvas></div>
+                    <div class="twh-chart-note">Fixture difficulty over the next ${fdrGWs.length} gameweeks — lower is easier. A gap means no fixture.</div>
+
+                    <div class="twh-actions">
+                        <button class="rc-btn" onclick="twBackToMarket()">← Back</button>
+                        <button class="rc-btn primary" ${!affordable ? 'disabled' : ''} onclick="twConfirmPick()"
+                            data-tooltip="${affordable ? 'Add this transfer to the plan' : 'Outside your budget'}">Confirm ${escHTML(cand.name)} →</button>
+                    </div>
+                </div>
+            </div>`;
+
+            twDrawComparisonCharts(sold, cand, fdrGWs);
         }
 
-        // ── TW: Rising Form Signals Section ──
-        function twBuildRisingFormSection(sold, candidate) {
-            function getRisingSignals(player) {
-                const ta = teamAnalysis[player.teamId] || {};
-                const swing = fixtureSwingData[player.teamId] || {};
-                const ss = seasonStats[player.teamId] || {};
-                const txg = teamXgData[player.teamId] || {};
-                const signals = [];
-                const l5 = ss.last5 || '';
-                if (ta.formRating > 55) signals.push({ label: 'Team in Form', value: l5 || (ta.formRating + ' rating'), positive: true });
-                if (txg.recentXgPg && txg.seasonXgPg && txg.recentXgPg > txg.seasonXgPg * 1.05) signals.push({ label: 'xG Rising', value: '+' + ((txg.recentXgPg - txg.seasonXgPg) * 100 / txg.seasonXgPg).toFixed(0) + '% vs season', positive: true });
-                if (txg.recentXgcPg && txg.seasonXgcPg && txg.recentXgcPg < txg.seasonXgcPg * 0.95) signals.push({ label: 'xGC Improving', value: ((txg.seasonXgcPg - txg.recentXgcPg) * 100 / txg.seasonXgcPg).toFixed(0) + '% better', positive: true });
-                if (swing.direction === 'improving') signals.push({ label: 'Fixtures Improving', value: 'Swing +' + (swing.magnitude || '').toString(), positive: true });
-                else if (swing.direction === 'worsening') signals.push({ label: 'Fixtures Worsening', value: 'Swing -' + (swing.magnitude || '').toString(), positive: false });
-                const avgFdr = ta.avgFdr || 3;
-                if (avgFdr <= 2.5) signals.push({ label: 'Easy Run', value: 'Avg FDR ' + avgFdr.toFixed(1), positive: true });
-                return signals;
-            }
-            const sSig = getRisingSignals(sold), cSig = getRisingSignals(candidate);
-            if (sSig.length === 0 && cSig.length === 0) return '';
-            function renderSignals(sigs) {
-                if (sigs.length === 0) return '<div style="font-size:11px;color:var(--text-muted);padding:4px 0;">No signals</div>';
-                return sigs.map(s => '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;">' +
-                    '<span style="color:' + (s.positive ? 'var(--color-success)' : 'var(--color-error)') + ';">' + (s.positive ? '▲' : '▼') + '</span>' +
-                    '<span style="font-weight:600;">' + s.label + '</span>' +
-                    '<span style="color:var(--text-muted);margin-left:auto;font-family:var(--font-mono);font-size:10px;">' + s.value + '</span></div>').join('');
-            }
-            return '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> Rising Form Signals</div>' +
-                '<div class="tw-routes-grid"><div class="tw-routes-side"><div class="tw-routes-player-label" style="color:var(--color-error);">' + escHTML(sold.name) + '</div>' + renderSignals(sSig) + '</div>' +
-                '<div class="tw-routes-side"><div class="tw-routes-player-label" style="color:var(--color-success);">' + escHTML(candidate.name) + '</div>' + renderSignals(cSig) + '</div></div></div>';
-        }
+        function twDrawComparisonCharts(sold, cand, fdrGWs) {
+            if (typeof Chart === 'undefined') return;
+            if (_twRadarChart) { _twRadarChart.destroy(); _twRadarChart = null; }
+            if (_twFdrChart) { _twFdrChart.destroy(); _twFdrChart = null; }
+            if (typeof applyChartDefaults === 'function') applyChartDefaults();
 
-        // ── TW: Home/Away Splits Section ──
-        function twBuildHomeSplitsSection(sold, candidate, pos) {
-            function getSplits(player) {
-                if (!playersDetailData || !playersDetailData.players) return null;
-                const pd = playersDetailData.players.find(p => p.id === player.id);
-                if (!pd || !pd.history) return null;
-                const played = pd.history.filter(h => h.minutes > 0);
-                const home = played.filter(h => h.was_home);
-                const away = played.filter(h => !h.was_home);
-                function agg(games) {
-                    if (games.length === 0) return { games: 0, points: 0, xGI: 0, cs: 0, bonus: 0 };
-                    return {
-                        games: games.length,
-                        points: (games.reduce((s, h) => s + h.total_points, 0) / games.length).toFixed(1),
-                        xGI: (games.reduce((s, h) => s + (parseFloat(h.expected_goal_involvements) || 0), 0) / games.length).toFixed(2),
-                        cs: games.reduce((s, h) => s + (h.clean_sheets || 0), 0),
-                        bonus: (games.reduce((s, h) => s + (h.bonus || 0), 0) / games.length).toFixed(1)
-                    };
-                }
-                return { home: agg(home), away: agg(away) };
-            }
-            const sSplits = getSplits(sold), cSplits = getSplits(candidate);
-            if (!sSplits && !cSplits) return '';
-            function splitTable(splits, name) {
-                if (!splits) return '<div style="font-size:11px;color:var(--text-muted);">' + escHTML(name) + ': Insufficient data</div>';
-                return '<div style="margin-bottom:4px;"><div class="tw-routes-player-label">' + escHTML(name) + '</div>' +
-                    '<table style="width:100%;font-size:11px;border-collapse:collapse;">' +
-                    '<tr style="color:var(--text-muted);"><th style="text-align:left;font-weight:600;padding:3px 4px;"></th><th style="padding:3px 4px;">Home (' + splits.home.games + 'g)</th><th style="padding:3px 4px;">Away (' + splits.away.games + 'g)</th></tr>' +
-                    '<tr><td style="padding:3px 4px;color:var(--text-muted);">PPG</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.home.points + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.away.points + '</td></tr>' +
-                    '<tr><td style="padding:3px 4px;color:var(--text-muted);">xGI/g</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.home.xGI + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.away.xGI + '</td></tr>' +
-                    '<tr><td style="padding:3px 4px;color:var(--text-muted);">CS</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.home.cs + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.away.cs + '</td></tr>' +
-                    '<tr><td style="padding:3px 4px;color:var(--text-muted);">Bonus/g</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.home.bonus + '</td><td style="padding:3px 4px;text-align:center;font-family:var(--font-mono);">' + splits.away.bonus + '</td></tr>' +
-                    '</table></div>';
-            }
-            return '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="home" style="width:12px;height:12px;"></i> Home vs Away Splits</div>' +
-                '<div class="tw-routes-grid">' + '<div class="tw-routes-side">' + splitTable(sSplits, sold.name) + '</div>' +
-                '<div class="tw-routes-side">' + splitTable(cSplits, candidate.name) + '</div></div></div>';
-        }
-
-        // ── TW: xG Regression Section ──
-        function twBuildXgRegressionSection(sold, candidate) {
-            function xgRegression(player) {
-                const goals = player.goals || 0;
-                const xG = player.xG || 0;
-                const diff = goals - xG;
-                const label = diff > 1 ? 'Overperforming' : diff < -1 ? 'Underperforming' : 'In line';
-                const color = diff > 2 ? 'var(--color-warning)' : diff < -2 ? 'var(--color-success)' : 'var(--text-secondary)';
-                return { goals, xG, diff, label, color };
-            }
-            const sR = xgRegression(sold), cR = xgRegression(candidate);
-            return '<div class="tw-compare-section"><div class="tw-compare-section-title"><i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> xG Regression Analysis</div>' +
-                '<div class="tw-routes-grid"><div class="tw-routes-side">' +
-                '<div class="tw-routes-player-label" style="color:var(--color-error);">' + escHTML(sold.name) + '</div>' +
-                '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px;"><span>Goals: ' + sR.goals + '</span><span>xG: ' + sR.xG.toFixed(1) + '</span><span style="color:' + sR.color + ';font-weight:600;">' + sR.label + ' (' + (sR.diff >= 0 ? '+' : '') + sR.diff.toFixed(1) + ')</span></div></div>' +
-                '<div class="tw-routes-side">' +
-                '<div class="tw-routes-player-label" style="color:var(--color-success);">' + escHTML(candidate.name) + '</div>' +
-                '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px;"><span>Goals: ' + cR.goals + '</span><span>xG: ' + cR.xG.toFixed(1) + '</span><span style="color:' + cR.color + ';font-weight:600;">' + cR.label + ' (' + (cR.diff >= 0 ? '+' : '') + cR.diff.toFixed(1) + ')</span></div></div></div></div>';
-        }
-
-        // ── Chart drawing + tab switching ──
-        let _twActiveChart = 0;
-
-        function twSwitchChart(idx) {
-            _twActiveChart = idx;
-            document.querySelectorAll('.tw-chart-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
-            twDrawTrendChart(idx);
-        }
-
-        function twDrawTrendChart(metricIdx) {
-            const data = window._twChartData;
-            if (!data) return;
-            const canvas = document.getElementById('twTrendChart');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const dpr = window.devicePixelRatio || 1;
-            const w = canvas.clientWidth;
-            const h = canvas.clientHeight;
-            canvas.width = w * dpr;
-            canvas.height = h * dpr;
-            ctx.scale(dpr, dpr);
-            ctx.clearRect(0, 0, w, h);
-
-            const metric = data.metrics[metricIdx];
-            const key = metric.key;
-            const isPer90 = metric.per90;
-
-            function extractVals(hist) {
-                return hist.map(g => {
-                    const raw = parseFloat(g[key]) || 0;
-                    if (isPer90 && g.minutes > 0) return (raw / g.minutes) * 90;
-                    return raw;
+            const radar = document.getElementById('twRadarCanvas');
+            if (radar) {
+                const aS = twRadarAxes(sold), aC = twRadarAxes(cand);
+                const labels = Object.keys(aS);
+                _twRadarChart = new Chart(radar.getContext('2d'), {
+                    type: 'radar',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: sold.name, data: labels.map(k => aS[k]), borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,.22)', pointBackgroundColor: '#94a3b8' },
+                            { label: cand.name, data: labels.map(k => aC[k]), borderColor: 'var(--color-primary)', backgroundColor: 'rgba(0,220,130,.22)', pointBackgroundColor: 'var(--color-primary)' }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { r: { min: 0, max: 1, ticks: { display: false }, pointLabels: { font: { size: 10 } } } },
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+                    }
                 });
             }
 
-            const soldVals = extractVals(data.soldHist);
-            const candVals = extractVals(data.candHist);
-            const allVals = [...soldVals, ...candVals];
-            const maxVal = Math.max(0.1, ...allVals) * 1.15;
-            const maxLen = Math.max(data.soldHist.length, data.candHist.length);
-
-            const pad = { top: 12, right: 14, bottom: 24, left: 32 };
-            const plotW = w - pad.left - pad.right;
-            const plotH = h - pad.top - pad.bottom;
-
-            // Grid lines
-            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-            ctx.lineWidth = 1;
-            const gridSteps = 4;
-            for (let i = 0; i <= gridSteps; i++) {
-                const v = (maxVal / gridSteps) * i;
-                const y = pad.top + plotH - (v / maxVal) * plotH;
-                ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
-                ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                ctx.font = '9px monospace';
-                ctx.textAlign = 'right';
-                ctx.fillText(v < 10 ? v.toFixed(1) : Math.round(v), pad.left - 4, y + 3);
-            }
-
-            // GW labels
-            const gwLabels = data.soldHist.length >= data.candHist.length ? data.soldHist : data.candHist;
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
-            ctx.font = '9px monospace';
-            ctx.textAlign = 'center';
-            gwLabels.forEach((g, i) => {
-                const x = pad.left + (maxLen > 1 ? (i / (maxLen - 1)) * plotW : plotW / 2);
-                ctx.fillText('GW' + (g.round || ''), x, h - 4);
-            });
-
-            function drawLine(vals, hist, color, dashed) {
-                if (vals.length < 2) return;
-                ctx.beginPath();
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 2;
-                ctx.lineJoin = 'round';
-                ctx.setLineDash(dashed ? [5, 3] : []);
-                vals.forEach((v, i) => {
-                    const x = pad.left + (maxLen > 1 ? (i / (maxLen - 1)) * plotW : plotW / 2);
-                    const y = pad.top + plotH - (v / maxVal) * plotH;
-                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-                });
-                ctx.stroke();
-                ctx.setLineDash([]);
-                // Dots
-                vals.forEach((v, i) => {
-                    const x = pad.left + (maxLen > 1 ? (i / (maxLen - 1)) * plotW : plotW / 2);
-                    const y = pad.top + plotH - (v / maxVal) * plotH;
-                    ctx.beginPath();
-                    ctx.arc(x, y, 3, 0, Math.PI * 2);
-                    ctx.fillStyle = color;
-                    ctx.fill();
+            const fdrEl = document.getElementById('twFdrCanvas');
+            if (fdrEl) {
+                const fdrFor = (p, gw) => {
+                    const f = (teamFixtures6[p.teamId] || []).filter(x => x.event === gw);
+                    if (!f.length) return null;
+                    return f.reduce((s, x) => s + (x.difficulty || 3), 0) / f.length;
+                };
+                _twFdrChart = new Chart(fdrEl.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: fdrGWs.map(g => 'GW' + g),
+                        datasets: [
+                            { label: sold.name, data: fdrGWs.map(g => fdrFor(sold, g)), backgroundColor: '#94a3b8' },
+                            { label: cand.name, data: fdrGWs.map(g => fdrFor(cand, g)), backgroundColor: 'rgba(0,220,130,.85)' }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { y: { min: 0, max: 5, ticks: { stepSize: 1, font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } },
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+                    }
                 });
             }
+        }
 
-            drawLine(soldVals, data.soldHist, '#F87171', false);
-            drawLine(candVals, data.candHist, '#60A5FA', true);
+        // The squad these transfers would actually leave you with. On a wildcard you
+        // are eight moves deep and a list of pending swaps stops telling you whether
+        // the thing still works — whether it picks a legal eleven, and what it costs.
+        function twBuildPendingSquad() {
+            const outIds = new Set(transferState.pending.filter(s => s.replacement).map(s => s.soldPlayer.id));
+            const kept = selectedPlayers.filter(p => !outIds.has(p.id));
+            const incoming = transferState.pending.filter(s => s.replacement).map(s => ({
+                ...s.replacement, sellPrice: s.replacement.price, isIncoming: true
+            }));
+            return kept.concat(incoming);
+        }
 
-            // Y-axis label
-            ctx.save();
-            ctx.fillStyle = 'rgba(255,255,255,0.25)';
-            ctx.font = '9px sans-serif';
-            ctx.translate(8, pad.top + plotH / 2);
-            ctx.rotate(-Math.PI / 2);
-            ctx.textAlign = 'center';
-            ctx.fillText(metric.label + (isPer90 ? ' /90' : ''), 0, 0);
-            ctx.restore();
+        function twOpenPreview() {
+            const body = document.getElementById('twPreviewBody');
+            if (!body) return;
+            body.innerHTML = renderTWPreviewModal();
+            document.getElementById('twPreviewOverlay').classList.add('show');
+        }
+
+        function twClosePreview(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const el = document.getElementById('twPreviewOverlay');
+            if (el) el.classList.remove('show');
+        }
+
+        function renderTWPreviewModal() {
+            const squad = twBuildPendingSquad();
+            const gws = twPlanGWs(1);
+            const gw = gws[0] || currentGW;
+
+            // Pick the best legal eleven from the new squad so the projection is what
+            // you would actually field, not the sum of all fifteen.
+            const pool = squad.map(p => ({ ...p, pos: p.position, lwScore: predictedGWPoints(p) }));
+            const solved = typeof solveQuickLineup === 'function' ? solveQuickLineup(pool) : null;
+            const xiIds = new Set((solved?.xi || []).map(p => p.id));
+            const xi = squad.filter(p => xiIds.has(p.id));
+            const bench = squad.filter(p => !xiIds.has(p.id));
+
+            const newValue = squad.reduce((s, p) => s + p.price, 0);
+            const oldValue = selectedPlayers.reduce((s, p) => s + p.price, 0);
+            const newXP = xi.reduce((s, p) => s + predictedGWPoints(p), 0);
+            const oldXI = selectedPlayers.filter(p => !p.onBench);
+            const oldXP = oldXI.reduce((s, p) => s + predictedGWPoints(p), 0);
+            const hit = getTWHitCost();
+            const xpDelta = newXP - oldXP - hit;
+
+            const byTeam = {};
+            squad.forEach(p => { byTeam[p.teamId] = (byTeam[p.teamId] || 0) + 1; });
+            const overStacked = Object.keys(byTeam).filter(t => byTeam[t] > 3).map(t => teams[t]?.short_name || '?');
+
+            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            squad.forEach(p => { counts[p.position] = (counts[p.position] || 0) + 1; });
+            const squadLegal = counts[1] === 2 && counts[2] === 5 && counts[3] === 5 && counts[4] === 3;
+
+            const card = p => `<div class="twp-card ${p.isIncoming ? 'in' : ''}">
+                <div class="twp-card-name">${escHTML(p.name)}${p.isIncoming ? '<span class="twp-in">IN</span>' : ''}</div>
+                <div class="twp-card-sub">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
+                <div class="twp-card-xp">${predictedGWPoints(p).toFixed(1)}<span class="twp-u">xP</span></div>
+            </div>`;
+            const rowFor = n => `<div class="twp-row">${xi.filter(p => p.position === n).map(card).join('')}</div>`;
+
+            return `<div class="detail-section">
+                <div class="twp-stats">
+                    <div class="twp-stat"><div class="twp-stat-v">${(solved?.formation) || '—'}</div><div class="twp-stat-l" data-tooltip="The best legal shape this squad can field.">Formation</div></div>
+                    <div class="twp-stat"><div class="twp-stat-v">£${newValue.toFixed(1)}m</div><div class="twp-stat-l" data-tooltip="Squad value after these transfers. Was £${oldValue.toFixed(1)}m.">Squad value</div></div>
+                    <div class="twp-stat"><div class="twp-stat-v">£${getTWLiveITB().toFixed(1)}m</div><div class="twp-stat-l" data-tooltip="Money left over once every pending transfer is paid for.">Bank left</div></div>
+                    <div class="twp-stat"><div class="twp-stat-v ${xpDelta > 0 ? 'good' : xpDelta < 0 ? 'bad' : ''}">${xpDelta > 0 ? '+' : ''}${xpDelta.toFixed(1)}</div>
+                        <div class="twp-stat-l" data-tooltip="Projected points for the new eleven (${newXP.toFixed(1)}) against your current one (${oldXP.toFixed(1)})${hit > 0 ? `, after the ${hit}-point hit` : ''}.">xP change</div></div>
+                </div>
+
+                ${!squadLegal ? `<div class="twp-warn">⚠️ This is not a legal squad yet — FPL needs 2 keepers, 5 defenders, 5 midfielders and 3 forwards. You have ${counts[1]}/${counts[2]}/${counts[3]}/${counts[4]}.</div>` : ''}
+                ${overStacked.length ? `<div class="twp-warn">⚠️ More than three players from ${escHTML(overStacked.join(', '))} — FPL does not allow it.</div>` : ''}
+                ${getTWLiveITB() < 0 ? `<div class="twp-warn">⚠️ You are £${Math.abs(getTWLiveITB()).toFixed(1)}m over budget.</div>` : ''}
+
+                <div class="twp-pitch">${rowFor(4)}${rowFor(3)}${rowFor(2)}${rowFor(1)}
+                    <div class="twp-bench"><div class="twp-bench-l">Bench</div><div class="twp-row">${bench.map(card).join('')}</div></div>
+                </div>
+            </div>`;
         }
 
         // ===== Transfer Control Room — Actions =====
@@ -1309,18 +1094,14 @@
                 if (transferState.pending.length >= 5) return;
                 transferState.pending.push({ soldPlayer: player, replacement: null });
             }
-
-            renderTWBudgetBar();
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twAddTransferSlot() {
             transferState.mode = 'squad';
             transferState.activeSlot = -1;
             transferState.previewPlayer = null;
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twStartMarketForSlots() {
@@ -1332,8 +1113,7 @@
             transferState.candidateCache = {};
             transferState.marketTab = 'ai';
             transferState.browseSearch = '';
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twSelectSlot(idx) {
@@ -1341,8 +1121,7 @@
             transferState.activeSlot = idx;
             transferState.mode = 'market';
             transferState.previewPlayer = null;
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twRemoveSlot(idx) {
@@ -1356,9 +1135,7 @@
                 transferState.mode = 'squad';
                 transferState.activeSlot = -1;
             }
-            renderTWBudgetBar();
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twPreviewPlayer(playerId) {
@@ -1368,21 +1145,20 @@
             if (!candidate) return;
             transferState.previewPlayer = candidate;
             transferState.mode = 'compare';
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twBackToMarket() {
             transferState.previewPlayer = null;
             transferState.mode = 'market';
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twBackToSquad() {
             transferState.mode = 'squad';
             transferState.activeSlot = -1;
             transferState.previewPlayer = null;
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twConfirmPick() {
@@ -1421,29 +1197,26 @@
                 transferState.mode = 'squad';
                 transferState.activeSlot = -1;
             }
-
-            renderTWBudgetBar();
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twSetMarketFilter(key, value) {
             transferState.marketFilter[key] = value;
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         let twSearchTimeout = null;
         function twSwitchMarketTab(tab) {
             transferState.marketTab = tab;
             transferState.browseSearch = '';
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twSearchInput(value) {
             transferState.browseSearch = value;
             clearTimeout(twSearchTimeout);
             twSearchTimeout = setTimeout(() => {
-                renderTWScoutPanel();
+                renderTWAll();
                 const inp = document.querySelector('.tw-market-search');
                 if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
             }, 250);
@@ -1451,7 +1224,7 @@
 
         function twSetBrowseSort(sort) {
             transferState.browseSort = sort;
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twClearAll() {
@@ -1460,16 +1233,14 @@
             transferState.mode = 'squad';
             transferState.candidateCache = {};
             transferState.previewPlayer = null;
-            renderTWBudgetBar();
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twShowSummary() {
             if (!transferState.pending.every(s => s.replacement)) return;
             if (transferState.pending.length === 0) return;
             transferState.mode = 'summary';
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         function twRenderSummaryPanel(el) {
@@ -1529,8 +1300,7 @@
         function twBackFromSummary() {
             transferState.mode = 'squad';
             transferState.activeSlot = -1;
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         // ===== SETTINGS =====

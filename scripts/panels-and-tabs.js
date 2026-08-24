@@ -44,9 +44,7 @@
             transferState.mode = 'compare';
 
             // Staging after the render means these have to be refreshed by hand.
-            renderTWBudgetBar();
-            renderTWDraftBoard();
-            renderTWScoutPanel();
+            renderTWAll();
         }
 
         // The three numbers worth reading at a glance for each position: current
