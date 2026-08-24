@@ -29,8 +29,8 @@ const SITE = 'https://easyfpl.com';
 const sd = require('./scouts-desk.js');
 
 // Reading order within a single build. Evergreen explainer sits last.
-const SECTION_ORDER = ['Gameweek Debrief', 'Fixture Watch', 'Data Deep-Dive', 'Differentials',
-    'Market', 'Budget', 'Strategy', 'Behind the Build'];
+const SECTION_ORDER = ['Gameweek Debrief', 'Strategy', 'Fixture Watch', 'Data Deep-Dive',
+    'Market', 'Tactical', 'Differentials', 'Budget', 'Behind the Build'];
 
 function readJSON(file, fallback) {
     try { return JSON.parse(fs.readFileSync(path.join(DATA, file), 'utf8')); }
@@ -49,6 +49,7 @@ function articlePage(a) {
     const published = new Date(a.date).toISOString();
     const bodyHtml = sd.sdMarkdown(a.body);
 
+    const words = a.words || sd.sdWordCount(a.body);
     const ld = {
         '@context': 'https://schema.org',
         '@type': 'Article',
@@ -59,7 +60,11 @@ function articlePage(a) {
         author: { '@type': 'Organization', name: 'EasyFPL' },
         publisher: { '@type': 'Organization', name: 'EasyFPL' },
         mainEntityOfPage: url,
-        articleSection: a.category
+        articleSection: a.category,
+        wordCount: words,
+        timeRequired: `PT${a.readTime}M`,
+        inLanguage: 'en-GB',
+        isAccessibleForFree: true
     };
 
     return `<!DOCTYPE html>
@@ -92,6 +97,7 @@ function articlePage(a) {
         <div class="sd-tags">
             <span class="sd-tag primary">${esc(a.icon)} ${esc(a.category)}</span>
             <span class="sd-read">⏱️ ${a.readTime} min read</span>
+            <span class="sd-read">${words.toLocaleString()} words</span>
         </div>
         <h1 class="sd-reader-title">${esc(a.title)}</h1>
         <p class="sd-reader-dek">${esc(a.dek)}</p>
@@ -122,6 +128,7 @@ function main() {
 
     const built = sd.sdBuildArchive();
     console.log(`Generators produced ${built.length} candidate article(s) for GW${sd.sdLastRound()}.`);
+    built.forEach(a => console.log(`    ${a.slug} — ${a.words} words, ${a.readTime} min`));
 
     // One timestamp for the whole build. Stamping each article as it is written
     // gives them different milliseconds, and the date sort then reverses the
@@ -147,7 +154,7 @@ function main() {
         .map(f => {
             const a = JSON.parse(fs.readFileSync(path.join(ARTICLE_DATA, f), 'utf8'));
             return { slug: a.slug, title: a.title, dek: a.dek, category: a.category,
-                icon: a.icon, readTime: a.readTime, date: a.date, source: a.source,
+                icon: a.icon, readTime: a.readTime, words: a.words, date: a.date, source: a.source,
                 gw: a.gw, featured: !!a.featured };
         })
         // Everything written in one build shares a timestamp, so date alone leaves
