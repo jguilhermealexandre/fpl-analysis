@@ -939,20 +939,11 @@
             // Chip selector row
             html += `<div id="draftChipRow" style="margin-bottom:12px;${draftCompareMode ? 'display:none;' : ''}">${renderDraftChipRow()}</div>`;
 
-            // Pitch view + Notepad layout wrapper
-            const notepadOpen = localStorage.getItem('fpl_notepad_open') === 'true';
-            html += `<div class="planner-layout-wrapper" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
+            // Pitch + retractable strategy sidebar
+            const sidebarOpen = localStorage.getItem('fpl_notepad_open') === 'true';
+            html += `<div class="planner-layout-wrapper${sidebarOpen ? '' : ' sidebar-collapsed'}" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
             html += `<div class="planner-pitch-wrap" id="draftPitchArea">${renderDraftPitchHTML()}</div>`;
-            html += `<button class="notepad-toggle-tab${notepadOpen ? ' active' : ''}" onclick="toggleNotepad()" title="Manager's Notepad" aria-label="Toggle Manager's Notepad"><span class="notepad-tab-icon"><i data-lucide="pen-line" style="width:14px;height:14px;"></i></span>Notes</button>`;
-            html += `<aside id="gw-notepad-panel" class="notepad-panel${notepadOpen ? '' : ' collapsed'}">`;
-            html += `<div class="notepad-header">`;
-            html += `<div class="notepad-header-title"><i data-lucide="notebook-pen" style="width:14px;height:14px;"></i> Manager's Notepad</div>`;
-            html += `<span class="notepad-gw-label" id="notepadGwLabel">GW${ds.selectedGW}</span>`;
-            html += `<span class="notepad-save-status" id="notepadSaveStatus">✓ Saved</span>`;
-            html += `<button class="notepad-close-btn" onclick="toggleNotepad()" title="Close notepad" aria-label="Close notepad">✕</button>`;
-            html += `</div>`;
-            html += `<div class="notepad-body"><textarea id="fpl-notes-area" placeholder="Jot down your GW plans, transfer targets, captaincy thoughts..."></textarea></div>`;
-            html += `</aside>`;
+            html += renderDraftSidebar();
             html += `</div>`;
 
             // ===== STATS HUB — Tabbed Interface =====
@@ -1005,7 +996,7 @@
 
             container.innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            initNotepad();
+            if (draftSidebarTab === 'notes') initNotepad();
         }
 
         function renderDraftPlanBar() {
@@ -1037,7 +1028,7 @@
                 html += `<button class="draft-plan-action-btn" onclick="duplicateDraftSlot(${activeDraftSlot})" title="Duplicate current plan">📋 Duplicate</button>`;
             }
             if (draftSlotCount >= 2) {
-                html += `<button class="draft-plan-action-btn" onclick="toggleDraftCompare()" title="Compare plans side by side">${draftCompareMode ? '← Back' : '⚖️ Compare Plans'}</button>`;
+                html += `<button class="draft-plan-action-btn" onclick="openPlanComparison()" data-tooltip="Score every plan side by side on projected points, hits, bank and squad differences">⚖️ Compare plans</button>`;
             }
             html += `</div>`;
             html += `</div>`;
@@ -1481,8 +1472,11 @@
             const saveInd = document.getElementById('draftSaveIndicator');
             if (saveInd && ds.savedAt) saveInd.textContent = `Plan ${activeDraftSlot + 1} saved: ${new Date(ds.savedAt).toLocaleTimeString()}`;
 
+            const sideBody = document.getElementById('draftSidebarBody');
+            if (sideBody && !draftCompareMode) sideBody.innerHTML = renderDraftSidebarBody();
+
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            if (!draftCompareMode) loadNotepadNotes();
+            if (!draftCompareMode && draftSidebarTab === 'notes') { initNotepad(); loadNotepadNotes(); }
         }
 
         // ===== SIDE-BY-SIDE PLAN COMPARISON =====
@@ -1628,6 +1622,244 @@
             btn.classList.add('active');
             const panel = hub.querySelector('#' + btn.dataset.target);
             if (panel) panel.classList.add('active');
+        }
+
+        // ===== PLAN COMPARISON MODAL =====
+        // Scores a whole plan on its own terms. getDraftBudget/FreeTransfers/HitCost
+        // all read the ACTIVE slot, so the slot is swapped in around the calculation
+        // and restored — cheaper and less error-prone than threading a slot index
+        // through four functions that already exist and are already correct.
+        function evaluateDraftPlan(slotIndex) {
+            const ds = draftStates[slotIndex];
+            if (!ds) return null;
+
+            const prevSlot = activeDraftSlot;
+            activeDraftSlot = slotIndex;
+            let xp = 0, hits = 0, transfers = 0;
+            const chipsPlayed = [];
+            try {
+                ds.gwNumbers.forEach(gw => {
+                    const chip = ds.chips[gw];
+                    xp += projectLineupForGW(getDraftSquad(gw, slotIndex), gw, chip);
+                    hits += getDraftHitCost(gw);
+                    transfers += (ds.transfers[gw] || []).length;
+                    if (chip) chipsPlayed.push({ gw, chip });
+                });
+                var finalBank = getDraftBudget(ds.gwNumbers[ds.gwNumbers.length - 1]);
+            } finally {
+                activeDraftSlot = prevSlot;
+            }
+
+            const lastGW = ds.gwNumbers[ds.gwNumbers.length - 1];
+            return {
+                slot: slotIndex,
+                xp: Math.round(xp * 10) / 10,
+                hits,
+                net: Math.round((xp - hits) * 10) / 10,
+                transfers,
+                chipsPlayed,
+                bank: finalBank,
+                finalSquad: getDraftSquad(lastGW, slotIndex),
+                gwNumbers: ds.gwNumbers
+            };
+        }
+
+        function renderPlanComparisonModal() {
+            const plans = [];
+            for (let i = 0; i < draftSlotCount; i++) {
+                const ev = evaluateDraftPlan(i);
+                if (ev) plans.push(ev);
+            }
+            if (plans.length < 2) {
+                return `<div class="detail-section">Create a second plan to compare.</div>`;
+            }
+
+            const best = plans.reduce((a, b) => (b.net > a.net ? b : a), plans[0]);
+            const spread = plans.map(p => p.gwNumbers.length ? `GW${p.gwNumbers[0]}–${p.gwNumbers[p.gwNumbers.length - 1]}` : '')[0];
+
+            // What actually differs: who one plan ends with that another does not.
+            const idSets = plans.map(p => new Set(p.finalSquad.map(x => x.id)));
+            const differentials = plans.map((p, i) => p.finalSquad
+                .filter(pl => idSets.some((s, j) => j !== i && !s.has(pl.id)))
+                .map(pl => pl.name));
+
+            const row = (label, tip, cells) => `<tr>
+                <th class="dpc-metric" data-tooltip="${escHTML(tip)}">${escHTML(label)}</th>
+                ${cells.join('')}
+            </tr>`;
+
+            return `
+            <div class="detail-section">
+                <div class="dpc-lead">Each plan scored over ${escHTML(spread)} using the same projection, after deducting every points hit it takes.</div>
+                <div class="dpc-wrap"><table class="dpc-table">
+                    <thead><tr><th></th>${plans.map(p => `<th class="${p.slot === best.slot ? 'dpc-best' : ''}">Plan ${p.slot + 1}${p.slot === best.slot ? ' <span class="dpc-crown">best</span>' : ''}</th>`).join('')}</tr></thead>
+                    <tbody>
+                        ${row('Projected points', 'Total projected points across the planned gameweeks, before hits.',
+                            plans.map(p => `<td class="dpc-num">${p.xp.toFixed(1)}</td>`))}
+                        ${row('Hits taken', 'Points sacrificed to transfers beyond the free ones.',
+                            plans.map(p => `<td class="dpc-num ${p.hits > 0 ? 'bad' : ''}">${p.hits > 0 ? `${p.transfers} transfers · −${p.hits}` : `${p.transfers} transfers · none`}</td>`))}
+                        ${row('Net total', 'Projected points after hits — the number that actually decides between these plans.',
+                            plans.map(p => `<td class="dpc-num dpc-net ${p.slot === best.slot ? 'best' : ''}">${p.net.toFixed(1)}${p.slot === best.slot ? ' 🟢' : ` <span class="dpc-delta">${(p.net - best.net).toFixed(1)}</span>`}</td>`))}
+                        ${row('Bank at the end', 'Money left after the last planned gameweek.',
+                            plans.map(p => `<td class="dpc-num">£${p.bank.toFixed(1)}m</td>`))}
+                        ${row('Chips played', 'Chips this plan commits, and when.',
+                            plans.map(p => `<td>${p.chipsPlayed.length
+                                ? p.chipsPlayed.map(cp => `<span class="dpc-chip">${DRAFT_CHIP_SHORT[cp.chip]} GW${cp.gw}</span>`).join(' ')
+                                : '<span class="dpc-none">None</span>'}</td>`))}
+                        ${row('Only in this plan', 'Players this plan finishes with that the others do not.',
+                            plans.map((p, i) => `<td class="dpc-diff">${differentials[i].length
+                                ? differentials[i].map(n => `<span class="dpc-player">${escHTML(n)}</span>`).join('')
+                                : '<span class="dpc-none">Same squad</span>'}</td>`))}
+                    </tbody>
+                </table></div>
+                <div class="dpc-actions">
+                    ${plans.filter(p => p.slot !== activeDraftSlot).map(p =>
+                        `<button class="rc-btn" onclick="switchDraftSlot(${p.slot}); closePlanComparison();">Switch to Plan ${p.slot + 1}</button>`).join('')}
+                </div>
+            </div>`;
+        }
+
+        function openPlanComparison() {
+            const body = document.getElementById('planCompareBody');
+            if (!body) return;
+            body.innerHTML = renderPlanComparisonModal();
+            document.getElementById('planCompareOverlay').classList.add('show');
+        }
+
+        function closePlanComparison(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const el = document.getElementById('planCompareOverlay');
+            if (el) el.classList.remove('show');
+        }
+
+        // ===== STRATEGY SIDEBAR: AI COPILOT =====
+        let draftSidebarTab = 'copilot';
+
+        function setDraftSidebarTab(tab) {
+            draftSidebarTab = tab;
+            const panel = document.getElementById('draftSidebarBody');
+            if (panel) panel.innerHTML = renderDraftSidebarBody();
+            document.querySelectorAll('.dp-side-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            if (tab === 'notes') initNotepad();
+        }
+
+        function toggleDraftSidebar() {
+            const wrap = document.querySelector('.planner-layout-wrapper');
+            if (!wrap) return;
+            const collapsed = wrap.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('fpl_notepad_open', collapsed ? 'false' : 'true');
+            const btn = document.getElementById('draftSidebarToggle');
+            if (btn) {
+                btn.innerHTML = collapsed ? '◀' : '▶';
+                btn.setAttribute('data-tooltip', collapsed ? 'Open the strategy panel' : 'Collapse the panel and give the pitch the full width');
+            }
+        }
+
+        // The single transfer that gains the most projected points in this gameweek.
+        // Candidates are pre-filtered on FPL's own estimate before anything is
+        // projected — running the full model over every player in the game for each
+        // of fifteen squad slots would be thousands of projections for no better answer.
+        function buildDraftCopilot(gw, limit) {
+            const ds = getActiveDraft();
+            if (!ds) return [];
+            const squad = getDraftSquad(gw);
+            const budget = getDraftBudget(gw);
+            const squadIds = new Set(squad.map(p => p.id));
+
+            // Squad rules still apply to a suggestion, or it is not a legal move.
+            const teamCounts = {};
+            squad.forEach(p => { teamCounts[p.teamId] = (teamCounts[p.teamId] || 0) + 1; });
+
+            const poolByPos = {};
+            [1, 2, 3, 4].forEach(pos => {
+                poolByPos[pos] = allPlayers
+                    .filter(p => p.position === pos && !squadIds.has(p.id)
+                        && (p.status === 'a' || p.status === 'd')
+                        && (p.minutes || 0) >= minMinutesForCandidate())
+                    .sort((a, b) => (b.epNext || b.form || 0) - (a.epNext || a.form || 0))
+                    .slice(0, 30);
+            });
+
+            const best = [];
+            squad.forEach(out => {
+                const outPrice = out.sellPrice || out.price;
+                const outXP = projectPlayerPointsForGW(out, gw);
+                let top = null;
+                (poolByPos[out.position] || []).forEach(cand => {
+                    if (cand.price > budget + outPrice + 0.001) return;
+                    // Max three from any one club, counting the player leaving.
+                    const after = (teamCounts[cand.teamId] || 0) + (cand.teamId === out.teamId ? 0 : 1);
+                    if (after > 3) return;
+                    const gain = projectPlayerPointsForGW(cand, gw) - outXP;
+                    if (!top || gain > top.gain) top = { out, cand, gain, spend: cand.price - outPrice };
+                });
+                if (top && top.gain > 0.3) best.push(top);
+            });
+
+            best.sort((a, b) => b.gain - a.gain);
+            return best.slice(0, limit || 3);
+        }
+
+        function renderDraftCopilot() {
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
+            const moves = buildDraftCopilot(gw, 3);
+            const ft = getDraftFreeTransfers(gw);
+            const used = (ds.transfers[gw] || []).length;
+
+            if (!moves.length) {
+                return `<div class="dp-side-empty">No transfer improves your GW${gw} projection by more than 0.3 points. Your squad is already well set for this week.</div>`;
+            }
+
+            return `<div class="dp-copilot">
+                <div class="dp-copilot-note">Ranked by projected points gained in GW${gw}. Each respects your budget and the three-per-club limit.</div>
+                ${moves.map((m, i) => {
+                    // A move beyond the free ones costs 4, so show the gain net of it.
+                    const wouldHit = (used + 1) > ft;
+                    const net = m.gain - (wouldHit ? 4 : 0);
+                    return `<div class="dp-move">
+                        <div class="dp-move-rank">${i + 1}</div>
+                        <div class="dp-move-body">
+                            <div class="dp-move-players">
+                                <span class="dp-move-out">${escHTML(m.out.name)}</span>
+                                <span class="dp-move-arrow">→</span>
+                                <span class="dp-move-in">${escHTML(m.cand.name)}</span>
+                            </div>
+                            <div class="dp-move-meta">
+                                <span class="dp-move-gain ${net > 0 ? 'good' : 'bad'}" data-tooltip="${m.cand.name} projects ${projectPlayerPointsForGW(m.cand, gw).toFixed(1)} against ${m.out.name}'s ${projectPlayerPointsForGW(m.out, gw).toFixed(1)} in GW${gw}${wouldHit ? ', before the 4-point hit this transfer would cost' : ''}.">+${m.gain.toFixed(1)} xP</span>
+                                ${wouldHit ? `<span class="dp-move-hit" data-tooltip="You have ${ft} free transfer${ft === 1 ? '' : 's'} and have used ${used}. This one costs 4 points, leaving ${net.toFixed(1)}.">−4 → ${net > 0 ? '+' : ''}${net.toFixed(1)}</span>` : ''}
+                                <span class="dp-move-spend" data-tooltip="${m.spend > 0 ? 'Costs' : 'Frees up'} £${Math.abs(m.spend).toFixed(1)}m of your £${getDraftBudget(gw).toFixed(1)}m budget.">${m.spend > 0 ? '−' : '+'}£${Math.abs(m.spend).toFixed(1)}m</span>
+                            </div>
+                        </div>
+                        <button class="dp-move-apply" onclick="confirmDraftTransfer(${m.out.id}, ${m.cand.id})" data-tooltip="Apply this transfer to GW${gw} of this plan">Apply</button>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        }
+
+        function renderDraftSidebarBody() {
+            const ds = getActiveDraft();
+            if (draftSidebarTab === 'copilot') return renderDraftCopilot();
+            return `<div class="dp-notes">
+                <div class="dp-notes-head">
+                    <span class="notepad-gw-label" id="notepadGwLabel">GW${ds.selectedGW}</span>
+                    <span class="notepad-save-status" id="notepadSaveStatus">✓ Saved</span>
+                </div>
+                <textarea id="fpl-notes-area" placeholder="Transfer targets, chip timing, players to watch…"></textarea>
+            </div>`;
+        }
+
+        function renderDraftSidebar() {
+            const collapsed = localStorage.getItem('fpl_notepad_open') !== 'true';
+            return `<button class="dp-side-toggle" id="draftSidebarToggle" onclick="toggleDraftSidebar()"
+                        data-tooltip="${collapsed ? 'Open the strategy panel' : 'Collapse the panel and give the pitch the full width'}">${collapsed ? '◀' : '▶'}</button>
+                <aside class="dp-sidebar">
+                    <div class="dp-side-tabs">
+                        <button class="dp-side-tab ${draftSidebarTab === 'copilot' ? 'active' : ''}" data-tab="copilot" onclick="setDraftSidebarTab('copilot')">🤖 AI Copilot</button>
+                        <button class="dp-side-tab ${draftSidebarTab === 'notes' ? 'active' : ''}" data-tab="notes" onclick="setDraftSidebarTab('notes')">✏️ Notes</button>
+                    </div>
+                    <div class="dp-side-body" id="draftSidebarBody">${renderDraftSidebarBody()}</div>
+                </aside>`;
         }
 
         // ===== MANAGER'S NOTEPAD ENGINE =====
