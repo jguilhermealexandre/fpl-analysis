@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=10">
-    <link rel="stylesheet" href="styles/my-team.css?v=10">
-    <link rel="stylesheet" href="styles/v2-design.css?v=10">
-    <link rel="stylesheet" href="styles/compare-report.css?v=10">
+    <link rel="stylesheet" href="styles/common.css?v=11">
+    <link rel="stylesheet" href="styles/my-team.css?v=11">
+    <link rel="stylesheet" href="styles/v2-design.css?v=11">
+    <link rel="stylesheet" href="styles/compare-report.css?v=11">
 </head>
 <body>
 
@@ -795,13 +795,20 @@
                 localStorage.setItem('fpl_team_id', teamId);
                 showNavTeamBadge(teamId);
                 showLoading(true, 'Running analysis...');
+
+                // Clear the previous team's lineup state BEFORE analysing. Running
+                // this after analyzeTeam() emptied the snapshot that its own render
+                // had just populated: the pitch looked right because the DOM was
+                // already built, but snapshotXI was empty until the next re-render
+                // re-initialised it, so anything reading the current lineup saw
+                // nothing.
+                resetSnapshotState();
                 analyzeTeam();
 
                 transferRendered = false;
                 lineupRendered = false;
                 draftTabRendered = false;
                 newsRendered = false;
-                resetSnapshotState();
                 transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null };
                 document.getElementById('tabBar').classList.add('visible');
                 if (window._pendingTab) { switchTab(window._pendingTab); window._pendingTab = null; }
@@ -1359,6 +1366,9 @@
 
         function initSnapshotIfNeeded() {
             if (snapshotInitialized) return;
+            // Don't latch an empty lineup if this runs before the squad is analysed —
+            // snapshotInitialized would stay true and freeze the empty state.
+            if (!analysisResults.length) return;
             snapshotXI = new Set(analysisResults.filter(a => !a.player.onBench).map(a => a.player.id));
             snapshotBenchOrder = analysisResults.filter(a => a.player.onBench)
                 .sort((a, b) => a.player.pickPosition - b.player.pickPosition).map(a => a.player.id);
@@ -1808,15 +1818,23 @@
         // ✨ Auto-Optimize: reuses the Lineup Wizard's formation-valid solver
         // (solveQuickLineup already only tries real FPL formations — 1 GK, min 3 DEF,
         // min 1 FWD — never a blind top-11-scorers pick), ranking players by the
-        // weighted form/fixture/xGI/matchup score below — a richer ranking signal
-        // than the plain per-GW points projection shown on each card.
+        // same projected points the cards and the headline score show, so the gain
+        // it reports is the change the manager can actually see.
         // Everything the optimizer decided, kept so the report can explain itself
         // rather than just asserting a conclusion.
         let snapshotOptimizeReport = null;
 
+        function describeFormation(players) {
+            const n = pos => players.filter(p => p.position === pos).length;
+            return `${n(2)}-${n(3)}-${n(4)}`;
+        }
+
         function runAutoOptimize() {
             // Snapshot the lineup as it stood BEFORE optimising, so the xP delta is
             // measured against what the manager actually had, not against itself.
+            // Initialise first: measuring against an empty XI reports the whole
+            // lineup as the gain and finds nothing to have been dropped.
+            initSnapshotIfNeeded();
             const beforeXI = new Set(snapshotXI);
             const beforeCaptainId = snapshotCaptainId;
             const analysisMap = getSquadAnalysisMap();
@@ -1824,12 +1842,23 @@
             // reported gain equals the change the manager can see in that figure.
             const beforeXP = computeProjectedTotalFor(beforeXI, beforeCaptainId, snapshotViceId, snapshotBenchOrder);
 
+            const beforeViceId = snapshotViceId;
+            const beforeBenchOrder = [...snapshotBenchOrder];
+
+            // Rank by the same expected points the headline and the report show.
+            // computeQuickLineupScoreDetailed stays as the source of the "why"
+            // behind each decision, but its heuristic blend (ep x3 + form x2 +
+            // fixture x5 + xGI x10 ...) is a different quantity on a different
+            // scale — maximising it could, and did, hand back an XI that scored
+            // lower on the xP the feature reports as its gain.
             const pool = analysisResults.map(a => {
                 const p = a.player;
                 const detailed = computeQuickLineupScoreDetailed(p);
                 return Object.assign({}, p, {
                     pos: p.position,
-                    lwScore: detailed.total,
+                    // solveQuickLineup drops anyone at or below -100; keep that
+                    // exclusion for injured/suspended players, whose xP is just 0.
+                    lwScore: detailed.total <= -100 ? -1000 : predictedGWPoints(p),
                     _detailed: detailed
                 });
             });
@@ -1843,15 +1872,29 @@
             snapshotCaptainId = sortedXI[0] ? sortedXI[0].id : null;
             snapshotViceId = sortedXI[1] ? sortedXI[1].id : null;
 
-            const afterXP = computeProjectedTotalFor(snapshotXI, snapshotCaptainId, snapshotViceId, snapshotBenchOrder);
+            let afterXP = computeProjectedTotalFor(snapshotXI, snapshotCaptainId, snapshotViceId, snapshotBenchOrder);
+
+            // Safety net: a feature that promises a gain must never hand back a
+            // worse lineup. The XI sum can only improve now that the solver ranks
+            // on xP, but the auto-sub term is not part of what it maximises, so
+            // put the manager's own lineup back rather than report a loss.
+            let keptOriginal = false;
+            if (afterXP < beforeXP - 0.05) {
+                snapshotXI = beforeXI;
+                snapshotBenchOrder = beforeBenchOrder;
+                snapshotCaptainId = beforeCaptainId;
+                snapshotViceId = beforeViceId;
+                afterXP = beforeXP;
+                keptOriginal = true;
+            }
 
             // Only players who actually moved from the XI to the bench, each paired
             // 1:1 with a promotion drawn from a shared pool — picking independently
             // let one promoted player be credited as the replacement for two drops.
-            const promotedPool = result.xi
+            const promotedPool = (keptOriginal ? [] : result.xi)
                 .filter(p => !beforeXI.has(p.id))
                 .sort((x, y) => predictedGWPoints(y) - predictedGWPoints(x));
-            const benchedOut = result.bench
+            const benchedOut = (keptOriginal ? [] : result.bench)
                 .filter(p => beforeXI.has(p.id))
                 .sort((x, y) => predictedGWPoints(y) - predictedGWPoints(x))
                 .map(p => ({ player: p, detailed: p._detailed, replacedBy: null }));
@@ -1869,15 +1912,22 @@
                 }
             });
 
+            // On the revert path the report has to describe the lineup actually on
+            // the pitch — the manager's own — not the solution that was discarded.
+            const finalXI = [...snapshotXI].map(id => analysisMap.get(id)).filter(Boolean).map(a => a.player);
+            const finalSorted = keptOriginal
+                ? finalXI.sort((a, b) => predictedGWPoints(b) - predictedGWPoints(a))
+                : sortedXI;
+
             snapshotOptimizeReport = {
-                formation: result.formation,
+                formation: keptOriginal ? describeFormation(finalXI) : result.formation,
                 beforeXP, afterXP,
                 gain: afterXP - beforeXP,
-                captain: sortedXI[0] || null,
-                captainAlternatives: sortedXI.slice(1, 3),
+                captain: finalSorted[0] || null,
+                captainAlternatives: finalSorted.slice(1, 3),
                 previousCaptain: beforeCaptainId != null ? analysisMap.get(beforeCaptainId) : null,
                 benchedOut,
-                promoted: result.xi.filter(p => !beforeXI.has(p.id))
+                promoted: keptOriginal ? [] : result.xi.filter(p => !beforeXI.has(p.id))
             };
 
             snapshotOptimizeSummary = buildOptimizeSummary(snapshotOptimizeReport);
@@ -1888,7 +1938,9 @@
             // ("Change captain to X") because it reads the original picks.
             syncSnapshotToSquad();
             renderTeamAnalysis();
-            updateStatus(`Lineup optimized (${result.formation})`, 'success');
+            updateStatus(keptOriginal
+                ? 'Your lineup was already the strongest available'
+                : `Lineup optimized (${result.formation})`, 'success');
         }
 
         // Leads with the number that answers "was this worth doing?", then names the
@@ -1972,7 +2024,7 @@
             const xiPlayers = [...snapshotXI].map(id => getSquadAnalysisMap().get(id)).filter(Boolean).map(a => a.player);
             const byPos = pos => xiPlayers.filter(p => p.position === pos);
             const posXP = pos => byPos(pos).reduce((s, p) => s + predictedGWPoints(p), 0);
-            const shape = `${byPos(2).length}-${byPos(3).length}-${byPos(4).length}`;
+            const shape = describeFormation(xiPlayers);
             const blocks = [
                 { label: 'Defenders', xp: posXP(2), n: byPos(2).length },
                 { label: 'Midfielders', xp: posXP(3), n: byPos(3).length },
@@ -8703,9 +8755,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=10"></script>
-    <script src="scripts/common.js?v=10"></script>
-    <script src="scripts/sidebar-nav.js?v=10"></script>
+    <script src="scripts/compare-report.js?v=11"></script>
+    <script src="scripts/common.js?v=11"></script>
+    <script src="scripts/sidebar-nav.js?v=11"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
