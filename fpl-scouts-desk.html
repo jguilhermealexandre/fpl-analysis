@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" class="v2-theme">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <title>The Scout's Desk - Easy FPL</title>
+    <meta name="description" content="FPL analysis generated from live data — gameweek debriefs, differentials, fixture swings and budget enablers.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/common.css?v=27">
+    <link rel="stylesheet" href="styles/v2-design.css?v=27">
+    <link rel="stylesheet" href="styles/scouts-desk.css?v=27">
+</head>
+<body>
+    <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
+    <main class="v2-main-content">
+        <div class="sd-page">
+            <header class="sd-masthead">
+                <div class="sd-masthead-row">
+                    <h1 class="v2-page-heading">The Scout's Desk</h1>
+                    <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+                        <i data-lucide="moon" style="width:14px;height:14px;"></i>
+                    </button>
+                </div>
+                <p class="sd-standfirst">Analysis written from the numbers — gameweek debriefs, differentials, fixture swings and the players the data likes before the crowd does.</p>
+                <p class="sd-datanote" id="sdDataNote">Loading the FPL dataset…</p>
+            </header>
+
+            <div id="sdFeed" class="sd-feed">
+                <div class="sd-empty">Loading articles…</div>
+            </div>
+
+            <!-- Editorial studio: triggers the recurring formats on demand -->
+            <section class="sd-studio-wrap">
+                <button class="sd-studio-toggle" onclick="sdToggleStudio()" aria-expanded="false">
+                    ⚙️ Editorial studio
+                </button>
+                <div class="sd-studio" id="sdStudio">
+                    <p class="sd-studio-note">
+                        These formats normally publish on a schedule. Run one now and it is generated from the current data and added to the top of the feed.
+                    </p>
+                    <div class="sd-gen-list" id="sdStudioList"></div>
+                    <div class="sd-gen-status" id="sdGenStatus" role="status" aria-live="polite"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Reader -->
+    <div class="sd-reader" id="sdReader" onclick="sdCloseArticle(event)">
+        <div class="sd-reader-panel">
+            <button class="sd-reader-close" onclick="sdCloseArticle()" aria-label="Close article">&times;</button>
+            <div class="sd-reader-scroll" id="sdReaderScroll">
+                <article class="sd-reader-body" id="sdReaderBody"></article>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/common.js?v=27"></script>
+    <script src="scripts/sidebar-nav.js?v=27"></script>
+    <script src="scripts/scouts-desk.js?v=27"></script>
+    <script>
+        initIcons();
+        loadSidebarNav().then(initScoutsDesk);
+    </script>
+</body>
+</html>
