@@ -21,337 +21,310 @@
                 return;
             }
 
-            // Build squad with scores
             const squad = picksData.picks.map(pick => {
                 const p = allPlayersById[pick.element];
                 if (!p) return null;
-                const score = computeQuickLineupScore(p);
-                return { ...p, pos: p.position, web_name: p.name, pickPos: pick.position, onBench: pick.position > 11, isCaptain: pick.is_captain, isViceCaptain: pick.is_vice_captain, lwScore: score };
+                // Rank on projected points, the same model the pitch cards and the
+                // Squad Analysis optimizer use. Ranking on one number and showing
+                // another is how a lineup tool ends up arguing with itself.
+                const detailed = computeQuickLineupScoreDetailed(p);
+                const lwScore = detailed.total <= -100 ? -1000 : predictedGWPoints(p);
+                return { ...p, pos: p.position, web_name: p.name, pickPos: pick.position,
+                    onBench: pick.position > 11, isCaptain: pick.is_captain,
+                    isViceCaptain: pick.is_vice_captain, lwScore, _detailed: detailed };
             }).filter(Boolean);
 
-            // Initialize lineup state
             lineupState.squad = squad;
             lineupState.excluded = new Set();
             lineupState.swapSource = null;
             lineupState.selectedPlayers = [];
-            lineupState.captain = null;
-            lineupState.viceCaptain = null;
-            lineupState.step = 1;
-
-            // Track originals for comparison
+            lineupState.intelTab = 'overview';
             lineupState.originalXIIds = new Set(squad.filter(p => !p.onBench).map(p => p.id));
             lineupState.originalCaptain = squad.find(p => p.isCaptain)?.id || null;
             lineupState.originalVC = squad.find(p => p.isViceCaptain)?.id || null;
 
-            // Auto-exclude unavailable players
             squad.forEach(p => {
-                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                    lineupState.excluded.add(p.id);
-                }
+                if (p.status === 'i' || p.status === 'u' || p.status === 's') lineupState.excluded.add(p.id);
             });
 
+            solveLWLineup();
+            const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore);
+            lineupState.captain = cap[0]?.id || null;
+            lineupState.viceCaptain = cap[1]?.id || null;
+
+            renderLineupCommandCenter();
+        }
+
+        function solveLWLineup() {
+            const available = lineupState.squad.filter(p => !lineupState.excluded.has(p.id));
+            const result = solveQuickLineup(available.map(p => ({ ...p, pos: p.pos })));
+            const xiIds = new Set(result.xi.map(p => p.id));
+            lineupState.xi = lineupState.squad.filter(p => xiIds.has(p.id));
+            lineupState.bench = lineupState.squad.filter(p => !xiIds.has(p.id))
+                .sort((a, b) => (a.pos === 1 ? 1 : 0) - (b.pos === 1 ? 1 : 0) || b.lwScore - a.lwScore);
+            lineupState.formation = result.formation;
+        }
+
+        // Total the lineup actually projects, including the armband.
+        function lwTotalXP() {
+            const capId = lineupState.captain;
+            return lineupState.xi.reduce((s, p) => s + p.lwScore * (p.id === capId ? 2 : 1), 0);
+        }
+
+        function renderLineupCommandCenter() {
+            const container = document.getElementById('lineupDisplay');
             container.innerHTML = `
-                <div class="lw-container">
-                    <div class="lw-intro">
-                        <span><i data-lucide="wand-2" style="width:20px;height:20px;"></i></span>
-                        <div>Build your optimal GW${currentGW} lineup. Review availability, set your best XI, then pick your captain.</div>
+                <div class="lw-cc">
+                    <div class="lw-cc-head">
+                        <div class="lw-cc-title">🎛️ Lineup command centre <span class="lw-cc-gw">GW${currentGW}</span></div>
+                        <div class="lw-cc-stats">
+                            <span class="lw-cc-stat" data-tooltip="The shape the optimiser settled on for your available players.">
+                                <span class="lw-cc-stat-l">Formation</span><span class="lw-cc-stat-v" id="lwFormation">${lineupState.formation}</span></span>
+                            <span class="lw-cc-stat" data-tooltip="Projected points for the starting eleven, with the captain's points doubled.">
+                                <span class="lw-cc-stat-l">Projected</span><span class="lw-cc-stat-v accent" id="lwTotal">${lwTotalXP().toFixed(1)}</span></span>
+                        </div>
+                        <button class="rc-btn" onclick="resetLineupToOptimal()" data-tooltip="Rebuild the highest-projecting legal eleven from your available players.">✨ Auto-optimise</button>
                     </div>
-                    <div class="lw-steps" id="lwSteps">
-                        <button class="lw-step active" onclick="goToLineupStep(1)">
-                            <div class="lw-step-num">1</div>
-                            <span class="lw-step-label"><i data-lucide="clipboard-check" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Squad Review</span>
-                        </button>
-                        <button class="lw-step disabled" onclick="goToLineupStep(2)">
-                            <div class="lw-step-num">2</div>
-                            <span class="lw-step-label"><i data-lucide="layout-grid" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Set Lineup</span>
-                        </button>
-                        <button class="lw-step disabled" onclick="goToLineupStep(3)">
-                            <div class="lw-step-num">3</div>
-                            <span class="lw-step-label"><i data-lucide="crown" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Captain & Summary</span>
-                        </button>
+                    <div class="lw-cc-body">
+                        <div class="lw-cc-pitch" id="lwPitchPane">${renderLWPitch()}</div>
+                        <div class="lw-cc-intel" id="lwIntelPane">${renderLWIntel()}</div>
                     </div>
-                    <div class="lw-panel active" id="lwPanel1"></div>
-                    <div class="lw-panel" id="lwPanel2"></div>
-                    <div class="lw-panel" id="lwPanel3"></div>
-                </div>
-            `;
-
+                </div>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            renderLineupStep1();
         }
 
-        // Step navigation
-        function goToLineupStep(step) {
-            if (step >= 2) {
-                const available = lineupState.squad.filter(p => !lineupState.excluded.has(p.id));
-                if (available.length < 11) return;
+        const LW_FDR_WORD = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+
+        // The pitch node carries the decision, not a shirt number: who they play,
+        // how hard it is, what they project, and anything that might stop them.
+        function lwCard(p, benchIdx) {
+            const xp = p.lwScore > -100 ? p.lwScore : 0;
+            const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
+            const posClass = `pos-${POSITION_CONFIG[p.pos]?.class || 'mid'}`;
+            const selected = lineupState.selectedPlayers.includes(p.id);
+            const isSwapSrc = lineupState.swapSource === p.id;
+            const isSwapTgt = lineupState.swapSource && lineupState.swapSource !== p.id;
+
+            const out = p.status === 'i' || p.status === 'u' || p.status === 's';
+            const doubt = p.status === 'd';
+            const risk = typeof expectedMinutesModel === 'function' ? expectedMinutesModel(p) : { pStart: 1 };
+            const rotation = !out && !doubt && risk.pStart < 0.6;
+
+            let badges = '';
+            if (p.id === lineupState.captain) badges += `<span class="dp-badge cap" data-tooltip="Captain — points doubled.">C</span>`;
+            else if (p.id === lineupState.viceCaptain) badges += `<span class="dp-badge vice" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
+            if (benchIdx != null) badges += `<span class="dp-badge bench" data-tooltip="${benchIdx === 'GK' ? 'Reserve keeper.' : `Substitution order — ${benchIdx} in line.`}">${benchIdx === 'GK' ? 'GK' : 'B' + benchIdx}</span>`;
+            if (out) badges += `<span class="dp-badge out" data-tooltip="${escHTML(p.news || 'Unavailable this gameweek')}">OUT</span>`;
+            else if (doubt) badges += `<span class="dp-badge doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}${p.chanceNextRound != null ? ` — ${p.chanceNextRound}% chance of playing` : ''}">?</span>`;
+            else if (rotation) badges += `<span class="dp-badge doubt" data-tooltip="Rotation risk — around ${Math.round(risk.pStart * 100)}% likely to start, based on minutes per appearance.">⟳</span>`;
+
+            const fixChip = fx
+                ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3} (${LW_FDR_WORD[fx.difficulty || 3] || 'Average'})">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">${fx.isHome ? 'H' : 'A'}</span></span>`
+                : `<span class="dp-fix dp-fix-blank" data-tooltip="No fixture this gameweek.">Blank</span>`;
+
+            const cls = ['dp-card', posClass, out ? 'is-out' : '', selected ? 'lw-picked' : '',
+                isSwapSrc ? 'swap-selected' : '', isSwapTgt ? 'swap-target' : ''].filter(Boolean).join(' ');
+
+            return `<div class="${cls}" onclick="handleLWRowClick(${p.id})">
+                <div class="dp-badges">${badges}</div>
+                <button class="dp-transfer" onclick="handleLWSwapBtnClick(${p.id}, event)" data-tooltip="Swap ${escHTML(p.web_name)} between the XI and the bench">↕</button>
+                <div class="dp-name">${escHTML(p.web_name)}</div>
+                <div class="dp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
+                <div class="dp-fixtures">${fixChip}</div>
+                <div class="dp-xp" data-tooltip="Projected points for ${escHTML(p.web_name)} this gameweek.">${xp.toFixed(1)}<span class="dp-xp-u">xP</span></div>
+            </div>`;
+        }
+
+        function renderLWPitch() {
+            const xi = lineupState.xi, bench = lineupState.bench;
+            const byPos = n => xi.filter(p => p.pos === n).sort((a, b) => b.lwScore - a.lwScore);
+            let benchCount = 0;
+
+            let html = `<div class="dp-pitch-card"><div class="dp-pitch">`;
+            html += `<div class="dp-row">${byPos(4).map(p => lwCard(p)).join('')}</div>`;
+            html += `<div class="dp-row">${byPos(3).map(p => lwCard(p)).join('')}</div>`;
+            html += `<div class="dp-row">${byPos(2).map(p => lwCard(p)).join('')}</div>`;
+            html += `<div class="dp-row">${byPos(1).map(p => lwCard(p)).join('')}</div>`;
+            html += `</div><div class="dp-bench"><div class="dp-bench-label">Bench</div>`;
+            html += `<div class="dp-bench-row">${bench.map(p => lwCard(p, p.pos === 1 ? 'GK' : ++benchCount)).join('')}</div>`;
+            html += `</div></div>`;
+            html += `<div class="lw-pitch-hint">${lineupState.swapSource
+                ? `Swapping <strong>${escHTML((lineupState.squad.find(p => p.id === lineupState.swapSource) || {}).web_name || '')}</strong> — click ↕ on another player to complete it.`
+                : 'Click a player for their detail. Click a second to compare them side by side. Use ↕ to swap.'}</div>`;
+            return html;
+        }
+
+        function setLWIntelTab(tab) {
+            lineupState.intelTab = tab;
+            updateLWContextPanel();
+        }
+
+        function renderLWIntel() {
+            const tab = lineupState.intelTab || 'overview';
+            let body;
+            if (tab === 'captaincy') body = renderLWCaptaincyMatrix();
+            else {
+                const sel = lineupState.selectedPlayers;
+                body = !sel.length ? renderLWSummary()
+                    : sel.length === 1 ? renderLWContextSingle(sel[0])
+                    : renderLWContextCompare(sel[0], sel[1]);
             }
-            if (step >= 3 && (!lineupState.xi || lineupState.xi.length < 11)) return;
-
-            lineupState.step = step;
-
-            document.querySelectorAll('.lw-step').forEach((el, i) => {
-                el.classList.remove('active', 'completed', 'disabled');
-                if (i + 1 === step) el.classList.add('active');
-                else if (i + 1 < step) el.classList.add('completed');
-                else el.classList.add('disabled');
-            });
-
-            document.querySelectorAll('.lw-panel').forEach((el, i) => {
-                el.classList.toggle('active', i + 1 === step);
-            });
-
-            if (step === 1) renderLineupStep1();
-            else if (step === 2) renderLineupStep2();
-            else if (step === 3) renderLineupStep3();
+            return `<div class="lw-intel">
+                <div class="lw-intel-tabs">
+                    <button class="lw-intel-tab ${tab === 'overview' ? 'active' : ''}" onclick="setLWIntelTab('overview')">🧠 Overview</button>
+                    <button class="lw-intel-tab ${tab === 'captaincy' ? 'active' : ''}" onclick="setLWIntelTab('captaincy')">👑 Captaincy</button>
+                </div>
+                <div class="lw-intel-body">${body}</div>
+            </div>`;
         }
 
-        // ── STEP 1: Squad Review ──
-        function renderLineupStep1() {
-            const panel = document.getElementById('lwPanel1');
-            const squad = lineupState.squad;
-            const excluded = lineupState.excluded;
-            const available = squad.filter(p => !excluded.has(p.id));
-            const flagged = squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's' || p.status === 'd');
+        // The panel's default state. An empty pane that asks to be clicked wastes
+        // the most valuable position on the screen, so it opens with the read on
+        // the lineup: what it projects, where it is weakest, and what is sitting
+        // on the bench that maybe should not be.
+        function renderLWSummary() {
+            const xi = lineupState.xi, bench = lineupState.bench;
+            if (!xi.length) return `<div class="lw-side-empty">Load a squad to see the lineup read.</div>`;
 
-            // Summary bar
-            let html = `<div class="lw-summary-bar">
-                <div class="lw-summary-item"><div class="lw-summary-label">Available</div><div class="lw-summary-value" style="color:var(--color-success);">${available.length}</div></div>
-                <div style="width:1px;height:32px;background:var(--border-default);"></div>
-                <div class="lw-summary-item"><div class="lw-summary-label">Excluded</div><div class="lw-summary-value" style="color:${excluded.size > 0 ? 'var(--color-error)' : 'var(--text-muted)'};">${excluded.size}</div></div>
-                <div style="width:1px;height:32px;background:var(--border-default);"></div>
-                <div class="lw-summary-item"><div class="lw-summary-label">Flagged</div><div class="lw-summary-value" style="color:${flagged.length > 0 ? '#F59E0B' : 'var(--text-muted)'};">${flagged.length}</div></div>
-                <div style="flex:1;"></div>
-                <div style="font-size:11px;color:var(--text-secondary);">Click a player to toggle availability</div>
-            </div>`;
+            const sorted = [...xi].sort((a, b) => a.lwScore - b.lwScore);
+            const weakest = sorted[0];
+            const outfieldBench = bench.filter(p => p.pos !== 1 && !lineupState.excluded.has(p.id));
+            const strongestBench = outfieldBench.sort((a, b) => b.lwScore - a.lwScore)[0];
 
-            // Starting XI group
-            const starters = squad.filter(p => !p.onBench).sort((a, b) => a.pos - b.pos || b.lwScore - a.lwScore);
-            const benchPlayers = squad.filter(p => p.onBench).sort((a, b) => a.pickPos - b.pickPos);
+            // Only a real upgrade if the swap keeps the formation legal.
+            let upgrade = null;
+            if (strongestBench) {
+                const candidateXI = xi.filter(p => p.id !== weakest.id).concat([strongestBench]);
+                if (isValidLWFormation(candidateXI) && strongestBench.lwScore > weakest.lwScore + 0.05) {
+                    upgrade = { out: weakest, in: strongestBench, gain: strongestBench.lwScore - weakest.lwScore };
+                }
+            }
 
-            html += `<div style="margin-bottom:16px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:700;margin-bottom:8px;padding-left:4px;"><i data-lucide="users" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Current Starting XI</div>`;
-            html += `<div class="lw-squad-grid">`;
-            starters.forEach(p => { html += renderLWPlayerCard(p); });
-            html += `</div></div>`;
+            const flagged = lineupState.squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's' || p.status === 'd');
+            const risky = xi.filter(p => typeof expectedMinutesModel === 'function' && expectedMinutesModel(p).pStart < 0.6);
+            const cap = lineupState.squad.find(p => p.id === lineupState.captain);
 
-            html += `<div style="margin-bottom:16px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:700;margin-bottom:8px;padding-left:4px;"><i data-lucide="clipboard-list" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Bench</div>`;
-            html += `<div class="lw-squad-grid">`;
-            benchPlayers.forEach(p => { html += renderLWPlayerCard(p); });
-            html += `</div></div>`;
+            return `<div class="lw-sum">
+                <div class="lw-sum-hero">
+                    <div class="lw-sum-hero-v">${lwTotalXP().toFixed(1)}</div>
+                    <div class="lw-sum-hero-l">projected points · ${escHTML(lineupState.formation)}${cap ? ` · ${escHTML(cap.web_name)} captained` : ''}</div>
+                </div>
 
-            // Action
-            html += `<div class="tw-actions">
-                <button class="tw-btn tw-btn-primary" onclick="goToLineupStep(2)" ${available.length < 11 ? 'disabled title="Need at least 11 available players"' : ''}>
-                    <i data-lucide="wand-2" style="width:14px;height:14px;"></i> Find Best Lineup →
-                </button>
-            </div>`;
-
-            panel.innerHTML = html;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        function renderLWPlayerCard(p) {
-            const isExcluded = lineupState.excluded.has(p.id);
-            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
-            const fx = p.fixtures || [];
-            const nextFx = fx[0];
-            const statusIcon = p.status === 'i' ? '🏥' : p.status === 'u' ? '❌' : p.status === 's' ? '🟥' : p.status === 'd' ? '⚠️' : '';
-
-            return `<div class="lw-player-card ${isExcluded ? 'excluded' : 'available'}" onclick="toggleLWExclude(${p.id})">
-                <div class="lw-toggle">${isExcluded ? '✗' : '✓'}</div>
-                <div style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</div>
-                <div class="lw-info">
-                    <div class="lw-name">${statusIcon} ${escHTML(p.web_name)}</div>
-                    <div class="lw-meta">
-                        <span>${escHTML(p.team)} · £${p.price.toFixed(1)}m</span>
-                        ${nextFx ? `<span class="fixture-chip fdr-${nextFx.difficulty}" style="font-size:10px;padding:1px 5px;">${escHTML(nextFx.opponent)}(${nextFx.isHome ? 'H' : 'A'})</span>` : ''}
-                        ${p.status === 'd' ? '<span style="color:#F59E0B;font-size:10px;">Doubtful</span>' : ''}
-                        ${p.status === 'i' ? '<span style="color:var(--color-error);font-size:10px;">Injured</span>' : ''}
+                <div class="lw-sum-block">
+                    <div class="lw-sum-h">🔻 Weakest link in the XI</div>
+                    <div class="lw-sum-row">
+                        <span class="lw-sum-name">${escHTML(weakest.web_name)}</span>
+                        <span class="lw-sum-xp">${weakest.lwScore.toFixed(1)} xP</span>
                     </div>
+                    <div class="lw-sum-note">${upgrade
+                        ? `${escHTML(upgrade.in.web_name)} projects <strong>+${upgrade.gain.toFixed(1)}</strong> more and the shape still works. <button class="lw-sum-apply" onclick="lwApplySwap(${upgrade.out.id}, ${upgrade.in.id})">Make the swap</button>`
+                        : 'Nothing on the bench beats them in a legal formation — this is as good as the eleven gets.'}</div>
                 </div>
-                <div class="lw-stats">
-                    <div class="lw-stat"><div class="lw-stat-val">${p.form}</div><div class="lw-stat-label">Form</div></div>
-                    <div class="lw-stat"><div class="lw-stat-val">${p.ppg.toFixed(1)}</div><div class="lw-stat-label">PPG</div></div>
-                    <div class="lw-stat"><div class="lw-stat-val" style="color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'}">${p.lwScore}</div><div class="lw-stat-label" title="Lineup Score = EP×3 + Form×2 + (3−FDR)×5 + Home×2 + xGI/90×10 + Minutes bonus + PPG×1.5">Score</div></div>
+
+                <div class="lw-sum-block">
+                    <div class="lw-sum-h">🪑 Strongest player on the bench</div>
+                    ${strongestBench ? `<div class="lw-sum-row">
+                        <span class="lw-sum-name">${escHTML(strongestBench.web_name)}</span>
+                        <span class="lw-sum-xp">${strongestBench.lwScore.toFixed(1)} xP</span>
+                    </div>
+                    <div class="lw-sum-note">${strongestBench.lwScore > weakest.lwScore
+                        ? 'Out-projects a starter, so they are the first thing to look at.'
+                        : 'Projects below every starter — the bench order is right.'}</div>`
+                    : '<div class="lw-sum-note">No outfield players on the bench.</div>'}
                 </div>
+
+                ${(flagged.length || risky.length) ? `<div class="lw-sum-block">
+                    <div class="lw-sum-h">⚠️ Worth checking</div>
+                    ${flagged.map(p => `<div class="lw-sum-flag"><strong>${escHTML(p.web_name)}</strong> — ${escHTML((p.news || '').split('.')[0] || (p.status === 'd' ? 'fitness doubt' : 'unavailable'))}${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}</div>`).join('')}
+                    ${risky.filter(p => !flagged.some(f => f.id === p.id)).map(p => `<div class="lw-sum-flag"><strong>${escHTML(p.web_name)}</strong> — rotation risk, ${Math.round(expectedMinutesModel(p).pStart * 100)}% likely to start</div>`).join('')}
+                </div>` : ''}
+
+                <div class="lw-sum-hintline">Click any player on the pitch for their detail, or two to compare them.</div>
+            </div>`;
+        }
+
+        function lwApplySwap(outId, inId) {
+            handleLWSwapClick(outId);
+            handleLWSwapClick(inId);
+        }
+
+        // Captaincy as a matrix rather than a list: the armband is the biggest call
+        // of the week, and "Form 8 · xGI/90 1.12" in grey text does not carry it.
+        function renderLWCaptaincyMatrix() {
+            const ranks = typeof getDefensiveRanks === 'function' ? getDefensiveRanks() : { rank: {}, total: 20 };
+            const candidates = lineupState.xi.filter(p => p.pos !== 1)
+                .sort((a, b) => b.lwScore - a.lwScore).slice(0, 3);
+
+            if (!candidates.length) return `<div class="lw-side-empty">No outfield players in the XI yet.</div>`;
+
+            const cards = candidates.map((p, i) => {
+                const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
+                const ctx = fx && typeof opponentContext === 'function' ? opponentContext(p.teamId, fx, ranks) : null;
+                const per90 = typeof regressedPer90 === 'function' ? regressedPer90(p) : { xg90: 0, xa90: 0 };
+                const threat = per90.xg90 + per90.xa90;
+
+                // Two bars: how dangerous this player is, and how leaky the defence
+                // they face. A high threat into a tight defence is a different bet
+                // from a modest one into the league's softest.
+                const threatPct = Math.max(4, Math.min(100, (threat / 1.0) * 100));
+                const weakPct = ctx && ctx.ranked ? Math.max(4, Math.min(100, ((ranks.total - ctx.rank + 1) / ranks.total) * 100)) : null;
+                const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+                const isCap = lineupState.captain === p.id, isVC = lineupState.viceCaptain === p.id;
+
+                return `<div class="lw-cap-card ${isCap ? 'is-cap' : ''}">
+                    <div class="lw-cap-rank">${i + 1}</div>
+                    <div class="lw-cap-name">${escHTML(p.web_name)}</div>
+                    <div class="lw-cap-team">${escHTML(p.team)} · ${POSITION_CONFIG[p.pos]?.short || ''}</div>
+                    ${fx ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">${fx.isHome ? 'H' : 'A'}</span></span>` : ''}
+                    <div class="lw-cap-xp" data-tooltip="Projected points with the armband on — ${p.lwScore.toFixed(1)} doubled.">${(p.lwScore * 2).toFixed(1)}<span class="lw-cap-xp-u">pts</span></div>
+                    <div class="lw-cap-bars">
+                        <div class="lw-cap-bar-row" data-tooltip="Expected goal involvements per 90 for ${escHTML(p.web_name)}: ${threat.toFixed(2)}.">
+                            <span class="lw-cap-bar-l">Threat</span>
+                            <span class="lw-cap-bar"><span class="lw-cap-bar-f threat" style="width:${threatPct}%"></span></span>
+                        </div>
+                        <div class="lw-cap-bar-row" data-tooltip="${weakPct != null ? `${escHTML(fx.opponent)} are the ${ordinal(ctx.rank)} leakiest defence of ${ctx.total}, conceding ${ctx.conceded.toFixed(1)} per game.` : 'Not enough matches played to rank this opponent yet.'}">
+                            <span class="lw-cap-bar-l">Opponent</span>
+                            <span class="lw-cap-bar">${weakPct != null ? `<span class="lw-cap-bar-f weak" style="width:${weakPct}%"></span>` : '<span class="lw-cap-bar-na">not yet ranked</span>'}</span>
+                        </div>
+                    </div>
+                    <div class="lw-cap-meta">Form <strong>${form.toFixed(1)}</strong> · Owned <strong>${p.ownership != null ? p.ownership + '%' : '—'}</strong></div>
+                    <div class="lw-cap-actions">
+                        <button class="lw-cap-btn ${isCap ? 'active-c' : ''}" onclick="setLWCaptain(${p.id})" data-tooltip="Give ${escHTML(p.web_name)} the armband">C</button>
+                        <button class="lw-cap-btn ${isVC ? 'active-vc' : ''}" onclick="setLWViceCaptain(${p.id})" data-tooltip="Make ${escHTML(p.web_name)} vice-captain">VC</button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            return `<div class="lw-cap-matrix">
+                <div class="lw-cap-lead">Ranked by projected points. The bars set what each player threatens against how leaky the defence they face is.</div>
+                <div class="lw-cap-grid">${cards}</div>
+                ${renderLWChanges()}
             </div>`;
         }
 
         function toggleLWExclude(playerId) {
-            if (lineupState.excluded.has(playerId)) {
-                lineupState.excluded.delete(playerId);
-            } else {
-                lineupState.excluded.add(playerId);
+            if (lineupState.excluded.has(playerId)) lineupState.excluded.delete(playerId);
+            else lineupState.excluded.add(playerId);
+            solveLWLineup();
+            const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore);
+            if (lineupState.excluded.has(lineupState.captain) || !lineupState.xi.some(p => p.id === lineupState.captain)) {
+                lineupState.captain = cap[0]?.id || null;
             }
-            renderLineupStep1();
-        }
-
-        // ── STEP 2: Set Lineup (Pitch + Swaps) ──
-        function renderLineupStep2() {
-            const panel = document.getElementById('lwPanel2');
-            lineupState.swapSource = null;
-
-            // Recalculate scores excluding unavailable
-            const available = lineupState.squad.filter(p => !lineupState.excluded.has(p.id));
-            available.forEach(p => { p.lwScore = computeQuickLineupScore(p); });
-            // Set excluded players to -100
-            lineupState.squad.filter(p => lineupState.excluded.has(p.id)).forEach(p => { p.lwScore = -100; });
-
-            // Solve optimal lineup from available pool
-            const solution = solveQuickLineup(available);
-            lineupState.xi = [...solution.xi];
-            lineupState.bench = [...solution.bench];
-            lineupState.formation = solution.formation;
-
-            renderLineupStep2Content();
-        }
-
-        function renderLineupStep2Content() {
-            const panel = document.getElementById('lwPanel2');
-            const xi = lineupState.xi;
-            const bench = lineupState.bench;
-            const formation = lineupState.formation;
-            const totalScore = xi.reduce((s, p) => s + p.lwScore, 0);
-
-            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
-            const posClasses = { 1: 'pos-gk', 2: 'pos-def', 3: 'pos-mid', 4: 'pos-fwd' };
-
-            const gk = xi.filter(p => p.pos === 1);
-            const defs = xi.filter(p => p.pos === 2).sort((a, b) => b.lwScore - a.lwScore);
-            const mids = xi.filter(p => p.pos === 3).sort((a, b) => b.lwScore - a.lwScore);
-            const fwds = xi.filter(p => p.pos === 4).sort((a, b) => b.lwScore - a.lwScore);
-
-            // Row renderer
-            function renderRow(p, isBench, benchIdx) {
-                const fx = p.fixtures?.[0];
-                const sc = p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)';
-                const isSwapSrc = lineupState.swapSource === p.id;
-                const isSwapTgt = lineupState.swapSource && lineupState.swapSource !== p.id;
-                const isSelected = lineupState.selectedPlayers.includes(p.id);
-                let cls = 'lw-row';
-                if (isBench) cls += ' lw-row-bench';
-                if (isSwapSrc) cls += ' lw-row-swap-source';
-                else if (isSwapTgt) cls += ' lw-row-swap-target';
-                if (isSelected) cls += ' lw-row-selected';
-
-                return `<div class="${cls}" data-player-id="${p.id}" onclick="handleLWRowClick(${p.id})">
-                    <button class="lw-row-swap-btn ${isSwapSrc ? 'active' : ''}" onclick="handleLWSwapBtnClick(${p.id}, event)" title="Swap player">↕</button>
-                    <div class="lw-row-player">
-                        <div class="lw-row-player-name">${benchIdx ? `<span style="color:var(--text-muted);font-size:10px;margin-right:2px;">${benchIdx}.</span>` : ''}${escHTML(p.web_name)}</div>
-                        <div class="lw-row-player-team">${escHTML(p.team)}</div>
-                    </div>
-                    <div class="lw-row-fixture">${fx ? `<span class="fdr-dot fdr-${fx.difficulty}"></span><span>${escHTML(fx.opponent)}</span><span style="font-size:9px;color:var(--text-muted);">${fx.isHome ? 'H' : 'A'}</span>` : '<span style="color:var(--text-muted);">-</span>'}</div>
-                    <div class="lw-row-stat">${p.form}</div>
-                    <div class="lw-row-stat">${(p.epNext || 0).toFixed(1)}</div>
-                    <div class="lw-row-stat" style="color:${sc};font-size:13px;">${p.lwScore}</div>
-                </div>`;
-            }
-
-            // ── FULL-WIDTH HEADER (above grid so intel and pitch align) ──
-            let topBar = '';
-            topBar += `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:4px;"><i data-lucide="layout-grid" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Optimal Lineup — GW${currentGW}</div>`;
-            topBar += `<div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex-wrap:wrap;">
-                <span>Formation: <strong style="color:var(--text-primary);">${formation}</strong></span>
-                <span>·</span>
-                <span>Total Score: <strong style="color:var(--color-success);font-family:var(--font-mono);">${totalScore}</strong></span>
-                <span style="flex:1;"></span>
-                <button class="tw-btn tw-btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="resetLineupToOptimal()"><i data-lucide="rotate-ccw" style="width:12px;height:12px;"></i> Reset</button>
-            </div>`;
-
-            // ── LEFT COLUMN: Lineup ──
-            let left = '';
-
-            // Swap hint
-            if (lineupState.swapSource) {
-                const src = lineupState.squad.find(p => p.id === lineupState.swapSource);
-                left += `<div class="lw-swap-hint"><i data-lucide="repeat" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Swapping: ${src?.web_name || '?'} — Click ↕ on another player to complete, or click again to cancel</div>`;
-            }
-
-            // Compact mini pitch
-            left += `<div class="lw-pitch" style="padding:16px 12px;margin-bottom:12px;">`;
-            left += `<div class="lw-pitch-row">${fwds.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
-            left += `<div class="lw-pitch-row">${mids.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
-            left += `<div class="lw-pitch-row">${defs.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
-            left += `<div class="lw-pitch-row">${gk.map(p => renderLWPitchPlayer(p, false)).join('')}</div>`;
-            left += `</div>`;
-
-            // Column headers
-            left += `<div class="lw-col-headers"><span></span><span>Player</span><span>Fixture</span><span>Form</span><span>EP</span><span>Score</span></div>`;
-
-            // Starting XI — grouped by position
-            const groups = [
-                { pos: 1, label: 'Goalkeeper', players: gk },
-                { pos: 2, label: 'Defenders', players: defs },
-                { pos: 3, label: 'Midfielders', players: mids },
-                { pos: 4, label: 'Forwards', players: fwds }
-            ];
-
-            groups.forEach(g => {
-                if (g.players.length === 0) return;
-                left += `<div class="lw-pos-group">`;
-                left += `<div class="lw-pos-header ${posClasses[g.pos]}"><span style="font-size:11px;">${posNames[g.pos]}</span> ${g.label}</div>`;
-                g.players.forEach(p => { left += renderRow(p, false); });
-                left += `</div>`;
-            });
-
-            // Bench group
-            if (bench.length > 0) {
-                left += `<div class="lw-pos-group" style="margin-top:8px;">`;
-                left += `<div class="lw-pos-header pos-bench"><i data-lucide="clipboard-list" style="width:11px;height:11px;display:inline;vertical-align:middle;"></i> Bench</div>`;
-                bench.forEach((p, i) => { left += renderRow(p, true, i + 1); });
-                left += `</div>`;
-            }
-
-            // Actions
-            left += `<div class="tw-actions" style="margin-top:16px;">
-                <button class="tw-btn tw-btn-back" onclick="goToLineupStep(1)"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Back</button>
-                <button class="tw-btn tw-btn-primary" onclick="goToLineupStep(3)"><i data-lucide="crown" style="width:14px;height:14px;"></i> Pick Captain →</button>
-            </div>`;
-
-            // ── RIGHT COLUMN: Context Panel ──
-            let right = renderLWContextPanel();
-
-            // ── Assemble split layout ──
-            let html = topBar + `<div class="lw-clipboard-layout">
-                <div class="lw-lineup-col">${left}</div>
-                <div class="lw-context-col" id="lwContextPanel">${right}</div>
-            </div>`;
-
-            panel.innerHTML = html;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        function renderLWPitchPlayer(p, isBench, benchOrder) {
-            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
-            const bg = { 1: 'rgba(217,119,6,0.2)', 2: 'rgba(5,150,105,0.2)', 3: 'rgba(37,99,235,0.2)', 4: 'rgba(220,38,38,0.2)' };
-            const sc = p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)';
-            const fx = p.fixtures?.[0];
-            const isSelected = lineupState.selectedPlayers.includes(p.id);
-
-            return `<div class="lw-pitch-player ${isBench ? 'bench' : ''}" onclick="handleLWRowClick(${p.id})" title="${escHTML(p.web_name)} · Score: ${p.lwScore}" style="${isSelected ? 'background:rgba(167,139,250,0.2);box-shadow:0 0 0 2px #A78BFA;border-radius:8px;' : ''}">
-                ${benchOrder ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${benchOrder}</div>` : ''}
-                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${jerseyNumberLabel(p)}</div>
-                <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
-                ${fx ? `<div style="display:flex;align-items:center;gap:2px;justify-content:center;"><span class="fdr-dot fdr-${fx.difficulty}" style="width:6px;height:6px;"></span><span style="font-size:8px;color:rgba(255,255,255,0.7);">${escHTML(fx.opponent)}</span></div>` : ''}
-                <div class="lw-pitch-score" style="color:${sc};">${p.lwScore}</div>
-            </div>`;
+            renderLineupCommandCenter();
         }
 
         function handleLWSwapClick(playerId) {
             if (!lineupState.swapSource) {
                 // First click: select source
                 lineupState.swapSource = playerId;
-                renderLineupStep2Content();
+                refreshLWView();
                 return;
             }
 
             if (lineupState.swapSource === playerId) {
                 // Clicked same player: cancel swap
                 lineupState.swapSource = null;
-                renderLineupStep2Content();
+                refreshLWView();
                 return;
             }
 
@@ -396,7 +369,7 @@
                 // Check formation validity
                 if (!isValidLWFormation(newXI)) {
                     // Invalid swap — revert
-                    renderLineupStep2Content();
+                    refreshLWView();
                     return;
                 }
             }
@@ -404,7 +377,7 @@
             lineupState.xi = newXI;
             lineupState.bench = newBench;
             lineupState.formation = getFormationString(lineupState.xi);
-            renderLineupStep2Content();
+            refreshLWView();
         }
 
         function isValidLWFormation(xi) {
@@ -425,126 +398,18 @@
         }
 
         function resetLineupToOptimal() {
-            const available = lineupState.squad.filter(p => !lineupState.excluded.has(p.id));
-            available.forEach(p => { p.lwScore = computeQuickLineupScore(p); });
-            const solution = solveQuickLineup(available);
-            lineupState.xi = [...solution.xi];
-            lineupState.bench = [...solution.bench];
-            lineupState.formation = solution.formation;
+            // Deliberately does NOT recompute lwScore from the heuristic: the cards
+            // display lwScore as projected points, so overwriting it with the 0-100
+            // ranking score would put "41.0 xP" on a player worth four.
             lineupState.swapSource = null;
-            renderLineupStep2Content();
+            solveLWLineup();
+            const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore);
+            if (!lineupState.xi.some(p => p.id === lineupState.captain)) lineupState.captain = cap[0]?.id || null;
+            if (!lineupState.xi.some(p => p.id === lineupState.viceCaptain)) lineupState.viceCaptain = cap[1]?.id || null;
+            refreshLWView();
         }
 
         // ── STEP 3: Captain & Summary ──
-        function renderLineupStep3() {
-            const panel = document.getElementById('lwPanel3');
-            const xi = lineupState.xi;
-
-            // Auto-pick captain if not set
-            if (!lineupState.captain) {
-                const candidates = xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore);
-                lineupState.captain = candidates[0]?.id || xi[0]?.id;
-                lineupState.viceCaptain = candidates[1]?.id || xi[1]?.id;
-            }
-
-            renderLineupStep3Content();
-        }
-
-        function renderLineupStep3Content() {
-            const panel = document.getElementById('lwPanel3');
-            const xi = lineupState.xi;
-            const bench = lineupState.bench;
-
-            // Captain candidates — top outfield players by score
-            const capCandidates = xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore).slice(0, 5);
-
-            let html = `<div style="font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:16px;"><i data-lucide="crown" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Captain Selection</div>`;
-            html += `<div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Pick your captain (2x points) and vice-captain (backup). Ranked by lineup score.</div>`;
-
-            capCandidates.forEach((p, i) => {
-                const isCap = lineupState.captain === p.id;
-                const isVC = lineupState.viceCaptain === p.id;
-                const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-                const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
-                const fx = p.fixtures?.[0];
-                const recent = getPlayerRecentStats(p.id, 5);
-                const xgi = recent ? recent.xGIPer90.toFixed(2) : (p.minutes > 0 ? ((p.xGI / p.minutes) * 90).toFixed(2) : '0.00');
-
-                html += `<div class="lw-captain-card ${isCap ? 'selected-captain' : isVC ? 'selected-vc' : ''}">
-                    <div class="lw-captain-rank" style="background:${i === 0 ? 'rgba(245,158,11,0.15);color:#F59E0B' : i === 1 ? 'rgba(156,163,175,0.15);color:#9CA3AF' : i === 2 ? 'rgba(217,119,6,0.15);color:#D97706' : 'var(--surface-3);color:var(--text-muted)'}">${i + 1}</div>
-                    <div style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</div>
-                    <div class="lw-captain-info">
-                        <div class="lw-captain-name">${escHTML(p.web_name)}</div>
-                        <div class="lw-captain-meta">
-                            <span>${escHTML(p.team)}</span>
-                            <span>Form ${p.form}</span>
-                            <span>xGI/90 ${xgi}</span>
-                            ${fx ? `<span class="fixture-chip fdr-${fx.difficulty}" style="font-size:10px;padding:1px 5px;">${escHTML(fx.opponent)}(${fx.isHome ? 'H' : 'A'})</span>` : ''}
-                        </div>
-                    </div>
-                    <div style="font-family:var(--font-mono);font-weight:700;font-size:14px;color:${p.lwScore >= 30 ? 'var(--color-success)' : 'var(--text-primary)'}">${p.lwScore}</div>
-                    <div class="lw-captain-actions">
-                        <button class="lw-cap-btn ${isCap ? 'active-c' : ''}" onclick="event.stopPropagation();setLWCaptain(${p.id})">C</button>
-                        <button class="lw-cap-btn ${isVC ? 'active-vc' : ''}" onclick="event.stopPropagation();setLWViceCaptain(${p.id})">VC</button>
-                    </div>
-                </div>`;
-            });
-
-            // ── Final Summary ──
-            html += `<div style="margin-top:24px;font-size:18px;font-weight:700;font-family:var(--font-display);margin-bottom:16px;"><i data-lucide="check-circle" style="width:18px;height:18px;display:inline;vertical-align:middle;"></i> Recommended Lineup Summary</div>`;
-
-            // Formation + captain display
-            const capPlayer = lineupState.squad.find(p => p.id === lineupState.captain);
-            const vcPlayer = lineupState.squad.find(p => p.id === lineupState.viceCaptain);
-            html += `<div class="lw-final-section">
-                <div style="display:flex;gap:24px;flex-wrap:wrap;">
-                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Formation</span><div style="font-size:24px;font-weight:700;font-family:var(--font-mono);">${lineupState.formation}</div></div>
-                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Captain</span><div style="font-size:16px;font-weight:700;color:#F59E0B;"><i data-lucide="crown" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> ${capPlayer?.web_name || '-'}</div></div>
-                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Vice-Captain</span><div style="font-size:16px;font-weight:700;color:#9CA3AF;">${vcPlayer?.web_name || '-'}</div></div>
-                    <div><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Total Score</span><div style="font-size:24px;font-weight:700;font-family:var(--font-mono);color:var(--color-success);">${xi.reduce((s, p) => s + p.lwScore, 0)}</div></div>
-                </div>
-            </div>`;
-
-            // Mini pitch
-            const gk = xi.filter(p => p.pos === 1);
-            const defs = xi.filter(p => p.pos === 2);
-            const mids = xi.filter(p => p.pos === 3);
-            const fwds = xi.filter(p => p.pos === 4);
-
-            html += `<div class="lw-pitch" style="margin-bottom:16px;">`;
-            html += `<div class="lw-pitch-row">${fwds.map(p => renderLWSummaryPitchPlayer(p)).join('')}</div>`;
-            html += `<div class="lw-pitch-row">${mids.map(p => renderLWSummaryPitchPlayer(p)).join('')}</div>`;
-            html += `<div class="lw-pitch-row">${defs.map(p => renderLWSummaryPitchPlayer(p)).join('')}</div>`;
-            html += `<div class="lw-pitch-row">${gk.map(p => renderLWSummaryPitchPlayer(p)).join('')}</div>`;
-            html += `</div>`;
-
-            // Bench
-            html += `<div class="lw-bench-section" style="margin-bottom:16px;">`;
-            html += `<div class="lw-bench-header"><i data-lucide="clipboard-list" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Bench Order</div>`;
-            html += `<div class="lw-bench-row">${bench.map((p, i) => {
-                const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-                const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
-                return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;opacity:0.6;position:relative;">
-                    <div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--surface-3);color:var(--text-muted);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);">${i + 1}</div>
-                    <div class="lw-pitch-node" style="background:rgba(0,0,0,0.2);border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};">${jerseyNumberLabel(p)}</div>
-                    <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
-                </div>`;
-            }).join('')}</div>`;
-            html += `</div>`;
-
-            // Vs current: show changes
-            html += renderLWChanges();
-
-            // Actions
-            html += `<div class="tw-actions">
-                <button class="tw-btn tw-btn-back" onclick="goToLineupStep(2)"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Edit Lineup</button>
-                <button class="tw-btn tw-btn-secondary" onclick="goToLineupStep(1)"><i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> Start Over</button>
-            </div>`;
-
-            panel.innerHTML = html;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
         function renderLWSummaryPitchPlayer(p) {
             const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
@@ -612,13 +477,13 @@
         function setLWCaptain(playerId) {
             if (lineupState.viceCaptain === playerId) lineupState.viceCaptain = lineupState.captain;
             lineupState.captain = playerId;
-            renderLineupStep3Content();
+            refreshLWView();
         }
 
         function setLWViceCaptain(playerId) {
             if (lineupState.captain === playerId) lineupState.captain = lineupState.viceCaptain;
             lineupState.viceCaptain = playerId;
-            renderLineupStep3Content();
+            refreshLWView();
         }
 
         // Quick lineup scoring — simplified version for inline tab
@@ -1053,17 +918,25 @@
                 '<div style="padding:12px 12px;">' + (r2 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">In line</div>') + '</div></div>';
         }
 
+        // Repaints the pitch, the header figures and the intel pane together, so a
+        // swap can never leave the projected total describing the previous lineup.
+        function refreshLWView() {
+            const pitch = document.getElementById('lwPitchPane');
+            if (pitch) pitch.innerHTML = renderLWPitch();
+            const f = document.getElementById('lwFormation');
+            if (f) f.textContent = lineupState.formation;
+            const t = document.getElementById('lwTotal');
+            if (t) t.textContent = lwTotalXP().toFixed(1);
+            updateLWContextPanel();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
         function updateLWContextPanel() {
-            const el = document.getElementById('lwContextPanel');
+            const el = document.getElementById('lwIntelPane');
             if (el) {
-                el.innerHTML = renderLWContextPanel();
+                el.innerHTML = renderLWIntel();
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             }
-            // Update row selection highlights
-            document.querySelectorAll('.lw-row').forEach(row => {
-                const pid = parseInt(row.dataset.playerId);
-                row.classList.toggle('lw-row-selected', lineupState.selectedPlayers.includes(pid));
-            });
         }
 
         // ── LINEUP WIZARD: Row Click Handler (separates view from swap) ──
