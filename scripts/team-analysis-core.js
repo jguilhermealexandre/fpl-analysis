@@ -981,6 +981,7 @@
 
             let html = '';
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
+            html += renderSquadTickers();
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
             html += renderSquadFilterBar();
             html += renderSquadChartWidget();
@@ -1078,6 +1079,113 @@
             }
 
             return html;
+        }
+
+        // ===== SQUAD TICKERS =====
+        // Two scrolling strips at the top of Squad Analysis: what is going right and
+        // wrong with the squad, and where its players sit in the price market. Both
+        // are deliberately short — a ticker is a glance, not a report, and past four
+        // items it stops being readable before it scrolls away.
+        const SQ_TICKER_MAX = 4;
+
+        function buildSquadPulse() {
+            const ups = [], downs = [];
+
+            analysisResults.forEach(a => {
+                const p = a.player, benched = p.onBench;
+                const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+
+                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                    downs.push({ w: 100, icon: '🚑', text: `${p.name} out${p.news ? ` — ${String(p.news).split('.')[0]}` : ''}` });
+                } else if (p.status === 'd') {
+                    downs.push({ w: 80 + (benched ? 0 : 10), icon: '🩹', text: `${p.name} doubtful${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}` });
+                }
+                if (!benched && form >= 6) ups.push({ w: 60 + form, icon: '🔥', text: `${p.name} in form (${form.toFixed(1)})` });
+                if (!benched && form > 0 && form < 2.5) downs.push({ w: 50, icon: '❄️', text: `${p.name} cold (${form.toFixed(1)})` });
+                if (a.verdict === 'star') ups.push({ w: 70, icon: '⭐', text: `${p.name} rated a star pick` });
+            });
+
+            // Fixture runs are squad-wide news, so they are reported per club rather
+            // than once per player who happens to play for it.
+            const seenTeams = new Set();
+            analysisResults.forEach(a => {
+                const p = a.player;
+                if (seenTeams.has(p.teamId)) return;
+                seenTeams.add(p.teamId);
+                const swing = fixtureSwingData[p.teamId];
+                if (!swing) return;
+                const label = (teams[p.teamId] && teams[p.teamId].short_name) || p.team;
+                if (swing.direction === 'improving') ups.push({ w: 55, icon: '📅', text: `${label} fixtures ease from GW${swing.swingGW}` });
+                else downs.push({ w: 55, icon: '📅', text: `${label} fixtures harden from GW${swing.swingGW}` });
+            });
+
+            ups.sort((a, b) => b.w - a.w);
+            downs.sort((a, b) => b.w - a.w);
+
+            // Alternate so a good week still shows its problems and a bad one still
+            // shows something working — taking the top 4 by weight alone would often
+            // return four injuries and nothing else.
+            const out = [];
+            for (let i = 0; out.length < SQ_TICKER_MAX && (i < ups.length || i < downs.length); i++) {
+                if (downs[i] && out.length < SQ_TICKER_MAX) out.push({ ...downs[i], cls: 'down' });
+                if (ups[i] && out.length < SQ_TICKER_MAX) out.push({ ...ups[i], cls: 'up' });
+            }
+            return out;
+        }
+
+        function buildSquadMarketPulse() {
+            if (typeof priceThresholdPct !== 'function') return [];
+            const scored = analysisResults.map(a => ({ p: a.player, pct: priceThresholdPct(a.player) }))
+                .filter(x => Math.abs(x.pct) >= 1);
+            if (!scored.length) return [];
+
+            const risers = scored.filter(x => x.pct > 0).sort((a, b) => b.pct - a.pct);
+            const fallers = scored.filter(x => x.pct < 0).sort((a, b) => a.pct - b.pct);
+
+            const line = x => {
+                const rising = x.pct > 0;
+                const near = Math.abs(x.pct) >= 90;
+                return {
+                    cls: rising ? 'up' : 'down',
+                    icon: rising ? '📈' : '📉',
+                    text: `${x.p.name} ${rising ? '+' : ''}${Math.round(x.pct)}%${near ? (rising ? ' — rises tonight' : ' — drops tonight') : ''}`
+                };
+            };
+
+            // The biggest mover each way first, then fill from whichever side has more.
+            const out = [];
+            if (fallers[0]) out.push(line(fallers[0]));
+            if (risers[0]) out.push(line(risers[0]));
+            for (let i = 1; out.length < SQ_TICKER_MAX && (i < risers.length || i < fallers.length); i++) {
+                if (fallers[i] && out.length < SQ_TICKER_MAX) out.push(line(fallers[i]));
+                if (risers[i] && out.length < SQ_TICKER_MAX) out.push(line(risers[i]));
+            }
+            return out;
+        }
+
+        function renderSquadTicker(label, items, tip) {
+            if (!items.length) return '';
+            const one = it => `<span class="tm-tick ${it.cls}">
+                <span class="tm-tick-arrow">${it.icon}</span>
+                <span class="tm-tick-name">${escHTML(it.text)}</span>
+            </span>`;
+            // The run is rendered twice and the track shifted by exactly half, so the
+            // wrap-around is invisible. Content scrolls right to left.
+            const run = items.map(one).join('<span class="tm-tick-sep">•</span>');
+            return `<div class="sq-ticker-row">
+                <span class="sq-ticker-label" data-tooltip="${escHTML(tip)}">${escHTML(label)}</span>
+                <div class="tm-ticker">
+                    <div class="tm-ticker-track">${run}<span class="tm-tick-sep">•</span>${run}<span class="tm-tick-sep">•</span></div>
+                </div>
+            </div>`;
+        }
+
+        function renderSquadTickers() {
+            const pulse = renderSquadTicker('SQUAD', buildSquadPulse(),
+                'The most significant things going right and wrong across your squad this gameweek — availability, form and fixture swings.');
+            const market = renderSquadTicker('MARKET', buildSquadMarketPulse(),
+                "How close your players are to a price change, projected from net transfers against each player's owner base. FPL does not publish its real threshold.");
+            return (pulse || market) ? `<div class="sq-tickers">${pulse}${market}</div>` : '';
         }
 
         function renderTeamOverview(health, sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
@@ -1265,7 +1373,9 @@
                 const hrs = Math.floor(diff / 3600000) % 24;
                 const mins = Math.floor(diff / 60000) % 60;
                 const secs = Math.floor(diff / 1000) % 60;
-                out.textContent = days > 0 ? `${days}d ${hrs}h ${mins}m`
+                // Seconds at every scale: the deadline is a hard cut-off, and a
+                // figure that only moves once a minute reads as stale near it.
+                out.textContent = days > 0 ? `${days}d ${hrs}h ${mins}m ${secs}s`
                     : hrs > 0 ? `${hrs}h ${mins}m ${secs}s`
                     : `${mins}m ${secs}s`;
                 el.classList.toggle('urgent', diff < 6 * 3600000);
