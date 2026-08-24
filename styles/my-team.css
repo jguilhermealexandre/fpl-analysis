@@ -3048,7 +3048,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 .sq-chart-canvas-wrap {
     width: 100%;
-    min-height: 400px;
+    height: 400px;   /* definite, not min-height: the canvas sizes to its parent, so a content-driven height would feed Chart.js back into the ResizeObserver */
     padding: 0 16px 16px;
     box-sizing: border-box;
     position: relative;
@@ -3102,3 +3102,76 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .mgr-progress-right { color: var(--text-secondary); }
 .mgr-progress-bar { height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
 .mgr-progress-fill { height: 100%; border-radius: 3px; background: var(--verdict-hold); transition: width .4s ease; }
+
+/* Projected price movement — hollow arrow, weighted by how strong the signal is.
+   Deliberately lighter than .price-change-badge, which marks a change that already happened. */
+.price-momentum { font-size: 9px; cursor: help; margin-left: 1px; font-weight: 600; }
+.price-momentum.rise { color: #16a34a; }
+.price-momentum.fall { color: var(--verdict-sell); }
+.price-momentum.t1 { opacity: .4; }
+.price-momentum.t2 { opacity: .7; }
+.price-momentum.t3 { opacity: 1; }
+
+/* ===== Universal tooltips =====
+   Authored with data-tooltip="..."; positioned by initTooltips() into viewport
+   coordinates, so it is never clipped by the overflow:hidden row containers. */
+.ui-tooltip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 9999;
+    max-width: 280px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    background: #1f2937;
+    color: #f9fafb;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: .01em;
+    text-align: left;
+    white-space: normal;
+    pointer-events: none;              /* never eat the hover it describes */
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 90ms ease, transform 90ms ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+}
+
+.ui-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.ui-tooltip.below {
+    transform: translateY(-3px);
+}
+
+.ui-tooltip.below.visible {
+    transform: translateY(0);
+}
+
+/* The dark theme's surfaces are already dark, so invert to keep the bubble
+   readable as a distinct layer rather than blending into the page. */
+[data-theme="dark"] .ui-tooltip {
+    background: #f3f4f6;
+    color: #111827;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
+}
+
+[data-tooltip] {
+    cursor: help;
+}
+
+/* The stat cells and fixture chips are themselves interactive (the row opens a
+   panel), so they keep the pointer and only the explanatory badges get help. */
+.sq-stat[data-tooltip],
+.tw-cand-stat[data-tooltip],
+.fixture-chip[data-tooltip] {
+    cursor: inherit;
+}
+
+/* Now reads "Tougher run from GW5" rather than a bare arrow, so it must not wrap. */
+.swing-badge {
+    white-space: nowrap;
+}

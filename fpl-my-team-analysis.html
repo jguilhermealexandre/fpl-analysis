@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=12">
-    <link rel="stylesheet" href="styles/my-team.css?v=12">
-    <link rel="stylesheet" href="styles/v2-design.css?v=12">
-    <link rel="stylesheet" href="styles/compare-report.css?v=12">
+    <link rel="stylesheet" href="styles/common.css?v=13">
+    <link rel="stylesheet" href="styles/my-team.css?v=13">
+    <link rel="stylesheet" href="styles/v2-design.css?v=13">
+    <link rel="stylesheet" href="styles/compare-report.css?v=13">
 </head>
 <body>
 
@@ -1245,9 +1245,9 @@
             document.getElementById('teamDisplay').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
             startDeadlineCountdown();
-            // Same timing safety as toggleSquadChart(): give the freshly-inserted
-            // grid-collapse container a moment to lay out before Chart.js measures it.
-            if (sqChartExpanded) setTimeout(initSquadChart, 320);
+            // Observer-driven, same as toggleSquadChart(): the freshly-inserted
+            // wrapper starts the chart as soon as it has a real size.
+            if (sqChartExpanded) ensureSquadChart();
             if (typeof onCompareSelectionChange === 'function') onCompareSelectionChange();
             document.getElementById('status').style.display = 'none';
 
@@ -1264,12 +1264,9 @@
 
         // Shared by the Squad Snapshot cards below (hoisted out of renderTeamOverview
         // since renderSnapshotCard is a top-level function that needs them too).
-        const SNAPSHOT_TOTAL_FPL = 11000000;
-        function getTransferPressure(p) {
-            const owners = SNAPSHOT_TOTAL_FPL * ((p.ownership || 0) / 100);
-            if (!owners) return 0;
-            return ((p.transfersIn || 0) - (p.transfersOut || 0)) / owners;
-        }
+        // Transfer pressure itself lives in getTransferPressure() further down —
+        // there used to be a second copy here using a hardcoded 11m player count,
+        // which never ran, since the later declaration wins for every caller.
         function injuryBadge(p) {
             if (p.status === 'i' || p.status === 'u' || p.status === 's') {
                 return `<span class="pitch-injury-badge">OUT</span>`;
@@ -1289,13 +1286,53 @@
         // Actual, already-confirmed price move this gameweek (costChangeEvent) — distinct
         // from marketBadge() above, which predicts a LIKELY upcoming change from transfer
         // momentum. Used next to price in the squad table and replacement panels.
+        // Momentum reuses getTransferPressure()/getPressureLabel() — the same model
+        // and the same thresholds already behind the pitch's market badge and the
+        // transfer panel — so the table can't disagree with them about who is
+        // rising. Pressure is net transfers over the current owner base: one owned
+        // by 300k needs far fewer net buys to move than one owned by 4m, and raw
+        // net transfers alone would rank every popular player as "about to rise".
+        function priceMomentum(p) {
+            const net = (p.transfersIn || 0) - (p.transfersOut || 0);
+            // Ignore noise: a few hundred net transfers moves nothing.
+            if (Math.abs(net) < 1000) return null;
+
+            const pressure = getTransferPressure(p);
+            const { text, cls } = getPressureLabel(pressure);
+            if (cls === 'stable') return null;
+
+            return {
+                net,
+                pressure,
+                rising: cls === 'rise',
+                // Hot/Dropping sit beyond the second threshold in getPressureLabel.
+                strength: Math.abs(pressure) > 0.04 ? 3 : 2,
+                label: text
+            };
+        }
+
         function priceChangeBadge(p) {
             const change = (p.costChangeEvent || 0) / 10;
-            if (change === 0) return '';
-            const dir = change > 0 ? 'up' : 'down';
-            const arrow = change > 0 ? '▲' : '▼';
-            const verb = change > 0 ? 'risen' : 'dropped';
-            return `<span class="price-change-badge ${dir}" title="Price has ${verb} by £${Math.abs(change).toFixed(1)}m this gameweek">${arrow}</span>`;
+            let html = '';
+
+            if (change !== 0) {
+                const dir = change > 0 ? 'up' : 'down';
+                const arrow = change > 0 ? '▲' : '▼';
+                const verb = change > 0 ? 'risen' : 'dropped';
+                html += `<span class="price-change-badge ${dir}" title="Price has ${verb} by £${Math.abs(change).toFixed(1)}m this gameweek">${arrow}</span>`;
+            }
+
+            // Hollow arrow for what is only projected, so it never reads as a
+            // change that has already happened (the solid one above).
+            const m = priceMomentum(p);
+            if (m) {
+                const pct = Math.round(Math.abs(m.pressure) * 100);
+                const signed = `${m.net > 0 ? '+' : '−'}${Math.abs(m.net).toLocaleString()}`;
+                html += `<span class="price-momentum ${m.rising ? 'rise' : 'fall'} t${m.strength}"
+                    title="${m.label} — net ${signed} transfers this gameweek, ${pct}% of its current owners, pointing toward a price ${m.rising ? 'rise' : 'fall'}. FPL doesn't publish the exact threshold, so this is a projection.">${m.rising ? '⇧' : '⇩'}</span>`;
+            }
+
+            return html;
         }
 
         function renderTeamOverview(health, sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
@@ -2547,53 +2584,156 @@
 
         // Position-specific 5-stat set. Columns 1-2 (Form, Next-5 FDR) are shared
         // across all positions; columns 3-5 vary per the spec's table.
+        // A raw rate tells a manager nothing on its own — "0.65" only means
+        // something next to the knowledge that anything above 0.50 is elite. These
+        // turn a number into the judgement, and are the source of the "(Excellent)"
+        // qualifiers in the stat tooltips.
+        const bandHigh = (v, pairs) => (pairs.find(([t]) => v >= t) || pairs[pairs.length - 1])[1];
+        const bandLow  = (v, pairs) => (pairs.find(([t]) => v <= t) || pairs[pairs.length - 1])[1];
+
+        const XGI_BANDS = [[0.50, 'Excellent'], [0.35, 'Strong'], [0.20, 'Decent'], [0, 'Low']];
+        const XG_BANDS  = [[0.45, 'Excellent'], [0.30, 'Strong'], [0.15, 'Decent'], [0, 'Low']];
+        const XA_BANDS  = [[0.30, 'Excellent'], [0.20, 'Strong'], [0.10, 'Decent'], [0, 'Low']];
+        const XGC_BANDS = [[0.90, 'Excellent'], [1.20, 'Solid'], [1.50, 'Average'], [99, 'Leaky']];
+        const CS_BANDS  = [[40, 'Excellent'], [25, 'Good'], [15, 'Fair'], [0, 'Poor']];
+        const MINS_BANDS = [[80, 'Nailed on'], [60, 'Regular'], [30, 'Rotation risk'], [0, 'Fringe']];
+        const FORM_BANDS = [[6, 'Excellent'], [4.5, 'Good'], [3, 'Steady'], [0, 'Poor']];
+        const FDR_BANDS = [[2.2, 'Very kind'], [2.8, 'Favourable'], [3.4, 'Average'], [9, 'Tough']];
+
         function computePlayerStatColumns(player) {
             const gamesPlayed = computePlayerGamesPlayed(player);
             const mins = player.minutes || 0;
             const per90 = val => mins > 0 ? ((val || 0) / mins) * 90 : 0;
             const csPercent = gamesPlayed > 0 ? Math.round(((player.cleanSheets || 0) / gamesPlayed) * 100) : 0;
+            const teamName = (teams[player.teamId] && teams[player.teamId].name) || player.team;
+
+            const formValue = isPreseason ? player.ppg : player.form;
+            const fdrValue = player.avgFDR || 3;
 
             const cols = {
-                form: (isPreseason ? player.ppg : player.form).toFixed(1),
-                fdr: (player.avgFDR || 3).toFixed(1),
+                form: {
+                    label: 'Form', value: (formValue).toFixed(1),
+                    tip: isPreseason
+                        ? `Points per game last season (${bandHigh(formValue, FORM_BANDS)}). FPL resets form to zero before the season starts, so last year's rate stands in.`
+                        : `Average points over the last 30 days (${bandHigh(formValue, FORM_BANDS)}). Above 4.5 is a player in good touch.`
+                },
+                fdr: {
+                    label: 'Nxt5 FDR', value: fdrValue.toFixed(1),
+                    tip: `Average Fixture Difficulty over ${teamName}'s next 5 matches: ${fdrValue.toFixed(1)} (${bandLow(fdrValue, FDR_BANDS)}). 1 is the easiest fixture, 5 the hardest.`
+                }
             };
+
             // stat6 is the same for every position — minutes per game is the single
             // biggest availability/rotation signal regardless of role, and nothing else
             // in these columns captures it (they're all rate or underlying stats).
             // stat7 is the position's headline *output* metric, complementing the
             // underlying/expected numbers above it with what actually got returned.
             const minsPerGame = gamesPlayed > 0 ? Math.round(mins / gamesPlayed) : 0;
-            cols.stat6 = { label: 'Mins/Gm', value: String(minsPerGame) };
+            cols.stat6 = {
+                label: 'Mins/Gm', value: String(minsPerGame),
+                tip: `${minsPerGame} minutes per appearance across ${gamesPlayed} ${gamesPlayed === 1 ? 'match' : 'matches'} (${bandHigh(minsPerGame, MINS_BANDS)}). Above 80 is a guaranteed starter; below 60 means real rotation risk.`
+            };
+
+            const csTip = `${player.cleanSheets || 0} clean ${(player.cleanSheets || 0) === 1 ? 'sheet' : 'sheets'} in ${gamesPlayed} ${gamesPlayed === 1 ? 'match' : 'matches'} — ${csPercent}% (${bandHigh(csPercent, CS_BANDS)}).`;
+            const xgcTip = v => `Expected goals conceded per 90 minutes: ${v.toFixed(2)} (${bandLow(v, XGC_BANDS)}). Lower is better — under 1.00 points to a defence worth owning.`;
+            const xgiTip = v => `Expected goals + expected assists per 90 minutes: ${v.toFixed(2)} (${bandHigh(v, XGI_BANDS)}). Above 0.50 is excellent.`;
+            const xgTip  = v => `Expected goals per 90 minutes: ${v.toFixed(2)} (${bandHigh(v, XG_BANDS)}). Measures chance quality, not finishing luck.`;
+            const xaTip  = v => `Expected assists per 90 minutes: ${v.toFixed(2)} (${bandHigh(v, XA_BANDS)}). Credits the pass regardless of whether it was finished.`;
 
             if (player.position === 1) { // GK
-                cols.stat3 = { label: 'CS%', value: `${csPercent}%` };
-                cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2) };
-                cols.stat5 = { label: 'Sv/90', value: per90(player.saves).toFixed(2) };
-                cols.stat7 = { label: 'Saves', value: String(player.saves || 0) };
+                const sv = per90(player.saves);
+                cols.stat3 = { label: 'CS%', value: `${csPercent}%`, tip: csTip };
+                cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2), tip: xgcTip(per90(player.xGC)) };
+                cols.stat5 = { label: 'Sv/90', value: sv.toFixed(2), tip: `Saves per 90 minutes: ${sv.toFixed(2)}. Save points are worth having, but a high rate often means a busy defence rather than a good one.` };
+                cols.stat7 = { label: 'Saves', value: String(player.saves || 0), tip: `${player.saves || 0} saves this season. Every 3 saves is 1 point.` };
             } else if (player.position === 2) { // DEF
-                cols.stat3 = { label: 'CS%', value: `${csPercent}%` };
-                cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2) };
-                cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+                cols.stat3 = { label: 'CS%', value: `${csPercent}%`, tip: csTip };
+                cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2), tip: xgcTip(per90(player.xGC)) };
+                cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2), tip: xgiTip(per90(player.xGI)) };
                 // Attacking returns are what separate otherwise-similar defenders.
-                cols.stat7 = { label: 'G+A', value: String((player.goals || 0) + (player.assists || 0)) };
+                cols.stat7 = { label: 'G+A', value: String((player.goals || 0) + (player.assists || 0)), tip: `${player.goals || 0} ${(player.goals || 0) === 1 ? 'goal' : 'goals'} and ${player.assists || 0} ${(player.assists || 0) === 1 ? 'assist' : 'assists'} this season. A defender's goals are worth 6 points each.` };
             } else if (player.position === 3) { // MID
-                cols.stat3 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
-                cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2) };
-                cols.stat5 = { label: 'xA/90', value: per90(player.xA).toFixed(2) };
-                cols.stat7 = { label: 'Bonus', value: String(player.bonus || 0) };
+                cols.stat3 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2), tip: xgiTip(per90(player.xGI)) };
+                cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2), tip: xgTip(per90(player.xG)) };
+                cols.stat5 = { label: 'xA/90', value: per90(player.xA).toFixed(2), tip: xaTip(per90(player.xA)) };
+                cols.stat7 = { label: 'Bonus', value: String(player.bonus || 0), tip: `${player.bonus || 0} bonus points this season, awarded to the top 3 performers in each match.` };
             } else { // FWD
-                cols.stat3 = { label: 'Goals', value: String(player.goals || 0) };
-                cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2) };
-                cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+                cols.stat3 = { label: 'Goals', value: String(player.goals || 0), tip: `${player.goals || 0} ${(player.goals || 0) === 1 ? 'goal' : 'goals'} this season, worth 4 points each for a forward.` };
+                cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2), tip: xgTip(per90(player.xG)) };
+                cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2), tip: xgiTip(per90(player.xGI)) };
                 // Goals already shown above, so assists completes the return picture.
-                cols.stat7 = { label: 'Assists', value: String(player.assists || 0) };
+                cols.stat7 = { label: 'Assists', value: String(player.assists || 0), tip: `${player.assists || 0} ${(player.assists || 0) === 1 ? 'assist' : 'assists'} this season, worth 3 points each.` };
             }
             return cols;
         }
 
-        // Team form + fixture swing badges shown next to the team name.
+        // ===== TOOLTIPS =====
+        // Authored as data-tooltip="..." anywhere on the page. A pure-CSS bubble
+        // would have been simpler, but the elements that most need explaining sit
+        // inside .sq-row-main / .sq-row-team, which are overflow:hidden to truncate
+        // long player names — a bubble anchored in there gets clipped. One shared
+        // node positioned in viewport coordinates escapes that, and appears
+        // instantly rather than after the browser's ~1s title= delay.
+        let tooltipNode = null;
+
+        function positionTooltip(target) {
+            const r = target.getBoundingClientRect();
+            // Measure unconstrained before deciding which side it fits on.
+            tooltipNode.style.left = '0px';
+            tooltipNode.style.top = '0px';
+            const t = tooltipNode.getBoundingClientRect();
+
+            let left = r.left + (r.width / 2) - (t.width / 2);
+            left = Math.max(8, Math.min(left, window.innerWidth - t.width - 8));
+
+            let top = r.top - t.height - 8;
+            const below = top < 8;                    // no room above — flip under
+            if (below) top = r.bottom + 8;
+
+            tooltipNode.classList.toggle('below', below);
+            tooltipNode.style.left = `${Math.round(left)}px`;
+            tooltipNode.style.top = `${Math.round(top)}px`;
+        }
+
+        function hideTooltip() {
+            if (tooltipNode) tooltipNode.classList.remove('visible');
+        }
+
+        function initTooltips() {
+            if (tooltipNode) return;
+            tooltipNode = document.createElement('div');
+            tooltipNode.className = 'ui-tooltip';
+            tooltipNode.setAttribute('role', 'tooltip');
+            document.body.appendChild(tooltipNode);
+
+            const show = event => {
+                const target = event.target.closest && event.target.closest('[data-tooltip]');
+                if (!target) return;
+                const text = target.getAttribute('data-tooltip');
+                if (!text) return;
+                tooltipNode.textContent = text;
+                tooltipNode.classList.add('visible');
+                positionTooltip(target);
+            };
+            const maybeHide = event => {
+                if (event.target.closest && event.target.closest('[data-tooltip]')) hideTooltip();
+            };
+
+            // Delegated, so anything re-rendered later is covered without rebinding.
+            document.addEventListener('mouseover', show);
+            document.addEventListener('mouseout', maybeHide);
+            document.addEventListener('focusin', show);
+            document.addEventListener('focusout', maybeHide);
+            // Capture phase: the panels and the table scroll in their own containers,
+            // and a tooltip left behind would float detached from its element.
+            document.addEventListener('scroll', hideTooltip, true);
+            window.addEventListener('resize', hideTooltip);
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') hideTooltip(); });
+        }
+
         function renderTeamBadges(player) {
             const ta = teamAnalysis[player.teamId];
+            const teamName = (teams[player.teamId] && teams[player.teamId].name) || player.team;
             let formBadge = '';
             // Only badge a team once it has actually played — with no completed
             // matches there's no form to report, and defaulting to a verdict made
@@ -2603,22 +2743,34 @@
                 const cls = good ? 'good' : bad ? 'bad' : 'warning';
                 const dot = good ? '🟢' : bad ? '🔴' : '🟡';
                 const label = good ? 'Good' : bad ? 'Struggling' : 'Average';
-                const span = ta.matchesPlayed === 1 ? 'last match' : `last ${Math.min(ta.matchesPlayed, 5)}`;
+                const span = ta.matchesPlayed === 1 ? 'their opening match' : `their last ${Math.min(ta.matchesPlayed, 5)} matches`;
+                const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
                 // Names the team explicitly — this rates the CLUB's form, not the
                 // player's, which is easy to misread sitting beside a player row.
-                formBadge = `<span class="team-form-badge ${cls}" title="${escHTML(player.team)} team form: W${ta.wins} D${ta.draws} L${ta.losses} (${span})">${dot} ${label}</span>`;
+                formBadge = `<span class="team-form-badge ${cls}" data-tooltip="${escHTML(teamName)} team form: ${plural(ta.wins, 'win')}, ${plural(ta.draws, 'draw')} and ${plural(ta.losses, 'loss')} in ${span}.">${dot} ${label}</span>`;
             }
+
             const swing = fixtureSwingData[player.teamId];
-            const swingBadge = swing
-                ? `<span class="swing-badge ${swing.direction}">${swing.direction === 'improving' ? '▲' : '▼'} GW${swing.swingGW}</span>`
-                : '';
+            let swingBadge = '';
+            if (swing) {
+                // swing = avg FDR of the next 3 minus the 3 after, so a positive
+                // number means the harder block is the one being left behind.
+                const easier = swing.direction === 'improving';
+                const size = Math.abs(parseFloat(swing.futureFdr) - parseFloat(swing.currentFdr));
+                // The magnitude is what decides whether this is worth a transfer,
+                // so say it rather than leaving the reader with a bare arrow.
+                const scale = size >= 1.2 ? 'a big' : size >= 0.7 ? 'a clear' : 'a slight';
+                swingBadge = `<span class="swing-badge ${swing.direction}" data-tooltip="${escHTML(teamName)}'s fixtures ${easier ? 'ease off' : 'get harder'} from GW${swing.swingGW}: average FDR ${easier ? 'falls' : 'rises'} from ${swing.currentFdr} to ${swing.futureFdr} — ${scale} shift.${easier ? '' : ' Worth planning around.'}">${easier ? '📈' : '📉'} ${easier ? 'Easier' : 'Tougher'} run from GW${swing.swingGW}</span>`;
+            }
             return formBadge + swingBadge;
         }
 
         function renderSquadRow(analysis) {
             const { player, verdict, fixtures } = analysis;
             const cols = computePlayerStatColumns(player);
-            const fixtureChips = fixtures.slice(0, 5).map(f => `<div class="fixture-chip fdr-${f.difficulty}"><span class="fixture-team">${escHTML(f.opponent)}</span></div>`).join('');
+            const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+            const fixtureChips = fixtures.slice(0, 5).map(f =>
+                `<div class="fixture-chip fdr-${f.difficulty}" data-tooltip="GW${f.event}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent)} — FDR ${f.difficulty} (${FDR_WORDS[f.difficulty] || 'Average'})"><span class="fixture-team">${escHTML(f.opponent)}</span></div>`).join('');
             const rowFlagClass = verdict === 'sell' ? 'sq-row-sell' : verdict === 'monitor' ? 'sq-row-monitor' : '';
             // Always emit the slot, even when there's no hazard — a conditionally
             // present icon would shift the badge/name right on flagged rows only,
@@ -2640,13 +2792,8 @@
                         </div>
                     </div>
                     <div class="sq-row-stats">
-                        <div class="sq-stat"><span class="sq-stat-label">Form</span><span class="sq-stat-value">${cols.form}</span></div>
-                        <div class="sq-stat"><span class="sq-stat-label">Nxt5 FDR</span><span class="sq-stat-value">${cols.fdr}</span></div>
-                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat3.label}</span><span class="sq-stat-value">${cols.stat3.value}</span></div>
-                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat4.label}</span><span class="sq-stat-value">${cols.stat4.value}</span></div>
-                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat5.label}</span><span class="sq-stat-value">${cols.stat5.value}</span></div>
-                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat6.label}</span><span class="sq-stat-value">${cols.stat6.value}</span></div>
-                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat7.label}</span><span class="sq-stat-value">${cols.stat7.value}</span></div>
+                        ${[cols.form, cols.fdr, cols.stat3, cols.stat4, cols.stat5, cols.stat6, cols.stat7]
+                            .map(s => `<div class="sq-stat" data-tooltip="${escHTML(s.tip)}"><span class="sq-stat-label">${escHTML(s.label)}</span><span class="sq-stat-value">${escHTML(String(s.value))}</span></div>`).join('')}
                     </div>
                     <div class="sq-row-fixtures" onclick="event.stopPropagation(); openFixturePanel(${player.id})" title="View ${escHTML(player.team)}'s fixture calendar">${fixtureChips}</div>
                 </div>
@@ -2817,6 +2964,76 @@
             </div>`;
         }
 
+        // The canvas sits inside a grid-collapse accordion (grid-template-rows 0fr -> 1fr),
+        // so immediately after a toggle it still measures zero and Chart.js would lock in
+        // that size. Waiting a fixed 320ms for the transition raced with fast toggles and
+        // with anything that changed the layout mid-animation. Watching the wrapper starts
+        // the chart on the first frame it genuinely has a box, and then keeps it sized.
+        let sqChartResizeObserver = null;
+        let sqChartLastWidth = 0;
+
+        // Builds the chart if it isn't there, resizes it if it is, and replaces it if
+        // the canvas underneath was swapped out by a re-render. Checking the element
+        // rather than trusting the order the render and the observer ran in is what
+        // makes this safe to call from either.
+        function syncSquadChartToWrap() {
+            const wrap = document.getElementById('sq-chart-canvas-wrap');
+            const canvas = document.getElementById('sqChartCanvas');
+            if (!wrap || !canvas) return;
+
+            // Measured here, in one place, on purpose: taking the width as an argument
+            // meant the direct call passed a border-box width while the observer passed
+            // a content-box one, so the two disagreed by the padding and every first
+            // observation looked like a width change.
+            const width = Math.round(wrap.getBoundingClientRect().width);
+
+            // A chart still bound to a detached canvas can never draw again.
+            if (sqChartInstance && sqChartInstance.canvas !== canvas) {
+                sqChartInstance.destroy();
+                sqChartInstance = null;
+            }
+            if (!sqChartInstance) {
+                sqChartLastWidth = width;
+                initSquadChart();
+                return;
+            }
+            if (width === sqChartLastWidth) return;
+            sqChartLastWidth = width;
+            sqChartInstance.resize();
+        }
+
+        function ensureSquadChart() {
+            const wrap = document.getElementById('sq-chart-canvas-wrap');
+            if (!wrap) return;
+
+            if (typeof ResizeObserver === 'undefined') {
+                if (!sqChartInstance) setTimeout(initSquadChart, 320);
+                return;
+            }
+
+            // The wrapper's height is fixed in CSS, so it has a real box as soon as
+            // it exists — even mid-accordion-transition, where it is only clipped.
+            // Building here keeps chart construction out of the observer callback:
+            // Chart.js runs its own ResizeObserver for responsive charts, and
+            // constructing one from inside a callback is what produces "ResizeObserver
+            // loop completed with undelivered notifications".
+            const rect = wrap.getBoundingClientRect();
+            if (rect.width >= 1 && rect.height >= 1) syncSquadChartToWrap();
+
+            // One observer at a time: re-rendering the squad replaces this element,
+            // so the previous observer would otherwise be left watching a detached node.
+            if (sqChartResizeObserver) sqChartResizeObserver.disconnect();
+
+            sqChartResizeObserver = new ResizeObserver(entries => {
+                const box = entries[0] && entries[0].contentRect;
+                if (!box || box.width < 1 || box.height < 1) return;
+                // Width only. The wrapper's height is pinned, so reacting to height
+                // just fed Chart.js's own canvas sizing back into this observer.
+                syncSquadChartToWrap();
+            });
+            sqChartResizeObserver.observe(wrap);
+        }
+
         function toggleSquadChart() {
             sqChartExpanded = !sqChartExpanded;
             localStorage.setItem('fpl_charts_expanded', sqChartExpanded ? '1' : '0');
@@ -2824,12 +3041,7 @@
             const chevron = document.getElementById('sq-chart-chevron');
             if (body) body.classList.toggle('open', sqChartExpanded);
             if (chevron) chevron.classList.toggle('open', sqChartExpanded);
-            if (sqChartExpanded && !sqChartInstance) {
-                // Wait for the CSS grid-row expand transition (300ms) so the canvas has a
-                // real size before Chart.js measures it — initializing mid-transition would
-                // otherwise size the chart to a near-zero box.
-                setTimeout(initSquadChart, 320);
-            }
+            if (sqChartExpanded) ensureSquadChart();
         }
 
         function setSquadChartMetrics(xKey, yKey) {
@@ -2996,10 +3208,7 @@
                 }
             });
 
-            const wrap = document.getElementById('sq-chart-canvas-wrap');
-            if (wrap && typeof ResizeObserver !== 'undefined') {
-                new ResizeObserver(() => { if (sqChartInstance) sqChartInstance.resize(); }).observe(wrap);
-            }
+            // Resizing is handled by the single observer in ensureSquadChart().
         }
 
         function updateSquadChart() {
@@ -3061,11 +3270,8 @@
                     // Same position-aware stat set the squad table uses, so a candidate
                     // is read against your own players on identical terms.
                     const cols = computePlayerStatColumns(c);
-                    const statCells = [
-                        { label: 'Form', value: cols.form },
-                        { label: 'Nxt5 FDR', value: cols.fdr },
-                        cols.stat3, cols.stat4, cols.stat5, cols.stat6, cols.stat7
-                    ].map(s => `<div class="tw-cand-stat"><span class="tw-cand-stat-label">${escHTML(s.label)}</span><span class="tw-cand-stat-value">${escHTML(String(s.value))}</span></div>`).join('');
+                    const statCells = [cols.form, cols.fdr, cols.stat3, cols.stat4, cols.stat5, cols.stat6, cols.stat7]
+                        .map(s => `<div class="tw-cand-stat" data-tooltip="${escHTML(s.tip)}"><span class="tw-cand-stat-label">${escHTML(s.label)}</span><span class="tw-cand-stat-value">${escHTML(String(s.value))}</span></div>`).join('');
 
                     return `<div class="tw-market-row tw-cand-row" data-compare-row onclick="openPairCompare(${player.id}, ${c.id})">
                         <input type="checkbox" class="compare-checkbox" data-player-id="${c.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${c.id})" title="Add to AI Scouting Report">
@@ -8984,10 +9190,10 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=12"></script>
-    <script src="scripts/common.js?v=12"></script>
-    <script src="scripts/sidebar-nav.js?v=12"></script>
-    <script>initIcons();</script>
+    <script src="scripts/compare-report.js?v=13"></script>
+    <script src="scripts/common.js?v=13"></script>
+    <script src="scripts/sidebar-nav.js?v=13"></script>
+    <script>initIcons(); initTooltips();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
     loadSidebarNav().then(function() {
