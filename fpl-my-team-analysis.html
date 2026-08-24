@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=13">
-    <link rel="stylesheet" href="styles/my-team.css?v=13">
-    <link rel="stylesheet" href="styles/v2-design.css?v=13">
-    <link rel="stylesheet" href="styles/compare-report.css?v=13">
+    <link rel="stylesheet" href="styles/common.css?v=14">
+    <link rel="stylesheet" href="styles/my-team.css?v=14">
+    <link rel="stylesheet" href="styles/v2-design.css?v=14">
+    <link rel="stylesheet" href="styles/compare-report.css?v=14">
 </head>
 <body>
 
@@ -2645,7 +2645,7 @@
                 cols.stat3 = { label: 'CS%', value: `${csPercent}%`, tip: csTip };
                 cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2), tip: xgcTip(per90(player.xGC)) };
                 cols.stat5 = { label: 'Sv/90', value: sv.toFixed(2), tip: `Saves per 90 minutes: ${sv.toFixed(2)}. Save points are worth having, but a high rate often means a busy defence rather than a good one.` };
-                cols.stat7 = { label: 'Saves', value: String(player.saves || 0), tip: `${player.saves || 0} saves this season. Every 3 saves is 1 point.` };
+                cols.stat7 = { label: 'Saves', value: String(player.saves || 0), tip: `${player.saves || 0} ${(player.saves || 0) === 1 ? 'save' : 'saves'} this season. Every 3 saves is worth 1 point.` };
             } else if (player.position === 2) { // DEF
                 cols.stat3 = { label: 'CS%', value: `${csPercent}%`, tip: csTip };
                 cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2), tip: xgcTip(per90(player.xGC)) };
@@ -2744,10 +2744,11 @@
                 const dot = good ? '🟢' : bad ? '🔴' : '🟡';
                 const label = good ? 'Good' : bad ? 'Struggling' : 'Average';
                 const span = ta.matchesPlayed === 1 ? 'their opening match' : `their last ${Math.min(ta.matchesPlayed, 5)} matches`;
-                const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+                // "loss" doesn't take a bare -s, so the plural is passed explicitly.
+                const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
                 // Names the team explicitly — this rates the CLUB's form, not the
                 // player's, which is easy to misread sitting beside a player row.
-                formBadge = `<span class="team-form-badge ${cls}" data-tooltip="${escHTML(teamName)} team form: ${plural(ta.wins, 'win')}, ${plural(ta.draws, 'draw')} and ${plural(ta.losses, 'loss')} in ${span}.">${dot} ${label}</span>`;
+                formBadge = `<span class="team-form-badge ${cls}" data-tooltip="${escHTML(teamName)} team form: ${plural(ta.wins, 'win')}, ${plural(ta.draws, 'draw')} and ${plural(ta.losses, 'loss', 'losses')} in ${span}.">${dot} ${label}</span>`;
             }
 
             const swing = fixtureSwingData[player.teamId];
@@ -2760,7 +2761,7 @@
                 // The magnitude is what decides whether this is worth a transfer,
                 // so say it rather than leaving the reader with a bare arrow.
                 const scale = size >= 1.2 ? 'a big' : size >= 0.7 ? 'a clear' : 'a slight';
-                swingBadge = `<span class="swing-badge ${swing.direction}" data-tooltip="${escHTML(teamName)}'s fixtures ${easier ? 'ease off' : 'get harder'} from GW${swing.swingGW}: average FDR ${easier ? 'falls' : 'rises'} from ${swing.currentFdr} to ${swing.futureFdr} — ${scale} shift.${easier ? '' : ' Worth planning around.'}">${easier ? '📈' : '📉'} ${easier ? 'Easier' : 'Tougher'} run from GW${swing.swingGW}</span>`;
+                swingBadge = `<span class="swing-badge ${swing.direction}" data-tooltip="${escHTML(teamName)}'s fixtures ${easier ? 'ease off' : 'get harder'} from GW${swing.swingGW}: average FDR ${easier ? 'falls' : 'rises'} from ${swing.currentFdr} to ${swing.futureFdr} — ${scale} shift.${easier ? '' : ' Worth planning around.'}">${easier ? '📈' : '📉'} ${easier ? 'Easier' : 'Tougher'} from GW${swing.swingGW}</span>`;
             }
             return formBadge + swingBadge;
         }
@@ -2788,7 +2789,7 @@
                         <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
                         <div class="sq-row-name-block">
                             <div class="sq-row-name">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}</div>
-                            <div class="sq-row-team">${escHTML(player.team)} · £${player.price.toFixed(1)}m ${priceChangeBadge(player)} ${renderTeamBadges(player)}</div>
+                            <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${priceChangeBadge(player)} ${renderTeamBadges(player)}</div>
                         </div>
                     </div>
                     <div class="sq-row-stats">
@@ -3224,6 +3225,53 @@
         // just populated with transfer-focused content instead — driven by the Transfer
         // Wizard's actual scoring engine (calculateTransferScore via findTransferCandidates),
         // not the lighter findReplacements() formula used by Phase 2's inline quick-list.
+        // Hands the pick over to the Transfer Wizard rather than duplicating its
+        // budget and team-limit rules here: stage the sale, aim the active slot at
+        // it, and open the wizard already showing the comparison.
+        function planTransferFromPanel(outId, inId) {
+            const out = selectedPlayers.find(p => p.id === outId);
+            const candidate = allPlayersById[inId] || allPlayers.find(p => p.id === inId);
+            if (!out || !candidate) return;
+
+            closeDetailPanel();
+            // Open the wizard BEFORE staging: its first render replaces transferState
+            // wholesale, so anything staged ahead of it is silently discarded.
+            switchTab('transfer');
+
+            let slotIdx = transferState.pending.findIndex(s => s.soldPlayer.id === outId);
+            if (slotIdx < 0) {
+                if (transferState.pending.length >= 5) {
+                    updateStatus('Your transfer plan already has 5 slots', 'error');
+                    return;
+                }
+                transferState.pending.push({ soldPlayer: out, replacement: null });
+                slotIdx = transferState.pending.length - 1;
+            }
+            transferState.activeSlot = slotIdx;
+            transferState.previewPlayer = candidate;
+            transferState.mode = 'compare';
+
+            // Staging after the render means these have to be refreshed by hand.
+            renderTWBudgetBar();
+            renderTWDraftBoard();
+            renderTWScoutPanel();
+        }
+
+        // The three numbers worth reading at a glance for each position: current
+        // form, the metric that position actually gets paid for, and minutes —
+        // the rest stays one click away in the comparison rather than crowding
+        // every card with seven labelled rows.
+        function headlineStatsFor(cols, position) {
+            const headline = position === 4 ? cols.stat4 : cols.stat3;   // FWD stat3 is a season total, stat4 the rate
+            return [cols.form, headline, cols.stat6];
+        }
+
+        function renderFixtureChip(fx) {
+            if (!fx) return '<span class="rc-fixture fdr-0">No fixture</span>';
+            const words = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+            return `<span class="rc-fixture fdr-${fx.difficulty}" data-tooltip="GW${fx.event}: ${fx.isHome ? 'home to' : 'away at'} ${escHTML(fx.opponent)} — FDR ${fx.difficulty} (${words[fx.difficulty] || 'Average'})">${escHTML(fx.opponent)} (${fx.isHome ? 'H' : 'A'})</span>`;
+        }
+
         function openTransferPanel(playerId) {
             const analysis = analysisResults.find(a => a.player.id === playerId);
             if (!analysis) return;
@@ -3253,35 +3301,71 @@
                 Budget £${maxPrice.toFixed(1)}m (sell £${sellPrice.toFixed(1)}m + bank £${bank.toFixed(1)}m)
             `;
 
-            const posShort = POSITION_CONFIG[player.position].short;
-            let html = `<div class="detail-section">
-                <div class="detail-section-title">⚡ AI-Ranked Replacements</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Recency-weighted form, fixture-adjusted opponent matchup, and team context — same engine as the Transfer Wizard. Stats shown are ${escHTML(posShort)}-specific.</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Tick players to build an AI Scouting Report, or click a row to compare it against ${escHTML(player.name)}.</div>`;
+            // The player being replaced, kept on screen as the thing every candidate
+            // is being judged against — otherwise the numbers below have no anchor.
+            const outCols = computePlayerStatColumns(player);
+            const outXP = predictedGWPoints(player);
+            const outFixtures = player.fixtures || teamFixtures[player.teamId] || [];
+
+            let html = `
+            <div class="tp-benchmark">
+                <div class="tp-benchmark-label">Replacing</div>
+                <div class="tp-benchmark-main">
+                    <span class="tp-benchmark-name">${escHTML(player.name)}</span>
+                    <span class="tp-benchmark-team">${escHTML(player.team)}</span>
+                    <span class="tp-benchmark-price">£${sellPrice.toFixed(1)}m</span>
+                </div>
+                <div class="tp-benchmark-stats">
+                    <span class="rc-pill" data-tooltip="${escHTML(outCols.form.tip)}">${escHTML(outCols.form.label)} <strong>${escHTML(String(outCols.form.value))}</strong></span>
+                    <span class="rc-pill" data-tooltip="Projected points for the upcoming gameweek — the figure every candidate below is compared against.">xP <strong>${outXP.toFixed(1)}</strong></span>
+                    ${renderFixtureChip(outFixtures[0])}
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <div class="tp-head">
+                    <span class="tp-head-title">⚡ AI-ranked replacements <span class="tp-head-budget">≤ £${maxPrice.toFixed(1)}m</span></span>
+                    <span class="tp-head-info" data-tooltip="Ranked by the same engine as the Transfer Wizard: recency-weighted form, fixture-adjusted opponent matchup and team context. Tick players to build an AI Scouting Report.">ℹ️</span>
+                </div>`;
 
             if (!candidates.length) {
                 html += `<div class="tw-market-empty">No affordable candidates found at this position right now.</div>`;
             } else {
                 html += candidates.map((c, i) => {
                     const teamName = c.team || teams[c.teamId]?.short_name || '';
-                    const fixes = teamFixtures[c.teamId] || c.fixtures || [];
-                    const nextF = fixes[0];
-                    const fdrHtml = nextF ? `<span class="fdr-dot fdr-${nextF.difficulty}"></span> ${escHTML(nextF.opponent)} (${nextF.isHome ? 'H' : 'A'})` : '';
-                    // Same position-aware stat set the squad table uses, so a candidate
-                    // is read against your own players on identical terms.
+                    const nextF = (teamFixtures[c.teamId] || c.fixtures || [])[0];
                     const cols = computePlayerStatColumns(c);
-                    const statCells = [cols.form, cols.fdr, cols.stat3, cols.stat4, cols.stat5, cols.stat6, cols.stat7]
-                        .map(s => `<div class="tw-cand-stat" data-tooltip="${escHTML(s.tip)}"><span class="tw-cand-stat-label">${escHTML(s.label)}</span><span class="tw-cand-stat-value">${escHTML(String(s.value))}</span></div>`).join('');
 
-                    return `<div class="tw-market-row tw-cand-row" data-compare-row onclick="openPairCompare(${player.id}, ${c.id})">
-                        <input type="checkbox" class="compare-checkbox" data-player-id="${c.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${c.id})" title="Add to AI Scouting Report">
-                        <div class="tw-market-rank">${i + 1}</div>
-                        <span class="tw-market-name">${escHTML(c.name)}</span>
-                        <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${escHTML(teamName)}</span>
-                        <span class="tw-market-price">£${c.price.toFixed(1)}m ${priceChangeBadge(c)}</span>
-                        <span class="tw-market-score" title="AI Transfer Score">${(c._transferScore || 0).toFixed(0)}</span>
-                        <div class="tw-market-row-detail">${fdrHtml}</div>
-                        <div class="tw-cand-stats">${statCells}</div>
+                    // Both sides use predictedGWPoints so this delta matches the xP on
+                    // the pitch cards and in the optimizer. ep_next regresses toward the
+                    // mean and would disagree with every other number on the page.
+                    const delta = predictedGWPoints(c) - outXP;
+                    const better = delta > 0.05;
+                    const worse = delta < -0.05;
+                    const deltaCls = better ? 'good' : worse ? 'bad' : 'flat';
+                    const deltaText = better ? `▲ +${delta.toFixed(1)}` : worse ? `▼ ${delta.toFixed(1)}` : '±0.0';
+
+                    const pills = headlineStatsFor(cols, c.position)
+                        .map(s => `<span class="rc-pill" data-tooltip="${escHTML(s.tip)}">${escHTML(s.label)} <strong>${escHTML(String(s.value))}</strong></span>`).join('');
+
+                    return `<div class="rc-card" data-compare-row>
+                        <div class="rc-top">
+                            <input type="checkbox" class="compare-checkbox" data-player-id="${c.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${c.id})" data-tooltip="Add to the AI Scouting Report">
+                            <span class="rc-rank">${i + 1}</span>
+                            <span class="rc-name">${escHTML(c.name)}</span>
+                            <span class="rc-team">${escHTML(teamName)}</span>
+                            <span class="rc-price">£${c.price.toFixed(1)}m ${priceChangeBadge(c)}</span>
+                        </div>
+                        <div class="rc-mid">
+                            <span class="rc-score" data-tooltip="AI Transfer Score — the engine's overall ranking of this candidate for your squad. Higher is better; it is a ranking, not a points prediction.">${(c._transferScore || 0).toFixed(0)} <span class="rc-score-unit">score</span></span>
+                            <span class="rc-delta ${deltaCls}" data-tooltip="Projected points for the coming gameweek: ${predictedGWPoints(c).toFixed(1)} xP against ${escHTML(player.name)}'s ${outXP.toFixed(1)} xP.">${deltaText} xP</span>
+                            ${renderFixtureChip(nextF)}
+                        </div>
+                        <div class="rc-pills">${pills}</div>
+                        <div class="rc-actions">
+                            <button class="rc-btn" onclick="event.stopPropagation(); openPairCompare(${player.id}, ${c.id})">Compare</button>
+                            <button class="rc-btn primary" onclick="event.stopPropagation(); planTransferFromPanel(${player.id}, ${c.id})">Plan transfer</button>
+                        </div>
                     </div>`;
                 }).join('');
             }
@@ -9190,9 +9274,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=13"></script>
-    <script src="scripts/common.js?v=13"></script>
-    <script src="scripts/sidebar-nav.js?v=13"></script>
+    <script src="scripts/compare-report.js?v=14"></script>
+    <script src="scripts/common.js?v=14"></script>
+    <script src="scripts/sidebar-nav.js?v=14"></script>
     <script>initIcons(); initTooltips();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script

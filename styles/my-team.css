@@ -2394,7 +2394,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 240px;
+    width: 288px;
     flex-shrink: 0;
     overflow: hidden;
 }
@@ -2716,7 +2716,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 240px;
+    width: 288px;
     flex-shrink: 0;
     overflow: hidden;
 }
@@ -3174,4 +3174,184 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 /* Now reads "Tougher run from GW5" rather than a bare arrow, so it must not wrap. */
 .swing-badge {
     white-space: nowrap;
+}
+
+/* The swing badge now carries words rather than a bare arrow, so the name column
+   needs the room. Widening it keeps every row identical, which is what holds the
+   stat columns in line; letting the badge wrap or the column size to content
+   would not. */
+.sq-row-club {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* If anything must be cut it is the club and price — repeated elsewhere in the
+   row — never a badge, since a half-rendered word reads as a bug. */
+.sq-row-team .team-form-badge,
+.sq-row-team .swing-badge,
+.sq-row-team .price-change-badge,
+.sq-row-team .price-momentum {
+    flex-shrink: 0;
+}
+
+/* ===== Transfer panel: benchmark + candidate cards ===== */
+.tp-benchmark {
+    margin: 0 0 14px;
+    padding: 11px 13px;
+    border: 1px solid var(--border-default);
+    border-left: 3px solid var(--verdict-monitor);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+}
+
+.tp-benchmark-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.tp-benchmark-main {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 8px;
+}
+
+.tp-benchmark-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.tp-benchmark-team { font-size: 11px; color: var(--text-muted); }
+.tp-benchmark-price { font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary); margin-left: auto; }
+.tp-benchmark-stats { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+
+.tp-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.tp-head-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.tp-head-budget { font-size: 11px; font-weight: 500; color: var(--text-muted); font-family: var(--font-mono); }
+.tp-head-info { font-size: 12px; cursor: help; opacity: .75; }
+
+.rc-card {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--surface-1);
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.rc-card:hover { border-color: var(--color-primary); box-shadow: var(--shadow-sm); }
+.rc-card.selected-row { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 6%, var(--surface-1)); }
+
+.rc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+
+.rc-rank {
+    flex-shrink: 0;
+    width: 19px; height: 19px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: var(--surface-3);
+    color: var(--text-secondary);
+    font-size: 10px; font-weight: 700; font-family: var(--font-mono);
+}
+
+.rc-name { font-size: 13px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-team { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+.rc-price { margin-left: auto; flex-shrink: 0; font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary); }
+
+.rc-mid { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 7px; }
+
+.rc-score {
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--color-primary) 13%, transparent);
+    color: var(--color-primary);
+    font-size: 12px; font-weight: 700; font-family: var(--font-mono);
+    cursor: help;
+}
+
+.rc-score-unit { font-size: 9px; font-weight: 600; opacity: .75; font-family: var(--font-sans); }
+
+.rc-delta {
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 11px; font-weight: 700; font-family: var(--font-mono);
+    cursor: help;
+}
+
+.rc-delta.good { background: color-mix(in srgb, var(--verdict-hold) 15%, transparent); color: var(--verdict-hold); }
+.rc-delta.bad { background: color-mix(in srgb, var(--verdict-sell) 15%, transparent); color: var(--verdict-sell); }
+.rc-delta.flat { background: var(--surface-3); color: var(--text-muted); }
+
+/* Fixture as a colour-coded chip rather than plain text, so difficulty reads
+   without parsing the opponent's name. */
+.rc-fixture {
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: help;
+    color: #fff;
+}
+
+.rc-fixture.fdr-1 { background: var(--fdr-1); }
+.rc-fixture.fdr-2 { background: var(--fdr-2); }
+.rc-fixture.fdr-3 { background: var(--fdr-3); }
+.rc-fixture.fdr-4 { background: var(--fdr-4); }
+.rc-fixture.fdr-5 { background: var(--fdr-5); }
+.rc-fixture.fdr-0 { background: var(--surface-3); color: var(--text-muted); }
+
+.rc-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+
+.rc-pill {
+    padding: 3px 7px;
+    border-radius: 5px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    cursor: help;
+}
+
+.rc-pill strong { color: var(--text-primary); font-family: var(--font-mono); font-weight: 700; }
+
+.rc-actions { display: flex; gap: 6px; }
+
+.rc-btn {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.rc-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+
+.rc-btn.primary { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.rc-btn.primary:hover { filter: brightness(1.08); background: var(--color-primary); color: #fff; }
+
+/* The fixture strip used to size itself to whatever the opponent abbreviations
+   happened to measure ("MCI" vs "NFO" differ by a pixel or two), which changed
+   the strip's width per row and pushed the flexible stat block along with it —
+   the stat columns drifted by up to 5px down the table. A fixed chip width makes
+   every strip identical, so the columns line up exactly. */
+.sq-row-fixtures .fixture-chip {
+    flex: 0 0 36px;
+    width: 36px;
+    box-sizing: border-box;
 }
