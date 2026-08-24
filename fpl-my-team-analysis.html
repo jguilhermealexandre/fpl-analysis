@@ -90,14 +90,6 @@
             </div>
         </div>
 
-        <!-- Manager Info (shown after load) -->
-        <div class="manager-info hidden" id="managerInfo">
-            <span class="manager-name" id="managerName">-</span>
-            <span class="manager-stat">Rank: <strong id="overallRank">-</strong></span>
-            <span class="manager-stat">Points: <strong id="totalPoints">-</strong></span>
-            <span class="manager-stat">Bank: <strong id="bankValue">-</strong></span>
-        </div>
-
         <!-- Status -->
         <div class="status" id="status" style="display:none;"></div>
 
@@ -716,12 +708,11 @@
                         sellPrice: pick.selling_price / 10, multiplier: pick.multiplier };
                 }).filter(p => p !== null);
 
-                document.getElementById('managerInfo').classList.remove('hidden');
+                // Manager name/rank/points/bank are rendered as the right-hand column
+                // of the squad overview (renderManagerCard, called from
+                // renderTeamOverview) — analyzeTeam() below runs after managerData and
+                // picksData are already assigned, so it reads them straight off those.
                 document.getElementById('squadHintBanner').classList.remove('hidden');
-                document.getElementById('managerName').textContent = `${managerData.player_first_name} ${managerData.player_last_name}`;
-                document.getElementById('overallRank').textContent = managerData.summary_overall_rank?.toLocaleString() || '-';
-                document.getElementById('totalPoints').textContent = managerData.summary_overall_points?.toLocaleString() || '-';
-                document.getElementById('bankValue').textContent = `£${(picksData.entry_history?.bank / 10 || 0).toFixed(1)}m`;
 
                 localStorage.setItem('fpl_team_id', teamId);
                 showNavTeamBadge(teamId);
@@ -742,7 +733,6 @@
                     ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
                     : 'Something went wrong loading your team. Please try again.';
                 updateStatus(friendly, 'error');
-                document.getElementById('managerInfo').classList.add('hidden');
                 document.getElementById('squadHintBanner').classList.add('hidden');
                 document.getElementById('tabBar').classList.remove('visible');
                 document.getElementById('landingPage').style.display = '';
@@ -1267,6 +1257,23 @@
                     ${renderLineupAlert()}
                 </div>
                 ${renderSnapshotBody()}
+                ${renderManagerCard()}
+            </div>`;
+        }
+
+        // Right-hand column of the squad overview. Reads the managerData/picksData
+        // globals directly (both assigned in loadTeamById before analyzeTeam() runs).
+        function renderManagerCard() {
+            if (!managerData) return '<div class="manager-info"></div>';
+            const name = `${managerData.player_first_name || ''} ${managerData.player_last_name || ''}`.trim() || 'Manager';
+            const rank = managerData.summary_overall_rank?.toLocaleString() || '-';
+            const points = managerData.summary_overall_points?.toLocaleString() || '-';
+            const bank = `£${(picksData?.entry_history?.bank / 10 || 0).toFixed(1)}m`;
+            return `<div class="manager-info">
+                <span class="manager-name">${escHTML(name)}</span>
+                <span class="manager-stat">Rank: <strong>${rank}</strong></span>
+                <span class="manager-stat">Points: <strong>${points}</strong></span>
+                <span class="manager-stat">Bank: <strong>${bank}</strong></span>
             </div>`;
         }
 
@@ -1350,11 +1357,11 @@
                         <div class="pitch-row">${byPos(3).map(a => renderSnapshotCard(a, false)).join('')}</div>
                         <div class="pitch-row">${byPos(2).map(a => renderSnapshotCard(a, false)).join('')}</div>
                         <div class="pitch-row">${byPos(1).map(a => renderSnapshotCard(a, false)).join('')}</div>
-                        <div class="pitch-row bench-row">
-                            <span class="bench-label">Bench</span>
-                            ${benchAnalyses.map(a => renderSnapshotCard(a, true)).join('')}
-                        </div>
                     </div>
+                </div>
+                <div class="pitch-bench">
+                    <span class="bench-label">Bench</span>
+                    ${benchAnalyses.map(a => renderSnapshotCard(a, true)).join('')}
                 </div>
             </div>`;
         }
@@ -1608,22 +1615,36 @@
                 form: (isPreseason ? player.ppg : player.form).toFixed(1),
                 fdr: (player.avgFDR || 3).toFixed(1),
             };
+            // stat6 is the same for every position — minutes per game is the single
+            // biggest availability/rotation signal regardless of role, and nothing else
+            // in these columns captures it (they're all rate or underlying stats).
+            // stat7 is the position's headline *output* metric, complementing the
+            // underlying/expected numbers above it with what actually got returned.
+            const minsPerGame = gamesPlayed > 0 ? Math.round(mins / gamesPlayed) : 0;
+            cols.stat6 = { label: 'Mins/Gm', value: String(minsPerGame) };
+
             if (player.position === 1) { // GK
                 cols.stat3 = { label: 'CS%', value: `${csPercent}%` };
                 cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2) };
                 cols.stat5 = { label: 'Sv/90', value: per90(player.saves).toFixed(2) };
+                cols.stat7 = { label: 'Saves', value: String(player.saves || 0) };
             } else if (player.position === 2) { // DEF
                 cols.stat3 = { label: 'CS%', value: `${csPercent}%` };
                 cols.stat4 = { label: 'xGC/90', value: per90(player.xGC).toFixed(2) };
                 cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+                // Attacking returns are what separate otherwise-similar defenders.
+                cols.stat7 = { label: 'G+A', value: String((player.goals || 0) + (player.assists || 0)) };
             } else if (player.position === 3) { // MID
                 cols.stat3 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
                 cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2) };
                 cols.stat5 = { label: 'xA/90', value: per90(player.xA).toFixed(2) };
+                cols.stat7 = { label: 'Bonus', value: String(player.bonus || 0) };
             } else { // FWD
                 cols.stat3 = { label: 'Goals', value: String(player.goals || 0) };
                 cols.stat4 = { label: 'xG/90', value: per90(player.xG).toFixed(2) };
                 cols.stat5 = { label: 'xGI/90', value: per90(player.xGI).toFixed(2) };
+                // Goals already shown above, so assists completes the return picture.
+                cols.stat7 = { label: 'Assists', value: String(player.assists || 0) };
             }
             return cols;
         }
@@ -1671,6 +1692,8 @@
                         <div class="sq-stat"><span class="sq-stat-label">${cols.stat3.label}</span><span class="sq-stat-value">${cols.stat3.value}</span></div>
                         <div class="sq-stat"><span class="sq-stat-label">${cols.stat4.label}</span><span class="sq-stat-value">${cols.stat4.value}</span></div>
                         <div class="sq-stat"><span class="sq-stat-label">${cols.stat5.label}</span><span class="sq-stat-value">${cols.stat5.value}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat6.label}</span><span class="sq-stat-value">${cols.stat6.value}</span></div>
+                        <div class="sq-stat"><span class="sq-stat-label">${cols.stat7.label}</span><span class="sq-stat-value">${cols.stat7.value}</span></div>
                     </div>
                     <div class="sq-row-fixtures">${fixtureChips}</div>
                 </div>
@@ -1711,6 +1734,15 @@
         let sqChartXMetric = 'xgi90';
         let sqChartYMetric = 'points';
         let sqChartScope = 'squad'; // 'squad' (default) | 'all'
+        let sqChartCompareIds = []; // player ids picked by clicking chart points
+
+        // Ready-made axis pairings, surfaced as the "Template" dropdown.
+        const SQ_CHART_PRESETS = [
+            { label: 'xGI/90 vs Points', x: 'xgi90', y: 'points' },
+            { label: 'Value vs Ownership', x: 'value', y: 'ownership' },
+            { label: 'Price vs Pts/Game', x: 'price', y: 'ppg' },
+            { label: 'Form vs Season Avg', x: 'form', y: 'ppg' },
+        ];
 
         const SQ_POSITION_COLORS = {
             1: { bg: 'rgba(251, 191, 36, 0.8)', border: '#fbbf24' },
@@ -1805,20 +1837,27 @@
                 <div class="sq-chart-body-outer ${sqChartExpanded ? 'open' : ''}" id="sq-chart-body">
                     <div class="sq-chart-body-inner">
                         <div class="sq-chart-controls">
-                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('xgi90','points')">xGI/90 vs Points</button>
-                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('value','ownership')">Value vs Ownership</button>
-                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('price','ppg')">Price vs Pts/Game</button>
-                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('form','ppg')">Form vs Season Avg</button>
-                            <div class="sq-chart-scope-toggle" role="group" aria-label="Chart data scope">
-                                <button class="sq-chart-scope-btn ${sqChartScope === 'squad' ? 'active' : ''}" onclick="setSquadChartScope('squad')">My Squad</button>
-                                <button class="sq-chart-scope-btn ${sqChartScope === 'all' ? 'active' : ''}" onclick="setSquadChartScope('all')">All Players</button>
-                            </div>
+                            <label class="sq-chart-field">
+                                <span class="sq-chart-field-label">Players</span>
+                                <select id="sq-chart-scope-select" onchange="setSquadChartScope(this.value)">
+                                    <option value="squad" ${sqChartScope === 'squad' ? 'selected' : ''}>My Squad</option>
+                                    <option value="all" ${sqChartScope === 'all' ? 'selected' : ''}>All Players</option>
+                                </select>
+                            </label>
+                            <label class="sq-chart-field">
+                                <span class="sq-chart-field-label">Template</span>
+                                <select id="sq-chart-preset-select" onchange="applySquadChartPreset(this.value)">
+                                    ${SQ_CHART_PRESETS.map((p, i) => `<option value="${i}" ${p.x === sqChartXMetric && p.y === sqChartYMetric ? 'selected' : ''}>${p.label}</option>`).join('')}
+                                    <option value="custom" ${SQ_CHART_PRESETS.some(p => p.x === sqChartXMetric && p.y === sqChartYMetric) ? '' : 'selected'}>Custom…</option>
+                                </select>
+                            </label>
                             <span class="sq-chart-axis-picker">
                                 <select id="sq-chart-x-select" onchange="onSquadChartMetricChange()">${metricOptions(sqChartXMetric)}</select>
                                 <span>vs</span>
                                 <select id="sq-chart-y-select" onchange="onSquadChartMetricChange()">${metricOptions(sqChartYMetric)}</select>
                             </span>
                         </div>
+                        <div class="sq-chart-compare-hint" id="sq-chart-compare-hint">Click any two points to compare those players.</div>
                         <div class="sq-chart-canvas-wrap" id="sq-chart-canvas-wrap"><canvas id="sqChartCanvas"></canvas></div>
                     </div>
                 </div>
@@ -1847,16 +1886,67 @@
             const ySel = document.getElementById('sq-chart-y-select');
             if (xSel) xSel.value = xKey;
             if (ySel) ySel.value = yKey;
+            syncSquadChartPresetSelect();
             updateSquadChart();
         }
 
         function setSquadChartScope(scope) {
             sqChartScope = scope;
-            document.querySelectorAll('.sq-chart-scope-btn').forEach(btn => btn.classList.remove('active'));
-            const activeBtn = [...document.querySelectorAll('.sq-chart-scope-btn')]
-                .find(btn => btn.textContent === (scope === 'all' ? 'All Players' : 'My Squad'));
-            if (activeBtn) activeBtn.classList.add('active');
+            // Scope change swaps the whole point set, so any half-finished
+            // click-to-compare selection no longer refers to what's on screen.
+            sqChartCompareIds = [];
+            updateSquadChartCompareHint();
             updateSquadChart();
+        }
+
+        function applySquadChartPreset(value) {
+            const preset = SQ_CHART_PRESETS[Number(value)];
+            if (!preset) return; // "Custom…" — leave the axis pickers as-is
+            setSquadChartMetrics(preset.x, preset.y);
+        }
+
+        // Keeps the preset dropdown honest when the axis pickers are changed
+        // directly: if the pair no longer matches a template, show "Custom…".
+        function syncSquadChartPresetSelect() {
+            const sel = document.getElementById('sq-chart-preset-select');
+            if (!sel) return;
+            const idx = SQ_CHART_PRESETS.findIndex(p => p.x === sqChartXMetric && p.y === sqChartYMetric);
+            sel.value = idx === -1 ? 'custom' : String(idx);
+        }
+
+        function updateSquadChartCompareHint() {
+            const el = document.getElementById('sq-chart-compare-hint');
+            if (!el) return;
+            if (!sqChartCompareIds.length) {
+                el.textContent = 'Click any two points to compare those players.';
+                return;
+            }
+            const first = allPlayersById[sqChartCompareIds[0]];
+            el.textContent = `Selected ${first ? first.name : 'player'} — click another point to compare.`;
+        }
+
+        // Chart.js onClick handler: collect two players, then hand off to the
+        // page's existing compare modal (same one the table's checkboxes use).
+        function onSquadChartPointClick(evt, elements) {
+            if (!elements || !elements.length || !sqChartInstance) return;
+            const { datasetIndex, index } = elements[0];
+            const point = sqChartInstance.data.datasets[datasetIndex]?.data[index];
+            if (!point || point.id == null) return;
+
+            if (sqChartCompareIds[0] === point.id) {
+                sqChartCompareIds = []; // clicking the same point again deselects
+            } else {
+                sqChartCompareIds.push(point.id);
+            }
+
+            if (sqChartCompareIds.length >= 2) {
+                const [a, b] = sqChartCompareIds;
+                sqChartCompareIds = [];
+                updateSquadChartCompareHint();
+                openPairCompare(a, b);
+                return;
+            }
+            updateSquadChartCompareHint();
         }
 
         function onSquadChartMetricChange() {
@@ -1864,6 +1954,7 @@
             const ySel = document.getElementById('sq-chart-y-select');
             sqChartXMetric = xSel ? xSel.value : sqChartXMetric;
             sqChartYMetric = ySel ? ySel.value : sqChartYMetric;
+            syncSquadChartPresetSelect();
             updateSquadChart();
         }
 
@@ -1879,6 +1970,7 @@
                 data: players.filter(p => p.position === pos).map(p => ({
                     x: xDef.get(p),
                     y: yDef.get(p),
+                    id: p.id, // resolves a clicked point back to a player for compare
                     name: p.name,
                     team: p.team,
                 })),
@@ -1920,6 +2012,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: onSquadChartPointClick,
                     plugins: {
                         legend: { position: 'top', labels: { color: 'var(--text-secondary)', usePointStyle: true } },
                         tooltip: {

@@ -794,6 +794,13 @@
     transform: translate(-50%, 0);
 }
 .my-team-analysis-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 20px; }
+/* Squad overview: health left, pitch centre, manager stats right. */
+.team-overview { display: grid; grid-template-columns: minmax(220px, 0.9fr) minmax(0, 2fr) minmax(200px, 0.9fr); gap: 16px; align-items: start; margin-bottom: 20px; animation: fadeInUp 0.5s ease; }
+.team-overview > .sq-snapshot { min-width: 0; }
+@media (max-width: 1100px) and (min-width: 901px) {
+    .team-overview { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .team-overview > .sq-snapshot { grid-column: 1 / -1; order: -1; }
+}
 .health-ring-container { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
 .health-panel-title { align-self: stretch; margin: -16px -16px 8px; padding: 18px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 17px; font-weight: 600; text-align: left; }
 .health-ring svg { width: 110px; height: 110px; }
@@ -845,7 +852,6 @@
 .pitch-row:nth-child(2) { top: 38%; }
 .pitch-row:nth-child(3) { top: 63%; }
 .pitch-row:nth-child(4) { top: 87%; }
-.pitch-row.bench-row { background: var(--surface-1); margin: 8px -12px -12px; padding: 10px 12px; border-radius: 0 0 var(--radius-lg) var(--radius-lg); gap: 12px; }
 .bench-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; display: flex; align-items: center; margin-right: 8px; }
 
 .pitch-player { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; min-width: 56px; position: relative; }
@@ -1217,7 +1223,8 @@
 .tw-market-row.previewed { background: rgba(96,165,250,0.08); border-left: 3px solid var(--color-info); }
 .tw-market-rank { width: 20px; height: 20px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; font-family: var(--font-mono); flex-shrink: 0; color: var(--text-muted); }
 .tw-market-row:nth-child(-n+3) .tw-market-rank { background: rgba(96,165,250,0.15); color: var(--color-info); }
-.tw-market-name { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-market-name { flex: 1 1 auto; font-weight: 600; min-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detail-panel .tw-market-row { flex-wrap: wrap; }
 .tw-market-price { font-family: var(--font-mono); font-weight: 600; color: var(--text-secondary); font-size: 10px; }
 .tw-market-stat { font-family: var(--font-mono); font-weight: 600; font-size: 10px; }
 .tw-market-empty { padding: 20px 14px; text-align: center; color: var(--text-muted); font-size: 11px; }
@@ -2251,10 +2258,16 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .team-form-badge.bad { background: rgba(248, 113, 113, 0.12); color: var(--color-error); }
 
 .sq-row-stats {
-    display: flex;
-    gap: 14px;
+    /* Grid (not flex+space-around): every stat gets an identical share of the
+       row regardless of how wide its label/value text is, so the columns line
+       up across rows even though each position shows different stat labels
+       (GK "CS%" vs MID "XGI/90"). auto-flow:column means adding/removing a
+       stat needs no column-count change here. */
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 8px;
     flex: 1;
-    justify-content: space-around;
     min-width: 0;
 }
 
@@ -2262,7 +2275,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 40px;
+    min-width: 0;
 }
 
 .sq-stat-label {
@@ -2536,10 +2549,16 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .team-form-badge.bad { background: rgba(248, 113, 113, 0.12); color: var(--color-error); }
 
 .sq-row-stats {
-    display: flex;
-    gap: 14px;
+    /* Grid (not flex+space-around): every stat gets an identical share of the
+       row regardless of how wide its label/value text is, so the columns line
+       up across rows even though each position shows different stat labels
+       (GK "CS%" vs MID "XGI/90"). auto-flow:column means adding/removing a
+       stat needs no column-count change here. */
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 8px;
     flex: 1;
-    justify-content: space-around;
     min-width: 0;
 }
 
@@ -2547,7 +2566,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 40px;
+    min-width: 0;
 }
 
 .sq-stat-label {
@@ -2736,46 +2755,42 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     margin-bottom: 16px;
 }
 
-.sq-chart-pill {
-    padding: 5px 12px;
-    border-radius: 999px;
-    border: 1px solid var(--border-default);
-    background: var(--surface-2);
-    color: var(--text-secondary);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.sq-chart-pill:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-}
-
-.sq-chart-scope-toggle {
+/* Labelled dropdown (scope / template) in the chart control row. */
+.sq-chart-field {
     display: flex;
-    border: 1px solid var(--border-default);
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.sq-chart-scope-btn {
-    padding: 5px 12px;
-    border: none;
-    background: var(--surface-2);
-    color: var(--text-secondary);
+    align-items: center;
+    gap: 6px;
     font-size: 11px;
+    color: var(--text-muted);
+}
+
+.sq-chart-field-label {
     font-weight: 600;
-    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-size: 10px;
 }
 
-.sq-chart-scope-btn + .sq-chart-scope-btn {
-    border-left: 1px solid var(--border-default);
+.sq-chart-field select {
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 11px;
+    transition: border-color 150ms ease;
 }
 
-.sq-chart-scope-btn.active {
-    background: var(--color-primary);
-    color: #fff;
+.sq-chart-field select:hover,
+.sq-chart-field select:focus {
+    border-color: var(--color-primary);
+    outline: none;
+}
+
+.sq-chart-compare-hint {
+    padding: 0 16px 8px;
+    font-size: 11px;
+    color: var(--text-muted);
 }
 
 .sq-chart-axis-picker {
