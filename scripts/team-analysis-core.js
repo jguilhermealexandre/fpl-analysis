@@ -1086,7 +1086,11 @@
         // wrong with the squad, and where its players sit in the price market. Both
         // are deliberately short — a ticker is a glance, not a report, and past four
         // items it stops being readable before it scrolls away.
-        const SQ_TICKER_MAX = 4;
+        const SQ_TICKER_MAX = 6;
+        // Seconds of scroll per item. Duration is derived from the item count rather
+        // than fixed, so a six-item strip moves at the same speed as a two-item one
+        // instead of crawling because it has more to say.
+        const SQ_TICKER_SEC_PER_ITEM = 5.6;
 
         function buildSquadPulse() {
             const ups = [], downs = [];
@@ -1096,13 +1100,13 @@
                 const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
 
                 if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                    downs.push({ w: 100, icon: '🚑', text: `${p.name} out${p.news ? ` — ${String(p.news).split('.')[0]}` : ''}` });
+                    downs.push({ cat: 'avail', w: 100, icon: '🚑', text: `${p.name} out${p.news ? ` — ${String(p.news).split('.')[0]}` : ''}` });
                 } else if (p.status === 'd') {
-                    downs.push({ w: 80 + (benched ? 0 : 10), icon: '🩹', text: `${p.name} doubtful${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}` });
+                    downs.push({ cat: 'avail', w: 80 + (benched ? 0 : 10), icon: '🩹', text: `${p.name} doubtful${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}` });
                 }
-                if (!benched && form >= 6) ups.push({ w: 60 + form, icon: '🔥', text: `${p.name} in form (${form.toFixed(1)})` });
-                if (!benched && form > 0 && form < 2.5) downs.push({ w: 50, icon: '❄️', text: `${p.name} cold (${form.toFixed(1)})` });
-                if (a.verdict === 'star') ups.push({ w: 70, icon: '⭐', text: `${p.name} rated a star pick` });
+                if (!benched && form >= 6) ups.push({ cat: 'form', w: 60 + form, icon: '🔥', text: `${p.name} in form (${form.toFixed(1)})` });
+                if (!benched && form > 0 && form < 2.5) downs.push({ cat: 'form', w: 50, icon: '❄️', text: `${p.name} cold (${form.toFixed(1)})` });
+                if (a.verdict === 'star') ups.push({ cat: 'star', w: 70, icon: '⭐', text: `${p.name} rated a star pick` });
             });
 
             // Fixture runs are squad-wide news, so they are reported per club rather
@@ -1115,20 +1119,98 @@
                 const swing = fixtureSwingData[p.teamId];
                 if (!swing) return;
                 const label = (teams[p.teamId] && teams[p.teamId].short_name) || p.team;
-                if (swing.direction === 'improving') ups.push({ w: 55, icon: '📅', text: `${label} fixtures ease from GW${swing.swingGW}` });
-                else downs.push({ w: 55, icon: '📅', text: `${label} fixtures harden from GW${swing.swingGW}` });
+                if (swing.direction === 'improving') ups.push({ cat: 'fixture', w: 55, icon: '📅', text: `${label} fixtures ease from GW${swing.swingGW}` });
+                else downs.push({ cat: 'fixture', w: 55, icon: '📅', text: `${label} fixtures harden from GW${swing.swingGW}` });
+            });
+
+            // Squad-level facts that decide gameweek moves but belong to no single
+            // player: the armband, transfers in hand, chips, who is left to play.
+            const mgr = typeof buildManagerPanelData === 'function' ? buildManagerPanelData() : null;
+            if (mgr) {
+                const cap = analysisResults.find(a => a.player.isCaptain);
+                if (cap) {
+                    const capXP = predictedGWPoints(cap.player);
+                    ups.push({ cat: 'captain', w: 75, icon: '👑', text: `${cap.player.name} captained — ${(capXP * 2).toFixed(1)} pts projected` });
+                }
+
+                if (mgr.freeTransfers >= 2) {
+                    ups.push({ cat: 'transfers', w: 62, icon: '🎟️', text: `${mgr.freeTransfers} free transfers banked${mgr.freeTransfers >= maxFreeTransfers ? ' — at the cap, use one or lose it' : ''}` });
+                } else if (mgr.freeTransfers === 0) {
+                    downs.push({ cat: 'transfers', w: 62, icon: '🎟️', text: 'No free transfer — any move costs 4 pts' });
+                }
+                if (mgr.hitCost > 0) downs.push({ cat: 'transfers', w: 72, icon: '💸', text: `−${mgr.hitCost} pts taken on transfers this gameweek` });
+
+                if (mgr.activeChip) {
+                    ups.push({ cat: 'chip', w: 90, icon: '🃏', text: `${CHIP_LABELS[mgr.activeChip] || mgr.activeChip} active this gameweek` });
+                }
+
+                // Only worth saying while the gameweek is actually running.
+                if (mgr.gwLive && mgr.progress && mgr.progress.total) {
+                    const pr = mgr.progress;
+                    if (pr.toPlay > 0) ups.push({ cat: 'progress', w: 58, icon: '⏱️', text: `${pr.toPlay} of your XI still to play` });
+                    if (pr.blank > 0) downs.push({ cat: 'progress', w: 58, icon: '🚫', text: `${pr.blank} starter${pr.blank > 1 ? 's have' : ' has'} no fixture this gameweek` });
+                }
+
+                if (mgr.rankDelta != null && Math.abs(mgr.rankDelta) >= 1000) {
+                    const climbed = mgr.rankDelta > 0;
+                    (climbed ? ups : downs).push({
+                        cat: 'rank', w: 54, icon: climbed ? '▲' : '▼',
+                        text: `Overall rank ${climbed ? 'up' : 'down'} ${Math.abs(mgr.rankDelta).toLocaleString()} places`
+                    });
+                }
+            }
+
+            // Rotation risk is a squad-wide problem even when no one is injured.
+            const shaky = analysisResults.filter(a => !a.player.onBench
+                && typeof expectedMinutesModel === 'function'
+                && expectedMinutesModel(a.player).pStart < 0.6);
+            if (shaky.length) {
+                downs.push({ cat: 'rotation', w: 66, icon: '🔄', text: `${shaky.length} starter${shaky.length > 1 ? 's are' : ' is'} a rotation risk (${shaky.slice(0, 2).map(a => a.player.name).join(', ')}${shaky.length > 2 ? '…' : ''})` });
+            }
+
+            // Three from one club is a concentration bet worth naming.
+            const byTeam = {};
+            analysisResults.filter(a => !a.player.onBench).forEach(a => { byTeam[a.player.teamId] = (byTeam[a.player.teamId] || 0) + 1; });
+            Object.keys(byTeam).filter(t => byTeam[t] >= 3).forEach(t => {
+                const label = (teams[t] && teams[t].short_name) || '';
+                downs.push({ cat: 'stacking', w: 52, icon: '🎯', text: `${byTeam[t]} starters from ${label} — your week rides on one result` });
             });
 
             ups.sort((a, b) => b.w - a.w);
             downs.sort((a, b) => b.w - a.w);
 
             // Alternate so a good week still shows its problems and a bad one still
-            // shows something working — taking the top 4 by weight alone would often
-            // return four injuries and nothing else.
+            // shows something working — taking the top items by weight alone would
+            // return six injuries and nothing that was working.
+            //
+            // The per-category caps matter as much as the weights: three clubs whose
+            // fixtures all turn in GW5 produce three near-identical lines that eat
+            // half the strip and bury the squad-level news behind them. Availability
+            // gets two because individual injuries each need naming; everything else
+            // gets one and yields the slot to a different kind of fact.
+            const CAT_CAP = { avail: 2 };
+            const used = {};
             const out = [];
-            for (let i = 0; out.length < SQ_TICKER_MAX && (i < ups.length || i < downs.length); i++) {
-                if (downs[i] && out.length < SQ_TICKER_MAX) out.push({ ...downs[i], cls: 'down' });
-                if (ups[i] && out.length < SQ_TICKER_MAX) out.push({ ...ups[i], cls: 'up' });
+            const take = (item, cls) => {
+                if (!item || out.length >= SQ_TICKER_MAX) return false;
+                const cat = item.cat || 'other';
+                const cap = CAT_CAP[cat] || 1;
+                if ((used[cat] || 0) >= cap) return false;
+                used[cat] = (used[cat] || 0) + 1;
+                out.push({ ...item, cls });
+                return true;
+            };
+
+            // Walk both lists in weight order, alternating sides, skipping anything
+            // whose category is already spoken for.
+            let di = 0, ui = 0;
+            while (out.length < SQ_TICKER_MAX && (di < downs.length || ui < ups.length)) {
+                const before = out.length;
+                while (di < downs.length && !take(downs[di], 'down')) di++;
+                if (di < downs.length) di++;
+                while (ui < ups.length && !take(ups[ui], 'up')) ui++;
+                if (ui < ups.length) ui++;
+                if (out.length === before) break;   // nothing left either side can add
             }
             return out;
         }
@@ -1172,10 +1254,11 @@
             // The run is rendered twice and the track shifted by exactly half, so the
             // wrap-around is invisible. Content scrolls right to left.
             const run = items.map(one).join('<span class="tm-tick-sep">•</span>');
+            const secs = (items.length * SQ_TICKER_SEC_PER_ITEM).toFixed(1);
             return `<div class="sq-ticker-row">
                 <span class="sq-ticker-label" data-tooltip="${escHTML(tip)}">${escHTML(label)}</span>
                 <div class="tm-ticker">
-                    <div class="tm-ticker-track">${run}<span class="tm-tick-sep">•</span>${run}<span class="tm-tick-sep">•</span></div>
+                    <div class="tm-ticker-track" style="animation-duration:${secs}s">${run}<span class="tm-tick-sep">•</span>${run}<span class="tm-tick-sep">•</span></div>
                 </div>
             </div>`;
         }
