@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=9">
-    <link rel="stylesheet" href="styles/my-team.css?v=9">
-    <link rel="stylesheet" href="styles/v2-design.css?v=9">
-    <link rel="stylesheet" href="styles/compare-report.css?v=9">
+    <link rel="stylesheet" href="styles/common.css?v=10">
+    <link rel="stylesheet" href="styles/my-team.css?v=10">
+    <link rel="stylesheet" href="styles/v2-design.css?v=10">
+    <link rel="stylesheet" href="styles/compare-report.css?v=10">
 </head>
 <body>
 
@@ -179,6 +179,18 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text" id="loadingText">Analyzing your team...</div>
+    </div>
+
+    <!-- Auto-Optimize report. Reuses the detail-overlay shell so it inherits the
+         same slide-in panel styling as the player/transfer panels. -->
+    <div class="detail-overlay" id="optReportOverlay" onclick="closeOptimizeReport(event)">
+        <div class="detail-panel opt-report-panel">
+            <div class="detail-header">
+                <div class="player-name">📊 Optimization report</div>
+                <button class="detail-close" onclick="closeOptimizeReport()" aria-label="Close">&times;</button>
+            </div>
+            <div class="detail-body" id="optReportBody"></div>
+        </div>
     </div>
 
     <!-- Help / onboarding overlay. Opt-in from the header, replacing the two
@@ -1341,6 +1353,7 @@
             snapshotViceId = null;
             snapshotSwapSource = null;
             snapshotOptimizeSummary = '';
+            snapshotOptimizeReport = null;
             snapshotInitialized = false;
         }
 
@@ -1453,11 +1466,14 @@
 
         // Expected total for the gameweek, modelling the two things a plain sum of
         // the XI misses and that real FPL scores always include.
-        function computeProjectedXIScore() {
+        // Parameterised so the optimizer can score a hypothetical lineup with the
+        // exact same maths as the headline figure — otherwise its "before" number
+        // disagrees with the score already on screen.
+        function computeProjectedTotalFor(xiSet, captainId, viceId, benchOrder) {
             const analysisMap = getSquadAnalysisMap();
             let total = 0;
 
-            snapshotXI.forEach(id => {
+            xiSet.forEach(id => {
                 const a = analysisMap.get(id);
                 if (a) total += predictedGWPoints(a.player);
             });
@@ -1465,8 +1481,8 @@
             // 1. Captaincy. The armband only doubles if the captain actually plays;
             //    otherwise it passes to the vice. Weight each by their start odds
             //    rather than assuming the captain always turns out.
-            const cap = analysisMap.get(snapshotCaptainId);
-            const vice = analysisMap.get(snapshotViceId);
+            const cap = analysisMap.get(captainId);
+            const vice = analysisMap.get(viceId);
             if (cap) {
                 const capStart = projectPlayerPointsDetailed(cap.player).pStart;
                 total += predictedGWPoints(cap.player) * capStart;
@@ -1478,13 +1494,13 @@
             // 2. Auto-subs. When a starter doesn't play, the first eligible bench
             //    player replaces him, so some bench points land in the total. Value
             //    each starter's no-show chance against the best bench cover.
-            const benchXP = snapshotBenchOrder
+            const benchXP = (benchOrder || [])
                 .map(id => analysisMap.get(id))
                 .filter(Boolean)
                 .map(a => predictedGWPoints(a.player));
             if (benchXP.length) {
                 let benchIdx = 0;
-                snapshotXI.forEach(id => {
+                xiSet.forEach(id => {
                     const a = analysisMap.get(id);
                     if (!a || benchIdx >= benchXP.length) return;
                     const pNoShow = 1 - projectPlayerPointsDetailed(a.player).pStart;
@@ -1495,6 +1511,10 @@
             }
 
             return Math.round(total * 10) / 10;
+        }
+
+        function computeProjectedXIScore() {
+            return computeProjectedTotalFor(snapshotXI, snapshotCaptainId, snapshotViceId, snapshotBenchOrder);
         }
 
         function renderSnapshotBody() {
@@ -1511,7 +1531,7 @@
                     <button class="btn btn-primary sq-optimize-btn" onclick="runAutoOptimize()">✨ Auto-Optimize GW Lineup</button>
                     <div class="sq-snapshot-score">Projected Starting XI Score: <strong>${projectedScore}</strong> pts</div>
                 </div>
-                ${snapshotOptimizeSummary ? `<div class="sq-optimize-summary"><i data-lucide="sparkles" style="width:13px;height:13px;flex-shrink:0;"></i> ${snapshotOptimizeSummary}</div>` : ''}
+                ${snapshotOptimizeSummary ? `<div class="sq-optimize-summary">✨ ${snapshotOptimizeSummary}</div>` : ''}
                 <div class="pitch-field">
                     <div class="pitch-grass">
                         <div class="pitch-markings" aria-hidden="true">
@@ -1678,6 +1698,25 @@
             return isValidFormation(simulated);
         }
 
+        // The pitch keeps its own lineup state (snapshotXI / captain / bench order)
+        // so what-if swaps stay cheap. Everything else on the page still reads the
+        // isCaptain / isVice / onBench flags, so committed changes have to be
+        // written back or the two views disagree.
+        function syncSnapshotToSquad() {
+            selectedPlayers.forEach(p => {
+                p.onBench = !snapshotXI.has(p.id);
+                p.isCaptain = p.id === snapshotCaptainId;
+                p.isVice = p.id === snapshotViceId;
+                p.multiplier = p.isCaptain ? 2 : (p.onBench ? 0 : 1);
+            });
+            // Bench order drives who comes on first for auto-subs.
+            snapshotBenchOrder.forEach((id, i) => {
+                const p = selectedPlayers.find(q => q.id === id);
+                if (p) p.pickPosition = 12 + i;
+            });
+            analysisResults = selectedPlayers.map(player => analyzePlayer(player));
+        }
+
         function performSnapshotSwap(sourceId, targetId) {
             if (!canSnapshotSwap(sourceId, targetId)) {
                 updateStatus('That swap would leave an invalid formation', 'error');
@@ -1702,7 +1741,9 @@
             }
             snapshotSwapSource = null;
             snapshotOptimizeSummary = '';
-            refreshSnapshot();
+            snapshotOptimizeReport = null;
+            syncSnapshotToSquad();
+            renderTeamAnalysis();
         }
 
         function snapshotSwapClick(playerId) {
@@ -1769,7 +1810,20 @@
         // min 1 FWD — never a blind top-11-scorers pick), ranking players by the
         // weighted form/fixture/xGI/matchup score below — a richer ranking signal
         // than the plain per-GW points projection shown on each card.
+        // Everything the optimizer decided, kept so the report can explain itself
+        // rather than just asserting a conclusion.
+        let snapshotOptimizeReport = null;
+
         function runAutoOptimize() {
+            // Snapshot the lineup as it stood BEFORE optimising, so the xP delta is
+            // measured against what the manager actually had, not against itself.
+            const beforeXI = new Set(snapshotXI);
+            const beforeCaptainId = snapshotCaptainId;
+            const analysisMap = getSquadAnalysisMap();
+            // Same maths as the on-screen "Projected Starting XI Score", so the
+            // reported gain equals the change the manager can see in that figure.
+            const beforeXP = computeProjectedTotalFor(beforeXI, beforeCaptainId, snapshotViceId, snapshotBenchOrder);
+
             const pool = analysisResults.map(a => {
                 const p = a.player;
                 const detailed = computeQuickLineupScoreDetailed(p);
@@ -1783,38 +1837,202 @@
             snapshotXI = new Set(result.xi.map(p => p.id));
             snapshotBenchOrder = result.bench.map(p => p.id);
 
-            const sortedXI = [...result.xi].sort((a, b) => b.lwScore - a.lwScore);
+            // Rank captaincy by projected points — the thing being maximised — not by
+            // the internal ranking score, so the report's numbers match the cards.
+            const sortedXI = [...result.xi].sort((a, b) => predictedGWPoints(b) - predictedGWPoints(a));
             snapshotCaptainId = sortedXI[0] ? sortedXI[0].id : null;
             snapshotViceId = sortedXI[1] ? sortedXI[1].id : null;
 
-            snapshotOptimizeSummary = buildOptimizeSummary(sortedXI, result.bench);
-            refreshSnapshot();
+            const afterXP = computeProjectedTotalFor(snapshotXI, snapshotCaptainId, snapshotViceId, snapshotBenchOrder);
+
+            // Only players who actually moved from the XI to the bench, each paired
+            // 1:1 with a promotion drawn from a shared pool — picking independently
+            // let one promoted player be credited as the replacement for two drops.
+            const promotedPool = result.xi
+                .filter(p => !beforeXI.has(p.id))
+                .sort((x, y) => predictedGWPoints(y) - predictedGWPoints(x));
+            const benchedOut = result.bench
+                .filter(p => beforeXI.has(p.id))
+                .sort((x, y) => predictedGWPoints(y) - predictedGWPoints(x))
+                .map(p => ({ player: p, detailed: p._detailed, replacedBy: null }));
+
+            // Like-for-like swaps first; whatever is left over is a shape change,
+            // where a slot in one line became a slot in another.
+            benchedOut.forEach(entry => {
+                const i = promotedPool.findIndex(q => q.position === entry.player.position);
+                if (i >= 0) entry.replacedBy = promotedPool.splice(i, 1)[0];
+            });
+            benchedOut.forEach(entry => {
+                if (!entry.replacedBy && promotedPool.length) {
+                    entry.replacedBy = promotedPool.shift();
+                    entry.shapeChange = true;
+                }
+            });
+
+            snapshotOptimizeReport = {
+                formation: result.formation,
+                beforeXP, afterXP,
+                gain: afterXP - beforeXP,
+                captain: sortedXI[0] || null,
+                captainAlternatives: sortedXI.slice(1, 3),
+                previousCaptain: beforeCaptainId != null ? analysisMap.get(beforeCaptainId) : null,
+                benchedOut,
+                promoted: result.xi.filter(p => !beforeXI.has(p.id))
+            };
+
+            snapshotOptimizeSummary = buildOptimizeSummary(snapshotOptimizeReport);
+
+            // Auto-Optimize applies a lineup rather than previewing one, so push it
+            // back onto the squad itself and re-render. Without this the insight
+            // sidebar keeps advising the very changes the optimizer just made
+            // ("Change captain to X") because it reads the original picks.
+            syncSnapshotToSquad();
+            renderTeamAnalysis();
             updateStatus(`Lineup optimized (${result.formation})`, 'success');
         }
 
-        function buildOptimizeSummary(xiSorted, bench) {
-            const parts = [];
-            const cap = xiSorted[0];
-            if (cap) {
-                const d = cap._detailed;
-                const factors = [
-                    { key: 'matchup', label: 'a favorable team matchup' },
-                    { key: 'xgi', label: 'strong underlying stats (xGI)' },
-                    { key: 'form', label: 'strong recent form' },
-                    { key: 'fixture', label: 'an easy fixture' },
-                    { key: 'ep', label: 'a high expected-points projection' }
-                ];
-                const top = factors.reduce((best, f) => d[f.key] > d[best.key] ? f : best, factors[0]);
-                parts.push(`${escHTML(cap.name)} captained due to ${top.label}.`);
+        // Leads with the number that answers "was this worth doing?", then names the
+        // decisions, then offers the detail behind them — rather than asserting one
+        // reason for one player and leaving the rest unexplained.
+        function buildOptimizeSummary(report) {
+            if (!report) return '';
+            const gain = report.gain;
+            const headline = gain > 0.05
+                ? `AI Lineup Optimized <strong>(Gained +${gain.toFixed(1)} xP)</strong>`
+                : `AI Lineup checked — <strong>your XI was already optimal</strong>`;
+
+            const bits = [];
+            if (report.captain) {
+                const changed = !report.previousCaptain || report.previousCaptain.player.id !== report.captain.id;
+                bits.push(`${changed ? 'Captained' : 'Kept the armband on'} ${escHTML(report.captain.name)}.`);
             }
-            const toughBench = bench
-                .filter(p => p.lwScore > -100)
-                .filter(p => p._detailed && (p._detailed.matchup < -1.5 || p._detailed.fixture < -3))
-                .sort((a, b) => b.lwScore - a.lwScore)[0];
-            if (toughBench) {
-                parts.push(`${escHTML(toughBench.name)} benched due to a tough matchup/fixture.`);
+            if (report.benchedOut.length) {
+                const all = report.benchedOut.map(b => escHTML(b.player.name));
+                const names = all.length > 1
+                    ? `${all.slice(0, -1).join(', ')} &amp; ${all[all.length - 1]}`
+                    : all[0];
+                bits.push(`Benched ${names}.`);
             }
-            return parts.join(' ');
+
+            return `<span class="opt-summary-text">${headline}. ${bits.join(' ')}</span>
+                <button class="opt-report-btn" onclick="openOptimizeReport()">📊 View Full Report</button>`;
+        }
+
+        // ===== OPTIMIZATION REPORT MODAL =====
+        function optFdrFor(player) {
+            const fx = (player.fixtures || [])[0];
+            return fx ? (fx.difficulty || 3) : 3;
+        }
+
+        function optFixtureLabel(player) {
+            const fx = (player.fixtures || [])[0];
+            return fx ? `${escHTML(fx.opponent)} (${fx.isHome ? 'H' : 'A'})` : '—';
+        }
+
+        function renderOptimizeReportModal() {
+            const r = snapshotOptimizeReport;
+            if (!r) return '<div class="detail-section">Run Auto-Optimize to see a report.</div>';
+
+            // --- 1. Captaincy: the pick against the next two best, on the same terms.
+            const capRows = [r.captain, ...r.captainAlternatives].filter(Boolean).map((p, i) => {
+                const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+                return `<tr class="${i === 0 ? 'opt-pick' : ''}">
+                    <td>${i === 0 ? '👑 ' : ''}${escHTML(p.name)}${i === 0 ? ' <span class="opt-tag">AI pick</span>' : ''}</td>
+                    <td class="opt-num">${predictedGWPoints(p).toFixed(1)}</td>
+                    <td class="opt-num">${form.toFixed(1)}</td>
+                    <td><span class="fixture-chip fdr-${optFdrFor(p)}">${optFixtureLabel(p)}</span></td>
+                </tr>`;
+            }).join('');
+
+            const capLead = r.captain && r.captainAlternatives[0]
+                ? (predictedGWPoints(r.captain) - predictedGWPoints(r.captainAlternatives[0]))
+                : 0;
+
+            // --- 2. Bench decisions, each with the reason it lost its place.
+            const benchRows = r.benchedOut.length ? r.benchedOut.map(b => {
+                const p = b.player;
+                const d = b.detailed || {};
+                const reasons = [];
+                if (d.fixture < -3 || optFdrFor(p) >= 4) reasons.push(`tough fixture vs ${optFixtureLabel(p)}`);
+                if (d.matchup < -1.5) reasons.push('unfavourable team matchup');
+                const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+                if (form < 3) reasons.push(`weak form (${form.toFixed(1)})`);
+                if (p.status === 'd') reasons.push('fitness doubt');
+                if (!reasons.length) reasons.push('a higher-projected option was available');
+                const swap = b.replacedBy
+                    ? ` — ${b.shapeChange ? 'slot given to' : 'replaced by'} <strong>${escHTML(b.replacedBy.name)}</strong> (${predictedGWPoints(b.replacedBy).toFixed(1)} xP${b.shapeChange ? `, ${POS_SHORT_MAP[b.replacedBy.position]}` : ''})`
+                    : '';
+                return `<div class="opt-bench-row">
+                    <div class="opt-bench-head"><strong>${escHTML(p.name)}</strong> (${predictedGWPoints(p).toFixed(1)} xP) benched${swap}</div>
+                    <div class="opt-bench-why">${escHTML(reasons.join(' · '))}</div>
+                </div>`;
+            }).join('') : `<div class="opt-empty">No one was dropped — your starting XI already had the best available players in it.</div>`;
+
+            // --- 3. Formation, explained by where the points actually are.
+            const xiPlayers = [...snapshotXI].map(id => getSquadAnalysisMap().get(id)).filter(Boolean).map(a => a.player);
+            const byPos = pos => xiPlayers.filter(p => p.position === pos);
+            const posXP = pos => byPos(pos).reduce((s, p) => s + predictedGWPoints(p), 0);
+            const shape = `${byPos(2).length}-${byPos(3).length}-${byPos(4).length}`;
+            const blocks = [
+                { label: 'Defenders', xp: posXP(2), n: byPos(2).length },
+                { label: 'Midfielders', xp: posXP(3), n: byPos(3).length },
+                { label: 'Forwards', xp: posXP(4), n: byPos(4).length },
+            ];
+            // Two different, both-useful readings: where the bulk of the points sit
+            // (which follows the shape) and which block pays best per slot. Ranking
+            // only by per-slot made a 4-5-1 claim it "leans on your forwards".
+            const totalXP = blocks.reduce((s, b) => s + b.xp, 0);
+            const biggest = blocks.reduce((a, b) => (b.xp > a.xp ? b : a), blocks[0]);
+            const perSlot = b => (b.n ? b.xp / b.n : 0);
+            const bestRate = blocks.reduce((a, b) => (perSlot(b) > perSlot(a) ? b : a), blocks[0]);
+
+            return `
+            <div class="detail-section">
+                <div class="opt-headline ${r.gain > 0.05 ? 'gain' : 'flat'}">
+                    ${r.gain > 0.05
+                        ? `<span class="opt-gain">+${r.gain.toFixed(1)} xP</span><span>projected gain from this optimization</span>`
+                        : `<span class="opt-gain">No change</span><span>your lineup was already the best available</span>`}
+                    <div class="opt-beforeafter">${r.beforeXP.toFixed(1)} xP before · ${r.afterXP.toFixed(1)} xP after <span class="opt-note">(includes the captain's double)</span></div>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-section-title">👑 Captaincy decision</div>
+                <table class="opt-table">
+                    <thead><tr><th>Player</th><th class="opt-num">xP</th><th class="opt-num">Form</th><th>Fixture</th></tr></thead>
+                    <tbody>${capRows}</tbody>
+                </table>
+                ${r.captain ? `<div class="opt-why">${escHTML(r.captain.name)} projects ${capLead > 0 ? `+${capLead.toFixed(1)} xP more than the next best option` : 'level with the alternatives'}, and the armband doubles it.</div>` : ''}
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-section-title">🔄 Bench decisions</div>
+                ${benchRows}
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-section-title">📐 Formation check</div>
+                <div class="opt-formation">${escHTML(shape)}</div>
+                <div class="opt-why">
+                    ${blocks.map(b => `${b.label}: <strong>${b.xp.toFixed(1)} xP</strong> from ${b.n}`).join(' · ')}.
+                    Playing ${escHTML(shape)} puts the bulk of your projected points in ${escHTML(biggest.label.toLowerCase())}
+                    (<strong>${biggest.xp.toFixed(1)}</strong> of ${totalXP.toFixed(1)} xP outfield).
+                    ${bestRate !== biggest && bestRate.n
+                        ? `Per slot your ${escHTML(bestRate.label.toLowerCase())} pay best, at ${perSlot(bestRate).toFixed(1)} xP each.`
+                        : `That is also your best return per slot, at ${perSlot(biggest).toFixed(1)} xP each.`}
+                </div>
+            </div>`;
+        }
+
+        function openOptimizeReport() {
+            document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal();
+            document.getElementById('optReportOverlay').classList.add('show');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function closeOptimizeReport(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('optReportOverlay').classList.remove('show');
         }
 
         // ===== SHARED: open the AI Scouting Report modal for 2+ specific players =====
@@ -8485,9 +8703,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=9"></script>
-    <script src="scripts/common.js?v=9"></script>
-    <script src="scripts/sidebar-nav.js?v=9"></script>
+    <script src="scripts/compare-report.js?v=10"></script>
+    <script src="scripts/common.js?v=10"></script>
+    <script src="scripts/sidebar-nav.js?v=10"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
