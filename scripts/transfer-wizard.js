@@ -1584,6 +1584,74 @@
         }
 
         // ===== TRANSFER MARKET =====
+        // FPL applies price changes once a night, at roughly 01:30 UTC. The exact
+        // minute is not published and does drift, so everything built on this is
+        // labelled as an estimate rather than a countdown to a known event.
+        const PRICE_LOCK_UTC_HOUR = 1;
+        const PRICE_LOCK_UTC_MIN = 30;
+
+        // A player's distance to a price change, as a signed percentage: +100 means
+        // on track to rise, -100 on track to drop. This is the same transfer-velocity
+        // model behind the pitch badge (net transfers over the current owner base),
+        // scaled so the thresholds land at ±100 — NOT FPL's own published figure,
+        // which does not exist publicly.
+        function priceThresholdPct(p) {
+            const raw = getTransferPressure(p) * 500;
+            return Math.max(-100, Math.min(100, raw));
+        }
+
+        function thresholdState(pct) {
+            if (pct >= 90) return { cls: 'rise-imminent', text: 'Rises tonight', short: 'Rising' };
+            if (pct >= 50) return { cls: 'rise', text: 'Climbing', short: 'Climbing' };
+            if (pct <= -80) return { cls: 'drop-imminent', text: 'Drops tonight', short: 'Dropping' };
+            if (pct <= -50) return { cls: 'drop', text: 'Sliding', short: 'Sliding' };
+            return { cls: 'stable', text: 'Safe', short: 'Safe' };
+        }
+
+        const THRESHOLD_TIP = "Projected from net transfers measured against the player's current owner base. FPL does not publish its price-change threshold, so this is a model of it, not the real number.";
+
+        function nextPriceLock() {
+            const now = new Date();
+            const lock = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+                PRICE_LOCK_UTC_HOUR, PRICE_LOCK_UTC_MIN, 0));
+            if (lock.getTime() <= now.getTime()) lock.setUTCDate(lock.getUTCDate() + 1);
+            return lock;
+        }
+
+        // One timer, cleared and restarted on every render, stopping itself once the
+        // element it writes into is gone — same pattern as the deadline countdown.
+        let priceLockTimer = null;
+        function startPriceLockCountdown() {
+            if (priceLockTimer) { clearInterval(priceLockTimer); priceLockTimer = null; }
+            const tick = () => {
+                const el = document.getElementById('tmLockValue');
+                if (!el) { clearInterval(priceLockTimer); priceLockTimer = null; return; }
+                const diff = nextPriceLock().getTime() - Date.now();
+                if (diff <= 0) { el.textContent = 'Any moment'; return; }
+                const h = Math.floor(diff / 3600000);
+                const m = Math.floor(diff / 60000) % 60;
+                const s = Math.floor(diff / 1000) % 60;
+                el.textContent = h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(s).padStart(2, '0')}s`;
+                el.parentElement.classList.toggle('urgent', diff < 2 * 3600000);
+            };
+            tick();
+            priceLockTimer = setInterval(tick, 1000);
+        }
+
+        function tmSellBeforeDrop(playerId) {
+            // Switch first: renderTransferWizard() resets transferState on its first
+            // run, so a slot staged beforehand would be wiped before it was drawn.
+            switchTab('transfer');
+            twPickOutPlayer(playerId);
+        }
+
+        function tmSetMarketTab(tab) {
+            tmMarketTab = tab;
+            transferMarketRendered = false;
+            renderTransferMarket();
+        }
+
+        let tmMarketTab = 'risers';
         let tmPosFilter = 'all';
         let tmPriceFilter = 'all'; // 'all', 'premium', 'budget'
         let tmSquadSort = { col: 'pressure', asc: false };
@@ -1640,11 +1708,11 @@
                 return;
             }
 
-            // Compute pressure for all players
             const playersWithPressure = allPlayers.filter(p => p.ownership > 0.5 && p.minutes > 0).map(p => ({
                 ...p,
                 netTransfers: p.transfersIn - p.transfersOut,
                 pressure: getTransferPressure(p),
+                threshold: priceThresholdPct(p),
                 priceChangeGW: (p.costChangeEvent || 0) / 10,
                 priceChangeSeason: (p.costChangeStart || 0) / 10,
                 posName: ['','GK','DEF','MID','FWD'][p.position] || '?',
@@ -1652,10 +1720,8 @@
                 teamShort: (p.team || '???').substring(0, 3)
             }));
 
-            // Identify squad players
             const squadIds = new Set(selectedPlayers.map(p => p.id));
 
-            // Filter by position + price
             const filterPlayers = (list) => {
                 let filtered = tmPosFilter === 'all' ? list : list.filter(p => p.position === parseInt(tmPosFilter));
                 if (tmPriceFilter === 'premium') filtered = filtered.filter(p => p.price >= 10);
@@ -1663,125 +1729,160 @@
                 return filtered;
             };
 
-            // Summary stats
-            const risingCount = playersWithPressure.filter(p => p.priceChangeGW > 0).length;
-            const fallingCount = playersWithPressure.filter(p => p.priceChangeGW < 0).length;
-            const squadRising = playersWithPressure.filter(p => squadIds.has(p.id) && p.pressure > 0.015).length;
-            const squadFalling = playersWithPressure.filter(p => squadIds.has(p.id) && p.pressure < -0.015).length;
-
             let html = '';
 
-            // ─── Summary Cards ───
-            html += `<div class="tm-summary-cards">
-                <div class="tm-summary-card accent-green"><div class="tm-sc-value" style="color:var(--color-success);">${risingCount}</div><div class="tm-sc-label">Rose This GW</div></div>
-                <div class="tm-summary-card accent-red"><div class="tm-sc-value" style="color:var(--color-error);">${fallingCount}</div><div class="tm-sc-label">Fell This GW</div></div>
-                <div class="tm-summary-card accent-green"><div class="tm-sc-value" style="color:var(--color-success);">${squadRising}</div><div class="tm-sc-label">Your Squad Rising</div></div>
-                <div class="tm-summary-card accent-red"><div class="tm-sc-value" style="color:var(--color-error);">${squadFalling}</div><div class="tm-sc-label">Your Squad Falling</div></div>
-            </div>`;
-
-            // ─── Filter Pills ───
-            html += `<div class="tm-pos-filter">
-                <button class="tm-pos-btn ${tmPosFilter === 'all' && tmPriceFilter === 'all' ? 'active' : ''}" onclick="tmFilterPos('all')">All</button>
-                <button class="tm-pos-btn ${tmPosFilter === '1' ? 'active' : ''}" onclick="tmFilterPos('1')">GK</button>
-                <button class="tm-pos-btn ${tmPosFilter === '2' ? 'active' : ''}" onclick="tmFilterPos('2')">DEF</button>
-                <button class="tm-pos-btn ${tmPosFilter === '3' ? 'active' : ''}" onclick="tmFilterPos('3')">MID</button>
-                <button class="tm-pos-btn ${tmPosFilter === '4' ? 'active' : ''}" onclick="tmFilterPos('4')">FWD</button>
-                <span style="width:1px;background:var(--border-default);margin:2px 4px;"></span>
-                <button class="tm-pos-btn ${tmPriceFilter === 'premium' ? 'active' : ''}" onclick="tmFilterPrice('premium')">Premium £10m+</button>
-                <button class="tm-pos-btn ${tmPriceFilter === 'budget' ? 'active' : ''}" onclick="tmFilterPrice('budget')">Budget &lt;£5m</button>
-            </div>`;
-
-            // ─── Bento Grid: Rising + Falling Side-by-Side ───
-            const rising = filterPlayers(playersWithPressure.filter(p => p.netTransfers > 0));
-            tmSortList(rising, tmRisingSort);
-            const risingDisplay = tmShowAllRising ? rising.slice(0, 50) : rising.slice(0, 5);
-
-            const falling = filterPlayers(playersWithPressure.filter(p => p.netTransfers < 0));
-            tmSortList(falling, tmFallingSort);
-            const fallingDisplay = tmShowAllFalling ? falling.slice(0, 50) : falling.slice(0, 5);
-
-            const risersFallersCols = `<th>Player</th><th>Price</th><th>Own%</th><th>Velocity</th><th>Net Transfers</th><th>Pressure</th>`;
-
-            html += `<div class="tm-bento-grid">`;
-
-            // Left: Rising Players
-            html += `<div class="tm-bento-panel">
-                <div class="tm-section-header rising-header">
-                    <h2 style="color:var(--color-success);"><i data-lucide="trending-up" style="width:16px;height:16px;display:inline;"></i> Rising Players</h2>
-                    <span class="tm-section-count green">${rising.length}</span>
-                </div>
-                <div class="tm-table-wrap">
-                <table class="tm-table">
-                    <thead><tr>
-                        <th onclick="tmSort('rising','name')">Player</th>
-                        <th onclick="tmSort('rising','price')">Price</th>
-                        <th onclick="tmSort('rising','ownership')">Own%</th>
-                        <th onclick="tmSort('rising','netTransfers')">Velocity</th>
-                        <th onclick="tmSort('rising','netTransfers')">Net Transfers</th>
-                        <th onclick="tmSort('rising','pressure')">Pressure</th>
-                    </tr></thead>
-                    <tbody>${risingDisplay.map(p => renderTmRow(p, true, squadIds)).join('')}</tbody>
-                </table>
-                </div>
-                ${rising.length > 5 ? `<div style="text-align:center;margin-top:10px;">
-                    <button class="tm-view-all-btn" onclick="tmToggleViewAll('rising')">${tmShowAllRising ? 'Show Top 5' : `View All ${rising.length} Risers \u2192`}</button>
-                </div>` : ''}
-            </div>`;
-
-            // Right: Falling Players
-            html += `<div class="tm-bento-panel">
-                <div class="tm-section-header falling-header">
-                    <h2 style="color:var(--color-error);"><i data-lucide="trending-down" style="width:16px;height:16px;display:inline;"></i> Falling Players</h2>
-                    <span class="tm-section-count red">${falling.length}</span>
-                </div>
-                <div class="tm-table-wrap">
-                <table class="tm-table">
-                    <thead><tr>
-                        <th onclick="tmSort('falling','name')">Player</th>
-                        <th onclick="tmSort('falling','price')">Price</th>
-                        <th onclick="tmSort('falling','ownership')">Own%</th>
-                        <th onclick="tmSort('falling','netTransfers')">Velocity</th>
-                        <th onclick="tmSort('falling','netTransfers')">Net Transfers</th>
-                        <th onclick="tmSort('falling','pressure')">Pressure</th>
-                    </tr></thead>
-                    <tbody>${fallingDisplay.map(p => renderTmRow(p, true, squadIds)).join('')}</tbody>
-                </table>
-                </div>
-                ${falling.length > 5 ? `<div style="text-align:center;margin-top:10px;">
-                    <button class="tm-view-all-btn" onclick="tmToggleViewAll('falling')">${tmShowAllFalling ? 'Show Top 5' : `View All ${falling.length} Fallers \u2192`}</button>
-                </div>` : ''}
-            </div>`;
-
-            html += `</div>`; // close .tm-bento-grid
-
-            // ─── Full-Width: Your Squad Price Watch ───
-            if (selectedPlayers.length > 0) {
-                const squadPressure = playersWithPressure.filter(p => squadIds.has(p.id));
-                const filtered = filterPlayers(squadPressure);
-                tmSortList(filtered, tmSquadSort);
-
-                html += `<div class="tm-section">
-                    <div class="tm-section-header squad-header">
-                        <h2><i data-lucide="shield" style="width:16px;height:16px;display:inline;"></i> Your Squad Price Watch</h2>
-                        <span class="tm-section-count blue">${filtered.length}</span>
-                    </div>
-                    <div class="tm-table-wrap">
-                    <table class="tm-table">
-                        <thead><tr>
-                            <th onclick="tmSort('squad','name')">Player</th>
-                            <th onclick="tmSort('squad','price')">Price</th>
-                            <th onclick="tmSort('squad','netTransfers')">Velocity</th>
-                            <th onclick="tmSort('squad','netTransfers')">Net Transfers</th>
-                            <th onclick="tmSort('squad','pressure')">Pressure</th>
-                        </tr></thead>
-                        <tbody>${filtered.map(p => renderTmRow(p, false, squadIds)).join('')}</tbody>
-                    </table>
-                    </div>
+            // ─── Ticker: the market moving, squad holdings called out ───
+            const tickRisers = playersWithPressure.filter(p => p.threshold > 0).sort((a, b) => b.threshold - a.threshold).slice(0, 5);
+            const tickFallers = playersWithPressure.filter(p => p.threshold < 0).sort((a, b) => a.threshold - b.threshold).slice(0, 5);
+            const interleaved = [];
+            for (let i = 0; i < Math.max(tickRisers.length, tickFallers.length); i++) {
+                if (tickRisers[i]) interleaved.push(tickRisers[i]);
+                if (tickFallers[i]) interleaved.push(tickFallers[i]);
+            }
+            if (interleaved.length) {
+                const item = p => `<span class="tm-tick ${p.threshold > 0 ? 'up' : 'down'}">
+                    <span class="tm-tick-arrow">${p.threshold > 0 ? '📈' : '📉'}</span>
+                    <span class="tm-tick-name">${escHTML(p.name)}</span>
+                    <span class="tm-tick-team">(${escHTML(p.teamShort)})</span>
+                    ${squadIds.has(p.id) ? '<span class="tm-tick-squad">SQUAD</span>' : ''}
+                    <span class="tm-tick-pct">${p.threshold > 0 ? '+' : ''}${Math.round(p.threshold)}%</span>
+                </span>`;
+                // The track is rendered twice and translated by exactly half, so the
+                // loop point is invisible.
+                const run = interleaved.map(item).join('<span class="tm-tick-sep">•</span>');
+                html += `<div class="tm-ticker" role="marquee" aria-label="Players closest to a price change">
+                    <div class="tm-ticker-track">${run}<span class="tm-tick-sep">•</span>${run}<span class="tm-tick-sep">•</span></div>
                 </div>`;
             }
 
+            // ─── Portfolio header: when the market closes, and what it costs you ───
+            const squadPlayers = playersWithPressure.filter(p => squadIds.has(p.id));
+            const atRisk = squadPlayers.filter(p => p.threshold <= -80);
+            const rising = squadPlayers.filter(p => p.threshold >= 90);
+            const exposure = atRisk.length * 0.1;
+
+            html += `<div class="tm-portfolio">
+                <div class="tm-lock" data-tooltip="FPL changes prices once a night, at roughly 01:30 UTC. The exact minute is not published and drifts, so treat this as an estimate.">
+                    <span class="tm-lock-label">⏱️ Market closes in</span>
+                    <span class="tm-lock-value" id="tmLockValue">—</span>
+                    <span class="tm-lock-note">est. 01:30 UTC</span>
+                </div>
+                <div class="tm-exposure">
+                    ${atRisk.length
+                        ? `<span class="tm-exp-risk" data-tooltip="${escHTML(atRisk.map(p => p.name).join(', '))}">🚨 <strong>${atRisk.length}</strong> squad ${atRisk.length === 1 ? 'player' : 'players'} on track to drop <span class="tm-exp-money">−£${exposure.toFixed(1)}m</span></span>`
+                        : `<span class="tm-exp-safe">✅ No squad player is close to dropping tonight</span>`}
+                    ${rising.length ? `<span class="tm-exp-gain" data-tooltip="${escHTML(rising.map(p => p.name).join(', '))}">📈 <strong>${rising.length}</strong> on track to rise</span>` : ''}
+                </div>
+            </div>`;
+
+            // ─── Squad first, ordered by how close each is to a change ───
+            if (squadPlayers.length > 0) {
+                // Closest to a change first; on a tie the one dropping outranks the
+                // one rising, because a drop is the only one of the two that costs
+                // money and needs a decision before tonight.
+                const ordered = filterPlayers(squadPlayers.slice()).sort((a, b) => {
+                    const d = Math.abs(b.threshold) - Math.abs(a.threshold);
+                    if (Math.abs(d) > 0.01) return d;
+                    return a.threshold - b.threshold;
+                });
+                html += `<div class="tm-section">
+                    <div class="tm-section-header squad-header">
+                        <h2><i data-lucide="shield" style="width:16px;height:16px;display:inline;"></i> Your squad price watch</h2>
+                        <span class="tm-section-count blue">${ordered.length}</span>
+                    </div>
+                    <div class="tm-watch-note">Ordered by how close each player is to a price change, not alphabetically — the ones that need a decision tonight sit at the top.</div>
+                    <div class="tm-watch">${ordered.map(p => renderTmWatchRow(p)).join('')}</div>
+                </div>`;
+            }
+
+            // ─── Market trends, one segmented panel, squad players removed ───
+            const market = playersWithPressure.filter(p => !squadIds.has(p.id));
+            const risers = filterPlayers(market.filter(p => p.threshold > 0)).sort((a, b) => b.threshold - a.threshold);
+            const fallers = filterPlayers(market.filter(p => p.threshold < 0)).sort((a, b) => a.threshold - b.threshold);
+            // Enablers are the cheap players a squad is funded by — worth catching
+            // before they rise, since that is the budget disappearing.
+            const enablers = filterPlayers(market.filter(p => p.price <= 5.5 && p.threshold > 0)).sort((a, b) => b.threshold - a.threshold);
+
+            const tabs = [
+                { key: 'risers', label: '🔥 Hot risers', list: risers },
+                { key: 'fallers', label: '📉 Steep fallers', list: fallers },
+                { key: 'enablers', label: '🎯 Budget enablers', list: enablers }
+            ];
+            const active = tabs.find(t => t.key === tmMarketTab) || tabs[0];
+            const showAll = active.key === 'fallers' ? tmShowAllFalling : tmShowAllRising;
+            const display = showAll ? active.list.slice(0, 50) : active.list.slice(0, 8);
+
+            html += `<div class="tm-section">
+                <div class="tm-market-tabs">
+                    ${tabs.map(t => `<button class="tm-market-tab ${t.key === active.key ? 'active' : ''}" onclick="tmSetMarketTab('${t.key}')">${t.label} <span class="tm-market-tab-n">${t.list.length}</span></button>`).join('')}
+                </div>
+                <div class="tm-pos-filter">
+                    <button class="tm-pos-btn ${tmPosFilter === 'all' && tmPriceFilter === 'all' ? 'active' : ''}" onclick="tmFilterPos('all')">All</button>
+                    <button class="tm-pos-btn ${tmPosFilter === '1' ? 'active' : ''}" onclick="tmFilterPos('1')">GK</button>
+                    <button class="tm-pos-btn ${tmPosFilter === '2' ? 'active' : ''}" onclick="tmFilterPos('2')">DEF</button>
+                    <button class="tm-pos-btn ${tmPosFilter === '3' ? 'active' : ''}" onclick="tmFilterPos('3')">MID</button>
+                    <button class="tm-pos-btn ${tmPosFilter === '4' ? 'active' : ''}" onclick="tmFilterPos('4')">FWD</button>
+                    <span style="width:1px;background:var(--border-default);margin:2px 4px;"></span>
+                    <button class="tm-pos-btn ${tmPriceFilter === 'premium' ? 'active' : ''}" onclick="tmFilterPrice('premium')">Premium £10m+</button>
+                    <button class="tm-pos-btn ${tmPriceFilter === 'budget' ? 'active' : ''}" onclick="tmFilterPrice('budget')">Budget &lt;£5m</button>
+                </div>
+                ${display.length
+                    ? `<div class="tm-watch">${display.map(p => renderTmWatchRow(p, true)).join('')}</div>`
+                    : `<div class="tm-market-empty">No players match this filter right now.</div>`}
+                ${active.list.length > 8 ? `<div style="text-align:center;margin-top:10px;">
+                    <button class="tm-view-all-btn" onclick="tmToggleViewAll('${active.key === 'fallers' ? 'falling' : 'rising'}')">${showAll ? 'Show top 8' : `View all ${active.list.length} →`}</button>
+                </div>` : ''}
+                <div class="tm-watch-note">Your own players are listed above rather than repeated here.</div>
+            </div>`;
+
             container.innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
+            startPriceLockCountdown();
+        }
+
+        // One row shape for both the squad watch and the market lists, so a player
+        // reads identically wherever they appear.
+        function renderTmWatchRow(p, isMarket) {
+            const pct = p.threshold;
+            const st = thresholdState(pct);
+            const mag = Math.min(100, Math.abs(pct));
+            const inSquad = !isMarket;
+            const netStr = p.netTransfers > 0 ? `+${p.netTransfers.toLocaleString()}` : p.netTransfers.toLocaleString();
+
+            // The bar grows from the left when a player is climbing and from the
+            // right when sliding, so direction reads before the number does.
+            const bar = `<div class="tm-thr-track">
+                <div class="tm-thr-fill ${st.cls}" style="width:${mag}%"></div>
+            </div>`;
+
+            return `<div class="tm-watch-row ${st.cls}">
+                <div class="tm-watch-player">
+                    <div class="tm-player-avatar ${p.posClass}">${escHTML(p.teamShort)}</div>
+                    <div class="tm-player-info">
+                        <div class="tm-player-name-row">
+                            <span class="tm-player-name">${escHTML(p.name)}</span>
+                            ${inSquad ? '<span class="tm-badge in-squad">SQUAD</span>' : ''}
+                        </div>
+                        <div class="tm-player-sub">
+                            <span class="tm-pos-pill ${p.posClass}">${p.posName}</span>
+                            <span class="tm-team-name">£${p.price.toFixed(1)}m</span>
+                            <span class="tm-team-name" data-tooltip="Net transfers this gameweek across all FPL managers.">${escHTML(netStr)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="tm-watch-thr" data-tooltip="${escHTML(THRESHOLD_TIP)}">
+                    <div class="tm-thr-head">
+                        <span class="tm-thr-pct ${st.cls}">${pct > 0 ? '+' : ''}${Math.round(pct)}%</span>
+                        <span class="tm-thr-state ${st.cls}">${st.text}</span>
+                    </div>
+                    ${bar}
+                </div>
+                <div class="tm-watch-act">
+                    ${inSquad && pct <= -85
+                        ? `<button class="tm-sell-btn" onclick="tmSellBeforeDrop(${p.id})">⚡ Sell before drop</button>`
+                        : ''}
+                </div>
+            </div>`;
         }
 
         function renderTmRow(p, showOwnership, squadIds) {
