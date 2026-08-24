@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=16">
-    <link rel="stylesheet" href="styles/my-team.css?v=16">
-    <link rel="stylesheet" href="styles/v2-design.css?v=16">
-    <link rel="stylesheet" href="styles/compare-report.css?v=16">
+    <link rel="stylesheet" href="styles/common.css?v=17">
+    <link rel="stylesheet" href="styles/my-team.css?v=17">
+    <link rel="stylesheet" href="styles/v2-design.css?v=17">
+    <link rel="stylesheet" href="styles/compare-report.css?v=17">
 </head>
 <body>
 
@@ -658,6 +658,9 @@
                     xgTrend, xgcTrend, xgTrendDelta: recent6Xg && seasonXg ? recent6Xg.xGpg - seasonXg.xGpg : 0,
                     xgcTrendDelta: recent6Xg && seasonXg ? seasonXg.xGCpg - recent6Xg.xGCpg : 0,
                     avgGoals, avgConceded, avgFdr, csRate, totalCS,
+                    // Needed to tell a genuine home/away split from the fallback:
+                    // *PowerHome/Away silently reuse the overall rating at 0 games.
+                    homeGames: homeStats.games, awayGames: awayStats.games,
                     wins, draws, losses, gamesPlayed,
                     // Real count of completed matches. `gamesPlayed` above is
                     // `last10.length || 1`, so it reports 1 even for a team that
@@ -3473,6 +3476,53 @@
             return fx.reduce((s, f) => s + f.difficulty, 0) / fx.length;
         }
 
+        // How leaky each defence is, ranked across the league. A raw "concedes 1.8"
+        // means little until you know whether that is 3rd worst or mid-table, which
+        // is the thing that decides whether an opponent is a good one to face.
+        function getDefensiveRanks() {
+            const ids = Object.keys(teams).map(k => parseInt(k, 10))
+                .filter(id => teamAnalysis[id]);
+            // Ascending defensive power: rank 1 is the leakiest defence to attack.
+            const ordered = ids.slice().sort((a, b) =>
+                (teamAnalysis[a].defensePower || 0) - (teamAnalysis[b].defensePower || 0));
+            const rank = {};
+            ordered.forEach((id, i) => { rank[id] = i + 1; });
+            return { rank, total: ordered.length };
+        }
+
+        function ordinal(n) {
+            const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+            return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        }
+
+        // What a given fixture means for the attacking side: how leaky the opponent
+        // is, and a rough goal expectation from both teams' rates.
+        // Three matches is the point where a per-game rate stops being one result.
+        const RATE_MIN_MATCHES = 3;
+
+        function opponentContext(teamId, fx, ranks) {
+            if (!fx) return null;
+            const oppTA = teamAnalysis[fx.opponentId];
+            const myTA = teamAnalysis[teamId];
+            if (!oppTA || !oppTA.matchesPlayed) return null;
+
+            const conceded = oppTA.avgConceded || 0;
+            // A league rank off one match is noise dressed as insight — a side that
+            // shipped four in the opener is not "the leakiest defence in the league".
+            const ranked = oppTA.matchesPlayed >= RATE_MIN_MATCHES;
+            const myGoals = myTA && myTA.matchesPlayed ? myTA.avgGoals : conceded;
+            return {
+                conceded,
+                matches: oppTA.matchesPlayed,
+                ranked,
+                rank: ranked ? ranks.rank[fx.opponentId] : null,
+                total: ranks.total,
+                // Cheap but standard estimator: blend what this attack scores with
+                // what that defence concedes, rather than pretending to a Poisson model.
+                expGoals: ranked ? (myGoals + conceded) / 2 : null
+            };
+        }
+
         function fdrBand(v) {
             if (v == null) return { cls: 'none', word: 'No fixtures' };
             if (v <= 2.2) return { cls: 'great', word: 'Very kind' };
@@ -3581,10 +3631,20 @@
             }
         }
 
-        function fxChip(f, extraClass) {
+        function fxChip(f, opts) {
             if (!f) return `<span class="fx-chip fdr-0">Blank</span>`;
-            return `<span class="fx-chip fdr-${f.difficulty} ${extraClass || ''}"
-                data-tooltip="${f.isHome ? 'Home to' : 'Away at'} ${escHTML(f.opponent)} — FDR ${f.difficulty}">${escHTML(f.opponent)} <span class="fx-chip-venue">${f.isHome ? 'H' : 'A'}</span></span>`;
+            const o = opts || {};
+            let tip = `${f.isHome ? 'Home to' : 'Away at'} ${escHTML(f.opponent)} — FDR ${f.difficulty}.`;
+            // The numbers behind the colour: how leaky that defence is, and roughly
+            // how many goals this fixture projects.
+            const ctx = o.teamId != null && o.ranks ? opponentContext(o.teamId, f, o.ranks) : null;
+            if (ctx && ctx.ranked) {
+                tip += ` ${escHTML(f.opponent)} concede ${ctx.conceded.toFixed(1)} per game (${ordinal(ctx.rank)} leakiest of ${ctx.total}). Projects around ${ctx.expGoals.toFixed(1)} goals.`;
+            } else if (ctx) {
+                tip += ` ${escHTML(f.opponent)} have conceded ${Math.round(ctx.conceded * ctx.matches)} in ${ctx.matches} ${ctx.matches === 1 ? 'match' : 'matches'} — too early to rank.`;
+            }
+            return `<span class="fx-chip fdr-${f.difficulty} ${o.extraClass || ''}"
+                data-tooltip="${tip}">${escHTML(f.opponent)} <span class="fx-chip-venue">${f.isHome ? 'H' : 'A'}</span></span>`;
         }
 
         function renderFixturePanel() {
@@ -3595,6 +3655,51 @@
             const startGW = currentGW || 1;
             const isDefensive = player.position <= 2;
             const teamName = (teams[teamId] && teams[teamId].name) || player.team;
+
+            const ranks = getDefensiveRanks();
+            const ta = teamAnalysis[teamId];
+
+            // The side of the team that actually pays this player: a keeper lives off
+            // the defence, a forward off the attack. Home and away are split out
+            // because most sides are markedly better at one than the other.
+            let ratingStrip = '';
+            if (ta && ta.matchesPlayed > 0) {
+                const rating = isDefensive ? ta.defensePower : ta.attackPower;
+                const rateWord = rating >= 70 ? 'Strong' : rating >= 55 ? 'Solid' : rating >= 40 ? 'Average' : 'Weak';
+                const rateCls = rating >= 70 ? 'great' : rating >= 55 ? 'good' : rating >= 40 ? 'ok' : 'bad';
+                const perGame = isDefensive ? ta.avgConceded : ta.avgGoals;
+                const played = ta.matchesPlayed;
+                const enoughToRank = played >= RATE_MIN_MATCHES;
+
+                // The home/away ratings fall back to the overall one when a side
+                // hasn't played at that venue yet, so showing them then would invent
+                // a split out of two copies of the same number.
+                const splitReal = (ta.homeGames || 0) > 0 && (ta.awayGames || 0) > 0;
+                const home = isDefensive ? ta.defensePowerHome : ta.attackPowerHome;
+                const away = isDefensive ? ta.defensePowerAway : ta.attackPowerAway;
+
+                const tightestRank = ranks.total - ranks.rank[teamId] + 1;
+                const totalFor = isDefensive ? Math.round((ta.avgConceded || 0) * played) : Math.round((ta.avgGoals || 0) * played);
+
+                ratingStrip = `<div class="fx-rating">
+                    <div class="fx-rating-main">
+                        <span class="fx-rating-label">${escHTML(teamName)} ${isDefensive ? 'defence' : 'attack'}</span>
+                        <span class="fx-rating-value ${rateCls}" data-tooltip="${isDefensive
+                            ? `Defensive rating out of 100, from goals conceded and FPL's own defensive strength.${enoughToRank ? ` ${escHTML(teamName)} rank ${ordinal(tightestRank)} tightest of ${ranks.total}.` : ''}`
+                            : `Attacking rating out of 100, from goals scored and FPL's own attacking strength.`}">${rating}</span>
+                        <span class="fx-rating-word">${rateWord}</span>
+                        <span class="fx-rating-sample">${played} ${played === 1 ? 'match' : 'matches'} played</span>
+                    </div>
+                    <div class="fx-rating-splits">
+                        ${splitReal
+                            ? `<span data-tooltip="Rating across the ${ta.homeGames} ${ta.homeGames === 1 ? 'match' : 'matches'} played at home.">Home <strong>${home}</strong></span>
+                               <span data-tooltip="Rating across the ${ta.awayGames} ${ta.awayGames === 1 ? 'match' : 'matches'} played away.">Away <strong>${away}</strong></span>`
+                            : `<span data-tooltip="A home/away split needs at least one match at each venue; ${escHTML(teamName)} have only played ${(ta.homeGames || 0) > 0 ? 'at home' : 'away'} so far.">Home/away split <strong>—</strong></span>`}
+                        <span data-tooltip="${isDefensive ? 'Goals conceded' : 'Goals scored'} across ${played} ${played === 1 ? 'match' : 'matches'}.">${isDefensive ? 'Conceded' : 'Scored'} <strong>${totalFor}</strong>${enoughToRank ? ` <span class="fx-rating-rate">(${(perGame || 0).toFixed(1)}/game)</span>` : ''}</span>
+                        ${isDefensive ? `<span data-tooltip="Clean sheets in ${played} ${played === 1 ? 'match' : 'matches'}.">Clean sheets <strong>${ta.totalCS || 0}</strong></span>` : ''}
+                    </div>
+                </div>`;
+            }
 
             const cal = getTeamFixtureCalendar(teamId, startGW, FIXTURE_PANEL_GWS);
             const near = calendarAvgFdr(cal, 0, 3);
@@ -3644,7 +3749,7 @@
                         <span class="fx-row-metric">—</span>
                     </div>`;
                 }
-                const chips = entry.list.map(f => fxChip(f)).join('') + (entry.list.length > 1 ? '<span class="fx-double">Double</span>' : '');
+                const chips = entry.list.map(f => fxChip(f, { teamId, ranks })).join('') + (entry.list.length > 1 ? '<span class="fx-double">Double</span>' : '');
                 // A double gameweek is two shots at the metric, so take the best
                 // fixture's value rather than the first listed.
                 const best = entry.list.reduce((a, b) => (b.difficulty < a.difficulty ? b : a));
@@ -3707,8 +3812,8 @@
                     const pick = best === 'A' ? `${player.team}` : best === 'B' ? other.short_name : '—';
                     return `<div class="fx-matrix-row">
                         <span class="fx-matrix-gw">GW${entry.gw}</span>
-                        <span class="fx-matrix-cell ${best === 'A' ? 'win' : ''}">${fxChip(a)}</span>
-                        <span class="fx-matrix-cell ${best === 'B' ? 'win' : ''}">${fxChip(b)}</span>
+                        <span class="fx-matrix-cell ${best === 'A' ? 'win' : ''}">${fxChip(a, { teamId, ranks })}</span>
+                        <span class="fx-matrix-cell ${best === 'B' ? 'win' : ''}">${fxChip(b, { teamId: fixtureCompareTeamId, ranks })}</span>
                         <span class="fx-matrix-pick">${best ? `🛡️ ${escHTML(pick)}` : '—'}</span>
                     </div>`;
                 }).join('');
@@ -3746,6 +3851,7 @@
             document.getElementById('detailBody').innerHTML = `
                 <div class="detail-section">
                     <div class="detail-section-title">📊 Near term vs the run ahead</div>
+                    ${ratingStrip}
                     ${splitCards}
                     ${adviceHtml}
                 </div>
@@ -9576,9 +9682,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=16"></script>
-    <script src="scripts/common.js?v=16"></script>
-    <script src="scripts/sidebar-nav.js?v=16"></script>
+    <script src="scripts/compare-report.js?v=17"></script>
+    <script src="scripts/common.js?v=17"></script>
+    <script src="scripts/sidebar-nav.js?v=17"></script>
     <script>initIcons(); initTooltips();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
