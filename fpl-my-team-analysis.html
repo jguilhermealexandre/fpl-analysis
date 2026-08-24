@@ -349,11 +349,11 @@
                 if (!f.event) return;
                 if (fixtureMap[f.team_h]) {
                     if (!fixtureMap[f.team_h][f.event]) fixtureMap[f.team_h][f.event] = [];
-                    fixtureMap[f.team_h][f.event].push({ opponentId: f.team_a, fdr: f.team_h_difficulty || 3, isHome: true, finished: f.finished });
+                    fixtureMap[f.team_h][f.event].push({ opponentId: f.team_a, fdr: f.team_h_difficulty || 3, isHome: true, finished: f.finished_provisional });
                 }
                 if (fixtureMap[f.team_a]) {
                     if (!fixtureMap[f.team_a][f.event]) fixtureMap[f.team_a][f.event] = [];
-                    fixtureMap[f.team_a][f.event].push({ opponentId: f.team_h, fdr: f.team_a_difficulty || 3, isHome: false, finished: f.finished });
+                    fixtureMap[f.team_a][f.event].push({ opponentId: f.team_h, fdr: f.team_a_difficulty || 3, isHome: false, finished: f.finished_provisional });
                 }
             });
             fixtureSwingData = {};
@@ -377,7 +377,7 @@
         // ===== SEASON STATS (from teams-analysis, without xG) =====
         function calculateBasicSeasonStats(bootTeams, fixturesData) {
             const stats = {};
-            const finishedFixtures = fixturesData.filter(f => f.finished && f.team_h_score !== null).sort((a, b) => a.event - b.event);
+            const finishedFixtures = fixturesData.filter(f => f.finished_provisional && f.team_h_score !== null).sort((a, b) => a.event - b.event);
             bootTeams.forEach(t => {
                 stats[t.id] = {
                     played: 0, wins: 0, draws: 0, losses: 0, points: 0,
@@ -432,12 +432,17 @@
         function computeTeamScores(bootTeams, fixturesData) {
             teamAnalysis = {};
 
+            // finished_provisional flips as soon as full time is blown — f.finished stays
+            // false until FPL confirms bonus points, which can take a day or more, so a
+            // team's very first result of the season wouldn't count here at all otherwise
+            // (form/attack/defense would fall back to a neutral baseline for every team,
+            // making every player look like their team is "struggling").
             const finishedFixtures = fixturesData
-                .filter(f => f.finished && f.team_h_score !== null)
+                .filter(f => f.finished_provisional && f.team_h_score !== null)
                 .sort((a, b) => a.event - b.event);
 
             const upcomingFixtures = fixturesData
-                .filter(f => !f.finished && f.event !== null)
+                .filter(f => !f.finished_provisional && f.event !== null)
                 .sort((a, b) => a.event - b.event);
 
             bootTeams.forEach(team => {
@@ -750,7 +755,7 @@
             teamFixtures = {};
             
             const upcoming = fixturesData
-                .filter(f => !f.finished && f.event !== null)
+                .filter(f => !f.finished_provisional && f.event !== null)
                 .sort((a, b) => a.event - b.event);
 
             Object.keys(teams).forEach(teamId => {
@@ -1581,6 +1586,16 @@
             return isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
         }
 
+        // Replacement/transfer-candidate lists filter out players who barely play — a
+        // fixed 100-minute bar (previously hardcoded at every call site below) is fine
+        // once several gameweeks have been played, but during/just after GW1 it's more
+        // than a single full match, so it silently filtered out EVERY player and left
+        // every candidate list empty. Scale it down early in the season instead: ~45
+        // minutes (half a match) per gameweek played so far, capped at the original 100.
+        function minMinutesForCandidate() {
+            return Math.min(100, Math.max(currentGW - 1, 1) * 45);
+        }
+
         // Position-specific 5-stat set. Columns 1-2 (Form, Next-5 FDR) are shared
         // across all positions; columns 3-5 vary per the spec's table.
         function computePlayerStatColumns(player) {
@@ -1641,12 +1656,12 @@
             return `
             <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''}" data-player-id="${player.id}" data-compare-row>
                 <input type="checkbox" class="compare-checkbox sq-compare-checkbox" data-player-id="${player.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${player.id})">
-                <div class="sq-row-clickable" onclick="toggleInlineExpansion(${player.id})">
+                <div class="sq-row-clickable" onclick="openDetailPanel(${player.id})" title="View player profile">
                     <div class="sq-row-main">
                         ${hazardIcon}
                         <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
                         <div class="sq-row-name-block">
-                            <div class="sq-row-name" onclick="event.stopPropagation(); openDetailPanel(${player.id})" title="View player profile">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}</div>
+                            <div class="sq-row-name">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}</div>
                             <div class="sq-row-team">${escHTML(player.team)} · £${player.price.toFixed(1)}m ${priceChangeBadge(player)} ${renderTeamBadges(player)}</div>
                         </div>
                     </div>
@@ -1658,13 +1673,11 @@
                         <div class="sq-stat"><span class="sq-stat-label">${cols.stat5.label}</span><span class="sq-stat-value">${cols.stat5.value}</span></div>
                     </div>
                     <div class="sq-row-fixtures">${fixtureChips}</div>
-                    <span class="sq-row-chevron" id="sq-chevron-${player.id}"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></span>
                 </div>
                 <button class="sq-transfer-btn" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
                     <i data-lucide="repeat" style="width:14px;height:14px;"></i>
                 </button>
-            </div>
-            <div class="sq-inline-expansion" id="sq-expand-${player.id}" style="display:none"></div>`;
+            </div>`;
         }
 
         function renderPositionGroup(pos, items) {
@@ -1691,10 +1704,13 @@
         // shared state, per the spec's "filtering the table re-renders the chart" ask.
         let squadFilterPos = 'all'; // 'all' | 1 | 2 | 3 | 4
         let squadFilterMaxPrice = null;
-        let sqChartExpanded = localStorage.getItem('fpl_charts_expanded') === '1';
+        // Expanded by default (first visit has no saved preference yet — only an
+        // explicit '0' from the user collapsing it before should keep it closed).
+        let sqChartExpanded = localStorage.getItem('fpl_charts_expanded') !== '0';
         let sqChartInstance = null;
         let sqChartXMetric = 'xgi90';
         let sqChartYMetric = 'points';
+        let sqChartScope = 'squad'; // 'squad' (default) | 'all'
 
         const SQ_POSITION_COLORS = {
             1: { bg: 'rgba(251, 191, 36, 0.8)', border: '#fbbf24' },
@@ -1791,6 +1807,12 @@
                         <div class="sq-chart-controls">
                             <button class="sq-chart-pill" onclick="setSquadChartMetrics('xgi90','points')">xGI/90 vs Points</button>
                             <button class="sq-chart-pill" onclick="setSquadChartMetrics('value','ownership')">Value vs Ownership</button>
+                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('price','ppg')">Price vs Pts/Game</button>
+                            <button class="sq-chart-pill" onclick="setSquadChartMetrics('form','ppg')">Form vs Season Avg</button>
+                            <div class="sq-chart-scope-toggle" role="group" aria-label="Chart data scope">
+                                <button class="sq-chart-scope-btn ${sqChartScope === 'squad' ? 'active' : ''}" onclick="setSquadChartScope('squad')">My Squad</button>
+                                <button class="sq-chart-scope-btn ${sqChartScope === 'all' ? 'active' : ''}" onclick="setSquadChartScope('all')">All Players</button>
+                            </div>
                             <span class="sq-chart-axis-picker">
                                 <select id="sq-chart-x-select" onchange="onSquadChartMetricChange()">${metricOptions(sqChartXMetric)}</select>
                                 <span>vs</span>
@@ -1828,6 +1850,15 @@
             updateSquadChart();
         }
 
+        function setSquadChartScope(scope) {
+            sqChartScope = scope;
+            document.querySelectorAll('.sq-chart-scope-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = [...document.querySelectorAll('.sq-chart-scope-btn')]
+                .find(btn => btn.textContent === (scope === 'all' ? 'All Players' : 'My Squad'));
+            if (activeBtn) activeBtn.classList.add('active');
+            updateSquadChart();
+        }
+
         function onSquadChartMetricChange() {
             const xSel = document.getElementById('sq-chart-x-select');
             const ySel = document.getElementById('sq-chart-y-select');
@@ -1839,14 +1870,17 @@
         function buildSquadChartDatasets() {
             const xDef = SQ_CHART_METRICS[sqChartXMetric];
             const yDef = SQ_CHART_METRICS[sqChartYMetric];
-            const filtered = getFilteredSquad();
+            // 'all' plots every FPL player (allPlayers, already loaded for the rest of
+            // the page) instead of just the filtered squad — same per-player shape
+            // either way (position/team/name plus whatever xDef/yDef.get(p) reads).
+            const players = sqChartScope === 'all' ? allPlayers : getFilteredSquad().map(a => a.player);
             return [1, 2, 3, 4].map(pos => ({
                 label: POSITION_CONFIG[pos].short,
-                data: filtered.filter(a => a.player.position === pos).map(a => ({
-                    x: xDef.get(a.player),
-                    y: yDef.get(a.player),
-                    name: a.player.name,
-                    team: a.player.team,
+                data: players.filter(p => p.position === pos).map(p => ({
+                    x: xDef.get(p),
+                    y: yDef.get(p),
+                    name: p.name,
+                    team: p.team,
                 })),
                 backgroundColor: SQ_POSITION_COLORS[pos].bg,
                 borderColor: SQ_POSITION_COLORS[pos].border,
@@ -1928,127 +1962,6 @@
             sqChartInstance.options.scales.x.title.text = SQ_CHART_METRICS[sqChartXMetric].label;
             sqChartInstance.options.scales.y.title.text = SQ_CHART_METRICS[sqChartYMetric].label;
             sqChartInstance.update();
-        }
-
-        // Phase 2/3 will replace these stubs with the real inline accordion and
-        // transfer side-panel implementations.
-        // ===== INLINE ACCORDION EXPANSION (Phase 2) =====
-        // Reuses openDetailPanel's Key Statistics/Season Numbers/Team Context markup and
-        // the Lineup Wizard's AI Score Breakdown / Routes to Points / Rising Form Signals /
-        // home-away splits / xG-regression builders (computeQuickLineupScoreDetailed,
-        // lwBuildSingleRoutes, lwBuildSingleRisingForm, lwBuildSingleSplits,
-        // lwBuildSingleXgRegression — all confirmed to already accept this page's flat
-        // `player` shape, no adaptation needed) instead of re-deriving any of it.
-        function scoreBarHTML(label, value, maxVal, color) {
-            const pct = Math.min(Math.max(Math.abs(value) / maxVal * 100, 0), 100);
-            const isNeg = value < 0;
-            return `<div class="lw-ctx-score-row">
-                <div class="lw-ctx-score-label">${label}</div>
-                <div class="lw-ctx-score-bar"><div class="lw-ctx-score-bar-fill" style="width:${pct}%;background:${isNeg ? 'var(--color-error)' : color};"></div></div>
-                <div class="lw-ctx-score-val" style="color:${isNeg ? 'var(--color-error)' : value > 0 ? color : 'var(--text-muted)'}">${value > 0 ? '+' : ''}${value.toFixed(1)}</div>
-            </div>`;
-        }
-
-        function renderInlineExpansion(playerId) {
-            const analysis = analysisResults.find(a => a.player.id === playerId);
-            if (!analysis) return '';
-            const { player, verdict, fixtures } = analysis;
-            const gamesPlayed = computePlayerGamesPlayed(player);
-            const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
-            const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
-            const effForm = isPreseason ? player.ppg : player.form;
-            const detailed = computeQuickLineupScoreDetailed(player);
-
-            // Card 1: Expanded Stats & Underlying
-            const card1 = `<div class="sq-exp-card">
-                <div class="sq-exp-card-title">📊 Expanded Stats &amp; Underlying</div>
-                <div class="detail-stats-grid">
-                    ${renderDetailStat('Form', effForm.toFixed(1), effForm / 10, effForm >= 5 ? 'var(--verdict-hold)' : effForm < 3 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${POSITION_CONFIG[player.position].short} median: ${POSITION_CONFIG[player.position].formMedian}`)}
-                    ${renderDetailStat('Pts/Game', player.ppg.toFixed(1), player.ppg / 10, player.ppg >= 5 ? 'var(--verdict-hold)' : player.ppg < 3 ? 'var(--verdict-sell)' : 'var(--text-primary)', `Total: ${player.points} pts`)}
-                    ${renderDetailStat('Mins/Game', minsPerGame.toFixed(0), minsPerGame / 90, minsPerGame >= 80 ? 'var(--verdict-hold)' : minsPerGame < 60 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${player.starts} starts in ${gamesPlayed} GWs`)}
-                    ${player.position >= 3 ? renderDetailStat('xGI/90', xGIPer90.toFixed(2), xGIPer90, xGIPer90 >= 0.5 ? 'var(--verdict-hold)' : xGIPer90 < 0.25 ? 'var(--verdict-sell)' : 'var(--text-primary)', `${player.goals}G ${player.assists}A (${player.xG.toFixed(1)}xG ${player.xA.toFixed(1)}xA)`) : ''}
-                </div>
-                <div style="text-align:center;margin:10px 0;">
-                    <span style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:${detailed.total >= 30 ? 'var(--color-success)' : detailed.total >= 10 ? '#F59E0B' : 'var(--color-error)'};">${detailed.total}</span>
-                    <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">predicted score breakdown</span>
-                </div>
-                ${scoreBarHTML('Exp Pts', detailed.ep, 15, 'var(--color-info)')}
-                ${scoreBarHTML('Form', detailed.form, 15, '#A78BFA')}
-                ${scoreBarHTML('Fixture', detailed.fixture, 10, 'var(--color-success)')}
-                ${scoreBarHTML('xGI/90', detailed.xgi, 10, '#EC4899')}
-                ${scoreBarHTML('Minutes', detailed.minutes, 5, '#06B6D4')}
-                ${lwBuildSingleXgRegression(player)}
-                ${lwBuildSingleRoutes(player)}
-            </div>`;
-
-            // Card 2: Team Context & Schedule
-            const ta = teamAnalysis[player.teamId];
-            const ss = seasonStats[player.teamId];
-            const swingInfo = fixtureSwingData[player.teamId];
-            const fixtureChips = fixtures.map(f => `
-                <div class="fixture-chip fdr-${f.difficulty}" style="flex:1;min-width:48px;padding:6px 3px;">
-                    <span style="display:block;font-size:8px;color:rgba(255,255,255,0.5);">GW${f.event}</span>
-                    <span class="fixture-team">${escHTML(f.opponent)}</span>
-                    <span class="fixture-venue">${f.isHome ? 'H' : 'A'}</span>
-                </div>`).join('');
-            const card2 = ta ? `<div class="sq-exp-card">
-                <div class="sq-exp-card-title">🛡️ Team Context &amp; Schedule — ${escHTML(player.team)}</div>
-                <div class="detail-stats-grid">
-                    ${renderDetailStat('Attack', ta.attackPower.toString(), ta.attackPower / 100, ta.attackPower >= 60 ? 'var(--verdict-hold)' : ta.attackPower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${ta.avgGoals.toFixed(1)} goals/game`)}
-                    ${renderDetailStat('Defence', ta.defensePower.toString(), ta.defensePower / 100, ta.defensePower >= 60 ? 'var(--verdict-hold)' : ta.defensePower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${ta.avgConceded.toFixed(1)} conceded/game`)}
-                </div>
-                ${ss ? `<div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
-                    <div class="metric-box"><div class="metric-label">Season</div><div class="metric-value neutral" style="font-size:11px;">W${ss.wins} D${ss.draws} L${ss.losses}</div></div>
-                    <div class="metric-box"><div class="metric-label">GF/GA</div><div class="metric-value neutral" style="font-size:11px;">${ss.goalsFor}/${ss.goalsAgainst}</div></div>
-                    <div class="metric-box"><div class="metric-label">CS%</div><div class="metric-value ${ss.csPercent >= 35 ? 'good' : ss.csPercent < 20 ? 'bad' : 'neutral'}">${ss.csPercent}%</div></div>
-                </div>` : ''}
-                ${swingInfo ? `<div style="margin-top:8px;padding:6px 10px;border-radius:var(--radius-sm);background:${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)'};font-size:11px;color:${swingInfo.direction === 'improving' ? 'var(--color-success)' : 'var(--color-error)'}">${swingInfo.direction === 'improving' ? '▲' : '▼'} Fixtures ${swingInfo.direction} from GW${swingInfo.swingGW}: FDR ${swingInfo.currentFdr} → ${swingInfo.futureFdr}</div>` : ''}
-                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">${fixtureChips}</div>
-                ${lwBuildSingleRisingForm(player)}
-                ${lwBuildSingleSplits(player)}
-            </div>` : '';
-
-            // Card 3: Quick Replacement Candidates (sell/monitor only, top 3)
-            let card3 = '';
-            if (verdict === 'sell' || verdict === 'monitor') {
-                const replacements = findReplacements(player, 3);
-                if (replacements.length) {
-                    card3 = `<div class="sq-exp-card sq-exp-card-full">
-                        <div class="sq-exp-card-title">⚡ Quick Replacement Candidates</div>
-                        ${replacements.map((r, i) => {
-                            const rNet = (r.transfersIn || 0) - (r.transfersOut || 0);
-                            return `
-                            <div class="sq-replacement-row">
-                                <span class="sq-replacement-rank">${i + 1}</span>
-                                <span class="sq-replacement-name">${escHTML(r.name)}</span>
-                                <span class="sq-replacement-meta">${escHTML(r.team)} · £${r.price.toFixed(1)}m · Form ${r.form.toFixed(1)} · ${rNet > 0 ? '+' : ''}${(rNet / 1000).toFixed(0)}k</span>
-                                <button class="card-btn" onclick="openPairCompare(${player.id}, ${r.id})">Compare</button>
-                                <button class="card-btn primary" onclick="openTransferPanel(${player.id})">Transfer</button>
-                            </div>`;
-                        }).join('')}
-                    </div>`;
-                }
-            }
-
-            return `<div class="sq-exp-grid">${card1}${card2}</div>${card3}`;
-        }
-
-        function toggleInlineExpansion(playerId) {
-            const el = document.getElementById(`sq-expand-${playerId}`);
-            const chevron = document.getElementById(`sq-chevron-${playerId}`);
-            if (!el) return;
-            const isOpen = el.style.display !== 'none';
-            if (isOpen) {
-                el.style.display = 'none';
-            } else {
-                if (!el.dataset.rendered) {
-                    el.innerHTML = renderInlineExpansion(playerId);
-                    el.dataset.rendered = '1';
-                }
-                el.style.display = '';
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-            if (chevron) chevron.classList.toggle('open', !isOpen);
         }
 
         // ===== TRANSFER SIDE PANEL (Phase 3) =====
@@ -2832,7 +2745,7 @@
             const maxPrice = (player.sellPrice || player.price) + bank + 0.5;
             const candidates = allPlayers.filter(p =>
                 p.position === player.position && p.price <= maxPrice && p.id !== player.id &&
-                (p.status === 'a' || p.status === 'd') && p.minutes >= 100 &&
+                (p.status === 'a' || p.status === 'd') && p.minutes >= minMinutesForCandidate() &&
                 !selectedPlayers.some(sp => sp.id === p.id)
             );
 
@@ -2935,7 +2848,7 @@
             });
 
             // Season games + conceded from fixtures
-            const finished = allFixtures.filter(f => f.finished && f.team_h_score !== null);
+            const finished = allFixtures.filter(f => f.finished_provisional && f.team_h_score !== null);
             finished.forEach(f => {
                 if (teamXgData[f.team_h]) { teamXgData[f.team_h].seasonGames++; teamXgData[f.team_h].seasonConceded += f.team_a_score || 0; }
                 if (teamXgData[f.team_a]) { teamXgData[f.team_a].seasonGames++; teamXgData[f.team_a].seasonConceded += f.team_h_score || 0; }
@@ -3018,7 +2931,7 @@
         // Process fixtures for next 6 GWs
         function processFixtures6(fixturesData) {
             teamFixtures6 = {};
-            const upcoming = fixturesData.filter(f => !f.finished && f.event !== null).sort((a, b) => a.event - b.event);
+            const upcoming = fixturesData.filter(f => !f.finished_provisional && f.event !== null).sort((a, b) => a.event - b.event);
             Object.keys(teams).forEach(teamId => {
                 const tid = parseInt(teamId);
                 const teamFix = upcoming.filter(f => f.team_h === tid || f.team_a === tid).slice(0, 6);
@@ -3369,7 +3282,7 @@
         function initDraft(slotIndex) {
             if (slotIndex === undefined) slotIndex = activeDraftSlot;
             const gwNumbers = [];
-            const upcoming = allFixtures.filter(f => !f.finished && f.event !== null).map(f => f.event);
+            const upcoming = allFixtures.filter(f => !f.finished_provisional && f.event !== null).map(f => f.event);
             const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
             for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) gwNumbers.push(uniqueGWs[i]);
             if (gwNumbers.length === 0) for (let i = currentGW + 1; i <= Math.min(currentGW + 6, 38); i++) gwNumbers.push(i);
@@ -3754,7 +3667,7 @@
             const squadIds = new Set(currentSquad.map(p => p.id));
             const candidates = allPlayers.filter(p =>
                 p.position === player.position && p.price <= maxPrice && p.id !== player.id &&
-                (p.status === 'a' || p.status === 'd') && p.minutes >= 100 &&
+                (p.status === 'a' || p.status === 'd') && p.minutes >= minMinutesForCandidate() &&
                 !squadIds.has(p.id)
             );
 
@@ -4084,7 +3997,7 @@
 
                 // Validate saved GWs still make sense
                 const currentGWNums = [];
-                const upcoming = allFixtures.filter(f => !f.finished && f.event !== null).map(f => f.event);
+                const upcoming = allFixtures.filter(f => !f.finished_provisional && f.event !== null).map(f => f.event);
                 const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
                 for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) currentGWNums.push(uniqueGWs[i]);
 
@@ -5217,7 +5130,7 @@
                 p.price <= maxPrice &&
                 !excludeIds.has(p.id) &&
                 (p.status === 'a' || p.status === 'd') &&
-                p.minutes >= 100
+                p.minutes >= minMinutesForCandidate()
             );
 
             // Score each candidate
