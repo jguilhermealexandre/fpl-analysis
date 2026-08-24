@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=29">
-    <link rel="stylesheet" href="styles/players.css?v=29">
-    <link rel="stylesheet" href="styles/v2-design.css?v=29">
+    <link rel="stylesheet" href="styles/common.css?v=30">
+    <link rel="stylesheet" href="styles/players.css?v=30">
+    <link rel="stylesheet" href="styles/v2-design.css?v=30">
     <style>
         /* Sticky header for All Players table */
         #section-ALL table thead th {
@@ -510,6 +510,10 @@
                         status: player.status || 'a',
                         news: player.news || '',
                         chanceNextRound: player.chance_of_playing_next_round,
+                        // Market movement — drives the buy-now / wait signal on rec cards
+                        transfersIn: player.transfers_in_event || 0,
+                        transfersOut: player.transfers_out_event || 0,
+                        costChangeEvent: (player.cost_change_event || 0) / 10,
                         // Team-level scores
                         teamScores: teamAnalysis[player.team] || null
                     });
@@ -1657,13 +1661,13 @@
                         <button class="rec-category-tab differential ${activeRecCat === 'differential' ? 'active' : ''}" onclick="switchRecCategory('${pos}', 'differential', this)"><i data-lucide="gem" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Differentials (<10%)</button>
                     </div>
                     <div class="rec-category-panel ${activeRecCat === 'budget' ? 'active' : ''}" id="recCat-${pos}-budget">
-                        ${budgetPlayers.length > 0 ? budgetPlayers.map((p, i) => renderRecCard(p, i + 1, pos)).join('') : '<div class="no-players">No players found</div>'}
+                        ${budgetPlayers.length > 0 ? recCardList(budgetPlayers, pos, false) : '<div class="no-players">No players found</div>'}
                     </div>
                     <div class="rec-category-panel ${activeRecCat === 'premium' ? 'active' : ''}" id="recCat-${pos}-premium">
-                        ${premiumPlayers.length > 0 ? premiumPlayers.map((p, i) => renderRecCard(p, i + 1, pos)).join('') : '<div class="no-players">No players found</div>'}
+                        ${premiumPlayers.length > 0 ? recCardList(premiumPlayers, pos, false) : '<div class="no-players">No players found</div>'}
                     </div>
                     <div class="rec-category-panel ${activeRecCat === 'differential' ? 'active' : ''}" id="recCat-${pos}-differential">
-                        ${differentials.length > 0 ? differentials.map((p, i) => renderRecCard(p, i + 1, pos, true)).join('') : '<div class="no-players">No differentials found</div>'}
+                        ${differentials.length > 0 ? recCardList(differentials, pos, true) : '<div class="no-players">No differentials found</div>'}
                     </div>
                 </div>
             `;
@@ -2021,75 +2025,274 @@
             return '';
         }
 
-        function renderRecCard(p, rank, pos, isDifferential = false) {
+        // ===== RECOMMENDATION CARDS =====
+        // Club colours, used as a tint rather than a fill. A full team-coloured
+        // background would put white text on Spurs white and Newcastle black, so
+        // the colour becomes a low-opacity wash and an edge instead.
+        const REC_TEAM_COLORS = {
+            ARS: '#EF0107', AVL: '#95BFE5', BHA: '#0057B8', BOU: '#DA291C', BRE: '#E30613',
+            CHE: '#034694', COV: '#78D0F3', CRY: '#1B458F', EVE: '#003399', FUL: '#CC0000',
+            HUL: '#F5A12D', IPS: '#3A64A3', LEE: '#FFCD00', LIV: '#C8102E', MCI: '#6CABDD',
+            MUN: '#DA291C', NEW: '#41B6E6', NFO: '#DD0000', SUN: '#EB172B', TOT: '#132257'
+        };
+        function recTeamColor(shortName) { return REC_TEAM_COLORS[shortName] || 'var(--color-primary)'; }
+
+        // How safe the minutes are. A top-ranked player who might not start is the
+        // most expensive mistake this page can encourage, so it goes on the card.
+        function recMinutesRisk(p) {
+            const games = p.l5?.games || 0;
+            const mpg = games ? (p.l5.minutes || 0) / games : 0;
+            if (p.status === 'i' || p.status === 'u' || p.status === 's') {
+                return { cls: 'bad', word: 'Unavailable', detail: (p.news || 'Not expected to feature').split('.')[0] };
+            }
+            if (p.status === 'd') {
+                return { cls: 'warn', word: 'Fitness doubt',
+                    detail: (p.news || 'Carrying a knock').split('.')[0] + (p.chanceNextRound != null ? ` — ${p.chanceNextRound}% chance` : '') };
+            }
+            if (!games) return { cls: 'warn', word: 'No minutes yet', detail: 'Has not played this season' };
+            if (mpg >= 80) return { cls: 'good', word: 'Nailed on', detail: `${Math.round(mpg)} mins per appearance` };
+            if (mpg >= 60) return { cls: 'good', word: 'Regular starter', detail: `${Math.round(mpg)} mins per appearance` };
+            if (mpg >= 30) return { cls: 'warn', word: 'Rotation risk', detail: `Only ${Math.round(mpg)} mins per appearance` };
+            return { cls: 'bad', word: 'Fringe player', detail: `${Math.round(mpg)} mins per appearance` };
+        }
+
+        // Whether the market is about to move the price. Buying before a rise is
+        // free money; buying into a fall is not.
+        function recPricePressure(p) {
+            const net = (p.transfersIn || 0) - (p.transfersOut || 0);
+            if (Math.abs(net) < 1000) return null;
+            const owners = Math.max(((p.selectedBy || 0) / 100) * 9500000, 1);
+            const velocity = net / owners;
+            if (velocity > 0.04) return { cls: 'rise', text: 'Price rising', detail: `${net > 0 ? '+' : ''}${net.toLocaleString()} net transfers in — buying before a rise saves money later.` };
+            if (velocity < -0.04) return { cls: 'fall', text: 'Price falling', detail: `${net.toLocaleString()} net transfers out — the price may drop before you need to sell.` };
+            return null;
+        }
+
+        // The three things doing most of the work in this player's ranking, so the
+        // order is auditable rather than asserted.
+        function recScoreDrivers(p, pos) {
             const games = p.l5?.games || 1;
-            const ptsPerGame = ((p.l5?.points || 0) / games).toFixed(1);
-            const fdr = p.fixtures?.avgFDR3 || 3;
-            const metrics = p.displayMetrics;
-            const ownBadge = isDifferential ? `<span style="font-size:10px;color:var(--color-info);margin-left:4px;">${(p.selectedBy || 0).toFixed(1)}%</span>` : '';
-            const multiXPts = calculateMultiGWxPts(p, { 1:'GK', 2:'DEF', 3:'MID', 4:'FWD' }[p.position] || 'MID', 5);
+            const mpg = (p.l5?.minutes || 0) / games;
+            const fdr = p.fixtures?.avgFDR3 ?? 3;
+            const ppg = (p.l5?.points || 0) / games;
+            const value = ppg / Math.max(p.price, 3.5);
+            const xgi90 = (p.l5?.minutes || 0) > 0 ? ((p.l5?.xGI || 0) / p.l5.minutes) * 90 : 0;
+            const csRate = games ? (p.l5?.cleanSheets || 0) / games : 0;
 
-            // Why badge
-            const whyBadge = getRecWhyBadge(p, pos);
+            const all = [
+                { k: 'Fixtures', v: 3 - fdr, label: `${fdr.toFixed(1)} average difficulty over three` },
+                { k: 'Minutes', v: (mpg - 60) / 30, label: `${Math.round(mpg)} mins per appearance` },
+                { k: 'Value', v: value - 0.6, label: `${value.toFixed(2)} points per million` },
+                { k: 'Returns', v: ppg / 5 - 0.5, label: `${ppg.toFixed(1)} points per game` }
+            ];
+            if (pos === 'GK' || pos === 'DEF') all.push({ k: 'Clean sheets', v: csRate - 0.25, label: `${Math.round(csRate * 100)}% of games` });
+            else all.push({ k: 'Threat', v: xgi90 - 0.35, label: `${xgi90.toFixed(2)} xGI per 90` });
 
-            // Stat bar — use primary metric
-            const barMax = { CS: 5, Saves: 25, GC: 10, xGI: 1.2, xG: 0.8, G: 5, A: 5 };
-            const pVal = parseFloat(metrics.primary.value) || 0;
-            const pMax = barMax[metrics.primary.label] || 5;
-            const barPct = Math.min(100, (pVal / pMax) * 100).toFixed(0);
-            const barColor = barPct >= 60 ? 'green' : barPct >= 30 ? 'yellow' : 'red';
+            return all.filter(d => d.v > 0).sort((a, b) => b.v - a.v).slice(0, 3);
+        }
 
-            // Fixture chips — next 3
-            const next3 = p.fixtures?.next3 || [];
-            const fixChips = next3.slice(0, 3).map(f => {
-                const oppName = (f.opponent && teams[f.opponent]) ? teams[f.opponent].short_name : '???';
+        // A sentence a scout would actually say, assembled from the strongest true
+        // signals. No claim appears here that is not read off the numbers.
+        function buildScoutVerdict(p, pos) {
+            const games = p.l5?.games || 0;
+            const mpg = games ? (p.l5.minutes || 0) / games : 0;
+            const fdr = p.fixtures?.avgFDR3 ?? 3;
+            const next3 = (p.fixtures?.next3 || []).slice(0, 3);
+            const easy = next3.filter(f => (f.difficulty || 3) <= 2).length;
+            const ppg = games ? (p.l5.points || 0) / games : 0;
+            const xgi90 = (p.l5?.minutes || 0) > 0 ? ((p.l5.xGI || 0) / p.l5.minutes) * 90 : 0;
+            const savesPer = games ? (p.l5.saves || 0) / games : 0;
+            const risk = recMinutesRisk(p);
+            const bits = [];
+
+            // Lead with what this position is bought for.
+            if (pos === 'GK') {
+                bits.push(savesPer >= 3.5
+                    ? (games >= 3
+                        ? `Busy keeper averaging ${savesPer.toFixed(1)} saves a game, which pays even when the clean sheet does not arrive`
+                        : `Made ${p.l5.saves} save${(p.l5.saves || 0) === 1 ? '' : 's'} across ${games} game${games === 1 ? '' : 's'} — save points add up behind a busy defence`)
+                    : `Keeper at £${p.price.toFixed(1)}m behind a defence conceding ${((p.l5?.goalsConceded || 0) / Math.max(games, 1)).toFixed(1)} a game`);
+            } else if (pos === 'DEF') {
+                const cs = games ? (p.l5.cleanSheets || 0) / games : 0;
+                bits.push(cs >= 0.3
+                    ? (games >= 3
+                        ? `Clean sheet in ${Math.round(cs * 100)}% of his games so far`
+                        : `${p.l5.cleanSheets} clean sheet${(p.l5.cleanSheets || 0) === 1 ? '' : 's'} from ${games} game${games === 1 ? '' : 's'}`)
+                    : xgi90 >= 0.25
+                        ? `Defender carrying real attacking threat at ${xgi90.toFixed(2)} xGI per 90`
+                        : `Budget defender at £${p.price.toFixed(1)}m holding down a starting place`);
+            } else {
+                bits.push(xgi90 >= 0.5
+                    ? `Creating and finishing chances at ${xgi90.toFixed(2)} xGI per 90, elite for the price`
+                    : xgi90 >= 0.3
+                        ? `Involved in enough at ${xgi90.toFixed(2)} xGI per 90 to justify a place`
+                        : `Returning ${ppg.toFixed(1)} points a game at £${p.price.toFixed(1)}m`);
+            }
+
+            // Then the fixtures, which is what makes it a move now rather than later.
+            if (easy >= 2) bits.push(`with ${easy} of the next three rated easy`);
+            else if (fdr >= 3.8) bits.push(`though the next three are hard at ${fdr.toFixed(1)} average difficulty`);
+            else bits.push(`into a middling run at ${fdr.toFixed(1)} average difficulty`);
+
+            let verdict = bits.join(', ') + '.';
+
+            // And the caveat, if there is one worth naming.
+            if (risk.cls === 'bad') verdict += ` ${risk.word} — ${risk.detail}.`;
+            else if (risk.cls === 'warn') verdict += ` Watch the minutes: ${risk.detail.toLowerCase()}.`;
+            else if (mpg >= 80) verdict += ` Minutes are secure at ${Math.round(mpg)} a game.`;
+
+            if (games <= 2) verdict += ` Based on ${games} game${games === 1 ? '' : 's'} so far.`;
+            return verdict;
+        }
+
+        // Points per gameweek as a sparkline. With one round played there is no
+        // line to draw, so it says so rather than showing a misleading flat trace.
+        function recSparkline(p) {
+            const hist = (p.history || []).filter(h => h.round != null).slice(-5);
+            if (hist.length < 2) {
+                const only = hist[0];
+                return `<div class="rec-spark-empty">${only
+                    ? `GW${only.round}: <strong>${only.total_points} pts</strong> — one gameweek so far, no trend to read yet`
+                    : 'No gameweek history yet'}</div>`;
+            }
+            const pts = hist.map(h => h.total_points || 0);
+            const max = Math.max(...pts, 1), min = Math.min(...pts, 0);
+            const range = Math.max(max - min, 1);
+            const w = 100, h = 28;
+            const step = w / (pts.length - 1);
+            const coords = pts.map((v, i) => [i * step, h - ((v - min) / range) * (h - 4) - 2]);
+            const line = coords.map((c, i) => `${i ? 'L' : 'M'}${c[0].toFixed(1)},${c[1].toFixed(1)}`).join(' ');
+            const area = `${line} L${w},${h} L0,${h} Z`;
+            const trend = pts[pts.length - 1] >= pts[0] ? 'up' : 'down';
+            return `<div class="rec-spark ${trend}" data-tooltip="Points in each of the last ${pts.length} gameweeks: ${pts.join(', ')}.">
+                <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="rec-spark-area" d="${area}"/><path class="rec-spark-line" d="${line}"/>
+                    ${coords.map(c => `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="1.6"/>`).join('')}
+                </svg>
+                <span class="rec-spark-label">GW${hist[0].round}–${hist[hist.length - 1].round} · ${pts.join(' · ')}</span>
+            </div>`;
+        }
+
+        // Icon-paired pills. The player's strongest suit is highlighted so the
+        // reason to own him is visible before any number is read.
+        function recStatPills(p, pos) {
+            const games = p.l5?.games || 1;
+            const mins = p.l5?.minutes || 0;
+            const per90 = v => mins > 0 ? (v / mins) * 90 : 0;
+            const ppg = (p.l5?.points || 0) / games;
+            const thin = games < 3;
+            const csCount = p.l5?.cleanSheets || 0;
+            // A percentage needs a denominator worth dividing by. One clean sheet
+            // in one game is "1 of 1", not "100%" — the latter reads as a rate.
+            const csPill = pct => thin
+                ? { v: `${csCount}/${games}`, l: 'clean sheets' }
+                : { v: pct + '%', l: 'clean sheets' };
+            const pills = [];
+
+            if (pos === 'GK') {
+                const sv = per90(p.l5?.saves || 0);
+                const csPct = Math.round(((p.l5?.cleanSheets || 0) / games) * 100);
+                pills.push({ icon: '🧤', v: sv.toFixed(1), l: 'saves/90', good: sv >= 3.5 });
+                pills.push({ icon: '🛡️', ...csPill(csPct), good: csPct >= 30 });
+                pills.push({ icon: '🥅', v: per90(p.l5?.goalsConceded || 0).toFixed(1), l: 'conceded/90', good: per90(p.l5?.goalsConceded || 0) <= 1.0 });
+            } else if (pos === 'DEF') {
+                const csPct = Math.round(((p.l5?.cleanSheets || 0) / games) * 100);
+                pills.push({ icon: '🛡️', ...csPill(csPct), good: csPct >= 30 });
+                pills.push({ icon: '⚔️', v: per90(p.l5?.xGI || 0).toFixed(2), l: 'xGI/90', good: per90(p.l5?.xGI || 0) >= 0.25 });
+                pills.push({ icon: '🥅', v: per90(p.l5?.goalsConceded || 0).toFixed(1), l: 'conceded/90', good: per90(p.l5?.goalsConceded || 0) <= 1.0 });
+            } else {
+                pills.push({ icon: '⚔️', v: per90(p.l5?.xGI || 0).toFixed(2), l: 'xGI/90', good: per90(p.l5?.xGI || 0) >= 0.5 });
+                pills.push({ icon: '🎯', v: per90(p.l5?.xG || 0).toFixed(2), l: 'xG/90', good: per90(p.l5?.xG || 0) >= 0.35 });
+                pills.push({ icon: '🅰️', v: per90(p.l5?.xA || 0).toFixed(2), l: 'xA/90', good: per90(p.l5?.xA || 0) >= 0.25 });
+            }
+            pills.push({ icon: '⭐', v: ppg.toFixed(1), l: 'pts/game', good: ppg >= 5 });
+
+            // Highlighting a rate computed from one game says "this is his level"
+            // when it only says "this is what happened once".
+            const enoughForClaims = games >= 3;
+            const rendered = pills.map(s => `<span class="rec-pill ${s.good && enoughForClaims ? 'standout' : ''}">
+                <span class="rec-pill-i">${s.icon}</span><strong>${s.v}</strong><span class="rec-pill-l">${s.l}</span></span>`).join('');
+            // One chip stating the sample beats qualifying every label individually.
+            return rendered + (enoughForClaims ? '' : `<span class="rec-pill sample" data-tooltip="Season is ${games} game${games === 1 ? '' : 's'} old, so these are single results rather than established rates.">
+                <span class="rec-pill-i">📏</span><strong>${games}</strong><span class="rec-pill-l">game${games === 1 ? '' : 's'} so far</span></span>`);
+        }
+
+        // Larger blocks carrying opponent, venue and the difficulty number itself,
+        // so the colour is backed by a figure rather than being the only signal.
+        function recFixtureHeatmap(p, count) {
+            const FDR_WORD = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+            const fx = (p.fixtures?.next5 || p.fixtures?.next3 || []).slice(0, count || 3);
+            if (!fx.length) return '<div class="rec-fixtures"><span class="rec-fix rec-fix-none">No fixtures scheduled</span></div>';
+            return `<div class="rec-fixtures">${fx.map(f => {
+                const opp = (f.opponent && teams[f.opponent]) ? teams[f.opponent].short_name : '???';
                 const d = f.difficulty || 3;
-                const cls = d <= 1 ? 'fdr-1' : d <= 2 ? 'fdr-2' : d <= 3 ? 'fdr-3' : d <= 4 ? 'fdr-4' : 'fdr-5';
-                const venue = f.isHome ? 'H' : 'A';
-                return `<span class="rec-fix-chip ${cls}"><span class="gw-label">GW${f.event || ''}</span>${oppName} (${venue})</span>`;
-            }).join('');
-            const avgFdrDisplay = fdr.toFixed(1);
+                return `<span class="rec-fix fdr-${d}" data-tooltip="GW${f.event || '?'}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(opp)} — difficulty ${d} (${FDR_WORD[d]})">
+                    <span class="rec-fix-gw">GW${f.event || '?'}</span>
+                    <span class="rec-fix-opp">${escHTML(opp)} <span class="rec-fix-ha">${f.isHome ? 'H' : 'A'}</span></span>
+                    <span class="rec-fix-fdr">${d}</span>
+                </span>`;
+            }).join('')}</div>`;
+        }
+
+        function renderRecCard(p, rank, pos, isDifferential = false, featured = false) {
+            const posName = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position] || 'MID';
+            const xPts = calculateMultiGWxPts(p, posName, 5);
+            const risk = recMinutesRisk(p);
+            const price = recPricePressure(p);
+            const drivers = recScoreDrivers(p, pos);
+            const accent = recTeamColor(p.team);
+
+            const xpBadge = xPts !== null
+                ? `<span class="rec-xp" data-tooltip="Projected points across the next five gameweeks, from this player's recent rates, expected minutes and fixtures.">${xPts}<span class="rec-xp-u">xP5</span></span>`
+                : `<span class="rec-xp muted" data-tooltip="Not enough minutes on record to project this player yet.">—<span class="rec-xp-u">xP5</span></span>`;
+
+            const ownLine = `<span class="rec-own ${(p.selectedBy || 0) < 5 ? 'diff' : (p.selectedBy || 0) > 25 ? 'template' : ''}"
+                data-tooltip="${(p.selectedBy || 0) < 5 ? 'Under 5% owned — a genuine differential, and a bet against the field.'
+                    : (p.selectedBy || 0) > 25 ? 'Widely owned — not owning him is itself a risk against the field.'
+                    : 'Moderately owned.'}">${(p.selectedBy || 0).toFixed(1)}% owned</span>`;
 
             return `
-                <div class="rec-card" style="position:relative;" onclick="openPlayerModal(${p.id})">
+                <div class="rec-card-v2 ${featured ? 'featured' : ''}" style="--rec-accent:${accent};" onclick="openPlayerModal(${p.id})">
                     ${getStarHtml(p.id, 'shortlist-star-card')}
-                    <div class="rec-card-top-row">
-                        <div class="rec-card-top-left">
-                            <div class="rec-card-rank">${rank}</div>
-                            <div class="rec-card-main">
-                                <div class="rec-card-header">
-                                    <div class="rec-card-name">${escHTML(p.name)}${ownBadge}</div>
-                                    <div class="rec-card-team">${escHTML(p.team)} &middot; \u00a3${p.price.toFixed(1)}m</div>
-                                </div>
-                            </div>
+                    <div class="rec-rank-chip">${featured ? '★ Top pick' : '#' + rank}</div>
+
+                    <div class="rec-head">
+                        <div class="rec-id">
+                            <div class="rec-name">${escHTML(p.name)}</div>
+                            <div class="rec-sub">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${ownLine}</div>
                         </div>
+                        ${xpBadge}
                     </div>
-                    <div class="rec-stat-row">
-                        <span class="rec-stat-label">${metrics.primary.label}</span>
-                        <div class="rec-stat-bar-wrap"><div class="rec-stat-bar-fill ${barColor}" style="width:${barPct}%;"></div></div>
-                        <span class="rec-stat-value">${metrics.primary.value}</span>
+
+                    <div class="rec-verdict">
+                        <span class="rec-verdict-tag">Scout's verdict</span>
+                        <p>${escHTML(buildScoutVerdict(p, pos))}</p>
                     </div>
-                    <div class="rec-card-metrics">
-                        <div class="rec-metric ${metrics.secondary.inverse ? 'inverse' : ''}">
-                            <span class="rec-metric-value">${metrics.secondary.value}</span>
-                            <span class="rec-metric-label">${metrics.secondary.label}</span>
-                        </div>
-                        <div class="rec-metric ${metrics.tertiary.inverse ? 'inverse' : ''}">
-                            <span class="rec-metric-value">${metrics.tertiary.value}</span>
-                            <span class="rec-metric-label">${metrics.tertiary.label}</span>
-                        </div>
-                        <div class="rec-metric">
-                            <span class="rec-metric-value">${ptsPerGame}</span>
-                            <span class="rec-metric-label">Pts/G</span>
-                        </div>
-                        ${multiXPts !== null ? `<div class="rec-metric"><span class="rec-metric-value" style="color:var(--color-info)">${multiXPts}</span><span class="rec-metric-label">xPts5</span></div>` : ''}
+
+                    <div class="rec-flags">
+                        <span class="rec-flag ${risk.cls}" data-tooltip="${escHTML(risk.detail)}">${risk.word}</span>
+                        ${price ? `<span class="rec-flag ${price.cls}" data-tooltip="${escHTML(price.detail)}">${price.text}</span>` : ''}
                     </div>
-                    <div class="rec-fix-row">
-                        ${fixChips}
-                    </div>
-                    <div class="rec-card-avg-fdr">Avg FDR: ${avgFdrDisplay}</div>
-                </div>
-            `;
+
+                    <div class="rec-pills">${recStatPills(p, pos)}</div>
+
+                    ${recSparkline(p)}
+
+                    ${recFixtureHeatmap(p, featured ? 5 : 3)}
+
+                    ${drivers.length ? `<div class="rec-drivers">
+                        <span class="rec-drivers-l">Ranked here on</span>
+                        ${drivers.map(d => `<span class="rec-driver" data-tooltip="${escHTML(d.label)}">${escHTML(d.k)}</span>`).join('')}
+                    </div>` : ''}
+                </div>`;
+        }
+
+        // Rank 1 leads full width; the rest fall into the grid beneath it.
+        function recCardList(players, pos, isDiff) {
+            if (!players.length) return '';
+            const [first, ...rest] = players;
+            return renderRecCard(first, 1, pos, isDiff, true)
+                + (rest.length ? `<div class="rec-grid">${rest.map((p, i) => renderRecCard(p, i + 2, pos, isDiff, false)).join('')}</div>` : '');
         }
 
         function getBudgetCap(pos) {
@@ -3127,8 +3330,8 @@
         }
 
     </script>
-    <script src="scripts/players-tables.js?v=29"></script>
-    <script src="scripts/compare-report.js?v=29"></script>
+    <script src="scripts/players-tables.js?v=30"></script>
+    <script src="scripts/compare-report.js?v=30"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -3951,18 +4154,39 @@
         function calculateMultiGWxPts(p, pos, numGW) {
             numGW = numGW || 5;
             const fixtures = p.fixtures?.next3 || [];
-            if (!fixtures.length || !p.l5 || p.l5.games < 2) return null;
+            if (!fixtures.length || !p.l5 || p.l5.games < 1) return null;
 
             const l5Games = p.l5.games;
             const mins = p.l5.minutes / l5Games;
             if (mins < 30) return null;
 
-            const rwXG = p.history ? recencyWeightedAvg(p.history, 'expected_goals') : (p.l5.xG || 0) / l5Games;
-            const rwXA = p.history ? recencyWeightedAvg(p.history, 'expected_assists') : (p.l5.xA || 0) / l5Games;
-            const rwCS = p.history ? recencyWeightedAvg(p.history, 'clean_sheets') : (p.l5.cleanSheets || 0) / l5Games;
-            const rwBonus = p.history ? recencyWeightedAvg(p.history, 'bonus') : (p.l5.bonus || 0) / l5Games;
-            const rwSaves = p.history ? recencyWeightedAvg(p.history, 'saves') : (p.l5.saves || 0) / l5Games;
-            const rwGC = p.history ? recencyWeightedAvg(p.history, 'goals_conceded') : (p.l5.goalsConceded || 0) / l5Games;
+            const rwXGraw = p.history ? recencyWeightedAvg(p.history, 'expected_goals') : (p.l5.xG || 0) / l5Games;
+            const rwXAraw = p.history ? recencyWeightedAvg(p.history, 'expected_assists') : (p.l5.xA || 0) / l5Games;
+            const rwCSraw = p.history ? recencyWeightedAvg(p.history, 'clean_sheets') : (p.l5.cleanSheets || 0) / l5Games;
+            const rwBonusRaw = p.history ? recencyWeightedAvg(p.history, 'bonus') : (p.l5.bonus || 0) / l5Games;
+            const rwSavesRaw = p.history ? recencyWeightedAvg(p.history, 'saves') : (p.l5.saves || 0) / l5Games;
+            const rwGCraw = p.history ? recencyWeightedAvg(p.history, 'goals_conceded') : (p.l5.goalsConceded || 0) / l5Games;
+            // A rate from one or two games is a single result wearing a rate's
+            // clothing. Regress toward the position baseline until roughly four
+            // games of evidence — the same treatment the squad projection applies.
+            // Without it a keeper who made five saves in his opener projects to
+            // make five every week, and a £4.5m option reads as a 50-point asset.
+            const REC_BASE = {
+                GK:  { xG: 0.00, xA: 0.01, cs: 0.28, bonus: 0.25, saves: 2.80, gc: 1.35 },
+                DEF: { xG: 0.03, xA: 0.04, cs: 0.28, bonus: 0.20, saves: 0.00, gc: 1.35 },
+                MID: { xG: 0.08, xA: 0.09, cs: 0.28, bonus: 0.25, saves: 0.00, gc: 1.35 },
+                FWD: { xG: 0.15, xA: 0.07, cs: 0.00, bonus: 0.30, saves: 0.00, gc: 1.35 }
+            }[pos] || { xG: 0.08, xA: 0.08, cs: 0.25, bonus: 0.25, saves: 0, gc: 1.35 };
+            const evidence = Math.min(1, l5Games / 4);
+            const regress = (v, base) => v * evidence + base * (1 - evidence);
+
+            const rwXG = regress(rwXGraw, REC_BASE.xG);
+            const rwXA = regress(rwXAraw, REC_BASE.xA);
+            const rwCS = regress(rwCSraw, REC_BASE.cs);
+            const rwBonus = regress(rwBonusRaw, REC_BASE.bonus);
+            const rwSaves = regress(rwSavesRaw, REC_BASE.saves);
+            const rwGC = regress(rwGCraw, REC_BASE.gc);
+
             const goalPts = { GK: 6, DEF: 6, MID: 5, FWD: 4 }[pos] || 4;
 
             let totalXPts = 0;
@@ -4669,10 +4893,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=29"></script>
+    <script src="scripts/players-ai.js?v=30"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/common.js?v=29"></script>
-    <script src="scripts/sidebar-nav.js?v=29"></script>
+    <script src="scripts/common.js?v=30"></script>
+    <script src="scripts/sidebar-nav.js?v=30"></script>
     <script>
         loadSidebarNav();
         initIcons();

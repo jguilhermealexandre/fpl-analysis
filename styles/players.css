@@ -3983,3 +3983,193 @@
     border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 .no-players.season-young strong { color: var(--text-primary); }
+
+/* ===== Recommendation cards v2 ===== */
+.rec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 12px; margin-top: 12px; }
+
+.rec-card-v2 {
+    position: relative;
+    display: flex; flex-direction: column; gap: 9px;
+    padding: 15px 16px 14px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    background: var(--surface-1);
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+/* Club colour as a wash and an edge, never a fill — a full team background
+   would put text on Spurs white or Newcastle black and lose all contrast. */
+.rec-card-v2::before {
+    content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
+    background: var(--rec-accent);
+}
+.rec-card-v2:hover { border-color: var(--rec-accent); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.rec-card-v2.featured {
+    padding: 20px 22px 18px;
+    background:
+        radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--rec-accent) 20%, transparent), transparent 62%),
+        var(--surface-1);
+    border-color: color-mix(in srgb, var(--rec-accent) 45%, var(--border-default));
+}
+.rec-card-v2.featured::before { height: 5px; }
+.rec-card-v2.featured .rec-name { font-size: 22px; }
+.rec-card-v2.featured .rec-verdict p { font-size: 13.5px; }
+
+.rec-rank-chip {
+    align-self: flex-start;
+    font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--surface-3); color: var(--text-muted);
+}
+.rec-card-v2.featured .rec-rank-chip { background: var(--rec-accent); color: #fff; }
+
+.rec-head { display: flex; align-items: flex-start; gap: 12px; }
+.rec-id { min-width: 0; flex: 1; }
+.rec-name { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.rec-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.rec-own { cursor: help; }
+.rec-own.diff { color: var(--color-info); font-weight: 600; }
+.rec-own.template { color: var(--text-secondary); font-weight: 600; }
+
+.rec-xp {
+    flex-shrink: 0; text-align: center;
+    padding: 6px 11px; border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    color: var(--color-primary);
+    font-family: var(--font-mono); font-size: 20px; font-weight: 700; line-height: 1.1;
+    cursor: help;
+}
+.rec-xp.muted { background: var(--surface-2); color: var(--text-muted); }
+.rec-xp-u { display: block; font-size: 8.5px; font-weight: 600; opacity: .75; font-family: var(--font-sans); }
+
+.rec-verdict { padding: 10px 12px; border-radius: var(--radius-lg); background: var(--surface-2); border-left: 3px solid var(--rec-accent); }
+.rec-verdict-tag { display: block; font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+.rec-verdict p { font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); }
+
+.rec-flags { display: flex; flex-wrap: wrap; gap: 5px; }
+.rec-flag { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; cursor: help; }
+.rec-flag.good { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+.rec-flag.warn { background: color-mix(in srgb, var(--color-warning) 18%, transparent); color: var(--color-warning); }
+.rec-flag.bad { background: color-mix(in srgb, var(--color-error) 15%, transparent); color: var(--color-error); }
+.rec-flag.rise { background: color-mix(in srgb, var(--color-success) 12%, transparent); color: var(--color-success); }
+.rec-flag.fall { background: color-mix(in srgb, var(--color-error) 12%, transparent); color: var(--color-error); }
+
+.rec-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.rec-pill {
+    display: inline-flex; align-items: baseline; gap: 4px;
+    padding: 4px 9px; border-radius: var(--radius-md);
+    background: var(--surface-2); border: 1px solid var(--border-subtle);
+    font-size: 10px; color: var(--text-muted);
+}
+.rec-pill strong { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.rec-pill-i { font-size: 11px; }
+.rec-pill.standout { border-color: var(--color-success); background: color-mix(in srgb, var(--color-success) 10%, transparent); }
+.rec-pill.standout strong { color: var(--color-success); }
+
+/* Momentum */
+.rec-spark { position: relative; }
+.rec-spark svg { width: 100%; height: 34px; display: block; }
+.rec-spark-line { fill: none; stroke: var(--color-success); stroke-width: 1.8; vector-effect: non-scaling-stroke; }
+.rec-spark-area { fill: color-mix(in srgb, var(--color-success) 14%, transparent); stroke: none; }
+.rec-spark.down .rec-spark-line { stroke: var(--color-error); }
+.rec-spark.down .rec-spark-area { fill: color-mix(in srgb, var(--color-error) 12%, transparent); }
+.rec-spark circle { fill: currentColor; opacity: .55; }
+.rec-spark.up { color: var(--color-success); }
+.rec-spark.down { color: var(--color-error); }
+.rec-spark-label { display: block; font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); }
+.rec-spark-empty { font-size: 10.5px; color: var(--text-muted); padding: 6px 0; line-height: 1.5; }
+.rec-spark-empty strong { color: var(--text-secondary); }
+
+/* Fixture heatmap — blocks big enough to read, with the number behind the colour */
+.rec-fixtures { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 5px; }
+.rec-fix {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 7px 4px 6px; border-radius: var(--radius-md);
+    font-weight: 700; cursor: help; color: #111827;
+}
+.rec-fix-gw { font-size: 8px; opacity: .75; font-weight: 600; }
+.rec-fix-opp { font-size: 11.5px; white-space: nowrap; }
+.rec-fix-ha { font-size: 9px; opacity: .8; }
+.rec-fix-fdr { font-size: 9px; opacity: .85; font-family: var(--font-mono); }
+.rec-fix.fdr-1 { background: var(--fdr-1); }
+.rec-fix.fdr-2 { background: var(--fdr-2); }
+.rec-fix.fdr-3 { background: var(--fdr-3); }
+.rec-fix.fdr-4 { background: var(--fdr-4); color: #fff; }
+.rec-fix.fdr-5 { background: var(--fdr-5); color: #fff; }
+.rec-fix-none { background: var(--surface-3); color: var(--text-muted); font-weight: 500; }
+
+.rec-drivers { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.rec-drivers-l { font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.rec-driver { font-size: 10px; padding: 2px 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border-subtle); color: var(--text-secondary); cursor: help; }
+
+/* Chunky filter chips, replacing the plain text tabs */
+.rec-category-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.rec-category-tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 16px; border-radius: 999px;
+    border: 1px solid var(--border-default); background: var(--surface-1);
+    color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+.rec-category-tab:hover { border-color: var(--color-primary); color: var(--text-primary); transform: translateY(-1px); }
+.rec-category-tab.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+
+@media (max-width: 640px) {
+    .rec-grid { grid-template-columns: 1fr; }
+    .rec-card-v2.featured { padding: 16px; }
+    .rec-card-v2.featured .rec-name { font-size: 19px; }
+}
+
+.rec-pill.sample {
+    background: rgba(148, 163, 184, 0.12);
+    border-color: rgba(148, 163, 184, 0.3);
+    color: #94a3b8;
+}
+.rec-pill.sample strong { color: #cbd5e1; }
+
+/* ---- Recommendations layout ----------------------------------------- */
+/* The panel used to be the card grid itself. Now it stacks a full-width
+   featured card above .rec-grid, which does the column work — leaving it as a
+   grid made the featured card just another column and squeezed the rest into
+   a single stack. */
+.rec-category-panel.active {
+    display: block;
+    grid-template-columns: none;
+}
+
+/* The in-panel category row duplicates the sticky filter bar, which drives the
+   same state. Keep it in the DOM so the existing sync logic keeps resolving its
+   buttons, but show only one control to the user. */
+.rec-category-tabs { display: none; }
+
+/* Chunky chips belong on the control that is actually visible while scrolling. */
+#filterBar .fc-chip,
+#filterBar .fp-pill {
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+#filterBar .fc-chip:hover,
+#filterBar .fp-pill:hover { transform: translateY(-1px); border-color: var(--color-primary); }
+
+/* Full width, in normal flow. A two-column split looked balanced on paper but
+   the narrative column is always shorter than the evidence column, so it left a
+   dead zone the height of the fixture blocks. Instead the rows run full width
+   and the prose gets a measure cap so it stays readable. */
+@media (min-width: 900px) {
+    .rec-card-v2.featured .rec-verdict { max-width: 78ch; }
+    .rec-card-v2.featured .rec-pills { gap: 10px; }
+    .rec-card-v2.featured .rec-fixtures {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+        max-width: 760px;
+    }
+    .rec-card-v2.featured .rec-fix { padding: 10px 6px; }
+}
