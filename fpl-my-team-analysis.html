@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=6">
-    <link rel="stylesheet" href="styles/my-team.css?v=6">
-    <link rel="stylesheet" href="styles/v2-design.css?v=6">
-    <link rel="stylesheet" href="styles/compare-report.css?v=6">
+    <link rel="stylesheet" href="styles/common.css?v=7">
+    <link rel="stylesheet" href="styles/my-team.css?v=7">
+    <link rel="stylesheet" href="styles/v2-design.css?v=7">
+    <link rel="stylesheet" href="styles/compare-report.css?v=7">
 </head>
 <body>
 
@@ -1120,65 +1120,41 @@
             const starterAvg = starters.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(starters.length, 1);
             const benchAvg = bench.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(bench.length, 1);
             let healthScore = starterAvg * 0.80 + benchAvg * 0.20;
-            const healthFactors = [];
 
-            // Penalty: injured/unavailable starters
+            // One aggregated breakdown of what's dragging the score down, instead of
+            // a scrolling list of individually-phrased warnings that repeated the
+            // same underlying problem several ways.
             const injuredStarters = starters.filter(a => a.player.status === 'i' || a.player.status === 'u' || a.player.status === 's');
-            if (injuredStarters.length) {
-                healthScore -= injuredStarters.length * 5;
-                healthFactors.push({ icon: '🚨', text: `${injuredStarters.length} starter${injuredStarters.length > 1 ? 's' : ''} unavailable`, impact: 'negative' });
-            }
-            // Penalty: doubtful starters
             const doubtfulStarters = starters.filter(a => a.player.status === 'd');
-            if (doubtfulStarters.length) {
-                healthScore -= doubtfulStarters.length * 2;
-                healthFactors.push({ icon: '❓', text: `${doubtfulStarters.length} starter${doubtfulStarters.length > 1 ? 's' : ''} doubtful`, impact: 'negative' });
-            }
-            // Captain reliability
+            const toughFixtureStarters = starters.filter(a => ((a.fixtures || [])[0]?.difficulty || 3) >= 4);
+            const poorFormStarters = starters.filter(a => parseFloat(a.player.form) < 2.5 && !a.player.status);
+
+            healthScore -= injuredStarters.length * 5;
+            healthScore -= doubtfulStarters.length * 2;
+            healthScore -= poorFormStarters.length * 2;
+            healthScore -= Math.min(6, toughFixtureStarters.length * 1.5);
+
             const capAnalysis = starters.find(a => a.player.isCaptain);
             if (capAnalysis) {
-                if (capAnalysis.verdict === 'star') {
-                    healthScore += 3;
-                    healthFactors.push({ icon: '👑', text: `Captain ${capAnalysis.player.name} is a Star performer`, impact: 'positive' });
-                } else if (capAnalysis.verdict === 'sell') {
-                    healthScore -= 5;
-                    healthFactors.push({ icon: '👑', text: `Captain ${capAnalysis.player.name} flagged to Sell`, impact: 'negative' });
-                } else if (capAnalysis.verdict === 'monitor') {
-                    healthScore -= 2;
-                    healthFactors.push({ icon: '👑', text: `Captain ${capAnalysis.player.name} needs monitoring`, impact: 'warning' });
-                }
+                if (capAnalysis.verdict === 'star') healthScore += 3;
+                else if (capAnalysis.verdict === 'sell') healthScore -= 5;
+                else if (capAnalysis.verdict === 'monitor') healthScore -= 2;
             }
-            // Position depth: >50% of starters at a position flagged sell
-            [2, 3, 4].forEach(pos => {
-                const posStarters = starters.filter(a => a.player.position === pos);
-                const posSells = posStarters.filter(a => a.verdict === 'sell');
-                if (posStarters.length >= 2 && posSells.length > posStarters.length / 2) {
-                    healthScore -= 3;
-                    const posName = POSITION_CONFIG[pos]?.short || 'POS';
-                    healthFactors.push({ icon: '⚠️', text: `${posName} depth: ${posSells.length}/${posStarters.length} flagged to sell`, impact: 'negative' });
-                }
-            });
-            // Positive: lots of stars
-            if (stars.length >= 3) {
-                healthScore += 2;
-                healthFactors.push({ icon: '⭐', text: `${stars.length} Star performers in squad`, impact: 'positive' });
-            }
-            // Penalty: starters with very poor form
-            const poorFormStarters = starters.filter(a => parseFloat(a.player.form) < 2.5 && !a.player.status);
-            if (poorFormStarters.length) {
-                healthScore -= poorFormStarters.length * 2;
-                healthFactors.push({ icon: '📉', text: `${poorFormStarters.length} starter${poorFormStarters.length > 1 ? 's' : ''} in poor form (<2.5)`, impact: 'negative' });
-            }
+            if (stars.length >= 3) healthScore += 2;
 
-            // Sort health factors: negative first, then warning, then positive
-            const impactOrder = { negative: 0, warning: 1, positive: 2 };
-            healthFactors.sort((a, b) => (impactOrder[a.impact] ?? 1) - (impactOrder[b.impact] ?? 1));
+            const healthBreakdown = [
+                { count: injuredStarters.length, label: 'injured' },
+                { count: doubtfulStarters.length, label: 'doubtful' },
+                { count: toughFixtureStarters.length, label: 'tough fixtures' },
+                { count: poorFormStarters.length, label: 'out of form' },
+            ].filter(b => b.count > 0);
 
             const teamHealth = Math.max(0, Math.min(100, Math.round(healthScore)));
+            const suggestedMoves = buildSuggestedMoves(starters, injuredStarters, doubtfulStarters, capAnalysis);
 
             let html = '';
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
-            html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthFactors);
+            html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
             html += renderSquadFilterBar();
             html += renderSquadChartWidget();
             html += `<div id="sq-table-wrap">${renderSquadTable()}</div>`;
@@ -1239,7 +1215,7 @@
             return `<span class="price-change-badge ${dir}" title="Price has ${verb} by £${Math.abs(change).toFixed(1)}m this gameweek">${arrow}</span>`;
         }
 
-        function renderTeamOverview(health, sells, monitors, holds, stars, healthFactors) {
+        function renderTeamOverview(health, sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
             const circumference = 2 * Math.PI * 54;
             const healthColor = health >= 75 ? 'var(--verdict-hold)' : health >= 50 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
             const healthText = health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape' : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed';
@@ -1259,14 +1235,19 @@
                         </svg>
                     </div>
                     <div class="health-sublabel">${healthText}</div>
-                    ${healthFactors && healthFactors.length ? `<div class="health-factors">${healthFactors.map(f => `<div class="health-factor ${f.impact}">${f.icon} ${escHTML(f.text)}</div>`).join('')}</div>` : ''}
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
-                        ${sells.length ? `<span style="font-size:12px;color:var(--verdict-sell);font-weight:600;">● ${sells.length} Sell</span>` : ''}
-                        ${monitors.length ? `<span style="font-size:12px;color:var(--verdict-monitor);font-weight:600;">● ${monitors.length} Monitor</span>` : ''}
-                        ${stars.length ? `<span style="font-size:12px;color:var(--verdict-star);font-weight:600;">★ ${stars.length} Star</span>` : ''}
-                        <span style="font-size:12px;color:var(--verdict-hold);font-weight:600;">● ${holds.length} Hold</span>
+                    ${healthBreakdown && healthBreakdown.length
+                        ? `<div class="health-breakdown">${healthBreakdown.map(b => `${b.count} ${escHTML(b.label)}`).join(' · ')}</div>`
+                        : `<div class="health-breakdown">No injuries or fixture red flags</div>`}
+                    <div class="insight-moves">
+                        <div class="insight-moves-head">Do this week</div>
+                        ${renderSuggestedMoves(suggestedMoves || [])}
                     </div>
-                    ${renderLineupAlert()}
+                    <div class="health-verdict-counts">
+                        ${sells.length ? `<span class="hv-count sell">● ${sells.length} Sell</span>` : ''}
+                        ${monitors.length ? `<span class="hv-count monitor">● ${monitors.length} Monitor</span>` : ''}
+                        ${stars.length ? `<span class="hv-count star">★ ${stars.length} Star</span>` : ''}
+                        <span class="hv-count hold">● ${holds.length} Hold</span>
+                    </div>
                 </div>
                 ${renderSnapshotBody()}
                 ${renderManagerCard()}
@@ -1327,13 +1308,83 @@
             return new Map(analysisResults.map(a => [a.player.id, a]));
         }
 
-        // Realistic single-GW points projection for display — FPL's own expected-
-        // points-next-gameweek figure, already fixture- and form-aware upstream.
-        // Kept separate from computeQuickLineupScoreDetailed's total, which is a
-        // weighted ranking score (not a literal points value) used by Auto-Optimize
-        // to choose the best XI/captain.
+        // Expected FPL points for the coming gameweek, built from the scoring rules
+        // rather than read off FPL's ep_next. ep_next is heavily regressed early in a
+        // season — right now it's capped at 4.0 across the whole game and averages
+        // 1.95 for players with minutes — so summing it produced a Starting XI
+        // projection in the low 30s (a real XI scores ~45-60) and left every player
+        // bunched between 1.5 and 4.0, which is useless for comparing them.
+        //
+        // Returns the component breakdown so the same numbers can justify captaincy
+        // and bench-swap advice in the insights panel.
+        function projectPlayerPointsDetailed(player) {
+            const out = { total: 0, appearance: 0, attack: 0, cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, pStart: 0 };
+            if (!player) return out;
+            if (player.status === 'i' || player.status === 'u' || player.status === 's') return out;
+
+            const avail = player.status === 'd'
+                ? (player.chanceNextRound != null ? player.chanceNextRound : 50) / 100
+                : 1;
+
+            const games = computePlayerGamesPlayed(player);
+            const mins = player.minutes || 0;
+            const mpg = mins / Math.max(games, 1);
+            let pStart = mpg >= 80 ? 0.92 : mpg >= 60 ? 0.75 : mpg >= 30 ? 0.45 : mpg > 0 ? 0.2 : 0.08;
+            pStart *= avail;
+            out.pStart = pStart;
+
+            // Starters play most of the match; everyone else gets a cameo.
+            const expMins = pStart * 82 + (1 - pStart) * 12;
+            const min90 = expMins / 90;
+
+            // 2 pts for 60+ minutes, 1 otherwise.
+            out.appearance = pStart * 2 + (1 - pStart) * 0.5;
+
+            const fx = (player.fixtures || [])[0];
+            const fdr = fx ? (fx.difficulty || 3) : 3;
+            const attackAdj = 1 + (3 - fdr) * 0.10;
+
+            // Per-90 rates off a one-gameweek sample are wild (one goal = a huge
+            // xG/90), so regress them toward the position average until there's
+            // roughly five full matches of evidence.
+            const posAvg = positionAverages[player.position] || {};
+            const baseXgi = posAvg.xGIPer90 || 0.25;
+            const baseXg = baseXgi * (player.position === 4 ? 0.65 : player.position === 3 ? 0.5 : 0.25);
+            const baseXa = Math.max(0, baseXgi - baseXg);
+            const w = Math.min(1, mins / 450);
+            const xg90 = w * (mins > 0 ? (player.xG / mins) * 90 : 0) + (1 - w) * baseXg;
+            const xa90 = w * (mins > 0 ? (player.xA / mins) * 90 : 0) + (1 - w) * baseXa;
+
+            const goalPts = player.position <= 2 ? 6 : player.position === 3 ? 5 : 4;
+            out.attack = (xg90 * goalPts + xa90 * 3) * min90 * attackAdj;
+
+            const ta = teamAnalysis[player.teamId];
+            const conceded = ta && ta.matchesPlayed > 0 ? ta.avgConceded : 1.4;
+            let csProb = 0.33 - (conceded - 1.3) * 0.16 + (3 - fdr) * 0.06;
+            if (ta) csProb += (ta.defensePower - 50) / 600;
+            csProb = Math.max(0.03, Math.min(0.65, csProb));
+
+            const csPts = player.position <= 2 ? 4 : player.position === 3 ? 1 : 0;
+            out.cleanSheet = csProb * csPts * pStart;
+
+            if (player.position === 1) {
+                const saves90 = mins > 0 ? (player.saves / mins) * 90 : 2.5;
+                out.saves = (saves90 / 3) * min90;
+            }
+            // -1 per 2 goals conceded, only when the clean sheet doesn't happen.
+            if (player.position <= 2) {
+                out.conceded = -((conceded * (1 - csProb)) / 2) * pStart;
+            }
+
+            const bonusPerGame = games > 0 ? (player.bonus || 0) / games : 0;
+            out.bonus = Math.min(1.2, bonusPerGame) * pStart;
+
+            out.total = Math.max(0, out.appearance + out.attack + out.cleanSheet + out.saves + out.bonus + out.conceded);
+            return out;
+        }
+
         function predictedGWPoints(p) {
-            return Math.round((p.epNext || 0) * 10) / 10;
+            return Math.round(projectPlayerPointsDetailed(p).total * 10) / 10;
         }
 
         function computeProjectedXIScore() {
@@ -1580,6 +1631,137 @@
         // Compact version of the old standalone Lineup Optimizer section, folded directly
         // into the health-ring column: an affirmation when the XI is already best, or a
         // couple of tight one-line swap suggestions (capped, not a full card list) otherwise.
+        // Curated, ranked list of what to actually DO this week. Deliberately capped:
+        // a manager gets one free transfer, so dumping every underperformer (the old
+        // "10 Sell" behaviour) isn't advice, it's a data dump. At most two transfers
+        // are ever proposed, and everything carries the xP that justifies it.
+        const MAX_SUGGESTED_TRANSFERS = 2;
+        const MAX_SUGGESTED_MOVES = 4;
+
+        function buildSuggestedMoves(starters, injuredStarters, doubtfulStarters, capAnalysis) {
+            const moves = [];
+            const bank = (picksData?.entry_history?.bank || 0) / 10;
+
+            // --- 1. Transfers. Unavailable starters first (forced), then the biggest
+            // upgrade available within budget. Ranked by xP gained per transfer.
+            const transferCandidates = [];
+            const seen = new Set();
+
+            const considerForTransfer = (a, forced) => {
+                if (seen.has(a.player.id)) return;
+                const out = a.player;
+                const budget = (out.sellPrice || out.price) + bank;
+                const excludeIds = new Set(selectedPlayers.map(p => p.id));
+                const best = findTransferCandidates(out.position, budget, excludeIds)[0];
+                if (!best) return;
+                const gain = predictedGWPoints(best) - predictedGWPoints(out);
+                // Forced moves go through even at a small loss — the player can't play.
+                if (!forced && gain < 0.8) return;
+                seen.add(out.id);
+                transferCandidates.push({ out, in: best, gain, forced, budget });
+            };
+
+            injuredStarters.forEach(a => considerForTransfer(a, true));
+            doubtfulStarters
+                .filter(a => (a.player.chanceNextRound ?? 100) <= 50)
+                .forEach(a => considerForTransfer(a, true));
+            [...starters]
+                .filter(a => a.verdict === 'sell' || a.verdict === 'monitor')
+                .sort((x, y) => y.sellRating - x.sellRating)
+                .forEach(a => considerForTransfer(a, false));
+
+            transferCandidates
+                .sort((a, b) => (b.forced - a.forced) || (b.gain - a.gain))
+                .slice(0, MAX_SUGGESTED_TRANSFERS)
+                .forEach(t => {
+                    moves.push({
+                        icon: '🔥',
+                        kind: 'transfer',
+                        urgent: t.forced,
+                        title: `${t.forced ? 'Replace' : 'Upgrade'} ${t.out.name}`,
+                        detail: `${t.in.name} [${predictedGWPoints(t.in).toFixed(1)} xP] over ${t.out.name} [${predictedGWPoints(t.out).toFixed(1)} xP]`
+                            + `${t.gain > 0 ? ` — projected +${t.gain.toFixed(1)} pts` : ''} · budget £${t.budget.toFixed(1)}m`,
+                        actionLabel: 'View options',
+                        action: `openTransferPanel(${t.out.id})`
+                    });
+                });
+
+            // --- 2. Captaincy, always paired with the best alternative in the squad.
+            if (capAnalysis) {
+                const capXP = predictedGWPoints(capAnalysis.player);
+                let bestAlt = null, bestAltXP = -Infinity;
+                starters.forEach(a => {
+                    if (a.player.id === capAnalysis.player.id) return;
+                    const xp = predictedGWPoints(a.player);
+                    if (xp > bestAltXP) { bestAltXP = xp; bestAlt = a; }
+                });
+                if (bestAlt && bestAltXP - capXP >= 0.5) {
+                    moves.push({
+                        icon: '👑',
+                        kind: 'captain',
+                        urgent: true,
+                        title: `Change captain to ${bestAlt.player.name}`,
+                        detail: `${bestAlt.player.name} [${bestAltXP.toFixed(1)} xP] is a better captain option than ${capAnalysis.player.name} [${capXP.toFixed(1)} xP] — worth about +${((bestAltXP - capXP)).toFixed(1)} pts once doubled`,
+                        actionLabel: 'Compare',
+                        action: `openPairCompare(${bestAlt.player.id}, ${capAnalysis.player.id})`
+                    });
+                }
+            }
+
+            // --- 3. Bench swaps, each with the projected delta that justifies it.
+            computeLineupSuggestions().slice(0, 2).forEach(s => {
+                moves.push({
+                    icon: '🔄',
+                    kind: 'bench',
+                    urgent: false,
+                    title: `Start ${s.bench.player.name} over ${s.starter.player.name}`,
+                    detail: `Projected +${s.delta.toFixed(1)} pts (${s.benchScore.toFixed(1)} xP vs ${s.starterScore.toFixed(1)} xP)`,
+                    actionLabel: 'Compare',
+                    action: `openPairCompare(${s.bench.player.id}, ${s.starter.player.id})`
+                });
+            });
+
+            // --- 4. Risks worth knowing about but with no clean action this week.
+            const unactionedDoubts = doubtfulStarters.filter(a => !seen.has(a.player.id));
+            if (unactionedDoubts.length) {
+                const names = unactionedDoubts.slice(0, 3).map(a => a.player.name).join(', ');
+                moves.push({
+                    icon: '⚠️',
+                    kind: 'risk',
+                    urgent: false,
+                    title: `${unactionedDoubts.length} fitness doubt${unactionedDoubts.length > 1 ? 's' : ''}`,
+                    detail: `${names} — check team news before the deadline`,
+                    actionLabel: '',
+                    action: ''
+                });
+            }
+
+            // Urgent first, then the order they were generated (transfer > captain > bench > risk).
+            return moves
+                .map((m, i) => ({ ...m, _i: i }))
+                .sort((a, b) => (b.urgent - a.urgent) || (a._i - b._i))
+                .slice(0, MAX_SUGGESTED_MOVES);
+        }
+
+        function renderSuggestedMoves(moves) {
+            if (!moves.length) {
+                return `<div class="insight-move insight-move-clear">
+                    <span class="insight-move-icon">✅</span>
+                    <div class="insight-move-body"><div class="insight-move-title">No urgent moves</div>
+                    <div class="insight-move-detail">Lineup and captain look right for this gameweek.</div></div>
+                </div>`;
+            }
+            return moves.map(m => `
+                <div class="insight-move ${m.urgent ? 'urgent' : ''}">
+                    <span class="insight-move-icon">${m.icon}</span>
+                    <div class="insight-move-body">
+                        <div class="insight-move-title">${escHTML(m.title)}</div>
+                        <div class="insight-move-detail">${escHTML(m.detail)}</div>
+                        ${m.action ? `<button class="insight-move-action" onclick="${m.action}">${escHTML(m.actionLabel)}</button>` : ''}
+                    </div>
+                </div>`).join('');
+        }
+
         function renderLineupAlert() {
             const suggestions = computeLineupSuggestions();
             if (!suggestions.length) {
@@ -8043,9 +8225,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=6"></script>
-    <script src="scripts/common.js?v=6"></script>
-    <script src="scripts/sidebar-nav.js?v=6"></script>
+    <script src="scripts/compare-report.js?v=7"></script>
+    <script src="scripts/common.js?v=7"></script>
+    <script src="scripts/sidebar-nav.js?v=7"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
