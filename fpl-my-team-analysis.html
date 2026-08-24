@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=8">
-    <link rel="stylesheet" href="styles/my-team.css?v=8">
-    <link rel="stylesheet" href="styles/v2-design.css?v=8">
-    <link rel="stylesheet" href="styles/compare-report.css?v=8">
+    <link rel="stylesheet" href="styles/common.css?v=9">
+    <link rel="stylesheet" href="styles/my-team.css?v=9">
+    <link rel="stylesheet" href="styles/v2-design.css?v=9">
+    <link rel="stylesheet" href="styles/compare-report.css?v=9">
 </head>
 <body>
 
@@ -364,11 +364,18 @@
             if (text) document.getElementById('loadingText').textContent = text;
         }
 
+        // Position-level baselines. The minutes bar has to scale with the season:
+        // a flat 200 matches nobody until GW3, which silently collapsed every
+        // position onto one hardcoded fallback — so a goalkeeper was regressed
+        // toward the same 0.30 xGI/90 baseline as a striker.
         function computePositionAverages() {
             positionAverages = {};
+            const minMinutes = Math.min(200, Math.max(currentGW - 1, 1) * 60);
+            // Sensible per-position xGI/90 priors for when there's still no sample.
+            const FALLBACK_XGI90 = { 1: 0.01, 2: 0.08, 3: 0.28, 4: 0.45 };
             [1, 2, 3, 4].forEach(pos => {
-                const posPlayers = allPlayers.filter(p => p.position === pos && p.minutes >= 200);
-                if (posPlayers.length === 0) { positionAverages[pos] = { form: 3, ppg: 3, ppm: 15, xGIPer90: 0.3 }; return; }
+                const posPlayers = allPlayers.filter(p => p.position === pos && p.minutes >= minMinutes);
+                if (posPlayers.length === 0) { positionAverages[pos] = { form: 3, ppg: 3, ppm: 15, xGIPer90: FALLBACK_XGI90[pos] }; return; }
                 const avg = (arr, fn) => arr.reduce((s, p) => s + fn(p), 0) / arr.length;
                 positionAverages[pos] = {
                     form: avg(posPlayers, p => p.form),
@@ -1425,6 +1432,18 @@
             out.bonus = Math.min(1.2, bonusPerGame) * pStart;
 
             out.total = Math.max(0, out.appearance + out.attack + out.cleanSheet + out.saves + out.bonus + out.conceded);
+
+            // With little evidence our own numbers are shaky, and FPL's ep_next
+            // encodes things we can't see — a new signing with no minutes yet, a
+            // confirmed return, set-piece and penalty duty. So while the sample is
+            // thin, treat ep_next as a floor rather than letting a fit, expected
+            // starter be projected at almost nothing purely for lack of history.
+            // Once there's real evidence (~5 full matches) our model stands alone.
+            if (player.status !== 'i' && player.status !== 'u' && player.status !== 's') {
+                const evidence = Math.min(1, mins / 450);
+                const floor = (player.epNext || 0) * (1 - evidence);
+                out.total = Math.max(out.total, floor);
+            }
             return out;
         }
 
@@ -1432,15 +1451,49 @@
             return Math.round(projectPlayerPointsDetailed(p).total * 10) / 10;
         }
 
+        // Expected total for the gameweek, modelling the two things a plain sum of
+        // the XI misses and that real FPL scores always include.
         function computeProjectedXIScore() {
             const analysisMap = getSquadAnalysisMap();
             let total = 0;
+
             snapshotXI.forEach(id => {
                 const a = analysisMap.get(id);
-                if (!a) return;
-                const s = predictedGWPoints(a.player);
-                total += (id === snapshotCaptainId) ? s * 2 : s;
+                if (a) total += predictedGWPoints(a.player);
             });
+
+            // 1. Captaincy. The armband only doubles if the captain actually plays;
+            //    otherwise it passes to the vice. Weight each by their start odds
+            //    rather than assuming the captain always turns out.
+            const cap = analysisMap.get(snapshotCaptainId);
+            const vice = analysisMap.get(snapshotViceId);
+            if (cap) {
+                const capStart = projectPlayerPointsDetailed(cap.player).pStart;
+                total += predictedGWPoints(cap.player) * capStart;
+                if (vice) {
+                    total += predictedGWPoints(vice.player) * (1 - capStart) * projectPlayerPointsDetailed(vice.player).pStart;
+                }
+            }
+
+            // 2. Auto-subs. When a starter doesn't play, the first eligible bench
+            //    player replaces him, so some bench points land in the total. Value
+            //    each starter's no-show chance against the best bench cover.
+            const benchXP = snapshotBenchOrder
+                .map(id => analysisMap.get(id))
+                .filter(Boolean)
+                .map(a => predictedGWPoints(a.player));
+            if (benchXP.length) {
+                let benchIdx = 0;
+                snapshotXI.forEach(id => {
+                    const a = analysisMap.get(id);
+                    if (!a || benchIdx >= benchXP.length) return;
+                    const pNoShow = 1 - projectPlayerPointsDetailed(a.player).pStart;
+                    if (pNoShow <= 0.02) return; // nailed-on starter, no realistic sub
+                    total += benchXP[benchIdx] * pNoShow;
+                    benchIdx++; // each bench player can only cover one absence
+                });
+            }
+
             return Math.round(total * 10) / 10;
         }
 
@@ -8432,9 +8485,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=8"></script>
-    <script src="scripts/common.js?v=8"></script>
-    <script src="scripts/sidebar-nav.js?v=8"></script>
+    <script src="scripts/compare-report.js?v=9"></script>
+    <script src="scripts/common.js?v=9"></script>
+    <script src="scripts/sidebar-nav.js?v=9"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
