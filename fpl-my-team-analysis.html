@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=7">
-    <link rel="stylesheet" href="styles/my-team.css?v=7">
-    <link rel="stylesheet" href="styles/v2-design.css?v=7">
-    <link rel="stylesheet" href="styles/compare-report.css?v=7">
+    <link rel="stylesheet" href="styles/common.css?v=8">
+    <link rel="stylesheet" href="styles/my-team.css?v=8">
+    <link rel="stylesheet" href="styles/v2-design.css?v=8">
+    <link rel="stylesheet" href="styles/compare-report.css?v=8">
 </head>
 <body>
 
@@ -46,9 +46,9 @@
         <!-- Header Row -->
         <div class="header-row">
             <h1 class="page-title v2-page-heading"><i data-lucide="users" style="width:20px;height:20px;display:inline;vertical-align:middle;"></i> My Team Analysis</h1>
-            <button class="btn btn-secondary" id="settingsBtn" onclick="openSettings()" style="margin-left:auto;" aria-label="Analysis settings" title="Analysis settings"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
+            <button class="btn btn-secondary" id="helpBtn" onclick="openHelpOverlay()" style="margin-left:auto;" aria-label="How to use this page" title="How to use this page"><i data-lucide="help-circle" style="width:16px;height:16px;"></i></button>
+            <button class="btn btn-secondary" id="settingsBtn" onclick="openSettings()" aria-label="Analysis settings" title="Analysis settings"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
         </div>
-        <div class="squad-hint-banner v2-page-hint hidden" id="squadHintBanner">Click any player for full stats · Select 2+ with the checkbox to run an AI Scouting Report</div>
         <!-- Hidden input used by loadTeamById() -->
         <input type="hidden" id="teamIdInput">
 
@@ -179,6 +179,54 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text" id="loadingText">Analyzing your team...</div>
+    </div>
+
+    <!-- Help / onboarding overlay. Opt-in from the header, replacing the two
+         permanent instruction banners that used to sit above the squad. -->
+    <div class="detail-overlay" id="helpOverlay" onclick="closeHelpOverlay(event)">
+        <div class="detail-panel help-panel">
+            <div class="detail-header">
+                <div class="player-name"><i data-lucide="help-circle" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> How to use this page</div>
+                <button class="detail-close" onclick="closeHelpOverlay()" aria-label="Close">&times;</button>
+            </div>
+            <div class="detail-body">
+                <div class="help-step">
+                    <span class="help-step-icon">👆</span>
+                    <div>
+                        <div class="help-step-title">Swap two players</div>
+                        <div class="help-step-text">Click a player on the pitch, then click another in the same position. Valid targets glow while you're choosing; click the first player again to cancel.</div>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-icon">🅲</span>
+                    <div>
+                        <div class="help-step-title">Set captain &amp; vice</div>
+                        <div class="help-step-text">Use the small <strong>C</strong> and <strong>V</strong> buttons above each player. The captain's projected score is doubled.</div>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-icon">✨</span>
+                    <div>
+                        <div class="help-step-title">Auto-Optimize</div>
+                        <div class="help-step-text">Builds the highest-projected valid lineup for you — always a legal formation, never just the top 11 scorers.</div>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-icon">⚖️</span>
+                    <div>
+                        <div class="help-step-title">AI Scouting Report</div>
+                        <div class="help-step-text">Tick the checkbox on any two or more players — in the squad table or a transfer panel — and an action bar appears at the bottom to compare them.</div>
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-icon">📅</span>
+                    <div>
+                        <div class="help-step-title">Fixture calendar</div>
+                        <div class="help-step-text">Click the fixture chips on any squad row to see that club's next 10 gameweeks, including blanks and doubles.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Settings Modal (simplified) -->
@@ -724,7 +772,6 @@
                 // of the squad overview (renderManagerCard, called from
                 // renderTeamOverview) — analyzeTeam() below runs after managerData and
                 // picksData are already assigned, so it reads them straight off those.
-                document.getElementById('squadHintBanner').classList.remove('hidden');
 
                 localStorage.setItem('fpl_team_id', teamId);
                 showNavTeamBadge(teamId);
@@ -745,7 +792,6 @@
                     ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
                     : 'Something went wrong loading your team. Please try again.';
                 updateStatus(friendly, 'error');
-                document.getElementById('squadHintBanner').classList.add('hidden');
                 document.getElementById('tabBar').classList.remove('visible');
                 document.getElementById('landingPage').style.display = '';
             } finally {
@@ -1221,7 +1267,6 @@
             const healthText = health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape' : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed';
 
             return `
-            <div class="squad-hint-banner"><span>👆</span> Click a player, then another in the same position to swap · C/V toggles set captain &amp; vice · ✨ Auto-Optimize builds a valid lineup for you</div>
             <div class="team-overview">
                 <div class="health-ring-container">
                     <div class="health-ring">
@@ -1414,19 +1459,73 @@
                     <div class="sq-snapshot-score">Projected Starting XI Score: <strong>${projectedScore}</strong> pts</div>
                 </div>
                 ${snapshotOptimizeSummary ? `<div class="sq-optimize-summary"><i data-lucide="sparkles" style="width:13px;height:13px;flex-shrink:0;"></i> ${snapshotOptimizeSummary}</div>` : ''}
-                <div class="pitch-container">
-                    <div class="pitch-rows">
-                        <div class="pitch-row">${byPos(4).map(a => renderSnapshotCard(a, false)).join('')}</div>
-                        <div class="pitch-row">${byPos(3).map(a => renderSnapshotCard(a, false)).join('')}</div>
-                        <div class="pitch-row">${byPos(2).map(a => renderSnapshotCard(a, false)).join('')}</div>
-                        <div class="pitch-row">${byPos(1).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                <div class="pitch-field">
+                    <div class="pitch-grass">
+                        <div class="pitch-markings" aria-hidden="true">
+                            <span class="pm-halfway"></span>
+                            <span class="pm-circle"></span>
+                            <span class="pm-box pm-box-top"></span>
+                            <span class="pm-box-6 pm-box-6-top"></span>
+                            <span class="pm-box pm-box-bottom"></span>
+                            <span class="pm-box-6 pm-box-6-bottom"></span>
+                        </div>
+                        <div class="pitch-rows">
+                            <div class="pitch-row">${byPos(4).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                            <div class="pitch-row">${byPos(3).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                            <div class="pitch-row">${byPos(2).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                            <div class="pitch-row">${byPos(1).map(a => renderSnapshotCard(a, false)).join('')}</div>
+                        </div>
+                    </div>
+                    <!-- Bench lives inside the field wrapper so it reads as part of
+                         the same surface rather than loose circles under it. -->
+                    <div class="pitch-dugout">
+                        <div class="dugout-label">Dugout · substitutes</div>
+                        <div class="dugout-cards">${benchAnalyses.map(a => renderSnapshotCard(a, true)).join('')}</div>
                     </div>
                 </div>
-                <div class="pitch-bench">
-                    <span class="bench-label">Bench</span>
-                    ${benchAnalyses.map(a => renderSnapshotCard(a, true)).join('')}
-                </div>
             </div>`;
+        }
+
+        function teamBadgeUrl(teamId) {
+            const code = teams[teamId]?.code;
+            return code ? `https://resources.premierleague.com/premierleague/badges/50/t${code}.png` : '';
+        }
+
+        // A pre-kickoff number is a projection, not a score — showing a bare "2.4 pts"
+        // next to a player who hasn't kicked off reads as though he's already scored
+        // it. Label the projection as xP, and switch to real points with a LIVE/FT
+        // marker once his match is under way.
+        function getPlayerGwState(player) {
+            const fixtures = (allFixtures || []).filter(f =>
+                f.event === currentGW && (f.team_h === player.teamId || f.team_a === player.teamId));
+
+            if (!fixtures.length) {
+                return { cls: 'xp', value: `${predictedGWPoints(player).toFixed(1)} xP`, note: 'Blank GW' };
+            }
+
+            const anyStarted = fixtures.some(f => f.started);
+            if (!anyStarted) {
+                const ko = fixtures[0].kickoff_time ? new Date(fixtures[0].kickoff_time) : null;
+                let note = '';
+                if (ko && !isNaN(ko)) {
+                    const today = new Date();
+                    const sameDay = ko.toDateString() === today.toDateString();
+                    const time = ko.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    note = sameDay ? `Today ${time}` : ko.toLocaleDateString([], { weekday: 'short' }) + ` ${time}`;
+                }
+                return { cls: 'xp', value: `${predictedGWPoints(player).toFixed(1)} xP`, note };
+            }
+
+            // Match started — report what he's actually scored where we have it.
+            const history = (playersDetailData?.players || []).find(x => x.id === player.id)?.history || [];
+            const rows = history.filter(h => h.round === currentGW);
+            const pts = rows.length ? rows.reduce((s, h) => s + (h.total_points || 0), 0) : null;
+            const allDone = fixtures.every(f => f.finished_provisional);
+            return {
+                cls: allDone ? 'final' : 'live',
+                value: pts != null ? `${pts} Pts` : '— Pts',
+                note: allDone ? 'FT' : 'LIVE'
+            };
         }
 
         function renderSnapshotCard(a, isBench) {
@@ -1435,23 +1534,52 @@
             const isCap = p.id === snapshotCaptainId;
             const isVice = p.id === snapshotViceId;
             const isSwapSelected = snapshotSwapSource === p.id;
-            const predictedScore = predictedGWPoints(p);
+            const gw = getPlayerGwState(p);
             const nextFx = (p.fixtures || [])[0];
-            const nextFxText = nextFx ? `${nextFx.isHome ? 'vs' : '@'} ${escHTML(nextFx.opponent)}` : 'No fixture';
+            const fixtureTag = nextFx
+                ? `<span class="pcard-fixture fdr-${nextFx.difficulty || 3}">${escHTML(nextFx.opponent)} <em>${nextFx.isHome ? 'H' : 'A'}</em></span>`
+                : `<span class="pcard-fixture fdr-3">No fixture</span>`;
 
-            return `<div class="pitch-player snapshot-player ${isSwapSelected ? 'swap-selected' : ''}" onclick="snapshotSwapClick(${p.id})">
-                <div class="snapshot-cv-toggles">
-                    <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make captain (doubles predicted score)">C</button>
-                    <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make vice-captain">V</button>
+            // Mid-swap, mark every legal destination and dim the rest. Making the
+            // formation rule visible is what replaced the instruction text.
+            let swapClass = '';
+            let swapTitle = 'Click or drag to swap';
+            if (snapshotSwapSource !== null) {
+                if (isSwapSelected) {
+                    swapClass = 'swap-selected';
+                    swapTitle = 'Click again to cancel';
+                } else if (canSnapshotSwap(snapshotSwapSource, p.id)) {
+                    swapClass = 'swap-target';
+                    const src = getSquadAnalysisMap().get(snapshotSwapSource);
+                    swapTitle = src ? `Swap with ${src.player.name}` : 'Valid swap';
+                } else {
+                    swapClass = 'swap-blocked';
+                    swapTitle = 'Would leave an invalid formation';
+                }
+            }
+
+            const badge = teamBadgeUrl(p.teamId);
+            return `<div class="pcard ${a.verdict} ${isBench ? 'pcard-bench' : ''} ${swapClass} ${injured ? 'pcard-injured' : ''}"
+                    draggable="true"
+                    onclick="snapshotSwapClick(${p.id})"
+                    ondragstart="snapshotDragStart(event, ${p.id})"
+                    ondragover="snapshotDragOver(event, ${p.id})"
+                    ondrop="snapshotDrop(event, ${p.id})"
+                    ondragend="snapshotDragEnd()"
+                    title="${escHTML(swapTitle)}">
+                <div class="pcard-cv">
+                    <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make Captain">C</button>
+                    <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make Vice-Captain">V</button>
                 </div>
-                <div class="pitch-player-node ${a.verdict} ${injured ? 'injured' : ''}" style="${isBench ? 'width:36px;height:36px;font-size:9px;' : ''}">
-                    ${escHTML(p.team)}
+                <div class="pcard-crest">
+                    ${badge ? `<img src="${badge}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+                    <span class="pcard-crest-fallback">${escHTML(p.team)}</span>
                     ${injuryBadge(p)}
                     ${marketBadge(p)}
                 </div>
-                <div class="pitch-player-name">${escHTML(p.name)}</div>
-                <div class="pitch-player-fixture">${nextFxText}</div>
-                <div class="pitch-player-pts" title="Predicted GW score">${predictedScore} pts</div>
+                <div class="pcard-name">${escHTML(p.name)}</div>
+                ${fixtureTag}
+                <div class="pcard-pts ${gw.cls}">${escHTML(gw.value)}${gw.note ? `<span class="pcard-pts-note">${escHTML(gw.note)}</span>` : ''}</div>
             </div>`;
         }
 
@@ -1466,6 +1594,64 @@
         // reorders bench), clicking the same player again cancels. Cross-position
         // formation changes are handled separately by Auto-Optimize (solveQuickLineup),
         // so same-position-only here means we never need to re-validate formation legality.
+        // Is moving these two players legal? Previously this was "same position
+        // only", which blocked plenty of real FPL moves — bringing a forward on for
+        // a midfielder is fine as long as the XI still has 1 GK / 3+ DEF / 2+ MID /
+        // 1+ FWD. Now the resulting formation is simulated and checked instead, so
+        // the pitch can highlight exactly what's droppable.
+        function canSnapshotSwap(sourceId, targetId) {
+            if (sourceId == null || targetId == null || sourceId === targetId) return false;
+            const map = getSquadAnalysisMap();
+            const src = map.get(sourceId), tgt = map.get(targetId);
+            if (!src || !tgt) return false;
+
+            const srcInXI = snapshotXI.has(sourceId);
+            const tgtInXI = snapshotXI.has(targetId);
+
+            // Both benched: reordering the substitute priority is always allowed.
+            if (!srcInXI && !tgtInXI) return true;
+            // Both starting: nothing would change on the pitch.
+            if (srcInXI && tgtInXI) return false;
+
+            // After the swap each of the two changes sides, so its new onBench flag
+            // equals whether it was in the XI before (in XI -> now benched, and
+            // vice versa). Everyone else keeps their current side.
+            const simulated = analysisResults.map(a => ({
+                position: a.player.position,
+                onBench: a.player.id === sourceId ? srcInXI
+                       : a.player.id === targetId ? tgtInXI
+                       : !snapshotXI.has(a.player.id)
+            }));
+            return isValidFormation(simulated);
+        }
+
+        function performSnapshotSwap(sourceId, targetId) {
+            if (!canSnapshotSwap(sourceId, targetId)) {
+                updateStatus('That swap would leave an invalid formation', 'error');
+                snapshotSwapSource = null;
+                refreshSnapshot();
+                return;
+            }
+
+            const srcInXI = snapshotXI.has(sourceId);
+            const tgtInXI = snapshotXI.has(targetId);
+            if (srcInXI === tgtInXI) {
+                const i = snapshotBenchOrder.indexOf(sourceId), j = snapshotBenchOrder.indexOf(targetId);
+                if (i > -1 && j > -1) {
+                    [snapshotBenchOrder[i], snapshotBenchOrder[j]] = [snapshotBenchOrder[j], snapshotBenchOrder[i]];
+                }
+            } else if (srcInXI) {
+                snapshotXI.delete(sourceId); snapshotXI.add(targetId);
+                snapshotBenchOrder[snapshotBenchOrder.indexOf(targetId)] = sourceId;
+            } else {
+                snapshotXI.delete(targetId); snapshotXI.add(sourceId);
+                snapshotBenchOrder[snapshotBenchOrder.indexOf(sourceId)] = targetId;
+            }
+            snapshotSwapSource = null;
+            snapshotOptimizeSummary = '';
+            refreshSnapshot();
+        }
+
         function snapshotSwapClick(playerId) {
             if (snapshotSwapSource === null) {
                 snapshotSwapSource = playerId;
@@ -1473,33 +1659,43 @@
                 return;
             }
             const sourceId = snapshotSwapSource;
-            snapshotSwapSource = null;
-            if (sourceId === playerId) { refreshSnapshot(); return; }
+            if (sourceId === playerId) { snapshotSwapSource = null; refreshSnapshot(); return; }
+            performSnapshotSwap(sourceId, playerId);
+        }
 
-            const analysisMap = getSquadAnalysisMap();
-            const srcA = analysisMap.get(sourceId);
-            const tgtA = analysisMap.get(playerId);
-            if (!srcA || !tgtA || srcA.player.position !== tgtA.player.position) {
-                updateStatus('Swaps must be between players in the same position', 'error');
+        // ===== DRAG & DROP =====
+        let snapshotDragId = null;
+
+        function snapshotDragStart(event, playerId) {
+            snapshotDragId = playerId;
+            snapshotSwapSource = playerId; // reuse the same highlight pass as click-to-swap
+            try { event.dataTransfer.setData('text/plain', String(playerId)); } catch (e) { /* older browsers */ }
+            if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+            refreshSnapshot();
+        }
+
+        function snapshotDragOver(event, playerId) {
+            if (snapshotDragId === null || !canSnapshotSwap(snapshotDragId, playerId)) return;
+            event.preventDefault(); // only a preventDefault'd dragover accepts a drop
+            if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+        }
+
+        function snapshotDrop(event, playerId) {
+            event.preventDefault();
+            const sourceId = snapshotDragId;
+            snapshotDragId = null;
+            if (sourceId === null || sourceId === playerId) {
+                snapshotSwapSource = null;
                 refreshSnapshot();
                 return;
             }
+            performSnapshotSwap(sourceId, playerId);
+        }
 
-            const srcInXI = snapshotXI.has(sourceId);
-            const tgtInXI = snapshotXI.has(playerId);
-            if (srcInXI === tgtInXI) {
-                if (!srcInXI) {
-                    const i = snapshotBenchOrder.indexOf(sourceId), j = snapshotBenchOrder.indexOf(playerId);
-                    [snapshotBenchOrder[i], snapshotBenchOrder[j]] = [snapshotBenchOrder[j], snapshotBenchOrder[i]];
-                }
-            } else if (srcInXI) {
-                snapshotXI.delete(sourceId); snapshotXI.add(playerId);
-                snapshotBenchOrder[snapshotBenchOrder.indexOf(playerId)] = sourceId;
-            } else {
-                snapshotXI.delete(playerId); snapshotXI.add(sourceId);
-                snapshotBenchOrder[snapshotBenchOrder.indexOf(sourceId)] = playerId;
-            }
-            snapshotOptimizeSummary = '';
+        function snapshotDragEnd() {
+            if (snapshotDragId === null) return; // a successful drop already tidied up
+            snapshotDragId = null;
+            snapshotSwapSource = null;
             refreshSnapshot();
         }
 
@@ -1584,12 +1780,12 @@
         // ===== PHASE 1: LINEUP OPTIMIZER ("11 vs. bench") =====
         const POS_SHORT_MAP = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
 
+        // Single source of truth for "what will this player score this week", so the
+        // bench-swap advice quotes the same xP the player's card shows. These used to
+        // diverge — the panel would claim "2.0 xP vs 0.0 xP" for two players whose
+        // cards read 3.1 xP and 0.8 xP.
         function projectedScore(player) {
-            try {
-                const cp = buildComparePlayer(player.id);
-                if (cp && cp.l5 && cp.l5.games > 0) return calculateExpectedPoints(cp, POS_SHORT_MAP[player.position]);
-            } catch (e) { /* fall through to form-based estimate */ }
-            return player.form || 0;
+            return predictedGWPoints(player);
         }
 
         function computeLineupSuggestions() {
@@ -6792,6 +6988,17 @@
             document.getElementById('settingsOverlay').classList.remove('show');
         }
 
+        function openHelpOverlay() {
+            document.getElementById('helpOverlay').classList.add('show');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function closeHelpOverlay(event) {
+            // Only dismiss on a click of the backdrop itself, not the panel inside it.
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('helpOverlay').classList.remove('show');
+        }
+
         function applyPreset(preset) {
             if (preset === 'aggressive') {
                 userSettings = { sellSensitivity: 1.3, fixtureWeight: 1.4, formWeight: 1.2, valueWeight: 1.3, minutesThreshold: 70, premiumHarshness: 1.3 };
@@ -8225,9 +8432,9 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/compare-report.js?v=7"></script>
-    <script src="scripts/common.js?v=7"></script>
-    <script src="scripts/sidebar-nav.js?v=7"></script>
+    <script src="scripts/compare-report.js?v=8"></script>
+    <script src="scripts/common.js?v=8"></script>
+    <script src="scripts/sidebar-nav.js?v=8"></script>
     <script>initIcons();</script>
     <script>
     // Isolated team ID auto-load — runs independently of main script
