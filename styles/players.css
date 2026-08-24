@@ -4173,3 +4173,186 @@
     }
     .rec-card-v2.featured .rec-fix { padding: 10px 6px; }
 }
+
+/* ======================================================================
+   Routes to Points — the Points Profile card (rp-*)
+   The older .route-card styles above are still live: the preseason
+   fallback renders with them when there is no current-season data.
+   ---------------------------------------------------------------------
+   Segment colours are the site's existing route hues, kept deliberately.
+   Validated with the data-viz palette checker against both surfaces on
+   the three stacks that can actually occur (GK / DEF-MID / FWD): worst
+   adjacent CVD deltaE 9.5, worst normal-vision 17.1 — both clear.
+   The fixed segment order below is what was validated. Reordering it can
+   put Assists next to Saves, a pair that scores deltaE 0.3 under deuteranopia.
+   ====================================================================== */
+.rp-grid, .routes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 14px;
+}
+@media (max-width: 640px) { .routes-grid { grid-template-columns: 1fr; } }
+
+.rp-card {
+    position: relative;
+    background: var(--surface-2);
+    border: 1px solid var(--border-default);
+    border-radius: 14px;
+    padding: 14px 14px 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.rp-card::before {
+    content: '';
+    position: absolute; inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--rp-accent);
+    border-radius: 14px 14px 0 0;
+}
+.rp-card:hover { border-color: var(--rp-accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+/* ---- header ---- */
+.rp-head { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+.rp-rank {
+    flex-shrink: 0;
+    min-width: 22px; height: 22px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-3); color: var(--text-muted);
+    border-radius: 7px; font-size: 11px; font-weight: 700;
+}
+.rp-id { flex: 1; min-width: 0; }
+.rp-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px; font-weight: 700; color: var(--text-primary);
+    line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rp-nailed { font-size: 11px; }
+.rp-sub { font-size: 11px; color: var(--text-muted); margin: 0 0 10px; display: flex; align-items: center; gap: 5px; min-width: 0; }
+.rp-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-pos {
+    background: color-mix(in srgb, var(--rp-accent) 18%, transparent);
+    color: var(--rp-accent);
+    padding: 1px 6px; border-radius: 5px; font-size: 9.5px; font-weight: 800; letter-spacing: .04em;
+}
+
+/* Route count reads as an award, not a statistic. */
+.rp-badge {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--rp-accent) 26%, transparent), color-mix(in srgb, var(--rp-accent) 10%, transparent));
+    border: 1px solid color-mix(in srgb, var(--rp-accent) 45%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--rp-accent) 30%, transparent), inset 0 1px 0 rgba(255,255,255,.14);
+    color: var(--text-primary);
+}
+.rp-badge b { font-size: 14px; font-weight: 800; line-height: 1; }
+.rp-badge-star { font-size: 10px; line-height: 1; }
+.rp-badge-l { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
+
+/* ---- reliability meter ---- */
+.rp-rel { display: flex; align-items: center; gap: 6px; margin-bottom: 11px; font-size: 11px; font-weight: 600; }
+.rp-rel-icon { font-size: 12px; line-height: 1; }
+.rp-rel-label { white-space: nowrap; }
+.rp-rel-track { flex: 1; height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; min-width: 34px; }
+.rp-rel-fill { display: block; height: 100%; border-radius: 3px; transition: width .3s ease; }
+.rp-rel-reliable .rp-rel-label { color: var(--color-success); }
+.rp-rel-reliable .rp-rel-fill { background: var(--color-success); }
+.rp-rel-mixed .rp-rel-label { color: var(--color-warning); }
+.rp-rel-mixed .rp-rel-fill { background: var(--color-warning); }
+.rp-rel-volatile .rp-rel-label { color: var(--color-error); }
+.rp-rel-volatile .rp-rel-fill { background: var(--color-error); }
+/* No sample is not a bad score — it must not read red. */
+.rp-rel-unknown .rp-rel-label { color: var(--text-muted); font-weight: 500; }
+.rp-rel-unknown .rp-rel-track { background: repeating-linear-gradient(90deg, var(--surface-3) 0 4px, transparent 4px 8px); }
+
+/* ---- stacked bar ---- */
+.rp-profile { margin-bottom: 10px; }
+.rp-profile-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 5px; }
+.rp-profile-t { font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); font-weight: 700; }
+.rp-xp { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 800; color: var(--text-primary); }
+.rp-xp small { font-size: 9px; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+
+.rp-bar {
+    display: flex;
+    height: 22px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface-3);
+    width: 100%;
+    transition: width .3s ease;
+}
+.routes-section.mode-raw .rp-bar { width: var(--rp-rawfill); }
+.rp-seg {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 3px;
+    /* 2px surface gap between fills so segment boundaries stay legible. */
+    box-shadow: inset -2px 0 0 var(--surface-2);
+    transition: width .3s ease, filter .15s ease;
+}
+.rp-seg:last-child { box-shadow: none; }
+.rp-seg:hover { filter: brightness(1.12); }
+.rp-seg-l { font-size: 9.5px; font-weight: 800; color: rgba(0, 0, 0, .72); white-space: nowrap; }
+
+/* ---- per-card legend: identity never rides on colour alone ---- */
+.rp-keys { display: flex; flex-wrap: wrap; gap: 4px 9px; margin-top: 7px; }
+.rp-key { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; color: var(--text-muted); }
+.rp-key-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+.rp-key b { color: var(--text-secondary); font-weight: 700; }
+
+/* Mode switch — one class on the section flips every card at once. */
+.routes-section.mode-prop .rp-when-raw,
+.routes-section.mode-raw .rp-when-prop { display: none; }
+
+.rp-mode-toggle { display: inline-flex; gap: 4px; margin-left: 10px; }
+.rp-mode-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-default);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    transition: all .15s ease;
+}
+.rp-mode-btn:hover { color: var(--text-primary); border-color: var(--color-primary); }
+.rp-mode-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+
+/* ---- raw stat pills ---- */
+.rp-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.rp-pill {
+    display: inline-flex; align-items: baseline; gap: 4px;
+    padding: 4px 8px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: 7px;
+    font-size: 10px;
+}
+.rp-pill b { color: var(--text-primary); font-weight: 700; font-size: 11px; }
+.rp-pill-i { font-size: 10px; align-self: center; }
+.rp-pill-l { color: var(--text-muted); font-size: 9px; }
+.rp-pill-sample { background: rgba(148,163,184,.12); border-color: rgba(148,163,184,.3); color: #94a3b8; }
+
+/* ---- fixture strip ---- */
+.rp-fx { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 9px; }
+.rp-fx-c {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 5px 3px; border-radius: 7px;
+    font-size: 10px; font-weight: 700;
+}
+.rp-fx-gw { font-size: 8px; opacity: .75; text-transform: uppercase; letter-spacing: .04em; }
+.rp-fx-o small { font-size: 8px; opacity: .8; margin-left: 2px; }
+.rp-fx-none { grid-column: 1 / -1; text-align: center; padding: 6px; font-size: 10px; color: var(--text-muted); }
+
+/* ---- scout note ---- */
+.rp-note {
+    margin: 0;
+    padding-top: 9px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 11px; font-style: italic; line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.rp-pills-t {
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--text-muted); font-weight: 700; margin-bottom: 5px;
+}

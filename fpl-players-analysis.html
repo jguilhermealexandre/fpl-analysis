@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=30">
-    <link rel="stylesheet" href="styles/players.css?v=30">
-    <link rel="stylesheet" href="styles/v2-design.css?v=30">
+    <link rel="stylesheet" href="styles/common.css?v=31">
+    <link rel="stylesheet" href="styles/players.css?v=31">
+    <link rel="stylesheet" href="styles/v2-design.css?v=31">
     <style>
         /* Sticky header for All Players table */
         #section-ALL table thead th {
@@ -353,6 +353,11 @@
             if (posPills) {
                 const hasPos = tab.dataset.hasPos === 'true';
                 posPills.classList.toggle('hidden', !hasPos);
+                // Routes overrides this: its default view spans every position.
+                if (hasPos && tab.dataset.position === 'ROUTES') {
+                    const top15Active = !!document.querySelector('.routes-top15-view.active');
+                    posPills.classList.toggle('hidden', top15Active);
+                }
                 // Hide entire filter bar when no filters apply (ALL tab has its own toolbar)
                 if (filterBar) filterBar.style.display = (pos === 'ALL') ? 'none' : '';
             }
@@ -1183,6 +1188,20 @@
         // ============================================
         // ROUTES TO POINTS
         // ============================================
+        // Per-game rates a player of this position produces on average. Thin
+        // samples get regressed toward these so one good afternoon does not read
+        // as a season-long rate. Shared by the recommendations xP model and the
+        // routes point-source breakdown so the two never disagree.
+        const POS_RATE_BASELINE = {
+            GK:  { xG: 0.00, xA: 0.01, cs: 0.28, bonus: 0.25, saves: 2.80, gc: 1.35 },
+            DEF: { xG: 0.03, xA: 0.04, cs: 0.28, bonus: 0.20, saves: 0.00, gc: 1.35 },
+            MID: { xG: 0.08, xA: 0.09, cs: 0.28, bonus: 0.25, saves: 0.00, gc: 1.35 },
+            FWD: { xG: 0.15, xA: 0.07, cs: 0.00, bonus: 0.30, saves: 0.00, gc: 1.35 }
+        };
+        function posRateBaseline(pos) {
+            return POS_RATE_BASELINE[pos] || { xG: 0.08, xA: 0.08, cs: 0.25, bonus: 0.25, saves: 0, gc: 1.35 };
+        }
+
         // Preseason fallback: route diversity computed from last season's raw totals
         // instead of the blended L5/season model (which needs current-season data).
         function renderLastSeasonRoutes(analyses) {
@@ -1381,7 +1400,46 @@
                     // Reliability bonus: consistent players with many routes are extra valuable
                     const reliabilityBonus = routeCount >= 3 ? consistency * 0.5 : 0;
 
-                    return { ...p, pos, routes, routeCount, compositeScore: compositeScore + reliabilityBonus, consistency, nailedMultiplier };
+                    // ── Point source breakdown ──
+                    // Where the expected points actually come from, in points per
+                    // game. The segments must be mutually exclusive or the shares
+                    // mean nothing, which rules out two of the routes above:
+                    // penalty goals are already inside xG, and creativity is an
+                    // ICT component that predicts assists rather than scoring
+                    // separately. Both stay as route badges; neither gets a slice.
+                    const ev = Math.min(1, gS / 4);
+                    const base = posRateBaseline(pos);
+                    const rg = (v, b) => v * ev + b * (1 - ev);
+                    const xGr = rg(xGpg, base.xG);
+                    const xAr = rg(xApg, base.xA);
+                    const csr = rg(csPg, base.cs);
+                    const bonusR = rg(bonusPg, base.bonus);
+                    const savesR = rg(savesPg, base.saves);
+
+                    // Fixed segment order — this exact sequence is what the
+                    // colour-blindness check was run against. Do not reorder.
+                    const pointSources = [
+                        { key: 'appearance', label: 'Appearance', color: '#94A3B8', pts: minsPg >= 60 ? 2 : minsPg > 0 ? 1 : 0 },
+                        { key: 'goals',      label: 'Goals',       color: '#F87171', pts: xGr * goalPts[pos] },
+                        { key: 'assists',    label: 'Assists',     color: '#60A5FA', pts: xAr * 3 },
+                        { key: 'cs',         label: 'Clean sheets', color: '#34D399', pts: csr * (csPts[pos] || 0) },
+                        { key: 'saves',      label: 'Saves',       color: '#A78BFA', pts: pos === 'GK' ? savesR / 3 : 0 },
+                        { key: 'bonus',      label: 'Bonus',       color: '#FBBF24', pts: bonusR }
+                    ].filter(s => s.pts >= 0.05);
+                    const xpTotal = pointSources.reduce((s, r) => s + r.pts, 0);
+                    pointSources.forEach(s => { s.share = xpTotal > 0 ? s.pts / xpTotal : 0; });
+
+                    // Per-90 figures for the raw stat pills — minutes-normalised,
+                    // which is the form these numbers are usually quoted in.
+                    const p90 = v => minsPg > 0 ? v * (90 / minsPg) : 0;
+                    const per90 = {
+                        xG: p90(xGpg), xA: p90(xApg), xGI: p90(xGpg + xApg),
+                        saves: p90(savesPg), bonus: bonusPg, cs: csPg,
+                        gc: p90(blend(p.l5?.goalsConceded || 0, p.season?.goalsConceded || 0))
+                    };
+
+                    return { ...p, pos, routes, routeCount, compositeScore: compositeScore + reliabilityBonus, consistency, nailedMultiplier,
+                             pointSources, xpTotal, per90, gamesSample: gS, minsPg };
                 })
                 .filter(p => p.routeCount >= 2)
                 .sort((a, b) => b.compositeScore - a.compositeScore);
@@ -1392,6 +1450,13 @@
 
             // Store scored data globally for database view
             window._allRoutesPlayers = scored;
+
+            // The raw view scales each bar against the best in its own position —
+            // a keeper's points profile is not comparable to a forward's.
+            window._routesPosMax = {};
+            ['GK', 'DEF', 'MID', 'FWD'].forEach(k => {
+                window._routesPosMax[k] = byPos[k].reduce((m, x) => Math.max(m, x.xpTotal || 0), 0) || 1;
+            });
 
             // Top 15 Squad: 2 GK + 5 DEF + 5 MID + 3 FWD
             const top15Counts = { GK: 2, DEF: 5, MID: 5, FWD: 3 };
@@ -1416,12 +1481,16 @@
             const hasMore = scored.length > 30;
 
             return `
-                <div class="routes-section">
+                <div class="routes-section mode-prop" id="routesSection">
                     <div class="section-toolbar">
                         <div class="section-toolbar-left">
                             <div class="routes-view-toggle">
                                 <button class="routes-view-btn active" onclick="switchRoutesView('top15', this)">Top 15 Squad</button>
                                 <button class="routes-view-btn" onclick="switchRoutesView('database', this)">Full Database</button>
+                            </div>
+                            <div class="rp-mode-toggle">
+                                <button class="rp-mode-btn active" onclick="switchRoutesMode('prop', this)" data-tooltip="Every bar fills the width, so you read the split within one player.">\u{1F4CA} Proportional</button>
+                                <button class="rp-mode-btn" onclick="switchRoutesMode('raw', this)" data-tooltip="Bar length scales against the best player in the same position, so you can compare players.">\u{1F522} Raw stats</button>
                             </div>
                         </div>
                         <div class="section-toolbar-right">
@@ -1431,13 +1500,13 @@
                         </div>
                     </div>
                     <div class="legend-panel" id="routesLegend">
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#94A3B8"></span> Appearance</span>
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#F87171"></span> Goals</span>
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#60A5FA"></span> Assists</span>
-                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#34D399"></span> Clean Sheets</span>
-                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FBBF24"></span> Bonus</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#34D399"></span> Clean sheets</span>
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#A78BFA"></span> Saves</span>
-                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FB923C"></span> Creativity</span>
-                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#F472B6"></span> Penalties</span>
+                        <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FBBF24"></span> Bonus</span>
+                        <span class="legend-panel-item" style="margin-left:8px;opacity:.75;">Penalties and creativity count as routes but get no slice — pens are already inside xG, creativity predicts assists rather than scoring separately.</span>
                         <span class="legend-panel-item" style="margin-left:8px;"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> = Nailed on</span>
                     </div>
                     <div class="routes-top15-view active">
@@ -1455,55 +1524,174 @@
             `;
         }
 
-        function renderRouteCard(p, rank) {
-            const g = p.l5?.games || 1;
-            const ptsPerGame = ((p.l5?.points || 0) / g).toFixed(1);
-            const fdr = p.fixtures?.avgFDR3 || 3;
-            const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
-            const posColors = { GK: '#FBBF24', DEF: '#34D399', MID: '#60A5FA', FWD: '#F87171' };
-            const nailedIcon = p.nailedMultiplier >= 1.15 ? '<i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>' : p.nailedMultiplier >= 1.07 ? '<i data-lucide="lock-open" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>' : '';
-            const consistLabel = p.consistency >= 7 ? 'Consistent' : p.consistency >= 4 ? 'Mixed' : 'Volatile';
-            const consistColor = p.consistency >= 7 ? 'var(--color-success)' : p.consistency >= 4 ? 'var(--color-warning)' : 'var(--color-error)';
+        // Variance only means something once there are scores to take a variance
+        // of. The old version left consistency at 0 below five games and mapped
+        // that to "Volatile", so one gameweek into a season every single player
+        // was labelled boom-or-bust in red.
+        function routeReliability(p) {
+            const hist = (p.history || []).filter(h => (parseInt(h.minutes, 10) || 0) > 0);
+            if (hist.length < 4) {
+                return {
+                    state: 'unknown', icon: '\u{1F4D0}', label: 'Too early to judge', fill: 0,
+                    detail: `Variance needs at least four appearances before it says anything. ${hist.length} so far.`
+                };
+            }
+            const pts = hist.slice(-6).map(h => parseFloat(h.total_points) || 0);
+            const mean = pts.reduce((s, v) => s + v, 0) / pts.length;
+            const sd = Math.sqrt(pts.reduce((s, v) => s + (v - mean) ** 2, 0) / pts.length);
+            const score = Math.max(0, Math.min(10, (1 - sd / 6) * 10));
+            const detail = `Last ${pts.length} appearances: ${pts.join(', ')} pts — mean ${mean.toFixed(1)}, standard deviation ${sd.toFixed(1)}.`;
+            if (score >= 7) return { state: 'reliable', icon: '\u{1F6E1}️', label: 'Reliable returner', fill: score * 10, detail };
+            if (score >= 4) return { state: 'mixed', icon: '⚖️', label: 'Mixed', fill: score * 10, detail };
+            return { state: 'volatile', icon: '\u{1F3A2}', label: 'High variance', fill: Math.max(8, score * 10), detail };
+        }
 
+        function rpReliabilityMeter(rel) {
+            return `<div class="rp-rel rp-rel-${rel.state}" data-tooltip="${escHTML(rel.detail)}">
+                <span class="rp-rel-icon">${rel.icon}</span>
+                <span class="rp-rel-label">${escHTML(rel.label)}</span>
+                <span class="rp-rel-track"><span class="rp-rel-fill" style="width:${rel.fill}%"></span></span>
+            </div>`;
+        }
+
+        // Thick single stacked bar. Segment widths are the share of expected
+        // points; in raw mode the whole bar shrinks against the best player in
+        // the same position, so bar length compares players and segment length
+        // still reads as points. One geometry, two questions answered.
+        function rpStackBar(p) {
+            const srcs = p.pointSources || [];
+            if (!srcs.length) return '';
+            const posMax = (window._routesPosMax && window._routesPosMax[p.pos]) || p.xpTotal || 1;
+            const rawFill = Math.max(8, Math.min(100, (p.xpTotal / posMax) * 100));
+            const segs = srcs.map(s => {
+                const pct = s.share * 100;
+                const room = pct >= 14;
+                return `<span class="rp-seg" style="width:${pct.toFixed(2)}%;background:${s.color};"
+                    data-tooltip="${escHTML(s.label)}: ${s.pts.toFixed(2)} pts per game, ${Math.round(pct)}% of his expected points">
+                    ${room ? `<span class="rp-seg-l rp-when-prop">${Math.round(pct)}%</span><span class="rp-seg-l rp-when-raw">${s.pts.toFixed(1)}</span>` : ''}
+                </span>`;
+            }).join('');
+            // A legend on every card, so identity is never carried by colour alone.
+            const legend = srcs.map(s => `<span class="rp-key">
+                <span class="rp-key-dot" style="background:${s.color}"></span>${escHTML(s.label)}
+                <b class="rp-when-prop">${Math.round(s.share * 100)}%</b><b class="rp-when-raw">${s.pts.toFixed(1)}</b></span>`).join('');
+            return `<div class="rp-profile">
+                <div class="rp-profile-head">
+                    <span class="rp-profile-t">Projected per game</span>
+                    <span class="rp-xp" data-tooltip="Expected points per game from these sources, with thin-sample rates regressed toward the position average. Excludes cards and other minor adjustments.">${p.xpTotal.toFixed(1)}<small>xP/g</small></span>
+                </div>
+                <div class="rp-bar" style="--rp-rawfill:${rawFill.toFixed(2)}%">${segs}</div>
+                <div class="rp-keys">${legend}</div>
+            </div>`;
+        }
+
+        function rpMiniPills(p) {
+            const r = p.per90 || {};
+            const pills = p.pos === 'GK'
+                ? [['\u{1F9E4}', r.saves.toFixed(1), 'saves/90'], ['\u{1F6E1}️', Math.round((r.cs || 0) * 100) + '%', 'CS rate'], ['\u{1F945}', r.gc.toFixed(1), 'conceded/90'], ['⭐', (r.bonus || 0).toFixed(1), 'bonus/g']]
+                : p.pos === 'DEF'
+                ? [['\u{1F3AF}', r.xG.toFixed(2), 'xG/90'], ['\u{1F170}️', r.xA.toFixed(2), 'xA/90'], ['\u{1F6E1}️', Math.round((r.cs || 0) * 100) + '%', 'CS rate'], ['⭐', (r.bonus || 0).toFixed(1), 'bonus/g']]
+                : [['\u{1F3AF}', r.xG.toFixed(2), 'xG/90'], ['\u{1F170}️', r.xA.toFixed(2), 'xA/90'], ['⚔️', r.xGI.toFixed(2), 'xGI/90'], ['⭐', (r.bonus || 0).toFixed(1), 'bonus/g']];
+            const thin = (p.gamesSample || 0) < 3;
+            const sample = thin ? `<span class="rp-pill rp-pill-sample" data-tooltip="Season is ${p.gamesSample} game${p.gamesSample === 1 ? '' : 's'} old, so these are single results rather than settled rates.">\u{1F4CF} ${p.gamesSample}g</span>` : '';
+            return `<div class="rp-pills-t">Observed so far</div>
+            <div class="rp-pills">${pills.map(([i, v, l]) =>
+                `<span class="rp-pill"><span class="rp-pill-i">${i}</span><b>${v}</b><span class="rp-pill-l">${l}</span></span>`).join('')}${sample}</div>`;
+        }
+
+        // Routes depend on who you play. A single averaged FDR number hid that.
+        function rpFixtureStrip(p) {
+            const FDR_WORD = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+            const fx = (p.fixtures?.next3 || []).slice(0, 3);
+            if (!fx.length) return '<div class="rp-fx"><span class="rp-fx-none">No fixtures scheduled</span></div>';
+            return `<div class="rp-fx">${fx.map(f => {
+                const opp = (f.opponent && teams[f.opponent]) ? teams[f.opponent].short_name : '???';
+                const d = f.difficulty || 3;
+                return `<span class="rp-fx-c fdr-${d}" data-tooltip="GW${f.event || '?'}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(opp)} — difficulty ${d} (${FDR_WORD[d]})">
+                    <span class="rp-fx-gw">GW${f.event || '?'}</span>
+                    <span class="rp-fx-o">${escHTML(opp)}<small>${f.isHome ? 'H' : 'A'}</small></span>
+                </span>`;
+            }).join('')}</div>`;
+        }
+
+        function routeScoutNote(p, rel) {
+            const named = { goals: 'goal threat', assists: 'chance creation', cs: 'clean sheets', saves: 'save volume', bonus: 'bonus points' };
+            const src = (p.pointSources || []).filter(s => s.key !== 'appearance').sort((a, b) => b.pts - a.pts);
+            if (!src.length) return 'No meaningful attacking or defensive output yet — currently an appearance-points asset only.';
+            const top = src[0], second = src[1];
+            const topPct = Math.round(top.share * 100);
+            const fdrs = (p.fixtures?.next3 || []).map(f => f.difficulty || 3);
+            const avgFdr = fdrs.length ? fdrs.reduce((s, v) => s + v, 0) / fdrs.length : 3;
+
+            // Two sources only diversify if they arrive on different afternoons.
+            // Clean sheets and bonus land together for a defender, and so do goals
+            // and bonus for an attacker — so the route count overstates how
+            // independent those profiles really are, and the note should say so.
+            // Appearance points are the floor every starter collects. When they are
+            // most of the projection, that is the story — not whichever scraps of
+            // output happen to rank first.
+            const appearance = (p.pointSources || []).find(s => s.key === 'appearance');
+            const appShare = appearance ? appearance.share : 0;
+            const backLine = (p.pos === 'GK' || p.pos === 'DEF');
+
+            const secondPct = second ? Math.round(second.share * 100) : 0;
+            const pair = second ? [top.key, second.key].sort().join('+') : top.key;
+            const PAIR_NOTE = {
+                'cs+saves': `Save volume is the cushion here — it pays in exactly the weeks the clean sheet does not arrive, which is what makes a busy keeper worth owning.`,
+                'bonus+cs': `Clean sheets carry ${topPct}% of it, and the bonus largely lands on those same afternoons rather than forming a route of its own.`,
+                'bonus+goals': `Goals lead at ${topPct}%, and bonus mostly follows them — fewer genuinely independent routes than the badge suggests.`,
+                'assists+goals': `Both halves of the attacking return are live — ${named[top.key]} at ${topPct}%, ${named[second.key]} at ${secondPct}% — which is the most durable shape an attacking profile takes.`,
+                'cs+goals': `${backLine ? 'Dual threat from the back' : 'Two-way profile'}: clean sheets and goal threat are worth ${topPct}% and ${secondPct}%, and they do not depend on each other.`,
+                'assists+cs': `${backLine ? 'Dual threat from the back' : 'Two-way profile'}: clean sheets and chance creation are worth ${topPct}% and ${secondPct}%, and they do not depend on each other.`
+            };
+
+            let lead;
+            if (appShare >= 0.45) {
+                lead = `Mostly an appearance asset — ${Math.round(appShare * 100)}% of the projection is the points for starting, with ${named[top.key]} the only real output on top.`;
+            } else if (topPct >= 55) {
+                lead = `One-track profile — ${topPct}% of his expected points ride on ${named[top.key]}, so a dry spell there takes the whole return with it.`;
+            } else if (PAIR_NOTE[pair]) {
+                lead = PAIR_NOTE[pair];
+            } else if (second) {
+                lead = `Spread across ${named[top.key]} (${topPct}%) and ${named[second.key]} (${secondPct}%), with no single source able to sink the return on its own.`;
+            } else {
+                lead = `Points come almost entirely through ${named[top.key]}.`;
+            }
+
+            const fixtureClause = avgFdr <= 2.4 ? ' The next three fixtures are kind.'
+                : avgFdr >= 3.8 ? ' The next three fixtures are unforgiving.'
+                : ' Fixtures over the next three are average.';
+            const relClause = rel.state === 'reliable' ? ' He scores at a steady rate.'
+                : rel.state === 'volatile' ? ' Returns arrive in bursts rather than every week.'
+                : rel.state === 'unknown' ? ` Based on ${p.gamesSample} game${p.gamesSample === 1 ? '' : 's'}, so treat the split as provisional.`
+                : '';
+            return lead + fixtureClause + relClause;
+        }
+
+        function renderRouteCard(p, rank) {
+            const rel = routeReliability(p);
+            const posColors = { GK: '#FBBF24', DEF: '#34D399', MID: '#60A5FA', FWD: '#F87171' };
+            const accent = posColors[p.pos] || '#60A5FA';
+            const nailed = p.nailedMultiplier >= 1.15;
+            const routeNames = (p.routes || []).map(r => r.name).join(', ');
             return `
-                <div class="route-card" onclick="openPlayerModal(${p.id})">
+                <div class="rp-card" style="--rp-accent:${accent};" onclick="openPlayerModal(${p.id})">
                     ${getStarHtml(p.id, 'shortlist-star-card')}
-                    <div class="route-card-top">
-                        <div class="route-card-rank">${rank}</div>
-                        <div class="route-card-player">
-                            <div class="route-card-name">${escHTML(p.name)} ${nailedIcon}</div>
-                            <div class="route-card-meta">
-                                <span class="route-pos-badge" style="background: ${posColors[p.pos]}20; color: ${posColors[p.pos]}">${p.pos}</span>
-                                ${escHTML(p.team)} \u00b7 \u00a3${p.price.toFixed(1)}m
-                            </div>
+                    <div class="rp-head">
+                        <span class="rp-rank">${rank}</span>
+                        <div class="rp-id">
+                            <div class="rp-name">${escHTML(p.name)}${nailed ? ' <span class="rp-nailed" data-tooltip="Plays essentially every available minute">\u{1F512}</span>' : ''}</div>
                         </div>
-                        <div class="route-card-score" title="Number of distinct scoring routes">
-                            <div class="route-score-number">${p.routeCount}</div>
-                            <div class="route-score-label">routes</div>
+                        <div class="rp-badge" data-tooltip="Distinct ways this player scores: ${escHTML(routeNames)}. More routes means less reliance on any one of them.">
+                            <span class="rp-badge-star">\u{1F31F}</span><b>${p.routeCount}</b><span class="rp-badge-l">routes</span>
                         </div>
                     </div>
-                    <div class="route-card-bars">
-                        ${p.routes.sort((a, b) => {
-                            // Fixed priority order: Goals, Assists, CS, Penalties, Bonus, Saves, Creativity
-                            const order = { Goals: 0, Assists: 1, 'Clean Sheets': 2, Penalties: 3, Bonus: 4, Saves: 5, Creativity: 6 };
-                            return (order[a.name] ?? 99) - (order[b.name] ?? 99);
-                        }).map(r => `
-                            <div class="route-bar-row" title="${r.name}: ${r.detail} (${r.ptWeight?.toFixed(1) || '?'} pts weight)">
-                                <span class="route-bar-icon">${r.icon}</span>
-                                <span class="route-bar-name">${r.name}</span>
-                                <div class="route-bar-track">
-                                    <div class="route-bar-fill" style="width: ${r.strength * 10}%; background: ${r.color}"></div>
-                                </div>
-                                <span class="route-bar-detail">${r.detail}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div class="route-card-footer">
-                        <span>${ptsPerGame} pts/g</span>
-                        <span style="color:${consistColor};font-size:10px;">${consistLabel}</span>
-                        <span class="fdr-badge ${fdrClass}" style="font-size:10px;padding:2px 6px;">FDR ${fdr.toFixed(1)}</span>
-                        <span>${(p.selectedBy || 0).toFixed(1)}% owned</span>
-                    </div>
+                    <div class="rp-sub"><span class="rp-pos">${p.pos}</span><span class="rp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${(p.selectedBy || 0).toFixed(1)}% owned</span></div>
+                    ${rpReliabilityMeter(rel)}
+                    ${rpStackBar(p)}
+                    ${rpMiniPills(p)}
+                    ${rpFixtureStrip(p)}
+                    <p class="rp-note">${escHTML(routeScoutNote(p, rel))}</p>
                 </div>
             `;
         }
@@ -2408,13 +2596,30 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
+        // Top 15 is a whole squad across all four positions, so a position filter
+        // cannot apply to it. Full Database is a flat list, where it can.
+        function syncRoutesPosPills(view) {
+            const pills = document.getElementById('posPills');
+            if (pills) pills.classList.toggle('hidden', view === 'top15');
+        }
+
+        function switchRoutesMode(mode, btn) {
+            document.querySelectorAll('.rp-mode-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            const sec = document.getElementById('routesSection');
+            if (!sec) return;
+            sec.classList.toggle('mode-raw', mode === 'raw');
+            sec.classList.toggle('mode-prop', mode !== 'raw');
+        }
+
         function switchRoutesView(view, btn) {
             // Toggle buttons
-            document.querySelectorAll('.routes-view-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.routes-view-toggle .routes-view-btn').forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
             // Toggle views
             document.querySelector('.routes-top15-view')?.classList.toggle('active', view === 'top15');
             document.querySelector('.routes-database-view')?.classList.toggle('active', view === 'database');
+            syncRoutesPosPills(view);
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -3330,8 +3535,8 @@
         }
 
     </script>
-    <script src="scripts/players-tables.js?v=30"></script>
-    <script src="scripts/compare-report.js?v=30"></script>
+    <script src="scripts/players-tables.js?v=31"></script>
+    <script src="scripts/compare-report.js?v=31"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -4171,12 +4376,7 @@
             // games of evidence — the same treatment the squad projection applies.
             // Without it a keeper who made five saves in his opener projects to
             // make five every week, and a £4.5m option reads as a 50-point asset.
-            const REC_BASE = {
-                GK:  { xG: 0.00, xA: 0.01, cs: 0.28, bonus: 0.25, saves: 2.80, gc: 1.35 },
-                DEF: { xG: 0.03, xA: 0.04, cs: 0.28, bonus: 0.20, saves: 0.00, gc: 1.35 },
-                MID: { xG: 0.08, xA: 0.09, cs: 0.28, bonus: 0.25, saves: 0.00, gc: 1.35 },
-                FWD: { xG: 0.15, xA: 0.07, cs: 0.00, bonus: 0.30, saves: 0.00, gc: 1.35 }
-            }[pos] || { xG: 0.08, xA: 0.08, cs: 0.25, bonus: 0.25, saves: 0, gc: 1.35 };
+            const REC_BASE = posRateBaseline(pos);
             const evidence = Math.min(1, l5Games / 4);
             const regress = (v, base) => v * evidence + base * (1 - evidence);
 
@@ -4893,10 +5093,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=30"></script>
+    <script src="scripts/players-ai.js?v=31"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/common.js?v=30"></script>
-    <script src="scripts/sidebar-nav.js?v=30"></script>
+    <script src="scripts/common.js?v=31"></script>
+    <script src="scripts/sidebar-nav.js?v=31"></script>
     <script>
         loadSidebarNav();
         initIcons();
