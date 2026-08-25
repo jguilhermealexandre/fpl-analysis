@@ -4356,3 +4356,95 @@
     font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em;
     color: var(--text-muted); font-weight: 700; margin-bottom: 5px;
 }
+
+/* ======================================================================
+   Scatter chart hover card
+   Chart.js's built-in tooltip is a canvas-drawn box with no room for a
+   verdict or a position badge, so the scatters use an external HTML card.
+   ====================================================================== */
+.scatter-tip {
+    position: absolute;
+    z-index: 9999;
+    min-width: 210px;
+    max-width: 280px;
+    padding: 11px 13px;
+    border-radius: 12px;
+    border: 1px solid var(--border-default);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-lg, 0 12px 32px rgba(0,0,0,.28));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .12s ease;
+    font-size: 12px;
+}
+.scatter-tip.show { opacity: 1; }
+.stip-head { border-left: 3px solid var(--stip-accent); padding-left: 9px; margin-bottom: 9px; }
+.stip-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.2;
+}
+.stip-star { color: #FBBF24; }
+.stip-sub { margin-top: 3px; font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.stip-pos {
+    background: color-mix(in srgb, var(--stip-accent) 18%, transparent);
+    color: var(--stip-accent);
+    padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 800; letter-spacing: .04em;
+}
+.stip-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+.stip-metric {
+    background: var(--surface-2);
+    border-radius: 7px;
+    padding: 5px 8px;
+    display: flex; flex-direction: column; gap: 1px;
+}
+.stip-metric span { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.stip-metric b { font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); }
+.stip-verdict {
+    padding: 5px 9px; border-radius: 7px;
+    font-size: 11.5px; font-weight: 700; text-align: center;
+}
+.stip-good  { background: rgba(52,211,153,.14);  color: #10B981; }
+.stip-bad   { background: rgba(248,113,113,.14); color: #EF4444; }
+.stip-watch { background: rgba(96,165,250,.14);  color: #3B82F6; }
+.stip-muted { background: rgba(148,163,184,.14); color: #64748B; }
+.stip-note { margin-top: 6px; font-size: 10.5px; color: #FBBF24; text-align: center; }
+.stip-cta { margin-top: 7px; font-size: 10px; color: var(--text-muted); text-align: center; }
+
+.charts-empty { margin-bottom: 16px; }
+
+/* Axis pickers in the expanded chart header */
+.chart-modal-metrics { display: flex; gap: 12px; margin-left: auto; margin-right: 12px; flex-wrap: wrap; }
+.chart-modal-metrics label {
+    display: flex; flex-direction: column; gap: 3px;
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-muted); font-weight: 700;
+}
+.chart-modal-metrics select {
+    background: var(--surface-2);
+    border: 1px solid var(--border-default);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    min-width: 168px;
+}
+.chart-modal-metrics select:hover { border-color: var(--color-primary); }
+.chart-modal-metrics select:focus { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* The expand affordance reads as a control, not a caption */
+.chart-expand-hint {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-default);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 11px; font-weight: 600;
+}
+.chart-card:hover .chart-expand-hint { border-color: var(--color-primary); color: var(--color-primary); }
+
+@media (max-width: 720px) {
+    .chart-modal-metrics { width: 100%; margin: 8px 0 0; }
+    .chart-modal-metrics select { min-width: 0; width: 100%; }
+}

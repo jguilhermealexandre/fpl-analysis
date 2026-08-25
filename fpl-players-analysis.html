@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=32">
-    <link rel="stylesheet" href="styles/players.css?v=32">
-    <link rel="stylesheet" href="styles/v2-design.css?v=32">
+    <link rel="stylesheet" href="styles/common.css?v=33">
+    <link rel="stylesheet" href="styles/players.css?v=33">
+    <link rel="stylesheet" href="styles/v2-design.css?v=33">
     <style>
         /* Sticky header for All Players table */
         #section-ALL table thead th {
@@ -97,6 +97,14 @@
                 <div class="chart-modal-title">
                     <h2 id="chartModalTitle">Chart Title</h2>
                     <p id="chartModalSubtitle">Chart subtitle</p>
+                </div>
+                <div class="chart-modal-metrics">
+                    <label>X axis
+                        <select id="expandX" onchange="rebuildExpandedChart()"></select>
+                    </label>
+                    <label>Y axis
+                        <select id="expandY" onchange="rebuildExpandedChart()"></select>
+                    </label>
                 </div>
                 <button class="chart-modal-close" onclick="closeChartModal()" aria-label="Close expanded chart">×</button>
             </div>
@@ -339,6 +347,14 @@
 
             // ALL tab's table breaks out to full-bleed width (see <style> block for why)
             document.querySelector('main.content')?.classList.toggle('content--full-bleed', pos === 'ALL');
+
+            // Give the charts their real dimensions the moment the tab is shown.
+            // Deliberately not deferred through requestAnimationFrame: rAF can be
+            // throttled to never firing for work scheduled around a just-revealed
+            // element, which leaves the canvas stuck at the 0x0 it was built with.
+            // The synchronous call forces the layout we need; the timeout covers
+            // fonts and scrollbars settling afterwards.
+            if (pos === 'CHARTS') { resizeAllCharts(); setTimeout(resizeAllCharts, 80); }
 
             // Update page subtitle with tab description
             const desc = tab.dataset.desc;
@@ -3535,8 +3551,8 @@
         }
 
     </script>
-    <script src="scripts/players-tables.js?v=32"></script>
-    <script src="scripts/compare-report.js?v=32"></script>
+    <script src="scripts/players-tables.js?v=33"></script>
+    <script src="scripts/compare-report.js?v=33"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -3549,6 +3565,112 @@
         // ============================================
         let expandedChartInstance = null;
         
+        // Metrics offered in the expanded view. Keys match the fields computed in
+        // generateCharts, so no accessor can drift from what the small charts use.
+        const SCATTER_METRICS = [
+            { key: 'price',            label: 'Price (£m)' },
+            { key: 'ptsPerGame',       label: 'Points per game (L5)' },
+            { key: 'seasonPtsPerGame', label: 'Points per game (season)' },
+            { key: 'xPts',             label: 'Expected points' },
+            { key: 'xgiPerGame',       label: 'xGI per game' },
+            { key: 'xgPerGame',        label: 'xG per game' },
+            { key: 'xaPerGame',        label: 'xA per game' },
+            { key: 'actualGI',         label: 'Actual G+A per game' },
+            { key: 'ownership',        label: 'Ownership (%)' },
+            { key: 'valueScore',       label: 'Points per £m' },
+            { key: 'bonusPerGame',     label: 'Bonus per game' },
+            { key: 'minutesPerGame',   label: 'Minutes per game' },
+            { key: 'xgcPerGame',       label: 'xGC per game' },
+            { key: 'csPerGame',        label: 'Clean sheet rate' },
+            { key: 'savesPerGame',     label: 'Saves per game' },
+            { key: 'reliabilityPct',   label: 'Reliability (%)' },
+            { key: 'explosivenessPct', label: 'Explosiveness (%)' }
+        ];
+
+        let expandedChartKey = null;
+
+        function fillMetricSelect(el, selected) {
+            if (!el) return;
+            el.innerHTML = SCATTER_METRICS.map(m =>
+                `<option value="${m.key}"${m.key === selected ? ' selected' : ''}>${escHTML(m.label)}</option>`).join('');
+        }
+
+        // Reads the axis titles off the source chart so the pickers open on the
+        // metrics that chart is already showing rather than on an arbitrary pair.
+        function guessMetricFromTitle(title) {
+            if (!title) return null;
+            const t = String(title).toLowerCase();
+            const hit = SCATTER_METRICS.find(m => m.label.toLowerCase() === t);
+            if (hit) return hit.key;
+            if (t.includes('price')) return 'price';
+            if (t.includes('xgi')) return 'xgiPerGame';
+            if (t.includes('ownership')) return 'ownership';
+            if (t.includes('expected')) return 'xPts';
+            if (t.includes('actual')) return 'actualGI';
+            if (t.includes('points')) return 'ptsPerGame';
+            return null;
+        }
+
+        function rebuildExpandedChart() {
+            const canvas = document.getElementById('expandedChart');
+            const xSel = document.getElementById('expandX');
+            const ySel = document.getElementById('expandY');
+            const pool = (chartData && chartData.players) || [];
+            if (!canvas || !xSel || !ySel || !pool.length) return;
+
+            const xKey = xSel.value, yKey = ySel.value;
+            const xMeta = SCATTER_METRICS.find(m => m.key === xKey) || SCATTER_METRICS[0];
+            const yMeta = SCATTER_METRICS.find(m => m.key === yKey) || SCATTER_METRICS[1];
+
+            if (expandedChartInstance) { expandedChartInstance.destroy(); expandedChartInstance = null; }
+            registerScatterPlugins();
+            const ct = getChartTheme();
+
+            const datasets = ['GK', 'DEF', 'MID', 'FWD'].map(pos => ({
+                label: pos,
+                position: pos,
+                data: pool.filter(p => p.pos === pos).map(p => {
+                    const x = parseFloat(p[xKey]), y = parseFloat(p[yKey]);
+                    return Number.isFinite(x) && Number.isFinite(y) ? { ...p, x, y } : null;
+                }).filter(Boolean),
+                backgroundColor: POSITION_COLORS[pos].bg,
+                borderColor: POSITION_COLORS[pos].border,
+                pointStyle: POSITION_STYLES[pos],
+                pointRadius: cx => (shortlistedPlayerIds.has(cx.raw?.id) ? 10 : 7),
+                pointHoverRadius: cx => (shortlistedPlayerIds.has(cx.raw?.id) ? 14 : 11),
+                pointBorderWidth: cx => (shortlistedPlayerIds.has(cx.raw?.id) ? 2 : 1),
+                hidden: !activePositionFilters[pos]
+            }));
+
+            // The expanded canvas borrows the source chart's quadrant labels.
+            canvas.dataset.quadKey = expandedChartKey ? `${expandedChartKey}Chart` : '';
+
+            expandedChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+                    onClick: (evt, els, chart) => {
+                        if (!els.length) return;
+                        const raw = chart.data.datasets[els[0].datasetIndex].data[els[0].index];
+                        if (raw && raw.id != null && typeof openPlayerModal === 'function') openPlayerModal(raw.id);
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false, position: 'nearest', external: scatterTooltipHandler }
+                    },
+                    scales: {
+                        x: { grid: { color: ct.grid }, ticks: { color: ct.text, font: { size: 12 } },
+                             title: { display: true, text: xMeta.label, color: ct.text } },
+                        y: { grid: { color: ct.grid }, ticks: { color: ct.text, font: { size: 12 } },
+                             title: { display: true, text: yMeta.label, color: ct.text } }
+                    }
+                }
+            });
+        }
+
         function expandChart(chartKey, title, subtitle) {
             const modal = document.getElementById('chartModal');
             const titleEl = document.getElementById('chartModalTitle');
@@ -3636,13 +3758,18 @@
             
             // Show modal first so canvas has dimensions
             modal.classList.add('show');
-            
-            // Create expanded chart
+
+            expandedChartKey = chartKey;
+            const srcScales = originalChart.config.options?.scales || {};
+            fillMetricSelect(document.getElementById('expandX'),
+                guessMetricFromTitle(srcScales.x?.title?.text) || 'price');
+            fillMetricSelect(document.getElementById('expandY'),
+                guessMetricFromTitle(srcScales.y?.title?.text) || 'ptsPerGame');
+
+            // Built from the metric pickers rather than cloned, so changing an
+            // axis rebuilds from the same code path that drew it the first time.
             setTimeout(() => {
-                const ctx = canvas.getContext('2d');
-                expandedChartInstance = new Chart(ctx, config);
-                
-                // Populate notable players list
+                rebuildExpandedChart();
                 populateChartPlayers(chartKey, playersGrid);
             }, 50);
         }
@@ -4144,6 +4271,259 @@
         
         const POSITION_STYLES = { 'GK': 'circle', 'DEF': 'rect', 'MID': 'triangle', 'FWD': 'rectRot' };
 
+        // ============================================
+        // SCATTER QUADRANTS
+        // Which corner means what differs per chart — on price-vs-points the
+        // cheap-and-productive corner is the prize, while on xGI-vs-actual the
+        // same corner means a player is outscoring his chances and due to cool
+        // off. So the labels and the tone are declared per chart rather than
+        // assumed from position.
+        // ============================================
+        const QUAD_TONE = {
+            good:   { fill: 'rgba(52, 211, 153, 0.07)',  text: 'rgba(16, 185, 129, 0.85)' },
+            bad:    { fill: 'rgba(248, 113, 113, 0.07)', text: 'rgba(239, 68, 68, 0.85)' },
+            watch:  { fill: 'rgba(96, 165, 250, 0.07)',  text: 'rgba(59, 130, 246, 0.85)' },
+            muted:  { fill: 'rgba(148, 163, 184, 0.06)', text: 'rgba(100, 116, 139, 0.8)' }
+        };
+
+        // tl / tr / bl / br, each: label + tone.
+        const CHART_QUADRANTS = {
+            priceVsPointsChart: {
+                tl: ['Value gems', 'good'], tr: ['Elite premiums', 'watch'],
+                bl: ['Low priority', 'muted'], br: ['Overpriced', 'bad']
+            },
+            xgiVsActualChart: {
+                tl: ['Outscoring chances', 'bad'], tr: ['Elite output', 'good'],
+                bl: ['Low involvement', 'muted'], br: ['Returns owed', 'watch']
+            },
+            xPtsVsActualChart: {
+                tl: ['Riding luck', 'bad'], tr: ['Delivering', 'good'],
+                bl: ['Quiet', 'muted'], br: ['Underperforming', 'watch']
+            },
+            formVsSeasonChart: {
+                tl: ['Form spike', 'watch'], tr: ['Consistently good', 'good'],
+                bl: ['Cold', 'muted'], br: ['Form dropping', 'bad']
+            },
+            xgcVsCSChart: {
+                tl: ['Solid defence', 'good'], tr: ['Riding luck', 'watch'],
+                bl: ['Leaky', 'bad'], br: ['Unlucky defence', 'watch']
+            },
+            defAttackingChart: {
+                tl: ['Attacking threat', 'watch'], tr: ['Dual threat', 'good'],
+                bl: ['Limited', 'muted'], br: ['Clean sheets only', 'watch']
+            },
+            gkSavesChart: {
+                tl: ['Busy keeper', 'watch'], tr: ['Save points + sheets', 'good'],
+                bl: ['Quiet', 'muted'], br: ['Behind a good defence', 'good']
+            },
+            reliabilityChart: {
+                tl: ['Steady returner', 'good'], tr: ['Reliable + explosive', 'good'],
+                bl: ['Avoid', 'muted'], br: ['Boom or bust', 'watch']
+            },
+            bonusMagnetChart: {
+                tl: ['Bonus magnet', 'good'], tr: ['Points + bonus', 'good'],
+                bl: ['Low priority', 'muted'], br: ['Points, no bonus', 'watch']
+            },
+            ownershipVsFormChart: {
+                tl: ['In form, under-owned', 'good'], tr: ['Template picks', 'watch'],
+                bl: ['Ignore', 'muted'], br: ['Owned, out of form', 'bad']
+            },
+            valueVsOwnershipChart: {
+                tl: ['Under-owned value', 'good'], tr: ['Popular value', 'watch'],
+                bl: ['Poor value', 'muted'], br: ['Owned, poor value', 'bad']
+            }
+        };
+
+        const median = arr => {
+            if (!arr.length) return null;
+            const s = [...arr].sort((a, b) => a - b);
+            const m = Math.floor(s.length / 2);
+            return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+        };
+
+        // Collect every currently-visible scatter point. Trend lines carry no
+        // .position, so they never influence the split.
+        function visibleScatterPoints(chart) {
+            const out = [];
+            chart.data.datasets.forEach((ds, i) => {
+                if (!ds.position) return;
+                const meta = chart.getDatasetMeta(i);
+                if (ds.hidden || meta.hidden) return;
+                (ds.data || []).forEach(pt => {
+                    if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)) out.push(pt);
+                });
+            });
+            return out;
+        }
+
+        function chartQuadrantConfig(chart) {
+            const key = chart.canvas?.dataset?.quadKey || chart.canvas?.id;
+            return CHART_QUADRANTS[key] || null;
+        }
+
+        // Which quadrant a point sits in, given the current split.
+        function quadrantForPoint(chart, pt) {
+            const cfg = chartQuadrantConfig(chart);
+            if (!cfg) return null;
+            const pts = visibleScatterPoints(chart);
+            if (pts.length < 8) return null;
+            const mx = median(pts.map(p => p.x)), my = median(pts.map(p => p.y));
+            const key = (pt.y >= my ? 't' : 'b') + (pt.x >= mx ? 'r' : 'l');
+            return cfg[key] ? { label: cfg[key][0], tone: cfg[key][1] } : null;
+        }
+
+        // Splits on the median of what is plotted rather than on a fixed value,
+        // so the bands stay meaningful when the position filters change the pool.
+        const quadrantBandsPlugin = {
+            id: 'quadrantBands',
+            beforeDatasetsDraw(chart) {
+                const cfg = chartQuadrantConfig(chart);
+                if (!cfg) return;
+                const area = chart.chartArea;
+                const sx = chart.scales.x, sy = chart.scales.y;
+                if (!area || !sx || !sy) return;
+                const pts = visibleScatterPoints(chart);
+                if (pts.length < 8) return;
+
+                const mx = sx.getPixelForValue(median(pts.map(p => p.x)));
+                const my = sy.getPixelForValue(median(pts.map(p => p.y)));
+                if (!Number.isFinite(mx) || !Number.isFinite(my)) return;
+                const cx = Math.min(Math.max(mx, area.left), area.right);
+                const cy = Math.min(Math.max(my, area.top), area.bottom);
+
+                const ctx = chart.ctx;
+                ctx.save();
+                const boxes = [
+                    ['tl', area.left, area.top, cx - area.left, cy - area.top,      'left',  'top'],
+                    ['tr', cx, area.top, area.right - cx, cy - area.top,            'right', 'top'],
+                    ['bl', area.left, cy, cx - area.left, area.bottom - cy,         'left',  'bottom'],
+                    ['br', cx, cy, area.right - cx, area.bottom - cy,               'right', 'bottom']
+                ];
+                boxes.forEach(([k, x, y, w, h, hAlign, vAlign]) => {
+                    const q = cfg[k];
+                    if (!q || w <= 2 || h <= 2) return;
+                    const tone = QUAD_TONE[q[1]] || QUAD_TONE.muted;
+                    ctx.fillStyle = tone.fill;
+                    ctx.fillRect(x, y, w, h);
+                    // Label tucked into the outer corner, out of the data's way.
+                    if (w > 92 && h > 34) {
+                        ctx.fillStyle = tone.text;
+                        ctx.font = '600 10px Inter, system-ui, sans-serif';
+                        ctx.textAlign = hAlign;
+                        ctx.textBaseline = vAlign;
+                        const px = hAlign === 'left' ? x + 8 : x + w - 8;
+                        const py = vAlign === 'top' ? y + 7 : y + h - 7;
+                        ctx.fillText(q[0].toUpperCase(), px, py);
+                    }
+                });
+                // The split itself.
+                ctx.strokeStyle = 'rgba(128, 128, 128, 0.22)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(cx, area.top); ctx.lineTo(cx, area.bottom);
+                ctx.moveTo(area.left, cy); ctx.lineTo(area.right, cy);
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+
+        // A shortlisted player gets a ring drawn behind him so he is findable in
+        // a cloud of three hundred dots.
+        const shortlistRingPlugin = {
+            id: 'shortlistRings',
+            afterDatasetsDraw(chart) {
+                if (!shortlistedPlayerIds || !shortlistedPlayerIds.size) return;
+                const ctx = chart.ctx;
+                ctx.save();
+                chart.data.datasets.forEach((ds, i) => {
+                    if (!ds.position) return;
+                    const meta = chart.getDatasetMeta(i);
+                    if (ds.hidden || meta.hidden) return;
+                    (meta.data || []).forEach((el, j) => {
+                        const raw = ds.data[j];
+                        if (!raw || !shortlistedPlayerIds.has(raw.id)) return;
+                        ctx.beginPath();
+                        ctx.arc(el.x, el.y, 11, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(251, 191, 36, 0.95)';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.arc(el.x, el.y, 14, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(251, 191, 36, 0.3)';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    });
+                });
+                ctx.restore();
+            }
+        };
+
+        // Chart.js is loaded at the bottom of the page, after this script block,
+        // so registering at parse time silently does nothing. Register on first
+        // use instead.
+        let scatterPluginsRegistered = false;
+        function registerScatterPlugins() {
+            if (scatterPluginsRegistered || typeof Chart === 'undefined') return;
+            Chart.register(quadrantBandsPlugin, shortlistRingPlugin);
+            scatterPluginsRegistered = true;
+        }
+
+        // ---- rich hover card ----
+        function scatterTooltipEl() {
+            let el = document.getElementById('scatterTip');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'scatterTip';
+                el.className = 'scatter-tip';
+                document.body.appendChild(el);
+            }
+            return el;
+        }
+
+        function scatterTooltipHandler(context) {
+            const { chart, tooltip } = context;
+            const el = scatterTooltipEl();
+            if (!tooltip || tooltip.opacity === 0) { el.classList.remove('show'); return; }
+            const dp = tooltip.dataPoints && tooltip.dataPoints[0];
+            const p = dp && dp.raw;
+            if (!p || !p.name) { el.classList.remove('show'); return; }
+
+            const xLabel = chart.options?.scales?.x?.title?.text || 'X';
+            const yLabel = chart.options?.scales?.y?.title?.text || 'Y';
+            const quad = quadrantForPoint(chart, p);
+            const starred = shortlistedPlayerIds.has(p.id);
+            const accent = (POSITION_COLORS[p.pos] || {}).border || '#60a5fa';
+
+            el.innerHTML = `
+                <div class="stip-head" style="--stip-accent:${accent}">
+                    <div>
+                        <div class="stip-name">${escHTML(p.name)}${starred ? ' <span class="stip-star">★</span>' : ''}</div>
+                        <div class="stip-sub"><span class="stip-pos">${escHTML(p.pos || '')}</span>${escHTML(p.team || '')} · £${(p.price || 0).toFixed(1)}m · ${(p.ownership || 0).toFixed(1)}% owned</div>
+                    </div>
+                </div>
+                <div class="stip-metrics">
+                    <div class="stip-metric"><span>${escHTML(xLabel)}</span><b>${Number(p.x).toFixed(2)}</b></div>
+                    <div class="stip-metric"><span>${escHTML(yLabel)}</span><b>${Number(p.y).toFixed(2)}</b></div>
+                </div>
+                ${quad ? `<div class="stip-verdict stip-${quad.tone}">${escHTML(quad.label)}</div>` : ''}
+                ${starred ? '<div class="stip-note">On your shortlist</div>' : ''}
+                <div class="stip-cta">Click to open player</div>`;
+
+            const box = chart.canvas.getBoundingClientRect();
+            el.classList.add('show');
+            // Keep the card on screen when the point is near an edge.
+            const w = el.offsetWidth, h = el.offsetHeight;
+            let left = box.left + window.scrollX + tooltip.caretX + 14;
+            let top = box.top + window.scrollY + tooltip.caretY - h / 2;
+            if (left + w > window.scrollX + document.documentElement.clientWidth - 8) {
+                left = box.left + window.scrollX + tooltip.caretX - w - 14;
+            }
+            top = Math.max(window.scrollY + 8, top);
+            el.style.left = left + 'px';
+            el.style.top = top + 'px';
+        }
+
         function generateCharts(analyses) {
             if (isPreseason) {
                 const banner = renderSeasonNotice('Form &amp; trend charts need this season’s game-by-game data, which isn’t available until GW1. Showing last season’s top scorers instead.');
@@ -4158,8 +4538,15 @@
             }
             const positionMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
 
+            // Every scatter here plots a per-game rate, so a player needs at least
+            // one appearance to place. The gate used to demand three recent games
+            // AND five season games, which one gameweek into a season excludes all
+            // 609 players — and because Chart.js still draws the axes and the
+            // hard-coded trend lines, the result looked like a working chart with
+            // no players rather than like a broken filter.
+            const chartMinGames = Math.min(3, Math.max(seasonGamesPlayed, 1));
             const validPlayers = analyses
-                .filter(p => p.l5 && p.l5.games >= 3 && p.season && p.season.games >= 5)
+                .filter(p => p.l5 && p.season && (p.l5.games || 0) >= chartMinGames && (p.l5.minutes || 0) > 0)
                 .map(p => {
                     const pos = positionMap[p.position];
                     const l5Games = p.l5.games;
@@ -4232,28 +4619,28 @@
                         <h3 class="chart-category-title"><i data-lucide="coins" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Value & Form Analysis</h3>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('priceVsPoints', 'Price vs Points/Game', 'Above line = Great value | Below = Overpriced')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: var(--color-success);"><i data-lucide="coins" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Price vs Points/Game</div>
                                 <div class="chart-subtitle">Above line = Great value | Below = Overpriced</div>
                                 <div class="chart-container"><canvas id="priceVsPointsChart"></canvas></div>
                             </div>
                             
                             <div class="chart-card" onclick="expandChart('xgiVsActual', 'xGI vs Actual G+A', 'Below line = Due returns | Above = May regress')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: var(--color-warning);"><i data-lucide="crosshair" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> xGI vs Actual G+A</div>
                                 <div class="chart-subtitle">Below line = Due returns | Above = May regress</div>
                                 <div class="chart-container"><canvas id="xgiVsActualChart"></canvas></div>
                             </div>
                             
                             <div class="chart-card" onclick="expandChart('xPtsVsActual', 'Expected vs Actual Points', 'Find lucky/unlucky players based on underlying stats')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: #10b981;"><i data-lucide="trending-up" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Expected vs Actual Points</div>
                                 <div class="chart-subtitle">Find lucky/unlucky players based on underlying stats</div>
                                 <div class="chart-container"><canvas id="xPtsVsActualChart"></canvas></div>
                             </div>
                             
                             <div class="chart-card" onclick="expandChart('formVsSeason', 'L5 Form vs Season Average', 'Above line = Improving | Below = Declining')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: #06b6d4;"><i data-lucide="bar-chart-3" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> L5 Form vs Season Average</div>
                                 <div class="chart-subtitle">Above line = Improving | Below = Declining</div>
                                 <div class="chart-container"><canvas id="formVsSeasonChart"></canvas></div>
@@ -4267,21 +4654,21 @@
                         <p class="chart-category-desc">Find clean sheet hunters and attacking defenders</p>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('xgcVsCS', 'xGC vs Clean Sheets', 'Bottom-Left = Elite | Top-Right = Overperforming (sell)')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: #34d399;"><i data-lucide="shield" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> xGC vs Clean Sheets</div>
                                 <div class="chart-subtitle">Bottom-Left = Elite | Top-Right = Overperforming (sell)</div>
                                 <div class="chart-container"><canvas id="xgcVsCSChart"></canvas></div>
                             </div>
                             
                             <div class="chart-card" onclick="expandChart('defAttacking', 'Attacking Defenders (xGI)', 'Top-Right = Wingback gold (TAA, Porro types)')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: #60a5fa;"><i data-lucide="swords" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Attacking Defenders (xGI)</div>
                                 <div class="chart-subtitle">Top-Right = Wingback gold (TAA, Porro types)</div>
                                 <div class="chart-container"><canvas id="defAttackingChart"></canvas></div>
                             </div>
                             
                             <div class="chart-card" onclick="expandChart('gkSaves', 'GK: Saves vs xGC', 'Top-Right = Save point magnets (busy keepers)')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: #fbbf24;"><i data-lucide="hand" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> GK: Saves vs xGC</div>
                                 <div class="chart-subtitle">Top-Right = Save point magnets (busy keepers)</div>
                                 <div class="chart-container"><canvas id="gkSavesChart"></canvas></div>
@@ -4295,14 +4682,14 @@
                         <p class="chart-category-desc">Find explosive haul potential for captain picks</p>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('reliability', 'Reliability vs Explosiveness', 'Top-Right = PERMACAPTAINS | Top-Left = Ceiling plays')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: #f59e0b;"><i data-lucide="crosshair" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Reliability vs Explosiveness</div>
                                 <div class="chart-subtitle">Top-Right = PERMACAPTAINS | Top-Left = Ceiling plays</div>
                                 <div class="chart-container"><canvas id="reliabilityChart"></canvas></div>
                             </div>
                             
                             <div class="chart-card" onclick="expandChart('bonusMagnet', 'Bonus Magnets', 'Players who consistently earn bonus points')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: #f59e0b;"><i data-lucide="trophy" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Bonus Magnets</div>
                                 <div class="chart-subtitle">Players who consistently earn bonus points</div>
                                 <div class="chart-container"><canvas id="bonusMagnetChart"></canvas></div>
@@ -4316,14 +4703,14 @@
                         <p class="chart-category-desc">Beat the crowd with smart differential picks</p>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('ownershipVsForm', 'Ownership vs Form', 'Top-Left = DIFFERENTIALS | Bottom-Right = Template')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: #a855f7;"><i data-lucide="gem" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Ownership vs Form</div>
                                 <div class="chart-subtitle">Top-Left = DIFFERENTIALS | Bottom-Right = Template</div>
                                 <div class="chart-container"><canvas id="ownershipVsFormChart"></canvas></div>
                             </div>
                             
                             <div class="chart-card" onclick="expandChart('valueVsOwnership', 'Value vs Ownership', 'Top-Left = Hidden gems | Bottom-Right = Overhyped')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: #ec4899;"><i data-lucide="trending-up" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Value vs Ownership</div>
                                 <div class="chart-subtitle">Top-Left = Hidden gems | Bottom-Right = Overhyped</div>
                                 <div class="chart-container"><canvas id="valueVsOwnershipChart"></canvas></div>
@@ -4336,7 +4723,7 @@
                         <h3 class="chart-category-title"><i data-lucide="bar-chart-3" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Position Analysis</h3>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('positionDist', 'Points by Position', 'Where should you invest your budget?')">
-                                <div class="chart-expand-hint"><i data-lucide="search" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Click to expand</div>
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
                                 <div class="chart-title" style="color: var(--color-success);"><i data-lucide="trending-up" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Points by Position</div>
                                 <div class="chart-subtitle">Where should you invest your budget?</div>
                                 <div class="chart-container"><canvas id="positionDistChart"></canvas></div>
@@ -4347,7 +4734,10 @@
             `;
             
             // Create charts after DOM update
-            requestAnimationFrame(() => createAllCharts(validPlayers));
+            // Built synchronously after the markup is in the DOM. The tab is still
+            // hidden at this point so the canvases start at zero, which is what
+            // resizeAllCharts() on tab activation exists to correct.
+            setTimeout(() => createAllCharts(validPlayers), 0);
             
             return html;
         }
@@ -4463,6 +4853,16 @@
             updateAllCharts();
         }
         
+        // Charts are created from a rAF right after innerHTML, while the Charts
+        // tab is still display:none — Chart.js measures the container at zero and
+        // keeps that size until something tells it otherwise.
+        function resizeAllCharts() {
+            Object.keys(chartInstances).forEach(k => {
+                const ch = chartInstances[k];
+                if (ch && typeof ch.resize === 'function') { ch.resize(); ch.update('none'); }
+            });
+        }
+
         function updateAllCharts() {
             Object.keys(chartInstances).forEach(key => {
                 const chart = chartInstances[key];
@@ -4520,39 +4920,42 @@
         }
 
         function createAllCharts(players) {
+            if (!players || !players.length) {
+                const host = document.getElementById('section-CHARTS');
+                const grid = host && host.querySelector('.charts-grid, .chart-category');
+                if (grid && !host.querySelector('.charts-empty')) {
+                    host.insertAdjacentHTML('afterbegin',
+                        `<div class="charts-empty no-players season-young">No player has enough minutes yet to place on these charts. `
+                        + `They plot per-game rates, so they fill in once players have appearances behind them.</div>`);
+                }
+                return;
+            }
             applyChartDefaults();
+            registerScatterPlugins();
+            // Axis colours came from hard-coded white, which is invisible against
+            // the light theme. getChartTheme() is what the rest of the page uses.
+            const ct = getChartTheme();
             const baseOptions = {
                 responsive: true,
                 maintainAspectRatio: false,
+                onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+                onClick: (evt, els, chart) => {
+                    if (!els.length) return;
+                    const ds = chart.data.datasets[els[0].datasetIndex];
+                    const raw = ds && ds.data[els[0].index];
+                    if (raw && raw.id != null && typeof openPlayerModal === 'function') openPlayerModal(raw.id);
+                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: 'rgba(13, 17, 23, 0.95)',
-                        titleColor: '#4ade80',
-                        bodyColor: 'rgba(255,255,255,0.87)',
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        borderWidth: 1,
-                        padding: 12,
-                        displayColors: false,
-                        callbacks: {
-                            title: ctx => ctx[0]?.raw ? `${ctx[0].raw.name} (${ctx[0].raw.team})` : '',
-                            label: ctx => {
-                                const p = ctx.raw;
-                                if (!p) return '';
-                                return [
-                                    `Position: ${p.pos}`,
-                                    `Price: £${p.price?.toFixed(1)}m`,
-                                    `Pts/G: ${p.ptsPerGame?.toFixed(1)}`,
-                                    `xGI/G: ${p.xgiPerGame?.toFixed(2)}`,
-                                    `Owner: ${p.ownership?.toFixed(1)}%`
-                                ];
-                            }
-                        }
+                        enabled: false,
+                        position: 'nearest',
+                        external: scatterTooltipHandler
                     }
                 },
                 scales: {
-                    x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } } },
-                    y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } } }
+                    x: { grid: { color: ct.grid }, ticks: { color: ct.text, font: { size: 10 } } },
+                    y: { grid: { color: ct.grid }, ticks: { color: ct.text, font: { size: 10 } } }
                 }
             };
             
@@ -4561,16 +4964,20 @@
                 return positions.map(pos => ({
                     label: pos,
                     position: pos,
-                    data: data.filter(p => p.pos === pos).map(p => ({
-                        x: typeof xKey === 'function' ? xKey(p) : p[xKey],
-                        y: typeof yKey === 'function' ? yKey(p) : p[yKey],
-                        ...p
-                    })),
+                    // `...p` last would let any stray x/y on the player object
+                    // overwrite the coordinates, and a non-finite value silently
+                    // drops the whole dataset, so both are handled explicitly.
+                    data: data.filter(p => p.pos === pos).map(p => {
+                        const x = parseFloat(typeof xKey === 'function' ? xKey(p) : p[xKey]);
+                        const y = parseFloat(typeof yKey === 'function' ? yKey(p) : p[yKey]);
+                        return Number.isFinite(x) && Number.isFinite(y) ? { ...p, x, y } : null;
+                    }).filter(Boolean),
                     backgroundColor: POSITION_COLORS[pos].bg,
                     borderColor: POSITION_COLORS[pos].border,
                     pointStyle: POSITION_STYLES[pos],
-                    pointRadius: 6,
-                    pointHoverRadius: 10,
+                    pointRadius: cx => (shortlistedPlayerIds.has(cx.raw?.id) ? 8 : 5),
+                    pointHoverRadius: cx => (shortlistedPlayerIds.has(cx.raw?.id) ? 12 : 9),
+                    pointBorderWidth: cx => (shortlistedPlayerIds.has(cx.raw?.id) ? 2 : 1),
                     hidden: !activePositionFilters[pos]
                 }));
             };
@@ -4586,7 +4993,7 @@
                             ...createPositionDatasets(players, 'price', 'ptsPerGame')
                         ]
                     },
-                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Price (£m)', color: 'rgba(255,255,255,0.6)' } }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
+                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Price (£m)', color: ct.text } }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: ct.text }, min: 0 } } }
                 });
             }
             
@@ -4601,7 +5008,7 @@
                             ...createPositionDatasets(players, 'xgiPerGame', 'actualGI')
                         ]
                     },
-                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'xGI per Game', color: 'rgba(255,255,255,0.6)' }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Actual G+A per Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
+                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'xGI per Game', color: ct.text }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Actual G+A per Game', color: ct.text }, min: 0 } } }
                 });
             }
             
@@ -4616,7 +5023,7 @@
                             ...createPositionDatasets(players, 'xPts', 'actualPts', true)
                         ]
                     },
-                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Expected Points/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Actual Points/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
+                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Expected Points/Game', color: ct.text }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Actual Points/Game', color: ct.text }, min: 0 } } }
                 });
             }
             
@@ -4631,7 +5038,7 @@
                             ...createPositionDatasets(players, 'seasonPtsPerGame', 'ptsPerGame', true)
                         ]
                     },
-                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Season Avg Pts/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'L5 Pts/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
+                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Season Avg Pts/Game', color: ct.text }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'L5 Pts/Game', color: ct.text }, min: 0 } } }
                 });
             }
             
@@ -4668,8 +5075,8 @@
                     options: { 
                         ...baseOptions, 
                         scales: { 
-                            x: { ...baseOptions.scales.x, title: { display: true, text: 'xGC per Game', color: 'rgba(255,255,255,0.6)' }, min: 0 }, 
-                            y: { ...baseOptions.scales.y, title: { display: true, text: 'CS per Game', color: 'rgba(255,255,255,0.6)' }, min: 0, max: 1 } 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'xGC per Game', color: ct.text }, min: 0 }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'CS per Game', color: ct.text }, min: 0, max: 1 } 
                         },
                         plugins: {
                             ...baseOptions.plugins,
@@ -4719,8 +5126,8 @@
                     options: { 
                         ...baseOptions, 
                         scales: { 
-                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Est. Touches in Box', color: 'rgba(255,255,255,0.6)' }, min: 0 }, 
-                            y: { ...baseOptions.scales.y, title: { display: true, text: 'xGI per Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Est. Touches in Box', color: ct.text }, min: 0 }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'xGI per Game', color: ct.text }, min: 0 } 
                         },
                         plugins: {
                             ...baseOptions.plugins,
@@ -4771,8 +5178,8 @@
                     options: { 
                         ...baseOptions, 
                         scales: { 
-                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Total xGC (L5)', color: 'rgba(255,255,255,0.6)' }, min: 0 }, 
-                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Total Saves (L5)', color: 'rgba(255,255,255,0.6)' }, min: 0 } 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Total xGC (L5)', color: ct.text }, min: 0 }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Total Saves (L5)', color: ct.text }, min: 0 } 
                         },
                         plugins: {
                             ...baseOptions.plugins,
@@ -4817,8 +5224,8 @@
                     options: { 
                         ...baseOptions, 
                         scales: { 
-                            x: { ...baseOptions.scales.x, title: { display: true, text: '% Games with Return (Reliability)', color: 'rgba(255,255,255,0.6)' }, min: 0, max: 100 }, 
-                            y: { ...baseOptions.scales.y, title: { display: true, text: '% Games with 10+ pts (Explosiveness)', color: 'rgba(255,255,255,0.6)' }, min: 0 } 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: '% Games with Return (Reliability)', color: ct.text }, min: 0, max: 100 }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: '% Games with 10+ pts (Explosiveness)', color: ct.text }, min: 0 } 
                         }
                     }
                 });
@@ -4830,7 +5237,7 @@
                 chartInstances.bonusMagnet = new Chart(ctx9, {
                     type: 'scatter',
                     data: { datasets: createPositionDatasets(players, 'ptsPerGame', 'bonusPerGame', true) },
-                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Points/Game (L5)', color: 'rgba(255,255,255,0.6)' }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Bonus Points/Game', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
+                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Points/Game (L5)', color: ct.text }, min: 0 }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Bonus Points/Game', color: ct.text }, min: 0 } } }
                 });
             }
             
@@ -4850,7 +5257,7 @@
                             ...createPositionDatasets(players, 'ownership', 'ptsPerGame', true)
                         ]
                     },
-                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Ownership %', color: 'rgba(255,255,255,0.6)' } }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: 'rgba(255,255,255,0.6)' }, min: 0 } } }
+                    options: { ...baseOptions, scales: { x: { ...baseOptions.scales.x, title: { display: true, text: 'Ownership %', color: ct.text } }, y: { ...baseOptions.scales.y, title: { display: true, text: 'Points/Game (L5)', color: ct.text }, min: 0 } } }
                 });
             }
             
@@ -4868,8 +5275,8 @@
                     options: { 
                         ...baseOptions, 
                         scales: { 
-                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Ownership %', color: 'rgba(255,255,255,0.6)' } }, 
-                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Value (Pts/G ÷ Price)', color: 'rgba(255,255,255,0.6)' }, min: 0 } 
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Ownership %', color: ct.text } }, 
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'Value (Pts/G ÷ Price)', color: ct.text }, min: 0 } 
                         },
                         plugins: {
                             ...baseOptions.plugins,
@@ -4921,7 +5328,7 @@
                             { label: 'Best', data: posStats.map(p => p.max), backgroundColor: 'rgba(251, 191, 36, 0.6)', borderColor: '#fbbf24', borderWidth: 1 }
                         ]
                     },
-                    options: { ...baseOptions, plugins: { ...baseOptions.plugins, legend: { display: true, labels: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } } } }, scales: { x: baseOptions.scales.x, y: { ...baseOptions.scales.y, title: { display: true, text: 'Pts/Game (L5)', color: 'rgba(255,255,255,0.6)' } } } }
+                    options: { ...baseOptions, plugins: { ...baseOptions.plugins, legend: { display: true, labels: { color: ct.text, font: { size: 10 } } } }, scales: { x: baseOptions.scales.x, y: { ...baseOptions.scales.y, title: { display: true, text: 'Pts/Game (L5)', color: ct.text } } } }
                 });
             }
         }
@@ -5093,10 +5500,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=32"></script>
+    <script src="scripts/players-ai.js?v=33"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/common.js?v=32"></script>
-    <script src="scripts/sidebar-nav.js?v=32"></script>
+    <script src="scripts/common.js?v=33"></script>
+    <script src="scripts/sidebar-nav.js?v=33"></script>
     <script>
         loadSidebarNav();
         initIcons();
