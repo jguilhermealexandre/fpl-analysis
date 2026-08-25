@@ -65,7 +65,10 @@
                 chips: {},        // {gw: 'wildcard'|'benchboost'|'freehit'|'triplecaptain'|null}
                 lineups: {},      // {gw: [{...playerObj, onBench, isCaptain, isVice}]}
                 bank: bank,
-                startingFT: 1,
+                // Start the plan from the manager's real position rather than a
+                // flat 1. Falls back to 1 if the history has not loaded yet, which
+                // is what this was before.
+                startingFT: (typeof deriveFreeTransfers === 'function' ? deriveFreeTransfers().count : 1),
                 usedChips: usedChipRecords,
                 teamId: localStorage.getItem('fpl_team_id') || '',
                 savedAt: null
@@ -255,6 +258,13 @@
             if (!ds) return 1;
             const gws = ds.gwNumbers;
             let ft = ds.startingFT;
+            // Asking for a gameweek at or before the plan's first means no rollover
+            // has happened yet, so the answer is simply the starting figure. Without
+            // this the loop never meets its early return, adds one per planned
+            // gameweek on the way past, and returns the 5-transfer cap for any
+            // gameweek outside the plan — including the current one, which is
+            // excluded from gwNumbers by design once its matches are under way.
+            if (!gws.length || gw <= gws[0]) return Math.max(0, ft);
             for (const g of gws) {
                 if (g === gw) return Math.max(0, ft);
                 const chip = ds.chips[g];

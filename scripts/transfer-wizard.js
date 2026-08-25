@@ -525,6 +525,40 @@
         const TW_MIN_FREE_GAIN = 3.0;   // spend a free transfer
         const TW_MIN_HIT_GAIN  = 4.0;   // clear the 4-point hit by this much again
 
+        /* How many free transfers the manager actually has.
+
+           This used to ask getDraftFreeTransfers(currentGW), which answers a
+           different question: how many free transfers the DRAFT PLAN would have
+           at that gameweek. Two things went wrong with it. Its starting figure
+           is a number the user types into the planner, defaulting to 1 rather
+           than to anything real. And its gameweek list deliberately excludes
+           any gameweek already under way — so currentGW is never in it, the
+           loop's early return never fires, and it rolls the count forward one
+           per planned gameweek until it hits the cap. With GW1 played it
+           returned 5 for everybody, which is why a manager holding a single
+           free transfer was offered two moves "within your 5 free transfers"
+           and shown no points hit for them.
+
+           deriveFreeTransfers() replays the manager's real transfer history
+           from the FPL API, which is the only honest source available — FPL
+           does not publish the count directly. */
+        function twFreeTransfers() {
+            if (typeof deriveFreeTransfers === 'function') {
+                const d = deriveFreeTransfers();
+                if (d && Number.isFinite(d.count)) return Math.max(0, d.count);
+            }
+            return 1;
+        }
+
+        // Whether that count is replayed from complete history or guessed at.
+        function twFreeTransfersExact() {
+            if (typeof deriveFreeTransfers === 'function') {
+                const d = deriveFreeTransfers();
+                return !!(d && d.exact);
+            }
+            return false;
+        }
+
         function twXPCached(player, gws, cache) {
             if (!player) return 0;
             if (cache[player.id] === undefined) cache[player.id] = twXPOver(player, gws);
@@ -634,17 +668,47 @@
             // failure, and must not be reported as "no squad loaded".
             if (!moves.length) {
                 return { best: { n: 0, moves: [], gross: 0, cost: 0, net: 0 },
-                         options: [], moves: [], gws, ft: (typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1),
+                         options: [], moves: [], gws, ft: (twFreeTransfers()),
                          horizon: TW_HORIZON, noLegalMove: true,
                          sample: (typeof seasonGamesPlayed !== 'undefined' ? seasonGamesPlayed : null) };
             }
 
-            const ft = typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1;
+            const ft = twFreeTransfers();
+
+            /* Every move above was priced on its own against the unchanged squad,
+               which is the right way to rank them and the wrong way to combine
+               them. Two moves are not independent: if both promote a bench player
+               into the same eleven, or both compete for one slot, their separate
+               gains double-count the same improvement. Adding them together
+               overstates a two-transfer plan and tilts the verdict toward taking
+               a hit. The pair also has to be legal as a pair — two swaps that are
+               each affordable against the full bank may not be affordable together,
+               and two players from the same club can breach the three-per-club
+               limit jointly while each looks fine alone. */
+            const twApplyMoves = ms => {
+                const trial = pool.slice();
+                ms.forEach(m => {
+                    const slot = trial.findIndex(e => e.id === m.out.id);
+                    if (slot >= 0) trial[slot] = { id: m.in.id, pos: m.in.position, lwScore: m.inXP, _ref: m.in };
+                });
+                return trial;
+            };
+            const twJointGain = ms => twSquadValue(twApplyMoves(ms)) - ctx.baseValue;
+            const twMovesLegal = ms => {
+                const raised = ms.reduce((s, m) => s + (m.out.sellPrice || m.out.price), 0);
+                const spent = ms.reduce((s, m) => s + m.in.price, 0);
+                if (spent > raised + ctx.bank + 1e-9) return false;
+                const counts = Object.assign({}, clubCount);
+                ms.forEach(m => { counts[m.out.teamId] = (counts[m.out.teamId] || 0) - 1; });
+                ms.forEach(m => { counts[m.in.teamId] = (counts[m.in.teamId] || 0) + 1; });
+                return Object.keys(counts).every(k => counts[k] <= 3);
+            };
 
             // Option A: one move. Option B: two, on different players — the second
             // is only worth it if it clears its own hit.
             const one = moves[0];
-            const two = moves.find(m => m.out.id !== one.out.id && m.in.id !== one.in.id);
+            const two = moves.find(m => m.out.id !== one.out.id && m.in.id !== one.in.id
+                && twMovesLegal([one, m]));
 
             const costFor = n => Math.max(0, n - ft) * 4;
             const options = [
@@ -652,7 +716,7 @@
                 { n: 1, moves: [one], gross: one.gain, cost: costFor(1), net: one.gain - costFor(1) }
             ];
             if (two) {
-                const gross = one.gain + two.gain;
+                const gross = twJointGain([one, two]);
                 options.push({ n: 2, moves: [one, two], gross, cost: costFor(2), net: gross - costFor(2) });
             }
 
@@ -725,9 +789,14 @@
                     ${sampleNote}`;
             }
 
+            // FPL does not publish your free-transfer count, so it is replayed from
+            // your transfer history. Say so when the history is incomplete rather
+            // than stating a number the manager may know to be wrong.
+            const ftEst = twFreeTransfersExact() ? '' :
+                `<span class="twr-est" title="Estimated: FPL does not publish your free-transfer count, so it is replayed from your transfer history.">est</span>`;
             const hitLine = best.cost > 0
-                ? `<span class="twr-cost">−${best.cost} for the hit</span>`
-                : `<span class="twr-free">within your ${ft} free transfer${ft === 1 ? '' : 's'}</span>`;
+                ? `<span class="twr-cost">−${best.cost} for the hit, on ${ft} free transfer${ft === 1 ? '' : 's'}${ftEst}</span>`
+                : `<span class="twr-free">within your ${ft} free transfer${ft === 1 ? '' : 's'}${ftEst}</span>`;
 
             return `
                 <div class="twr-verdict act">
@@ -841,7 +910,7 @@
             // A wildcard makes every transfer free — showing accumulated hits during
             // one is the single most misleading thing this screen could do.
             if (transferState.wildcard) return 0;
-            const ft = typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1;
+            const ft = twFreeTransfers();
             const count = transferState.pending.length;
             return Math.max(0, count - ft) * 4;
         }
@@ -852,7 +921,7 @@
             const itb = getTWLiveITB();
             const hit = getTWHitCost();
             const wc = transferState.wildcard;
-            const ft = typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1;
+            const ft = twFreeTransfers();
             const count = transferState.pending.length;
             const filled = transferState.pending.filter(s => s.replacement).length;
             const allFilled = count > 0 && filled === count;
