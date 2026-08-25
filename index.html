@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=59">
-    <link rel="stylesheet" href="styles/v2-design.css?v=59">
+    <link rel="stylesheet" href="styles/common.css?v=60">
+    <link rel="stylesheet" href="styles/v2-design.css?v=60">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -886,6 +886,14 @@
             padding: 0 5px; border-radius: var(--radius-full); line-height: 1.45;
         }
         .v2-pitch-token-xp .u { font-size: 8px; font-weight: 600; opacity: 0.65; margin-left: 1px; }
+        .v2-pitch-token-mins {
+            font-size: 8.5px; font-weight: 700; margin-left: 4px;
+            padding-left: 4px; border-left: 1px solid rgba(15,23,42,0.22);
+            color: rgba(15,23,42,0.62);
+        }
+        /* A projection built on a coin-flip start means something different to the
+           same number from a nailed-on starter, so say so on the card. */
+        .v2-pitch-token-mins.risk { color: #B45309; }
         .v2-pitch-token-star { color: #F59E0B; margin-left: 2px; }
         /* Shape + tooltip carry the verdict as well as the ring colour, so it is
            not conveyed by hue alone. */
@@ -3648,11 +3656,11 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/xp-engine.js?v=59"></script>
-    <script src="scripts/live-gw.js?v=59"></script>
-    <script src="scripts/transfer-engine.js?v=59"></script>
-    <script src="scripts/common.js?v=59"></script>
-    <script src="scripts/sidebar-nav.js?v=59"></script>
+    <script src="scripts/xp-engine.js?v=60"></script>
+    <script src="scripts/live-gw.js?v=60"></script>
+    <script src="scripts/transfer-engine.js?v=60"></script>
+    <script src="scripts/common.js?v=60"></script>
+    <script src="scripts/sidebar-nav.js?v=60"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4280,8 +4288,13 @@
                 squad.filter(p => p.pickPosition <= 11 && p.status === 'a').forEach(p => {
                     let m;
                     try { m = expectedMinutesModel(p); } catch (e) { return; }
-                    if (!m || m.pStart >= 0.62) return;
-                    if ((p.minutes || 0) < 60) return;
+                    if (!m || m.pStart >= 0.65) return;
+                    /* The old guard here also required 60+ minutes, which excluded
+                       precisely the players this is meant to catch: a substitute or
+                       an unused squad member sitting in your XI is the rotation risk.
+                       Measured against the current pool, nobody could trigger it at
+                       all — everyone who played started, so every start probability
+                       sat between 0.80 and 0.95. */
                     const pct = Math.round(m.pStart * 100);
                     xiItems.push({
                         name: p.name,
@@ -4482,12 +4495,10 @@
                 // Expected minutes belongs next to the projection it scales: an xP
                 // built on a 40% chance of starting means something different to
                 // the same number from a nailed-on starter.
-                let minsTxt = '';
+                let mins = null, minsTxt = '';
                 if (typeof expectedMinutesModel === 'function') {
-                    try {
-                        const m = expectedMinutesModel(p);
-                        if (m) minsTxt = ` · ${Math.round(m.pStart * 100)}% to start, ~${Math.round(m.expMins)} mins`;
-                    } catch (e) { /* leave it off rather than guess */ }
+                    try { mins = expectedMinutesModel(p); } catch (e) { mins = null; }
+                    if (mins) minsTxt = ` · ${Math.round(mins.pStart * 100)}% to start, ~${Math.round(mins.expMins)} mins`;
                 }
                 const tip = xp != null
                     ? `${esc(p.name)} — ${xp.toFixed(1)} projected points against ${oppTxt}${minsTxt}${isBestCap ? '. Highest projection in your XI.' : ''}`
@@ -4496,7 +4507,11 @@
                     <div class="v2-pitch-token-circle${ringClass}" style="background:${posColorVar[p.position] || 'var(--position-mid)'};">${p.squadNumber ?? '—'}${badge}</div>
                     <span class="v2-pitch-token-name">${esc(p.name)}${isBestCap ? '<span class="v2-pitch-token-star" title="Highest projected points in your XI">★</span>' : ''}</span>
                     <span class="v2-pitch-token-opp">${oppTxt}</span>
-                    ${xp != null ? `<span class="v2-pitch-token-xp">${xp.toFixed(1)}<span class="u">xP</span></span>` : `<span class="v2-pitch-token-pos">${posLabel}</span>`}
+                    ${xp != null
+                        ? `<span class="v2-pitch-token-xp">${xp.toFixed(1)}<span class="u">xP</span>${
+                            mins != null ? `<span class="v2-pitch-token-mins${mins.pStart < 0.65 ? ' risk' : ''}">${Math.round(mins.expMins)}'</span>` : ''
+                          }</span>`
+                        : `<span class="v2-pitch-token-pos">${posLabel}</span>`}
                     ${verdictMark}${statusIcon}
                 </div>`;
             }
