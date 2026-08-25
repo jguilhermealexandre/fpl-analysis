@@ -21,6 +21,7 @@ const STATIC_ASSETS = [
   '/styles/my-team.css',
   '/styles/wizard.css',
   '/scripts/common.js',
+  '/scripts/xp-engine.js',
   '/scripts/players-ai.js',
   '/scripts/players-tables.js',
   '/nav.html',

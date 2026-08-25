@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=52">
-    <link rel="stylesheet" href="styles/v2-design.css?v=52">
+    <link rel="stylesheet" href="styles/common.css?v=53">
+    <link rel="stylesheet" href="styles/v2-design.css?v=53">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -791,6 +791,72 @@
         }
         .v2-pitch-title { font-size: 17px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); }
         .v2-pitch-formation { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-full); }
+        .v2-pitch-head-right { display: inline-flex; align-items: center; gap: 8px; }
+        .v2-pitch-xitotal {
+            font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+            color: var(--color-primary); background: var(--color-primary-muted);
+            padding: 2px 8px; border-radius: var(--radius-full);
+        }
+
+        /* --- the snapshot as a gateway into the full analysis --- */
+        .v2-pitch-stage { position: relative; }
+        .v2-pitch-gateway {
+            position: absolute; inset: 0; z-index: 3;
+            display: flex; align-items: flex-start; justify-content: flex-end;
+            padding: 10px; border-radius: var(--radius-lg);
+            text-decoration: none; opacity: 0;
+            transition: opacity 180ms ease, box-shadow 180ms ease;
+            box-shadow: 0 0 0 0 transparent;
+        }
+        .v2-pitch-gateway:hover, .v2-pitch-gateway:focus-visible {
+            opacity: 1;
+            background: linear-gradient(180deg, rgba(15,23,42,0.30), rgba(15,23,42,0.06) 45%, transparent);
+            box-shadow: 0 8px 26px rgba(15, 23, 42, 0.20);
+        }
+        .v2-pitch-gateway:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+        .v2-pitch-gateway-hint {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--color-primary); color: #fff;
+            font-size: 12px; font-weight: 650;
+            padding: 6px 12px; border-radius: var(--radius-full);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+        }
+        .v2-pitch-gateway-hint .icon { width: 14px; height: 14px; }
+        /* Desktop gets the overlay; the explicit button is the mobile affordance. */
+        .v2-pitch-cta { display: none; }
+
+        /* --- per-player detail --- */
+        .v2-pitch-token-opp {
+            font-size: 9.5px; font-weight: 600; color: rgba(15,23,42,0.72);
+            line-height: 1.1; letter-spacing: -0.1px;
+        }
+        .v2-pitch-token-xp {
+            font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+            color: #0F172A; background: rgba(255,255,255,0.86);
+            padding: 0 5px; border-radius: var(--radius-full); line-height: 1.45;
+        }
+        .v2-pitch-token-xp .u { font-size: 8px; font-weight: 600; opacity: 0.65; margin-left: 1px; }
+        .v2-pitch-token-star { color: #F59E0B; margin-left: 2px; }
+        /* Shape + tooltip carry the verdict as well as the ring colour, so it is
+           not conveyed by hue alone. */
+        .v2-pitch-token-flag { font-size: 9px; line-height: 1; margin-top: 1px; }
+        .v2-pitch-token-flag.sell { color: #DC2626; }
+        .v2-pitch-token-flag.monitor { color: #D97706; }
+        .v2-pitch-bench .v2-pitch-token-opp, .v2-pitch-bench .v2-pitch-token-xp { display: none; }
+
+        @media (max-width: 767px) {
+            /* A full-bleed link over a tall element turns a scroll drag into a tap.
+               Hand navigation to the button instead. */
+            .v2-pitch-gateway { display: none; }
+            .v2-pitch-cta {
+                display: flex; align-items: center; justify-content: center; gap: 8px;
+                margin-top: 10px; min-height: 44px; padding: 0 16px;
+                border-radius: var(--radius-lg); text-decoration: none;
+                background: var(--color-primary); color: #fff;
+                font-size: 14px; font-weight: 650;
+            }
+            .v2-pitch-cta .icon { width: 16px; height: 16px; }
+        }
         .v2-pitch {
             position: relative;
             width: 100%;
@@ -3521,8 +3587,9 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/common.js?v=52"></script>
-    <script src="scripts/sidebar-nav.js?v=52"></script>
+    <script src="scripts/xp-engine.js?v=53"></script>
+    <script src="scripts/common.js?v=53"></script>
+    <script src="scripts/sidebar-nav.js?v=53"></script>
     <script>
         initIcons();
         loadFooter();
@@ -3617,17 +3684,25 @@
         }
 
         // ===== ANALYSIS ENGINE (ported from fpl-my-team-analysis) =====
-        function computePositionAverages(allPlayers) {
+        function computePositionAverages(allPlayers, currentGW) {
             const posAvg = {};
+            // The bar was a flat 200 minutes. One gameweek into a season nobody has
+            // played more than 90, so every position fell through to the hardcoded
+            // fallback below and the whole dashboard scored players against dummy
+            // averages. Scale it with the season instead, as the squad page does.
+            const minMinutes = Math.min(200, Math.max(currentGW - 1, 1) * 60);
             [1, 2, 3, 4].forEach(pos => {
-                const pp = allPlayers.filter(p => p.position === pos && p.minutes >= 200);
-                if (pp.length === 0) { posAvg[pos] = { form: 3, ppg: 3, ppm: 15, xGIPer90: 0.3 }; return; }
+                const pp = allPlayers.filter(p => p.position === pos && p.minutes >= minMinutes);
+                if (pp.length === 0) { posAvg[pos] = { form: 3, ppg: 3, ppm: 15, xGIPer90: 0.3, medPrice: 0 }; return; }
                 const avg = (arr, fn) => arr.reduce((s, p) => s + fn(p), 0) / arr.length;
+                const prices = pp.map(p => p.price).sort((x, y) => x - y);
                 posAvg[pos] = {
                     form: avg(pp, p => p.form),
                     ppg: avg(pp, p => p.ppg),
                     ppm: avg(pp, p => p.points / Math.max(p.price, 1)),
-                    xGIPer90: avg(pp, p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0)
+                    xGIPer90: avg(pp, p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0),
+                    // Reference point for the engine's price-quality prior.
+                    medPrice: prices[Math.floor(prices.length / 2)] || 0
                 };
             });
             return posAvg;
@@ -3756,11 +3831,28 @@
             }
 
             // 2. FORM
-            const formDelta = player.form - posConfig.formMedian;
+            // FPL's form is average points over the last 30 days, so one gameweek
+            // into a season it IS that one gameweek. Judged raw it flagged roughly
+            // half the league as out of form after a single round. Regress it
+            // toward the position median on the same evidence weight the squad
+            // page uses, reaching the raw figure at four matches — so the
+            // thresholds below keep their meaning and stop firing before anything
+            // has been shown.
+            const formEvidence = Math.min(1, gamesPlayed / 4);
+            const effectiveForm = player.form * formEvidence + posConfig.formMedian * (1 - formEvidence);
+            const formDelta = effectiveForm - posConfig.formMedian;
             const rawFormPenalty = Math.max(-30, Math.min(30, Math.round(-formDelta * 10)));
             sellRating += sensAdj(rawFormPenalty, settings.formWeight);
-            if (!topConcern && formDelta <= -1.5) topConcern = 'Poor Form';
-            else if (!topConcern && formDelta <= -0.5) topConcern = 'Below Avg Form';
+            // Say the number, not a label. "Poor Form" makes the manager work out
+            // what it means; "1.0 pts/gm vs 3.5 average" is the actual argument.
+            // Form only gets to be the headline concern once there is enough of a
+            // season to diagnose it. Below three matches the regressed reading sits
+            // near the median for everyone, so a marginal delta would crowd out the
+            // fixture, minutes and availability reasons that are actually driving
+            // the rating — and tell the manager the wrong thing to act on.
+            const formDiagnosable = gamesPlayed >= 3;
+            if (formDiagnosable && !topConcern && formDelta <= -1.5) topConcern = `Scoring ${player.form.toFixed(1)}/gm against a ${posConfig.formMedian} ${posConfig.short} average`;
+            else if (formDiagnosable && !topConcern && formDelta <= -0.5) topConcern = `Below the ${posConfig.short} average at ${player.form.toFixed(1)} pts/gm`;
 
             // 3. FIXTURES
             const fixtures = player.fixtures || [];
@@ -3773,7 +3865,7 @@
             }
             const rawFixPenalty = Math.max(-22, Math.min(22, Math.round((avgFDR - 3.0) * 14)));
             sellRating += sensAdj(rawFixPenalty, settings.fixtureWeight);
-            if (!topConcern && avgFDR >= 3.8) topConcern = 'Tough Fixtures';
+            if (!topConcern && avgFDR >= 3.8) topConcern = `Average fixture difficulty ${avgFDR.toFixed(1)} over the next five`;
 
             // 3b. OPPONENT QUALITY
             if (fixtures.length >= 3 && Object.keys(teamAnalysis).length > 0) {
@@ -3796,8 +3888,8 @@
             else if (minsPerGame >= 85) minsPenalty = -6;
             else minsPenalty = -2;
             sellRating += sensAdj(minsPenalty);
-            if (!topConcern && minsPerGame < 45) topConcern = 'Rotation Risk';
-            else if (!topConcern && minsPerGame < 65) topConcern = 'Low Minutes';
+            if (!topConcern && minsPerGame < 45) topConcern = `Averaging ${Math.round(minsPerGame)} minutes a game — heavy rotation risk`;
+            else if (!topConcern && minsPerGame < 65) topConcern = `Averaging ${Math.round(minsPerGame)} minutes a game`;
 
             // 5. VALUE FOR MONEY
             const pAvg = posAvg[player.position] || { form: 3, ppg: 3, ppm: 15 };
@@ -3839,7 +3931,7 @@
             if (ta) {
                 const teamFormDelta = (ta.formRating - 50) / 50;
                 sellRating += sensAdj(Math.round(teamFormDelta * -8));
-                if (!topConcern && ta.formRating < 30) topConcern = 'Team Poor Form';
+                if (!topConcern && ta.formRating < 30) topConcern = `${player.team} form rating ${ta.formRating}/100 — the club is struggling, not just the player`;
                 if (player.position >= 3) { sellRating += sensAdj(Math.round(((ta.attackPower - 50) / 50) * -8)); if (!topConcern && ta.attackPower < 35) topConcern = 'Weak Team Attack'; }
                 if (player.position <= 2) { sellRating += sensAdj(Math.round(((ta.defensePower - 50) / 50) * -8)); if (!topConcern && ta.defensePower < 35) topConcern = 'Weak Team Defence'; }
                 if (ta.fixtureScore < 30) { sellRating += sensAdj(4, settings.fixtureWeight); if (!topConcern) topConcern = 'Tough Team Fixtures'; }
@@ -3850,7 +3942,7 @@
             let verdict;
             if (sellRating >= 55) verdict = 'sell';
             else if (sellRating >= 38) verdict = 'monitor';
-            else if (sellRating <= 20 && player.form >= posConfig.formMedian + 1.5 && minsPerGame >= 75) verdict = 'star';
+            else if (sellRating <= 20 && effectiveForm >= posConfig.formMedian + 1.5 && minsPerGame >= 75) verdict = 'star';
             else verdict = 'hold';
 
             return { name: player.name, verdict, sellRating, topConcern };
@@ -4170,23 +4262,61 @@
             starters.forEach(p => { if (counts[p.position] !== undefined) counts[p.position]++; });
             const formationStr = `${counts[2]}-${counts[3]}-${counts[4]}`;
 
+            // Rotation-adjusted xP from the shared engine — the same projection the
+            // squad page, the wizards and the draft planner use. Falls back to a dash
+            // rather than a fabricated number if the engine has no state to work with.
+            const xpOf = p => {
+                if (typeof projectPlayerPointsDetailed !== 'function'
+                    || typeof xpEngineReady !== 'function' || !xpEngineReady()) return null;
+                const fx = (p.fixtures || [])[0] || null;
+                try { return projectPlayerPointsDetailed(p, { fixture: fx }).total; }
+                catch (e) { return null; }
+            };
+            const xpById = {};
+            squad.forEach(p => { xpById[p.id] = xpOf(p); });
+
+            // The armband marker follows the highest projection in the XI, which is
+            // the question the dashboard is actually answering. The real captain is
+            // still shown, so a disagreement is visible rather than hidden.
+            let bestCapId = null, bestCapXp = -Infinity;
+            squad.filter(p => p.pickPosition <= 11).forEach(p => {
+                const v = xpById[p.id];
+                if (v != null && v > bestCapXp) { bestCapXp = v; bestCapId = p.id; }
+            });
+
             function pitchToken(p) {
                 const a = verdictMap[p.id];
                 const verdict = a ? a.verdict : 'hold';
                 const ringClass = verdict === 'sell' ? ' verdict-ring-sell' : verdict === 'monitor' ? ' verdict-ring-monitor' : '';
-                const badge = p.isCaptain ? '<span class="v2-pitch-token-badge">C</span>' : p.isViceCaptain ? '<span class="v2-pitch-token-badge">V</span>' : '';
+                let badge = '';
+                if (p.isCaptain) badge = '<span class="v2-pitch-token-badge">C</span>';
+                else if (p.isViceCaptain) badge = '<span class="v2-pitch-token-badge">V</span>';
                 let statusIcon = '';
                 if (p.status === 'i' || p.status === 'u' || p.status === 's') {
                     statusIcon = '<i data-lucide="circle-x" class="v2-pitch-token-status icon" style="width:11px;height:11px;"></i>';
                 } else if (p.status === 'd') {
                     statusIcon = '<i data-lucide="alert-triangle" class="v2-pitch-token-status icon" style="width:11px;height:11px;color:#FBBF24;"></i>';
                 }
+                // Verdict is carried by a ring colour, which is invisible to a red-green
+                // colour deficiency. Give it a shape and a word too.
+                let verdictMark = '';
+                if (verdict === 'sell') verdictMark = '<span class="v2-pitch-token-flag sell" title="Rated Sell">▼</span>';
+                else if (verdict === 'monitor') verdictMark = '<span class="v2-pitch-token-flag monitor" title="Monitor">●</span>';
+
+                const xp = xpById[p.id];
+                const fx = (p.fixtures || [])[0];
+                const oppTxt = fx ? `${esc(fx.opponent || '?')}${fx.isHome ? ' (H)' : ' (A)'}` : 'Blank';
+                const isBestCap = p.id === bestCapId;
                 const posLabel = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position] || '';
-                return `<div class="v2-pitch-token">
+                const tip = xp != null
+                    ? `${esc(p.name)} — ${xp.toFixed(1)} projected points against ${oppTxt}${isBestCap ? '. Highest projection in your XI.' : ''}`
+                    : `${esc(p.name)} — ${posLabel}`;
+                return `<div class="v2-pitch-token" title="${tip}">
                     <div class="v2-pitch-token-circle${ringClass}" style="background:${posColorVar[p.position] || 'var(--position-mid)'};">${p.squadNumber ?? '—'}${badge}</div>
-                    <span class="v2-pitch-token-name">${esc(p.name)}</span>
-                    <span class="v2-pitch-token-pos">${posLabel}</span>
-                    ${statusIcon}
+                    <span class="v2-pitch-token-name">${esc(p.name)}${isBestCap ? '<span class="v2-pitch-token-star" title="Highest projected points in your XI">★</span>' : ''}</span>
+                    <span class="v2-pitch-token-opp">${oppTxt}</span>
+                    ${xp != null ? `<span class="v2-pitch-token-xp">${xp.toFixed(1)}<span class="u">xP</span></span>` : `<span class="v2-pitch-token-pos">${posLabel}</span>`}
+                    ${verdictMark}${statusIcon}
                 </div>`;
             }
 
@@ -4203,13 +4333,37 @@
             let benchHtml = '<span class="v2-pitch-bench-label">Bench</span>';
             bench.forEach(p => { benchHtml += pitchToken(p); });
 
+            const xiXp = squad.filter(p => p.pickPosition <= 11)
+                .reduce((t, p) => t + (xpById[p.id] || 0), 0);
+            const xiXpLabel = xiXp > 0 ? `${xiXp.toFixed(1)} xP` : '';
+
+            /* The whole snapshot is the way into the deep analysis. It is an <a>
+               rather than a click handler so it behaves like a link: keyboard
+               focusable, middle-clickable, and readable by a screen reader.
+
+               On a phone a full-bleed link over a tall element hijacks scrolling —
+               a drag that starts on the pitch reads as a tap. Below 768px the
+               overlay link is therefore disabled by CSS and the explicit button
+               below carries the navigation instead. */
             wrap.innerHTML = `
                 <div class="v2-pitch-header">
                     <span class="v2-pitch-title">Squad Snapshot</span>
-                    <span class="v2-pitch-formation">${formationStr}</span>
+                    <span class="v2-pitch-head-right">
+                        ${xiXpLabel ? `<span class="v2-pitch-xitotal" title="Sum of your starting XI's projected points">${xiXpLabel}</span>` : ''}
+                        <span class="v2-pitch-formation">${formationStr}</span>
+                    </span>
                 </div>
-                <div class="v2-pitch">${pitchHtml}</div>
-                <div class="v2-pitch-bench">${benchHtml}</div>`;
+                <div class="v2-pitch-stage">
+                    <a class="v2-pitch-gateway" href="fpl-my-team-analysis.html"
+                       aria-label="Open the full squad analysis">
+                        <span class="v2-pitch-gateway-hint">Full squad analysis <i data-lucide="arrow-right" class="icon"></i></span>
+                    </a>
+                    <div class="v2-pitch">${pitchHtml}</div>
+                    <div class="v2-pitch-bench">${benchHtml}</div>
+                </div>
+                <a class="v2-pitch-cta" href="fpl-my-team-analysis.html">
+                    <i data-lucide="line-chart" class="icon"></i> Analyse full squad
+                </a>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -4525,6 +4679,19 @@
                     goals: p.goals_scored, assists: p.assists,
                     cleanSheets: p.clean_sheets,
                     xGI: parseFloat(p.expected_goal_involvements) || 0,
+                    // Fields scripts/xp-engine.js reads. Without xG/xA its per-90
+                    // rates divide undefined by minutes and every projection on the
+                    // dashboard comes out NaN.
+                    xG: parseFloat(p.expected_goals) || 0,
+                    xA: parseFloat(p.expected_assists) || 0,
+                    saves: p.saves || 0,
+                    bonus: p.bonus || 0,
+                    defCon: p.defensive_contribution || 0,
+                    defCon90: parseFloat(p.defensive_contribution_per_90) || 0,
+                    yellowCards: p.yellow_cards || 0,
+                    redCards: p.red_cards || 0,
+                    penaltiesOrder: p.penalties_order || null,
+                    epNext: parseFloat(p.ep_next) || 0,
                     transfersIn: p.transfers_in_event || 0,
                     transfersOut: p.transfers_out_event || 0,
                     fixtures: teamFixtures[p.team] || []
@@ -4540,8 +4707,16 @@
                     }
                 });
 
-                const posAvg = computePositionAverages(allPlayers);
+                const posAvg = computePositionAverages(allPlayers, currentGW);
                 const teamAnalysis = computeTeamScores(bootData.teams, fixturesData);
+                // scripts/xp-engine.js reads these by name. Publishing them here is
+                // what lets the dashboard project with the same model as the squad
+                // page rather than inventing a second, weaker one.
+                window.positionAverages = posAvg;
+                window.teamAnalysis = teamAnalysis;
+                window.currentGW = currentGW;
+                window.isPreseason = false;
+                window.computePlayerGamesPlayed = function () { return Math.max(currentGW - 1, 1); };
 
                 // Build squad from picks (merge pick-level fields)
                 const squad = picksData.picks.map(pick => {
