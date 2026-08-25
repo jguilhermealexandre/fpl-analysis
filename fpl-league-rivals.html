@@ -17,10 +17,10 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=35">
-    <link rel="stylesheet" href="styles/v2-design.css?v=35">
-    <script src="scripts/common.js?v=35"></script>
-    <script src="scripts/sidebar-nav.js?v=35"></script>
+    <link rel="stylesheet" href="styles/common.css?v=36">
+    <link rel="stylesheet" href="styles/v2-design.css?v=36">
+    <script src="scripts/common.js?v=36"></script>
+    <script src="scripts/sidebar-nav.js?v=36"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -704,6 +704,112 @@
         .matrix-cell.captain { background: #F59E0B; color: #000; font-weight: 700; }
         .matrix-cell.benched { background: var(--surface-3); color: var(--text-muted); font-style: italic; }
 
+        /* ===== INSIGHTS HUB ===== */
+        .league-command {
+            display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap;
+            padding: var(--space-4) var(--space-5); margin-bottom: var(--space-4);
+            background: var(--surface-1); border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+        }
+        .lc-title { font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 700; color: var(--text-primary); }
+        .lc-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .lc-stats { display: flex; gap: var(--space-5); margin-left: auto; flex-wrap: wrap; }
+        .lc-stat { display: flex; flex-direction: column; gap: 2px; }
+        .lc-stat span { font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); font-weight: 700; }
+        .lc-stat b { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 800; color: var(--text-primary); }
+        .lc-stat b small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+        .lc-stat b.lc-live { color: var(--color-success); }
+        .lc-change {
+            padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer;
+            border: 1px solid var(--border-default); background: var(--surface-2);
+            color: var(--text-secondary); font-size: 11px; font-weight: 600; font-family: inherit;
+        }
+        .lc-change:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+        .rival-switch { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-4); }
+        .rs-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); font-weight: 700; margin-right: 4px; }
+        .rs-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 11px; border-radius: 999px; cursor: pointer;
+            border: 1px solid var(--border-default); background: var(--surface-2);
+            color: var(--text-secondary); font-size: 11.5px; font-weight: 600; font-family: inherit;
+        }
+        .rs-pill:hover { border-color: var(--color-primary); color: var(--text-primary); }
+        .rs-pill.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+        .rs-rank { font-size: 9px; opacity: .7; font-weight: 800; }
+
+        .summary-ctx { margin-top: 6px; font-size: 11px; line-height: 1.4; color: var(--text-muted); }
+
+        /* ---- threat & damage control ---- */
+        .threat-panel {
+            padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5);
+            background: var(--surface-1); border: 1px solid var(--border-default);
+            border-left: 3px solid var(--color-error); border-radius: var(--radius-lg);
+        }
+        .threat-panel.safe { border-left-color: var(--color-success); }
+        .threat-head {
+            display: flex; align-items: center; gap: 7px;
+            font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700;
+            color: var(--text-primary); margin-bottom: var(--space-3);
+        }
+        .threat-sub { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+        .threat-rows { display: flex; flex-direction: column; gap: 8px; }
+        .threat-row {
+            display: grid; grid-template-columns: minmax(130px,1.3fr) minmax(120px,1.2fr) 96px auto;
+            gap: var(--space-3); align-items: center;
+            padding: 9px 11px; border-radius: var(--radius-md); background: var(--surface-2);
+        }
+        .threat-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+        .threat-meta { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+        .threat-own-bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+        .threat-own-bar span { display: block; height: 100%; background: var(--color-error); border-radius: 3px; }
+        .threat-own-label { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+        .threat-damage { text-align: center; }
+        .threat-damage b { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 800; }
+        .threat-damage small { display: block; font-size: 9.5px; color: var(--text-muted); }
+        .threat-damage.bad b { color: var(--color-error); }
+        .threat-damage.ok b { color: var(--color-success); }
+        .threat-cta {
+            padding: 6px 11px; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+            border: 1px solid var(--color-warning); background: rgba(251,191,36,.12);
+            color: var(--color-warning); font-size: 11px; font-weight: 700; font-family: inherit;
+        }
+        .threat-cta:hover { background: rgba(251,191,36,.22); }
+        .threat-note { margin-top: var(--space-3); font-size: 11.5px; line-height: 1.5; color: var(--text-muted); }
+
+        /* ---- captaincy distribution + swing ---- */
+        .cap-dist, .cap-swing {
+            padding: var(--space-4) var(--space-5); margin-top: var(--space-4);
+            background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+        }
+        .cap-dist-head, .swing-head {
+            font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700;
+            color: var(--text-primary); margin-bottom: var(--space-3);
+        }
+        .cap-dist-bar { display: flex; height: 26px; border-radius: 7px; overflow: hidden; background: var(--surface-3); }
+        .cap-seg {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10.5px; font-weight: 800; color: #0F172A;
+            box-shadow: inset -2px 0 0 var(--surface-1);
+        }
+        .cap-seg:last-child { box-shadow: none; }
+        .cap-dist-key { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 10px; }
+        .cap-key { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); }
+        .cap-key-dot { width: 8px; height: 8px; border-radius: 2px; }
+        .cap-key em { color: var(--color-primary); font-style: normal; font-weight: 700; }
+        .swing-intro { font-size: 12.5px; color: var(--text-secondary); margin-bottom: var(--space-3); }
+        .swing-controls { display: flex; align-items: center; gap: var(--space-3); }
+        .swing-controls input[type="range"] { flex: 1; max-width: 320px; accent-color: var(--color-primary); cursor: pointer; }
+        .swing-delta { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 800; color: var(--color-primary); min-width: 62px; }
+        .swing-result { margin-top: var(--space-3); display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+        .swing-figure { display: flex; align-items: baseline; gap: 6px; }
+        .swing-figure b { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 800; color: var(--text-muted); }
+        .swing-figure.good b { color: var(--color-success); }
+        .swing-figure.bad b { color: var(--color-error); }
+        .swing-figure span { font-size: 11px; color: var(--text-muted); }
+        .swing-explain { font-size: 12px; line-height: 1.5; color: var(--text-secondary); flex: 1; min-width: 240px; }
+        .swing-na { font-size: 12px; color: var(--text-muted); }
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
             .nav-container { padding: 0 var(--space-4); }
@@ -802,29 +908,41 @@
         <div id="resultsContainer" style="display: none;">
             <!-- Tab: Insights -->
             <div class="tab-content active" id="tab-insights">
+                <!-- League command header -->
+                <div class="league-command" id="leagueCommand" style="display:none;"></div>
+                <!-- Rival focus switcher -->
+                <div class="rival-switch" id="rivalSwitch" style="display:none;"></div>
+
                 <!-- Summary Cards -->
                 <div class="summary-grid" id="summaryGrid">
                     <div class="summary-card danger">
                         <div class="summary-icon"><i data-lucide="alert-triangle" style="width:24px;height:24px;"></i></div>
                         <div class="summary-value" id="missingCount">0</div>
-                        <div class="summary-label">Missing Templates</div>
+                        <div class="summary-label">Template Risk</div>
+                        <div class="summary-ctx" id="missingCtx"></div>
                     </div>
                     <div class="summary-card opportunity">
                         <div class="summary-icon"><i data-lucide="swords" style="width:24px;height:24px;"></i></div>
                         <div class="summary-value" id="diffCount">0</div>
-                        <div class="summary-label">Your Differentials</div>
+                        <div class="summary-label">Differential Edge</div>
+                        <div class="summary-ctx" id="diffCtx"></div>
                     </div>
                     <div class="summary-card info">
                         <div class="summary-icon"><i data-lucide="bar-chart-3" style="width:24px;height:24px;"></i></div>
                         <div class="summary-value" id="similarityPct">0%</div>
-                        <div class="summary-label">Template Match</div>
+                        <div class="summary-label">Captaincy Concentration</div>
+                        <div class="summary-ctx" id="similarityCtx"></div>
                     </div>
                     <div class="summary-card warning">
                         <div class="summary-icon"><i data-lucide="crosshair" style="width:24px;height:24px;"></i></div>
                         <div class="summary-value" id="uniqueCount">0</div>
-                        <div class="summary-label">Only You Own</div>
+                        <div class="summary-label">Live Rank Projection</div>
+                        <div class="summary-ctx" id="uniqueCtx"></div>
                     </div>
                 </div>
+
+                <!-- Threat & damage control -->
+                <div id="threatMatrix"></div>
 
                 <!-- Action Required Box -->
                 <div class="action-box" id="actionBox" style="display: none;">
@@ -859,6 +977,8 @@
                     <h2 style="color: var(--color-warning);"><i data-lucide="crown" style="width:20px;height:20px;display:inline;"></i> Captain Consensus</h2>
                 </div>
                 <div class="captain-hero" id="captainHero"></div>
+                <div class="cap-dist" id="capDistribution"></div>
+                <div class="cap-swing" id="capSwing"></div>
 
                 <div class="section-header" style="margin-top:var(--space-6);">
                     <h2><i data-lucide="users" style="width:20px;height:20px;display:inline;"></i> Captain Choices</h2>
@@ -1082,6 +1202,83 @@
             Object.values(teamFixtures).forEach(arr => arr.sort((a, b) => a.gw - b.gw));
         }
         
+        // ===== LIVE GAMEWEEK =====
+        // The proxy passes any FPL path through, so the live endpoint is reachable.
+        // It carries per-player points, bonus and bps as the gameweek unfolds,
+        // which is what makes a projected league rank a real figure rather than a
+        // guess — every rival's picks and multipliers are known.
+        let liveStats = null;
+        let liveLoadedGW = null;
+
+        async function loadLiveData() {
+            if (liveLoadedGW === currentGW && liveStats) return liveStats;
+            try {
+                const res = await fetch(`${WORKER_URL}/api/event/${currentGW}/live/`);
+                if (!res.ok) throw new Error('live unavailable');
+                const data = await res.json();
+                liveStats = {};
+                (data.elements || []).forEach(e => { liveStats[e.id] = e.stats; });
+                liveLoadedGW = currentGW;
+            } catch (e) {
+                console.warn('Live data unavailable:', e.message);
+                liveStats = null;
+            }
+            return liveStats;
+        }
+
+        // A manager's score as it stands. The picks carry their own multiplier, so
+        // captain and triple captain are handled without special-casing.
+        function liveScoreFor(entryId) {
+            const mp = managerPicks[entryId];
+            if (!mp || !liveStats) return null;
+            const benchBoost = mp.activeChip === 'bboost';
+            let pts = 0, toPlay = 0, inPlay = 0;
+            (mp.fullPicks || []).forEach(pick => {
+                const counts = pick.position <= 11 || benchBoost;
+                if (!counts) return;
+                const st = liveStats[pick.element];
+                if (!st) { toPlay++; return; }
+                pts += (st.total_points || 0) * (pick.multiplier || 1);
+                if (!st.played) toPlay++;
+                else if ((st.minutes || 0) > 0) inPlay++;
+            });
+            return { pts, toPlay, inPlay };
+        }
+
+        // Standings totals already include this gameweek once it starts scoring, so
+        // the pre-gameweek total is what the projection has to build on.
+        function preGwTotal(entryId) {
+            const m = managerPicks[entryId]?.manager;
+            if (!m) return 0;
+            return (m.total || 0) - (m.event_total || 0);
+        }
+
+        // Projected standings: everyone's pre-gameweek total plus what they have
+        // scored so far this gameweek. `adjust` lets callers ask what-if questions.
+        function projectedTable(adjust) {
+            const ids = Object.keys(managerPicks);
+            const rows = ids.map(id => {
+                const live = liveScoreFor(id);
+                const gwPts = live ? live.pts : (managerPicks[id].manager.event_total || 0);
+                const extra = adjust ? (adjust(id) || 0) : 0;
+                return {
+                    id,
+                    manager: managerPicks[id].manager,
+                    gwPts: gwPts + extra,
+                    toPlay: live ? live.toPlay : null,
+                    total: preGwTotal(id) + gwPts + extra
+                };
+            });
+            rows.sort((a, b) => b.total - a.total || b.gwPts - a.gwPts);
+            rows.forEach((r, i) => { r.projRank = i + 1; });
+            return rows;
+        }
+
+        function myProjectedRank(adjust) {
+            const row = projectedTable(adjust).find(r => r.id == myTeamId);
+            return row ? row.projRank : null;
+        }
+
         // ===== LOAD LEAGUE =====
         async function loadLeague() {
             const leagueId = document.getElementById('leagueIdInput').value.trim();
@@ -1188,6 +1385,8 @@
                     }));
                 }
                 
+                await loadLiveData();
+
                 myPicks = new Set(managerPicks[myTeamId]?.picks || []);
                 myStarters = new Set(managerPicks[myTeamId]?.starters || []);
                 
@@ -1248,13 +1447,13 @@
                 const similarityPct = templatePlayers.length > 0 ? Math.round((yourTemplateCount / templatePlayers.length) * 100) : 0;
                 
                 // Update summary cards
-                document.getElementById('missingCount').textContent = missingTemplates.length;
-                document.getElementById('diffCount').textContent = yourDifferentials.length;
-                document.getElementById('similarityPct').textContent = similarityPct + '%';
-                document.getElementById('uniqueCount').textContent = onlyYouOwn.length;
+                renderCommandHeader();
+                renderRivalSwitcher(rivalIds);
+                renderKpiTiles(missingTemplates, yourDifferentials, onlyYouOwn, similarityPct, playerOwnership);
                 
                 // Render insights tab
                 renderInsights(missingTemplates, yourDifferentials);
+                renderThreatMatrix(missingTemplates);
                 
                 // Populate rival select
                 const rivalSelect = document.getElementById('rivalSelect');
@@ -1301,6 +1500,117 @@
             }
         }
         
+        // The league's macro context. Prize pots are not exposed by the FPL API and
+        // are not invented here — everything below is read from the standings.
+        function renderCommandHeader() {
+            const el = document.getElementById('leagueCommand');
+            if (!el || !leagueData) return;
+            const me = managerPicks[myTeamId]?.manager;
+            const totals = managers.map(m => m.total || 0);
+            const avgTotal = totals.length ? Math.round(totals.reduce((s, v) => s + v, 0) / totals.length) : 0;
+
+            const table = liveStats ? projectedTable() : null;
+            const liveAvg = table ? Math.round(table.reduce((s, r) => s + r.gwPts, 0) / table.length) : null;
+            const myRow = table ? table.find(r => r.id == myTeamId) : null;
+
+            el.innerHTML = `
+                <div class="lc-main">
+                    <div class="lc-title">${escHTML(leagueData.league.name)}</div>
+                    <div class="lc-sub">${escHTML(me?.player_name || '')} · ${escHTML(me?.entry_name || '')}</div>
+                </div>
+                <div class="lc-stats">
+                    <div class="lc-stat"><span>Your rank</span><b>${me?.rank ?? '—'}<small>/${managers.length}</small></b></div>
+                    <div class="lc-stat"><span>League average</span><b>${avgTotal.toLocaleString()}</b></div>
+                    ${liveAvg !== null ? `<div class="lc-stat"><span>Live GW average</span><b>${liveAvg}</b></div>` : ''}
+                    ${myRow ? `<div class="lc-stat"><span>Your live GW</span><b class="lc-live">${myRow.gwPts}</b></div>` : ''}
+                </div>
+                <button class="lc-change" onclick="showInputSection()">Change league</button>`;
+            el.style.display = 'flex';
+        }
+
+        // Pin a rival to compare against without leaving the tab.
+        let focusRivalId = null;
+        function renderRivalSwitcher(rivalIds) {
+            const el = document.getElementById('rivalSwitch');
+            if (!el) return;
+            const top = rivalIds
+                .map(id => managerPicks[id].manager)
+                .sort((a, b) => (a.rank || 999) - (b.rank || 999))
+                .slice(0, 6);
+            el.innerHTML = `<span class="rs-label">Focus rival</span>
+                <button class="rs-pill ${focusRivalId === null ? 'active' : ''}" onclick="setFocusRival(null)">Whole league</button>
+                ${top.map(m => `<button class="rs-pill ${focusRivalId == m.entry ? 'active' : ''}" onclick="setFocusRival(${m.entry})">
+                    <span class="rs-rank">${m.rank}</span>${escHTML(m.player_name)}</button>`).join('')}`;
+            el.style.display = 'flex';
+        }
+
+        function setFocusRival(id) {
+            focusRivalId = id;
+            renderRivalSwitcher(window.rivalIds || []);
+            // Head-to-head is the view built for one rival, so send them there.
+            if (id) {
+                const sel = document.getElementById('rivalSelect');
+                if (sel) { sel.value = String(id); renderRivalComparison(); }
+                showTab('h2h');
+                document.querySelectorAll('.tabs .tab').forEach(t => t.classList.toggle('active', /Head/.test(t.textContent)));
+            }
+        }
+
+        function renderKpiTiles(missingTemplates, yourDifferentials, onlyYouOwn, similarityPct, playerOwnership) {
+            const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+            const cls = (sel, name) => { const e = document.querySelector(sel); if (e) e.className = 'summary-card ' + name; };
+
+            // 1. Template risk — weighted by how widely the missing players are owned.
+            const heavy = missingTemplates.filter(p => p.pct >= 70).length;
+            set('missingCount', missingTemplates.length);
+            set('missingCtx', missingTemplates.length === 0
+                ? 'You own every template pick'
+                : `${heavy} owned by 70%+ · worst is ${missingTemplates[0].player.name} at ${missingTemplates[0].pct}%`);
+            cls('#summaryGrid .summary-card:nth-child(1)', heavy >= 2 ? 'danger' : missingTemplates.length ? 'warning' : 'opportunity');
+
+            // 2. Differential edge — only the genuinely rare ones count.
+            const rare = yourDifferentials.filter(p => p.pct < 10).length;
+            set('diffCount', yourDifferentials.length);
+            set('diffCtx', yourDifferentials.length
+                ? `${rare} under 10% owned in this league · ${onlyYouOwn.length} owned by nobody else`
+                : 'No differentials — you are the template');
+            cls('#summaryGrid .summary-card:nth-child(2)', rare >= 3 ? 'opportunity' : 'info');
+
+            // 3. Captaincy concentration — the real armband distribution.
+            const ids = Object.keys(managerPicks);
+            const capCounts = {};
+            ids.forEach(id => { const cp = managerPicks[id].captain; if (cp) capCounts[cp] = (capCounts[cp] || 0) + 1; });
+            const topCap = Object.entries(capCounts).sort((a, b) => b[1] - a[1])[0];
+            const capPct = topCap ? Math.round((topCap[1] / ids.length) * 100) : 0;
+            const capName = topCap ? (allPlayersById[topCap[0]]?.name || '?') : '—';
+            const myCap = managerPicks[myTeamId]?.captain;
+            const iMatch = topCap && myCap == topCap[0];
+            set('similarityPct', capPct + '%');
+            set('similarityCtx', topCap
+                ? `${capPct}% captained ${capName} — ${iMatch ? 'you match the field' : 'you went differential'}`
+                : 'No captains recorded');
+            cls('#summaryGrid .summary-card:nth-child(3)', iMatch ? 'info' : capPct >= 60 ? 'warning' : 'opportunity');
+
+            // 4. Live rank projection.
+            const me = managerPicks[myTeamId]?.manager;
+            if (liveStats) {
+                const row = projectedTable().find(r => r.id == myTeamId);
+                const now = me?.rank ?? null;
+                const proj = row ? row.projRank : null;
+                const move = (now !== null && proj !== null) ? now - proj : 0;
+                set('uniqueCount', proj !== null ? proj : '—');
+                set('uniqueCtx', proj === null ? 'Live data unavailable'
+                    : move > 0 ? `Climbing ${move} place${move === 1 ? '' : 's'} from ${now} · ${row.toPlay} still to play`
+                    : move < 0 ? `Slipping ${-move} place${move === -1 ? '' : 's'} from ${now} · ${row.toPlay} still to play`
+                    : `Holding ${now} · ${row.toPlay} of your XI still to play`);
+                cls('#summaryGrid .summary-card:nth-child(4)', move > 0 ? 'opportunity' : move < 0 ? 'danger' : 'info');
+            } else {
+                set('uniqueCount', me?.rank ?? '—');
+                set('uniqueCtx', 'Live gameweek data unavailable right now');
+                cls('#summaryGrid .summary-card:nth-child(4)', 'info');
+            }
+        }
+
         function renderInsights(missingTemplates, yourDifferentials) {
             document.getElementById('missingCountLabel').textContent = `${missingTemplates.length} players`;
             document.getElementById('missingGrid').innerHTML = missingTemplates.map(p => renderPlayerCard(p, 'danger')).join('');
@@ -1323,6 +1633,86 @@
             }
         }
         
+        // What a missing template actually costs. Rather than asserting a rank
+        // drop, this re-ranks the whole league with the hypothetical applied — the
+        // same projection used everywhere else, asked a what-if question.
+        const THREAT_HAUL = 10;   // a goal and an assist, roughly
+
+        function renderThreatMatrix(missingTemplates) {
+            const el = document.getElementById('threatMatrix');
+            if (!el) return;
+            const threats = missingTemplates.filter(p => p.pct >= 50).slice(0, 5);
+            if (!threats.length) {
+                el.innerHTML = `<div class="threat-panel safe">
+                    <div class="threat-head"><i data-lucide="shield-check" style="width:16px;height:16px;"></i> No template gaps</div>
+                    <p>You own every player more than half this league owns. There is no template haul that moves the field past you.</p>
+                </div>`;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            const baseRank = myProjectedRank();
+            const rows = threats.map(t => {
+                const pid = t.player.id;
+                // Everyone who starts him gains; those captaining him gain double.
+                const damaged = myProjectedRank(id => {
+                    const mp = managerPicks[id];
+                    if (!mp) return 0;
+                    if (mp.captain === pid) return THREAT_HAUL * (mp.activeChip === '3xc' ? 3 : 2);
+                    if (mp.starters.includes(pid)) return THREAT_HAUL;
+                    return 0;
+                });
+                const drop = (damaged !== null && baseRank !== null) ? damaged - baseRank : null;
+                return { t, drop, damaged };
+            }).sort((a, b) => (b.drop || 0) - (a.drop || 0));
+
+            const worst = rows[0];
+            el.innerHTML = `
+                <div class="threat-panel">
+                    <div class="threat-head">
+                        <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+                        Threat &amp; damage control
+                        <span class="threat-sub">If each returns ${THREAT_HAUL} points this gameweek</span>
+                    </div>
+                    <div class="threat-rows">
+                        ${rows.map(({ t, drop, damaged }) => `
+                            <div class="threat-row">
+                                <div class="threat-player">
+                                    <div class="threat-name">${escHTML(t.player.name)}</div>
+                                    <div class="threat-meta">${escHTML(t.player.teamName)} · ${escHTML(t.player.posName)} · £${t.player.price.toFixed(1)}m</div>
+                                </div>
+                                <div class="threat-own">
+                                    <div class="threat-own-bar"><span style="width:${t.pct}%"></span></div>
+                                    <div class="threat-own-label">${t.pct}% own · ${t.captainCount} captain</div>
+                                </div>
+                                <div class="threat-damage ${drop > 0 ? 'bad' : 'ok'}">
+                                    ${drop === null ? '—' : drop > 0
+                                        ? `<b>−${drop}</b><small>place${drop === 1 ? '' : 's'} → ${damaged}${ordinalSuffix(damaged)}</small>`
+                                        : `<b>0</b><small>no rank change</small>`}
+                                </div>
+                                <button class="threat-cta" onclick="targetInWizard(${t.player.id})">⚡ Target</button>
+                            </div>`).join('')}
+                    </div>
+                    <p class="threat-note">
+                        ${worst && worst.drop > 0
+                            ? `<strong>${escHTML(worst.t.player.name)}</strong> is the one that hurts: a ${THREAT_HAUL}-point return drops you ${worst.drop} place${worst.drop === 1 ? '' : 's'}. `
+                            : 'None of these would move you on their own — the ownership is spread too evenly. '}
+                        Ranks are recomputed against every rival's actual picks and multipliers, not estimated.
+                    </p>
+                </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function ordinalSuffix(n) {
+            const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+            return s[(v - 20) % 10] || s[v] || s[0];
+        }
+
+        function targetInWizard(playerId) {
+            try { localStorage.setItem('fpl_swap_target', String(playerId)); } catch (e) {}
+            window.location.href = 'fpl-transfer-wizard.html?target=' + encodeURIComponent(playerId);
+        }
+
         function renderPlayerCard(p, type) {
             const barClass = p.pct >= 70 ? 'high' : p.pct >= 40 ? 'medium' : 'low';
             const captainInfo = p.captainCount > 0 ? `<span class="captain-badge">ⓒ ${p.captainCount}</span>` : '';
@@ -1589,6 +1979,44 @@
             const myCaptainPlayer = myCaptain ? allPlayersById[myCaptain] : null;
             const youMatchedPopular = myCaptain == topCaptain?.[0];
             
+            // Armband distribution across the league. These are real captains read
+            // from each rival's picks, not an estimate — within a mini-league the
+            // API tells you exactly who captained whom.
+            const dist = Object.entries(captainCounts)
+                .map(([pid, n]) => ({ pid, n, pct: Math.round((n / allIds.length) * 100), player: allPlayersById[pid] }))
+                .sort((a, b) => b.n - a.n);
+            const CAP_HUES = ['#4ADE80', '#60A5FA', '#FBBF24', '#A78BFA', '#F472B6', '#FB923C', '#94A3B8'];
+            const distEl = document.getElementById('capDistribution');
+            if (distEl) {
+                distEl.innerHTML = `
+                    <div class="cap-dist-head">Armband distribution · ${allIds.length} managers</div>
+                    <div class="cap-dist-bar">
+                        ${dist.map((d, i) => `<span class="cap-seg" style="width:${d.pct}%;background:${CAP_HUES[i % CAP_HUES.length]}"
+                            title="${escHTML(d.player?.name || '?')}: ${d.n} of ${allIds.length} (${d.pct}%)">${d.pct >= 12 ? d.pct + '%' : ''}</span>`).join('')}
+                    </div>
+                    <div class="cap-dist-key">
+                        ${dist.map((d, i) => `<span class="cap-key">
+                            <span class="cap-key-dot" style="background:${CAP_HUES[i % CAP_HUES.length]}"></span>
+                            ${escHTML(d.player?.name || '?')} <b>${d.pct}%</b>${myCaptain == d.pid ? ' <em>(you)</em>' : ''}</span>`).join('')}
+                    </div>`;
+            }
+
+            // Swing calculator: re-rank the league with your captain scoring more.
+            const swingEl = document.getElementById('capSwing');
+            if (swingEl && myCaptainPlayer) {
+                swingEl.innerHTML = `
+                    <div class="swing-head">Captain swing calculator</div>
+                    <p class="swing-intro">If <strong>${escHTML(myCaptainPlayer.name)}</strong> outscores the field's pick by:</p>
+                    <div class="swing-controls">
+                        <input type="range" id="capSwingDelta" min="-10" max="20" value="6" step="1" oninput="updateCaptainSwing()">
+                        <span class="swing-delta" id="capSwingDeltaLabel">+6 pts</span>
+                    </div>
+                    <div class="swing-result" id="capSwingResult"></div>`;
+                updateCaptainSwing();
+            } else if (swingEl) {
+                swingEl.innerHTML = '<p class="swing-intro">No captain recorded for your team this gameweek.</p>';
+            }
+
             const heroEl = document.getElementById('captainHero');
             if (topCapPlayer) {
                 heroEl.innerHTML = `
@@ -1660,6 +2088,37 @@
         }
         
         // ===== LEAGUE RACE =====
+        // The armband is worth double, so a delta on your captain is worth 2x that
+        // on your total. Rather than quoting a rule of thumb, this applies the
+        // swing and re-ranks the actual league.
+        function updateCaptainSwing() {
+            const slider = document.getElementById('capSwingDelta');
+            const label = document.getElementById('capSwingDeltaLabel');
+            const out = document.getElementById('capSwingResult');
+            if (!slider || !out) return;
+            const delta = parseInt(slider.value, 10);
+            if (label) label.textContent = (delta >= 0 ? '+' : '') + delta + ' pts';
+
+            const myMult = managerPicks[myTeamId]?.activeChip === '3xc' ? 3 : 2;
+            const before = myProjectedRank();
+            const after = myProjectedRank(id => (id == myTeamId ? delta * myMult : 0));
+            if (before === null || after === null) {
+                out.innerHTML = '<span class="swing-na">Live gameweek data unavailable, so the rank effect cannot be computed right now.</span>';
+                return;
+            }
+            const move = before - after;
+            out.innerHTML = `
+                <div class="swing-figure ${move > 0 ? 'good' : move < 0 ? 'bad' : ''}">
+                    <b>${move > 0 ? '▲ ' + move : move < 0 ? '▼ ' + (-move) : '—'}</b>
+                    <span>${move === 0 ? 'no change in rank' : `place${Math.abs(move) === 1 ? '' : 's'}`}</span>
+                </div>
+                <p class="swing-explain">
+                    ${delta >= 0 ? 'Beating' : 'Losing to'} the field's captain by ${Math.abs(delta)} is worth
+                    <strong>${Math.abs(delta * myMult)} points</strong> on your total, moving you from
+                    ${before}${ordinalSuffix(before)} to <strong>${after}${ordinalSuffix(after)}</strong> of ${Object.keys(managerPicks).length}.
+                </p>`;
+        }
+
         function renderLeagueRace() {
             renderMomentum();
             renderPointsChart('absolute');
@@ -2038,3 +2497,5 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>loadSidebarNav(); initIcons();</script>
     <!-- V2: no footer.html — dashboard-app shell doesn't use a marketing footer -->
+</body>
+</html>
