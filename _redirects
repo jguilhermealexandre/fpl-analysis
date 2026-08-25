@@ -1,0 +1,13 @@
+# Cloudflare Pages redirects.
+#
+# /squad-analysis is the name the product docs use for the deep squad view, and
+# without this it hit the catch-all and quietly served the dashboard instead —
+# a 200 with the wrong page, which is worse than a 404 because nothing looks
+# broken. 200 rewrites rather than 301s, so the clean URL is served in place and
+# the existing filename keeps working for every link already pointing at it.
+#
+# Hash fragments never reach the server, so /squad-analysis#transfers?out=..&in=..
+# carries the dashboard's pre-loaded transfer through unchanged.
+
+/squad-analysis      /fpl-my-team-analysis.html   200
+/squad-analysis/*    /fpl-my-team-analysis.html   200

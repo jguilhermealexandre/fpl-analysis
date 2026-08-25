@@ -890,3 +890,27 @@ html.v2-theme body {
 .v2-main-content .tw-scout-col {
     top: 64px; /* was 120px (56px nav + 64px budget bar) */
 }
+
+/* ===== Touch targets =====
+   Measured at a 500px viewport: seven classes of control rendered under the
+   44px minimum, the worst being icon buttons at 18x18 and 22x15. Rather than
+   inflate them visually, an ::after overlay extends the hit area beyond the
+   painted box — the control looks identical and the thumb gets a real target.
+   Pointer-coarse only, so mouse layouts are untouched. */
+@media (pointer: coarse), (max-width: 767px) {
+    .nav-tid-change,
+    .v2-theme-switch,
+    .footer-mail,
+    .footer-links a { position: relative; }
+
+    .nav-tid-change::after,
+    .v2-theme-switch::after,
+    .footer-mail::after,
+    .footer-links a::after {
+        content: ''; position: absolute; left: 50%; top: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%; height: 44px; min-width: 44px;
+    }
+
+    .v2-nav-item { min-height: 44px; }
+}
