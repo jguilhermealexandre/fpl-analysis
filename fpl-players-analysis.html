@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=45">
-    <link rel="stylesheet" href="styles/players.css?v=45">
-    <link rel="stylesheet" href="styles/v2-design.css?v=45">
+    <link rel="stylesheet" href="styles/common.css?v=46">
+    <link rel="stylesheet" href="styles/players.css?v=46">
+    <link rel="stylesheet" href="styles/v2-design.css?v=46">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -1219,6 +1219,55 @@
             return POS_RATE_BASELINE[pos] || { xG: 0.08, xA: 0.08, cs: 0.25, bonus: 0.25, saves: 0, gc: 1.35 };
         }
 
+        /* The baseline above says every midfielder is the same midfielder until
+           proven otherwise, which with one gameweek played is three quarters of
+           the projection. It is not true and the market says so: across the pool
+           price and FPL's own ep_next correlate at +0.89, a single gameweek's
+           xGI/90 at +0.32. Left flat, one goal from a £5.5m player outranked a
+           quiet afternoon from a £12.0m one.
+
+           Same exponents and clamp as the squad projection in pitch-snapshot.js,
+           fitted from minutes-pooled price deciles. Attacking rates only — clean
+           sheets and saves come from the team model, not from what a player cost.
+           Scales the prior alone, so it fades out as evidence arrives. */
+        const PRICE_PRIOR_K = { GK: 0, DEF: 1.5, MID: 1.5, FWD: 1.0 };
+        const PRICE_PRIOR_CLAMP = [0.6, 2.4];
+        let _medPriceByPos = null;
+
+        function medianPriceForPos(pos) {
+            if (!_medPriceByPos) {
+                const pool = typeof allAnalyses !== 'undefined' ? allAnalyses : [];
+                // Nothing to measure yet. Return neutral WITHOUT caching, or the
+                // empty answer sticks for the life of the page and the prior
+                // silently reverts to price-blind.
+                if (!pool.length) return 0;
+                const built = {};
+                const posName = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+                // Match the squad model's filter: enough minutes to be a real option.
+                const minMinutes = Math.min(200, Math.max((currentGameweek || 1) - 1, 1) * 60);
+                ['GK', 'DEF', 'MID', 'FWD'].forEach(pn => {
+                    const of = pool.filter(p => posName[p.position] === pn);
+                    let prices = of.filter(p => (p.lastSeason?.minutes || 0) >= minMinutes).map(p => p.price);
+                    // Early in a season the minutes bar can empty a position; fall
+                    // back to the whole position rather than to no reference at all.
+                    if (prices.length < 5) prices = of.map(p => p.price);
+                    prices.sort((a, b) => a - b);
+                    built[pn] = prices.length ? prices[Math.floor(prices.length / 2)] : 0;
+                });
+                _medPriceByPos = built;
+            }
+            return _medPriceByPos[pos] || 0;
+        }
+
+        function priceQualityMultiplier(price, pos) {
+            const k = PRICE_PRIOR_K[pos] || 0;
+            if (!k || !price) return 1;
+            const med = medianPriceForPos(pos);
+            if (!med) return 1;
+            const m = Math.pow(price / med, k);
+            return Math.max(PRICE_PRIOR_CLAMP[0], Math.min(PRICE_PRIOR_CLAMP[1], m));
+        }
+
         // Preseason fallback: route diversity computed from last season's raw totals
         // instead of the blended L5/season model (which needs current-season data).
         function renderLastSeasonRoutes(analyses) {
@@ -1428,9 +1477,12 @@
                     // separately. Both stay as route badges; neither gets a slice.
                     const ev = Math.min(1, gS / 4);
                     const base = posRateBaseline(pos);
+                    // Same price-aware prior the xP model uses, so the breakdown
+                    // and the headline number stay in agreement.
+                    const pqr = priceQualityMultiplier(p.price, pos);
                     const rg = (v, b) => v * ev + b * (1 - ev);
-                    const xGr = rg(xGpg, base.xG);
-                    const xAr = rg(xApg, base.xA);
+                    const xGr = rg(xGpg, base.xG * pqr);
+                    const xAr = rg(xApg, base.xA * pqr);
                     const csr = rg(csPg, base.cs);
                     const bonusR = rg(bonusPg, base.bonus);
                     const savesR = rg(savesPg, base.saves);
@@ -1898,7 +1950,13 @@
             // is where a clean sheet leaks back in: four points on one appearance
             // reads as four points every week. Baselines are what a starting
             // player in each position actually averages.
-            const REC_PTS_BASE = { GK: 3.2, DEF: 3.5, MID: 3.6, FWD: 3.6 }[pos] || 3.5;
+            // Scaled by price, and only above the appearance floor: everyone who
+            // starts banks the same 2 points, so it is the returns on top that a
+            // £12.0m player is bought for. Flat, this term was the single largest
+            // force ranking a cheap player with one good game above a premium.
+            const recPQ = priceQualityMultiplier(p.price, pos);
+            const REC_PTS_FLAT = { GK: 3.2, DEF: 3.5, MID: 3.6, FWD: 3.6 }[pos] || 3.5;
+            const REC_PTS_BASE = 2 + (REC_PTS_FLAT - 2) * recPQ;
             const rwPtsRaw = p.history ? recencyWeightedAvg(p.history, 'total_points') : (p.l5?.points || 0) / games;
             const rwPtsPerGame = rg(rwPtsRaw, REC_PTS_BASE);
             const rwXGraw = p.history ? recencyWeightedAvg(p.history, 'expected_goals') : (p.l5?.xG || 0) / games;
@@ -1906,9 +1964,12 @@
             const rwBonusRaw = p.history ? recencyWeightedAvg(p.history, 'bonus') : (p.l5?.bonus || 0) / games;
             // Regressed like the rest. Recency weighting over a single gameweek
             // just returns that gameweek.
-            const rwXG = rg(rwXGraw, recBase.xG);
-            const rwXA = rg(rwXAraw, recBase.xA);
-            const rwBonus = rg(rwBonusRaw, recBase.bonus);
+            const rwXG = rg(rwXGraw, recBase.xG * recPQ);
+            const rwXA = rg(rwXAraw, recBase.xA * recPQ);
+            // Slower clock than the rates above — bonus is lumpy and BPS is
+            // already driven by the returns projected here.
+            const recBonusEv = Math.min(1, games / 10);
+            const rwBonus = rwBonusRaw * recBonusEv + recBase.bonus * (1 - recBonusEv);
             const rwXGI = rwXG + rwXA;
 
             const value = rwPtsPerGame / Math.max(p.price, 3.5);
@@ -3571,8 +3632,8 @@
         }
 
     </script>
-    <script src="scripts/players-tables.js?v=45"></script>
-    <script src="scripts/compare-report.js?v=45"></script>
+    <script src="scripts/players-tables.js?v=46"></script>
+    <script src="scripts/compare-report.js?v=46"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -4815,11 +4876,20 @@
             const REC_BASE = posRateBaseline(pos);
             const evidence = Math.min(1, l5Games / 4);
             const regress = (v, base) => v * evidence + base * (1 - evidence);
+            // What a player at this price is expected to produce before we have
+            // evidence. Attacking rates only — see priceQualityMultiplier.
+            const pq = priceQualityMultiplier(p.price, pos);
 
-            const rwXG = regress(rwXGraw, REC_BASE.xG);
-            const rwXA = regress(rwXAraw, REC_BASE.xA);
+            const rwXG = regress(rwXGraw, REC_BASE.xG * pq);
+            const rwXA = regress(rwXAraw, REC_BASE.xA * pq);
             const rwCS = regress(rwCSraw, REC_BASE.cs);
-            const rwBonus = regress(rwBonusRaw, REC_BASE.bonus);
+            // Bonus regresses on a slower clock than the rates above: it is far
+            // lumpier (three points or none, where xG accrues in fractions) and
+            // partly double-counted, since BPS is driven by the goals, assists
+            // and clean sheets already projected here. On the shared four-game
+            // clock a single 3-bonus night read as a permanent edge.
+            const bonusEvidence = Math.min(1, l5Games / 10);
+            const rwBonus = rwBonusRaw * bonusEvidence + REC_BASE.bonus * (1 - bonusEvidence);
             const rwSaves = regress(rwSavesRaw, REC_BASE.saves);
             const rwGC = regress(rwGCraw, REC_BASE.gc);
 
@@ -5547,10 +5617,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=45"></script>
+    <script src="scripts/players-ai.js?v=46"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/common.js?v=45"></script>
-    <script src="scripts/sidebar-nav.js?v=45"></script>
+    <script src="scripts/common.js?v=46"></script>
+    <script src="scripts/sidebar-nav.js?v=46"></script>
     <script>
         loadSidebarNav();
         initIcons();

@@ -762,10 +762,22 @@
             // When the individual delta and the squad gain diverge, the slot is the
             // reason — say so first, because otherwise the two numbers on the card
             // look like a contradiction.
-            if (m.outStarts === false && m.rawDelta - m.gain > 1) {
-                bits.push(m.out.position === 1
-                    ? `${m.out.name} is your reserve keeper, so most of that ${m.rawDelta.toFixed(1)}-point upgrade never reaches your score`
-                    : `${m.out.name} starts on your bench, so only a fraction of the ${m.rawDelta.toFixed(1)}-point upgrade reaches your score`);
+            //
+            // The test has to be proportional. On an absolute ">1 point" test this
+            // fired on a move that kept 4.7 of a 6.7-point upgrade and told the
+            // manager "most of it never reaches your score" — directly contradicting
+            // the +4.7 printed next to it. Below 60% kept, "most is lost" is fair;
+            // above it the incoming player is displacing a starter, which is the
+            // actual story and worth saying plainly.
+            if (m.outStarts === false && m.rawDelta > 0.5) {
+                const kept = m.gain / m.rawDelta;
+                if (kept < 0.6) {
+                    bits.push(m.out.position === 1
+                        ? `${m.out.name} is your reserve keeper, so most of that ${m.rawDelta.toFixed(1)}-point upgrade never reaches your score`
+                        : `${m.out.name} starts on your bench, so only a fraction of the ${m.rawDelta.toFixed(1)}-point upgrade reaches your score`);
+                } else {
+                    bits.push(`${m.in.name} is good enough to start ahead of what you have, so this upgrades your XI rather than your bench`);
+                }
             }
             if (m.out.status === 'i' || m.out.status === 'u' || m.out.status === 's') {
                 bits.push(`${m.out.name} cannot play`);
@@ -779,10 +791,15 @@
             if (inAvg <= outAvg - 0.4) {
                 bits.push(`kinder run ahead (${inAvg.toFixed(1)} against ${outAvg.toFixed(1)} average difficulty)`);
             }
-            const priceDiff = m.in.price - (m.out.sellPrice || m.out.price);
-            if (priceDiff <= -0.4) bits.push(`frees £${Math.abs(priceDiff).toFixed(1)}m`);
-            else if (priceDiff >= 0.4) bits.push(`costs £${priceDiff.toFixed(1)}m more`);
+            // Price is context, never a reason on its own. Listed alongside real
+            // arguments "frees £6.5m" reads as a benefit, which is how selling a
+            // £12.0m midfielder for a £5.5m one came to look like a recommendation
+            // with an upside — the freed money buys nothing unless it is spent, and
+            // this recommender does not spend it.
             if (!bits.length) bits.push(`projects ${m.gain.toFixed(1)} points better across the window`);
+            const priceDiff = m.in.price - (m.out.sellPrice || m.out.price);
+            if (priceDiff <= -0.4) bits.push(`banks £${Math.abs(priceDiff).toFixed(1)}m you would still need to spend`);
+            else if (priceDiff >= 0.4) bits.push(`costs £${priceDiff.toFixed(1)}m more`);
             return bits.join(' · ');
         }
 

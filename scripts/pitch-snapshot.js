@@ -129,13 +129,46 @@
             return Math.max(0.02, Math.min(0.70, Math.exp(-xga)));
         }
 
+        /* How good we should assume a player is BEFORE we have evidence.
+
+           Regressing everyone toward the flat position average says a £12m
+           midfielder and a £5m midfielder are the same player until proven
+           otherwise. They are not, and the market knows it: across the pool,
+           price and FPL's own ep_next correlate at +0.89, while a single
+           gameweek's xGI/90 correlates at +0.32. With one match played the
+           prior carries ~80% of every projection, so a price-blind prior meant
+           one good game from a cheap player outranked one quiet game from a
+           premium — which is exactly how a £12.0m midfielder came to project
+           below a £5.5m one.
+
+           Exponents are fitted from the pool itself (minutes-pooled price
+           deciles, log-log): DEF 2.2, MID 2.1, FWD 1.1. DEF and MID are held
+           back to 1.5 because a one-gameweek fit is not worth trusting at full
+           strength; FWD is used as fitted, where the price/xP correlation
+           independently peaks. Clamped so neither a £4.0m nor a £15.0m player
+           gets an absurd prior.
+
+           This scales the PRIOR only, never the player's observed rate, so it
+           fades to nothing as real evidence arrives. */
+        const PRICE_PRIOR_K = { 1: 0, 2: 1.5, 3: 1.5, 4: 1.0 };
+        const PRICE_PRIOR_CLAMP = [0.6, 2.4];
+
+        function priceQualityMultiplier(player) {
+            const k = PRICE_PRIOR_K[player.position] || 0;
+            if (!k) return 1;
+            const med = (positionAverages[player.position] || {}).medPrice;
+            if (!med || !player.price) return 1;
+            const m = Math.pow(player.price / med, k);
+            return Math.max(PRICE_PRIOR_CLAMP[0], Math.min(PRICE_PRIOR_CLAMP[1], m));
+        }
+
         // Per-90 rates off a one-gameweek sample are wild (one goal = a huge
         // xG/90), so regress them toward the position average until there's
         // roughly five full matches of evidence.
         function regressedPer90(player) {
             const mins = player.minutes || 0;
             const posAvg = positionAverages[player.position] || {};
-            const baseXgi = posAvg.xGIPer90 || 0.25;
+            const baseXgi = (posAvg.xGIPer90 || 0.25) * priceQualityMultiplier(player);
             const baseXg = baseXgi * (player.position === 4 ? 0.65 : player.position === 3 ? 0.5 : 0.25);
             const baseXa = Math.max(0, baseXgi - baseXg);
             const w = Math.min(1, mins / 450);
@@ -291,7 +324,16 @@
 
             // Same treatment: three bonus points in one appearance is a result, not
             // a rate. The cap alone let a single big game read as a permanent 1.2.
-            const wB = Math.min(1, mins / 450);
+            //
+            // Bonus gets a slower clock than the rates above (ten matches, not
+            // five) for two reasons. It is far lumpier — a keeper either takes
+            // all three or none, where xG accumulates in fractions. And it is
+            // partly double-counted: BPS is driven by the clean sheets, saves,
+            // goals and assists this function has already projected, so leaning
+            // on past bonus pays a good game twice. Left on the five-match clock,
+            // one 3-bonus night made a £4.5m keeper the highest-projecting
+            // goalkeeper in the game, ahead of every established No.1.
+            const wB = Math.min(1, mins / 900);
             const ownBonus = games > 0 ? (player.bonus || 0) / games : 0;
             const bonusPerGame = wB * ownBonus + (1 - wB) * 0.25;
             out.bonus = Math.min(1.2, bonusPerGame) * pStart;

@@ -134,11 +134,15 @@
                 const posPlayers = allPlayers.filter(p => p.position === pos && p.minutes >= minMinutes);
                 if (posPlayers.length === 0) { positionAverages[pos] = { form: 3, ppg: 3, ppm: 15, xGIPer90: FALLBACK_XGI90[pos] }; return; }
                 const avg = (arr, fn) => arr.reduce((s, p) => s + fn(p), 0) / arr.length;
+                // Median price for this position, which is the reference point the
+                // projection's price-quality prior measures a player against.
+                const prices = posPlayers.map(p => p.price).sort((a, b) => a - b);
                 positionAverages[pos] = {
                     form: avg(posPlayers, p => p.form),
                     ppg: avg(posPlayers, p => p.ppg),
                     ppm: avg(posPlayers, p => p.points / Math.max(p.price, 1)),
-                    xGIPer90: avg(posPlayers, p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0)
+                    xGIPer90: avg(posPlayers, p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0),
+                    medPrice: prices[Math.floor(prices.length / 2)] || 0
                 };
             });
         }
