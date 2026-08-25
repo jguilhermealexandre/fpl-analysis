@@ -81,6 +81,61 @@ const COLUMN_DEFS = {
     fixtures: { label: 'Next 3', key: 'fixtureString', sortable: false, type: 'fixtures', tip: 'Upcoming fixtures' }
 };
 
+// Per-90 forms of the defensive metrics. Derived rather than stored, so they
+// follow whatever timeframe the ALL tab is currently showing.
+COLUMN_DEFS.csPct = {
+    label: 'CS%', sortable: true, tip: 'Share of games with a clean sheet',
+    compute: p => (p.l5?.games ? ((p.l5.cleanSheets || 0) / p.l5.games) * 100 : 0),
+    format: v => v.toFixed(0) + '%'
+};
+COLUMN_DEFS.xGC90 = {
+    label: 'xGC/90', sortable: true, tip: 'Expected goals conceded per 90 minutes', term: 'xGC',
+    compute: p => (p.l5?.minutes ? ((p.l5.xGC || 0) / p.l5.minutes) * 90 : 0),
+    format: v => v.toFixed(2), lowerIsBetter: true
+};
+COLUMN_DEFS.saves90 = {
+    label: 'Saves/90', sortable: true, tip: 'Saves per 90 minutes',
+    compute: p => (p.l5?.minutes ? ((p.l5.saves || 0) / p.l5.minutes) * 90 : 0),
+    format: v => v.toFixed(1)
+};
+COLUMN_DEFS.gc90 = {
+    label: 'GC/90', sortable: true, tip: 'Goals conceded per 90 minutes',
+    compute: p => (p.l5?.minutes ? ((p.l5.goalsConceded || 0) / p.l5.minutes) * 90 : 0),
+    format: v => v.toFixed(2), lowerIsBetter: true
+};
+
+// One value accessor for rendering, sorting and the heatmap, so a column can
+// never sort on one number and display another.
+function colValue(p, colKey) {
+    const col = COLUMN_DEFS[colKey];
+    if (!col) return null;
+    return col.compute ? col.compute(p) : getNestedValue(p, col.key);
+}
+
+// Column presets. 'player' is always first and always frozen.
+const COLUMN_PRESETS = {
+    core:      { label: '\u{1F3AF} Core', cols: ['player', 'price', 'own', 'pts', 'form', 'xGIG', 'fixtures'] },
+    attacking: { label: '⚡ Attacking', cols: ['player', 'price', 'goals', 'assists', 'xGG', 'xAG', 'xGIG', 'kp', 'bcc', 'bcm', 'fixtures'] },
+    defensive: { label: '\u{1F6E1}️ Defensive', cols: ['player', 'price', 'csPct', 'xGC90', 'saves90', 'gc90', 'bps', 'fixtures'] },
+    all:       { label: '\u{1F4CA} All stats', cols: null }
+};
+const PRESET_STORAGE_KEY = 'fpl_allplayers_preset';
+
+function applyColumnPreset(name, btn) {
+    const preset = COLUMN_PRESETS[name];
+    if (!preset) return;
+    tableState.ALL.visibleCols = preset.cols ? [...preset.cols] : [...DEFAULT_COLS.ALL];
+    tableState.ALL.page = 1;
+    saveColumns(tableState.ALL.visibleCols);
+    try { localStorage.setItem(PRESET_STORAGE_KEY, name); } catch (e) {}
+    document.querySelectorAll('.col-preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === name));
+    const head = document.getElementById('tableHead-ALL');
+    const body = document.getElementById('tableBody-ALL');
+    if (head) head.innerHTML = renderTableHeader('ALL');
+    if (body) body.innerHTML = renderTableBody('ALL');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
 // Default columns per position
 const DEFAULT_COLS = {
     GK: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'saves', 'gc', 'xGC', 'bonus', 'fdr'],
@@ -111,7 +166,14 @@ const AVAILABLE_COLS = {
     ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
 };
 
+function currentPresetName() {
+    let saved = null;
+    try { saved = localStorage.getItem(PRESET_STORAGE_KEY); } catch (e) {}
+    return COLUMN_PRESETS[saved] ? saved : 'core';
+}
+
 function createTable(position, analyses) {
+    const activePreset = currentPresetName();
     const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
     const posNames = { GK: 'Goalkeepers', DEF: 'Defenders', MID: 'Midfielders', FWD: 'Forwards', ALL: 'All Players' };
     const posIcons = { GK: '<i data-lucide="hand" style="width:14px;height:14px;"></i>', DEF: '<i data-lucide="shield-check" style="width:14px;height:14px;"></i>', MID: '<i data-lucide="zap" style="width:14px;height:14px;"></i>', FWD: '<i data-lucide="crosshair" style="width:14px;height:14px;"></i>', ALL: '<i data-lucide="clipboard-list" style="width:14px;height:14px;"></i>' };
@@ -120,8 +182,11 @@ function createTable(position, analyses) {
     // Initialize state
     if (!tableState[position].visibleCols.length) {
         if (position === 'ALL') {
+            // Opening on all thirty-seven columns is the reason this table needed
+            // horizontal scrolling to be readable at all. Core is the default;
+            // All stats is one click away.
             const saved = loadSavedColumns();
-            tableState[position].visibleCols = saved ? saved : [...DEFAULT_COLS[position]];
+            tableState[position].visibleCols = saved ? saved : [...COLUMN_PRESETS.core.cols];
         } else {
             tableState[position].visibleCols = [...DEFAULT_COLS[position]];
         }
@@ -271,6 +336,12 @@ function createTable(position, analyses) {
                     </div>
                 </div>
                 <div class="compact-divider"></div>
+                <div class="col-preset-group" id="colPresets">
+                    ${Object.entries(COLUMN_PRESETS).map(([key, pr]) =>
+                        `<button class="col-preset-btn ${key === activePreset ? 'active' : ''}" data-preset="${key}"
+                            onclick="applyColumnPreset('${key}', this)" title="Switch the visible columns">${pr.label}</button>`).join('')}
+                </div>
+                <div class="compact-divider"></div>
                 <div class="timeframe-control" id="timeframeControl">
                     <button class="timeframe-btn ${currentTimeframe === 'season' ? 'active' : ''}" onclick="setTimeframe('season')">Season</button>
                     <button class="timeframe-btn ${currentTimeframe === 'l10' ? 'active' : ''}" onclick="setTimeframe('l10')">L10</button>
@@ -367,8 +438,8 @@ function createTable(position, analyses) {
 
 function renderTableHeader(position) {
     const state = tableState[position];
-    const compareHeader = `<th class="compare-header" style="width: 40px; text-align: center;"><i data-lucide="scale" style="width:14px;height:14px;"></i></th>`;
-    const starHeader = `<th style="width: 36px; text-align: center; cursor: default;"><i data-lucide="star" style="width:14px;height:14px;"></i></th>`;
+    // Compare and shortlist controls moved into the frozen player cell, so their
+    // own columns are gone — they were costing horizontal width on every row.
     const tfLabel = position === 'ALL' ? { season: 'Season', l10: 'Last 10', l5: 'Last 5', l3: 'Last 3' }[state.timeframe || 'l5'] || 'Last 5' : 'L5';
     const cols = state.visibleCols.map(colKey => {
         const col = COLUMN_DEFS[colKey];
@@ -378,11 +449,12 @@ function renderTableHeader(position) {
         let tip = col.tip || col.label;
         if (position === 'ALL' && tip.includes('(L5)')) tip = tip.replace('(L5)', '(' + tfLabel + ')');
         const termAttr = col.term ? ` data-term="${col.term}"` : '';
-        return `<th class="${isSorted ? 'sorted' : ''}" onclick="sortTable('${position}', '${colKey}')" title="${tip}"${termAttr}>
+        const frozen = colKey === 'player' ? ' col-player' : '';
+        return `<th class="${isSorted ? 'sorted' : ''}${frozen}" onclick="sortTable('${position}', '${colKey}')" title="${tip}"${termAttr}>
             ${col.label}<span class="sort-icon">${sortIcon}</span>
         </th>`;
     }).join('');
-    return compareHeader + starHeader + cols;
+    return cols + `<th class="col-actions"></th>`;
 }
 
 function renderTableBody(position) {
@@ -431,8 +503,8 @@ function renderTableBody(position) {
     const sortCol = COLUMN_DEFS[state.sort];
     if (sortCol) {
         players.sort((a, b) => {
-            const aVal = getNestedValue(a, sortCol.key);
-            const bVal = getNestedValue(b, sortCol.key);
+            const aVal = colValue(a, state.sort);
+            const bVal = colValue(b, state.sort);
             // Handle string sorting (e.g. player name, position, team)
             if (typeof aVal === 'string' && typeof bVal === 'string') {
                 return state.sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
@@ -453,40 +525,112 @@ function renderTableBody(position) {
     const rpp = getRowsPerPage(position);
     const start = (state.page - 1) * rpp;
     const paginated = players.slice(start, start + rpp);
-    
+
+    // Shading is relative to the players currently in the table rather than to
+    // fixed cut-offs. A threshold like "xGI/90 above 0.5 is elite" is meaningless
+    // one gameweek into a season and wrong again by April; a percentile is not.
+    heatScales = computeHeatScales(players, state.visibleCols);
+
     return paginated.map(p => renderPlayerRow(p, position)).join('');
+}
+
+// Columns worth shading: numeric, comparable across players, and meaningful.
+const HEAT_COLS = new Set(['pts', 'ptsG', 'form', 'value', 'goals', 'assists', 'xG', 'xGG', 'xA', 'xAG',
+    'xGI', 'xGIG', 'cs', 'csPct', 'saves', 'saves90', 'bonus', 'bps', 'ict', 'influence', 'creativity',
+    'threat', 'kp', 'bcc', 'minsG', 'seasonPts', 'seasonPtsG', 'xGC', 'xGC90', 'gc', 'gc90']);
+
+let heatScales = {};
+
+function quantile(sorted, q) {
+    if (!sorted.length) return null;
+    const pos = (sorted.length - 1) * q;
+    const base = Math.floor(pos), rest = pos - base;
+    return sorted[base + 1] !== undefined ? sorted[base] + rest * (sorted[base + 1] - sorted[base]) : sorted[base];
+}
+
+function computeHeatScales(players, cols) {
+    const out = {};
+    (cols || []).forEach(colKey => {
+        if (!HEAT_COLS.has(colKey)) return;
+        const col = COLUMN_DEFS[colKey];
+        if (!col) return;
+        const vals = players.map(p => colValue(p, colKey))
+            .filter(v => typeof v === 'number' && Number.isFinite(v))
+            .sort((a, b) => a - b);
+        if (vals.length < 8) return;
+        // For goals conceded and xGC the low number is the good one.
+        const invert = !!col.lowerIsBetter || colKey === 'gc' || colKey === 'xGC';
+        // Deliberately narrow bands. The table sorts by points descending, so the
+        // first page is top-decile on most columns by construction — a p90 cut-off
+        // paints nearly every cell green and stops meaning anything.
+        out[colKey] = { p90: quantile(vals, 0.96), p70: quantile(vals, 0.85), p30: quantile(vals, 0.15), invert };
+    });
+    return out;
+}
+
+function heatClass(colKey, value, sortKey) {
+    if (sortKey && colKey === sortKey) return '';
+    const s = heatScales[colKey];
+    if (!s || typeof value !== 'number' || !Number.isFinite(value)) return '';
+    if (s.invert) {
+        if (value <= s.p30) return 'stat-elite';
+        if (value <= s.p70) return 'stat-good';
+        if (value >= s.p90) return 'stat-low';
+        return '';
+    }
+    if (value >= s.p90) return 'stat-elite';
+    if (value >= s.p70) return 'stat-good';
+    if (value <= s.p30) return 'stat-low';
+    return '';
 }
 
 function renderPlayerRow(p, position) {
     const state = tableState[position];
     const isSelected = compareList.some(cp => cp.id === p.id);
-    const checkboxCell = `<td class="compare-cell">
-        <input type="checkbox" class="compare-checkbox" 
-            ${isSelected ? 'checked' : ''} 
-            ${!isSelected && compareList.length >= 5 ? 'disabled' : ''}
-            onchange="onCompareCheckboxChange(${p.id}, '${position}')">
-    </td>`;
-    const starCell = `<td style="text-align:center;">${getStarHtml(p.id)}</td>`;
-    return `<tr class="${isSelected ? 'selected-row' : ''}">${checkboxCell}${starCell}${state.visibleCols.map(colKey => renderCell(p, colKey)).join('')}</tr>`;
+    const cells = state.visibleCols.map(colKey => renderCell(p, colKey, position, isSelected)).join('');
+    return `<tr class="${isSelected ? 'selected-row' : ''}" data-player-id="${p.id}">${cells}${renderActionsCell(p)}</tr>`;
 }
 
-function renderCell(p, colKey) {
+// Quick actions, revealed on row hover. Anchored right so they do not consume
+// width from the stat columns when idle.
+function renderActionsCell(p) {
+    return `<td class="col-actions">
+        <div class="row-actions">
+            <button class="row-action" title="Compare this player" onclick="event.stopPropagation(); toggleComparePlayer(${p.id})">⚖️ Compare</button>
+            <button class="row-action" title="Plan a transfer for this player" onclick="event.stopPropagation(); swapFromTable(${p.id})">⚡ Swap</button>
+        </div>
+    </td>`;
+}
+
+// The transfer planner lives on the My Team page; hand the player over rather
+// than pretending this page can complete the move.
+function swapFromTable(playerId) {
+    try { localStorage.setItem('fpl_swap_target', String(playerId)); } catch (e) {}
+    window.location.href = 'fpl-transfer-wizard.html?swap=' + encodeURIComponent(playerId);
+}
+
+function renderCell(p, colKey, position, isSelected) {
     const col = COLUMN_DEFS[colKey];
     if (!col) return '<td>-</td>';
-    let value = getNestedValue(p, col.key);
-    
+    let value = colValue(p, colKey);
+
     if (colKey === 'player') {
-        const initials = p.name.split(' ').map(n => n[0]).join('').slice(0, 2);
         const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-        const sparkline = generateSparkline(p.history || [], 'total_points');
-        return `<td>
-            <div class="player-cell clickable" onclick="openPlayerModal(${p.id}, '${posMap[p.position]}')">
-                <div class="player-avatar">${initials}</div>
-                <div class="player-info">
-                    <div class="player-name">${escHTML(p.name)}</div>
-                    <div class="player-team">${escHTML(p.team)}</div>
+        const posName = posMap[p.position] || '?';
+        const selected = isSelected !== undefined ? isSelected : compareList.some(cp => cp.id === p.id);
+        // Identity, compare and shortlist in one frozen cell. Position and team
+        // live on the second line, which is why their own columns were dropped.
+        return `<td class="col-player">
+            <div class="pcell">
+                <input type="checkbox" class="compare-checkbox" ${selected ? 'checked' : ''}
+                    ${!selected && compareList.length >= 5 ? 'disabled' : ''}
+                    title="Add to comparison"
+                    onchange="onCompareCheckboxChange(${p.id}, '${position || 'ALL'}')">
+                ${getStarHtml(p.id)}
+                <div class="pcell-id clickable" onclick="openPlayerModal(${p.id}, '${posName}')">
+                    <div class="pcell-name">${escHTML(p.name)}</div>
+                    <div class="pcell-sub"><span class="pcell-pos pos-${posName}">${posName}</span>${escHTML(p.team)}</div>
                 </div>
-                <div class="player-trend" title="Points trend (Last 5 gameweeks)">${sparkline}</div>
             </div>
         </td>`;
     }
@@ -509,15 +653,17 @@ function renderCell(p, colKey) {
     if (col.type === 'fixtures') {
         const next3 = p.fdrNext || [];
         if (next3.length > 0) {
-            return `<td style="white-space: nowrap;">
+            const FDR_WORD = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+            return `<td class="col-fixtures"><div class="tbl-fix-strip">
                 ${next3.map(f => {
                     const d = f.difficulty || 3;
-                    const cls = d <= 2 ? 'fdr-1' : d <= 2.5 ? 'fdr-2' : d <= 3.5 ? 'fdr-3' : d <= 4 ? 'fdr-4' : 'fdr-5';
+                    const band = Math.max(1, Math.min(5, Math.round(d)));
                     const opp = teams[f.opponent]?.short_name || '???';
-                    const venue = f.isHome ? 'H' : 'A';
-                    return `<span class="fdr-badge ${cls}" style="margin-right: 2px; padding: 2px 4px; font-size: 9px;">${opp}(${venue})</span>`;
+                    return `<span class="tbl-fix fdr-${band}" title="GW${f.event || '?'}: ${f.isHome ? 'home to' : 'away at'} ${opp} — difficulty ${d} (${FDR_WORD[band]})">
+                        <span class="tbl-fix-o">${escHTML(opp)}</span><small>${f.isHome ? 'H' : 'A'}</small>
+                    </span>`;
                 }).join('')}
-            </td>`;
+            </div></td>`;
         }
         return `<td style="color: var(--text-muted);">-</td>`;
     }
@@ -535,8 +681,9 @@ function renderCell(p, colKey) {
     }
     
     const formatted = col.format ? col.format(value) : value;
-    const highlight = col.highlight ? col.highlight(value) : '';
-    return `<td class="stat-cell ${highlight}">${formatted}</td>`;
+    const heat = heatClass(colKey, typeof value === 'number' ? value : parseFloat(value),
+        tableState[position || 'ALL'] && tableState[position || 'ALL'].sort);
+    return `<td class="stat-cell ${heat}">${heat ? `<span class="stat-pill">${formatted}</span>` : formatted}</td>`;
 }
 
 function renderPagination(position, total) {
