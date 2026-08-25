@@ -1115,6 +1115,55 @@
                 });
             }
 
+            /* --- 5. Template gaps.
+
+               FPL is scored against a global average, so a player owned by most of
+               the field is a rank risk whether or not he is a good pick: every
+               point he scores moves the average, and not owning him means falling
+               behind it.
+
+               This is deliberately NOT called Effective Ownership. Real EO adds
+               captaincy and triple-captaincy percentages, and the official API
+               publishes neither — there is no captaincy field on a player at all.
+               Ownership alone captures most of the risk and is a fact rather than
+               an estimate, so that is what it is named after. Exact EO within your
+               mini-league, where every pick is knowable, lives on the Rivals page.
+
+               Only the genuinely heavily owned qualify: at a 30% floor there are
+               seven such players in the game right now, so this stays a short list
+               rather than a second squad. */
+            const TEMPLATE_OWNERSHIP_FLOOR = 30;
+            if (typeof allPlayers !== 'undefined' && Array.isArray(allPlayers)) {
+                const ownedIds = new Set((analysisResults || []).map(a => a.player.id));
+                const gaps = allPlayers
+                    .filter(p => (p.ownership || 0) >= TEMPLATE_OWNERSHIP_FLOOR
+                        && !ownedIds.has(p.id)
+                        && p.status === 'a')
+                    .sort((a, b) => (b.ownership || 0) - (a.ownership || 0))
+                    .slice(0, 2);
+                gaps.forEach(p => {
+                    const xp = typeof predictedGWPoints === 'function' ? predictedGWPoints(p) : null;
+                    /* Compare him against the man he would actually displace —
+                       your weakest projected player in the same position —
+                       rather than whoever happens to sit first in the squad. */
+                    const samePos = (analysisResults || [])
+                        .filter(a => a.player.position === p.position)
+                        .sort((a, b) => predictedGWPoints(a.player) - predictedGWPoints(b.player));
+                    const rival = samePos.length ? samePos[0].player : (analysisResults[0] || {}).player;
+                    moves.push({
+                        icon: '🌍',
+                        kind: 'template',
+                        urgent: false,
+                        title: `${p.name} is owned by ${(p.ownership || 0).toFixed(0)}% of managers`,
+                        detail: xp != null
+                            ? `You do not have him. He projects ${xp.toFixed(1)} this gameweek, and every point he scores moves the average you are ranked against.`
+                            : `You do not have him, so every point he scores moves the average you are ranked against.`,
+                        actionLabel: 'Compare',
+                        action: `openPairCompare(${p.id}, ${rival ? rival.id : p.id})`
+                    });
+                });
+            }
+
             // Urgent first, then the order they were generated (transfer > captain > bench > risk).
             return moves
                 .map((m, i) => ({ ...m, _i: i }))

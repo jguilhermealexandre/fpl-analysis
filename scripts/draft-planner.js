@@ -1055,6 +1055,143 @@
             return set;
         }
 
+        /* --- Chip helper.
+
+           Two of the four chips have an exact answer. Bench Boost and Triple
+           Captain both score the squad you already own, so their worth in a
+           given gameweek is simply the projection with the chip minus the
+           projection without it — no assumption required.
+
+           Wildcard and Free Hit replace players, so their value depends on a
+           squad that does not exist yet and cannot be measured the same way.
+           Free Hit still gets a factual signal, the week your eleven is
+           thinnest. Wildcard gets none, which is why it is absent from the
+           advice rather than guessed at.
+
+           Every figure is shown against the average of the other weeks in the
+           window, not against zero. A Bench Boost is always worth something;
+           what decides the week is whether the best one is meaningfully better
+           than an ordinary one. */
+        const DRAFT_CHIP_STANDOUT = 2.0;
+
+        function draftChipAdvice() {
+            if (typeof projectLineupForGW !== 'function') return null;
+            const ds = getActiveDraft();
+            const gwNumbers = ds.gwNumbers || [];
+            if (!gwNumbers.length) return null;
+
+            /* Only reason about gameweeks we actually hold fixtures for. Past
+               that horizon "no fixture" means "not loaded yet", not "blank
+               gameweek", and treating the two alike would invent blanks. */
+            let horizon = 0;
+            Object.keys(teamFixtures6 || {}).forEach(tid => {
+                (teamFixtures6[tid] || []).forEach(f => { if (f.event > horizon) horizon = f.event; });
+            });
+            const weeks = gwNumbers.filter(g => g <= horizon);
+            if (weeks.length < 2) return null;
+
+            const rows = weeks.map(g => {
+                const squad = getDraftSquad(g);
+                const counts = {};
+                squad.forEach(p => {
+                    if (counts[p.teamId] === undefined) {
+                        counts[p.teamId] = (teamFixtures6[p.teamId] || []).filter(f => f.event === g).length;
+                    }
+                });
+                const starters = squad.filter(p => !p.onBench);
+                const base = projectLineupForGW(squad, g, null);
+                return {
+                    gw: g,
+                    base: base,
+                    bb: Math.round((projectLineupForGW(squad, g, 'benchboost') - base) * 10) / 10,
+                    tc: Math.round((projectLineupForGW(squad, g, 'triplecaptain') - base) * 10) / 10,
+                    playingXI: starters.filter(p => (counts[p.teamId] || 0) > 0).length,
+                    doubling: squad.filter(p => (counts[p.teamId] || 0) > 1).length
+                };
+            });
+
+            // Best week for a chip, and how far clear of the rest it actually is.
+            function pick(key) {
+                const best = rows.reduce((a, b) => (b[key] > a[key] ? b : a));
+                const others = rows.filter(r => r.gw !== best.gw);
+                const avg = others.reduce((t, r) => t + r[key], 0) / others.length;
+                return { gw: best.gw, value: best[key], edge: Math.round((best[key] - avg) * 10) / 10, doubling: best.doubling };
+            }
+
+            const picks = [];
+            if (isDraftChipAvailable('benchboost')) {
+                const p = pick('bb');
+                picks.push({
+                    chip: 'benchboost', icon: '📈', gw: p.gw,
+                    headline: `GW${p.gw} · your bench projects ${p.value.toFixed(1)} pts`,
+                    detail: p.edge >= DRAFT_CHIP_STANDOUT
+                        ? `That is ${p.edge.toFixed(1)} clear of an average week in this window${p.doubling ? `, with ${p.doubling} of your squad playing twice` : ''}.`
+                        : `Only ${Math.abs(p.edge).toFixed(1)} different from an average week here — no gameweek in this window stands out, so there is no reason to spend it yet.`,
+                    strong: p.edge >= DRAFT_CHIP_STANDOUT
+                });
+            }
+            if (isDraftChipAvailable('triplecaptain')) {
+                const p = pick('tc');
+                picks.push({
+                    chip: 'triplecaptain', icon: '👑', gw: p.gw,
+                    headline: `GW${p.gw} · the extra captain armband adds ${p.value.toFixed(1)} pts`,
+                    detail: p.edge >= DRAFT_CHIP_STANDOUT
+                        ? `That is ${p.edge.toFixed(1)} clear of an average week in this window.`
+                        : `Within ${Math.abs(p.edge).toFixed(1)} of an average week — worth holding for a fixture or a double that actually separates itself.`,
+                    strong: p.edge >= DRAFT_CHIP_STANDOUT
+                });
+            }
+            if (isDraftChipAvailable('freehit')) {
+                const worst = rows.reduce((a, b) => (b.playingXI < a.playingXI ? b : (b.playingXI === a.playingXI && b.base < a.base ? b : a)));
+                const blank = worst.playingXI < 11;
+                picks.push({
+                    chip: 'freehit', icon: '⚡', gw: worst.gw,
+                    headline: blank
+                        ? `GW${worst.gw} · only ${worst.playingXI} of your eleven have a fixture`
+                        : `GW${worst.gw} · your thinnest week, projecting ${worst.base.toFixed(1)}`,
+                    detail: blank
+                        ? `A blank gameweek is what Free Hit exists for — it buys you a full eleven for one week without touching your real squad.`
+                        : `All eleven play every week in this window, so this is only your weakest set of fixtures, not a blank. Free Hit is usually worth more saved for one.`,
+                    strong: blank
+                });
+            }
+            if (!picks.length) return null;
+
+            const dgwWeeks = rows.filter(r => r.doubling > 0).map(r => r.gw);
+            const bgwWeeks = rows.filter(r => r.playingXI < 11).map(r => r.gw);
+            return { from: weeks[0], to: weeks[weeks.length - 1], picks: picks, dgwWeeks: dgwWeeks, bgwWeeks: bgwWeeks };
+        }
+
+        function renderDraftChipAdvice() {
+            let advice = null;
+            try { advice = draftChipAdvice(); } catch (e) { advice = null; }
+            if (!advice) return '';
+
+            const special = advice.dgwWeeks.length || advice.bgwWeeks.length
+                ? [advice.dgwWeeks.length ? `double gameweek${advice.dgwWeeks.length > 1 ? 's' : ''} in GW${advice.dgwWeeks.join(', GW')}` : '',
+                   advice.bgwWeeks.length ? `blank${advice.bgwWeeks.length > 1 ? 's' : ''} in GW${advice.bgwWeeks.join(', GW')}` : '']
+                    .filter(Boolean).join(' and ')
+                : '';
+
+            let html = `<div class="draft-chip-advice">`;
+            html += `<div class="draft-chip-advice-head">Best week for each chip <span>GW${advice.from}–${advice.to}</span></div>`;
+            advice.picks.forEach(p => {
+                html += `<button class="draft-chip-advice-row${p.strong ? ' strong' : ''}" onclick="switchDraftGW(${p.gw})"
+                    data-tooltip="${escHTML(p.detail)}">
+                    <span class="draft-chip-advice-icon">${p.icon}</span>
+                    <span class="draft-chip-advice-text">
+                        <strong>${escHTML(p.headline)}</strong>
+                        <em>${escHTML(p.detail)}</em>
+                    </span>
+                </button>`;
+            });
+            html += special
+                ? `<div class="draft-chip-advice-foot">Fixture list shows ${escHTML(special)}.</div>`
+                : `<div class="draft-chip-advice-foot">No doubles or blanks are scheduled in this window, so no week is unusually good for a chip. Wildcard is not listed — its value depends on a squad you do not own yet.</div>`;
+            html += `</div>`;
+            return html;
+        }
+
         const DRAFT_CHIP_SHORT = { wildcard: 'WC', freehit: 'FH', benchboost: 'BB', triplecaptain: 'TC' };
         const DRAFT_CHIP_NAME = { wildcard: 'Wildcard', freehit: 'Free Hit', benchboost: 'Bench Boost', triplecaptain: 'Triple Captain' };
 
@@ -1170,6 +1307,7 @@
                 </button>`;
             });
             html += `</div></div>`;
+            html += renderDraftChipAdvice();
             return html;
         }
 

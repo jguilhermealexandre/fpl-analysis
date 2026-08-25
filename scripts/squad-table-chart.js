@@ -78,11 +78,25 @@
             // in these columns captures it (they're all rate or underlying stats).
             // stat7 is the position's headline *output* metric, complementing the
             // underlying/expected numbers above it with what actually got returned.
+            /* Was Mins/Gm — a record of what has already happened, which is the
+               wrong question when you are picking a team for Saturday. The engine
+               produces a forward-looking figure that already accounts for the
+               starts rate and how long he lasts when he does start, so show that
+               and keep the historical average in the tooltip for context. */
             const minsPerGame = gamesPlayed > 0 ? Math.round(mins / gamesPlayed) : 0;
-            cols.stat6 = {
-                label: 'Mins/Gm', value: String(minsPerGame),
-                tip: `${minsPerGame} minutes per appearance across ${gamesPlayed} ${gamesPlayed === 1 ? 'match' : 'matches'} (${bandHigh(minsPerGame, MINS_BANDS)}). Above 80 is a guaranteed starter; below 60 means real rotation risk.`
-            };
+            let xMins = null;
+            if (typeof expectedMinutesModel === 'function') {
+                try { xMins = expectedMinutesModel(player); } catch (e) { xMins = null; }
+            }
+            cols.stat6 = xMins
+                ? {
+                    label: 'xMins', value: String(Math.round(xMins.expMins)),
+                    tip: `Expected minutes for the coming gameweek: about ${Math.round(xMins.expMins)}, from a ${Math.round(xMins.pStart * 100)}% chance of starting. He has averaged ${minsPerGame} minutes per appearance across ${gamesPlayed} ${gamesPlayed === 1 ? 'match' : 'matches'} so far. Above 80 is a guaranteed starter; below 60 means real rotation risk.`
+                }
+                : {
+                    label: 'Mins/Gm', value: String(minsPerGame),
+                    tip: `${minsPerGame} minutes per appearance across ${gamesPlayed} ${gamesPlayed === 1 ? 'match' : 'matches'} (${bandHigh(minsPerGame, MINS_BANDS)}). Above 80 is a guaranteed starter; below 60 means real rotation risk.`
+                };
 
             const csTip = `${player.cleanSheets || 0} clean ${(player.cleanSheets || 0) === 1 ? 'sheet' : 'sheets'} in ${gamesPlayed} ${gamesPlayed === 1 ? 'match' : 'matches'} — ${csPercent}% (${bandHigh(csPercent, CS_BANDS)}).`;
             const xgcTip = v => `Expected goals conceded per 90 minutes: ${v.toFixed(2)} (${bandLow(v, XGC_BANDS)}). Lower is better — under 1.00 points to a defence worth owning.`;
@@ -332,6 +346,15 @@
         // for every metric regardless of scale (e.g. "0.10, 0.20" for xGI/90).
         const SQ_CHART_METRICS = {
             price: { label: 'Price (£m)', get: p => p.price, format: v => `£${Number(v.toFixed(1))}m` },
+            /* Projected points, from the shared engine. Every other axis here
+               records what already happened; this is the only forward-looking one,
+               and plotting it against Price is what turns the chart into a value
+               view — cheap players with high expected output sit top-left. */
+            xp: {
+                label: 'Projected xP',
+                get: p => (typeof predictedGWPoints === 'function' ? predictedGWPoints(p) : 0),
+                format: v => Number(v.toFixed(1))
+            },
             ownership: { label: 'Ownership %', get: p => p.ownership, format: v => `${Number(v.toFixed(1))}%` },
             form: { label: 'Form', get: p => isPreseason ? p.ppg : p.form, format: v => Number(v.toFixed(1)) },
             ppg: { label: 'Pts/Game', get: p => p.ppg, format: v => Number(v.toFixed(1)) },
