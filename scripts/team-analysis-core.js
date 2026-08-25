@@ -629,6 +629,56 @@
             updateStatus(`Analysis complete — GW${currentGW}`, 'success');
         }
 
+        /* Form, read honestly on a season that has barely started.
+
+           FPL's `form` is average points over the last 30 days, so one gameweek
+           in, it IS that one gameweek. Judged raw, 53% of every player who got
+           on the pitch counted as "poor form" — which is not a form reading, it
+           is "did not score three points once". A defender who played the full
+           ninety and conceded a goal has a form of 2.0 and was charged for it,
+           which is how a squad whose players had one quiet Saturday landed on a
+           health score in the twenties.
+
+           So regress it, the way every rate in the projection is regressed:
+           toward what we already expect of this player, until there is a real
+           sample behind it. The prior is his own points per game last season
+           where that exists, and the position median where it does not. At four
+           games the evidence weight reaches 1 and this returns raw form, so the
+           thresholds downstream keep exactly the meaning they always had — they
+           simply stop firing before anything has been demonstrated. */
+        const FORM_EVIDENCE_GAMES = 4;
+
+        let _lastSeasonById = null;
+        function lastSeasonFor(playerId) {
+            if (!_lastSeasonById) {
+                const rows = playersDetailData && playersDetailData.players;
+                // Not loaded yet: answer null WITHOUT caching, or the empty
+                // answer sticks for the life of the page and the prior silently
+                // reverts to the position median for everyone.
+                if (!rows || !rows.length) return null;
+                _lastSeasonById = {};
+                rows.forEach(r => { if (r.lastSeason) _lastSeasonById[r.id] = r.lastSeason; });
+            }
+            return _lastSeasonById[playerId] || null;
+        }
+
+        function lastSeasonPointsPerGame(player) {
+            const ls = lastSeasonFor(player.id);
+            if (!ls || !ls.totalPoints) return null;
+            const games = ls.starts || (ls.minutes ? ls.minutes / 90 : 0);
+            // A handful of cameos is not a prior worth leaning on.
+            if (games < 10) return null;
+            return ls.totalPoints / games;
+        }
+
+        function regressedForm(player, posConfig, gamesPlayed) {
+            const raw = isPreseason ? (player.ppg || 0) : (parseFloat(player.form) || 0);
+            const prior = lastSeasonPointsPerGame(player);
+            const base = prior != null ? prior : posConfig.formMedian;
+            const evidence = Math.min(1, Math.max(0, gamesPlayed) / FORM_EVIDENCE_GAMES);
+            return raw * evidence + base * (1 - evidence);
+        }
+
         function analyzePlayer(player) {
             // Baseline: average player starts at 40 — dimensions push up (sell) or down (keep)
             let sellRating = 40;
@@ -641,7 +691,10 @@
             // to last season's real points-per-game and a starts-based games-played estimate.
             const gamesPlayed = isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
             const minsPerGame = player.minutes / gamesPlayed;
-            const effectiveForm = isPreseason ? player.ppg : player.form;
+            const effectiveForm = regressedForm(player, posConfig, gamesPlayed);
+            // The raw figure is still what the card prints — it is a fact about
+            // the matches played. It just no longer drives the judgement.
+            const rawForm = isPreseason ? (player.ppg || 0) : (parseFloat(player.form) || 0);
             const isPremium = player.price >= 10.0;
             const isMidPremium = player.price >= 7.5;
             const isBudget = player.price <= 5.5;
@@ -683,14 +736,14 @@
             formPenaltyApplied = formPenalty;
 
             if (formDelta <= -1.5) {
-                concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${effectiveForm.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian} — consider selling before price drops` });
+                concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${rawForm.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian} — consider selling before price drops` });
                 reasons.push('Form collapsed');
             } else if (formDelta <= -0.5) {
-                concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${effectiveForm.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian} — monitor next 2 GWs` });
+                concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${rawForm.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian} — monitor next 2 GWs` });
             } else if (formDelta >= 2.5) {
-                positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${effectiveForm.toFixed(1)} — top 5% of ${posConfig.short}s. Strong captain option` });
+                positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${rawForm.toFixed(1)} — top 5% of ${posConfig.short}s. Strong captain option` });
             } else if (formDelta >= 1.0) {
-                positives.push({ type: 'positive', title: 'Good Form', text: `Form ${effectiveForm.toFixed(1)} — above ${posConfig.short} average, keep starting` });
+                positives.push({ type: 'positive', title: 'Good Form', text: `Form ${rawForm.toFixed(1)} — above ${posConfig.short} average, keep starting` });
             }
 
             // 3. FIXTURES (Continuous — near fixtures weighted more)
@@ -930,17 +983,20 @@
                 recommendation = `Keep starting. Reliable performer${avgFDR <= 3.0 ? ' with decent fixtures ahead' : ''}.`;
             }
 
-            const keyMetric = buildKeyMetrics(player, posConfig, minsPerGame, avgFDR);
+            const keyMetric = buildKeyMetrics(player, posConfig, minsPerGame, avgFDR, effectiveForm, rawForm);
             return { player, sellRating, verdict, verdictReason, recommendation, concerns, positives, keyMetric,
-                availPenalty, formPenalty: formPenaltyApplied, fixtures: fixtures.slice(0, 5) };
+                availPenalty, formPenalty: formPenaltyApplied, effectiveForm, rawForm, fixtures: fixtures.slice(0, 5) };
         }
 
-        function buildKeyMetrics(player, posConfig, minsPerGame, avgFDR) {
-            const form = isPreseason ? player.ppg : player.form;
+        // `form` is what gets printed; `judged` is what decides the colour. Early
+        // in a season those differ: the number is real, the verdict on it is not.
+        function buildKeyMetrics(player, posConfig, minsPerGame, avgFDR, judgedForm, shownForm) {
+            const form = shownForm != null ? shownForm : (isPreseason ? player.ppg : player.form);
+            const judged = judgedForm != null ? judgedForm : form;
             const ta = teamAnalysis[player.teamId];
             if (player.position <= 2) {
                 return {
-                    primary: { label: 'Form', value: form.toFixed(1), status: form >= posConfig.formMedian + 1 ? 'good' : form < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
+                    primary: { label: 'Form', value: form.toFixed(1), status: judged >= posConfig.formMedian + 1 ? 'good' : judged < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
                     secondary: { label: 'Def', value: ta ? ta.defensePower.toString() : '-', status: ta ? (ta.defensePower >= 60 ? 'good' : ta.defensePower < 40 ? 'bad' : 'warning') : 'neutral' },
                     tertiary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' },
                     quaternary: { label: 'PPG', value: player.ppg.toFixed(1), status: player.ppg >= 5 ? 'good' : player.ppg < 3 ? 'bad' : 'neutral' }
@@ -948,7 +1004,7 @@
             } else {
                 const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
                 return {
-                    primary: { label: 'Form', value: form.toFixed(1), status: form >= posConfig.formMedian + 1.5 ? 'good' : form < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
+                    primary: { label: 'Form', value: form.toFixed(1), status: judged >= posConfig.formMedian + 1.5 ? 'good' : judged < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
                     secondary: { label: 'Att', value: ta ? ta.attackPower.toString() : '-', status: ta ? (ta.attackPower >= 60 ? 'good' : ta.attackPower < 40 ? 'bad' : 'warning') : 'neutral' },
                     tertiary: { label: 'xGI/90', value: xGIPer90.toFixed(2), status: xGIPer90 >= 0.50 ? 'good' : xGIPer90 < 0.25 ? 'bad' : 'warning' },
                     quaternary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' }
@@ -990,7 +1046,10 @@
             // status ('a', 'd', 'i', 's', 'u'), all truthy, so the old negation was
             // never true — this penalty and its breakdown line never once fired.
             // The intent was "out of form and not already counted as unavailable".
-            const poorFormStarters = starters.filter(a => parseFloat(a.player.form) < 2.5 && a.player.status === 'a');
+            // Reads the regressed form, not the raw figure. On the raw one, 53% of
+            // everyone who played counted as out of form after a single gameweek,
+            // and eleven starters at -3 apiece is most of a health score.
+            const poorFormStarters = starters.filter(a => a.effectiveForm < 2.5 && a.player.status === 'a');
 
             // Each of these is now the only place its factor is charged.
             healthScore -= injuredStarters.length * 8;
@@ -1349,6 +1408,17 @@
                     ${healthBreakdown && healthBreakdown.length
                         ? `<div class="health-breakdown">${healthBreakdown.map(b => `${b.count} ${escHTML(b.label)}`).join(' · ')}</div>`
                         : `<div class="health-breakdown">No injuries or fixture red flags</div>`}
+                    ${(() => {
+                        // Say how much season is behind the number. A score built on
+                        // one or two gameweeks is mostly a statement about fixtures
+                        // and availability, and should not read as a verdict on the
+                        // squad — which is exactly how a single quiet Saturday used
+                        // to present itself.
+                        const played = Math.max(0, (currentGW || 1) - 1) || (currentGW === 1 ? 1 : 0);
+                        return played < 4
+                            ? `<div class="health-sample">Based on ${played} gameweek${played === 1 ? '' : 's'} — form is still weighted toward what each player is expected to do, not what he did once.</div>`
+                            : '';
+                    })()}
                     <div class="insight-moves">
                         <div class="insight-moves-head">Do this week</div>
                         ${renderSuggestedMoves(suggestedMoves || [])}

@@ -81,6 +81,31 @@ jobs:
                     ownership: player.selected_by_percent,
                     totalPoints: player.total_points,
                     minutes: player.minutes,
+                    // Last completed season, kept compact. element-summary was
+                    // already being fetched for every player and this field thrown
+                    // away — without it the site has no idea who a player is until
+                    // the new season has built its own sample, and one bad opening
+                    // Saturday reads as a collapse.
+                    lastSeason: (() => {
+                      const past = details.history_past || [];
+                      const prev = past[past.length - 1];
+                      if (!prev) return null;
+                      return {
+                        season: prev.season_name,
+                        totalPoints: prev.total_points,
+                        minutes: prev.minutes,
+                        starts: prev.starts,
+                        goals: prev.goals_scored,
+                        assists: prev.assists,
+                        cleanSheets: prev.clean_sheets,
+                        bonus: prev.bonus,
+                        saves: prev.saves,
+                        yellowCards: prev.yellow_cards,
+                        xG: prev.expected_goals,
+                        xA: prev.expected_assists,
+                        defCon: prev.defensive_contribution
+                      };
+                    })(),
                     history: details.history || [],
                     fixtures: details.fixtures
                   });
