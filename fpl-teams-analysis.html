@@ -17,11 +17,11 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=34">
-    <link rel="stylesheet" href="styles/teams.css?v=34">
-    <link rel="stylesheet" href="styles/v2-design.css?v=34">
-    <script src="scripts/common.js?v=34"></script>
-    <script src="scripts/sidebar-nav.js?v=34"></script>
+    <link rel="stylesheet" href="styles/common.css?v=35">
+    <link rel="stylesheet" href="styles/teams.css?v=35">
+    <link rel="stylesheet" href="styles/v2-design.css?v=35">
+    <script src="scripts/common.js?v=35"></script>
+    <script src="scripts/sidebar-nav.js?v=35"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1064,10 +1064,8 @@
                                                         <span style="font-size: 8px; padding: 1px 4px; border-radius: 3px; background: ${tier.bg}; color: ${tier.color}; font-weight: 700;">${tier.label}</span>
                                                     </div>
                                                 </div>
-                                                <div class="swings-run-mini-fdr">
-                                                    ${run.fixtures.slice(0, 7).map(f => `
-                                                        <div class="swings-mini-dot fdr-${Math.round(getEffectiveFdr(f))}">${escHTML(f.opponent.slice(0,1))}</div>
-                                                    `).join('')}
+                                                <div class="fx-run patch-run">
+                                                    ${renderFdrRun(run.fixtures.slice(0, 7).map(f => ({ gw: f.gw, fixtures: [f] })))}
                                                 </div>
                                                 <span class="swings-run-stat" style="color: ${tier.color}">${run.avgFdr}<span style="font-size:10px;font-weight:400;color:var(--text-muted)"> avg</span></span>
                                                 <span class="swings-run-arrow">›</span>
@@ -1092,22 +1090,29 @@
                                     ${improvingSwings.length === 0 ? 
                                         '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
                                         improvingSwings.map((s, i) => `
-                                            <div class="swings-run-item" onclick="openSwingModal(${i}, 'improving')">
-                                                <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
-                                                <div class="swings-run-info">
-                                                    <div class="swings-run-name">${escHTML(s.teamName)}</div>
-                                                    <div class="swings-run-detail">
-                                                        <span>Eases from GW${s.swingGW}</span>
-                                                        <span>•</span>
-                                                        <span>${s.homeCountNext}H ${3 - s.homeCountNext}A next</span>
+                                            <div class="swing-card improving" onclick="openSwingModal(${i}, 'improving')">
+                                                <div class="swing-card-top">
+                                                    <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                    <div class="swings-run-info">
+                                                        <div class="swings-run-name">${escHTML(s.teamName)}</div>
+                                                        <div class="swings-run-detail">${s.homeCountNext}H ${3 - s.homeCountNext}A across the new run</div>
+                                                    </div>
+                                                    <span class="swing-delta improving">${s.currentFdr} → ${s.futureFdr}</span>
+                                                    <span class="swings-run-arrow">›</span>
+                                                </div>
+                                                <div class="swing-timeline">
+                                                    <div class="swing-side">
+                                                        <span class="swing-side-label">Now</span>
+                                                        <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
+                                                    </div>
+                                                    <div class="swing-pivot">
+                                                        <span class="swing-pivot-badge improving">⚡ Eases GW${s.swingGW}</span>
+                                                    </div>
+                                                    <div class="swing-side">
+                                                        <span class="swing-side-label">From GW${s.swingGW}</span>
+                                                        <div class="fx-run">${renderFdrRun((s.nextFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })))}</div>
                                                     </div>
                                                 </div>
-                                                <div class="swing-fdr-change">
-                                                    <span style="color: var(--color-error)">${s.currentFdr}</span>
-                                                    <span class="arrow" style="color: var(--color-success)">→</span>
-                                                    <span style="color: var(--color-success)">${s.futureFdr}</span>
-                                                </div>
-                                                <span class="swings-run-arrow">›</span>
                                             </div>
                                         `).join('')
                                     }
@@ -1118,22 +1123,29 @@
                                     ${worseningSwings.length === 0 ?
                                         '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
                                         worseningSwings.map((s, i) => `
-                                            <div class="swings-run-item" onclick="openSwingModal(${i}, 'worsening')">
-                                                <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
-                                                <div class="swings-run-info">
-                                                    <div class="swings-run-name">${escHTML(s.teamName)}</div>
-                                                    <div class="swings-run-detail">
-                                                        <span>Hardens from GW${s.swingGW}</span>
-                                                        <span>•</span>
-                                                        <span>${s.homeCountNext}H ${3 - s.homeCountNext}A next</span>
+                                            <div class="swing-card worsening" onclick="openSwingModal(${i}, 'worsening')">
+                                                <div class="swing-card-top">
+                                                    <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                    <div class="swings-run-info">
+                                                        <div class="swings-run-name">${escHTML(s.teamName)}</div>
+                                                        <div class="swings-run-detail">${s.homeCountNext}H ${3 - s.homeCountNext}A across the new run</div>
+                                                    </div>
+                                                    <span class="swing-delta worsening">${s.currentFdr} → ${s.futureFdr}</span>
+                                                    <span class="swings-run-arrow">›</span>
+                                                </div>
+                                                <div class="swing-timeline">
+                                                    <div class="swing-side">
+                                                        <span class="swing-side-label">Now</span>
+                                                        <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
+                                                    </div>
+                                                    <div class="swing-pivot">
+                                                        <span class="swing-pivot-badge worsening">⚡ Hardens GW${s.swingGW}</span>
+                                                    </div>
+                                                    <div class="swing-side">
+                                                        <span class="swing-side-label">From GW${s.swingGW}</span>
+                                                        <div class="fx-run">${renderFdrRun((s.nextFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })))}</div>
                                                     </div>
                                                 </div>
-                                                <div class="swing-fdr-change">
-                                                    <span style="color: var(--color-success)">${s.currentFdr}</span>
-                                                    <span class="arrow" style="color: var(--color-error)">→</span>
-                                                    <span style="color: var(--color-error)">${s.futureFdr}</span>
-                                                </div>
-                                                <span class="swings-run-arrow">›</span>
                                             </div>
                                         `).join('')
                                     }
@@ -1147,6 +1159,9 @@
             `;
 
             container.innerHTML = html;
+            // Not deferred through requestAnimationFrame: it can be throttled to
+            // never firing for work scheduled around freshly-inserted markup.
+            applyGwWindow();
         }
 
         // ===== TARGETABLE PATCHES CALENDAR (in Fixture Swings tab) =====
@@ -1237,6 +1252,20 @@
                         </div>
                     </div>
 
+                    <div class="gw-window">
+                        <span class="gw-window-label">Planning window</span>
+                        <input type="range" id="gwWindowStart" min="${displayGWs[0]}" max="${displayGWs[displayGWs.length - 1]}"
+                            value="${displayGWs[0]}" oninput="applyGwWindow()" aria-label="First gameweek in the planning window">
+                        <select id="gwWindowLen" onchange="applyGwWindow()" class="gw-window-reset" aria-label="Window length">
+                            <option value="0">All gameweeks</option>
+                            <option value="4">4 GWs</option>
+                            <option value="6" selected>6 GWs</option>
+                            <option value="8">8 GWs</option>
+                        </select>
+                        <span class="gw-window-value" id="gwWindowValue"></span>
+                        <button class="gw-window-reset" onclick="resetGwWindow()">Show all</button>
+                    </div>
+
                     <div class="calendar-container">
                         <div class="calendar-scroll">
                             <table class="calendar-table">
@@ -1244,7 +1273,7 @@
                                     <tr>
                                         <th class="team-header">Team</th>
                                         ${displayGWs.map(gw => `
-                                            <th class="gw-header ${gw === currentGW ? 'gw-current' : ''}">${gw}</th>
+                                            <th class="gw-header ${gw === currentGW ? 'gw-current' : ''}" data-gw="${gw}">${gw}</th>
                                         `).join('')}
                                         <th class="gw-header" style="background: var(--surface-3);">Avg</th>
                                     </tr>
@@ -1257,6 +1286,37 @@
                     </div>
                 </div>
             `;
+        }
+
+        // Thirty gameweeks at once is more than anyone plans against. The window
+        // dims what falls outside the range rather than hiding it, so the shape of
+        // the season stays readable while attention narrows.
+        function applyGwWindow() {
+            const startEl = document.getElementById('gwWindowStart');
+            const lenEl = document.getElementById('gwWindowLen');
+            const valEl = document.getElementById('gwWindowValue');
+            const table = document.querySelector('.targetable-calendar .calendar-table');
+            if (!startEl || !lenEl || !table) return;
+            const len = parseInt(lenEl.value, 10) || 0;
+            const start = parseInt(startEl.value, 10);
+
+            if (!len) {
+                table.querySelectorAll('[data-gw]').forEach(el => el.classList.remove('gw-out'));
+                if (valEl) valEl.textContent = 'All gameweeks';
+                return;
+            }
+            const end = start + len - 1;
+            table.querySelectorAll('[data-gw]').forEach(el => {
+                const gw = parseInt(el.dataset.gw, 10);
+                el.classList.toggle('gw-out', gw < start || gw > end);
+            });
+            if (valEl) valEl.textContent = `GW${start}–GW${end}`;
+        }
+
+        function resetGwWindow() {
+            const lenEl = document.getElementById('gwWindowLen');
+            if (lenEl) lenEl.value = '0';
+            applyGwWindow();
         }
 
         // ===== FULL SEASON CALENDAR =====
@@ -1327,7 +1387,7 @@
                                     <tr>
                                         <th class="team-header">Team</th>
                                         ${displayGWs.map(gw => `
-                                            <th class="gw-header ${gw === currentGW ? 'gw-current' : ''}">${gw}</th>
+                                            <th class="gw-header ${gw === currentGW ? 'gw-current' : ''}" data-gw="${gw}">${gw}</th>
                                         `).join('')}
                                         <th class="gw-header" style="background: var(--surface-3);">Avg</th>
                                     </tr>
@@ -1633,7 +1693,7 @@
 
         function renderFixtureCell(fixtures, gw, easyRuns, team) {
             if (!fixtures || fixtures.length === 0) {
-                return `<td><div class="fixture-cell bgw-cell"></div></td>`;
+                return `<td data-gw="${gw}"><div class="fixture-cell bgw-cell"></div></td>`;
             }
 
             // Check if this GW is part of an easy run
@@ -1661,7 +1721,7 @@
 
             // Handle double gameweeks
             if (fixtures.length > 1) {
-                return `<td>
+                return `<td data-gw="${gw}">
                     <div class="fixture-cell ${colorClass} ${f.finished ? 'past' : ''} ${runClass} ${f.bttsLikely ? 'btts' : ''}" 
                          title="${fixtures.map(fix => getFixtureTooltip(fix, gw)).join('\n---\n')}">
                         ${cellContent}
@@ -1670,7 +1730,7 @@
                 </td>`;
             }
 
-            return `<td>
+            return `<td data-gw="${gw}">
                 <div class="fixture-cell ${colorClass} ${f.finished ? 'past' : ''} ${runClass} ${f.bttsLikely ? 'btts' : ''}" 
                      title="${tooltip}">${cellContent}</div>
             </td>`;
@@ -3576,6 +3636,81 @@
             return '';
         }
 
+// A run of upcoming fixtures as readable blocks: gameweek, opponent, venue.
+// Used by the Best Next 5 cards, the swing timelines and the patch list, so the
+// three views describe a fixture run the same way.
+        function renderFdrRun(entries, opts) {
+            const o = opts || {};
+            return entries.map(e => {
+                const list = e.fixtures || [];
+                if (!list.length) {
+                    return `<span class="fx-block fx-blank" title="Gameweek ${e.gw}: no fixture (blank)">
+                        <small>GW${e.gw}</small><b>BLANK</b></span>`;
+                }
+                // A doubled gameweek is two chances at a return; show both.
+                return list.map(f => {
+                    const d = Math.round(getEffectiveFdr(f)) || 3;
+                    return `<span class="fx-block fdr-${d}${o.dim ? ' fx-dim' : ''}"
+                        title="GW${e.gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent)} — difficulty ${d}">
+                        <small>GW${e.gw}</small><b>${escHTML(f.opponent)}</b><i>${f.isHome ? 'H' : 'A'}</i></span>`;
+                }).join('');
+            }).join('');
+        }
+
+        // The page already holds raw bootstrap elements, so the best assets at a
+        // team can be answered here rather than sending the user elsewhere.
+        function openTeamAssetsModal(teamId) {
+            const team = allTeamsData.find(t => t.id === teamId);
+            const els = (window.playerElements || []).filter(e => e.team === teamId && e.status === 'a');
+            if (!team) return;
+
+            const POS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const ranked = els.map(e => ({
+                name: e.web_name,
+                pos: POS[e.element_type] || '?',
+                price: e.now_cost / 10,
+                points: e.total_points,
+                form: parseFloat(e.form) || 0,
+                own: parseFloat(e.selected_by_percent) || 0,
+                minutes: e.minutes,
+                xGI: parseFloat(e.expected_goal_involvements) || 0
+            }))
+            // Minutes first: an asset who does not play is not an asset.
+            .filter(p => p.minutes > 0)
+            .sort((a, b) => (b.points - a.points) || (b.form - a.form))
+            .slice(0, 10);
+
+            const map = window._teamFixtureMap || {};
+            const gws = Object.keys(map[teamId] || {}).map(Number)
+                .filter(g => g >= currentGW).sort((a, b) => a - b).slice(0, 5);
+            const runHtml = renderFdrRun(gws.map(gw => ({ gw, fixtures: (map[teamId] || {})[gw] || [] })));
+
+            const header = `<div class="modal-team-header">
+                <img src="${team.badgeUrl}" alt="" class="modal-team-badge" onerror="this.style.display='none'">
+                <div><h2>${escHTML(team.name)}</h2>
+                <p>Best assets by points scored, restricted to players with minutes</p></div>
+            </div>`;
+
+            const body = `
+                <div class="assets-run"><span class="assets-run-label">Next ${gws.length} fixtures</span><div class="fx-run">${runHtml}</div></div>
+                ${ranked.length ? `
+                <table class="assets-table">
+                    <thead><tr><th>Player</th><th>Pos</th><th>Price</th><th>Pts</th><th>Form</th><th>xGI</th><th>Owned</th></tr></thead>
+                    <tbody>${ranked.map(p => `<tr>
+                        <td class="assets-name">${escHTML(p.name)}</td>
+                        <td><span class="assets-pos pos-${p.pos}">${p.pos}</span></td>
+                        <td>£${p.price.toFixed(1)}m</td>
+                        <td><strong>${p.points}</strong></td>
+                        <td>${p.form.toFixed(1)}</td>
+                        <td>${p.xGI.toFixed(2)}</td>
+                        <td>${p.own.toFixed(1)}%</td>
+                    </tr>`).join('')}</tbody>
+                </table>` : '<p class="assets-empty">No players with minutes recorded yet at this club.</p>'}
+                <p class="assets-note">Ranked on points scored this season so far. With ${currentGW <= 2 ? 'barely any' : 'limited'} football played, treat the order as a starting point rather than a verdict.</p>`;
+
+            openModal(header, body);
+        }
+
         function renderUpcomingGoldMines(fixtureMap, displayGWs) {
             // Find teams with best upcoming 5 GWs
             const upcoming5 = displayGWs.filter(gw => gw >= currentGW).slice(0, 5);
@@ -3601,19 +3736,29 @@
                     <div class="analysis-card-header">
                         <span class="analysis-card-icon"><i data-lucide="star" style="width:16px;height:16px;"></i></span>
                         <span class="analysis-card-title">Best Next 5 GWs</span>
+                        <span class="gm-subtitle">GW${upcoming5[0]}–${upcoming5[upcoming5.length - 1]}</span>
                     </div>
-                    <div class="analysis-team-list">
-                        ${top5.map((team, i) => `
-                            <div class="analysis-team-item">
-                                <span style="font-size: 12px; font-weight: 700; color: ${i < 3 ? 'var(--color-warning)' : 'var(--text-muted)'}; width: 20px;">${i + 1}</span>
-                                <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="analysis-team-badge" onerror="this.style.display='none'">
-                                <div class="analysis-team-info">
-                                    <div class="analysis-team-name">${escHTML(team.name)}</div>
-                                    <div class="analysis-team-detail">${team.homeCount} home games</div>
+                    <div class="gm-list">
+                        ${top5.map((team, i) => {
+                            const fx = upcoming5.map(gw => {
+                                const arr = fixtureMap[team.id][gw];
+                                return { gw, fixtures: arr || [] };
+                            });
+                            return `
+                            <div class="gm-row">
+                                <span class="gm-rank ${i < 3 ? 'top' : ''}">${i + 1}</span>
+                                <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="gm-badge" onerror="this.style.display='none'">
+                                <div class="gm-id">
+                                    <div class="gm-name">${escHTML(team.name)}</div>
+                                    <div class="gm-detail">${team.homeCount} home · ${5 - team.homeCount} away</div>
                                 </div>
-                                <span class="analysis-team-stat good">${team.avgFdr.toFixed(1)}</span>
-                            </div>
-                        `).join('')}
+                                <div class="gm-fixtures">${renderFdrRun(fx)}</div>
+                                <span class="gm-avg ${team.avgFdr <= 2.5 ? 'good' : team.avgFdr <= 3.2 ? 'mid' : 'bad'}">${team.avgFdr.toFixed(1)}<small>avg</small></span>
+                                <button class="gm-assets-btn" onclick="event.stopPropagation(); openTeamAssetsModal(${team.id})" title="Best FPL assets at ${escHTML(team.name)}">
+                                    <i data-lucide="search" style="width:12px;height:12px;"></i> Assets
+                                </button>
+                            </div>`;
+                        }).join('')}
                     </div>
                 </div>
             `;

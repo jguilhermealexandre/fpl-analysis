@@ -1102,7 +1102,7 @@
 .fixture-cell.color-2 { background: var(--fdr-2); color: #000; }
 .fixture-cell.color-3 { background: var(--fdr-3); color: #000; }
 .fixture-cell.color-4 { background: var(--fdr-4); color: #000; }
-.fixture-cell.color-5 { background: var(--fdr-5); color: #fff; }
+.fixture-cell.color-5 { background: var(--fdr-5); color: #0F172A; }
 
 /* CS value in fixture cell */
 .cs-value {
@@ -1210,8 +1210,8 @@
 }
 
 .fixture-cell {
-    width: 32px;
-    height: 28px;
+    width: 40px;
+    height: 34px;
     border-radius: var(--radius-sm);
     display: flex;
     flex-direction: column;
@@ -1233,18 +1233,25 @@
 
 .fixture-cell .opp {
     line-height: 1.1;
+    font-size: 11px;
+    font-weight: 700;
 }
 
 .fixture-cell .venue {
-    font-size: 7px;
-    opacity: 0.8;
+    font-size: 8px;
+    opacity: 0.85;
+    font-weight: 600;
 }
 
 .fixture-cell.fdr-1 { background: var(--fdr-1); color: #000; }
 .fixture-cell.fdr-2 { background: var(--fdr-2); color: #000; }
 .fixture-cell.fdr-3 { background: var(--fdr-3); color: #000; }
 .fixture-cell.fdr-4 { background: var(--fdr-4); color: #000; }
-.fixture-cell.fdr-5 { background: var(--fdr-5); color: #fff; }
+/* White on #EF4444 measures 3.76:1 — below the 4.5 needed for body text, and
+   this text is 9px. The same red with dark slate is 4.74:1. Fixing the text
+   colour is the whole accessibility problem here: every other step already
+   passes comfortably against dark text (5.58 to 14.96). */
+.fixture-cell.fdr-5 { background: var(--fdr-5); color: #0F172A; }
 
 .fixture-cell.blank {
     background: var(--surface-3);
@@ -2614,3 +2621,186 @@
 
 /* ===== DARK MODE ===== */
 [data-theme="dark"] .loading-overlay { background: rgba(15, 23, 42, 0.85); }
+
+
+/* ======================================================================
+   Tactical timeline — fixture runs, swing pivots, gold-mine cards
+   ====================================================================== */
+
+/* One fixture block, used everywhere a run of fixtures is shown. Sized so the
+   opponent's three-letter code is actually readable; the old version was a
+   14px square carrying a single letter. */
+.fx-run { display: flex; gap: 4px; flex-wrap: wrap; }
+.fx-block {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 46px; padding: 4px 6px;
+    border-radius: 7px;
+    color: #0F172A;
+    line-height: 1.15;
+    text-align: center;
+}
+.fx-block small { font-size: 8px; font-weight: 600; opacity: .7; letter-spacing: .02em; }
+.fx-block b { font-size: 12px; font-weight: 800; }
+.fx-block i { font-size: 8px; font-style: normal; font-weight: 600; opacity: .75; }
+.fx-block.fdr-1 { background: var(--fdr-1); }
+.fx-block.fdr-2 { background: var(--fdr-2); }
+.fx-block.fdr-3 { background: var(--fdr-3); }
+.fx-block.fdr-4 { background: var(--fdr-4); }
+.fx-block.fdr-5 { background: var(--fdr-5); }
+.fx-block.fx-blank { background: var(--surface-3); color: var(--text-muted); }
+/* The "before" side of a swing is context, not the thing being sold. */
+.fx-block.fx-dim { opacity: .5; }
+.patch-run { flex-wrap: nowrap; }
+
+/* ---- Best Next 5 cards ---- */
+.gm-subtitle { margin-left: auto; font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.gm-list { display: flex; flex-direction: column; gap: 8px; }
+.gm-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+}
+.gm-rank { width: 18px; font-size: 12px; font-weight: 800; color: var(--text-muted); text-align: center; }
+.gm-rank.top { color: var(--color-warning); }
+.gm-badge { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
+.gm-id { min-width: 116px; }
+.gm-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.gm-detail { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+.gm-fixtures { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.gm-avg {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 17px; font-weight: 800; min-width: 44px; text-align: right;
+}
+.gm-avg small { display: block; font-size: 9px; font-weight: 500; color: var(--text-muted); }
+.gm-avg.good { color: var(--color-success); }
+.gm-avg.mid { color: var(--color-warning); }
+.gm-avg.bad { color: var(--color-error); }
+.gm-assets-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 10px; border-radius: 8px;
+    border: 1px solid var(--border-default);
+    background: var(--surface-1); color: var(--text-secondary);
+    font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.gm-assets-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+/* ---- swing cards: the before/after timeline ---- */
+.swing-card {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-2);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .15s ease, transform .15s ease;
+}
+.swing-card:hover { transform: translateY(-1px); }
+.swing-card.improving:hover { border-color: var(--color-success); }
+.swing-card.worsening:hover { border-color: var(--color-error); }
+.swing-card-top { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.swing-delta { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.swing-delta.improving { color: var(--color-success); }
+.swing-delta.worsening { color: var(--color-error); }
+
+.swing-timeline { display: flex; align-items: center; gap: 8px; }
+.swing-side { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.swing-side-label {
+    font-size: 8.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted);
+}
+.swing-pivot { flex-shrink: 0; display: flex; align-items: center; }
+.swing-pivot-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 10px; font-weight: 800; white-space: nowrap;
+}
+/* The pivot is the whole point of the panel, so it glows. */
+.swing-pivot-badge.improving {
+    background: color-mix(in srgb, var(--color-success) 22%, transparent);
+    color: var(--color-success);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-success) 35%, transparent);
+}
+.swing-pivot-badge.worsening {
+    background: color-mix(in srgb, var(--color-error) 22%, transparent);
+    color: var(--color-error);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-error) 35%, transparent);
+}
+
+/* ---- team assets modal ---- */
+.modal-team-header { display: flex; align-items: center; gap: 12px; }
+.modal-team-badge { width: 40px; height: 40px; object-fit: contain; }
+.assets-run { margin-bottom: 16px; }
+.assets-run-label {
+    display: block; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); margin-bottom: 5px;
+}
+.assets-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.assets-table th {
+    text-align: left; padding: 7px 9px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-muted); border-bottom: 1px solid var(--border-default);
+}
+.assets-table td { padding: 8px 9px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.assets-name { color: var(--text-primary); font-weight: 600; }
+.assets-pos { padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 800; color: #0F172A; }
+.assets-pos.pos-GK { background: #FBBF24; }
+.assets-pos.pos-DEF { background: #34D399; }
+.assets-pos.pos-MID { background: #60A5FA; }
+.assets-pos.pos-FWD { background: #F87171; }
+.assets-note { margin-top: 12px; font-size: 11px; color: var(--text-muted); font-style: italic; }
+.assets-empty { padding: 18px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+/* ---- gameweek window ---- */
+.gw-window {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border-subtle);
+    flex-wrap: wrap;
+}
+.gw-window-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+.gw-window input[type="range"] { width: 150px; accent-color: var(--color-primary); cursor: pointer; }
+.gw-window-value {
+    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 800;
+    color: var(--color-primary); min-width: 92px;
+}
+.gw-window-reset {
+    padding: 4px 10px; border-radius: 7px;
+    border: 1px solid var(--border-default); background: var(--surface-2);
+    color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer;
+}
+/* Columns outside the planning window recede rather than disappear, so the
+   shape of the season stays visible while the focus narrows. */
+.calendar-table td.gw-out .fixture-cell,
+.calendar-table th.gw-out { opacity: .22; filter: saturate(.4); }
+
+@media (max-width: 900px) {
+    .gm-row { flex-wrap: wrap; }
+    .gm-fixtures { order: 3; width: 100%; }
+    .swing-timeline { flex-wrap: wrap; }
+}
+
+/* The enlarged fixture blocks need room, so patch rows stack the identity above
+   the run instead of competing with it on one line — the team names were being
+   truncated to "Ma..." and "Chel...". */
+.swings-panel .swings-run-item {
+    display: grid;
+    grid-template-columns: 22px 28px 1fr auto auto;
+    grid-template-areas:
+        "rank badge name  avg arrow"
+        ".    .     run   run run";
+    row-gap: 8px;
+    align-items: center;
+}
+.swings-panel .swings-run-item .swings-run-rank { grid-area: rank; }
+.swings-panel .swings-run-item .swings-run-badge { grid-area: badge; }
+.swings-panel .swings-run-item .swings-run-info { grid-area: name; min-width: 0; }
+.swings-panel .swings-run-item .patch-run { grid-area: run; }
+.swings-panel .swings-run-item .swings-run-stat { grid-area: avg; }
+.swings-panel .swings-run-item .swings-run-arrow { grid-area: arrow; }
+.swings-panel .swings-run-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.swings-panel .swings-run-detail { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 10.5px; }
+.patch-run { overflow-x: auto; padding-bottom: 2px; }
+.patch-run::-webkit-scrollbar { height: 4px; }
