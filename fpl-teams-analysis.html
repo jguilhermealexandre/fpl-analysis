@@ -17,11 +17,11 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=36">
-    <link rel="stylesheet" href="styles/teams.css?v=36">
-    <link rel="stylesheet" href="styles/v2-design.css?v=36">
-    <script src="scripts/common.js?v=36"></script>
-    <script src="scripts/sidebar-nav.js?v=36"></script>
+    <link rel="stylesheet" href="styles/common.css?v=37">
+    <link rel="stylesheet" href="styles/teams.css?v=37">
+    <link rel="stylesheet" href="styles/v2-design.css?v=37">
+    <script src="scripts/common.js?v=37"></script>
+    <script src="scripts/sidebar-nav.js?v=37"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -212,7 +212,7 @@
             });
 
             // Count season games from fixtures
-            const finishedFixtures = window.rawFixturesData.filter(f => f.finished && f.team_h_score !== null);
+            const finishedFixtures = window.rawFixturesData.filter(fixturePlayed);
             finishedFixtures.forEach(f => {
                 if (teamXg[f.team_h]) teamXg[f.team_h].seasonGames++;
                 if (teamXg[f.team_a]) teamXg[f.team_a].seasonGames++;
@@ -343,6 +343,15 @@
             };
         }
 
+        // The FPL API keeps `finished` false until bonus points are confirmed, so a
+        // match that has been played and scored can still report false for hours.
+        // Anything that counts games played has to look wider than that flag or it
+        // divides a season total by one and calls the result a per-game rate.
+        function fixturePlayed(f) {
+            return !!f && f.team_h_score !== null && f.team_h_score !== undefined
+                && (f.finished || f.finished_provisional || f.started);
+        }
+
         // Helper: get team season xG averages
         function getTeamSeasonXg(teamId) {
             const data = window.teamXgData[teamId];
@@ -391,13 +400,13 @@
 
             // Past fixtures (last 5)
             const pastFixtures = fixtures
-                .filter(f => f.finished && (f.team_h === teamId || f.team_a === teamId))
+                .filter(f => fixturePlayed(f) && (f.team_h === teamId || f.team_a === teamId))
                 .sort((a, b) => a.event - b.event)
                 .slice(-5);
 
             // Future fixtures (next 5)
             const futureFixtures = fixtures
-                .filter(f => !f.finished && (f.team_h === teamId || f.team_a === teamId))
+                .filter(f => !fixturePlayed(f) && (f.team_h === teamId || f.team_a === teamId))
                 .sort((a, b) => a.event - b.event)
                 .slice(0, 5);
 
@@ -963,31 +972,15 @@
                                 <span>${team.wins}W ${team.draws}D ${team.losses}L</span>
                             </div>
                         </div>
-                        <div class="rank-badge ${rank <= 3 ? 'top-3' : ''}">${rank}</div>
+                        <div class="rank-wrap">
+                            <div class="rank-badge ${rank <= 3 ? 'top-3' : ''}">${rank}</div>
+                            ${(() => { const t = teamTrend(team); return t
+                                ? `<span class="rank-trend ${t.dir}" title="Recent net xG against the season average: ${t.delta >= 0 ? '+' : ''}${t.delta.toFixed(2)} per game">${t.dir === 'up' ? '▲' : t.dir === 'down' ? '▼' : '—'}</span>`
+                                : ''; })()}
+                        </div>
                     </div>
 
-                    <div class="power-metrics">
-                        <div class="power-metric attack${highlightATK}">
-                            <div class="power-label">Attack</div>
-                            <div class="power-bar"><div class="power-bar-fill" style="width:${team.attackPower}%"></div></div>
-                            <div class="power-value ${team.attackPower >= 60 ? 'good' : team.attackPower < 40 ? 'bad' : ''}">${team.attackPower}</div>
-                        </div>
-                        <div class="power-metric defense${highlightDEF}">
-                            <div class="power-label">Defence</div>
-                            <div class="power-bar"><div class="power-bar-fill" style="width:${team.defensePower}%"></div></div>
-                            <div class="power-value ${team.defensePower >= 60 ? 'good' : team.defensePower < 40 ? 'bad' : ''}">${team.defensePower}</div>
-                        </div>
-                        <div class="power-metric fixture${highlightFIX}">
-                            <div class="power-label">Fixtures</div>
-                            <div class="power-bar"><div class="power-bar-fill" style="width:${team.fixtureScore}%"></div></div>
-                            <div class="power-value ${team.fixtureScore >= 60 ? 'good' : team.fixtureScore < 40 ? 'bad' : ''}">${team.fixtureScore}</div>
-                        </div>
-                        <div class="power-metric form-metric${highlightFORM}">
-                            <div class="power-label">Form</div>
-                            <div class="power-bar"><div class="power-bar-fill" style="width:${team.formRating}%"></div></div>
-                            <div class="power-value ${team.formRating >= 60 ? 'good' : team.formRating < 40 ? 'bad' : ''}">${team.formRating}</div>
-                        </div>
-                    </div>
+                    ${renderTeamStatBlock(team, { highlightATK, highlightDEF })}
 
                     <div class="fdr-strip">${fdrStrip}</div>
 
@@ -1003,6 +996,61 @@
                     </div>
                 </div>
             `;
+        }
+
+        // Concrete numbers rather than four 0-100 indices nobody can anchor to.
+        //
+        // Two of the metrics originally specified do not exist: FPL stopped
+        // publishing big chances and shot counts years ago, and neither
+        // big_chances_created nor shots appears anywhere in the element data.
+        // Rather than estimate them from xA and pass the estimate off as a count,
+        // the two slots carry the real measures nearest in purpose — expected
+        // assists for chance quality, goals conceded for defensive leakage.
+        function renderTeamStatBlock(team, hl) {
+            const xg = team.seasonXg;
+            const games = xg && xg.games ? xg.games : 0;
+            const n = (v, d) => (typeof v === 'number' && isFinite(v)) ? v.toFixed(d) : '—';
+
+            const attack = [
+                { label: 'xG/game', value: xg ? n(xg.xGpg, 2) : '—', good: xg && xg.xGpg >= 1.6 },
+                { label: 'Goals', value: xg ? xg.totalGoals : team.totalGoals ?? '—', good: false },
+                { label: 'xA/game', value: xg ? n(xg.xApg, 2) : '—', good: xg && xg.xApg >= 1.0 }
+            ];
+            const defence = [
+                { label: 'xGC/game', value: xg ? n(xg.xGCpg, 2) : '—', good: xg && xg.xGCpg <= 1.1 },
+                { label: 'Clean sheets', value: team.cleanSheets ?? '—', good: (team.cleanSheets || 0) > 0 },
+                { label: 'Conceded/game', value: xg ? n(xg.gapg, 2) : team.avgConceded ?? '—', good: xg && xg.gapg <= 1.0 }
+            ];
+
+            const col = (title, rows, tone, isHl) => `
+                <div class="tsb-col ${tone}${isHl ? ' tsb-hl' : ''}">
+                    <div class="tsb-title">${title}</div>
+                    ${rows.map(r => `<div class="tsb-row">
+                        <span class="tsb-label">${r.label}</span>
+                        <span class="tsb-value${r.good ? ' good' : ''}">${r.value}</span>
+                    </div>`).join('')}
+                </div>`;
+
+            return `<div class="team-stat-block">
+                ${col('Attack', attack, 'atk', !!hl.highlightATK)}
+                ${col('Defence', defence, 'def', !!hl.highlightDEF)}
+            </div>
+            ${games ? `<div class="tsb-sample">Season to date · ${games} game${games === 1 ? '' : 's'}</div>` : ''}`;
+        }
+
+        // Whether recent expected-goal output is running above or below the
+        // season figure. Needs a few games behind it before it means anything.
+        function teamTrend(team) {
+            const xg = team.seasonXg;
+            const recent = team.recent6Xg;
+            if (!xg || !recent || !xg.games || xg.games < 4) return null;
+            const seasonNet = xg.netXGpg;
+            const recentNet = (recent.xG - recent.xGC) / Math.max(recent.games || 1, 1);
+            const delta = recentNet - seasonNet;
+            if (Math.abs(delta) < 0.15) return { dir: 'flat', label: 'Steady', delta };
+            return delta > 0
+                ? { dir: 'up', label: 'Improving', delta }
+                : { dir: 'down', label: 'Declining', delta };
         }
 
         function renderFixtureSwings(container) {
@@ -1822,7 +1870,7 @@
 
             // Process all finished fixtures
             const finishedFixtures = fixtures
-                .filter(f => f.finished && f.team_h_score !== null)
+                .filter(fixturePlayed)
                 .sort((a, b) => a.event - b.event);
 
             // Track per-team history for last 5
@@ -2503,6 +2551,51 @@
             })));
         }
 
+        // Tinted bands so the four corners read as meanings rather than as
+        // coordinates. The vertical split is the metric's own threshold (zero for
+        // net xG, the league mean otherwise); the horizontal split is average
+        // fixture difficulty, which is what the x axis carries.
+        const momentumQuadrantPlugin = {
+            id: 'momentumQuadrants',
+            beforeDatasetsDraw(chart) {
+                const area = chart.chartArea, sx = chart.scales.x, sy = chart.scales.y;
+                if (!area || !sx || !sy) return;
+                const yT = momentumMetric === 'net'
+                    ? 0
+                    : allTeamsData.reduce((s, t) => s + getMomentumY(t), 0) / allTeamsData.length;
+                const xT = allTeamsData.reduce((s, t) => s + getMomentumX(t), 0) / allTeamsData.length;
+                const cx = Math.min(Math.max(sx.getPixelForValue(xT), area.left), area.right);
+                const cy = Math.min(Math.max(sy.getPixelForValue(yT), area.top), area.bottom);
+
+                const ctx = chart.ctx;
+                ctx.save();
+                const bands = [
+                    ['Elite form & fixtures', 'rgba(52,211,153,0.10)', 'rgba(16,185,129,0.85)', cx, area.top, area.right - cx, cy - area.top, 'right', 'top'],
+                    ['Good form, hard run',   'rgba(96,165,250,0.09)', 'rgba(59,130,246,0.8)',  area.left, area.top, cx - area.left, cy - area.top, 'left', 'top'],
+                    ['Kind run, poor form',   'rgba(251,191,36,0.09)', 'rgba(217,119,6,0.8)',   cx, cy, area.right - cx, area.bottom - cy, 'right', 'bottom'],
+                    ['Avoid',                 'rgba(248,113,113,0.10)', 'rgba(239,68,68,0.8)',  area.left, cy, cx - area.left, area.bottom - cy, 'left', 'bottom']
+                ];
+                bands.forEach(([label, fill, text, x, y, w, h, hA, vA]) => {
+                    if (w <= 2 || h <= 2) return;
+                    ctx.fillStyle = fill;
+                    ctx.fillRect(x, y, w, h);
+                    if (w > 118 && h > 34) {
+                        ctx.fillStyle = text;
+                        ctx.font = '700 10px Inter, system-ui, sans-serif';
+                        ctx.textAlign = hA; ctx.textBaseline = vA;
+                        ctx.fillText(label.toUpperCase(), hA === 'left' ? x + 10 : x + w - 10, vA === 'top' ? y + 8 : y + h - 8);
+                    }
+                });
+                ctx.strokeStyle = 'rgba(128,128,128,0.25)';
+                ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(cx, area.top); ctx.lineTo(cx, area.bottom);
+                ctx.moveTo(area.left, cy); ctx.lineTo(area.right, cy);
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+
         const momentumBadgePlugin = {
             id: 'momentumBadges',
             afterDatasetsDraw(chart) {
@@ -2561,15 +2654,15 @@
                         <div class="momentum-chart-container">
                             <canvas id="momentumChart"></canvas>
                         </div>
-                        <div class="scout-report-panel" id="scoutReportPanel">
-                            <div class="scout-empty">
-                                <div class="scout-empty-icon"><i data-lucide="mouse-pointer-click" style="width:32px;height:32px;"></i></div>
-                                <div class="scout-empty-text">Click on a team dot in the chart to view their scouting report</div>
-                            </div>
-                        </div>
+                        <div class="scout-report-panel" id="scoutReportPanel"></div>
                     </div>
                 </section>
             `;
+        }
+
+        // Fixture ease: FDR inverted so an easier run sits to the right.
+        function getMomentumX(team) {
+            return 6 - parseFloat(team.avgFdr);
         }
 
         function getMomentumY(team) {
@@ -2659,7 +2752,7 @@
             const ctx = canvas.getContext('2d');
 
             const dataPoints = allTeamsData.map(team => {
-                const xVal = 6 - parseFloat(team.avgFdr); // invert: low FDR → right side
+                const xVal = getMomentumX(team);
                 const yVal = getMomentumY(team);
                 return {
                     x: xVal,
@@ -2688,7 +2781,7 @@
 
             momentumChart = new Chart(ctx, {
                 type: 'scatter',
-                plugins: [momentumBadgePlugin],
+                plugins: [momentumQuadrantPlugin, momentumBadgePlugin],
                 data: {
                     datasets: [{
                         data: dataPoints,
@@ -2829,12 +2922,50 @@
                 }
             });
 
+            // Fill the panel immediately rather than waiting for a click.
+            primeScoutReport();
+
             // Wire up metric toggle buttons
             document.querySelectorAll('#momentumMetricControl .segmented-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     setMomentumMetric(btn.dataset.metric);
                 });
             });
+        }
+
+        // The panel used to sit empty until someone clicked a dot, which wasted the
+        // most valuable column on the page. It now opens on the strongest team in
+        // the target quadrant — good form and a kind run — which is the team the
+        // matrix exists to surface.
+        function pickTeamOfTheWeek() {
+            if (!allTeamsData || !allTeamsData.length) return null;
+            const yT = momentumMetric === 'net'
+                ? 0
+                : allTeamsData.reduce((s, t) => s + getMomentumY(t), 0) / allTeamsData.length;
+            const xT = allTeamsData.reduce((s, t) => s + getMomentumX(t), 0) / allTeamsData.length;
+
+            const inTarget = allTeamsData.filter(t => getMomentumY(t) > yT && getMomentumX(t) > xT);
+            const pool = inTarget.length ? inTarget : allTeamsData;
+            // Distance from the split, so the pick is the most emphatic corner
+            // dweller rather than whoever merely qualifies.
+            return pool.slice().sort((a, b) =>
+                ((getMomentumY(b) - yT) + (getMomentumX(b) - xT)) -
+                ((getMomentumY(a) - yT) + (getMomentumX(a) - xT))
+            )[0];
+        }
+
+        function primeScoutReport() {
+            const panel = document.getElementById('scoutReportPanel');
+            if (!panel) return;
+            const pick = pickTeamOfTheWeek();
+            if (!pick) return;
+            updateScoutReport(pick);
+            // Mark it as a default so it does not read as a deliberate selection.
+            const badge = document.createElement('div');
+            badge.className = 'scout-default-badge';
+            badge.innerHTML = '⭐ Team of the week — click any dot to scout another';
+            panel.prepend(badge);
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function setMomentumMetric(metric) {
