@@ -1433,8 +1433,9 @@
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    width: 82px;
-    padding: 16px 4px 5px;
+    width: 86px;
+    /* 4px sides let the points value and its FT/LIVE note run into the edge. */
+    padding: 14px 8px 8px;
     border-radius: var(--radius-md);
     background: rgba(255,255,255,0.94);
     border: 2px solid transparent;
@@ -4628,3 +4629,84 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 /* Expected points leads the stat row, so it reads as the headline number. */
 .sq-row-stats .sq-stat:first-child .sq-stat-value { color: var(--color-primary); font-weight: 800; }
+
+/* ---- captaincy: quiet when set, controls on hover ----
+   The C/V buttons used to sit permanently on top of every card, competing with
+   the name and the score on a 86px tile. The armband is now a small badge that
+   only appears on the two players who hold it; the controls surface on hover. */
+.pcard-armband {
+    position: absolute; top: 4px; left: 4px; z-index: 3;
+    width: 17px; height: 17px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; line-height: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.pcard-armband.cap { background: var(--color-captain); color: #1a1a1a; }
+.pcard-armband.vice { background: #64748B; color: #fff; }
+
+.pcard-cv {
+    position: absolute;
+    top: -11px; left: 50%; transform: translateX(-50%) scale(.9);
+    display: flex; gap: 4px; z-index: 6;
+    opacity: 0; pointer-events: none;
+    transition: opacity 120ms ease, transform 120ms ease;
+}
+.pcard:hover .pcard-cv,
+.pcard:focus-within .pcard-cv {
+    opacity: 1; pointer-events: auto; transform: translateX(-50%) scale(1);
+}
+.cv-toggle {
+    width: auto; height: 19px; padding: 0 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.15);
+    background: #fff;
+    color: #334155;
+    font-size: 9px; font-weight: 800; line-height: 1;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    cursor: pointer; white-space: nowrap;
+}
+.cv-toggle:hover { background: var(--color-captain); color: #1a1a1a; border-color: var(--color-captain); }
+.cv-toggle.cap.active { background: var(--color-captain); color: #1a1a1a; border-color: var(--color-captain); }
+.cv-toggle.vice.active { background: #64748B; color: #fff; border-color: #64748B; }
+
+/* ---- gameweek toggle ---- */
+.gw-toggle {
+    display: inline-flex; gap: 2px; padding: 2px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-default);
+}
+.gw-toggle-btn {
+    padding: 5px 12px; border-radius: 999px; border: none; cursor: pointer;
+    background: transparent; color: var(--text-secondary);
+    font-family: inherit; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+    transition: background 140ms ease, color 140ms ease;
+}
+.gw-toggle-btn:hover { color: var(--text-primary); }
+.gw-toggle-btn.active { background: var(--color-primary); color: #fff; }
+
+/* ---- dugout ----
+   Reads as a separate structure from the pitch: darker, inset, with a seat per
+   substitute so the order that drives auto-subs is visible rather than implied
+   by left-to-right position alone. */
+.pitch-dugout {
+    padding: 12px 14px 14px;
+    background:
+        repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 2px, transparent 2px 9px),
+        var(--surface-3);
+    border-top: 2px solid var(--border-default);
+    box-shadow: inset 0 6px 12px -8px rgba(0,0,0,.5);
+}
+.dugout-hint { margin-left: 8px; font-weight: 500; text-transform: none; letter-spacing: 0; opacity: .75; }
+.dugout-cards { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+.dugout-seat { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.dugout-seat-label {
+    font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 2px 8px; border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--border-subtle);
+}
+/* Bench sits behind the eleven in the hierarchy. */
+.dugout-cards .pcard { opacity: .86; transform: scale(.95); flex: 0 0 auto; }
+.dugout-cards .pcard:hover { opacity: 1; transform: scale(.97) translateY(-2px); }

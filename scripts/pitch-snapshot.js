@@ -367,8 +367,12 @@
             // 1. Captaincy. The armband only doubles if the captain actually plays;
             //    otherwise it passes to the vice. Weight each by their start odds
             //    rather than assuming the captain always turns out.
-            const cap = analysisMap.get(captainId);
-            const vice = analysisMap.get(viceId);
+            // Only an armband on a player who is actually starting pays out. Without
+            // this guard a captain left behind on the bench by a swap still had his
+            // points doubled into the total, while his base score was never counted
+            // — a figure that matched nothing on the pitch.
+            const cap = xiSet.has(captainId) ? analysisMap.get(captainId) : null;
+            const vice = xiSet.has(viceId) ? analysisMap.get(viceId) : null;
             if (cap) {
                 const capStart = projectPlayerPointsDetailed(cap.player).pStart;
                 total += predictedGWPoints(cap.player) * capStart;
@@ -415,7 +419,15 @@
             <div class="sq-snapshot" id="sq-snapshot-body">
                 <div class="sq-snapshot-toolbar">
                     <button class="btn btn-primary sq-optimize-btn" onclick="runAutoOptimize()">✨ Auto-Optimize GW Lineup</button>
-                    <div class="sq-snapshot-score">Projected Starting XI Score: <strong>${projectedScore}</strong> pts</div>
+                    <div class="gw-toggle" role="group" aria-label="Which gameweek to show">
+                        <button class="gw-toggle-btn ${snapshotViewMode === 'current' ? 'active' : ''}"
+                            onclick="setSnapshotViewMode('current')"
+                            data-tooltip="Points scored in Gameweek ${currentGW}, live while matches are on">📊 GW${currentGW} actual</button>
+                        <button class="gw-toggle-btn ${snapshotViewMode === 'next' ? 'active' : ''}"
+                            onclick="setSnapshotViewMode('next')"
+                            data-tooltip="Projected points and the fixture coming up — what to plan against">🔮 Next GW</button>
+                    </div>
+                    <div class="sq-snapshot-score">${snapshotViewMode === 'next' ? 'Projected' : 'Projected'} Starting XI Score: <strong>${projectedScore}</strong> pts</div>
                 </div>
                 ${snapshotOptimizeSummary ? `<div class="sq-optimize-summary">✨ ${snapshotOptimizeSummary}</div>` : ''}
                 <div class="pitch-field">
@@ -438,8 +450,23 @@
                     <!-- Bench lives inside the field wrapper so it reads as part of
                          the same surface rather than loose circles under it. -->
                     <div class="pitch-dugout">
-                        <div class="dugout-label">Dugout · substitutes</div>
-                        <div class="dugout-cards">${benchAnalyses.map(a => renderSnapshotCard(a, true)).join('')}</div>
+                        <div class="dugout-label">Dugout · substitutes <span class="dugout-hint">order decides who comes on first</span></div>
+                        <div class="dugout-cards">
+                            ${benchAnalyses.map(a => {
+                                // FPL substitutes in bench order, but a goalkeeper can
+                                // only replace a goalkeeper — so his seat is labelled
+                                // by role rather than by priority.
+                                const isGk = a.player.position === 1;
+                                const outfieldBefore = benchAnalyses
+                                    .slice(0, benchAnalyses.indexOf(a))
+                                    .filter(x => x.player.position !== 1).length;
+                                const seat = isGk ? 'GK' : `Sub ${outfieldBefore + 1}`;
+                                return `<div class="dugout-seat">
+                                    <div class="dugout-seat-label">${seat}</div>
+                                    ${renderSnapshotCard(a, true)}
+                                </div>`;
+                            }).join('')}
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -454,7 +481,50 @@
         // next to a player who hasn't kicked off reads as though he's already scored
         // it. Label the projection as xP, and switch to real points with a LIVE/FT
         // marker once his match is under way.
+        /* Which gameweek the pitch is describing.
+
+           'current' answers "how am I doing?" — live or final points against the
+           fixture being played. 'next' answers "what should I do?" — projected
+           points against the fixture coming up. The page used to infer this from
+           whether kick-off had passed, which is right on a Saturday and useless on
+           a Tuesday when you are planning. */
+        let snapshotViewMode = 'current';
+
+        function setSnapshotViewMode(mode) {
+            snapshotViewMode = mode === 'next' ? 'next' : 'current';
+            refreshSnapshot();
+        }
+
+        // The fixture the card should show, given the mode.
+        function snapshotFixtureFor(player) {
+            if (snapshotViewMode === 'next') {
+                // player.fixtures already excludes anything finished, so the head
+                // of that list is the next one to be played.
+                return (player.fixtures || [])[0] || null;
+            }
+            const f = (allFixtures || []).find(x =>
+                x.event === currentGW && (x.team_h === player.teamId || x.team_a === player.teamId));
+            if (!f) return (player.fixtures || [])[0] || null;
+            const isHome = f.team_h === player.teamId;
+            return {
+                opponent: teams[isHome ? f.team_a : f.team_h]?.short_name || '???',
+                isHome,
+                difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
+                event: f.event
+            };
+        }
+
         function getPlayerGwState(player) {
+            // Planning mode always shows the projection, whatever the clock says.
+            if (snapshotViewMode === 'next') {
+                const nf = (player.fixtures || [])[0];
+                return {
+                    cls: 'xp',
+                    value: `${predictedGWPoints(player).toFixed(1)} xP`,
+                    note: nf ? `GW${nf.event}` : 'Blank'
+                };
+            }
+
             const fixtures = (allFixtures || []).filter(f =>
                 f.event === currentGW && (f.team_h === player.teamId || f.team_a === player.teamId));
 
@@ -494,7 +564,7 @@
             const isVice = p.id === snapshotViceId;
             const isSwapSelected = snapshotSwapSource === p.id;
             const gw = getPlayerGwState(p);
-            const nextFx = (p.fixtures || [])[0];
+            const nextFx = snapshotFixtureFor(p);
             const fixtureTag = nextFx
                 ? `<span class="pcard-fixture fdr-${nextFx.difficulty || 3}">${escHTML(nextFx.opponent)} <em>${nextFx.isHome ? 'H' : 'A'}</em></span>`
                 : `<span class="pcard-fixture fdr-3">No fixture</span>`;
@@ -526,9 +596,11 @@
                     ondrop="snapshotDrop(event, ${p.id})"
                     ondragend="snapshotDragEnd()"
                     title="${escHTML(swapTitle)}">
-                <div class="pcard-cv">
-                    <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make Captain">C</button>
-                    <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make Vice-Captain">V</button>
+                ${isCap ? '<span class="pcard-armband cap" title="Captain — points doubled">C</span>'
+                        : isVice ? '<span class="pcard-armband vice" title="Vice-captain — takes the armband if the captain does not play">V</span>' : ''}
+                <div class="pcard-cv" role="group" aria-label="Set captain or vice">
+                    <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make ${escHTML(p.name)} captain">Set C</button>
+                    <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make ${escHTML(p.name)} vice-captain">Set V</button>
                 </div>
                 <div class="pcard-crest">
                     ${badge ? `<img src="${badge}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
@@ -628,6 +700,7 @@
             snapshotSwapSource = null;
             snapshotOptimizeSummary = '';
             snapshotOptimizeReport = null;
+            reconcileArmbands();
             syncSnapshotToSquad();
             renderTeamAnalysis();
         }
@@ -677,6 +750,38 @@
             snapshotDragId = null;
             snapshotSwapSource = null;
             refreshSnapshot();
+        }
+
+        /* The armband has to stay on the pitch.
+
+           Swapping a captain to the bench left snapshotCaptainId pointing at him,
+           so the card kept its C and the projection kept paying the armband to
+           someone who was no longer in the eleven. Promote the vice if he is
+           available, otherwise hand it to the best projected starter, and never
+           leave captain and vice as the same player. */
+        function reconcileArmbands() {
+            const map = getSquadAnalysisMap();
+            const inXI = id => id != null && snapshotXI.has(id);
+            const bestStarter = exclude => [...snapshotXI]
+                .filter(id => id !== exclude)
+                .map(id => map.get(id))
+                .filter(Boolean)
+                .sort((a, b) => predictedGWPoints(b.player) - predictedGWPoints(a.player))[0];
+
+            if (!inXI(snapshotCaptainId)) {
+                // Vice steps up if he is starting; otherwise the best available.
+                if (inXI(snapshotViceId)) {
+                    snapshotCaptainId = snapshotViceId;
+                    snapshotViceId = null;
+                } else {
+                    const pick = bestStarter(null);
+                    snapshotCaptainId = pick ? pick.player.id : null;
+                }
+            }
+            if (!inXI(snapshotViceId) || snapshotViceId === snapshotCaptainId) {
+                const pick = bestStarter(snapshotCaptainId);
+                snapshotViceId = pick ? pick.player.id : null;
+            }
         }
 
         function setSnapshotCaptain(playerId) {
