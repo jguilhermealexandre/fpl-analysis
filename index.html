@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=55">
-    <link rel="stylesheet" href="styles/v2-design.css?v=55">
+    <link rel="stylesheet" href="styles/common.css?v=56">
+    <link rel="stylesheet" href="styles/v2-design.css?v=56">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -791,6 +791,13 @@
         }
         .v2-pitch-title { font-size: 17px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); }
         .v2-pitch-formation { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-full); }
+        .v2-attn-sev { font-size: 9px; line-height: 1; margin-right: 6px; flex: none; }
+        .v2-attn-sev.sell { color: var(--verdict-sell, #DC2626); }
+        .v2-attn-sev.monitor { color: #D97706; }
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+        }
         /* --- live gameweek --- */
         .v2-live-card { border-color: var(--color-primary); }
         .v2-live-dot {
@@ -3608,10 +3615,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/xp-engine.js?v=55"></script>
-    <script src="scripts/live-gw.js?v=55"></script>
-    <script src="scripts/common.js?v=55"></script>
-    <script src="scripts/sidebar-nav.js?v=55"></script>
+    <script src="scripts/xp-engine.js?v=56"></script>
+    <script src="scripts/live-gw.js?v=56"></script>
+    <script src="scripts/common.js?v=56"></script>
+    <script src="scripts/sidebar-nav.js?v=56"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4230,7 +4237,7 @@
             });
             const currentCaptain = squad.find(p => p.isCaptain);
             if (captainRec && currentCaptain && captainRec.name !== currentCaptain.name) {
-                xiItems.push({ name: currentCaptain.name, reason: `${captainRec.name} (form ${captainRec.form}) may be the sharper armband pick vs ${captainRec.opponent}`, severity: 'monitor' });
+                xiItems.push({ name: currentCaptain.name, reason: `${captainRec.name} projects ${captainRec.xP} against ${captainRec.opponent} — the highest in your XI`, severity: 'monitor' });
             }
 
             const txItems = [];
@@ -4253,8 +4260,14 @@
                     rowsHtml = `<div class="v2-attn-empty"><i data-lucide="check-circle" class="icon"></i> ${emptyText}</div>`;
                 } else {
                     items.slice(0, 6).forEach(it => {
+                        // Severity was a border colour and nothing else, which a
+                        // red-green deficiency cannot read. Add a glyph and a label.
+                        const sevMark = it.severity === 'sell'
+                            ? '<span class="v2-attn-sev sell" title="Urgent">▲</span>'
+                            : '<span class="v2-attn-sev monitor" title="Worth watching">●</span>';
                         rowsHtml += `<a href="${linkBase}" class="v2-attn-row${it.severity === 'sell' ? ' sev-sell' : ''}">
-                            <span class="v2-attn-row-name">${esc(it.name)}</span>
+                            <span class="sr-only">${it.severity === 'sell' ? 'Urgent: ' : 'Monitor: '}</span>
+                            ${sevMark}<span class="v2-attn-row-name">${esc(it.name)}</span>
                             <span class="v2-attn-row-reason">${esc(it.reason)}</span>
                             <span class="v2-attn-row-arrow"><i data-lucide="arrow-right" class="icon"></i></span>
                         </a>`;
@@ -4896,18 +4909,39 @@
                 });
                 if (toughFixStarters.length >= 3) healthDeductions.push({ icon: 'calendar-x', text: `${toughFixStarters.length} starters face tough fixtures`, color: '#F59E0B' });
 
-                // --- NEW: Captain recommendation (highest form × inverse FDR among starters) ---
+                /* Captain recommendation.
+
+                   This was `form × an FDR multiplier`, and the result was stored in
+                   a field called `xP` — which it was not. One gameweek into a
+                   season `form` is that single gameweek's points, so the pick was
+                   essentially "whoever scored most last week, adjusted for badge
+                   difficulty". Worse, the pitch beside it stars the highest
+                   projection from the real engine, so the two halves of the same
+                   screen recommended different captains.
+
+                   Both now read the same projection. */
                 let captainRec = null;
                 let bestCaptainScore = -1;
+                const engineReady = typeof projectPlayerPointsDetailed === 'function'
+                    && typeof xpEngineReady === 'function' && xpEngineReady();
                 starters.forEach(p => {
+                    if (p.status === 'i' || p.status === 'u' || p.status === 's') return;
                     const nextFix = (p.fixtures || [])[0];
-                    const fdr = nextFix ? nextFix.difficulty : 3;
-                    const fdrMult = { 1: 1.5, 2: 1.25, 3: 1.0, 4: 0.75, 5: 0.5 }[fdr] || 1.0;
-                    const score = p.form * fdrMult;
-                    if (score > bestCaptainScore && p.status !== 'i' && p.status !== 'u' && p.status !== 's') {
+                    let score;
+                    if (engineReady) {
+                        try { score = projectPlayerPointsDetailed(p, { fixture: nextFix || null }).total; }
+                        catch (e) { score = null; }
+                    }
+                    if (score == null || !isFinite(score)) {
+                        // Engine unavailable — fall back to the old heuristic rather
+                        // than recommending nobody.
+                        const fdr = nextFix ? nextFix.difficulty : 3;
+                        score = p.form * ({ 1: 1.5, 2: 1.25, 3: 1.0, 4: 0.75, 5: 0.5 }[fdr] || 1.0);
+                    }
+                    if (score > bestCaptainScore) {
                         bestCaptainScore = score;
                         const oppName = nextFix ? `${nextFix.opponent}${nextFix.isHome ? '' : ' (A)'}` : '';
-                        captainRec = { name: p.name, form: p.form, opponent: oppName, xP: (p.form * fdrMult).toFixed(1) };
+                        captainRec = { name: p.name, form: p.form, opponent: oppName, xP: score.toFixed(1) };
                     }
                 });
 
