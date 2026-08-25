@@ -477,6 +477,16 @@
                     bonus: p.bonus, bps: p.bps,
                     yellowCards: p.yellow_cards, redCards: p.red_cards,
                     saves: p.saves || 0,
+                    // Defensive contribution — the 25/26 scoring route. Tackles,
+                    // clearances/blocks/interceptions and recoveries, totalled by
+                    // FPL, worth 2 points once a per-match threshold is cleared.
+                    defCon: p.defensive_contribution || 0,
+                    defCon90: parseFloat(p.defensive_contribution_per_90) || 0,
+                    // Set-piece duty as published, rather than inferred from a
+                    // goals-minus-xG gap. 1 = first choice.
+                    penaltiesOrder: p.penalties_order || null,
+                    cornersOrder: p.corners_and_indirect_freekicks_order || null,
+                    freekicksOrder: p.direct_freekicks_order || null,
                     transfersIn: p.transfers_in_event || 0,
                     transfersOut: p.transfers_out_event || 0,
                     transfersInTotal: p.transfers_in || 0,
@@ -1022,6 +1032,25 @@
             }
             return '';
         }
+        // Set-piece duty, as published by FPL. Penalties first — a first-choice
+        // taker is the single most valuable non-goal attribute in the game — then
+        // direct free kicks, then corners. Only first and second choice are shown;
+        // beyond that the duty rarely survives a substitution.
+        function setPieceBadge(p) {
+            const bits = [];
+            if (p.penaltiesOrder != null && p.penaltiesOrder <= 2) {
+                bits.push(`<span class="sp-badge pen${p.penaltiesOrder === 1 ? ' first' : ''}"
+                    data-tooltip="${p.penaltiesOrder === 1 ? 'First-choice penalty taker' : 'Second-choice penalty taker'}">PEN</span>`);
+            }
+            if (p.freekicksOrder != null && p.freekicksOrder === 1) {
+                bits.push(`<span class="sp-badge fk first" data-tooltip="First-choice direct free kicks">FK</span>`);
+            }
+            if (p.cornersOrder != null && p.cornersOrder === 1) {
+                bits.push(`<span class="sp-badge ck first" data-tooltip="First-choice corners and indirect free kicks">CK</span>`);
+            }
+            return bits.join('');
+        }
+
         function marketBadge(p) {
             const pr = getTransferPressure(p);
             if (pr > 0.015) return `<span class="pitch-market-badge rising">&#9650;</span>`;

@@ -90,6 +90,58 @@
             };
         }
 
+        /* Defensive contribution — the scoring route added for 2025/26.
+           FPL totals tackles, clearances/blocks/interceptions and recoveries into
+           one figure and pays a flat 2 points once a per-match threshold is met.
+           The thresholds below were read off the live endpoint's own explain
+           blocks rather than assumed: in Gameweek 1 the highest defender scoring
+           nothing had 9 and the lowest scoring 2 points had 10; for midfielders
+           the same boundary sits between 11 and 12. Goalkeepers never qualify.
+
+           Leaving this out under-projected every defender and defensive
+           midfielder, which mattered because the optimiser picks lineups from
+           these numbers. */
+        const DC_THRESHOLD = { 1: Infinity, 2: 10, 3: 12, 4: 12 };
+        const DC_POINTS = 2;
+        // Per-90 baselines used while a player's own sample is thin. These are the
+        // measured means across players with 60+ minutes, not estimates — an
+        // earlier guess of 5.0 for midfielders under-projected the position by an
+        // order of magnitude against what Gameweek 1 actually paid out.
+        // Defenders sit at the measured mean of 7.5. Midfielders are nudged from
+        // their measured 8.0 to 8.4, which is the value that reproduces the
+        // observed 14% threshold hit-rate — counting stats summed from three
+        // sources are over-dispersed, so a plain Poisson at the mean understates
+        // the tail. Calibrated against hit-rate rather than one week's point
+        // total, because a single gameweek's total is a noisy realisation.
+        const DC_BASELINE_90 = { 1: 0, 2: 7.5, 3: 8.4, 4: 4.2 };
+
+        function defensiveContributionPoints(player, min90) {
+            const threshold = DC_THRESHOLD[player.position];
+            if (!threshold || threshold === Infinity || !min90) return 0;
+
+            const mins = player.minutes || 0;
+            // Same regression the attacking rates use: a single match of tackles
+            // is not a rate, so lean on the position baseline until there is
+            // roughly five matches of evidence.
+            const w = Math.min(1, mins / 450);
+            const own90 = player.defCon90 || (mins > 0 ? ((player.defCon || 0) / mins) * 90 : 0);
+            const dc90 = w * own90 + (1 - w) * (DC_BASELINE_90[player.position] || 0);
+
+            const expected = dc90 * min90;
+            if (expected <= 0) return 0;
+
+            // Counting events over a match sit close enough to Poisson for this
+            // purpose, so the chance of clearing the threshold is the survival
+            // function at that count.
+            let pBelow = 0, term = Math.exp(-expected);
+            for (let k = 0; k < threshold; k++) {
+                pBelow += term;
+                term *= expected / (k + 1);
+            }
+            const pHit = Math.max(0, Math.min(1, 1 - pBelow));
+            return pHit * DC_POINTS;
+        }
+
         // A harder fixture suppresses attacking returns by the same factor the
         // projection uses, so a per-fixture xGI reads on the projection's terms.
         function fixtureAttackAdj(fdr) { return 1 + (3 - (fdr || 3)) * 0.10; }
@@ -117,7 +169,7 @@
         // nothing to do with the fixture being projected.
         function projectPlayerPointsDetailed(player, opts) {
             const o = opts || {};
-            const out = { total: 0, appearance: 0, attack: 0, cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, pStart: 0 };
+            const out = { total: 0, appearance: 0, attack: 0, cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, defCon: 0, pStart: 0 };
             if (!player) return out;
             if (player.status === 'i' || player.status === 'u' || player.status === 's') return out;
 
@@ -160,7 +212,9 @@
             const bonusPerGame = games > 0 ? (player.bonus || 0) / games : 0;
             out.bonus = Math.min(1.2, bonusPerGame) * pStart;
 
-            out.total = Math.max(0, out.appearance + out.attack + out.cleanSheet + out.saves + out.bonus + out.conceded);
+            out.defCon = defensiveContributionPoints(player, min90);
+
+            out.total = Math.max(0, out.appearance + out.attack + out.cleanSheet + out.saves + out.bonus + out.conceded + out.defCon);
 
             // With little evidence our own numbers are shaky, and FPL's ep_next
             // encodes things we can't see — a new signing with no minutes yet, a
@@ -397,6 +451,7 @@
                     <span class="pcard-crest-fallback">${escHTML(p.team)}</span>
                     ${injuryBadge(p)}
                     ${marketBadge(p)}
+                    ${setPieceBadge(p)}
                 </div>
                 <div class="pcard-name">${escHTML(p.name)}</div>
                 ${fixtureTag}

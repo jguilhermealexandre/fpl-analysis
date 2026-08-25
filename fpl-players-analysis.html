@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=37">
-    <link rel="stylesheet" href="styles/players.css?v=37">
-    <link rel="stylesheet" href="styles/v2-design.css?v=37">
+    <link rel="stylesheet" href="styles/common.css?v=38">
+    <link rel="stylesheet" href="styles/players.css?v=38">
+    <link rel="stylesheet" href="styles/v2-design.css?v=38">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -530,6 +530,12 @@
                         transfersIn: player.transfers_in_event || 0,
                         transfersOut: player.transfers_out_event || 0,
                         costChangeEvent: (player.cost_change_event || 0) / 10,
+                        // Published by FPL rather than inferred. 1 = first choice.
+                        penaltiesOrder: player.penalties_order || null,
+                        cornersOrder: player.corners_and_indirect_freekicks_order || null,
+                        freekicksOrder: player.direct_freekicks_order || null,
+                        defCon: player.defensive_contribution || 0,
+                        defCon90: parseFloat(player.defensive_contribution_per_90) || 0,
                         // Team-level scores
                         teamScores: teamAnalysis[player.team] || null
                     });
@@ -1305,13 +1311,14 @@
                     const minsPg = blend(p.l5?.minutes || 0, p.season?.minutes || 0);
                     const creativityPg = blend(p.l5?.creativity || 0, p.season?.creativity || 0);
 
-                    // Detect penalty taker: require meaningful xG outperformance per position
-                    const seasonPenGoals = Math.max(0, (p.season?.goals || 0) - (p.season?.xG || 0));
-                    const penMissed = (p.season?.penaltiesMissed || 0);
-                    const penThresholdR = { GK: 999, DEF: 0.5, MID: 1.0, FWD: 1.5 }[pos] || 1.0;
-                    const penAttempts = (seasonPenGoals >= penThresholdR || penMissed > 0)
-                        ? Math.round(seasonPenGoals + penMissed) : 0;
-                    const isPenTaker = penAttempts >= 2 || (gS >= 10 && penAttempts >= 1);
+                    // Penalty duty is published — penalties_order, 1 for the first
+                    // choice. This used to be inferred from a goals-minus-xG gap,
+                    // which guessed at something the API states outright and was
+                    // worthless early in a season when that gap is one match wide.
+                    const penOrder = p.penaltiesOrder;
+                    const isPenTaker = penOrder != null && penOrder <= 2;
+                    const penAttempts = (p.season?.penaltiesMissed || 0)
+                        + Math.max(0, Math.round((p.season?.goals || 0) - (p.season?.xG || 0)));
 
                     // Consistency: std deviation of per-game points in L5
                     let consistency = 0;
@@ -1379,9 +1386,10 @@
 
                     // 7. Penalty Taker route — reliable ~0.76 conversion = ~5 pts each
                     if (isPenTaker && pos !== 'GK') {
-                        const penRate = gS > 0 ? penAttempts / gS : 0;
-                        const strength = Math.min(10, Math.max(3, penAttempts * 2));
-                        routes.push({ name: 'Penalties', icon: '<i data-lucide="goal" style="width:14px;height:14px;"></i>', strength, detail: `${penAttempts} taken`, color: '#F472B6', ptWeight: goalPts[pos] * 0.76 });
+                        const strength = penOrder === 1 ? 9 : 5;
+                        routes.push({ name: 'Penalties', icon: '<i data-lucide="goal" style="width:14px;height:14px;"></i>',
+                            strength, detail: penOrder === 1 ? 'First choice' : `Order ${penOrder}`,
+                            color: '#F472B6', ptWeight: goalPts[pos] * 0.76 });
                     }
 
                     // (BPS Floor route removed — redundant with Bonus route)
@@ -3546,8 +3554,8 @@
         }
 
     </script>
-    <script src="scripts/players-tables.js?v=37"></script>
-    <script src="scripts/compare-report.js?v=37"></script>
+    <script src="scripts/players-tables.js?v=38"></script>
+    <script src="scripts/compare-report.js?v=38"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5495,10 +5503,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=37"></script>
+    <script src="scripts/players-ai.js?v=38"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/common.js?v=37"></script>
-    <script src="scripts/sidebar-nav.js?v=37"></script>
+    <script src="scripts/common.js?v=38"></script>
+    <script src="scripts/sidebar-nav.js?v=38"></script>
     <script>
         loadSidebarNav();
         initIcons();
