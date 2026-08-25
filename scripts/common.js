@@ -423,7 +423,7 @@ function showNavTeamInput() {
 
 // ===== FOOTER LOADING =====
 function loadFooter() {
-    fetch('footer.html?v=' + (window.ASSET_V || '53'))
+    fetch('footer.html?v=' + (window.ASSET_V || '54'))
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
