@@ -177,7 +177,8 @@ function main() {
 
     // Sitemap: the pages plus every archived article.
     const pages = ['', 'fpl-scouts-desk.html', 'fpl-my-team-analysis.html', 'fpl-players-analysis.html',
-        'fpl-teams-analysis.html', 'fpl-league-rivals.html', 'fpl-news.html', 'fpl-how-it-works.html', 'fpl-faq.html'];
+        'fpl-teams-analysis.html', 'fpl-league-rivals.html', 'fpl-news.html', 'fpl-how-it-works.html', 'fpl-faq.html',
+        'fpl-methodology.html', 'fpl-privacy.html', 'fpl-contact.html'];
     const today = new Date().toISOString().slice(0, 10);
     const urls = pages.map(p => `  <url><loc>${SITE}/${p}</loc><lastmod>${today}</lastmod></url>`)
         .concat(index.map(a => `  <url><loc>${SITE}/articles/${a.slug}.html</loc><lastmod>${a.date.slice(0, 10)}</lastmod></url>`));

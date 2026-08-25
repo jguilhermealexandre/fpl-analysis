@@ -1,4 +1,4 @@
-const CACHE_NAME = 'easyfpl-v3';
+const CACHE_NAME = 'easyfpl-v4';
 
 const STATIC_ASSETS = [
   '/',
@@ -11,6 +11,10 @@ const STATIC_ASSETS = [
   '/fpl-news.html',
   '/fpl-faq.html',
   '/fpl-how-it-works.html',
+  '/fpl-methodology.html',
+  '/fpl-privacy.html',
+  '/fpl-contact.html',
+  '/styles/docs.css',
   '/styles/common.css',
   '/styles/players.css',
   '/styles/teams.css',

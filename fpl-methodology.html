@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en" class="v2-theme">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <title>How EasyFPL Works — Every Tool, Every Model | Easy FPL</title>
+    <meta name="description" content="A complete, unhedged explanation of every page on EasyFPL and the maths behind it: the expected-points engine, the opponent model, squad health, and the transfer recommender.">
+    <link rel="canonical" href="https://easyfpl.com/fpl-methodology.html">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/common.css?v=52">
+    <link rel="stylesheet" href="styles/v2-design.css?v=52">
+    <link rel="stylesheet" href="styles/docs.css?v=52">
+</head>
+<body>
+    <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
+    <div class="v2-main-content">
+
+    <div class="doc-hero">
+        <div class="doc-hero-icon"><i data-lucide="book-open" class="icon"></i></div>
+        <h1 class="v2-page-heading">How EasyFPL Works</h1>
+        <p>Every tool on this site, and every model behind it, explained in full. No black boxes — if a number appears on a card, this page tells you where it came from and what it cannot know.</p>
+        <div class="doc-updated">Methodology · 2026/27 season</div>
+    </div>
+
+    <div class="doc-layout">
+        <nav class="doc-toc">
+            <div class="doc-toc-title">Contents</div>
+            <div class="doc-toc-inner">
+                <a href="#principle">The one idea</a>
+                <a href="#tools">The tools</a>
+                <a href="#engine">The points engine</a>
+                <a href="#engine-minutes" class="sub">Minutes</a>
+                <a href="#engine-attack" class="sub">Attacking returns</a>
+                <a href="#engine-defence" class="sub">Clean sheets</a>
+                <a href="#engine-defcon" class="sub">Defensive contribution</a>
+                <a href="#engine-extras" class="sub">Bonus &amp; cards</a>
+                <a href="#opponent">The opponent model</a>
+                <a href="#decisions">Decision tools</a>
+                <a href="#health">Squad health</a>
+                <a href="#data">Data &amp; refresh</a>
+                <a href="#limits">What this cannot do</a>
+            </div>
+        </nav>
+
+        <div class="doc-body">
+
+        <!-- ============ THE PRINCIPLE ============ -->
+        <section class="doc-section" id="principle">
+            <h2>The one idea behind everything</h2>
+            <p>Almost every mistake a fantasy football model makes comes from the same place: treating a small sample as if it were settled fact. A striker scores twice in his opening match and the model calls him a two-goal-a-game striker. A goalkeeper makes five saves and is projected to make five every week. A £12.0m midfielder has one quiet afternoon and is ranked below a £5.5m one.</p>
+            <p>EasyFPL is built to refuse that. Every rate it uses is <strong>regressed toward a prior</strong> — a sensible expectation of what a player like this normally does — and the player's own record only takes over as evidence accumulates.</p>
+            <div class="doc-formula">projection = own_rate × evidence + prior × (1 − evidence)
+
+evidence = min(1, matches_played / N)</div>
+            <p>After one match, <code>evidence</code> for an attacking rate is 0.25, so three quarters of the projection is still the prior. By roughly four or five matches the player's own record has fully taken over and the prior has faded to nothing. Lumpier events — bonus points, cards — regress on a slower ten-match clock, because they arrive in chunks rather than accumulating in fractions.</p>
+            <p>The prior itself is chosen to carry real information rather than being a flat league average:</p>
+            <ul>
+                <li><strong>Price.</strong> Across the player pool, price and the official game's own expected-points estimate correlate at <strong>+0.89</strong>. A single gameweek's expected goal involvements per 90 correlates at <strong>+0.32</strong>. Price is by far the stronger signal early on, so the attacking prior scales with what a player costs relative to the median at his position.</li>
+                <li><strong>Last season.</strong> Where a player has a completed season behind him, his points per game from that season becomes the prior his current form regresses toward. Fewer than ten starts is ignored — a handful of cameos is not evidence.</li>
+                <li><strong>Position baselines.</strong> Where neither applies, a per-position baseline measured from the current pool.</li>
+            </ul>
+            <div class="doc-note">
+                <div class="doc-note-title">Why this matters to you</div>
+                <p>It means the site will not panic. One bad gameweek will not tell you to tear up your squad, and one good gameweek will not tell you a £4.5m goalkeeper is the best in the game. It also means that early in a season the numbers are deliberately conservative and clustered — that is the model being honest about how little it knows yet, not a bug.</p>
+            </div>
+        </section>
+
+        <!-- ============ THE TOOLS ============ -->
+        <section class="doc-section" id="tools">
+            <h2>The tools</h2>
+            <p>Nine surfaces, each answering a different question. Everything below runs in your browser against the official Fantasy Premier League data.</p>
+
+            <div class="doc-tool">
+                <div class="doc-tool-head"><i data-lucide="layout-dashboard" class="icon"></i><h3>Dashboard</h3></div>
+                <div class="doc-tool-path">index.html</div>
+                <p>The landing surface. Enter your Team ID once and it is remembered on your device. Gives you the state of the gameweek at a glance — deadline, your rank, price movements, the standout performers and the fixtures that matter — and routes you into whichever tool answers your actual question.</p>
+            </div>
+
+            <div class="doc-tool">
+                <div class="doc-tool-head"><i data-lucide="users" class="icon"></i><h3>My Team Analysis</h3></div>
+                <div class="doc-tool-path">fpl-my-team-analysis.html</div>
+                <p>The deepest tool on the site, and the one most people live in. It loads your actual squad and gives you:</p>
+                <ul>
+                    <li><strong>The pitch.</strong> Your XI and bench laid out with projected points per player, drag-and-drop swapping, captain and vice controls, and a Current&nbsp;GW / Next&nbsp;GW toggle so you can look at what is happening now or what to do next.</li>
+                    <li><strong>Squad table.</strong> Every player with expected points, form, fixtures, ownership, set-piece duty and a verdict — Star, Hold, Monitor or Sell.</li>
+                    <li><strong>Lineup optimiser.</strong> Solves the highest-projecting legal XI from your fifteen and shows you exactly which changes it would make and what each is worth.</li>
+                    <li><strong>Transfer wizard.</strong> Answers the Tuesday question: is there a move worth making, or should you hold? Covered in detail <a href="#decisions">below</a>.</li>
+                    <li><strong>Gameweek draft.</strong> Plan several gameweeks ahead — transfers, chips, lineups — and see what each plan projects before you commit.</li>
+                    <li><strong>Squad health.</strong> A single score for the state of your squad, explained <a href="#health">below</a>.</li>
+                </ul>
+            </div>
+
+            <div class="doc-tool">
+                <div class="doc-tool-head"><i data-lucide="search" class="icon"></i><h3>Player Analysis</h3></div>
+                <div class="doc-tool-path">fpl-players-analysis.html</div>
+                <ul>
+                    <li><strong>Recommendations.</strong> Ranked shortlists per position, scored on projected points, value, minutes security, fixtures and set-piece duty.</li>
+                    <li><strong>All Players table.</strong> Every player in the game, sortable across forty-odd columns, with column presets, heat-map shading, a fixture strip and a frozen name column so you never lose your place scrolling sideways.</li>
+                    <li><strong>Routes to Points.</strong> For any player, a breakdown of <em>where</em> his points actually come from — appearance, goals, assists, clean sheets, saves, defensive contribution, bonus — plus a reliability read on how repeatable that mix is.</li>
+                    <li><strong>Visual analysis.</strong> Scatter plots with quadrant shading for spotting value, threat and minutes outliers, with your own squad highlighted.</li>
+                </ul>
+            </div>
+
+            <div class="doc-tool">
+                <div class="doc-tool-head"><i data-lucide="shield" class="icon"></i><h3>Teams Analysis</h3></div>
+                <div class="doc-tool-path">fpl-teams-analysis.html</div>
+                <ul>
+                    <li><strong>Team rankings.</strong> Attack and defence ratings for all twenty clubs, split by home and away, built from actual goals and expected goals rather than reputation.</li>
+                    <li><strong>Fixture swings.</strong> Finds the clubs whose schedule is about to turn — the ones worth buying into before everyone else notices, and the ones to leave before a hard run.</li>
+                    <li><strong>Fixture calendar.</strong> A draggable window over the run of fixtures so you can ask "who is best over the next six?" and get an answer for the window you care about.</li>
+                </ul>
+            </div>
+
+            <div class="doc-tool">
+                <div class="doc-tool-head"><i data-lucide="trophy" class="icon"></i><h3>League Rivals</h3></div>
+                <div class="doc-tool-path">fpl-league-rivals.html</div>
+                <p>Mini-league intelligence. Live standings during a gameweek, a projected table showing where you will finish if the current gameweek plays out as expected, a threat matrix of which rivals are closing, and a captaincy swing calculator for working out how much a differential armband is actually worth against the people you are trying to beat.</p>
+            </div>
+
+            <div class="doc-tool">
+                <div class="doc-tool-head"><i data-lucide="newspaper" class="icon"></i><h3>The Scout's Desk</h3></div>
+                <div class="doc-tool-path">fpl-scouts-desk.html · articles/</div>
+                <p>Long-form written analysis, generated from the dataset at the moment of publication and then never edited. A gameweek debrief, fixture watch, data deep-dives, market movement and differential hunting. Each piece is archived as a real page, so the numbers in it stay a record of what was true that week rather than being quietly rewritten later.</p>
+            </div>
+
+            <div class="doc-tool">
+                <div class="doc-tool-head"><i data-lucide="rss" class="icon"></i><h3>PL News Hub</h3></div>
+                <div class="doc-tool-path">fpl-news.html</div>
+                <p>Premier League headlines aggregated from public feeds, filtered for team and player news that changes FPL decisions — injuries, rotation, press-conference lines.</p>
+            </div>
+
+            <div class="doc-tool">
+                <div class="doc-tool-head"><i data-lucide="help-circle" class="icon"></i><h3>FAQ &amp; How it Works</h3></div>
+                <div class="doc-tool-path">fpl-faq.html · fpl-how-it-works.html</div>
+                <p>The short answers. <a href="fpl-faq.html">The FAQ</a> covers getting started, privacy, accuracy and troubleshooting; <a href="fpl-how-it-works.html">How it Works</a> is the three-step tour. This page is the long version of both.</p>
+            </div>
+        </section>
+
+        <!-- ============ THE ENGINE ============ -->
+        <section class="doc-section" id="engine">
+            <h2>The expected-points engine</h2>
+            <p>One model produces every projected-points figure on the site. The squad pitch, the squad table, the lineup optimiser, the gameweek draft and the transfer wizard all call the same function — so two screens can never quietly disagree about the same player.</p>
+            <p>It is built from the actual scoring rules rather than fitted as a black box, which means every number can be decomposed into the route that produced it:</p>
+            <div class="doc-formula">xP = appearance + attack + clean sheet + saves
+     + defensive contribution + bonus
+     − goals conceded − cards</div>
+
+            <h3 id="engine-minutes">Minutes: the term that gates everything else</h3>
+            <p>A player who does not play scores nothing, so every other term is scaled by how likely he is to start and how long he is likely to last. Minutes alone cannot tell a starter from a substitute — ninety minutes across one start and ninety across three cameos look identical, and the second player is not a 92% starter. The official data publishes a starts count, so the model uses that rate directly and lets minutes per game refine it.</p>
+            <div class="doc-formula">p_start = w × (starts / games) + (1 − w) × minutes_signal
+w       = min(1, games / 3)
+
+a player with zero starts is capped at 0.22 however many minutes he has
+expected minutes = p_start × 82 + (1 − p_start) × 12</div>
+            <p>Appearance points then follow the rules directly: 2 points for sixty minutes or more, 1 otherwise.</p>
+
+            <h3 id="engine-attack">Attacking returns</h3>
+            <p>Goals and assists are projected from expected goals and expected assists per 90 — regressed as described above — multiplied by expected minutes and adjusted for the opponent.</p>
+            <div class="doc-formula">attack = (xG90 × goal_points + xA90 × 3) × minutes90 × fixture_adjustment
+
+goal_points = 6 (GK/DEF) · 5 (MID) · 4 (FWD)</div>
+            <p><strong>Penalties.</strong> Expected goals already contains the penalties a player has actually taken, so adding a flat bonus on top would count them twice. Instead, published spot-kick order feeds the <em>prior</em>: a first-choice taker carries roughly 0.10 expected penalty goals per 90 before he has taken one. That fades out as his own record fills in. It exists to catch the newly appointed taker who has the job but no history of it yet.</p>
+
+            <h3 id="engine-defence">Clean sheets and goals conceded</h3>
+            <p>A clean sheet is simply no goals conceded, which makes it the zero bucket of a Poisson distribution at the expected goals against for that specific match:</p>
+            <div class="doc-formula">P(clean sheet) = e^(−xGA)</div>
+            <p>The expected goals against comes from the <a href="#opponent">opponent model</a> — your club's defensive rating at that venue against that opponent's attacking rating at the opposite venue, blended with what has actually been conceded once there is a sample worth blending. Goals conceded uses the same figure, so facing the best attack in the division and facing the worst no longer carry the same deduction.</p>
+            <p><strong>Saves</strong> are regressed hard for the same reason as everything else: a keeper with five saves in his opening match is not a five-saves-a-game keeper. One point per three saves, on the regressed rate.</p>
+
+            <h3 id="engine-defcon">Defensive contribution</h3>
+            <p>The scoring route added for 2025/26. The game totals tackles, clearances, blocks, interceptions and recoveries into one figure and pays a flat 2 points once a per-match threshold is met. The thresholds used here were <strong>read off the official live endpoint's own explain blocks</strong> rather than assumed — in the gameweek they were derived from, the highest-scoring defender who earned nothing had 9 and the lowest who earned 2 points had 10.</p>
+            <div class="doc-table-wrap">
+            <table class="doc-table">
+                <thead><tr><th>Position</th><th>Threshold</th><th>Points</th></tr></thead>
+                <tbody>
+                    <tr><td>Goalkeeper</td><td class="num">never qualifies</td><td class="num">—</td></tr>
+                    <tr><td>Defender</td><td class="num">10</td><td class="num">2</td></tr>
+                    <tr><td>Midfielder</td><td class="num">12</td><td class="num">2</td></tr>
+                    <tr><td>Forward</td><td class="num">12</td><td class="num">2</td></tr>
+                </tbody>
+            </table>
+            </div>
+            <p>Because it is a threshold event rather than an accumulating one, it is projected as a survival probability — the chance of clearing the bar at that player's regressed rate over his expected minutes — not as an average.</p>
+
+            <h3 id="engine-extras">Bonus and cards</h3>
+            <p><strong>Bonus</strong> gets a slower ten-match clock rather than the usual five, for two reasons. It is far lumpier — a player either takes all three or none, where expected goals accrues in fractions. And it is partly double-counted: the bonus points system is driven by the clean sheets, saves, goals and assists the model has already projected, so leaning on past bonus pays a good game twice. Left on the fast clock, a single three-bonus night was enough to make a £4.5m goalkeeper the highest-projecting keeper in the game, ahead of every established number one.</p>
+            <p><strong>Cards</strong> are charged at −1 for a yellow and −3 for a red, on the same slow clock. Leaving them out quietly favoured habitual bookings — and those are mostly the defensive midfielders and centre-backs the defensive-contribution rule now rewards, so the term that paid them was in the model while the term that charged them was missing.</p>
+        </section>
+
+        <!-- ============ OPPONENT MODEL ============ -->
+        <section class="doc-section" id="opponent">
+            <h2>The opponent model</h2>
+            <p>Fixture difficulty as published by the game is a single integer from 1 to 5. It is a reasonable shorthand and a poor model: it puts twelve different defences into the same bucket and treats them as identical. EasyFPL builds its own continuous ratings instead.</p>
+            <p>Each club gets an attacking and a defensive power rating, <strong>split by venue</strong>, derived from actual goals scored and conceded blended with the official strength ratings. Those feed both sides of the projection:</p>
+            <div class="doc-formula">xGA = league_average
+      × own_defence_factor      (at this venue)
+      × opponent_attack_factor  (at the opposite venue)
+      × venue_factor
+
+then blended with what the club has actually conceded,
+weighted by how many matches are behind it</div>
+            <p>The attacking side is adjusted by the opponent's defensive rating on the same principle. Only the <em>opponent's</em> quality is applied there: a player's own per-90 rate already reflects how good his team is at creating chances, so folding in his club's attack rating would count it twice.</p>
+            <div class="doc-note">
+                <div class="doc-note-title">Worked example</div>
+                <p>Two fixtures both rated difficulty 3 by the official ratings. Against a defence rated 85, the attacking adjustment is <code>×0.69</code>. Against one rated 20, it is <code>×1.38</code> — a hundred per cent spread between two fixtures the published number calls identical. Where the opponent is unknown, such as a blank gameweek, the model falls back to the published difficulty rather than guessing.</p>
+            </div>
+        </section>
+
+        <!-- ============ DECISION TOOLS ============ -->
+        <section class="doc-section" id="decisions">
+            <h2>The decision tools</h2>
+
+            <h3>Lineup optimiser</h3>
+            <p>Solves for the highest-projecting legal starting eleven from your fifteen — one goalkeeper, at least three defenders, at least one forward, eleven in total — then orders your bench by who is most likely to be needed. It shows the change it would make and what it is worth, rather than silently rearranging your team.</p>
+
+            <h3>Transfer wizard: "should I transfer?"</h3>
+            <p>This one deserves detail, because a naive version of it gives bad advice confidently.</p>
+            <h4>It scores what reaches your score, not what reaches your squad</h4>
+            <p>A player's expected points are not the points you receive. Only eleven of your fifteen score in a normal gameweek, and exactly one goalkeeper plays. Upgrading your <em>second</em> goalkeeper from 16 projected points to 23 looks like a seven-point gain and is worth almost nothing. So every candidate move is scored by rebuilding the squad, re-solving the best eleven, and measuring the change in what the eleven actually delivers — with bench players carrying a small weight for the cover they provide.</p>
+            <h4>It evaluates two moves as a pair, not as two singles</h4>
+            <p>Two transfers are not independent. If both promote a player into the same eleven, adding their separate gains double-counts the same improvement. Two goalkeeper upgrades priced individually summed to <code>+56.1</code> when the pair is genuinely worth <code>+29.5</code>, because only one keeper ever starts. A pair is also checked for legality <em>as a pair</em>: two swaps each affordable against your full bank may not be affordable together, and two players from one club can breach the three-per-club limit jointly while each looks fine alone.</p>
+            <h4>It counts the free transfers you actually have</h4>
+            <p>The official API does not publish your free-transfer count, so it is replayed from your real transfer history. Exceeding it costs 4 points, and the wizard shows that cost rather than hiding it. Taking a hit is legitimate — but the gain has to clear the hit with margin to spare before it is recommended.</p>
+            <h4>It treats holding as a real answer</h4>
+            <p>A free transfer has option value: banked, it becomes two next week. So a marginal edge is not a reason to spend one. A move must clear a meaningful margin over the whole five-gameweek horizon, not merely beat zero. "No move worth making" is a result the wizard is happy to return.</p>
+            <div class="doc-note doc-warn">
+                <div class="doc-note-title">A note on freed money</div>
+                <p>Selling an expensive player for a cheap one banks money the recommender does not then spend. It reports the cash as a fact, not a benefit — money in the bank buys nothing until it is used, and a plan that leaves it idle is not the upgrade it appears to be.</p>
+            </div>
+
+            <h3>Gameweek draft</h3>
+            <p>Plans several gameweeks forward with transfers, chips and lineups, tracking your budget, free transfers and hit costs across the whole plan and projecting what each gameweek delivers. Double gameweeks are summed; blanks return zero, which is the honest answer — a player with no fixture scores nothing, and averaging that away is how a planner quietly lies to you.</p>
+        </section>
+
+        <!-- ============ HEALTH ============ -->
+        <section class="doc-section" id="health">
+            <h2>Squad health</h2>
+            <p>A single 0–100 read on the state of your squad. It starts from the average quality of your starting eleven — weighted at 88%, with the bench at 12%, because a bench player scores nothing in a normal gameweek and counts as cover rather than as a fifth of the answer — and then charges explicitly for the things that need attention:</p>
+            <div class="doc-table-wrap">
+            <table class="doc-table">
+                <thead><tr><th>Factor</th><th>Charge</th><th>Notes</th></tr></thead>
+                <tbody>
+                    <tr><td>Injured starter</td><td class="num">−8 each</td><td>Cannot play at all</td></tr>
+                    <tr><td>Doubtful starter</td><td class="num">−3 each</td><td>Scaled by published chance of playing</td></tr>
+                    <tr><td>Out-of-form starter</td><td class="num">−3 each</td><td>On the regressed form reading, not one afternoon</td></tr>
+                    <tr><td>Hard fixtures</td><td class="num">−1.5 each, capped −6</td><td>Prevents one bad run dominating</td></tr>
+                    <tr><td>Captain quality</td><td class="num">+3 / −5</td><td>Depending on the armband's verdict</td></tr>
+                </tbody>
+            </table>
+            </div>
+            <p>Each factor is charged exactly once. The availability and form components are stripped out of the base average before the explicit penalties are applied, so an injured starter is not docked twice — once through the average and once through the subtraction.</p>
+            <div class="doc-note">
+                <div class="doc-note-title">Why your score will not collapse after one bad week</div>
+                <p>The official <code>form</code> figure is average points over the last thirty days, so one gameweek into a season it <em>is</em> that one gameweek. Judged raw, 52% of every player who got on the pitch counted as "out of form" after the opening round — which is not a form reading, it is "did not score three points once". A defender who played the full ninety and conceded a goal has a form of 2.0 and was being charged for it.</p>
+                <p>Form is now regressed toward the player's own points per game last season, reaching the raw figure at four gameweeks. The thresholds keep exactly the meaning they always had; they simply stop firing before anything has been demonstrated. While the sample is short, the score says so underneath the ring.</p>
+            </div>
+        </section>
+
+        <!-- ============ DATA ============ -->
+        <section class="doc-section" id="data">
+            <h2>Data and refresh</h2>
+            <p>Everything comes from the <strong>official Fantasy Premier League API</strong>. There is no scraping, no private feed and no hand-entered data.</p>
+            <ul>
+                <li><strong>Refresh cadence.</strong> The core dataset is rebuilt every four hours, timed to catch overnight price changes and Thursday/Friday press-conference news.</li>
+                <li><strong>Live gameweeks.</strong> During a gameweek, points, bonus and provisional standings are read live so the squad pitch and league tables reflect what is happening on the pitch.</li>
+                <li><strong>Freshness.</strong> The footer of every page shows how long ago the data was last updated. If it is stale, you will see it there.</li>
+                <li><strong>Your squad.</strong> Fetched on demand from the public endpoint for your Team ID. Nothing about it is stored anywhere but your own browser.</li>
+            </ul>
+            <p>Because gameweek state is genuinely ambiguous — a round can be under way, provisionally finished, or fully settled — the site distinguishes those states explicitly rather than assuming a round is over the moment the last whistle goes.</p>
+        </section>
+
+        <!-- ============ LIMITS ============ -->
+        <section class="doc-section" id="limits">
+            <h2>What this cannot do</h2>
+            <p>A tool that only tells you its strengths is not being straight with you. These are the real limits.</p>
+            <ul>
+                <li><strong>It cannot see team news before it is published.</strong> Rotation, a manager's press conference an hour before the deadline, a late fitness test — none of it reaches the model until the official data reflects it. Always check the news before you confirm a transfer.</li>
+                <li><strong>It is weakest exactly when you most want certainty.</strong> Early in a season, and after a player transfers clubs or changes role, the sample is thin and the projection leans on priors. It will tell you when this is the case; it will not pretend otherwise.</li>
+                <li><strong>Expected goals is not goals.</strong> Finishing quality, penalties awarded, deflections and luck all move real scores away from the model. Over a season the gap narrows; over one gameweek it can be enormous.</li>
+                <li><strong>It does not know your league.</strong> Projected points are the best guess at the highest score. That is not always the right target — chasing a rival with three gameweeks left is a different problem, and one you should solve with the League Rivals tools and your own judgement.</li>
+                <li><strong>It is not a substitute for you.</strong> Every recommendation on this site is a starting point for a decision, not the decision. You know things the model does not.</li>
+            </ul>
+            <div class="doc-note">
+                <div class="doc-note-title">Found something that looks wrong?</div>
+                <p>Tell us. If a number on this site does not match what you would expect, that is worth knowing — several of the models described above are the way they are because someone pointed out that the output looked wrong. <a href="fpl-contact.html">Get in touch</a>.</p>
+            </div>
+        </section>
+
+        </div><!-- /.doc-body -->
+    </div><!-- /.doc-layout -->
+
+    </div><!-- /.v2-main-content -->
+
+    <script src="scripts/common.js?v=52"></script>
+    <script src="scripts/sidebar-nav.js?v=52"></script>
+    <script>
+        loadSidebarNav();
+        initIcons();
+        loadFooter();
+    </script>
+</body>
+</html>
