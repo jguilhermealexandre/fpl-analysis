@@ -148,107 +148,39 @@ function updateCompareBar() {
             return weightedSum / totalWeight;
         }
 
+        /* Expected points for the next match.
+
+           Both pages that load this file already own an audited projection.
+           This used to carry a third that agreed with neither, and it regressed
+           nothing at all: every rate was the raw recency-weighted figure, so one
+           gameweek into a season a keeper's single three-bonus night read as
+           three bonus points every week where the squad model — same keeper,
+           same page — said 0.53. Compare could contradict the very card the
+           user opened it from.
+
+           So it delegates instead. Each page gets the model it already uses
+           everywhere else, and the two agree by construction rather than by
+           being kept in step by hand. */
         function calculateExpectedPoints(p, pos) {
-            const l5Games = p.l5.games;
-            const mins = p.l5.minutes / l5Games;
-
-            // Use recency-weighted stats if history available, else flat average
-            const rwXGI = p.history ? recencyWeightedAvg(p.history, 'expected_goal_involvements') : p.l5.xGI / l5Games;
-            const rwXG = p.history ? recencyWeightedAvg(p.history, 'expected_goals') : (p.l5.xG || 0) / l5Games;
-            const rwXA = p.history ? recencyWeightedAvg(p.history, 'expected_assists') : (p.l5.xA || 0) / l5Games;
-            const rwCS = p.history ? recencyWeightedAvg(p.history, 'clean_sheets') : (p.l5.cleanSheets || 0) / l5Games;
-            const rwBonus = p.history ? recencyWeightedAvg(p.history, 'bonus') : (p.l5.bonus || 0) / l5Games;
-            const rwSaves = p.history ? recencyWeightedAvg(p.history, 'saves') : (p.l5.saves || 0) / l5Games;
-
-            // ── Next-match opponent adjustment ──
-            const nextFixture = p.fixtures?.next3?.[0] || null;
-            const nextOpp = nextFixture?.opponent || null;
-            const nextIsHome = nextFixture?.isHome ?? null;
-            let oppMultiplier = 1.0;
-            if (nextOpp && teamAnalysis[nextOpp]) {
-                const oppData = teamAnalysis[nextOpp];
-                // Use venue-adjusted opponent power (opponent is away when we're home, and vice versa)
-                const oppAttack = nextIsHome ? (oppData.attackPowerAway || oppData.attackPower || 50) : (oppData.attackPowerHome || oppData.attackPower || 50);
-                const oppDefense = nextIsHome ? (oppData.defensePowerAway || oppData.defensePower || 50) : (oppData.defensePowerHome || oppData.defensePower || 50);
-                // For attackers: weak opponent defense = more goals. For defenders: weak opponent attack = more CS.
-                const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
-                oppMultiplier = 1 + (50 - relevantOpp) * 0.004; // range ~0.8–1.2
-                oppMultiplier = Math.max(0.75, Math.min(1.3, oppMultiplier));
+            // Squad page. buildComparePlayer spreads the native player object and
+            // then overwrites .fixtures with a report-shaped copy whose entries
+            // carry `opponent` but no `opponentId` — so project the ORIGINAL, or
+            // the opponent model quietly degrades to an FDR-only estimate.
+            if (typeof predictedGWPoints === 'function' && typeof allPlayersById !== 'undefined') {
+                const native = allPlayersById[p.id];
+                if (native) return predictedGWPoints(native);
             }
-
-            // ── Home/away venue adjustment ──
-            let venueAdj = 1.0;
-            if (nextIsHome !== null) {
-                venueAdj = nextIsHome ? 1.06 : 0.94; // ~6% home advantage
-                // Refine with player's own home/away split if available
-                if (p.l5) {
-                    const split = nextIsHome ? p.l5.homeSplit : p.l5.awaySplit;
-                    if (split && split.games >= 2) {
-                        const splitPts = split.points / split.games;
-                        const avgPts = p.l5.points / l5Games;
-                        if (avgPts > 0) {
-                            const ratio = splitPts / avgPts;
-                            venueAdj = 0.6 * venueAdj + 0.4 * Math.max(0.8, Math.min(1.25, ratio));
-                        }
-                    }
-                }
+            // Players page: its own model, asked for the single next gameweek.
+            if (typeof calculateMultiGWxPts === 'function') {
+                const xp = calculateMultiGWxPts(p, pos, 1);
+                if (xp != null && Number.isFinite(xp)) return xp;
             }
-
-            // ── Base expected points model ──
-            let xPts = 0;
-
-            // Appearance points: 2pts for 60+ mins, 1pt for <60
-            if (mins >= 60) xPts += 2;
-            else if (mins >= 1) xPts += 1;
-
-            // Goals: xG × position point value
-            const goalPts = { GK: 6, DEF: 6, MID: 5, FWD: 4 }[pos] || 4;
-            xPts += rwXG * goalPts;
-
-            // Assists: xA × 3pts
-            xPts += rwXA * 3;
-
-            // Clean sheets (GK/DEF = 4pts, MID = 1pt)
-            if (pos === 'GK' || pos === 'DEF') {
-                // Blend CS probability model with historical rate for robustness
-                let csExpected = rwCS;
-                if (nextOpp) {
-                    const csProb = getCleanSheetProb(p.teamId, nextOpp, nextIsHome ?? true);
-                    csExpected = 0.6 * csProb + 0.4 * rwCS; // blended to hedge against model miscalibration
-                }
-                xPts += csExpected * 4;
-            } else if (pos === 'MID') {
-                xPts += rwCS * 1;
-            }
-
-            // Saves (GK only): 1pt per 3 saves
-            if (pos === 'GK') {
-                xPts += rwSaves / 3;
-            }
-
-            // Bonus points: directly use recency-weighted bonus per game
-            xPts += rwBonus;
-
-            // Goals conceded penalty (GK/DEF): -1pt per 2 goals conceded
-            if (pos === 'GK' || pos === 'DEF') {
-                const rwGC = p.history ? recencyWeightedAvg(p.history, 'goals_conceded') : (p.l5.goalsConceded || 0) / l5Games;
-                if (nextOpp && teamAnalysis[nextOpp]) {
-                    // Adjust GC expectation by opponent attack strength
-                    const oppGoalRate = teamAnalysis[nextOpp].avgGoals || 1.3;
-                    xPts -= (oppGoalRate / 2);
-                } else {
-                    xPts -= rwGC / 2;
-                }
-            }
-
-            // Minutes risk: reduce if not a regular starter
-            if (mins < 45) xPts *= 0.4;
-            else if (mins < 60) xPts *= 0.7;
-
-            // Apply opponent & venue adjustments
-            xPts *= oppMultiplier * venueAdj;
-
-            return Math.max(0, xPts);
+            // Neither could answer — a blank gameweek, or too little history to
+            // project from. Fall back to what he has actually averaged, which is
+            // what this function's own caller does when it throws.
+            const games = p.l5?.games || p.season?.games || 0;
+            const pts = (p.l5?.points != null ? p.l5.points : p.season?.points) || 0;
+            return games > 0 ? Math.max(0, pts / games) : 0;
         }
 
         function generateComparisonReport(players) {
