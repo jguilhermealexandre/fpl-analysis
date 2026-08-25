@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=58">
-    <link rel="stylesheet" href="styles/v2-design.css?v=58">
+    <link rel="stylesheet" href="styles/common.css?v=59">
+    <link rel="stylesheet" href="styles/v2-design.css?v=59">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1138,11 +1138,22 @@
         }
 
         @media (max-width: 900px) {
-            .v2-top-row { grid-template-columns: 1fr; }
             .v2-status-strip { grid-template-columns: 1fr; }
             .v2-attention-grid { grid-template-columns: 1fr; }
             .v2-dashboard-main { grid-template-columns: 1fr; }
             .v2-qa-cards { grid-template-columns: 1fr; }
+        }
+
+        /* The tablet tier. This used to collapse to a single column at 900px, so
+           an iPad in portrait stacked everything and pushed the deadline, rank
+           and live score about 800px down the page — the one part of the layout
+           that is meant to be glanceable. Two columns from 768 up, with a gentler
+           ratio than desktop so the right-hand panel stays readable. */
+        @media (min-width: 768px) and (max-width: 900px) {
+            .v2-top-row { grid-template-columns: 1.25fr 1fr; gap: 12px; }
+        }
+        @media (max-width: 767px) {
+            .v2-top-row { grid-template-columns: 1fr; }
         }
 
         /* --- Deadline Countdown Banner --- */
@@ -3637,11 +3648,11 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/xp-engine.js?v=58"></script>
-    <script src="scripts/live-gw.js?v=58"></script>
-    <script src="scripts/transfer-engine.js?v=58"></script>
-    <script src="scripts/common.js?v=58"></script>
-    <script src="scripts/sidebar-nav.js?v=58"></script>
+    <script src="scripts/xp-engine.js?v=59"></script>
+    <script src="scripts/live-gw.js?v=59"></script>
+    <script src="scripts/transfer-engine.js?v=59"></script>
+    <script src="scripts/common.js?v=59"></script>
+    <script src="scripts/sidebar-nav.js?v=59"></script>
     <script>
         initIcons();
         loadFooter();
@@ -3977,7 +3988,12 @@
             if (ta) {
                 const teamFormDelta = (ta.formRating - 50) / 50;
                 sellRating += sensAdj(Math.round(teamFormDelta * -8));
-                if (!topConcern && ta.formRating < 30) topConcern = `${player.team} form rating ${ta.formRating}/100 — the club is struggling, not just the player`;
+                // Same guard as player form: a club that lost its opening match
+                // scores 0/100 here, and on one result that is the sample talking.
+                // Four of eight alerts were this line before it was gated.
+                if (formDiagnosable && !topConcern && ta.formRating < 30) {
+                    topConcern = `${player.team} form rating ${ta.formRating}/100 — the club is struggling, not just the player`;
+                }
                 if (player.position >= 3) { sellRating += sensAdj(Math.round(((ta.attackPower - 50) / 50) * -8)); if (!topConcern && ta.attackPower < 35) topConcern = 'Weak Team Attack'; }
                 if (player.position <= 2) { sellRating += sensAdj(Math.round(((ta.defensePower - 50) / 50) * -8)); if (!topConcern && ta.defensePower < 35) topConcern = 'Weak Team Defence'; }
                 if (ta.fixtureScore < 30) { sellRating += sensAdj(4, settings.fixtureWeight); if (!topConcern) topConcern = 'Tough Team Fixtures'; }
@@ -4314,11 +4330,25 @@
             });
             priceDropRisk.forEach(p => {
                 const net = Math.round(Math.abs(p.transfersOut - p.transfersIn) / 1000);
-                txItems.push({ name: p.name, reason: `${net}k net transfers out — price drop likely`, severity: 'monitor' });
+                const pct = Math.abs(p._pressure * 100).toFixed(1);
+                txItems.push({
+                    name: p.name,
+                    reason: p._active
+                        ? `${net}k net transfers out, ${pct}% of his owners — under pressure to drop`
+                        : `${net}k net transfers out, ${pct}% of his owners (no price has moved yet this season)`,
+                    severity: 'monitor'
+                });
             });
             priceRiseTargets.slice(0, 2).forEach(p => {
                 const net = Math.round(Math.abs(p.transfersIn - p.transfersOut) / 1000);
-                txItems.push({ name: p.name, reason: `+${net}k in — rising, good time to buy`, severity: 'monitor' });
+                const pct = Math.abs(p._pressure * 100).toFixed(1);
+                txItems.push({
+                    name: p.name,
+                    reason: p._active
+                        ? `+${net}k in, ${pct}% of his owners — under pressure to rise`
+                        : `+${net}k in, ${pct}% of his owners (no price has moved yet this season)`,
+                    severity: 'monitor'
+                });
             });
 
             function renderCol(items, iconName, title, emptyText, linkBase) {
@@ -4826,6 +4856,7 @@
                     status: p.status, news: p.news, newsAdded: p.news_added || null,
                     chanceNextRound: p.chance_of_playing_next_round,
                     costChangeEvent: p.cost_change_event || 0,
+                    costChangeStart: p.cost_change_start || 0,
                     minutes: p.minutes, starts: p.starts || 0,
                     goals: p.goals_scored, assists: p.assists,
                     cleanSheets: p.clean_sheets,
@@ -4949,14 +4980,33 @@
                 const squadIds = new Set(squad.map(p => p.id));
                 const shortlistIds = new Set(JSON.parse(localStorage.getItem('fpl_shortlist') || '[]'));
                 const myPlayerIds = p => squadIds.has(p.id) || shortlistIds.has(p.id);
-                const priceDropRisk = allPlayers
-                    .filter(p => myPlayerIds(p) && (p.transfersOut - p.transfersIn) > 20000)
-                    .sort((a, b) => (b.transfersOut - b.transfersIn) - (a.transfersOut - a.transfersIn))
-                    .slice(0, 5);
-                const priceRiseTargets = allPlayers
-                    .filter(p => myPlayerIds(p) && (p.transfersIn - p.transfersOut) > 20000)
-                    .sort((a, b) => (b.transfersIn - b.transfersOut) - (a.transfersIn - a.transfersOut))
-                    .slice(0, 5);
+                /* Transfer pressure, measured against the ownership base.
+
+                   This was a flat 20,000 net transfers, which treats a player
+                   owned by five million and one owned by fifty thousand as the
+                   same story — the first is noise, the second is a stampede. The
+                   game's own price mechanism responds to movement relative to how
+                   many people hold a player, so that is what gets measured.
+
+                   No threshold is claimed. FPL has not moved a single price this
+                   season (0 of 612 by cost_change_start), so there is nothing to
+                   calibrate against and any cutoff would be invented. What is
+                   reported is the direction and size of the pressure, which is a
+                   fact, rather than a prediction of a change, which is not. */
+                const totalManagers = bootData.total_players || 0;
+                const ownerBase = p => Math.max(1, (p.ownership / 100) * totalManagers);
+                const pressureOf = p => (p.transfersIn - p.transfersOut) / ownerBase(p);
+                // Prices have not started moving yet if nothing has moved all season.
+                const priceChangesActive = allPlayers.some(p => (p.costChangeStart || 0) !== 0);
+
+                const withPressure = allPlayers.filter(p => myPlayerIds(p) && totalManagers > 0)
+                    .map(p => ({ p, pr: pressureOf(p) }));
+                const priceDropRisk = withPressure.filter(x => x.pr <= -0.02)
+                    .sort((a, b) => a.pr - b.pr).slice(0, 5)
+                    .map(x => Object.assign({ _pressure: x.pr, _active: priceChangesActive }, x.p));
+                const priceRiseTargets = withPressure.filter(x => x.pr >= 0.02)
+                    .sort((a, b) => b.pr - a.pr).slice(0, 5)
+                    .map(x => Object.assign({ _pressure: x.pr, _active: priceChangesActive }, x.p));
 
                 // --- Squad health score (aligned with fpl-my-team-analysis.html) ---
                 const paired = squad.map((p, i) => ({ sq: p, an: analysisResults[i] }));
