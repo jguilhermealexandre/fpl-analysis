@@ -1157,6 +1157,53 @@
         }
 
         // ===== DETAIL PANEL =====
+        // Where this player's projected points are expected to come from, plus the
+        // set-piece duty that used to be crammed onto the pitch card. Every figure
+        // is a component the projection already computes — nothing new is modelled
+        // here, it is the same total broken open.
+        function renderRoutesToPoints(player) {
+            if (typeof projectPlayerPointsDetailed !== 'function') return '';
+            const d = projectPlayerPointsDetailed(player);
+            const total = d.total || 0;
+            if (total <= 0) return '';
+
+            const parts = [
+                { key: 'appearance', label: 'Appearance', color: '#94A3B8', value: d.appearance },
+                { key: 'attack',     label: 'Goals & assists', color: '#F87171', value: d.attack },
+                { key: 'cleanSheet', label: 'Clean sheet', color: '#34D399', value: d.cleanSheet },
+                { key: 'saves',      label: 'Saves', color: '#A78BFA', value: d.saves },
+                { key: 'defCon',     label: 'Defensive contribution', color: '#38BDF8', value: d.defCon },
+                { key: 'bonus',      label: 'Bonus', color: '#FBBF24', value: d.bonus }
+            ].filter(p => p.value >= 0.05);
+            const sum = parts.reduce((s, p) => s + p.value, 0) || 1;
+
+            const duty = [];
+            if (player.penaltiesOrder != null && player.penaltiesOrder <= 2) {
+                duty.push({ txt: player.penaltiesOrder === 1 ? 'First-choice penalties' : 'Second-choice penalties', tone: player.penaltiesOrder === 1 ? 'prime' : '' });
+            }
+            if (player.freekicksOrder === 1) duty.push({ txt: 'Direct free kicks', tone: '' });
+            if (player.cornersOrder === 1) duty.push({ txt: 'Corners', tone: '' });
+
+            return `<div class="detail-section rtp-section">
+                <div class="detail-section-title">Routes to points</div>
+                <div class="rtp-head">
+                    <span class="rtp-total">${total.toFixed(1)}<small>projected next match</small></span>
+                    ${d.conceded < -0.05 ? `<span class="rtp-drag" data-tooltip="Expected deduction for goals conceded">${d.conceded.toFixed(1)} conceded</span>` : ''}
+                </div>
+                <div class="rtp-bar">
+                    ${parts.map(p => `<span class="rtp-seg" style="width:${(p.value / sum * 100).toFixed(1)}%;background:${p.color}"
+                        data-tooltip="${p.label}: ${p.value.toFixed(2)} points, ${Math.round(p.value / sum * 100)}% of the projection"></span>`).join('')}
+                </div>
+                <div class="rtp-keys">
+                    ${parts.map(p => `<span class="rtp-key"><span class="rtp-dot" style="background:${p.color}"></span>${p.label}<b>${p.value.toFixed(2)}</b></span>`).join('')}
+                </div>
+                ${duty.length ? `<div class="rtp-duty">
+                    <span class="rtp-duty-label">Set-piece duty</span>
+                    ${duty.map(x => `<span class="rtp-duty-chip ${x.tone}">${x.txt}</span>`).join('')}
+                </div>` : ''}
+            </div>`;
+        }
+
         function openDetailPanel(playerId) {
             const analysis = analysisResults.find(a => a.player.id === playerId);
             if (!analysis) return;
@@ -1174,6 +1221,8 @@
             `;
 
             let html = '';
+
+            html += renderRoutesToPoints(player);
 
             // Verdict banner
             html += `<div class="detail-section">

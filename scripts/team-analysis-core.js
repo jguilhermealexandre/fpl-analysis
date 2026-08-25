@@ -964,7 +964,11 @@
             const injuredStarters = starters.filter(a => a.player.status === 'i' || a.player.status === 'u' || a.player.status === 's');
             const doubtfulStarters = starters.filter(a => a.player.status === 'd');
             const toughFixtureStarters = starters.filter(a => ((a.fixtures || [])[0]?.difficulty || 3) >= 4);
-            const poorFormStarters = starters.filter(a => parseFloat(a.player.form) < 2.5 && !a.player.status);
+            // Guarded on status 'a' rather than on `!status`. Every player carries a
+            // status ('a', 'd', 'i', 's', 'u'), all truthy, so the old negation was
+            // never true — this penalty and its breakdown line never once fired.
+            // The intent was "out of form and not already counted as unavailable".
+            const poorFormStarters = starters.filter(a => parseFloat(a.player.form) < 2.5 && a.player.status === 'a');
 
             healthScore -= injuredStarters.length * 5;
             healthScore -= doubtfulStarters.length * 2;

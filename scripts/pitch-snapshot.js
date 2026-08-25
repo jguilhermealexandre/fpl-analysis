@@ -201,7 +201,12 @@
             out.cleanSheet = csProb * csPts * pStart;
 
             if (player.position === 1) {
-                const saves90 = mins > 0 ? (player.saves / mins) * 90 : 2.5;
+                // Regressed like the attacking rates. A keeper with five saves in his
+                // opening match is not a five-saves-a-game keeper, and left raw this
+                // was the single largest source of over-projection for cheap keepers.
+                const wS = Math.min(1, mins / 450);
+                const own90 = mins > 0 ? (player.saves / mins) * 90 : 0;
+                const saves90 = wS * own90 + (1 - wS) * 2.8;
                 out.saves = (saves90 / 3) * min90;
             }
             // -1 per 2 goals conceded, only when the clean sheet doesn't happen.
@@ -209,7 +214,11 @@
                 out.conceded = -((conceded * (1 - csProb)) / 2) * pStart;
             }
 
-            const bonusPerGame = games > 0 ? (player.bonus || 0) / games : 0;
+            // Same treatment: three bonus points in one appearance is a result, not
+            // a rate. The cap alone let a single big game read as a permanent 1.2.
+            const wB = Math.min(1, mins / 450);
+            const ownBonus = games > 0 ? (player.bonus || 0) / games : 0;
+            const bonusPerGame = wB * ownBonus + (1 - wB) * 0.25;
             out.bonus = Math.min(1.2, bonusPerGame) * pStart;
 
             out.defCon = defensiveContributionPoints(player, min90);
@@ -451,7 +460,6 @@
                     <span class="pcard-crest-fallback">${escHTML(p.team)}</span>
                     ${injuryBadge(p)}
                     ${marketBadge(p)}
-                    ${setPieceBadge(p)}
                 </div>
                 <div class="pcard-name">${escHTML(p.name)}</div>
                 ${fixtureTag}

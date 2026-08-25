@@ -57,6 +57,10 @@
             const fdrValue = player.avgFDR || 3;
 
             const cols = {
+                xp: {
+                    label: 'xP', value: (typeof predictedGWPoints === 'function' ? predictedGWPoints(player) : 0).toFixed(1),
+                    tip: `Projected points for ${teamName}'s next match — the same figure the pitch and the optimiser use. Built from expected minutes, attacking returns, clean-sheet odds, saves, bonus and defensive contribution.`
+                },
                 form: {
                     label: 'Form', value: (formValue).toFixed(1),
                     tip: isPreseason
@@ -194,7 +198,7 @@
                 const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
                 // Names the team explicitly — this rates the CLUB's form, not the
                 // player's, which is easy to misread sitting beside a player row.
-                formBadge = `<span class="team-form-badge ${cls}" data-tooltip="${escHTML(teamName)} team form: ${plural(ta.wins, 'win')}, ${plural(ta.draws, 'draw')} and ${plural(ta.losses, 'loss', 'losses')} in ${span}.">${dot} ${label}</span>`;
+                formBadge = `<span class="team-form-badge ${cls}" data-tooltip="${escHTML(teamName)} team form: ${plural(ta.wins, 'win')}, ${plural(ta.draws, 'draw')} and ${plural(ta.losses, 'loss', 'losses')} in ${span}.">${dot} <b>${escHTML(player.team)}</b> ${label.toLowerCase()}</span>`;
             }
 
             const swing = fixtureSwingData[player.teamId];
@@ -207,9 +211,10 @@
                 // The magnitude is what decides whether this is worth a transfer,
                 // so say it rather than leaving the reader with a bare arrow.
                 const scale = size >= 1.2 ? 'a big' : size >= 0.7 ? 'a clear' : 'a slight';
-                swingBadge = `<span class="swing-badge ${swing.direction}" data-tooltip="${escHTML(teamName)}'s fixtures ${easier ? 'ease off' : 'get harder'} from GW${swing.swingGW}: average FDR ${easier ? 'falls' : 'rises'} from ${swing.currentFdr} to ${swing.futureFdr} — ${scale} shift.${easier ? '' : ' Worth planning around.'}">${easier ? '📈' : '📉'} ${easier ? 'Easier' : 'Tougher'} from GW${swing.swingGW}</span>`;
+                swingBadge = `<span class="swing-badge ${swing.direction}" data-tooltip="${escHTML(teamName)}'s fixtures ${easier ? 'ease off' : 'get harder'} from GW${swing.swingGW}: average FDR ${easier ? 'falls' : 'rises'} from ${swing.currentFdr} to ${swing.futureFdr} — ${scale} shift.${easier ? '' : ' Worth planning around.'}">${easier ? '📈' : '📉'} <b>${escHTML(player.team)}</b> ${easier ? 'easier' : 'tougher'} GW${swing.swingGW}+</span>`;
             }
-            return formBadge + swingBadge;
+            if (!formBadge && !swingBadge) return '';
+            return `<span class="team-context" data-tooltip="Context about ${escHTML(teamName)}, not about this player">${formBadge}${swingBadge}</span>`;
         }
 
         function renderSquadRow(analysis) {
@@ -239,7 +244,7 @@
                         </div>
                     </div>
                     <div class="sq-row-stats">
-                        ${[cols.form, cols.fdr, cols.stat3, cols.stat4, cols.stat5, cols.stat6, cols.stat7]
+                        ${[cols.xp, cols.form, cols.fdr, cols.stat3, cols.stat4, cols.stat5, cols.stat6, cols.stat7]
                             .map(s => `<div class="sq-stat" data-tooltip="${escHTML(s.tip)}"><span class="sq-stat-label">${escHTML(s.label)}</span><span class="sq-stat-value">${escHTML(String(s.value))}</span></div>`).join('')}
                     </div>
                     <div class="sq-row-fixtures" onclick="event.stopPropagation(); openFixturePanel(${player.id})" title="View ${escHTML(player.team)}'s fixture calendar">${fixtureChips}</div>
