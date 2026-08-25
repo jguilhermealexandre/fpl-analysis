@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=42">
-    <link rel="stylesheet" href="styles/players.css?v=42">
-    <link rel="stylesheet" href="styles/v2-design.css?v=42">
+    <link rel="stylesheet" href="styles/common.css?v=43">
+    <link rel="stylesheet" href="styles/players.css?v=43">
+    <link rel="stylesheet" href="styles/v2-design.css?v=43">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -1883,15 +1883,33 @@
         function calculatePositionScore(p, pos) {
             const games = p.l5?.games || 1;
             const minsPerGame = (p.l5?.minutes || 0) / games;
+            // Every per-game rate below is regressed toward the position baseline
+            // until there are roughly four matches behind it, exactly as the xP
+            // model does. Without it, one clean sheet or one big save haul in an
+            // opening fixture drives the whole ranking.
+            const recBase = posRateBaseline(pos);
+            const evidence = Math.min(1, games / 4);
+            const rg = (v, base) => v * evidence + base * (1 - evidence);
             // Improvement #3: Continuous nailed bonus — gradual credit from 60 min (0) to 80 min (5)
             const nailedBonus = Math.min(5, Math.max(0, (minsPerGame - 60) / 4));
 
             // ── Recency-weighted per-game stats (most recent games count more) ──
-            const rwPtsPerGame = p.history ? recencyWeightedAvg(p.history, 'total_points') : (p.l5?.points || 0) / games;
-            const rwXGI = p.history ? recencyWeightedAvg(p.history, 'expected_goal_involvements') : (p.l5?.xGI || 0) / games;
-            const rwXG = p.history ? recencyWeightedAvg(p.history, 'expected_goals') : (p.l5?.xG || 0) / games;
-            const rwXA = p.history ? recencyWeightedAvg(p.history, 'expected_assists') : (p.l5?.xA || 0) / games;
-            const rwBonus = p.history ? recencyWeightedAvg(p.history, 'bonus') : (p.l5?.bonus || 0) / games;
+            // Points per game is the largest single unregressed term left, and it
+            // is where a clean sheet leaks back in: four points on one appearance
+            // reads as four points every week. Baselines are what a starting
+            // player in each position actually averages.
+            const REC_PTS_BASE = { GK: 3.2, DEF: 3.5, MID: 3.6, FWD: 3.6 }[pos] || 3.5;
+            const rwPtsRaw = p.history ? recencyWeightedAvg(p.history, 'total_points') : (p.l5?.points || 0) / games;
+            const rwPtsPerGame = rg(rwPtsRaw, REC_PTS_BASE);
+            const rwXGraw = p.history ? recencyWeightedAvg(p.history, 'expected_goals') : (p.l5?.xG || 0) / games;
+            const rwXAraw = p.history ? recencyWeightedAvg(p.history, 'expected_assists') : (p.l5?.xA || 0) / games;
+            const rwBonusRaw = p.history ? recencyWeightedAvg(p.history, 'bonus') : (p.l5?.bonus || 0) / games;
+            // Regressed like the rest. Recency weighting over a single gameweek
+            // just returns that gameweek.
+            const rwXG = rg(rwXGraw, recBase.xG);
+            const rwXA = rg(rwXAraw, recBase.xA);
+            const rwBonus = rg(rwBonusRaw, recBase.bonus);
+            const rwXGI = rwXG + rwXA;
 
             const value = rwPtsPerGame / Math.max(p.price, 3.5);
 
@@ -1979,23 +1997,14 @@
                 }
             }
 
-            // ── Improved penalty taker detection ──
+            // ── Penalty duty, as published ──
+            // FPL states the order outright. This used to infer it from a
+            // goals-minus-xG gap, which guesses at a published fact and is noise
+            // one gameweek in — and left this ranking disagreeing with the Routes
+            // tab about who takes penalties for the same club.
             let penTakerBonus = 0;
-            if (pos !== 'GK') {
-                const seasonGames = p.season?.games || 1;
-                const totalGoals = p.season?.goals || 0;
-                const seasonPenGoals = Math.max(0, totalGoals - (p.season?.xG || 0));
-                const penMissed = (p.season?.penaltiesMissed || 0);
-                // Require a meaningful overperformance threshold per position to reduce false positives
-                const penThreshold = { DEF: 0.5, MID: 1.0, FWD: 1.5 }[pos] || 1.0;
-                const penAttempts = (seasonPenGoals >= penThreshold || penMissed > 0)
-                    ? Math.round(seasonPenGoals + penMissed) : 0;
-                const penRatio = totalGoals > 0 ? seasonPenGoals / totalGoals : 1;
-                if (penAttempts >= 2 && penRatio > 0.25) {
-                    penTakerBonus = Math.min(6, penAttempts * 1.5);
-                } else if (seasonGames >= 10 && penAttempts >= 1 && penRatio > 0.25) {
-                    penTakerBonus = Math.min(4, penAttempts * 1.5);
-                }
+            if (pos !== 'GK' && p.penaltiesOrder != null) {
+                penTakerBonus = p.penaltiesOrder === 1 ? 6 : p.penaltiesOrder === 2 ? 2 : 0;
             }
 
             // ── Improvement #6: Rotation risk penalty ──
@@ -2009,15 +2018,19 @@
                 }
             }
 
-            // ── Improvement #5: xPts integration ──
-            const POSITIONS_xPts = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            let xPtsFactor = 0;
-            if (typeof calculateExpectedPoints === 'function') {
-                try {
-                    const xPts = calculateExpectedPoints(p, pos);
-                    xPtsFactor = (xPts || 0) * 3;
-                } catch(e) { /* silent fallback */ }
-            }
+            /* ── Expected points: the anchor ──
+               The ranking used calculateExpectedPoints (a one-gameweek model that
+               lives in compare-report.js) while the card displayed
+               calculateMultiGWxPts over five. They are not the same model scaled:
+               across 200 players the ratio between them ran from 0.0 to 23.9 with
+               a median of 3.7, which put cards on screen in an order their own xP
+               badge contradicted. Both now come from the same function.
+
+               It also carries real weight now. The old term contributed roughly
+               1-2 points to scores that ran past 120, so the headline number on
+               the card was barely influencing the order it appeared in. */
+            const xp5 = calculateMultiGWxPts(p, pos, 5) || 0;
+            const xPtsFactor = xp5 * 2.5;
 
             // ── ENHANCEMENT: Fixture swing bonus (from teams-analysis) ──
             // Rewards players whose teams have improving fixture runs (next 3 GWs easier than GW4-6)
@@ -2100,13 +2113,18 @@
             const enhancementBonus = fixtureSwingBonus + easyRunBonus + xgTrendBonus + risingFormBonus + purplePatchBonus + routesDiversityBonus + reliabilityBonus;
 
             if (pos === 'GK') {
-                const csPerGame = (p.l5?.cleanSheets || 0) / games;
-                const savesPerGame = (p.l5?.saves || 0) / games;
-                const xGCPerGame = (p.l5?.xGC || 0) / games;
+                // The raw clean-sheet term is gone. A clean sheet was being paid
+                // for five times over — here, in csProbFactor, in defScore via
+                // xGC, in rwPtsPerGame (a clean sheet IS four points) and again in
+                // value, which is those same points per million. Measured on live
+                // data that produced a 98.7-point gap between keepers who kept one
+                // in a single match and keepers who did not. The forward-looking
+                // csProbFactor is the one a recommendation should turn on.
+                const savesPerGame = rg((p.l5?.saves || 0) / games, recBase.saves);
+                const xGCPerGame = rg((p.l5?.xGC || 0) / games, recBase.gc);
                 const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
-                
-                return ((csPerGame * 30) +
-                       (savesPerGame * 2) +
+
+                return ((savesPerGame * 2) +
                        defScore +
                        (rwPtsPerGame * 3) +
                        (value * valueWeight) +
@@ -2121,12 +2139,11 @@
             }
 
             if (pos === 'DEF') {
-                const csPerGame = (p.l5?.cleanSheets || 0) / games;
-                const xGCPerGame = (p.l5?.xGC || 0) / games;
+                // Same removal as GK above — csProbFactor carries the clean sheet.
+                const xGCPerGame = rg((p.l5?.xGC || 0) / games, recBase.gc);
                 const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
-                
-                return ((csPerGame * 25) +
-                       defScore +
+
+                return (defScore +
                        (rwXGI * 12) +
                        (rwPtsPerGame * 3) +
                        (value * valueWeight) +
@@ -2142,7 +2159,7 @@
             }
 
             if (pos === 'MID') {
-                const csPerGame = (p.l5?.cleanSheets || 0) / games;
+                const csPerGame = rg((p.l5?.cleanSheets || 0) / games, recBase.cs);
                 const actualGI = ((p.l5?.goals || 0) + (p.l5?.assists || 0)) / games;
                 const overPerf = actualGI - rwXGI;
                 const regressionAdj = overPerf > 0 ? overPerf * -3 : overPerf * -2;
@@ -3554,8 +3571,8 @@
         }
 
     </script>
-    <script src="scripts/players-tables.js?v=42"></script>
-    <script src="scripts/compare-report.js?v=42"></script>
+    <script src="scripts/players-tables.js?v=43"></script>
+    <script src="scripts/compare-report.js?v=43"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -4749,6 +4766,32 @@
          * Multi-GW xPts — sums fixture-adjusted expected points across the next N gameweeks.
          * Uses per-fixture opponent modifiers for a holistic forward view.
          */
+        /* Defensive contribution — the 2025/26 scoring route.
+
+           Same model the squad projection uses, so a player's expected points do
+           not depend on which page you are looking at. FPL totals tackles,
+           clearances/blocks/interceptions and recoveries and pays a flat 2 points
+           past a per-match threshold: 10 for defenders, 12 for midfielders and
+           forwards, never for goalkeepers. Thresholds were read off the live
+           endpoint's explain blocks rather than assumed. */
+        const REC_DC_THRESHOLD = { GK: null, DEF: 10, MID: 12, FWD: 12 };
+        const REC_DC_BASELINE_90 = { GK: 0, DEF: 7.5, MID: 8.4, FWD: 4.2 };
+
+        function recDefConPoints(p, pos, minsPerGame) {
+            const threshold = REC_DC_THRESHOLD[pos];
+            if (!threshold || !minsPerGame) return 0;
+            const totalMins = p.l5?.minutes || 0;
+            // Regressed toward the position baseline like every other rate here.
+            const w = Math.min(1, totalMins / 450);
+            const own90 = p.defCon90 || (totalMins > 0 ? ((p.defCon || 0) / totalMins) * 90 : 0);
+            const dc90 = w * own90 + (1 - w) * (REC_DC_BASELINE_90[pos] || 0);
+            const expected = dc90 * Math.min(1, minsPerGame / 90);
+            if (expected <= 0) return 0;
+            let pBelow = 0, term = Math.exp(-expected);
+            for (let k = 0; k < threshold; k++) { pBelow += term; term *= expected / (k + 1); }
+            return Math.max(0, Math.min(1, 1 - pBelow)) * 2;
+        }
+
         function calculateMultiGWxPts(p, pos, numGW) {
             numGW = numGW || 5;
             const fixtures = p.fixtures?.next3 || [];
@@ -4819,6 +4862,7 @@
 
                 if (pos === 'GK') gwXPts += rwSaves / 3;
                 gwXPts += rwBonus;
+                gwXPts += recDefConPoints(p, pos, mins);
 
                 gwXPts *= oppMul * venueAdj;
                 totalXPts += Math.max(0, gwXPts);
@@ -5503,10 +5547,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=42"></script>
+    <script src="scripts/players-ai.js?v=43"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="scripts/common.js?v=42"></script>
-    <script src="scripts/sidebar-nav.js?v=42"></script>
+    <script src="scripts/common.js?v=43"></script>
+    <script src="scripts/sidebar-nav.js?v=43"></script>
     <script>
         loadSidebarNav();
         initIcons();
