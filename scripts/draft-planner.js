@@ -381,7 +381,7 @@
                 <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;">Budget: £${maxAffordable.toFixed(1)}m available</div>
                 <div class="transfer-section-title">Upcoming Fixtures</div>
                 <div class="transfer-fdr-strip">
-                    ${(teamFixtures6[player.teamId] || []).map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${escHTML(f.opponent)}${f.isHome ? '(H)' : '(A)'}</div>`).join('')}
+                    ${(teamFixtures6[player.teamId] || []).slice(0, 6).map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${escHTML(f.opponent)}${f.isHome ? '(H)' : '(A)'}</div>`).join('')}
                 </div>
             </div>`;
 
@@ -510,13 +510,13 @@
                         <div class="transfer-vs-label">Current</div>
                         <div class="transfer-vs-name" style="color:var(--color-error);">${escHTML(current.name)}</div>
                         <div class="transfer-vs-meta">${escHTML(current.team)} · £${(current.sellPrice || current.price).toFixed(1)}m</div>
-                        <div class="transfer-fdr-strip">${cFix.map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${escHTML(f.opponent)}</div>`).join('')}</div>
+                        <div class="transfer-fdr-strip">${cFix.slice(0, 6).map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${escHTML(f.opponent)}</div>`).join('')}</div>
                     </div>
                     <div class="transfer-vs-col">
                         <div class="transfer-vs-label">Replacement</div>
                         <div class="transfer-vs-name" style="color:var(--color-success);">${escHTML(replacement.name)}</div>
                         <div class="transfer-vs-meta">${escHTML(replacement.team)} · £${replacement.price.toFixed(1)}m</div>
-                        <div class="transfer-fdr-strip">${rFix.map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${escHTML(f.opponent)}</div>`).join('')}</div>
+                        <div class="transfer-fdr-strip">${rFix.slice(0, 6).map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${escHTML(f.opponent)}</div>`).join('')}</div>
                     </div>
                 </div>
 

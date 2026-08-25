@@ -292,9 +292,15 @@
         // What this particular player stands to get from a given fixture. A
         // goalkeeper's schedule is a clean-sheet question; a forward's is a
         // chance-creation one, so the column changes with the position.
-        function playerFixtureMetric(player, fdr) {
+        // Takes the fixture itself where the caller has one, so the opponent's own
+        // ratings drive both figures — the same input the projection uses. A bare
+        // difficulty still works and still falls back to the FDR-only estimate.
+        function playerFixtureMetric(player, fixtureOrFdr) {
+            const fixture = (fixtureOrFdr && typeof fixtureOrFdr === 'object') ? fixtureOrFdr : null;
+            const fdr = fixture ? (fixture.difficulty || 3) : (fixtureOrFdr || 3);
+            const ref = fixture || fdr;
             if (player.position <= 2) {
-                const pct = Math.round(cleanSheetProbFor(player.teamId, fdr) * 100);
+                const pct = Math.round(cleanSheetProbFor(player.teamId, ref) * 100);
                 return {
                     value: `${pct}%`,
                     cls: pct >= 35 ? 'great' : pct >= 25 ? 'good' : pct >= 15 ? 'ok' : 'bad',
@@ -303,7 +309,7 @@
             }
             const { xg90, xa90 } = regressedPer90(player);
             const { min90 } = expectedMinutesModel(player);
-            const xgi = (xg90 + xa90) * min90 * fixtureAttackAdj(fdr);
+            const xgi = (xg90 + xa90) * min90 * fixtureAttackAdj(ref);
             return {
                 value: xgi.toFixed(2),
                 cls: xgi >= 0.55 ? 'great' : xgi >= 0.38 ? 'good' : xgi >= 0.22 ? 'ok' : 'bad',
@@ -510,7 +516,7 @@
                 // A double gameweek is two shots at the metric, so take the best
                 // fixture's value rather than the first listed.
                 const best = entry.list.reduce((a, b) => (b.difficulty < a.difficulty ? b : a));
-                const m = playerFixtureMetric(player, best.difficulty);
+                const m = playerFixtureMetric(player, best);
                 return `<div class="fx-row">
                     <span class="fx-row-gw">GW${entry.gw}</span>
                     <span class="fx-row-fixtures">${chips}</span>
@@ -1597,13 +1603,35 @@
             };
         }
 
-        // Process fixtures for next 6 GWs
+        /* Upcoming fixtures per team, kept by GAMEWEEK rather than by fixture count.
+
+           This used to take the next six fixtures. Two things quietly eat those
+           six slots. A double gameweek spends two of them on one gameweek. And
+           once the current gameweek kicks off it is still "not finished", so it
+           holds a slot of its own — while the draft planner, which excludes any
+           gameweek already under way, has moved on to plan the six AFTER it.
+
+           The planner's last gameweek then had no fixture stored, and
+           projectPlayerPointsForGW returns zero for a gameweek it cannot find —
+           so the whole squad projected zero and the gameweek read as a blank.
+           Storing eight whole gameweeks leaves headroom over the planner's six
+           and the transfer wizard's five. */
+        const FIXTURE_GW_SPAN = 8;
+
         function processFixtures6(fixturesData) {
             teamFixtures6 = {};
             const upcoming = fixturesData.filter(f => !f.finished_provisional && f.event !== null).sort((a, b) => a.event - b.event);
             Object.keys(teams).forEach(teamId => {
                 const tid = parseInt(teamId);
-                const teamFix = upcoming.filter(f => f.team_h === tid || f.team_a === tid).slice(0, 6);
+                const seen = [];
+                const teamFix = upcoming.filter(f => {
+                    if (f.team_h !== tid && f.team_a !== tid) return false;
+                    if (seen.indexOf(f.event) === -1) {
+                        if (seen.length >= FIXTURE_GW_SPAN) return false;
+                        seen.push(f.event);
+                    }
+                    return true;
+                });
                 teamFixtures6[tid] = teamFix.map(f => {
                     const isHome = f.team_h === tid;
                     return {

@@ -165,12 +165,41 @@
         // Per-90 rates off a one-gameweek sample are wild (one goal = a huge
         // xG/90), so regress them toward the position average until there's
         // roughly five full matches of evidence.
+        /* Expected penalty xG per 90 from published spot-kick duty.
+
+           FPL's expected_goals already contains the penalties a player has
+           actually taken, so this must only supply what his history cannot: a
+           taker newly appointed this season has the job but no penalty xG behind
+           him, and the regression toward a position baseline then treats him as
+           an ordinary player. Roughly 0.26 penalties are awarded per match across
+           both sides, so about 0.13 fall to a given team, and a converted penalty
+           is worth about 0.79 xG.
+
+           It goes into the PRIOR only, alongside the price multiplier, so it
+           fades out exactly as his own record fills in — which is also what stops
+           it double-counting the penalties already inside his xG. */
+        const PEN_XG90 = { 1: 0.10, 2: 0.04, 3: 0.00 };
+
+        function penaltyPriorXg90(player) {
+            const order = player.penaltiesOrder;
+            if (order == null || player.position === 1) return 0;
+            return PEN_XG90[order] || 0;
+        }
+
+        // Per-90 rates off a one-gameweek sample are wild (one goal = a huge
+        // xG/90), so regress them toward the position average until there's
+        // roughly five full matches of evidence.
         function regressedPer90(player) {
             const mins = player.minutes || 0;
             const posAvg = positionAverages[player.position] || {};
             const baseXgi = (posAvg.xGIPer90 || 0.25) * priceQualityMultiplier(player);
-            const baseXg = baseXgi * (player.position === 4 ? 0.65 : player.position === 3 ? 0.5 : 0.25);
-            const baseXa = Math.max(0, baseXgi - baseXg);
+            // Split open play first: the assist share is what is left of the xGI
+            // baseline once shooting is taken out. Penalties are added only after
+            // that split, or a spot-kick taker would have the same amount quietly
+            // deducted from his expected assists.
+            const baseXgOpen = baseXgi * (player.position === 4 ? 0.65 : player.position === 3 ? 0.5 : 0.25);
+            const baseXa = Math.max(0, baseXgi - baseXgOpen);
+            const baseXg = baseXgOpen + penaltyPriorXg90(player);
             const w = Math.min(1, mins / 450);
             return {
                 xg90: w * (mins > 0 ? (player.xG / mins) * 90 : 0) + (1 - w) * baseXg,
@@ -232,7 +261,44 @@
 
         // A harder fixture suppresses attacking returns by the same factor the
         // projection uses, so a per-fixture xGI reads on the projection's terms.
-        function fixtureAttackAdj(fdr) { return 1 + (3 - (fdr || 3)) * 0.10; }
+        /* How much a fixture helps or hurts attacking returns.
+
+           The clean-sheet side of this model asks expectedGoalsAgainst() for a
+           continuous figure built from venue-split opponent ratings blended with
+           what has actually been conceded. The attacking side used to ask only
+           FDR: a publisher-assigned integer worth at most ±20%, which put twelve
+           different defences — AVL, BHA, BOU, BRE, CRY, EVE, FUL, LEE, NEW, NFO,
+           SUN and TOT — in one bucket and multiplied all of them by exactly 1.00.
+           The better opponent model was already in the page; the attack side just
+           never called it.
+
+           Only the OPPONENT's defensive quality belongs here. The player's own
+           per-90 rate already reflects how good his team is at creating chances,
+           so folding in his team's attack rating would count it twice. Same
+           neutral-50 convention as expectedGoalsAgainst, mirrored: a strong
+           defence suppresses, a weak one inflates. Falls back to FDR when the
+           opponent is unknown — a blank, or ratings not built yet. */
+        function fixtureAttackAdj(fixtureOrFdr) {
+            const fixture = (fixtureOrFdr && typeof fixtureOrFdr === 'object') ? fixtureOrFdr : null;
+            const fdr = fixture ? (fixture.difficulty || 3) : (fixtureOrFdr || 3);
+            const fdrAdj = 1 + (3 - fdr) * 0.10;
+
+            const oppId = fixture ? fixture.opponentId : null;
+            const opp = (oppId != null && typeof teamAnalysis !== 'undefined') ? teamAnalysis[oppId] : null;
+            if (!opp) return fdrAdj;
+
+            const isHome = !!fixture.isHome;
+            // The opponent defends at the opposite venue to ours.
+            const oppDef = isHome ? (opp.defensePowerAway ?? opp.defensePower)
+                                  : (opp.defensePowerHome ?? opp.defensePower);
+            if (oppDef == null) return fdrAdj;
+
+            const defFactor = Math.max(0.5, Math.min(1.6, 1 - (oppDef - 50) / 100));
+            // Sides score a little more at home; the player's own rate is a
+            // season average across both venues, so this shifts it to this one.
+            const venueFactor = isHome ? 1.06 : 0.94;
+            return Math.max(0.6, Math.min(1.55, defFactor * venueFactor));
+        }
 
         // Expected share of a start, and the minutes that implies. A player with no
         // minutes yet still gets a small floor rather than zero — reporting 0.00 for
@@ -273,7 +339,7 @@
         // nothing to do with the fixture being projected.
         function projectPlayerPointsDetailed(player, opts) {
             const o = opts || {};
-            const out = { total: 0, appearance: 0, attack: 0, cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, defCon: 0, pStart: 0 };
+            const out = { total: 0, appearance: 0, attack: 0, cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, defCon: 0, cards: 0, pStart: 0 };
             if (!player) return out;
             if (player.status === 'i' || player.status === 'u' || player.status === 's') return out;
 
@@ -287,7 +353,9 @@
 
             const fx = o.fixture !== undefined ? o.fixture : (player.fixtures || [])[0];
             const fdr = fx ? (fx.difficulty || 3) : 3;
-            const attackAdj = fixtureAttackAdj(fdr);
+            // Pass the fixture, not just its difficulty, so the opponent's own
+            // defensive rating drives this rather than a 1-5 integer.
+            const attackAdj = fixtureAttackAdj(fx || fdr);
 
             // Per-90 rates off a one-gameweek sample are wild (one goal = a huge
             // xG/90), so regress them toward the position average until there's
@@ -340,7 +408,34 @@
 
             out.defCon = defensiveContributionPoints(player, min90);
 
-            out.total = Math.max(0, out.appearance + out.attack + out.cleanSheet + out.saves + out.bonus + out.conceded + out.defCon);
+            /* Cards: -1 a yellow, -3 a red. Previously not modelled at all, which
+               quietly over-rated every habitual booking — and those are mostly
+               defensive midfielders and centre-backs, exactly the players the new
+               defensive-contribution rule now rewards. So the term that pays them
+               was in and the term that charges them was missing.
+
+               Lumpy like bonus, so it gets the same slow ten-match clock and the
+               same treatment: regress toward what a player in this position picks
+               up until there is real evidence. Baselines are per 90, measured from
+               the pool and sanity-checked against long-run Premier League rates
+               (~0.10-0.20 yellows per 90 outfield, far lower for keepers). Reds
+               are too rare to measure from a short sample — roughly fifty a season
+               across all clubs is about 0.006 per 90 — so they stay a flat prior. */
+            const CARD_BASELINE_90 = {
+                1: { y: 0.04, r: 0.004 },
+                2: { y: 0.17, r: 0.008 },
+                3: { y: 0.16, r: 0.005 },
+                4: { y: 0.13, r: 0.005 }
+            };
+            const cardBase = CARD_BASELINE_90[player.position] || CARD_BASELINE_90[3];
+            const wC = Math.min(1, mins / 900);
+            const ownY90 = mins > 0 ? ((player.yellowCards || 0) / mins) * 90 : 0;
+            const ownR90 = mins > 0 ? ((player.redCards || 0) / mins) * 90 : 0;
+            const y90 = wC * ownY90 + (1 - wC) * cardBase.y;
+            const r90 = wC * ownR90 + (1 - wC) * cardBase.r;
+            out.cards = -(y90 * 1 + r90 * 3) * min90;
+
+            out.total = Math.max(0, out.appearance + out.attack + out.cleanSheet + out.saves + out.bonus + out.conceded + out.defCon + out.cards);
 
             // With little evidence our own numbers are shaky, and FPL's ep_next
             // encodes things we can't see — a new signing with no minutes yet, a
@@ -1021,7 +1116,11 @@
                 { key: 'CS', v: d.cleanSheet },
                 { key: 'Saves', v: d.saves },
                 { key: 'Bonus', v: d.bonus },
-                { key: 'Conceded', v: d.conceded }
+                // Defensive contribution and cards were both missing here, so the
+                // legend did not add up to the xP printed beside it.
+                { key: 'DefCon', v: d.defCon },
+                { key: 'Conceded', v: d.conceded },
+                { key: 'Cards', v: d.cards }
             ].filter(x => Math.abs(x.v) >= 0.05);
             return { detailed: d, parts };
         }
