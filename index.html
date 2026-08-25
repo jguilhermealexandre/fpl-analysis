@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=61">
-    <link rel="stylesheet" href="styles/v2-design.css?v=61">
+    <link rel="stylesheet" href="styles/common.css?v=62">
+    <link rel="stylesheet" href="styles/v2-design.css?v=62">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3656,11 +3656,11 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/xp-engine.js?v=61"></script>
-    <script src="scripts/live-gw.js?v=61"></script>
-    <script src="scripts/transfer-engine.js?v=61"></script>
-    <script src="scripts/common.js?v=61"></script>
-    <script src="scripts/sidebar-nav.js?v=61"></script>
+    <script src="scripts/xp-engine.js?v=62"></script>
+    <script src="scripts/live-gw.js?v=62"></script>
+    <script src="scripts/transfer-engine.js?v=62"></script>
+    <script src="scripts/common.js?v=62"></script>
+    <script src="scripts/sidebar-nav.js?v=62"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4270,10 +4270,10 @@
             const xiItems = [];
             squad.filter(p => p.pickPosition <= 11).forEach(p => {
                 if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                    xiItems.push({ name: p.name, reason: p.news || 'Unavailable — find a replacement', severity: 'sell' });
+                    xiItems.push({ name: p.name, reason: p.news || 'Unavailable — find a replacement', severity: 'sell', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
                 } else if (p.status === 'd') {
                     const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance)` : '';
-                    xiItems.push({ name: p.name, reason: (p.news || 'Doubtful') + chance, severity: 'monitor' });
+                    xiItems.push({ name: p.name, reason: (p.news || 'Doubtful') + chance, severity: 'monitor', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
                 }
             });
             /* Rotation risk. The PRD calls expected minutes the most critical
@@ -4299,14 +4299,23 @@
                     xiItems.push({
                         name: p.name,
                         reason: `${pct}% likely to start, around ${Math.round(m.expMins)} minutes — an auto-sub may be needed`,
-                        severity: pct < 40 ? 'sell' : 'monitor'
+                        severity: pct < 40 ? 'sell' : 'monitor',
+                        href: `fpl-my-team-analysis.html#squad?player=${p.id}`
                     });
                 });
             }
 
             const currentCaptain = squad.find(p => p.isCaptain);
             if (captainRec && currentCaptain && captainRec.name !== currentCaptain.name) {
-                xiItems.push({ name: currentCaptain.name, reason: `${captainRec.name} projects ${captainRec.xP} against ${captainRec.opponent} — the highest in your XI`, severity: 'monitor' });
+                // The one alert that performs its own action: the link moves the
+                // armband rather than dropping the manager on a tab to do it by hand.
+                const recPlayer = squad.find(x => x.name === captainRec.name);
+                xiItems.push({
+                    name: currentCaptain.name,
+                    reason: `${captainRec.name} projects ${captainRec.xP} against ${captainRec.opponent} — the highest in your XI`,
+                    severity: 'monitor',
+                    href: recPlayer ? `fpl-my-team-analysis.html#squad?captain=${recPlayer.id}` : undefined
+                });
             }
 
             const txItems = [];
@@ -4339,7 +4348,7 @@
             }
             squad.forEach((p, i) => {
                 const a = analysisResults[i];
-                if (a && a.verdict === 'sell') txItems.push({ name: p.name, reason: a.topConcern || 'Rated Sell — consider moving on', severity: 'sell' });
+                if (a && a.verdict === 'sell') txItems.push({ name: p.name, reason: a.topConcern || 'Rated Sell — consider moving on', severity: 'sell', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
             });
             priceDropRisk.forEach(p => {
                 const net = Math.round(Math.abs(p.transfersOut - p.transfersIn) / 1000);
@@ -4349,7 +4358,8 @@
                     reason: p._active
                         ? `${net}k net transfers out, ${pct}% of his owners — under pressure to drop`
                         : `${net}k net transfers out, ${pct}% of his owners (no price has moved yet this season)`,
-                    severity: 'monitor'
+                    severity: 'monitor',
+                    href: `fpl-my-team-analysis.html#squad?player=${p.id}`
                 });
             });
             priceRiseTargets.slice(0, 2).forEach(p => {

@@ -585,9 +585,10 @@
                     switchTab(pending); window._pendingTab = null;
                     // A move handed over from the dashboard loads into the cart
                     // once the squad is real; the wizard renders it from there.
-                    if (pending === 'transfers' && typeof twApplyDeepLink === 'function') {
-                        try { twApplyDeepLink(); } catch (e) { console.warn('Deep link ignored:', e.message); }
-                    }
+                    try {
+                        if (pending === 'transfers' && typeof twApplyDeepLink === 'function') twApplyDeepLink();
+                        else if (typeof applySquadDeepLink === 'function') applySquadDeepLink();
+                    } catch (e) { console.warn('Deep link ignored:', e.message); }
                 }
             } catch (error) {
                 console.error('Error loading team:', error);

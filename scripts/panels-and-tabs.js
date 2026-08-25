@@ -1219,6 +1219,50 @@
             </div>`;
         }
 
+        /* Actions handed over from the dashboard.
+
+           The dashboard runs the same models this page does, so when it flags a
+           player it already knows which one and what to do about it. Landing on a
+           generic tab and making the manager find the player again throws that
+           away — the PRD's whole point about alerts is that clicking one should
+           start the action, not just gesture at the right screen.
+
+           Supported, all validated against the loaded squad so a stale link does
+           nothing rather than something wrong:
+
+             #squad?player=123     open that player's detail panel
+             #squad?captain=123    move the armband to him
+             #transfers?out=..&in=..   handled by twApplyDeepLink
+
+           Returns true if it consumed the link. */
+        function applySquadDeepLink() {
+            const qs = window._pendingDeepLink;
+            if (!qs) return false;
+            const params = new URLSearchParams(qs);
+
+            const capId = parseInt(params.get('captain'), 10);
+            if (capId && typeof setSnapshotCaptain === 'function') {
+                const target = (analysisResults || []).find(a => a.player.id === capId);
+                if (!target) return false;
+                window._pendingDeepLink = null;
+                setSnapshotCaptain(capId);
+                if (typeof updateStatus === 'function') {
+                    updateStatus(`Armband moved to ${target.player.name} — review before the deadline`, 'success');
+                }
+                openDetailPanel(capId);
+                return true;
+            }
+
+            const pid = parseInt(params.get('player'), 10);
+            if (pid) {
+                if (!(analysisResults || []).some(a => a.player.id === pid)) return false;
+                window._pendingDeepLink = null;
+                openDetailPanel(pid);
+                return true;
+            }
+            return false;
+        }
+
         function openDetailPanel(playerId) {
             const analysis = analysisResults.find(a => a.player.id === playerId);
             if (!analysis) return;
