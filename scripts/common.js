@@ -423,7 +423,7 @@ function showNavTeamInput() {
 
 // ===== FOOTER LOADING =====
 function loadFooter() {
-    fetch('footer.html?v=44')
+    fetch('footer.html?v=45')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -458,7 +458,7 @@ function initIcons() {
 
 // ===== NAV LOADING =====
 function loadNav() {
-    return fetch('nav.html?v=44')
+    return fetch('nav.html?v=45')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);

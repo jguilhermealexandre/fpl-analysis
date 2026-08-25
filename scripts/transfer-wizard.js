@@ -438,7 +438,7 @@
                         <div class="twr-head">
                             <div>
                                 <div class="twr-title">Should I make a transfer?</div>
-                                <div class="twr-sub">Prices every legal move over the next five gameweeks, including the option of doing nothing.</div>
+                                <div class="twr-sub">Prices every legal move over the next five gameweeks by what it adds to your starting eleven — including the option of doing nothing.</div>
                             </div>
                             <button class="twr-run" onclick="twRunRecommendation()">Get recommendation</button>
                         </div>
@@ -531,10 +531,53 @@
             return cache[player.id];
         }
 
+        /* What a squad is actually worth over the window.
+
+           A player's expected points are not the points you receive. Only eleven
+           of fifteen score in a normal gameweek, and exactly one goalkeeper plays
+           — so a second keeper projecting 23 points instead of 16 adds almost
+           nothing, because neither of them was going to play. Scoring transfers on
+           the individual delta recommended upgrading bench slots at full value,
+           which is how a backup keeper ended up as a +6.7 move.
+
+           The squad is therefore valued the way the pitch values it: pick the best
+           eleven by projected points and total them. The bench still counts for
+           something — auto-subs cover a starter who does not play, and the reserve
+           keeper covers the first — but at a fraction, and least of all for the
+           keeper who only appears if the other one is dropped or injured. */
+        const TW_BENCH_WEIGHT = 0.12;
+        const TW_BENCH_GK_WEIGHT = 0.05;
+
+        function twSquadValue(pool) {
+            if (typeof solveQuickLineup !== 'function') {
+                // No solver available — fall back to the plain total rather than
+                // silently reporting zero for everything.
+                return pool.reduce((s, p) => s + p.lwScore, 0);
+            }
+            const { xi, bench } = solveQuickLineup(pool);
+            const xiXP = xi.reduce((s, p) => s + p.lwScore, 0);
+            const benchXP = bench.reduce((s, p) =>
+                s + p.lwScore * (p.pos === 1 ? TW_BENCH_GK_WEIGHT : TW_BENCH_WEIGHT), 0);
+            return xiXP + benchXP;
+        }
+
+        // One entry per squad player, reused across every candidate so the lineup
+        // solve is the only per-candidate work.
+        function twBuildPool(squad, gws, cache) {
+            return squad.map(p => ({
+                id: p.id, pos: p.position, lwScore: twXPCached(p, gws, cache), _ref: p
+            }));
+        }
+
         // Best legal replacement for one squad player, or null if nothing beats him.
+        // Scored on what the swap does to the squad's total, not to the player's.
         function twBestSwapFor(out, ctx) {
             const budget = (out.sellPrice || out.price) + ctx.bank;
             const outXP = twXPCached(out, ctx.gws, ctx.cache);
+            const slot = ctx.pool.findIndex(e => e.id === out.id);
+            if (slot < 0) return null;
+
+            const trial = ctx.pool.slice();
             let best = null;
 
             for (const cand of allPlayers) {
@@ -543,13 +586,22 @@
                 if (ctx.ownedIds.has(cand.id)) continue;
                 if (cand.status !== 'a' && cand.status !== 'd') continue;
                 if (cand.minutes < minMinutesForCandidate()) continue;
-                // Three players per club. Selling one of theirs frees a slot.
                 const held = (ctx.clubCount[cand.teamId] || 0) - (cand.teamId === out.teamId ? 1 : 0);
                 if (held >= 3) continue;
 
-                const gain = twXPCached(cand, ctx.gws, ctx.cache) - outXP;
-                if (!best || gain > best.gain) best = { out, in: cand, gain, outXP, inXP: outXP + gain };
+                const inXP = twXPCached(cand, ctx.gws, ctx.cache);
+                trial[slot] = { id: cand.id, pos: cand.position, lwScore: inXP, _ref: cand };
+                const gain = twSquadValue(trial) - ctx.baseValue;
+
+                if (!best || gain > best.gain) {
+                    best = { out, in: cand, gain, outXP, inXP,
+                             // Individual delta, kept so the card can explain the
+                             // difference between the two figures when they diverge.
+                             rawDelta: inXP - outXP,
+                             outStarts: ctx.baseXIIds.has(out.id) };
+                }
             }
+            trial[slot] = ctx.pool[slot];
             return best;
         }
 
@@ -561,8 +613,14 @@
             const clubCount = {};
             squad.forEach(p => { clubCount[p.teamId] = (clubCount[p.teamId] || 0) + 1; });
 
+            const cache = {};
+            const pool = twBuildPool(squad, gws, cache);
+            const baseXI = typeof solveQuickLineup === 'function' ? solveQuickLineup(pool).xi : pool.slice(0, 11);
+
             const ctx = {
-                gws, bank: getTWBank(), cache: {},
+                gws, bank: getTWBank(), cache, pool,
+                baseValue: twSquadValue(pool),
+                baseXIIds: new Set(baseXI.map(p => p.id)),
                 ownedIds: new Set(squad.map(p => p.id)),
                 clubCount
             };
@@ -654,11 +712,13 @@
                             <span class="twr-out">${escHTML(nearest.out.name)}</span>
                             <span class="twr-arrow">→</span>
                             <span class="twr-in">${escHTML(nearest.in.name)}</span>
-                            <span class="twr-gain ${nearest.gain > 0 ? 'pos' : 'neg'}">${nearest.gain >= 0 ? '+' : ''}${nearest.gain.toFixed(1)} xP</span>
+                            <span class="twr-gain ${nearest.gain > 0 ? 'pos' : 'neg'}">${nearest.gain >= 0 ? '+' : ''}${nearest.gain.toFixed(1)}<small>to your XI</small></span>
                         </div>
                         <p class="twr-nearest-note">
                             ${nearest.gain <= 0
                                 ? 'Every option projects worse than the player you would sell.'
+                                : (nearest.outStarts === false && nearest.rawDelta - nearest.gain > 1)
+                                ? `On paper that is a ${nearest.rawDelta.toFixed(1)}-point upgrade, but ${escHTML(nearest.out.name)} ${nearest.out.position === 1 ? 'is your reserve keeper and barely plays' : 'sits on your bench'} — so only ${nearest.gain.toFixed(1)} of it reaches your score. Not worth a transfer.`
                                 : `A ${nearest.gain.toFixed(1)}-point edge across five gameweeks is inside the model's own error bar. Banking the transfer keeps two available next week.`}
                         </p>
                     </div>` : ''}
@@ -687,7 +747,7 @@
                                 <span class="twr-out">${escHTML(m.out.name)}<small>£${(m.out.sellPrice || m.out.price).toFixed(1)}m · ${m.outXP.toFixed(1)} xP</small></span>
                                 <span class="twr-arrow">→</span>
                                 <span class="twr-in">${escHTML(m.in.name)}<small>£${m.in.price.toFixed(1)}m · ${m.inXP.toFixed(1)} xP</small></span>
-                                <span class="twr-gain pos">+${m.gain.toFixed(1)}</span>
+                                <span class="twr-gain pos">+${m.gain.toFixed(1)}<small>to your XI</small></span>
                             </div>
                             <p class="twr-why">${escHTML(twMoveReason(m, gws))}</p>
                         </div>`).join('')}
@@ -699,6 +759,14 @@
         // Why this move, in the model's own terms rather than a generic blurb.
         function twMoveReason(m, gws) {
             const bits = [];
+            // When the individual delta and the squad gain diverge, the slot is the
+            // reason — say so first, because otherwise the two numbers on the card
+            // look like a contradiction.
+            if (m.outStarts === false && m.rawDelta - m.gain > 1) {
+                bits.push(m.out.position === 1
+                    ? `${m.out.name} is your reserve keeper, so most of that ${m.rawDelta.toFixed(1)}-point upgrade never reaches your score`
+                    : `${m.out.name} starts on your bench, so only a fraction of the ${m.rawDelta.toFixed(1)}-point upgrade reaches your score`);
+            }
             if (m.out.status === 'i' || m.out.status === 'u' || m.out.status === 's') {
                 bits.push(`${m.out.name} cannot play`);
             } else if (m.out.status === 'd') {
