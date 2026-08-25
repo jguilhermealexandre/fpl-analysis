@@ -4565,9 +4565,66 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .rtp-duty-chip { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--surface-3); color: var(--text-secondary); }
 .rtp-duty-chip.prime { background: rgba(74, 222, 128, .18); color: #4ADE80; }
 
-/* Team context sits apart from the player's own attributes, and names the club. */
-.team-context { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; padding-left: 6px; margin-left: 4px; border-left: 2px solid var(--border-default); }
-.team-form-badge b, .swing-badge b { font-weight: 800; letter-spacing: .02em; }
+/* ---- team context pills ----
+   One horizontal group, never a vertical stack. The earlier version allowed the
+   pills to wrap inside a narrow name block, which turned two badges into two
+   lines and broke the left-to-right read across the row. */
+.team-context {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    padding-left: 7px;
+    margin-left: 5px;
+    border-left: 2px solid var(--border-default);
+}
+
+/* Both pills share one shape so the group reads as a set. */
+.sq-row-team .team-form-badge,
+.sq-row-team .swing-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    margin: 0;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    line-height: 1.5;
+    white-space: nowrap;
+    cursor: help;
+}
+
+/* In form runs warm, cold runs blue — read as temperature rather than as a
+   pass/fail light, which is what the plain green/red dots looked like. */
+.sq-row-team .team-form-badge.good {
+    background: rgba(251, 146, 60, 0.14); color: #FB923C;
+}
+.sq-row-team .team-form-badge.warning {
+    background: rgba(148, 163, 184, 0.16); color: var(--text-muted);
+}
+.sq-row-team .team-form-badge.bad {
+    background: rgba(96, 165, 250, 0.14); color: #60A5FA;
+}
+.sq-row-team .swing-badge.improving {
+    background: rgba(74, 222, 128, 0.13); color: var(--color-success);
+}
+.sq-row-team .swing-badge.worsening {
+    background: rgba(248, 113, 113, 0.13); color: var(--color-error);
+}
+
+/* "BHA · £4.5m" is short and both halves matter, so it never truncates. If the
+   row is genuinely cramped the pills give way instead — the swing pill first,
+   via the query below, and the group is clipped by .sq-row-team's own overflow
+   rather than eating into the price. */
+.sq-row-team .sq-row-club { flex-shrink: 0; white-space: nowrap; }
+
+@media (max-width: 1100px) {
+    /* Fixtures are the first thing to go; form still fits. */
+    .sq-row-team .swing-badge { display: none; }
+}
 
 /* Expected points leads the stat row, so it reads as the headline number. */
 .sq-row-stats .sq-stat:first-child .sq-stat-value { color: var(--color-primary); font-weight: 800; }

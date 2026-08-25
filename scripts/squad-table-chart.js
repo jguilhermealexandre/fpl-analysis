@@ -181,40 +181,59 @@
             document.addEventListener('keydown', e => { if (e.key === 'Escape') hideTooltip(); });
         }
 
+        /* Team context, as compact pills.
+
+           These describe the CLUB, not the player, which is why they sit in their
+           own bordered group immediately after the club name — reading left to
+           right gives "BHA · £4.5m │ In form · Harder GW5+", which parses as
+           attributes of Brighton. An earlier version repeated the team code inside
+           each pill to make that explicit; three "BHA"s in one square inch cost
+           more than the ambiguity did, so the grouping and the tooltips carry it
+           instead. Every tooltip names the club in its first three words. */
         function renderTeamBadges(player) {
             const ta = teamAnalysis[player.teamId];
             const teamName = (teams[player.teamId] && teams[player.teamId].name) || player.team;
-            let formBadge = '';
-            // Only badge a team once it has actually played — with no completed
-            // matches there's no form to report, and defaulting to a verdict made
-            // every yet-to-play team look like it was struggling.
+            const pills = [];
+
+            // ---- form ----
+            // Only badge a team once it has actually played; with no completed
+            // matches there is no form, and defaulting to a verdict made every
+            // yet-to-play side look like it was struggling.
             if (ta && ta.matchesPlayed > 0) {
-                const good = ta.formRating >= 55, bad = ta.formRating < 40;
-                const cls = good ? 'good' : bad ? 'bad' : 'warning';
-                const dot = good ? '🟢' : bad ? '🔴' : '🟡';
-                const label = good ? 'Good' : bad ? 'Struggling' : 'Average';
-                const span = ta.matchesPlayed === 1 ? 'their opening match' : `their last ${Math.min(ta.matchesPlayed, 5)} matches`;
-                // "loss" doesn't take a bare -s, so the plural is passed explicitly.
-                const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
-                // Names the team explicitly — this rates the CLUB's form, not the
-                // player's, which is easy to misread sitting beside a player row.
-                formBadge = `<span class="team-form-badge ${cls}" data-tooltip="${escHTML(teamName)} team form: ${plural(ta.wins, 'win')}, ${plural(ta.draws, 'draw')} and ${plural(ta.losses, 'loss', 'losses')} in ${span}.">${dot} <b>${escHTML(player.team)}</b> ${label.toLowerCase()}</span>`;
+                const n = ta.matchesPlayed;
+                const span = n === 1 ? 'their opening match' : `their last ${Math.min(n, 5)}`;
+                const plural = (v, one, many) => `${v} ${v === 1 ? one : (many || one + 's')}`;
+                const record = `${plural(ta.wins, 'win')}, ${plural(ta.draws, 'draw')} and ${plural(ta.losses, 'loss', 'losses')}`;
+                const scoring = `Scoring ${(ta.avgGoals || 0).toFixed(1)} and conceding ${(ta.avgConceded || 0).toFixed(1)} a game.`;
+                // xgTrendDelta is recent expected goals per game minus the season
+                // rate, so it says which way the underlying numbers are moving —
+                // but it needs a few matches behind it to mean anything.
+                const d = ta.xgTrendDelta || 0;
+                const trend = n >= 4 && Math.abs(d) >= 0.15
+                    ? ` Expected goals are trending ${d > 0 ? 'up' : 'down'} (${d > 0 ? '+' : ''}${d.toFixed(2)} a game on their season rate).`
+                    : '';
+
+                let cls, icon, label;
+                if (ta.formRating >= 55) { cls = 'good'; icon = '🔥'; label = 'In form'; }
+                else if (ta.formRating < 40) { cls = 'bad'; icon = '❄️'; label = 'Cold'; }
+                else { cls = 'warning'; icon = '⚖️'; label = 'Average'; }
+
+                pills.push(`<span class="team-form-badge ${cls}" data-tooltip="${escHTML(teamName)} — ${record} in ${span}. ${scoring}${trend}">${icon} ${label}</span>`);
             }
 
+            // ---- fixture swing ----
             const swing = fixtureSwingData[player.teamId];
-            let swingBadge = '';
             if (swing) {
-                // swing = avg FDR of the next 3 minus the 3 after, so a positive
-                // number means the harder block is the one being left behind.
+                // swing.direction compares the next three fixtures against the
+                // three after them, so it flags the turn before it arrives.
                 const easier = swing.direction === 'improving';
                 const size = Math.abs(parseFloat(swing.futureFdr) - parseFloat(swing.currentFdr));
-                // The magnitude is what decides whether this is worth a transfer,
-                // so say it rather than leaving the reader with a bare arrow.
-                const scale = size >= 1.2 ? 'a big' : size >= 0.7 ? 'a clear' : 'a slight';
-                swingBadge = `<span class="swing-badge ${swing.direction}" data-tooltip="${escHTML(teamName)}'s fixtures ${easier ? 'ease off' : 'get harder'} from GW${swing.swingGW}: average FDR ${easier ? 'falls' : 'rises'} from ${swing.currentFdr} to ${swing.futureFdr} — ${scale} shift.${easier ? '' : ' Worth planning around.'}">${easier ? '📈' : '📉'} <b>${escHTML(player.team)}</b> ${easier ? 'easier' : 'tougher'} GW${swing.swingGW}+</span>`;
+                const scale = size >= 1.2 ? 'a big shift' : size >= 0.7 ? 'a clear shift' : 'a slight shift';
+                pills.push(`<span class="swing-badge ${swing.direction}" data-tooltip="${escHTML(teamName)}'s fixtures ${easier ? 'ease off' : 'get harder'} from GW${swing.swingGW}: average difficulty ${easier ? 'falls' : 'rises'} from ${swing.currentFdr} across the next three to ${swing.futureFdr} in the three after — ${scale}.${easier ? ' Worth buying into before it turns.' : ' Worth planning an exit.'}">${easier ? '📈' : '📉'} ${easier ? 'Easier' : 'Harder'} GW${swing.swingGW}+</span>`);
             }
-            if (!formBadge && !swingBadge) return '';
-            return `<span class="team-context" data-tooltip="Context about ${escHTML(teamName)}, not about this player">${formBadge}${swingBadge}</span>`;
+
+            if (!pills.length) return '';
+            return `<span class="team-context" data-tooltip="How ${escHTML(teamName)} are doing — club context, not this player's own form">${pills.join('')}</span>`;
         }
 
         function renderSquadRow(analysis) {
