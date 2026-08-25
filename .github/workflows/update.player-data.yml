@@ -41,9 +41,19 @@ jobs:
           // Read bootstrap data
           const bootstrap = JSON.parse(fs.readFileSync('data/bootstrap-static.json', 'utf8'));
           
-          // Filter active players (those with minutes played)
-          const activePlayers = bootstrap.elements.filter(p => p.minutes > 0);
-          console.log(`Found ${activePlayers.length} active players`);
+          // EVERY player, not just those who have already featured.
+          //
+          // This used to filter on `minutes > 0`. One gameweek into a season that
+          // excluded 300 of 610 players — half the game — and not the irrelevant
+          // half: Watkins (GBP8.0m, 9.5% owned), Gyokeres (7.9%) and Dubravka
+          // (19.1%) were all missing simply because they did not feature in GW1.
+          // 190 of the 300 were fully fit.
+          //
+          // It also defeated the point of the lastSeason prior below, which exists
+          // precisely to say something useful about a player who has no
+          // current-season record yet — the exact players the filter removed.
+          const activePlayers = bootstrap.elements;
+          console.log(`Fetching detail for all ${activePlayers.length} players`);
           
           // Fetch detailed data for each player
           async function fetchPlayerDetails(playerId) {
@@ -55,6 +65,24 @@ jobs:
             return await response.json();
           }
           
+          // The fields every player gets, with or without a successful detail fetch.
+          function baseEntry(player) {
+            return {
+              id: player.id,
+              name: player.web_name,
+              fullName: player.first_name + ' ' + player.second_name,
+              position: player.element_type,
+              team: player.team,
+              price: player.now_cost,
+              form: player.form,
+              ownership: player.selected_by_percent,
+              totalPoints: player.total_points,
+              minutes: player.minutes,
+              lastSeason: null,
+              history: []
+            };
+          }
+
           async function processAllPlayers() {
             const playerData = [];
             let processed = 0;
@@ -71,7 +99,7 @@ jobs:
                 const details = await fetchPlayerDetails(player.id);
                 if (details) {
                   playerData.push({
-                    id: player.id,
+                    id: player.id,   // keep in sync with baseEntry() below
                     name: player.web_name,
                     fullName: player.first_name + ' ' + player.second_name,
                     position: player.element_type,
@@ -106,20 +134,35 @@ jobs:
                         defCon: prev.defensive_contribution
                       };
                     })(),
-                    history: details.history || [],
-                    fixtures: details.fixtures
+                    // details.fixtures is deliberately NOT stored. It is a team's
+                    // upcoming fixture list repeated once per player: 10.5 KB each,
+                    // 3.2 MB of the 5.4 MB file, and nothing reads it — every
+                    // consumer of this feed uses .history (and .team/.id). The
+                    // pages build fixtures from data/fixtures.json instead.
+                    history: details.history || []
                   });
                   processed++;
                 } else {
+                  // Detail fetch failed. Emit the player anyway from bootstrap, with
+                  // an empty history — a transient API hiccup must not silently drop
+                  // a player out of the feed entirely, which is how IDs go missing
+                  // without anyone noticing.
+                  playerData.push(baseEntry(player));
                   failed++;
                 }
               } catch (error) {
                 console.error(`Error processing player ${player.id}:`, error.message);
+                playerData.push(baseEntry(player));
                 failed++;
               }
             }
             
             console.log(`\nComplete: ${processed} players processed, ${failed} failed`);
+            console.log(`Coverage: ${playerData.length}/${activePlayers.length} player IDs in the feed`);
+            if (playerData.length !== activePlayers.length) {
+              console.error(`COVERAGE SHORTFALL: ${activePlayers.length - playerData.length} players missing from the feed`);
+              process.exitCode = 1;
+            }
             
             // Save combined data
             const output = {
