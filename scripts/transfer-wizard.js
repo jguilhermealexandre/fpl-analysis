@@ -434,6 +434,16 @@
             container.innerHTML = `
                 <div class="tw-container">
                     <div id="twBudgetBar"></div>
+                    <div class="twr-panel">
+                        <div class="twr-head">
+                            <div>
+                                <div class="twr-title">Should I make a transfer?</div>
+                                <div class="twr-sub">Prices every legal move over the next five gameweeks, including the option of doing nothing.</div>
+                            </div>
+                            <button class="twr-run" onclick="twRunRecommendation()">Get recommendation</button>
+                        </div>
+                        <div id="twRecoBody"></div>
+                    </div>
                     <div class="twc-body">
                         <div class="twc-pane" id="twSquadPane"></div>
                         <div class="twc-pane" id="twMarketPane"></div>
@@ -493,6 +503,232 @@
         function twXPOver(player, gws) {
             if (!player || typeof projectPlayerPointsForGW !== 'function') return 0;
             return Math.round(gws.reduce((s, g) => s + projectPlayerPointsForGW(player, g), 0) * 10) / 10;
+        }
+
+        /* ===== "Should I transfer?" =====
+
+           Answers the question a manager actually has on a Tuesday: is there a
+           move worth making, or should I hold? Doing nothing is a real option
+           here and wins most weeks, which is the point — a recommender that
+           always finds a transfer is just a shopping list.
+
+           Every candidate move is priced the same way: total projected points
+           over the next five gameweeks for the incoming player minus the same
+           figure for the outgoing one, then minus any points hit. Five rather
+           than three because a transfer is a five-week commitment in practice —
+           you rarely undo it next week — and a three-week window over-rewards
+           one kind fixture. */
+        const TW_HORIZON = 5;
+        // A free transfer has option value: banked, it becomes two next week. So a
+        // marginal edge is not a reason to spend one. These are the margins a move
+        // has to clear over the whole horizon, not per gameweek.
+        const TW_MIN_FREE_GAIN = 3.0;   // spend a free transfer
+        const TW_MIN_HIT_GAIN  = 4.0;   // clear the 4-point hit by this much again
+
+        function twXPCached(player, gws, cache) {
+            if (!player) return 0;
+            if (cache[player.id] === undefined) cache[player.id] = twXPOver(player, gws);
+            return cache[player.id];
+        }
+
+        // Best legal replacement for one squad player, or null if nothing beats him.
+        function twBestSwapFor(out, ctx) {
+            const budget = (out.sellPrice || out.price) + ctx.bank;
+            const outXP = twXPCached(out, ctx.gws, ctx.cache);
+            let best = null;
+
+            for (const cand of allPlayers) {
+                if (cand.position !== out.position) continue;
+                if (cand.price > budget) continue;
+                if (ctx.ownedIds.has(cand.id)) continue;
+                if (cand.status !== 'a' && cand.status !== 'd') continue;
+                if (cand.minutes < minMinutesForCandidate()) continue;
+                // Three players per club. Selling one of theirs frees a slot.
+                const held = (ctx.clubCount[cand.teamId] || 0) - (cand.teamId === out.teamId ? 1 : 0);
+                if (held >= 3) continue;
+
+                const gain = twXPCached(cand, ctx.gws, ctx.cache) - outXP;
+                if (!best || gain > best.gain) best = { out, in: cand, gain, outXP, inXP: outXP + gain };
+            }
+            return best;
+        }
+
+        function twBuildRecommendation() {
+            const gws = twPlanGWs(TW_HORIZON);
+            const squad = (typeof selectedPlayers !== 'undefined' && selectedPlayers.length) ? selectedPlayers : [];
+            if (!squad.length || !gws.length) return null;
+
+            const clubCount = {};
+            squad.forEach(p => { clubCount[p.teamId] = (clubCount[p.teamId] || 0) + 1; });
+
+            const ctx = {
+                gws, bank: getTWBank(), cache: {},
+                ownedIds: new Set(squad.map(p => p.id)),
+                clubCount
+            };
+
+            const moves = squad.map(p => twBestSwapFor(p, ctx))
+                .filter(Boolean)
+                .sort((a, b) => b.gain - a.gain);
+
+            // No legal move at all — everything is unaffordable, blocked by the
+            // three-per-club limit, or already owned. That is a hold, not a
+            // failure, and must not be reported as "no squad loaded".
+            if (!moves.length) {
+                return { best: { n: 0, moves: [], gross: 0, cost: 0, net: 0 },
+                         options: [], moves: [], gws, ft: (typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1),
+                         horizon: TW_HORIZON, noLegalMove: true,
+                         sample: (typeof seasonGamesPlayed !== 'undefined' ? seasonGamesPlayed : null) };
+            }
+
+            const ft = typeof getDraftFreeTransfers === 'function' ? getDraftFreeTransfers(currentGW) : 1;
+
+            // Option A: one move. Option B: two, on different players — the second
+            // is only worth it if it clears its own hit.
+            const one = moves[0];
+            const two = moves.find(m => m.out.id !== one.out.id && m.in.id !== one.in.id);
+
+            const costFor = n => Math.max(0, n - ft) * 4;
+            const options = [
+                { n: 0, moves: [], gross: 0, cost: 0, net: 0 },
+                { n: 1, moves: [one], gross: one.gain, cost: costFor(1), net: one.gain - costFor(1) }
+            ];
+            if (two) {
+                const gross = one.gain + two.gain;
+                options.push({ n: 2, moves: [one, two], gross, cost: costFor(2), net: gross - costFor(2) });
+            }
+
+            // A move must clear its margin, not merely beat zero. Anything unavailable
+            // is exempt — a player who cannot play is worth replacing regardless.
+            const unavailable = m => m.out.status === 'i' || m.out.status === 'u' || m.out.status === 's';
+            const viable = options.filter(o => {
+                if (o.n === 0) return true;
+                if (o.moves.some(unavailable)) return true;
+                const margin = o.cost > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
+                return o.net >= margin;
+            });
+
+            const best = viable.sort((a, b) => b.net - a.net || a.n - b.n)[0];
+            return { best, options, moves: moves.slice(0, 5), gws, ft, horizon: TW_HORIZON,
+                     sample: (typeof seasonGamesPlayed !== 'undefined' ? seasonGamesPlayed : null) };
+        }
+
+        function twRunRecommendation() {
+            const el = document.getElementById('twRecoBody');
+            if (!el) return;
+            el.innerHTML = '<div class="twr-loading">Pricing every legal transfer over the next five gameweeks…</div>';
+            // Yield once so the loading line paints before the sweep blocks.
+            setTimeout(() => {
+                let r = null;
+                try { r = twBuildRecommendation(); }
+                catch (e) { el.innerHTML = `<div class="twr-empty">Could not build a recommendation: ${escHTML(e.message)}</div>`; return; }
+                if (!r) { el.innerHTML = '<div class="twr-empty">Load a squad first — there is nothing to compare yet.</div>'; return; }
+                twLastRecommendation = r;
+                el.innerHTML = renderTWRecommendation(r);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }, 30);
+        }
+
+        function renderTWRecommendation(r) {
+            const { best, moves, gws, ft, horizon } = r;
+            const span = `GW${gws[0]}–GW${gws[gws.length - 1]}`;
+            const sampleNote = r.sample != null && r.sample < 4
+                ? `<p class="twr-caveat">Based on ${r.sample} gameweek${r.sample === 1 ? '' : 's'} of this season. Projections lean heavily on position baselines this early, so treat a small edge as noise rather than a signal.</p>`
+                : '';
+
+            if (best.n === 0) {
+                const nearest = moves[0];
+                return `
+                    <div class="twr-verdict hold">
+                        <div class="twr-verdict-icon">✋</div>
+                        <div>
+                            <div class="twr-verdict-title">Hold — no transfer worth making</div>
+                            <div class="twr-verdict-sub">${r.noLegalMove
+                                ? `No legal move is available: everything that would improve the squad is either unaffordable or blocked by the three-players-per-club limit.`
+                                : `Nothing on the market beats what you already have by enough to justify the move over ${span}.`}</div>
+                        </div>
+                    </div>
+                    ${nearest ? `<div class="twr-nearest">
+                        <span class="twr-nearest-l">Closest thing to a move</span>
+                        <div class="twr-move">
+                            <span class="twr-out">${escHTML(nearest.out.name)}</span>
+                            <span class="twr-arrow">→</span>
+                            <span class="twr-in">${escHTML(nearest.in.name)}</span>
+                            <span class="twr-gain ${nearest.gain > 0 ? 'pos' : 'neg'}">${nearest.gain >= 0 ? '+' : ''}${nearest.gain.toFixed(1)} xP</span>
+                        </div>
+                        <p class="twr-nearest-note">
+                            ${nearest.gain <= 0
+                                ? 'Every option projects worse than the player you would sell.'
+                                : `A ${nearest.gain.toFixed(1)}-point edge across five gameweeks is inside the model's own error bar. Banking the transfer keeps two available next week.`}
+                        </p>
+                    </div>` : ''}
+                    ${sampleNote}`;
+            }
+
+            const hitLine = best.cost > 0
+                ? `<span class="twr-cost">−${best.cost} for the hit</span>`
+                : `<span class="twr-free">within your ${ft} free transfer${ft === 1 ? '' : 's'}</span>`;
+
+            return `
+                <div class="twr-verdict act">
+                    <div class="twr-verdict-icon">${best.n === 1 ? '🔁' : '⚡'}</div>
+                    <div>
+                        <div class="twr-verdict-title">Make ${best.n} transfer${best.n === 1 ? '' : 's'}</div>
+                        <div class="twr-verdict-sub">
+                            <strong>+${best.net.toFixed(1)} xP</strong> over ${span}
+                            (${best.gross.toFixed(1)} gained, ${hitLine})
+                        </div>
+                    </div>
+                </div>
+                <div class="twr-moves">
+                    ${best.moves.map(m => `
+                        <div class="twr-move-card">
+                            <div class="twr-move">
+                                <span class="twr-out">${escHTML(m.out.name)}<small>£${(m.out.sellPrice || m.out.price).toFixed(1)}m · ${m.outXP.toFixed(1)} xP</small></span>
+                                <span class="twr-arrow">→</span>
+                                <span class="twr-in">${escHTML(m.in.name)}<small>£${m.in.price.toFixed(1)}m · ${m.inXP.toFixed(1)} xP</small></span>
+                                <span class="twr-gain pos">+${m.gain.toFixed(1)}</span>
+                            </div>
+                            <p class="twr-why">${escHTML(twMoveReason(m, gws))}</p>
+                        </div>`).join('')}
+                </div>
+                <button class="twr-apply" onclick="twApplyRecommendation()">Load these into the transfer planner</button>
+                ${sampleNote}`;
+        }
+
+        // Why this move, in the model's own terms rather than a generic blurb.
+        function twMoveReason(m, gws) {
+            const bits = [];
+            if (m.out.status === 'i' || m.out.status === 'u' || m.out.status === 's') {
+                bits.push(`${m.out.name} cannot play`);
+            } else if (m.out.status === 'd') {
+                bits.push(`${m.out.name} is carrying a doubt`);
+            }
+            const outFx = (m.out.fixtures || []).slice(0, gws.length).map(f => f.difficulty || 3);
+            const inFx = (m.in.fixtures || []).slice(0, gws.length).map(f => f.difficulty || 3);
+            const avg = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 3;
+            const outAvg = avg(outFx), inAvg = avg(inFx);
+            if (inAvg <= outAvg - 0.4) {
+                bits.push(`kinder run ahead (${inAvg.toFixed(1)} against ${outAvg.toFixed(1)} average difficulty)`);
+            }
+            const priceDiff = m.in.price - (m.out.sellPrice || m.out.price);
+            if (priceDiff <= -0.4) bits.push(`frees £${Math.abs(priceDiff).toFixed(1)}m`);
+            else if (priceDiff >= 0.4) bits.push(`costs £${priceDiff.toFixed(1)}m more`);
+            if (!bits.length) bits.push(`projects ${m.gain.toFixed(1)} points better across the window`);
+            return bits.join(' · ');
+        }
+
+        // Drop the recommendation into the planner so it can be reviewed and edited
+        // rather than applied blind.
+        let twLastRecommendation = null;
+        function twApplyRecommendation() {
+            const r = twLastRecommendation;
+            if (!r || !r.best || !r.best.moves.length) return;
+            transferState.pending = r.best.moves.map(m => ({ soldPlayer: m.out, replacement: m.in }));
+            transferState.activeSlot = -1;
+            transferState.mode = 'squad';
+            renderTWAll();
+            updateStatus(`Loaded ${r.best.moves.length} recommended transfer${r.best.moves.length === 1 ? '' : 's'} — review before confirming`, 'success');
         }
 
         function renderTWAll() {
