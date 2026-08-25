@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=54">
-    <link rel="stylesheet" href="styles/v2-design.css?v=54">
+    <link rel="stylesheet" href="styles/common.css?v=55">
+    <link rel="stylesheet" href="styles/v2-design.css?v=55">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -791,6 +791,27 @@
         }
         .v2-pitch-title { font-size: 17px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); }
         .v2-pitch-formation { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-full); }
+        /* --- live gameweek --- */
+        .v2-live-card { border-color: var(--color-primary); }
+        .v2-live-dot {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            background: #DC2626; margin-right: 2px;
+            animation: v2LivePulse 1.8s ease-in-out infinite;
+        }
+        @keyframes v2LivePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+        @media (prefers-reduced-motion: reduce) {
+            .v2-live-dot { animation: none; }
+        }
+        .v2-live-bonus {
+            font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+            color: var(--color-primary); background: var(--color-primary-muted);
+            padding: 2px 8px; border-radius: var(--radius-full); margin-left: 8px;
+            vertical-align: middle;
+        }
+        /* Arrows carry the direction as well as the colour. */
+        .v2-live-up { color: #15803D; font-weight: 650; }
+        .v2-live-down { color: #B91C1C; font-weight: 650; }
+        .v2-live-note { opacity: 0.85; }
         .v2-pitch-head-right { display: inline-flex; align-items: center; gap: 8px; }
         .v2-pitch-xitotal {
             font-family: var(--font-mono); font-size: 11px; font-weight: 700;
@@ -3587,9 +3608,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/xp-engine.js?v=54"></script>
-    <script src="scripts/common.js?v=54"></script>
-    <script src="scripts/sidebar-nav.js?v=54"></script>
+    <script src="scripts/xp-engine.js?v=55"></script>
+    <script src="scripts/live-gw.js?v=55"></script>
+    <script src="scripts/common.js?v=55"></script>
+    <script src="scripts/sidebar-nav.js?v=55"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4000,7 +4022,7 @@
         }
 
         // ===== STATUS STRIP: deadline hero + GW points / rank / league / value =====
-        function renderStatusStrip({ teamName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta,
+        function renderStatusStrip({ live, teamName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta,
                                      pointsDiff, deadlineTime, deadlineGW, avgFDR, captainRec, leagueInfo }) {
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
             el('heroTeamName', teamName || 'My Team');
@@ -4070,13 +4092,47 @@
             }
 
             let stackHtml = '';
-            stackHtml += `<div class="v2-stat-card">
-                <div>
-                    <div class="v2-stat-label"><i data-lucide="zap" class="icon"></i> GW${currentGW} Points</div>
-                    <div class="v2-stat-value">${gwPoints}</div>
-                    ${gwRank ? `<div class="v2-stat-sub">GW rank: ${gwRank.toLocaleString()}</div>` : ''}
-                </div>
-            </div>`;
+            if (live) {
+                /* Bonus is kept out of the headline number. It is the one figure
+                   here that is not yet real — the game has not confirmed it — and
+                   a total that silently blends confirmed and projected points
+                   cannot tell the manager which part of their score is safe. */
+                const confirmed = live.points;
+                const withBonus = live.points + live.projBonus;
+                const vsAvg = live.average ? withBonus - live.average : null;
+                const played = live.finished + live.inPlay;
+                stackHtml += `<div class="v2-stat-card v2-live-card">
+                    <div>
+                        <div class="v2-stat-label">
+                            <span class="v2-live-dot" aria-hidden="true"></span> GW${currentGW} Live
+                        </div>
+                        <div class="v2-stat-value">${confirmed}${live.projBonus > 0
+                            ? `<span class="v2-live-bonus" title="Projected bonus from the BPS table. Not yet confirmed by the game.">+${live.projBonus} bonus</span>`
+                            : ''}</div>
+                        <div class="v2-stat-sub">
+                            ${live.toPlay > 0
+                                ? `${live.toPlay} player${live.toPlay === 1 ? '' : 's'} still to play`
+                                : 'All players have featured'}${live.inPlay > 0 ? ` · ${live.inPlay} on the pitch` : ''}
+                        </div>
+                        ${vsAvg !== null ? `<div class="v2-stat-sub">
+                            <span class="${vsAvg >= 0 ? 'v2-live-up' : 'v2-live-down'}">
+                                ${vsAvg >= 0 ? '▲' : '▼'} ${Math.abs(vsAvg)} ${vsAvg >= 0 ? 'above' : 'below'} the gameweek average
+                            </span> (${live.average})
+                        </div>` : ''}
+                        ${live.projBonus > 0 ? `<div class="v2-stat-sub v2-live-note">
+                            ${withBonus} with projected bonus included
+                        </div>` : ''}
+                    </div>
+                </div>`;
+            } else {
+                stackHtml += `<div class="v2-stat-card">
+                    <div>
+                        <div class="v2-stat-label"><i data-lucide="zap" class="icon"></i> GW${currentGW} Points</div>
+                        <div class="v2-stat-value">${gwPoints}</div>
+                        ${gwRank ? `<div class="v2-stat-sub">GW rank: ${gwRank.toLocaleString()}</div>` : ''}
+                    </div>
+                </div>`;
+            }
             stackHtml += `<div class="v2-stat-card">
                 <div>
                     <div class="v2-stat-label"><i data-lucide="trophy" class="icon"></i> Overall Rank</div>
@@ -4879,7 +4935,32 @@
                     }
                 }
 
+                /* Live gameweek. While matches are in play the official data leaves
+                   `bonus` at zero until each fixture finishes, so a score read off
+                   total_points alone is short by up to three points a player. The
+                   projection is computed from the BPS table, which is exact rather
+                   than estimated — validated against a settled gameweek, where it
+                   reproduced all 64 awarded bonus points with no mismatches. */
+                let live = null;
+                if (typeof liveIsInPlay === 'function' && liveIsInPlay(fixturesData, currentGW)) {
+                    try {
+                        const { byId, byFixture } = await liveFetchStats(currentGW);
+                        const pending = livePendingBonusFixtures(fixturesData, currentGW);
+                        const projBonus = liveProjectedBonus(byFixture, pending);
+                        const score = liveSquadScore(picksData.picks, byId, projBonus,
+                            { activeChip: picksData.active_chip });
+                        live = Object.assign(score, {
+                            average: currEvent ? (currEvent.average_entry_score || 0) : 0
+                        });
+                    } catch (e) {
+                        // A live fetch failing must not take the dashboard down with
+                        // it; the panel simply stays in its pre-deadline form.
+                        console.warn('Live gameweek unavailable:', e.message);
+                    }
+                }
+
                 renderStatusStrip({
+                    live,
                     teamName: managerData.name,
                     currentGW,
                     rank: rankRaw,
