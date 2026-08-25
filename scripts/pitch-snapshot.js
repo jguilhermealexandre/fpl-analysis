@@ -66,12 +66,67 @@
         // projection, because the fixture panel quotes the same numbers. Two copies
         // would drift, and a panel that disagrees with the xP on the card is worse
         // than no panel at all.
-        function cleanSheetProbFor(teamId, fdr) {
+        /* Goals a team is expected to concede in one specific fixture.
+
+           This used to be answered from the team's own season average plus a
+           fixture-difficulty nudge, which asked nothing about who they were
+           actually playing. FDR is a blunt proxy — it rates the badge, not the
+           opponent's current attack, and it is identical home and away. The
+           venue-split attack and defence powers needed to do better were already
+           being computed and were going unused.
+
+           Both sides are expressed as multipliers around the league's ~1.4 goals
+           a game: a defence rated 50 is neutral, 100 halves what it concedes, 0
+           doubles it, and the same for the opponent's attack. */
+        const LEAGUE_GOALS_PER_TEAM = 1.4;
+
+        function expectedGoalsAgainst(teamId, fixture) {
             const ta = teamAnalysis[teamId];
-            const conceded = ta && ta.matchesPlayed > 0 ? ta.avgConceded : 1.4;
-            let csProb = 0.33 - (conceded - 1.3) * 0.16 + (3 - (fdr || 3)) * 0.06;
-            if (ta) csProb += (ta.defensePower - 50) / 600;
-            return Math.max(0.03, Math.min(0.65, csProb));
+            const isHome = fixture ? !!fixture.isHome : true;
+            const oppId = fixture ? fixture.opponentId : null;
+            const opp = oppId != null ? teamAnalysis[oppId] : null;
+
+            // Own defence at this venue, falling back to the overall figure.
+            const defPower = ta
+                ? (isHome ? (ta.defensePowerHome ?? ta.defensePower) : (ta.defensePowerAway ?? ta.defensePower))
+                : 50;
+            // The opponent attacks at the opposite venue to ours.
+            const attPower = opp
+                ? (isHome ? (opp.attackPowerAway ?? opp.attackPower) : (opp.attackPowerHome ?? opp.attackPower))
+                : 50;
+
+            // 50 is neutral; each 50 points of rating scales the rate by half.
+            const defFactor = Math.max(0.45, Math.min(1.9, 1 - (defPower - 50) / 100));
+            const attFactor = Math.max(0.45, Math.min(1.9, 1 + (attPower - 50) / 100));
+            // Home sides concede a little less; the split powers carry most of it
+            // already, so this is a light touch rather than a full adjustment.
+            const venueFactor = isHome ? 0.94 : 1.06;
+
+            let xga = LEAGUE_GOALS_PER_TEAM * defFactor * attFactor * venueFactor;
+
+            // Blend in what the team has actually conceded once there is a sample
+            // worth blending — ratings are priors, results are evidence.
+            if (ta && ta.matchesPlayed > 0) {
+                const w = Math.min(1, ta.matchesPlayed / 6) * 0.5;
+                xga = xga * (1 - w) + (ta.avgConceded * (attFactor / 1.0)) * w;
+            }
+            // No opponent known (a blank, or data missing) — fall back to the
+            // fixture rating so the number still moves with difficulty.
+            if (!opp && fixture) {
+                xga *= 1 + ((fixture.difficulty || 3) - 3) * 0.12;
+            }
+            return Math.max(0.25, Math.min(4.0, xga));
+        }
+
+        // A clean sheet is simply no goals conceded, so it is the zero bucket of a
+        // Poisson at that expected-goals-against.
+        function cleanSheetProbFor(teamId, fixtureOrFdr) {
+            // Back-compatible: older callers pass a bare FDR number.
+            const fixture = (fixtureOrFdr && typeof fixtureOrFdr === 'object')
+                ? fixtureOrFdr
+                : { isHome: true, opponentId: null, difficulty: fixtureOrFdr || 3 };
+            const xga = expectedGoalsAgainst(teamId, fixture);
+            return Math.max(0.02, Math.min(0.70, Math.exp(-xga)));
         }
 
         // Per-90 rates off a one-gameweek sample are wild (one goal = a huge
@@ -155,7 +210,23 @@
                 : 1;
             const games = computePlayerGamesPlayed(player);
             const mpg = (player.minutes || 0) / Math.max(games, 1);
-            let pStart = mpg >= 80 ? 0.92 : mpg >= 60 ? 0.75 : mpg >= 30 ? 0.45 : mpg > 0 ? 0.2 : 0.08;
+
+            // Minutes alone cannot tell a starter from a substitute: ninety minutes
+            // across one start and ninety across three cameos look identical, and
+            // the second player is not a 0.92 to start. FPL publishes a starts
+            // count, so use the rate directly and let minutes per game refine it.
+            const starts = player.starts || 0;
+            const startRate = games > 0 ? Math.min(1, starts / games) : 0;
+            const minutesSignal = mpg >= 80 ? 0.92 : mpg >= 60 ? 0.75 : mpg >= 30 ? 0.45 : mpg > 0 ? 0.2 : 0.08;
+
+            // Lean on the starts rate once there are a couple of matches behind it;
+            // before that it is one coin flip and minutes are the steadier read.
+            const wStarts = Math.min(1, games / 3);
+            let pStart = wStarts * startRate + (1 - wStarts) * minutesSignal;
+            // A player who starts every week but is routinely hooked early is still
+            // a starter; one who has never started is not, whatever his minutes.
+            if (starts === 0 && games > 0) pStart = Math.min(pStart, 0.22);
+            pStart = Math.max(0.03, Math.min(0.96, pStart));
             pStart *= avail;
             // Starters play most of the match; everyone else gets a cameo.
             const expMins = pStart * 82 + (1 - pStart) * 12;
@@ -193,9 +264,8 @@
             const goalPts = player.position <= 2 ? 6 : player.position === 3 ? 5 : 4;
             out.attack = (xg90 * goalPts + xa90 * 3) * min90 * attackAdj;
 
-            const csProb = cleanSheetProbFor(player.teamId, fdr);
-            const ta = teamAnalysis[player.teamId];
-            const conceded = ta && ta.matchesPlayed > 0 ? ta.avgConceded : 1.4;
+            const csProb = cleanSheetProbFor(player.teamId, fx || fdr);
+            const xga = expectedGoalsAgainst(player.teamId, fx || { isHome: true, opponentId: null, difficulty: fdr });
 
             const csPts = player.position <= 2 ? 4 : player.position === 3 ? 1 : 0;
             out.cleanSheet = csProb * csPts * pStart;
@@ -209,9 +279,14 @@
                 const saves90 = wS * own90 + (1 - wS) * 2.8;
                 out.saves = (saves90 / 3) * min90;
             }
-            // -1 per 2 goals conceded, only when the clean sheet doesn't happen.
+            // -1 per 2 goals conceded. Driven by the same fixture-specific expected
+            // goals against as the clean sheet above, so facing the best attack in
+            // the division and facing the worst no longer carry the same deduction
+            // — previously this was a flat season average whatever the opponent.
             if (player.position <= 2) {
-                out.conceded = -((conceded * (1 - csProb)) / 2) * pStart;
+                // Expected conceded given at least one went in.
+                const givenConceded = csProb < 0.999 ? (xga / (1 - csProb)) : xga;
+                out.conceded = -((givenConceded * (1 - csProb)) / 2) * pStart;
             }
 
             // Same treatment: three bonus points in one appearance is a result, not

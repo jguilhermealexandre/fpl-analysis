@@ -651,15 +651,21 @@
             };
 
             // 1. AVAILABILITY (Critical — overrides baseline)
+            // Tracked separately as well as added, because the squad health score
+            // applies its own availability and form penalties and would otherwise
+            // charge for both twice over.
+            let availPenalty = 0, formPenaltyApplied = 0;
             if (player.status === 'i' || player.status === 'u' || player.status === 's') {
-                sellRating += sensAdj(40);
+                availPenalty = sensAdj(40);
+                sellRating += availPenalty;
                 const statusText = player.status === 'i' ? 'Injured' : player.status === 'u' ? 'Unavailable' : 'Suspended';
                 concerns.push({ type: 'critical', title: statusText, text: player.news || 'Check team news for updates' });
                 reasons.push(`${statusText} — cannot play`);
             } else if (player.status === 'd') {
                 const chance = player.chanceNextRound;
                 const penalty = chance !== null ? Math.round((100 - chance) * 0.4) : 22;
-                sellRating += sensAdj(penalty);
+                availPenalty = sensAdj(penalty);
+                sellRating += availPenalty;
                 concerns.push({ type: 'warning', title: 'Doubtful', text: `${chance !== null ? chance + '% chance' : '75% chance'} of playing. ${player.news || ''}` });
                 if (penalty >= 18) reasons.push('Significant injury doubt');
             }
@@ -670,6 +676,7 @@
             const rawFormPenalty = Math.max(-30, Math.min(30, Math.round(-formDelta * 10)));
             const formPenalty = sensAdj(rawFormPenalty, userSettings.formWeight);
             sellRating += formPenalty;
+            formPenaltyApplied = formPenalty;
 
             if (formDelta <= -1.5) {
                 concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${effectiveForm.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian} — consider selling before price drops` });
@@ -920,7 +927,8 @@
             }
 
             const keyMetric = buildKeyMetrics(player, posConfig, minsPerGame, avgFDR);
-            return { player, sellRating, verdict, verdictReason, recommendation, concerns, positives, keyMetric, fixtures: fixtures.slice(0, 5) };
+            return { player, sellRating, verdict, verdictReason, recommendation, concerns, positives, keyMetric,
+                availPenalty, formPenalty: formPenaltyApplied, fixtures: fixtures.slice(0, 5) };
         }
 
         function buildKeyMetrics(player, posConfig, minsPerGame, avgFDR) {
@@ -954,9 +962,19 @@
             // Calculate team health score (multi-factor)
             const starters = analysisResults.filter(a => !a.player.onBench);
             const bench = analysisResults.filter(a => a.player.onBench);
-            const starterAvg = starters.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(starters.length, 1);
-            const benchAvg = bench.reduce((s, a) => s + (100 - a.sellRating), 0) / Math.max(bench.length, 1);
-            let healthScore = starterAvg * 0.80 + benchAvg * 0.20;
+            // sellRating already contains an availability charge (up to +40) and a
+            // form charge (up to ±30). The explicit penalties further down charge
+            // for both again, so an injured starter was being docked twice — once
+            // through the average, once through the subtraction. Strip those two
+            // components out of the base so each factor is counted exactly once
+            // and the explicit weights below mean what they say.
+            const baseQuality = a => 100 - (a.sellRating - (a.availPenalty || 0) - (a.formPenalty || 0));
+            const starterAvg = starters.reduce((s, a) => s + baseQuality(a), 0) / Math.max(starters.length, 1);
+            const benchAvg = bench.reduce((s, a) => s + baseQuality(a), 0) / Math.max(bench.length, 1);
+            // A bench player scores nothing in a normal gameweek, so squad health
+            // is overwhelmingly about the eleven who play; the bench counts as
+            // cover rather than as a fifth of the answer.
+            let healthScore = starterAvg * 0.88 + benchAvg * 0.12;
 
             // One aggregated breakdown of what's dragging the score down, instead of
             // a scrolling list of individually-phrased warnings that repeated the
@@ -970,9 +988,10 @@
             // The intent was "out of form and not already counted as unavailable".
             const poorFormStarters = starters.filter(a => parseFloat(a.player.form) < 2.5 && a.player.status === 'a');
 
-            healthScore -= injuredStarters.length * 5;
-            healthScore -= doubtfulStarters.length * 2;
-            healthScore -= poorFormStarters.length * 2;
+            // Each of these is now the only place its factor is charged.
+            healthScore -= injuredStarters.length * 8;
+            healthScore -= doubtfulStarters.length * 3;
+            healthScore -= poorFormStarters.length * 3;
             healthScore -= Math.min(6, toughFixtureStarters.length * 1.5);
 
             const capAnalysis = starters.find(a => a.player.isCaptain);
