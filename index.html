@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=60">
-    <link rel="stylesheet" href="styles/v2-design.css?v=60">
+    <link rel="stylesheet" href="styles/common.css?v=61">
+    <link rel="stylesheet" href="styles/v2-design.css?v=61">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3656,11 +3656,11 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/xp-engine.js?v=60"></script>
-    <script src="scripts/live-gw.js?v=60"></script>
-    <script src="scripts/transfer-engine.js?v=60"></script>
-    <script src="scripts/common.js?v=60"></script>
-    <script src="scripts/sidebar-nav.js?v=60"></script>
+    <script src="scripts/xp-engine.js?v=61"></script>
+    <script src="scripts/live-gw.js?v=61"></script>
+    <script src="scripts/transfer-engine.js?v=61"></script>
+    <script src="scripts/common.js?v=61"></script>
+    <script src="scripts/sidebar-nav.js?v=61"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4509,7 +4509,12 @@
                     <span class="v2-pitch-token-opp">${oppTxt}</span>
                     ${xp != null
                         ? `<span class="v2-pitch-token-xp">${xp.toFixed(1)}<span class="u">xP</span>${
-                            mins != null ? `<span class="v2-pitch-token-mins${mins.pStart < 0.65 ? ' risk' : ''}">${Math.round(mins.expMins)}'</span>` : ''
+                            /* Always shown. It varies for real now the model reads
+                               minutes continuously, and amber marks a genuine
+                               rotation risk rather than a full start cut short. */
+                            mins != null
+                                ? `<span class="v2-pitch-token-mins${mins.pStart < 0.65 ? ' risk' : ''}">${Math.round(mins.expMins)}'</span>`
+                                : ''
                           }</span>`
                         : `<span class="v2-pitch-token-pos">${posLabel}</span>`}
                     ${verdictMark}${statusIcon}

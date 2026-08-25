@@ -317,7 +317,15 @@
             // count, so use the rate directly and let minutes per game refine it.
             const starts = player.starts || 0;
             const startRate = games > 0 ? Math.min(1, starts / games) : 0;
-            const minutesSignal = mpg >= 80 ? 0.92 : mpg >= 60 ? 0.75 : mpg >= 30 ? 0.45 : mpg > 0 ? 0.2 : 0.08;
+            /* A continuous read of minutes, not a five-step ladder.
+
+               This was `mpg >= 80 ? 0.92 : mpg >= 60 ? 0.75 : ...`, which could not
+               tell ninety minutes from eighty-one, or seventy-nine from sixty-one.
+               Stacked with the two-point expected-minutes formula below it, the
+               whole model collapsed to five possible outputs across the entire
+               league — every player on the pitch reading 78' or 70'. Only visible
+               once the number was actually put on screen. */
+            const minutesSignal = Math.max(0, Math.min(1, (mpg - 8) / 70));
 
             // Lean on the starts rate once there are a couple of matches behind it;
             // before that it is one coin flip and minutes are the steadier read.
@@ -328,8 +336,18 @@
             if (starts === 0 && games > 0) pStart = Math.min(pStart, 0.22);
             pStart = Math.max(0.03, Math.min(0.96, pStart));
             pStart *= avail;
-            // Starters play most of the match; everyone else gets a cameo.
-            const expMins = pStart * 82 + (1 - pStart) * 12;
+            /* Minutes when he does start, taken from his own record rather than a
+               flat 82 for everybody. A player averaging 65 minutes a start is a
+               different asset to one who plays the full ninety, and the previous
+               formula treated them identically. Regressed toward a typical
+               starter's 80 while the sample is thin, so one early substitution
+               does not brand a player as a 60-minute man. */
+            const startEvidence = Math.min(1, starts / 3);
+            const ownMinsPerStart = starts > 0 ? Math.min(90, (player.minutes || 0) / starts) : 0;
+            const minsPerStart = starts > 0
+                ? ownMinsPerStart * startEvidence + 80 * (1 - startEvidence)
+                : 80;
+            const expMins = pStart * minsPerStart + (1 - pStart) * 12;
             return { pStart, expMins, min90: expMins / 90 };
         }
 
