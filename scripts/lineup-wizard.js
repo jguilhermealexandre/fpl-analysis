@@ -513,26 +513,8 @@
             return Math.round(score);
         }
 
-        function solveQuickLineup(squad) {
-            const validFormations = [[3,4,3],[3,5,2],[4,3,3],[4,4,2],[4,5,1],[5,3,2],[5,4,1],[5,2,3]];
-            const byPos = { 1: [], 2: [], 3: [], 4: [] };
-            squad.forEach(p => { if (p.lwScore > -100) byPos[p.pos].push(p); });
-            Object.values(byPos).forEach(a => a.sort((a, b) => b.lwScore - a.lwScore));
-            let bestFormation = null, bestScore = -Infinity, bestXI = null;
-            const formationScores = [];
-            for (const [nD, nM, nF] of validFormations) {
-                if (byPos[1].length < 1 || byPos[2].length < nD || byPos[3].length < nM || byPos[4].length < nF) continue;
-                const xi = [byPos[1][0], ...byPos[2].slice(0, nD), ...byPos[3].slice(0, nM), ...byPos[4].slice(0, nF)];
-                const total = xi.reduce((s, p) => s + p.lwScore, 0);
-                formationScores.push({ formation: `${nD}-${nM}-${nF}`, total });
-                if (total > bestScore) { bestScore = total; bestFormation = `${nD}-${nM}-${nF}`; bestXI = xi; }
-            }
-            formationScores.sort((a, b) => b.total - a.total);
-            if (!bestXI) { const av = squad.filter(p => p.lwScore > -100).sort((a, b) => b.lwScore - a.lwScore); bestXI = av.slice(0, 11); bestFormation = 'N/A'; }
-            const xiIds = new Set(bestXI.map(p => p.id));
-            const bench = squad.filter(p => !xiIds.has(p.id)).sort((a, b) => { if (a.pos === 1 && b.pos !== 1) return 1; if (b.pos === 1 && a.pos !== 1) return -1; return b.lwScore - a.lwScore; });
-            return { xi: bestXI, bench, formation: bestFormation, formationScores };
-        }
+        // solveQuickLineup now lives in scripts/transfer-engine.js — the transfer
+        // recommender needs it too, and two copies would drift.
 
         // ── LINEUP WIZARD: Detailed Score Breakdown ──
         function computeQuickLineupScoreDetailed(p) {

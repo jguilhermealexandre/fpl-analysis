@@ -725,11 +725,20 @@
         // Activate tab from hash on load
         (function() {
             const hashToTab = { squad: 'team', transfers: 'transfers', news: 'news', draft: 'draft', squadplanner: 'draft', transfer: 'transfer', lineup: 'lineup' };
-            const hash = window.location.hash.replace('#', '');
+            // A deep link carries parameters after the tab name — #transfers?out=1&in=2 —
+            // so match on the tab part alone or the lookup misses entirely.
+            const raw = window.location.hash.replace('#', '');
+            const hash = raw.split('?')[0];
             if (hashToTab[hash]) {
                 // Defer until after data loads — store desired tab
                 window._pendingTab = hashToTab[hash];
             }
+            /* Stash any deep-link parameters NOW. switchTab rewrites the hash to
+               the bare tab name via replaceState, so by the time the squad has
+               loaded and the transfer wizard runs, anything after the '?' is
+               already gone. */
+            const qi = raw.indexOf('?');
+            if (qi >= 0) window._pendingDeepLink = raw.slice(qi + 1);
         })();
 
         // ===== NEWS TAB =====
@@ -1619,29 +1628,8 @@
         const FIXTURE_GW_SPAN = 8;
 
         function processFixtures6(fixturesData) {
-            teamFixtures6 = {};
-            const upcoming = fixturesData.filter(f => !f.finished_provisional && f.event !== null).sort((a, b) => a.event - b.event);
-            Object.keys(teams).forEach(teamId => {
-                const tid = parseInt(teamId);
-                const seen = [];
-                const teamFix = upcoming.filter(f => {
-                    if (f.team_h !== tid && f.team_a !== tid) return false;
-                    if (seen.indexOf(f.event) === -1) {
-                        if (seen.length >= FIXTURE_GW_SPAN) return false;
-                        seen.push(f.event);
-                    }
-                    return true;
-                });
-                teamFixtures6[tid] = teamFix.map(f => {
-                    const isHome = f.team_h === tid;
-                    return {
-                        opponent: isHome ? teams[f.team_a]?.short_name : teams[f.team_h]?.short_name,
-                        opponentId: isHome ? f.team_a : f.team_h,
-                        difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
-                        isHome, event: f.event
-                    };
-                });
-            });
+            // Built by the shared engine, so the dashboard cannot drift from this.
+            teamFixtures6 = xpBuildTeamFixtures(fixturesData, teams, FIXTURE_GW_SPAN);
         }
 
         // Get per-player recent stats from players-data.json history

@@ -25,6 +25,46 @@
    Call xpEngineReady() to check the contract is satisfied before projecting.
    ============================================ */
 
+        /* Upcoming fixtures per team, keyed by team id — the input
+           projectPlayerPointsForGW reads.
+
+           Counted in whole GAMEWEEKS, not fixtures. A double gameweek spends two
+           slots on one gameweek, and a gameweek already under way still holds a
+           slot of its own, so counting fixtures silently loses coverage off the
+           end of the window. Filters on finished_provisional rather than
+           finished: a round reports finished_provisional first, and treating it
+           as still upcoming leaves settled matches in the planning window.
+
+           Shared so the squad page and the dashboard build the same window. */
+        function xpBuildTeamFixtures(fixturesData, teamsById, spanGws) {
+            const out = {};
+            const span = spanGws || 8;
+            const upcoming = (fixturesData || [])
+                .filter(f => !f.finished_provisional && f.event !== null)
+                .sort((a, b) => a.event - b.event);
+            Object.keys(teamsById || {}).forEach(key => {
+                const tid = parseInt(key, 10);
+                const seen = [];
+                out[tid] = upcoming.filter(f => {
+                    if (f.team_h !== tid && f.team_a !== tid) return false;
+                    if (seen.indexOf(f.event) === -1) {
+                        if (seen.length >= span) return false;
+                        seen.push(f.event);
+                    }
+                    return true;
+                }).map(f => {
+                    const isHome = f.team_h === tid;
+                    return {
+                        opponent: isHome ? teamsById[f.team_a]?.short_name : teamsById[f.team_h]?.short_name,
+                        opponentId: isHome ? f.team_a : f.team_h,
+                        difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
+                        isHome, event: f.event
+                    };
+                });
+            });
+            return out;
+        }
+
         /* Expected FPL points for the coming gameweek, built from the scoring
            rules rather than read off FPL's ep_next. ep_next is heavily regressed
            early in a season — capped at 4.0 across the whole game — so summing it

@@ -580,7 +580,15 @@
                 newsRendered = false;
                 transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null };
                 document.getElementById('tabBar').classList.add('visible');
-                if (window._pendingTab) { switchTab(window._pendingTab); window._pendingTab = null; }
+                if (window._pendingTab) {
+                    const pending = window._pendingTab;
+                    switchTab(pending); window._pendingTab = null;
+                    // A move handed over from the dashboard loads into the cart
+                    // once the squad is real; the wizard renders it from there.
+                    if (pending === 'transfers' && typeof twApplyDeepLink === 'function') {
+                        try { twApplyDeepLink(); } catch (e) { console.warn('Deep link ignored:', e.message); }
+                    }
+                }
             } catch (error) {
                 console.error('Error loading team:', error);
                 const friendly = error.message === 'HTTP 404'
@@ -1451,18 +1459,10 @@
             const rows = managerHistory?.current || [];
             if (!rows.length) return { count: 1, exact: false };
 
-            const chipByEvent = {};
-            (managerHistory?.chips || []).forEach(ch => { chipByEvent[ch.event] = ch.name; });
-
-            let ft = 1;
-            rows.forEach(row => {
-                if (row.event === 1) { ft = 1; return; }
-                const chip = chipByEvent[row.event];
-                if (chip !== 'wildcard' && chip !== 'freehit') {
-                    ft = Math.max(0, ft - (row.event_transfers || 0));
-                }
-                ft = Math.min(maxFreeTransfers, ft + 1);
-            });
+            // Replayed by the shared engine so the dashboard cannot drift from this.
+            const ft = typeof twDeriveFreeTransfers === 'function'
+                ? twDeriveFreeTransfers(rows, managerHistory?.chips, maxFreeTransfers)
+                : 1;
             // Only trustworthy if the history covers every gameweek up to now.
             const exact = rows.length >= (currentGW - (rows.some(r => r.event === currentGW) ? 0 : 1));
             return { count: ft, exact };

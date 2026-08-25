@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=56">
-    <link rel="stylesheet" href="styles/v2-design.css?v=56">
+    <link rel="stylesheet" href="styles/common.css?v=57">
+    <link rel="stylesheet" href="styles/v2-design.css?v=57">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -792,6 +792,13 @@
         .v2-pitch-title { font-size: 17px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); }
         .v2-pitch-formation { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-full); }
         .v2-attn-sev { font-size: 9px; line-height: 1; margin-right: 6px; flex: none; }
+        .v2-attn-sev.move { color: var(--color-primary); }
+        .v2-attn-sev.hold { color: var(--text-muted); }
+        a.v2-attn-row.sev-move {
+            border-left-color: var(--color-primary);
+            background: var(--color-primary-muted);
+        }
+        a.v2-attn-row.sev-move .v2-attn-row-name { font-weight: 650; }
         .v2-attn-sev.sell { color: var(--verdict-sell, #DC2626); }
         .v2-attn-sev.monitor { color: #D97706; }
         .sr-only {
@@ -3615,10 +3622,11 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/xp-engine.js?v=56"></script>
-    <script src="scripts/live-gw.js?v=56"></script>
-    <script src="scripts/common.js?v=56"></script>
-    <script src="scripts/sidebar-nav.js?v=56"></script>
+    <script src="scripts/xp-engine.js?v=57"></script>
+    <script src="scripts/live-gw.js?v=57"></script>
+    <script src="scripts/transfer-engine.js?v=57"></script>
+    <script src="scripts/common.js?v=57"></script>
+    <script src="scripts/sidebar-nav.js?v=57"></script>
     <script>
         initIcons();
         loadFooter();
@@ -3817,17 +3825,11 @@
         }
 
         function processFixtures(fixturesData, teams) {
-            const teamFixtures = {};
-            const upcoming = fixturesData.filter(f => !f.finished && f.event !== null).sort((a, b) => a.event - b.event);
-            Object.keys(teams).forEach(tid => {
-                const id = parseInt(tid);
-                const tf = upcoming.filter(f => f.team_h === id || f.team_a === id).slice(0, 5);
-                teamFixtures[id] = tf.map(f => {
-                    const isHome = f.team_h === id;
-                    return { opponent: isHome ? teams[f.team_a]?.short_name : teams[f.team_h]?.short_name, opponentId: isHome ? f.team_a : f.team_h, difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty, isHome, event: f.event };
-                });
-            });
-            return teamFixtures;
+            // Was its own copy, counting fixtures and filtering on `finished`
+            // rather than `finished_provisional` — the same two bugs already
+            // fixed in the shared builder. Five gameweeks is what the fixture
+            // strips on this page display.
+            return xpBuildTeamFixtures(fixturesData, teams, 5);
         }
 
         function analyzePlayerForTicker(player, posAvg, teamAnalysis, currentGW, settings) {
@@ -4223,7 +4225,7 @@
         }
 
         // ===== NEEDS YOUR ATTENTION =====
-        function renderAttentionGrid({ squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets }) {
+        function renderAttentionGrid({ transferRec, squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets }) {
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
 
             const xiItems = [];
@@ -4241,6 +4243,33 @@
             }
 
             const txItems = [];
+
+            /* The recommended move leads the column, because it is the only row
+               here that proposes a fix rather than reporting a symptom. It carries
+               the gain, the hit if there is one, and a deep link that arrives at
+               the planner with the move already loaded. */
+            if (transferRec && transferRec.best && transferRec.best.n > 0) {
+                const b = transferRec.best;
+                const span = `GW${transferRec.gws[0]}\u2013GW${transferRec.gws[transferRec.gws.length - 1]}`;
+                const moves = b.moves || [];
+                const names = moves.map(m => `${m.out.name} \u2192 ${m.in.name}`).join(', ');
+                const cost = b.cost > 0 ? `, after a \u2212${b.cost} hit` : ' on a free transfer';
+                const href = 'fpl-my-team-analysis.html#transfers?'
+                    + moves.map(m => `out=${m.out.id}&in=${m.in.id}`).join('&');
+                txItems.push({
+                    name: names,
+                    reason: `+${b.net.toFixed(1)} xP across ${span}${cost}`,
+                    severity: 'move',
+                    href
+                });
+            } else if (transferRec && transferRec.best && transferRec.best.n === 0) {
+                txItems.push({
+                    name: 'Hold',
+                    reason: 'No move clears its margin over the next five gameweeks',
+                    severity: 'hold',
+                    href: 'fpl-my-team-analysis.html#transfers'
+                });
+            }
             squad.forEach((p, i) => {
                 const a = analysisResults[i];
                 if (a && a.verdict === 'sell') txItems.push({ name: p.name, reason: a.topConcern || 'Rated Sell — consider moving on', severity: 'sell' });
@@ -4262,11 +4291,16 @@
                     items.slice(0, 6).forEach(it => {
                         // Severity was a border colour and nothing else, which a
                         // red-green deficiency cannot read. Add a glyph and a label.
-                        const sevMark = it.severity === 'sell'
-                            ? '<span class="v2-attn-sev sell" title="Urgent">▲</span>'
-                            : '<span class="v2-attn-sev monitor" title="Worth watching">●</span>';
-                        rowsHtml += `<a href="${linkBase}" class="v2-attn-row${it.severity === 'sell' ? ' sev-sell' : ''}">
-                            <span class="sr-only">${it.severity === 'sell' ? 'Urgent: ' : 'Monitor: '}</span>
+                        const sevMap = {
+                            sell:    ['sell',    '\u25B2', 'Urgent',      'Urgent: '],
+                            move:    ['move',    '\u21C4', 'Recommended', 'Recommended move: '],
+                            hold:    ['hold',    '\u2014', 'Hold',        'Hold: '],
+                            monitor: ['monitor', '\u25CF', 'Worth watching', 'Monitor: ']
+                        };
+                        const sev = sevMap[it.severity] || sevMap.monitor;
+                        const sevMark = `<span class="v2-attn-sev ${sev[0]}" title="${sev[2]}">${sev[1]}</span>`;
+                        rowsHtml += `<a href="${it.href || linkBase}" class="v2-attn-row${it.severity === 'sell' ? ' sev-sell' : ''}${it.severity === 'move' ? ' sev-move' : ''}">
+                            <span class="sr-only">${sev[3]}</span>
                             ${sevMark}<span class="v2-attn-row-name">${esc(it.name)}</span>
                             <span class="v2-attn-row-reason">${esc(it.reason)}</span>
                             <span class="v2-attn-row-arrow"><i data-lucide="arrow-right" class="icon"></i></span>
@@ -4786,12 +4820,24 @@
                 window.currentGW = currentGW;
                 window.isPreseason = false;
                 window.computePlayerGamesPlayed = function () { return Math.max(currentGW - 1, 1); };
+                // scripts/transfer-engine.js plans its window from these.
+                window.allFixtures = fixturesData;
+                // The recommender projects gameweek by gameweek, so it needs the
+                // wider window rather than the five the strips display.
+                window.teamFixtures6 = xpBuildTeamFixtures(fixturesData, teams, 8);
+                // The candidate pool it searches. Local to this function otherwise,
+                // which the engine cannot see.
+                window.allPlayers = allPlayers;
 
                 // Build squad from picks (merge pick-level fields)
                 const squad = picksData.picks.map(pick => {
                     const p = playersById[pick.element];
                     if (!p) return null;
-                    return { ...p, isCaptain: pick.is_captain, isViceCaptain: pick.is_vice_captain, multiplier: pick.multiplier, pickPosition: pick.position };
+                    // sellPrice matters: the recommender budgets against what a
+                    // player would actually raise, not his current list price.
+                    return { ...p, isCaptain: pick.is_captain, isViceCaptain: pick.is_vice_captain,
+                        multiplier: pick.multiplier, pickPosition: pick.position,
+                        sellPrice: pick.selling_price != null ? pick.selling_price / 10 : p.price };
                 }).filter(Boolean);
 
                 // Load sensitivity preset from squad analysis settings
@@ -4993,6 +5039,32 @@
                     }
                 }
 
+                /* The best move available, from the same recommender the squad page
+                   runs. Free transfers are replayed from the manager's history —
+                   without it the hit cost is wrong, and a recommendation that
+                   misprices a -4 is worse than none. One extra request, and it
+                   fails soft. */
+                let transferRec = null;
+                try {
+                    let freeTransfers = 1;
+                    try {
+                        const hRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`);
+                        const hist = await hRes.json();
+                        const maxFT = (bootData.game_settings?.max_extra_free_transfers ?? 4) + 1;
+                        freeTransfers = twDeriveFreeTransfers(hist.current, hist.chips, maxFT);
+                    } catch (e) { /* fall back to one, the season's opening position */ }
+
+                    if (typeof twBuildRecommendation === 'function') {
+                        transferRec = twBuildRecommendation({
+                            squad,
+                            bank,
+                            freeTransfers
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Transfer recommendation unavailable:', e.message);
+                }
+
                 renderStatusStrip({
                     live,
                     teamName: managerData.name,
@@ -5013,7 +5085,7 @@
                 });
                 if (leagueInfo) loadLeagueGap(leagueInfo.id, teamId, totalPointsRaw);
 
-                renderAttentionGrid({ squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets });
+                renderAttentionGrid({ transferRec, squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets });
                 renderPitchView({ squad, analysisResults });
                 renderPriceTicker(allPlayers, squad);
 

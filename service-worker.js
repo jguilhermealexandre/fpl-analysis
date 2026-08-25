@@ -23,6 +23,7 @@ const STATIC_ASSETS = [
   '/scripts/common.js',
   '/scripts/xp-engine.js',
   '/scripts/live-gw.js',
+  '/scripts/transfer-engine.js',
   '/scripts/players-ai.js',
   '/scripts/players-tables.js',
   '/nav.html',
