@@ -13,8 +13,9 @@
    ============================================ */
 
         // ===== TRANSFER SIDE PANEL (Phase 3) =====
-        // Reuses the same slide-out shell as openDetailPanel (#detailOverlay/#detailPanel),
-        // just populated with transfer-focused content instead — driven by the Transfer
+        // Reuses the same slide-out shell the fixture panel also uses (#detailOverlay/
+        // #detailPanel), just populated with transfer-focused content instead — driven
+        // by the Transfer
         // Wizard's actual scoring engine (calculateTransferScore via findTransferCandidates),
         // not the lighter findReplacements() formula used by Phase 2's inline quick-list.
         // Hands the pick over to the Transfer Wizard rather than duplicating its
@@ -1171,7 +1172,7 @@
             newsRendered = true;
         }
 
-        // ===== DETAIL PANEL =====
+        // ===== PLAYER DETAIL (inline squad-row expansion) =====
         // Where this player's projected points are expected to come from, plus the
         // set-piece duty that used to be crammed onto the pitch card. Every figure
         // is a component the projection already computes — nothing new is modelled
@@ -1230,7 +1231,7 @@
            Supported, all validated against the loaded squad so a stale link does
            nothing rather than something wrong:
 
-             #squad?player=123     open that player's detail panel
+             #squad?player=123     expand that player's inline detail row
              #squad?captain=123    move the armband to him
              #transfers?out=..&in=..   handled by twApplyDeepLink
 
@@ -1249,7 +1250,7 @@
                 if (typeof updateStatus === 'function') {
                     updateStatus(`Armband moved to ${target.player.name} — review before the deadline`, 'success');
                 }
-                openDetailPanel(capId);
+                if (typeof expandSquadRow === 'function') expandSquadRow(capId);
                 return true;
             }
 
@@ -1257,33 +1258,176 @@
             if (pid) {
                 if (!(analysisResults || []).some(a => a.player.id === pid)) return false;
                 window._pendingDeepLink = null;
-                openDetailPanel(pid);
+                if (typeof expandSquadRow === 'function') expandSquadRow(pid);
                 return true;
             }
             return false;
         }
 
-        function openDetailPanel(playerId) {
-            const analysis = analysisResults.find(a => a.player.id === playerId);
-            if (!analysis) return;
-            const { player, verdict, verdictReason, recommendation, concerns, positives, sellRating, keyMetric, fixtures } = analysis;
+        // Given a player, the opponent(s) they're about to face \u2014 form, attack,
+        // defence and how leaky each is ranked league-wide. "Form of the player"
+        // and "form of the team" both exist elsewhere in this panel already; this
+        // is the missing third leg, since a hot player facing a rock-bottom
+        // defence and the same player facing the league's best are not the same
+        // pick even though every one of their own numbers reads identically.
+        function renderOpponentSection(player, fixtures) {
+            const upcoming = (fixtures || []).slice(0, 3);
+            if (!upcoming.length) return '';
+            const ranks = typeof getDefensiveRanks === 'function' ? getDefensiveRanks() : { rank: {}, total: 20 };
+            const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+
+            const cards = upcoming.map(fx => {
+                const oppTA = teamAnalysis[fx.opponentId];
+                const ctx = typeof opponentContext === 'function' ? opponentContext(player.teamId, fx, ranks) : null;
+                const formWord = oppTA && oppTA.matchesPlayed
+                    ? (oppTA.formRating >= 55 ? 'In form' : oppTA.formRating < 40 ? 'Poor form' : 'Average form')
+                    : 'No form data yet';
+                return `<div class="opp-card">
+                    <div class="opp-card-head">
+                        <span class="opp-card-name">${fx.isHome ? 'vs' : '@'} ${escHTML(fx.opponent)}</span>
+                        <span class="dp-fix fdr-${fx.difficulty || 3}">GW${fx.event} \u00b7 FDR ${fx.difficulty || 3}</span>
+                    </div>
+                    <div class="opp-card-stats">
+                        ${oppTA ? `
+                        <span class="opp-stat" data-tooltip="${escHTML(fx.opponent)}'s form rating out of 100">Form <b>${oppTA.formRating}</b></span>
+                        <span class="opp-stat" data-tooltip="${escHTML(fx.opponent)}'s attack power out of 100">ATK <b>${oppTA.attackPower}</b></span>
+                        <span class="opp-stat" data-tooltip="${escHTML(fx.opponent)}'s defence power out of 100">DEF <b>${oppTA.defensePower}</b></span>` : ''}
+                        ${ctx && ctx.ranked ? `<span class="opp-stat" data-tooltip="Concedes ${ctx.conceded.toFixed(1)} a game \u2014 the ${ordinal(ctx.rank)} leakiest defence of ${ctx.total}">Concedes <b>${ctx.conceded.toFixed(1)}</b></span>` : ''}
+                    </div>
+                    <div class="opp-card-note">${formWord}${FDR_WORDS[fx.difficulty] ? ` \u00b7 ${FDR_WORDS[fx.difficulty]} fixture` : ''}</div>
+                </div>`;
+            }).join('');
+
+            return `<div class="detail-section">
+                <div class="detail-section-title">\u2694\ufe0f Opponent Form \u2014 Next ${upcoming.length}</div>
+                <div class="opp-cards">${cards}</div>
+            </div>`;
+        }
+
+        // Is a price move imminent? The official meter (price-watch.js) is the
+        // validated signal; the transfer-momentum heuristic is shown only as a
+        // softer fallback when the meter itself has nothing to say yet.
+        function renderPriceWatchSection(player) {
+            const locked = typeof pwIsLocked === 'function' && pwIsLocked(player);
+            const pw = !locked && typeof pwClassify === 'function'
+                ? pwClassify(player, typeof PW_TICKER_FLOOR !== 'undefined' ? PW_TICKER_FLOOR : 20)
+                : null;
+            const mom = typeof priceMomentum === 'function' ? priceMomentum(player) : null;
+
+            let body;
+            if (locked) {
+                body = `<div class="pw-row"><span class="pw-badge locked">\ud83d\udd12 Locked</span><span class="pw-text">Price changes are locked for this player right now.</span></div>`;
+            } else if (pw) {
+                const dirWord = pw.dir === 'rise' ? 'Rise' : 'Fall';
+                body = `<div class="pw-row">
+                    <span class="pw-badge ${pw.dir} ${pw.tier}">${pw.tier === 'due' ? `${dirWord} due` : `${Math.round(Math.abs(pw.progress))}% to ${dirWord.toLowerCase()}`}</span>
+                    <span class="pw-text">${escHTML(pwDetail(pw))}</span>
+                </div>`;
+            } else if (mom) {
+                body = `<div class="pw-row">
+                    <span class="pw-badge ${mom.rising ? 'rise' : 'fall'} soft">${escHTML(mom.label)}</span>
+                    <span class="pw-text">Net ${mom.net > 0 ? '+' : '\u2212'}${Math.abs(mom.net).toLocaleString()} transfers this gameweek \u2014 early momentum, not yet close to a change.</span>
+                </div>`;
+            } else {
+                body = `<div class="pw-row"><span class="pw-badge flat">Stable</span><span class="pw-text">No meaningful price-change signal right now.</span></div>`;
+            }
+
+            return `<div class="detail-section">
+                <div class="detail-section-title">\ud83d\udcb7 Price Watch</div>
+                ${body}
+            </div>`;
+        }
+
+        // The thorough written verdict the feature asks for: one paragraph that
+        // reads player form, team form, the fixture swing, the very next opponent
+        // and price momentum together, rather than leaving a manager to cross-
+        // reference five separate widgets themselves.
+        function buildPlayerNarrativeReport(player, analysis) {
+            const { verdict, verdictReason, concerns, positives } = analysis;
             const posConfig = POSITION_CONFIG[player.position];
-            document.getElementById('detailPanel').dataset.playerId = playerId;
+            const ta = teamAnalysis[player.teamId];
+            const swing = fixtureSwingData[player.teamId];
+            const fx = (player.fixtures || teamFixtures[player.teamId] || [])[0];
+            const oppTA = fx ? teamAnalysis[fx.opponentId] : null;
+            const effectiveForm = isPreseason ? (player.ppg || 0) : (parseFloat(player.form) || 0);
+
+            const sentences = [];
+
+            const verdictLead = {
+                star: `${player.name} is one of the stronger assets in this squad right now`,
+                hold: `${player.name} looks like a solid, low-drama hold`,
+                monitor: `${player.name} is worth keeping an eye on`,
+                sell: `${player.name} is flagged as a sell candidate`
+            }[verdict] || `${player.name}'s outlook is mixed`;
+            const reason = verdictReason ? verdictReason.charAt(0).toLowerCase() + verdictReason.slice(1) : '';
+            sentences.push(reason ? `${verdictLead} \u2014 ${reason}` : `${verdictLead}.`);
+
+            if (effectiveForm >= 6) sentences.push(`Individually, form is excellent at ${effectiveForm.toFixed(1)} points a game, well clear of the ${posConfig.short} median of ${posConfig.formMedian}.`);
+            else if (effectiveForm >= 4) sentences.push(`Form is solid at ${effectiveForm.toFixed(1)}, in line with a dependable ${posConfig.short}.`);
+            else if (effectiveForm > 0) sentences.push(`Form is soft at just ${effectiveForm.toFixed(1)}, below the ${posConfig.short} median of ${posConfig.formMedian}.`);
+
+            if (ta && ta.matchesPlayed > 0) {
+                const formWord = ta.formRating >= 55 ? 'in good form' : ta.formRating < 40 ? 'out of form' : 'showing average form';
+                sentences.push(`${player.team} are ${formWord} coming into this (W${ta.wins} D${ta.draws} L${ta.losses} in their last ${Math.min(ta.matchesPlayed, 5)}).`);
+            }
+
+            if (swing) {
+                sentences.push(swing.direction === 'improving'
+                    ? `Their fixtures ease up from GW${swing.swingGW} (FDR ${swing.currentFdr} \u2192 ${swing.futureFdr}) \u2014 a good moment to be holding or buying in.`
+                    : `Their fixtures get tougher from GW${swing.swingGW} (FDR ${swing.currentFdr} \u2192 ${swing.futureFdr}) \u2014 worth planning around.`);
+            }
+
+            if (fx && oppTA && oppTA.matchesPlayed) {
+                const oppFormWord = oppTA.formRating >= 55 ? 'good form' : oppTA.formRating < 40 ? 'poor form' : 'average form';
+                sentences.push(`Next up ${fx.isHome ? 'at home to' : 'away at'} ${fx.opponent}, who are in ${oppFormWord} (FDR ${fx.difficulty || 3}).`);
+            }
+
+            const pwLocked = typeof pwIsLocked === 'function' && pwIsLocked(player);
+            const pw = !pwLocked && typeof pwClassify === 'function' ? pwClassify(player, 20) : null;
+            if (pw) {
+                sentences.push(pw.tier === 'due'
+                    ? `The price meter is full \u2014 a ${pw.dir === 'rise' ? 'rise' : 'drop'} is due at the next update.`
+                    : `The price meter is ${Math.round(Math.abs(pw.progress))}% of the way to a ${pw.dir === 'rise' ? 'rise' : 'drop'}.`);
+            } else {
+                const mom = typeof priceMomentum === 'function' ? priceMomentum(player) : null;
+                if (mom) sentences.push(`Transfer momentum points toward a price ${mom.rising ? 'rise' : 'fall'} (${mom.label.toLowerCase()}), though it isn't close enough yet to call.`);
+            }
+
+            if (concerns.length) sentences.push(`${concerns.length} concern${concerns.length > 1 ? 's' : ''} flagged below${positives.length ? `, against ${positives.length} positive${positives.length > 1 ? 's' : ''}.` : '.'}`);
+            else if (positives.length) sentences.push(`No concerns flagged, and ${positives.length} positive${positives.length > 1 ? 's' : ''} working in their favour.`);
+
+            return sentences.join(' ');
+        }
+
+        // Builds the full inline player-detail card \u2014 everything that used to live
+        // in the right-side panel, reorganised under Player / Team / Opponents,
+        // plus the AI report, price watch and opponent-form sections. Returns a
+        // plain HTML string; the caller (squad-table-chart.js) drops it straight
+        // into the expanded row, so nothing here touches the DOM itself.
+        function buildPlayerDetailHTML(playerId) {
+            const analysis = analysisResults.find(a => a.player.id === playerId);
+            if (!analysis) return '';
+            const { player, verdict, verdictReason, recommendation, concerns, positives, sellRating, fixtures } = analysis;
+            const posConfig = POSITION_CONFIG[player.position];
             const gamesPlayed = Math.max(currentGW - 1, 1);
             const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
             const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
+            const statsScopeLabel = player.position === 1 ? 'Goalkeeping' : player.position === 2 ? 'Defensive' : 'Attacking';
 
-            document.getElementById('detailPlayerName').textContent = `${player.isCaptain ? '\ud83d\udc51 ' : ''}${player.name}`;
-            document.getElementById('detailPlayerMeta').innerHTML = `
+            let html = `<div class="pd-header">
                 <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
-                ${escHTML(player.team)} \u00b7 \u00a3${player.price.toFixed(1)}m \u00b7 ${player.ownership.toFixed(1)}% owned
-            `;
+                <span class="pd-header-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${escHTML(player.name)}</span>
+                <span class="pd-header-meta">${escHTML(player.team)} \u00b7 \u00a3${player.price.toFixed(1)}m \u00b7 ${player.ownership.toFixed(1)}% owned</span>
+            </div>`;
 
-            let html = '';
+            html += `<div class="detail-section pd-report">
+                <div class="detail-section-title">\ud83e\udde0 AI Report</div>
+                <div class="pd-report-text">${escHTML(buildPlayerNarrativeReport(player, analysis))}</div>
+            </div>`;
 
-            html += renderRoutesToPoints(player);
+            // ===== PLAYER =====
+            html += `<div class="pd-group"><div class="pd-group-title">\ud83d\udc64 Player</div>`;
 
-            // Verdict banner
             html += `<div class="detail-section">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
                     <div class="verdict-chip ${verdict}" style="font-size:13px;padding:6px 14px;">${verdict === 'star' ? '\u2605 STAR' : verdict.toUpperCase()}</div>
@@ -1293,10 +1437,6 @@
                 <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100</div>
             </div>`;
 
-            // Key Statistics with visual bars \u2014 stats/labels below are already position-branched
-            // (xGI/90 only for MID/FWD, CS/Saves vs Goals/Assists below); label the section so
-            // that's obvious rather than incidental.
-            const statsScopeLabel = player.position === 1 ? 'Goalkeeping' : player.position === 2 ? 'Defensive' : 'Attacking';
             html += `<div class="detail-section">
                 <div class="detail-section-title">\ud83d\udcca Key Statistics <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div class="detail-stats-grid">
@@ -1309,7 +1449,6 @@
                 </div>
             </div>`;
 
-            // Season numbers
             html += `<div class="detail-section">
                 <div class="detail-section-title">\ud83d\udcc8 Season Numbers <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
@@ -1330,39 +1469,9 @@
                 </div>
             </div>`;
 
-            // Team Analysis Context (enriched with season stats)
-            const detailTA = teamAnalysis[player.teamId];
-            const detailSS = seasonStats[player.teamId];
-            if (detailTA) {
-                const swingInfo = fixtureSwingData[player.teamId];
-                const swingHtml = swingInfo
-                    ? `<div style="margin-top:8px;padding:6px 10px;border-radius:var(--radius-sm);background:${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)'};border:1px solid ${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'};font-size:11px;color:${swingInfo.direction === 'improving' ? 'var(--color-success)' : 'var(--color-error)'}">${swingInfo.direction === 'improving' ? '\u25b2' : '\u25bc'} Fixtures ${swingInfo.direction} from GW${swingInfo.swingGW}: FDR ${swingInfo.currentFdr} \u2192 ${swingInfo.futureFdr}</div>`
-                    : '';
-                html += `<div class="detail-section">
-                    <div class="detail-section-title">\ud83c\udfe2 Team Context \u2014 ${escHTML(player.team)}</div>
-                    <div class="detail-stats-grid">
-                        ${renderDetailStat('Attack', detailTA.attackPower.toString(), detailTA.attackPower / 100, detailTA.attackPower >= 60 ? 'var(--verdict-hold)' : detailTA.attackPower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgGoals.toFixed(1)} goals/game`)}
-                        ${renderDetailStat('Defence', detailTA.defensePower.toString(), detailTA.defensePower / 100, detailTA.defensePower >= 60 ? 'var(--verdict-hold)' : detailTA.defensePower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgConceded.toFixed(1)} conceded/game`)}
-                        ${renderDetailStat('Form', detailTA.formRating.toString(), detailTA.formRating / 100, detailTA.formRating >= 60 ? 'var(--verdict-hold)' : detailTA.formRating < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `W${detailTA.wins} D${detailTA.draws} L${detailTA.losses} last 5`)}
-                        ${renderDetailStat('Fixtures', detailTA.fixtureScore.toString(), detailTA.fixtureScore / 100, detailTA.fixtureScore >= 60 ? 'var(--verdict-hold)' : detailTA.fixtureScore < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `Avg FDR ${detailTA.avgFdr.toFixed(1)}`)}
-                    </div>
-                    ${detailSS ? `
-                    <div style="margin-top:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
-                        <div class="metric-box"><div class="metric-label">Season</div><div class="metric-value neutral" style="font-size:11px;">W${detailSS.wins} D${detailSS.draws} L${detailSS.losses}</div></div>
-                        <div class="metric-box"><div class="metric-label">GF/GA</div><div class="metric-value ${detailSS.goalDiff > 0 ? 'good' : detailSS.goalDiff < -5 ? 'bad' : 'neutral'}" style="font-size:11px;">${detailSS.goalsFor}/${detailSS.goalsAgainst}</div></div>
-                        <div class="metric-box"><div class="metric-label">CS%</div><div class="metric-value ${detailSS.csPercent >= 35 ? 'good' : detailSS.csPercent < 20 ? 'bad' : 'neutral'}">${detailSS.csPercent}%</div></div>
-                        <div class="metric-box"><div class="metric-label">Pts</div><div class="metric-value neutral">${detailSS.points}</div></div>
-                    </div>
-                    <div style="margin-top:6px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
-                        <div class="metric-box"><div class="metric-label">\ud83c\udfe0 Home</div><div class="metric-value neutral" style="font-size:10px;">W${detailSS.homeW}/${detailSS.homeP} \u2022 ${detailSS.homeGF}GF ${detailSS.homeGA}GA \u2022 ${detailSS.homeCS}CS</div></div>
-                        <div class="metric-box"><div class="metric-label">\u2708\ufe0f Away</div><div class="metric-value neutral" style="font-size:10px;">W${detailSS.awayW}/${detailSS.awayP} \u2022 ${detailSS.awayGF}GF ${detailSS.awayGA}GA \u2022 ${detailSS.awayCS}CS</div></div>
-                    </div>
-                    ` : ''}
-                    ${swingHtml}
-                </div>`;
-            }
+            html += renderRoutesToPoints(player);
+            html += renderPriceWatchSection(player);
 
-            // Concerns
             if (concerns.length > 0) {
                 html += `<div class="detail-section">
                     <div class="detail-section-title">\u26a0\ufe0f Concerns (${concerns.length})</div>
@@ -1373,7 +1482,6 @@
                 </div>`;
             }
 
-            // Positives
             if (positives.length > 0) {
                 html += `<div class="detail-section">
                     <div class="detail-section-title">\u2705 Positives (${positives.length})</div>
@@ -1384,7 +1492,6 @@
                 </div>`;
             }
 
-            // Fixtures
             if (fixtures.length > 0) {
                 html += `<div class="detail-section">
                     <div class="detail-section-title">\ud83d\udcc5 Upcoming Fixtures</div>
@@ -1399,7 +1506,6 @@
                 </div>`;
             }
 
-            // Replacement suggestions (sell/monitor only)
             if (verdict === 'sell' || verdict === 'monitor') {
                 const replacements = findReplacements(player, 5);
                 if (replacements.length > 0) {
@@ -1437,8 +1543,48 @@
                 }
             }
 
-            document.getElementById('detailBody').innerHTML = html;
-            document.getElementById('detailOverlay').classList.add('show');
+            html += `</div>`; // end pd-group Player
+
+            // ===== TEAM =====
+            const detailTA = teamAnalysis[player.teamId];
+            const detailSS = seasonStats[player.teamId];
+            if (detailTA) {
+                const swingInfo = fixtureSwingData[player.teamId];
+                const swingHtml = swingInfo
+                    ? `<div style="margin-top:8px;padding:6px 10px;border-radius:var(--radius-sm);background:${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)'};border:1px solid ${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'};font-size:11px;color:${swingInfo.direction === 'improving' ? 'var(--color-success)' : 'var(--color-error)'}">${swingInfo.direction === 'improving' ? '\u25b2' : '\u25bc'} Fixtures ${swingInfo.direction} from GW${swingInfo.swingGW}: FDR ${swingInfo.currentFdr} \u2192 ${swingInfo.futureFdr}</div>`
+                    : '';
+                html += `<div class="pd-group"><div class="pd-group-title">\ud83c\udfe2 Team \u2014 ${escHTML(player.team)}</div>
+                <div class="detail-section">
+                    <div class="detail-stats-grid">
+                        ${renderDetailStat('Attack', detailTA.attackPower.toString(), detailTA.attackPower / 100, detailTA.attackPower >= 60 ? 'var(--verdict-hold)' : detailTA.attackPower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgGoals.toFixed(1)} goals/game`)}
+                        ${renderDetailStat('Defence', detailTA.defensePower.toString(), detailTA.defensePower / 100, detailTA.defensePower >= 60 ? 'var(--verdict-hold)' : detailTA.defensePower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgConceded.toFixed(1)} conceded/game`)}
+                        ${renderDetailStat('Form', detailTA.formRating.toString(), detailTA.formRating / 100, detailTA.formRating >= 60 ? 'var(--verdict-hold)' : detailTA.formRating < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `W${detailTA.wins} D${detailTA.draws} L${detailTA.losses} last 5`)}
+                        ${renderDetailStat('Fixtures', detailTA.fixtureScore.toString(), detailTA.fixtureScore / 100, detailTA.fixtureScore >= 60 ? 'var(--verdict-hold)' : detailTA.fixtureScore < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `Avg FDR ${detailTA.avgFdr.toFixed(1)}`)}
+                    </div>
+                    ${detailSS ? `
+                    <div style="margin-top:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+                        <div class="metric-box"><div class="metric-label">Season</div><div class="metric-value neutral" style="font-size:11px;">W${detailSS.wins} D${detailSS.draws} L${detailSS.losses}</div></div>
+                        <div class="metric-box"><div class="metric-label">GF/GA</div><div class="metric-value ${detailSS.goalDiff > 0 ? 'good' : detailSS.goalDiff < -5 ? 'bad' : 'neutral'}" style="font-size:11px;">${detailSS.goalsFor}/${detailSS.goalsAgainst}</div></div>
+                        <div class="metric-box"><div class="metric-label">CS%</div><div class="metric-value ${detailSS.csPercent >= 35 ? 'good' : detailSS.csPercent < 20 ? 'bad' : 'neutral'}">${detailSS.csPercent}%</div></div>
+                        <div class="metric-box"><div class="metric-label">Pts</div><div class="metric-value neutral">${detailSS.points}</div></div>
+                    </div>
+                    <div style="margin-top:6px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
+                        <div class="metric-box"><div class="metric-label">\ud83c\udfe0 Home</div><div class="metric-value neutral" style="font-size:10px;">W${detailSS.homeW}/${detailSS.homeP} \u2022 ${detailSS.homeGF}GF ${detailSS.homeGA}GA \u2022 ${detailSS.homeCS}CS</div></div>
+                        <div class="metric-box"><div class="metric-label">\u2708\ufe0f Away</div><div class="metric-value neutral" style="font-size:10px;">W${detailSS.awayW}/${detailSS.awayP} \u2022 ${detailSS.awayGF}GF ${detailSS.awayGA}GA \u2022 ${detailSS.awayCS}CS</div></div>
+                    </div>
+                    ` : ''}
+                    ${swingHtml}
+                </div>
+                </div>`; // end pd-group Team
+            }
+
+            // ===== OPPONENTS =====
+            const oppSection = renderOpponentSection(player, fixtures);
+            if (oppSection) {
+                html += `<div class="pd-group"><div class="pd-group-title">\u2694\ufe0f Opponents</div>${oppSection}</div>`;
+            }
+
+            return html;
         }
 
         function renderDetailStat(label, value, barPct, color, context) {
@@ -1454,18 +1600,6 @@
         function closeDetailPanel(event) {
             if (event && event.target !== event.currentTarget) return;
             document.getElementById('detailOverlay').classList.remove('show');
-        }
-
-        // Cycle to the previous/next player in pitch order (GK->DEF->MID->FWD->bench),
-        // so the panel can be paged through without closing it — the panel is a
-        // non-blocking companion drawer, so this is the fast path for browsing.
-        function navigateDetailPanel(direction) {
-            const ordered = [...analysisResults].sort((a, b) => a.player.pickPosition - b.player.pickPosition);
-            if (!ordered.length) return;
-            const currentId = parseInt(document.getElementById('detailPanel').dataset.playerId, 10);
-            const idx = ordered.findIndex(a => a.player.id === currentId);
-            const nextIdx = idx === -1 ? 0 : (idx + direction + ordered.length) % ordered.length;
-            openDetailPanel(ordered[nextIdx].player.id);
         }
 
         function findReplacements(player, count = 5) {

@@ -250,6 +250,29 @@
             return `<span class="team-context" data-tooltip="How ${escHTML(teamName)} are doing — club context, not this player's own form">${pills.join('')}</span>`;
         }
 
+        // Which squad rows currently have their inline detail expanded. A player
+        // id set rather than a single value — several can be open side by side,
+        // e.g. comparing your captain candidates without losing either's detail.
+        let expandedSquadRows = new Set();
+
+        function expandSquadRow(playerId) {
+            expandedSquadRows.add(playerId);
+            rerenderSquadFilteredViews();
+            requestAnimationFrame(() => {
+                const el = document.getElementById(`sq-row-detail-${playerId}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+
+        function toggleSquadRowDetail(playerId) {
+            if (expandedSquadRows.has(playerId)) {
+                expandedSquadRows.delete(playerId);
+                rerenderSquadFilteredViews();
+            } else {
+                expandSquadRow(playerId);
+            }
+        }
+
         function renderSquadRow(analysis) {
             const { player, verdict, fixtures } = analysis;
             const cols = computePlayerStatColumns(player);
@@ -263,11 +286,12 @@
             const hazardIcon = `<span class="sq-hazard-slot">${verdict === 'sell'
                 ? '<i data-lucide="alert-triangle" class="sq-hazard-icon" title="Flagged: high sell rating"></i>'
                 : ''}</span>`;
+            const isOpen = expandedSquadRows.has(player.id);
 
-            return `
+            const row = `
             <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''}" data-player-id="${player.id}" data-compare-row>
                 <input type="checkbox" class="compare-checkbox sq-compare-checkbox" data-player-id="${player.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${player.id})">
-                <div class="sq-row-clickable" onclick="openDetailPanel(${player.id})" title="View player profile">
+                <div class="sq-row-clickable" onclick="toggleSquadRowDetail(${player.id})" title="${isOpen ? 'Hide' : 'View'} player profile">
                     <div class="sq-row-main">
                         ${hazardIcon}
                         <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
@@ -285,7 +309,16 @@
                 <button class="sq-transfer-btn" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
                     <i data-lucide="repeat" style="width:14px;height:14px;"></i>
                 </button>
+                <button class="sq-expand-btn ${isOpen ? 'open' : ''}" onclick="event.stopPropagation(); toggleSquadRowDetail(${player.id})" title="${isOpen ? 'Collapse' : 'Expand'} full player detail" aria-label="${isOpen ? 'Collapse' : 'Expand'} full player detail" aria-expanded="${isOpen}">
+                    <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                </button>
             </div>`;
+
+            const detail = isOpen
+                ? `<div class="sq-row-detail" id="sq-row-detail-${player.id}">${buildPlayerDetailHTML(player.id)}</div>`
+                : '';
+
+            return row + detail;
         }
 
         function renderPositionGroup(pos, items) {
