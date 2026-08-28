@@ -255,6 +255,11 @@
         // e.g. comparing your captain candidates without losing either's detail.
         let expandedSquadRows = new Set();
 
+        // Only for arriving from somewhere that isn't already looking at the row —
+        // a dashboard deep link, say, where the player may be scrolled off-screen.
+        // A manual click is already looking straight at the row it just expanded,
+        // so toggleSquadRowDetail() below deliberately does NOT call this — jumping
+        // the page under someone's cursor mid-click reads as a bug, not a feature.
         function expandSquadRow(playerId) {
             expandedSquadRows.add(playerId);
             rerenderSquadFilteredViews();
@@ -265,12 +270,9 @@
         }
 
         function toggleSquadRowDetail(playerId) {
-            if (expandedSquadRows.has(playerId)) {
-                expandedSquadRows.delete(playerId);
-                rerenderSquadFilteredViews();
-            } else {
-                expandSquadRow(playerId);
-            }
+            if (expandedSquadRows.has(playerId)) expandedSquadRows.delete(playerId);
+            else expandedSquadRows.add(playerId);
+            rerenderSquadFilteredViews();
         }
 
         function renderSquadRow(analysis) {
