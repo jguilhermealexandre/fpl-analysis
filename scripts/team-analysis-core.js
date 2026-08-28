@@ -176,7 +176,20 @@
                 const avgFirst = getAvg(first3), avgNext = getAvg(next3);
                 const swing = avgFirst - avgNext;
                 if (Math.abs(swing) > 0.3) {
-                    fixtureSwingData[team.id] = { swing, direction: swing > 0 ? 'improving' : 'worsening', currentFdr: avgFirst.toFixed(1), futureFdr: avgNext.toFixed(1), swingGW: futureGWs[3] };
+                    // Per-GW breakdown of both windows, opponent(s) and FDR included —
+                    // an average alone ("3.7 to 2.7") answers "is it easier?" but not
+                    // "against whom", which is the question a manager actually needs
+                    // answered before acting on the swing. tfm[g] (not tfm[g][0]) so a
+                    // double gameweek lists every fixture, not just the first.
+                    const toFixtureList = gws => gws.map(g => ({
+                        gw: g,
+                        opponents: (tfm[g] || []).map(f => ({ opponentId: f.opponentId, fdr: f.fdr, isHome: f.isHome }))
+                    }));
+                    fixtureSwingData[team.id] = {
+                        swing, direction: swing > 0 ? 'improving' : 'worsening',
+                        currentFdr: avgFirst.toFixed(1), futureFdr: avgNext.toFixed(1), swingGW: futureGWs[3],
+                        currentFixtures: toFixtureList(first3), futureFixtures: toFixtureList(next3)
+                    };
                 }
             });
             console.log('Fixture swings:', Object.keys(fixtureSwingData).length, 'teams');

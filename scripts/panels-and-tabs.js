@@ -1264,6 +1264,47 @@
             return false;
         }
 
+        // "FDR 3.7 → 2.7" is an average of two averages — honest, but it answers
+        // "is it easier?" without answering the question that actually matters:
+        // easier against whom, and when does it turn? This lays out both windows
+        // GW by GW with the actual opponent(s), so the swing explains itself
+        // instead of asking to be taken on faith.
+        function renderFixtureSwingDetail(swingInfo) {
+            if (!swingInfo || !swingInfo.currentFixtures || !swingInfo.futureFixtures) return '';
+            const improving = swingInfo.direction === 'improving';
+            const color = improving ? 'var(--color-success)' : 'var(--color-error)';
+            const bg = improving ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)';
+            const border = improving ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
+            const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+
+            const chip = f => {
+                const opp = teams[f.opponentId];
+                const name = opp ? (opp.short_name || opp.name) : '?';
+                return `<span class="dp-fix fsw-chip fdr-${f.fdr}" data-tooltip="${f.isHome ? 'Home to' : 'Away at'} ${escHTML(name)} — FDR ${f.fdr} (${FDR_WORDS[f.fdr] || 'Average'})">${escHTML(name)} <span class="dp-fix-ha">${f.isHome ? 'H' : 'A'}</span></span>`;
+            };
+            const gwGroup = fx => `<div class="fsw-gw">
+                <span class="fsw-gw-label">GW${fx.gw}</span>
+                <div class="fsw-gw-chips">${fx.opponents.length ? fx.opponents.map(chip).join('') : '<span class="dp-fix fsw-chip dp-fix-blank">Blank</span>'}</div>
+            </div>`;
+
+            const spanLabel = gws => gws.length ? (gws.length > 1 ? `GW${gws[0].gw}–${gws[gws.length - 1].gw}` : `GW${gws[0].gw}`) : '';
+
+            return `<div class="fsw-panel" style="background:${bg};border:1px solid ${border};">
+                <div class="fsw-headline" style="color:${color};">${improving ? '▲' : '▼'} Fixtures ${swingInfo.direction} from GW${swingInfo.swingGW} — average difficulty ${improving ? 'drops' : 'rises'} from ${swingInfo.currentFdr} to ${swingInfo.futureFdr}</div>
+                <div class="fsw-rows">
+                    <div class="fsw-row">
+                        <span class="fsw-row-label">Now <small>${spanLabel(swingInfo.currentFixtures)}</small></span>
+                        <div class="fsw-gws">${swingInfo.currentFixtures.map(gwGroup).join('')}</div>
+                    </div>
+                    <div class="fsw-arrow">→</div>
+                    <div class="fsw-row">
+                        <span class="fsw-row-label">${improving ? 'Easier' : 'Harder'} from <small>${spanLabel(swingInfo.futureFixtures)}</small></span>
+                        <div class="fsw-gws">${swingInfo.futureFixtures.map(gwGroup).join('')}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
         // Given a player, the opponent(s) they're about to face \u2014 form, attack,
         // defence and how leaky each is ranked league-wide. "Form of the player"
         // and "form of the team" both exist elsewhere in this panel already; this
@@ -1550,9 +1591,7 @@
             const detailSS = seasonStats[player.teamId];
             if (detailTA) {
                 const swingInfo = fixtureSwingData[player.teamId];
-                const swingHtml = swingInfo
-                    ? `<div style="margin-top:8px;padding:6px 10px;border-radius:var(--radius-sm);background:${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)'};border:1px solid ${swingInfo.direction === 'improving' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'};font-size:11px;color:${swingInfo.direction === 'improving' ? 'var(--color-success)' : 'var(--color-error)'}">${swingInfo.direction === 'improving' ? '\u25b2' : '\u25bc'} Fixtures ${swingInfo.direction} from GW${swingInfo.swingGW}: FDR ${swingInfo.currentFdr} \u2192 ${swingInfo.futureFdr}</div>`
-                    : '';
+                const swingHtml = renderFixtureSwingDetail(swingInfo);
                 html += `<div class="pd-group"><div class="pd-group-title">\ud83c\udfe2 Team \u2014 ${escHTML(player.team)}</div>
                 <div class="detail-section">
                     <div class="detail-stats-grid">
