@@ -121,7 +121,7 @@
             return `
             <div class="sq-snapshot" id="sq-snapshot-body">
                 <div class="sq-snapshot-toolbar">
-                    <button class="btn btn-primary sq-optimize-btn" onclick="runAutoOptimize()">✨ Auto-Optimize GW Lineup</button>
+                    <button class="btn btn-primary sq-optimize-btn" onclick="runAutoOptimize()" data-tooltip="Picks the XI that projects best across your next 3 gameweeks, not just this one — the captain and the points gain shown are still for this gameweek alone.">✨ Auto-Optimize Lineup</button>
                     <div class="gw-toggle" role="group" aria-label="Which gameweek to show">
                         <button class="gw-toggle-btn ${snapshotViewMode === 'current' ? 'active' : ''}"
                             onclick="setSnapshotViewMode('current')"
@@ -529,7 +529,9 @@
             const beforeViceId = snapshotViceId;
             const beforeBenchOrder = [...snapshotBenchOrder];
 
-            // Rank by the same expected points the headline and the report show.
+            // Rank by expected points across the next 3 gameweeks rather than this
+            // single fixture — a player having one big week sandwiched between two
+            // blanks should not out-rank one who is merely good three times running.
             // computeQuickLineupScoreDetailed stays as the source of the "why"
             // behind each decision, but its heuristic blend (ep x3 + form x2 +
             // fixture x5 + xGI x10 ...) is a different quantity on a different
@@ -542,7 +544,7 @@
                     pos: p.position,
                     // solveQuickLineup drops anyone at or below -100; keep that
                     // exclusion for injured/suspended players, whose xP is just 0.
-                    lwScore: detailed.total <= -100 ? -1000 : predictedGWPoints(p),
+                    lwScore: detailed.total <= -100 ? -1000 : (typeof xpNext3 === 'function' ? xpNext3(p) : predictedGWPoints(p)),
                     _detailed: detailed
                 });
             });

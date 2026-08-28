@@ -1180,8 +1180,12 @@
             const gw = gws[0] || currentGW;
 
             // Pick the best legal eleven from the new squad so the projection is what
-            // you would actually field, not the sum of all fifteen.
-            const pool = squad.map(p => ({ ...p, pos: p.position, lwScore: predictedGWPoints(p) }));
+            // you would actually field, not the sum of all fifteen. Selection runs on
+            // the next-3-GW total rather than this single fixture — a squad remade by
+            // several transfers should be judged on the run it sets up, not on which
+            // gets lucky with this week's fixture alone.
+            const pool = squad.map(p => ({ ...p, pos: p.position,
+                lwScore: typeof xpNext3 === 'function' ? xpNext3(p) : predictedGWPoints(p) }));
             const solved = typeof solveQuickLineup === 'function' ? solveQuickLineup(pool) : null;
             const xiIds = new Set((solved?.xi || []).map(p => p.id));
             const xi = squad.filter(p => xiIds.has(p.id));

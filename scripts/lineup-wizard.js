@@ -24,14 +24,22 @@
             const squad = picksData.picks.map(pick => {
                 const p = allPlayersById[pick.element];
                 if (!p) return null;
-                // Rank on projected points, the same model the pitch cards and the
-                // Squad Analysis optimizer use. Ranking on one number and showing
-                // another is how a lineup tool ends up arguing with itself.
+                // Two different questions need two different numbers. "What does
+                // this player score THIS gameweek" (gwScore) is what the armband
+                // doubles and what the headline total reports, because captaincy
+                // and a week's score are both one-week decisions. "Who should
+                // start" is not — a player with a great match and a blank either
+                // side is a worse pick than one who is merely good three times
+                // running, so the XI itself is selected on the summed run
+                // (lwScore), the same horizon the draft and the transfer
+                // recommender already plan against.
                 const detailed = computeQuickLineupScoreDetailed(p);
-                const lwScore = detailed.total <= -100 ? -1000 : predictedGWPoints(p);
+                const gwScore = predictedGWPoints(p);
+                const runScore = typeof xpOver === 'function' ? xpOver(p, xpPlanGWs(XP_PLAN_HORIZON)) : gwScore;
+                const lwScore = detailed.total <= -100 ? -1000 : runScore;
                 return { ...p, pos: p.position, web_name: p.name, pickPos: pick.position,
                     onBench: pick.position > 11, isCaptain: pick.is_captain,
-                    isViceCaptain: pick.is_vice_captain, lwScore, _detailed: detailed };
+                    isViceCaptain: pick.is_vice_captain, lwScore, gwScore, _detailed: detailed };
             }).filter(Boolean);
 
             lineupState.squad = squad;
@@ -48,7 +56,7 @@
             });
 
             solveLWLineup();
-            const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore);
+            const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.gwScore - a.gwScore);
             lineupState.captain = cap[0]?.id || null;
             lineupState.viceCaptain = cap[1]?.id || null;
 
@@ -60,19 +68,28 @@
             const result = solveQuickLineup(available.map(p => ({ ...p, pos: p.pos })));
             const xiIds = new Set(result.xi.map(p => p.id));
             lineupState.xi = lineupState.squad.filter(p => xiIds.has(p.id));
+            // Bench substitution order is a same-week question — who comes on if a
+            // starter blanks THIS gameweek — so it sorts on gwScore, not the run
+            // score the XI itself was picked on.
             lineupState.bench = lineupState.squad.filter(p => !xiIds.has(p.id))
-                .sort((a, b) => (a.pos === 1 ? 1 : 0) - (b.pos === 1 ? 1 : 0) || b.lwScore - a.lwScore);
+                .sort((a, b) => (a.pos === 1 ? 1 : 0) - (b.pos === 1 ? 1 : 0) || b.gwScore - a.gwScore);
             lineupState.formation = result.formation;
         }
 
-        // Total the lineup actually projects, including the armband.
+        // Total the lineup actually projects THIS gameweek, including the armband.
+        // Deliberately gwScore, not lwScore — the XI was chosen on the summed run,
+        // but this number has to match "what will my score be Saturday".
         function lwTotalXP() {
             const capId = lineupState.captain;
-            return lineupState.xi.reduce((s, p) => s + p.lwScore * (p.id === capId ? 2 : 1), 0);
+            return lineupState.xi.reduce((s, p) => s + p.gwScore * (p.id === capId ? 2 : 1), 0);
         }
 
         function renderLineupCommandCenter() {
             const container = document.getElementById('lineupDisplay');
+            const lwRun = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON) : [];
+            const optimiseTip = lwRun.length > 1
+                ? `Rebuild the legal eleven that projects best across GW${lwRun[0]}–GW${lwRun[lwRun.length - 1]} combined, not just this single week.`
+                : 'Rebuild the highest-projecting legal eleven from your available players.';
             container.innerHTML = `
                 <div class="lw-cc">
                     <div class="lw-cc-head">
@@ -80,10 +97,10 @@
                         <div class="lw-cc-stats">
                             <span class="lw-cc-stat" data-tooltip="The shape the optimiser settled on for your available players.">
                                 <span class="lw-cc-stat-l">Formation</span><span class="lw-cc-stat-v" id="lwFormation">${lineupState.formation}</span></span>
-                            <span class="lw-cc-stat" data-tooltip="Projected points for the starting eleven, with the captain's points doubled.">
+                            <span class="lw-cc-stat" data-tooltip="Projected points for the starting eleven this gameweek, with the captain's points doubled.">
                                 <span class="lw-cc-stat-l">Projected</span><span class="lw-cc-stat-v accent" id="lwTotal">${lwTotalXP().toFixed(1)}</span></span>
                         </div>
-                        <button class="rc-btn" onclick="resetLineupToOptimal()" data-tooltip="Rebuild the highest-projecting legal eleven from your available players.">✨ Auto-optimise</button>
+                        <button class="rc-btn" onclick="resetLineupToOptimal()" data-tooltip="${optimiseTip}">✨ Auto-optimise</button>
                     </div>
                     <div class="lw-cc-body">
                         <div class="lw-cc-pitch" id="lwPitchPane">${renderLWPitch()}</div>
@@ -98,11 +115,12 @@
         // The pitch node carries the decision, not a shirt number: who they play,
         // how hard it is, what they project, and anything that might stop them.
         function lwCard(p, benchIdx) {
-            const xp = p.lwScore > -100 ? p.lwScore : 0;
-            /* The lineup decision is a single gameweek, but the run is what tells
-               you whether a bench player is worth keeping past it. */
+            const unavailable = p.lwScore <= -100;
+            const xp = unavailable ? 0 : p.gwScore;
+            /* lwScore (the run total) is what actually decided who is in this XI —
+               shown here so the pick explains itself instead of just asserting it. */
             const lwRun = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON) : [];
-            const lwRunXP = typeof xpOver === 'function' ? xpOver(p, lwRun) : 0;
+            const lwRunXP = unavailable ? 0 : p.lwScore;
             const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
             const posClass = `pos-${POSITION_CONFIG[p.pos]?.class || 'mid'}`;
             const selected = lineupState.selectedPlayers.includes(p.id);
@@ -136,7 +154,7 @@
                 <div class="dp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
                 <div class="dp-fixtures">${fixChip}</div>
                 <div class="dp-xp" data-tooltip="Projected points for ${escHTML(p.web_name)} this gameweek.">${xp.toFixed(1)}<span class="dp-xp-u">xP</span></div>
-                ${lwRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${lwRun[0]}\u2013GW${lwRun[lwRun.length - 1]} combined. The lineup itself is a one-week decision \u2014 this is here to show whether a player is worth keeping past it.">${lwRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${lwRun.length}</span></div>` : ''}
+                ${lwRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${lwRun[0]}\u2013GW${lwRun[lwRun.length - 1]} combined \u2014 this is what Auto-optimise ranks the XI on, so a steady run beats one flukey week.">${lwRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${lwRun.length}</span></div>` : ''}
             </div>`;
         }
 
@@ -190,6 +208,8 @@
         function renderLWSummary() {
             const xi = lineupState.xi, bench = lineupState.bench;
             if (!xi.length) return `<div class="lw-side-empty">Load a squad to see the lineup read.</div>`;
+            const lwRun = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON) : [];
+            const runUnit = lwRun.length > 1 ? `xP · next ${lwRun.length} GWs` : 'xP';
 
             const sorted = [...xi].sort((a, b) => a.lwScore - b.lwScore);
             const weakest = sorted[0];
@@ -219,7 +239,7 @@
                     <div class="lw-sum-h">🔻 Weakest link in the XI</div>
                     <div class="lw-sum-row">
                         <span class="lw-sum-name">${escHTML(weakest.web_name)}</span>
-                        <span class="lw-sum-xp">${weakest.lwScore.toFixed(1)} xP</span>
+                        <span class="lw-sum-xp">${weakest.lwScore.toFixed(1)} ${runUnit}</span>
                     </div>
                     <div class="lw-sum-note">${upgrade
                         ? `${escHTML(upgrade.in.web_name)} projects <strong>+${upgrade.gain.toFixed(1)}</strong> more and the shape still works. <button class="lw-sum-apply" onclick="lwApplySwap(${upgrade.out.id}, ${upgrade.in.id})">Make the swap</button>`
@@ -230,7 +250,7 @@
                     <div class="lw-sum-h">🪑 Strongest player on the bench</div>
                     ${strongestBench ? `<div class="lw-sum-row">
                         <span class="lw-sum-name">${escHTML(strongestBench.web_name)}</span>
-                        <span class="lw-sum-xp">${strongestBench.lwScore.toFixed(1)} xP</span>
+                        <span class="lw-sum-xp">${strongestBench.lwScore.toFixed(1)} ${runUnit}</span>
                     </div>
                     <div class="lw-sum-note">${strongestBench.lwScore > weakest.lwScore
                         ? 'Out-projects a starter, so they are the first thing to look at.'
@@ -257,8 +277,10 @@
         // of the week, and "Form 8 · xGI/90 1.12" in grey text does not carry it.
         function renderLWCaptaincyMatrix() {
             const ranks = typeof getDefensiveRanks === 'function' ? getDefensiveRanks() : { rank: {}, total: 20 };
+            // The armband only ever pays out for this gameweek, so candidates are
+            // ranked on gwScore, not the run score the XI itself was picked on.
             const candidates = lineupState.xi.filter(p => p.pos !== 1)
-                .sort((a, b) => b.lwScore - a.lwScore).slice(0, 3);
+                .sort((a, b) => b.gwScore - a.gwScore).slice(0, 3);
 
             if (!candidates.length) return `<div class="lw-side-empty">No outfield players in the XI yet.</div>`;
 
@@ -281,7 +303,7 @@
                     <div class="lw-cap-name">${escHTML(p.web_name)}</div>
                     <div class="lw-cap-team">${escHTML(p.team)} · ${POSITION_CONFIG[p.pos]?.short || ''}</div>
                     ${fx ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">${fx.isHome ? 'H' : 'A'}</span></span>` : ''}
-                    <div class="lw-cap-xp" data-tooltip="Projected points with the armband on — ${p.lwScore.toFixed(1)} doubled.">${(p.lwScore * 2).toFixed(1)}<span class="lw-cap-xp-u">pts</span></div>
+                    <div class="lw-cap-xp" data-tooltip="Projected points with the armband on — ${p.gwScore.toFixed(1)} doubled.">${(p.gwScore * 2).toFixed(1)}<span class="lw-cap-xp-u">pts</span></div>
                     <div class="lw-cap-bars">
                         <div class="lw-cap-bar-row" data-tooltip="Expected goal involvements per 90 for ${escHTML(p.web_name)}: ${threat.toFixed(2)}.">
                             <span class="lw-cap-bar-l">Threat</span>
@@ -311,7 +333,7 @@
             if (lineupState.excluded.has(playerId)) lineupState.excluded.delete(playerId);
             else lineupState.excluded.add(playerId);
             solveLWLineup();
-            const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore);
+            const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.gwScore - a.gwScore);
             if (lineupState.excluded.has(lineupState.captain) || !lineupState.xi.some(p => p.id === lineupState.captain)) {
                 lineupState.captain = cap[0]?.id || null;
             }
@@ -408,7 +430,9 @@
             // ranking score would put "41.0 xP" on a player worth four.
             lineupState.swapSource = null;
             solveLWLineup();
-            const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.lwScore - a.lwScore);
+            // Captaincy pays out for this gameweek alone, so it's picked on gwScore
+            // even though the XI itself was just chosen on the summed run.
+            const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.gwScore - a.gwScore);
             if (!lineupState.xi.some(p => p.id === lineupState.captain)) lineupState.captain = cap[0]?.id || null;
             if (!lineupState.xi.some(p => p.id === lineupState.viceCaptain)) lineupState.viceCaptain = cap[1]?.id || null;
             refreshLWView();
@@ -612,7 +636,7 @@
             // AI Score Breakdown
             html += `<div class="lw-ctx-section">`;
             html += `<div class="lw-ctx-section-title"><i data-lucide="brain" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> AI Score Breakdown</div>`;
-            html += `<div style="text-align:center;margin-bottom:10px;"><span style="font-family:var(--font-mono);font-size:24px;font-weight:700;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.lwScore}</span><span style="font-size:11px;color:var(--text-muted);margin-left:4px;">pts</span></div>`;
+            html += `<div style="text-align:center;margin-bottom:10px;"><span style="font-family:var(--font-mono);font-size:24px;font-weight:700;color:${p.gwScore >= 30 ? 'var(--color-success)' : p.gwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.gwScore}</span><span style="font-size:11px;color:var(--text-muted);margin-left:4px;">pts</span></div>`;
             html += scoreBar('Exp Pts', detailed.ep, 15, 'var(--color-info)');
             html += scoreBar('Form', detailed.form, 15, '#A78BFA');
             html += scoreBar('Fixture', detailed.fixture, 10, 'var(--color-success)');
@@ -820,7 +844,7 @@
                     <span style="padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;background:${posColors[p.pos]}22;color:${posColors[p.pos]};">${posNames[p.pos]}</span>
                     <div style="font-weight:700;font-size:13px;margin-top:4px;">${escHTML(p.web_name)}</div>
                     <div style="font-size:10px;color:var(--text-muted);">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
-                    <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;margin-top:4px;color:${p.lwScore >= 30 ? 'var(--color-success)' : p.lwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.lwScore}</div>
+                    <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;margin-top:4px;color:${p.gwScore >= 30 ? 'var(--color-success)' : p.gwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.gwScore}</div>
                 </div>`;
             });
             html += `</div>`;

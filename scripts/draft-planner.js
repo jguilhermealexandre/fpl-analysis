@@ -673,6 +673,52 @@
             rerenderDraftView();
         }
 
+        // Rebuilds the selected gameweek's XI/bench from the solver used everywhere
+        // else on the page, scoring each player on expected points across the run
+        // starting at THAT gameweek (not today) — the whole point of the draft is
+        // planning GW5's lineup while sitting in GW2, so "next 3" has to mean
+        // GW5-6-7, not the 3 gameweeks already behind it.
+        function draftAutoOptimizeLineup() {
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
+            if (!gw) return;
+            const lineup = getDraftSquad(gw);
+            const runGWs = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON, gw) : [gw];
+
+            const pool = lineup.map(p => {
+                const excluded = p.status === 'i' || p.status === 'u' || p.status === 's';
+                const runScore = typeof xpOver === 'function' ? xpOver(p, runGWs) : projectPlayerPointsForGW(p, gw);
+                return { id: p.id, pos: p.position, lwScore: excluded ? -1000 : runScore };
+            });
+            const result = solveQuickLineup(pool);
+            const xiIds = new Set(result.xi.map(p => p.id));
+            lineup.forEach(p => { p.onBench = !xiIds.has(p.id); });
+
+            // Substitution order is a same-week question, so it sorts on this
+            // gameweek's own projection rather than the run the XI was picked on.
+            const benchOrdered = lineup.filter(p => p.onBench)
+                .sort((a, b) => (a.position === 1 ? 1 : 0) - (b.position === 1 ? 1 : 0)
+                    || projectPlayerPointsForGW(b, gw) - projectPlayerPointsForGW(a, gw));
+            benchOrdered.forEach((p, i) => { p.pickPosition = 12 + i; });
+
+            // The armband only pays out for this gameweek, so captaincy is chosen
+            // on this gameweek's projection, not the run score.
+            const xiByGW = lineup.filter(p => !p.onBench)
+                .sort((a, b) => projectPlayerPointsForGW(b, gw) - projectPlayerPointsForGW(a, gw));
+            lineup.forEach(p => { p.isCaptain = false; p.isVice = false; });
+            if (xiByGW[0]) xiByGW[0].isCaptain = true;
+            if (xiByGW[1]) xiByGW[1].isVice = true;
+
+            draftSwapSource = null;
+            saveDraft();
+            rerenderDraftView();
+            if (typeof updateStatus === 'function') {
+                updateStatus(runGWs.length > 1
+                    ? `GW${gw} lineup optimized using expected points across GW${runGWs[0]}–GW${runGWs[runGWs.length - 1]}`
+                    : `GW${gw} lineup optimized (${result.formation})`, 'success');
+            }
+        }
+
         // ===== DRAFT localStorage PERSISTENCE =====
         function saveDraft(slotIndex) {
             if (slotIndex === undefined) slotIndex = activeDraftSlot;
@@ -1249,6 +1295,7 @@
             const ft = getDraftFreeTransfers(gw);
             const hitCost = getDraftHitCost(gw);
             const numTransfers = (ds.transfers[gw] || []).length;
+            const optimizeRunGWs = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON, gw) : [gw];
 
             let html = renderDraftTimeline();
 
@@ -1274,6 +1321,7 @@
                     <label class="draft-stat-label" for="draftStartFT" data-tooltip="Free transfers you began this plan with. FPL does not publish this, so set it if the guess is wrong.">Starting FT</label>
                     <input id="draftStartFT" type="number" class="draft-ft-input" value="${ds.startingFT}" min="0" max="5" onchange="updateDraftStartingFT(this.value)">
                 </div>
+                <button class="draft-action-btn" onclick="draftAutoOptimizeLineup()" data-tooltip="Rebuild GW${gw}'s XI, bench order and captain from the players available that week${optimizeRunGWs.length > 1 ? `, ranked on expected points across GW${optimizeRunGWs[0]}–GW${optimizeRunGWs[optimizeRunGWs.length - 1]} combined` : ''}.">✨ Auto-optimise</button>
                 <button class="draft-action-btn danger" onclick="resetDraft()" data-tooltip="Discard every change in this plan and start again from your current squad.">↩ Reset plan</button>
             </div>`;
 
