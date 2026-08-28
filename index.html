@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=63">
-    <link rel="stylesheet" href="styles/v2-design.css?v=63">
+    <link rel="stylesheet" href="styles/common.css?v=64">
+    <link rel="stylesheet" href="styles/v2-design.css?v=64">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3032,6 +3032,17 @@
             opacity: 0.4;
         }
         .pticker-squad { color: #F59E0B; font-size: 9px; }
+        /* A full meter is a fact about tonight, so it gets weight the
+           still-climbing entries do not. */
+        .pticker-item.tier-due .pticker-arrow {
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            padding: 1px 5px;
+            border-radius: 4px;
+            background: currentColor;
+            color: #0B1220;
+        }
+        .pticker-item.tier-close { opacity: 0.72; }
         @keyframes price-ticker-scroll {
             from { transform: translateX(0); }
             to { transform: translateX(-50%); }
@@ -3656,11 +3667,12 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/xp-engine.js?v=63"></script>
-    <script src="scripts/live-gw.js?v=63"></script>
-    <script src="scripts/transfer-engine.js?v=63"></script>
-    <script src="scripts/common.js?v=63"></script>
-    <script src="scripts/sidebar-nav.js?v=63"></script>
+    <script src="scripts/price-watch.js?v=64"></script>
+    <script src="scripts/xp-engine.js?v=64"></script>
+    <script src="scripts/live-gw.js?v=64"></script>
+    <script src="scripts/transfer-engine.js?v=64"></script>
+    <script src="scripts/common.js?v=64"></script>
+    <script src="scripts/sidebar-nav.js?v=64"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4346,33 +4358,43 @@
                     href: 'fpl-my-team-analysis.html#transfers'
                 });
             }
+
+            /* This column renders six rows out of however many it is given, so
+               ordering decides what a manager actually sees. A price change is
+               the only item here with its own clock: it lands at the next daily
+               update and cannot be acted on afterwards, while a "weak team
+               attack" reads the same tomorrow. So the ones already over the line
+               go in near the top, and the ones merely closing in wait at the
+               back with everything else. */
+            const pushPriceRows = tier => {
+                priceDropRisk.filter(c => c.tier === tier).forEach(c => {
+                    txItems.push({
+                        name: c.player.name,
+                        reason: tier === 'due'
+                            ? `Drops to £${(c.player.price - 0.1).toFixed(1)}m at the next price update`
+                            : `${Math.round(Math.abs(c.progress))}% of the way to a price drop`,
+                        severity: tier === 'due' ? 'sell' : 'monitor',
+                        href: `fpl-my-team-analysis.html#squad?player=${c.player.id}`
+                    });
+                });
+                priceRiseTargets.filter(c => c.tier === tier).slice(0, 2).forEach(c => {
+                    txItems.push({
+                        name: c.player.name,
+                        reason: tier === 'due'
+                            ? `Rises to £${(c.player.price + 0.1).toFixed(1)}m at the next price update`
+                            : `${Math.round(Math.abs(c.progress))}% of the way to a price rise`,
+                        severity: 'monitor',
+                        href: `fpl-my-team-analysis.html#squad?player=${c.player.id}`
+                    });
+                });
+            };
+            pushPriceRows('due');
             squad.forEach((p, i) => {
                 const a = analysisResults[i];
                 if (a && a.verdict === 'sell') txItems.push({ name: p.name, reason: a.topConcern || 'Rated Sell — consider moving on', severity: 'sell', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
             });
-            priceDropRisk.forEach(p => {
-                const net = Math.round(Math.abs(p.transfersOut - p.transfersIn) / 1000);
-                const pct = Math.abs(p._pressure * 100).toFixed(1);
-                txItems.push({
-                    name: p.name,
-                    reason: p._active
-                        ? `${net}k net transfers out, ${pct}% of his owners — under pressure to drop`
-                        : `${net}k net transfers out, ${pct}% of his owners (no price has moved yet this season)`,
-                    severity: 'monitor',
-                    href: `fpl-my-team-analysis.html#squad?player=${p.id}`
-                });
-            });
-            priceRiseTargets.slice(0, 2).forEach(p => {
-                const net = Math.round(Math.abs(p.transfersIn - p.transfersOut) / 1000);
-                const pct = Math.abs(p._pressure * 100).toFixed(1);
-                txItems.push({
-                    name: p.name,
-                    reason: p._active
-                        ? `+${net}k in, ${pct}% of his owners — under pressure to rise`
-                        : `+${net}k in, ${pct}% of his owners (no price has moved yet this season)`,
-                    severity: 'monitor'
-                });
-            });
+            // The rest of the price rows: near the line, but not tonight's news.
+            pushPriceRows('close');
 
             function renderCol(items, iconName, title, emptyText, linkBase) {
                 let rowsHtml = '';
@@ -4792,38 +4814,56 @@
             const totalFpl = 11000000;
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
 
-            const withPressure = allPlayers.map(p => {
-                const owners = Math.max(totalFpl * (p.ownership / 100), 1);
-                const net = p.transfersIn - p.transfersOut;
-                return { ...p, pressure: net / owners, net, inSquad: squadIds.has(p.id) };
-            });
+            /* The market strip reads the game's own price meter rather than
+               inferring pressure from net transfers. Transfers are the cause;
+               the meter is the thing that actually decides the price, and it is
+               published. Net transfers stay on as context, not as the signal.
 
-            const fallers = withPressure.filter(p => p.net < -20000)
-                .sort((a, b) => a.net - b.net);
-            const risers = withPressure.filter(p => p.net > 20000)
-                .sort((a, b) => b.net - a.net);
-
+               Older cached data files predate these fields, so if the meter is
+               missing everywhere we fall back to the transfer-net view rather
+               than showing an empty strip. */
             const movers = [];
-            const maxLen = Math.max(fallers.length, risers.length);
-            for (let i = 0; i < maxLen; i++) {
-                if (i < risers.length) movers.push(risers[i]);
-                if (i < fallers.length) movers.push(fallers[i]);
+            if (typeof pwMovers === 'function' && allPlayers.some(p => p.priceProgress)) {
+                const m = pwMovers(allPlayers, 10, PW_TICKER_FLOOR);
+                const maxLen = Math.max(m.risers.length, m.fallers.length);
+                for (let i = 0; i < maxLen; i++) {
+                    if (i < m.risers.length) movers.push(m.risers[i]);
+                    if (i < m.fallers.length) movers.push(m.fallers[i]);
+                }
+            } else {
+                const withPressure = allPlayers.map(p => {
+                    const owners = Math.max(totalFpl * (p.ownership / 100), 1);
+                    const net = p.transfersIn - p.transfersOut;
+                    return { player: p, legacy: true, net: net, pressure: net / owners };
+                });
+                const fallers = withPressure.filter(x => x.net < -20000).sort((a, b) => a.net - b.net);
+                const risers = withPressure.filter(x => x.net > 20000).sort((a, b) => b.net - a.net);
+                const maxLen = Math.max(fallers.length, risers.length);
+                for (let i = 0; i < maxLen; i++) {
+                    if (i < risers.length) movers.push(risers[i]);
+                    if (i < fallers.length) movers.push(fallers[i]);
+                }
             }
             if (movers.length === 0) return;
 
-            const items = movers.map(p => {
-                const cls = p.pressure > 0.015 ? 'bull' : p.pressure < -0.015 ? 'bear' : 'stable';
-                const arrow = cls === 'bull' ? '▲' : cls === 'bear' ? '▼' : '–';
-                const netK = Math.round(Math.abs(p.net) / 1000);
-                const sign = p.net > 0 ? '+' : '-';
-                const gwChange = (p.costChangeEvent || 0) / 10;
-                const gwText = gwChange !== 0 ? ` (${gwChange > 0 ? '+' : ''}${gwChange.toFixed(1)})` : '';
-                const squadBadge = p.inSquad ? ' <span class="pticker-squad">★</span>' : '';
-                return `<span class="pticker-item ${cls}">
+            const items = movers.map(c => {
+                const p = c.player;
+                const rising = c.legacy ? c.net > 0 : c.dir === 'rise';
+                const cls = rising ? 'bull' : 'bear';
+                const arrow = rising ? '\u25B2' : '\u25BC';
+                const net = (p.transfersIn || 0) - (p.transfersOut || 0);
+                const netK = Math.round(Math.abs(net) / 1000);
+                const squadBadge = squadIds.has(p.id) ? ' <span class="pticker-squad">\u2605</span>' : '';
+                // "Due" earns a word; anything short of it only ever shows a number.
+                const state = c.legacy
+                    ? `${net > 0 ? '+' : '-'}${netK}k`
+                    : (c.tier === 'due' ? (rising ? 'RISE DUE' : 'DROP DUE') : `${Math.round(Math.abs(c.progress))}%`);
+                const tip = c.legacy ? '' : ` data-tooltip="${esc(pwDetail(c))}"`;
+                return `<span class="pticker-item ${cls}${c.legacy ? '' : ' tier-' + c.tier}"${tip}>
                     <span class="pticker-name">${esc(p.name)}${squadBadge}</span>
-                    <span class="pticker-price">£${p.price.toFixed(1)}m${gwText}</span>
-                    <span class="pticker-arrow">${arrow} ${sign}${netK}k</span>
-                </span><span class="pticker-sep">│</span>`;
+                    <span class="pticker-price">\u00A3${p.price.toFixed(1)}m</span>
+                    <span class="pticker-arrow">${arrow} ${state}</span>
+                </span><span class="pticker-sep">\u2502</span>`;
             }).join('');
 
             const contentHtml = `<span class="price-ticker-content">${items}</span>`;
@@ -4887,6 +4927,13 @@
                     chanceNextRound: p.chance_of_playing_next_round,
                     costChangeEvent: p.cost_change_event || 0,
                     costChangeStart: p.cost_change_start || 0,
+                    /* Official price engine: a 0->100 progress meter toward the
+                       next change, the game's own forecast of it for today/+1/+2
+                       days, and a lock before which the player cannot move.
+                       Read by scripts/price-watch.js. */
+                    priceProgress: parseFloat(p.price_change_percent) || 0,
+                    priceProjection: (p.price_change_projections || []).map(x => parseFloat(x.projected_percent) || 0),
+                    priceLockedUntil: p.price_change_locked_until || null,
                     minutes: p.minutes, starts: p.starts || 0,
                     goals: p.goals_scored, assists: p.assists,
                     cleanSheets: p.clean_sheets,
@@ -5010,33 +5057,22 @@
                 const squadIds = new Set(squad.map(p => p.id));
                 const shortlistIds = new Set(JSON.parse(localStorage.getItem('fpl_shortlist') || '[]'));
                 const myPlayerIds = p => squadIds.has(p.id) || shortlistIds.has(p.id);
-                /* Transfer pressure, measured against the ownership base.
+                /* Price risk, from the game's own meter.
 
-                   This was a flat 20,000 net transfers, which treats a player
-                   owned by five million and one owned by fifty thousand as the
-                   same story — the first is noise, the second is a stampede. The
-                   game's own price mechanism responds to movement relative to how
-                   many people hold a player, so that is what gets measured.
+                   This used to infer pressure from net transfers weighted by the
+                   ownership base, because at the time nothing had moved all
+                   season and there was nothing to calibrate a threshold against.
+                   That is no longer true: the game publishes a progress meter per
+                   player and four prices moved overnight. Transfers were only ever
+                   a proxy for the meter, so the proxy goes and the meter stays.
 
-                   No threshold is claimed. FPL has not moved a single price this
-                   season (0 of 612 by cost_change_start), so there is nothing to
-                   calibrate against and any cutoff would be invented. What is
-                   reported is the direction and size of the pressure, which is a
-                   fact, rather than a prediction of a change, which is not. */
-                const totalManagers = bootData.total_players || 0;
-                const ownerBase = p => Math.max(1, (p.ownership / 100) * totalManagers);
-                const pressureOf = p => (p.transfersIn - p.transfersOut) / ownerBase(p);
-                // Prices have not started moving yet if nothing has moved all season.
-                const priceChangesActive = allPlayers.some(p => (p.costChangeStart || 0) !== 0);
-
-                const withPressure = allPlayers.filter(p => myPlayerIds(p) && totalManagers > 0)
-                    .map(p => ({ p, pr: pressureOf(p) }));
-                const priceDropRisk = withPressure.filter(x => x.pr <= -0.02)
-                    .sort((a, b) => a.pr - b.pr).slice(0, 5)
-                    .map(x => Object.assign({ _pressure: x.pr, _active: priceChangesActive }, x.p));
-                const priceRiseTargets = withPressure.filter(x => x.pr >= 0.02)
-                    .sort((a, b) => b.pr - a.pr).slice(0, 5)
-                    .map(x => Object.assign({ _pressure: x.pr, _active: priceChangesActive }, x.p));
+                   Scoped to your squad and shortlist — the market-wide view is the
+                   ticker at the top of the page. See scripts/price-watch.js for
+                   why only two tiers exist and what each is allowed to claim. */
+                const mine = allPlayers.filter(myPlayerIds);
+                const myMovers = typeof pwMovers === 'function' ? pwMovers(mine, 5) : { risers: [], fallers: [] };
+                const priceDropRisk = myMovers.fallers;
+                const priceRiseTargets = myMovers.risers;
 
                 // --- Squad health score (aligned with fpl-my-team-analysis.html) ---
                 const paired = squad.map((p, i) => ({ sq: p, an: analysisResults[i] }));

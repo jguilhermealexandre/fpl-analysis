@@ -99,6 +99,10 @@
         // how hard it is, what they project, and anything that might stop them.
         function lwCard(p, benchIdx) {
             const xp = p.lwScore > -100 ? p.lwScore : 0;
+            /* The lineup decision is a single gameweek, but the run is what tells
+               you whether a bench player is worth keeping past it. */
+            const lwRun = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON) : [];
+            const lwRunXP = typeof xpOver === 'function' ? xpOver(p, lwRun) : 0;
             const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
             const posClass = `pos-${POSITION_CONFIG[p.pos]?.class || 'mid'}`;
             const selected = lineupState.selectedPlayers.includes(p.id);
@@ -132,6 +136,7 @@
                 <div class="dp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
                 <div class="dp-fixtures">${fixChip}</div>
                 <div class="dp-xp" data-tooltip="Projected points for ${escHTML(p.web_name)} this gameweek.">${xp.toFixed(1)}<span class="dp-xp-u">xP</span></div>
+                ${lwRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${lwRun[0]}\u2013GW${lwRun[lwRun.length - 1]} combined. The lineup itself is a one-week decision \u2014 this is here to show whether a player is worth keeping past it.">${lwRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${lwRun.length}</span></div>` : ''}
             </div>`;
         }
 

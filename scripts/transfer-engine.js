@@ -59,17 +59,17 @@
 
         // The next N gameweeks nobody has kicked off yet. Both players in a
         // comparison are scored over the same weeks, or the delta is meaningless.
+        /* Both of these moved into scripts/xp-engine.js so the draft and the
+           lineup wizard could reach them too. Kept as thin names here because
+           the recommender below reads better with them, but there is only one
+           implementation now. The recommender passes TW_HORIZON explicitly —
+           it decides over five gameweeks, not the engine's default three. */
         function twPlanGWs(n) {
-            const started = new Set((allFixtures || []).filter(f => f.event !== null && (f.started || f.finished_provisional)).map(f => f.event));
-            const upcoming = [...new Set((allFixtures || [])
-                .filter(f => f.event !== null && !f.finished_provisional && !started.has(f.event))
-                .map(f => f.event))].sort((a, b) => a - b);
-            return upcoming.slice(0, n);
+            return typeof xpPlanGWs === 'function' ? xpPlanGWs(n) : [];
         }
 
         function twXPOver(player, gws) {
-            if (!player || typeof projectPlayerPointsForGW !== 'function') return 0;
-            return Math.round(gws.reduce((s, g) => s + projectPlayerPointsForGW(player, g), 0) * 10) / 10;
+            return typeof xpOver === 'function' ? xpOver(player, gws) : 0;
         }
 
         /* ===== "Should I transfer?" =====

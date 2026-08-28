@@ -738,7 +738,15 @@
                     </div>`;
                 players.forEach(p => {
                     const sold = filledIds.has(p.id), pending = pendingIds.has(p.id);
-                    const xp = twXPOver(p, gws);
+                    /* Scored over the same three fixtures shown next to it. This
+                       column used to run over the recommender's five-gameweek
+                       horizon while the chips beside it showed three, so the
+                       number and the context under it disagreed. The gain figures
+                       in the replacement views still use the full five — that is
+                       the horizon the recommendation is actually decided on, and
+                       each is labelled with its own span. */
+                    const twRun = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON) : gws;
+                    const xp = twXPOver(p, twRun);
                     // Three fixtures at a glance is the context that decides a sale.
                     const fx = (teamFixtures[p.teamId] || p.fixtures || []).slice(0, 3);
                     const blocks = fx.length
@@ -755,7 +763,7 @@
                             <div class="twc-sub">${escHTML(p.team)} · £${(p.sellPrice || p.price).toFixed(1)}m</div>
                         </div>
                         <div class="twc-fdrs" data-tooltip="Next three fixtures.">${blocks}</div>
-                        <div class="twc-xp" data-tooltip="Projected points over the next ${gws.length} gameweeks.">${xp.toFixed(1)}<span class="twc-xp-u">xP</span></div>
+                        <div class="twc-xp" data-tooltip="Projected points across GW${twRun[0]}\u2013GW${twRun[twRun.length - 1]} \u2014 the same three fixtures shown beside it.">${xp.toFixed(1)}<span class="twc-xp-u">xP${twRun.length}</span></div>
                         ${sold ? `<span class="twc-swapped">Swapped</span>`
                             : `<button class="twc-swap ${pending ? 'active' : ''}" onclick="event.stopPropagation();twSwapPlayer(${p.id})"
                                 data-tooltip="${pending ? 'Find a replacement for ' + escHTML(p.name) : 'Sell ' + escHTML(p.name) + ' and open the market for their position'}">🔄 ${pending ? 'Find' : 'Swap'}</button>`}

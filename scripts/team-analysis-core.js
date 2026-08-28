@@ -497,6 +497,13 @@
                     transfersOutTotal: p.transfers_out || 0,
                     costChangeEvent: p.cost_change_event || 0,
                     costChangeStart: p.cost_change_start || 0,
+                    /* Official price engine: a 0->100 progress meter toward the
+                       next change, the game's own forecast of it for today/+1/+2
+                       days, and a lock before which the player cannot move.
+                       Read by scripts/price-watch.js. */
+                    priceProgress: parseFloat(p.price_change_percent) || 0,
+                    priceProjection: (p.price_change_projections || []).map(x => parseFloat(x.projected_percent) || 0),
+                    priceLockedUntil: p.price_change_locked_until || null,
                     epNext: parseFloat(p.ep_next) || 0,
                     dreamteamCount: p.dreamteam_count || 0,
                     valueForm: parseFloat(p.value_form) || 0,

@@ -1335,6 +1335,11 @@
                 const injured = p.status === 'i' || p.status === 'u';
                 const doubtful = p.status === 'd';
                 const xp = projectPlayerPointsForGW(p, gw);
+                /* The run this player is walking into, starting at the gameweek
+                   being planned rather than at today — the whole point of the
+                   draft is that you are looking at GW5 while it is GW2. */
+                const dpRun = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON, gw) : [];
+                const dpRunXP = typeof xpOver === 'function' ? xpOver(p, dpRun) : 0;
 
                 let swapClass = '';
                 if (draftSwapSource === p.id) swapClass = 'swap-selected';
@@ -1362,6 +1367,7 @@
                     <div class="dp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
                     <div class="dp-fixtures">${fixtureChips}</div>
                     <div class="dp-xp" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates.">${xp.toFixed(1)}<span class="dp-xp-u">xP</span></div>
+                    ${dpRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${dpRun[0]}\u2013GW${dpRun[dpRun.length - 1]} combined, so a soft run and a hard one stop looking alike. One gameweek tells you who plays; a run tells you who is worth owning.">${dpRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${dpRun.length}</span></div>` : ''}
                 </div>`;
             };
 

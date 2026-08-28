@@ -1115,6 +1115,35 @@
                 });
             }
 
+            /* --- 5. Price drops on players you already own.
+
+               The only price event worth interrupting someone for. A drop costs
+               £0.1m of team value permanently and it happens tonight, so unlike
+               everything else on this list it expires before the deadline does.
+
+               Deliberately restricted to the "due" tier — the meter already full.
+               Measured against a real overnight window that tier was right three
+               times out of three with no false alarms, while the game's own
+               next-day projection flagged nineteen players to catch four. A soft
+               signal belongs in the market ticker, not in an alert that tells
+               someone to spend a transfer. Rises on players you own are left out
+               entirely: pleasant, but there is nothing to do about them. */
+            if (typeof pwClassify === 'function') {
+                (analysisResults || []).forEach(a => {
+                    const c = pwClassify(a.player);
+                    if (!c || c.dir !== 'fall' || c.tier !== 'due') return;
+                    moves.push({
+                        icon: '📉',
+                        kind: 'price',
+                        urgent: false,
+                        title: `${a.player.name} drops to £${(a.player.price - 0.1).toFixed(1)}m tonight`,
+                        detail: `You own him, so this is £0.1m off your team value at the next daily price update. Worth acting on only if you were already moving him on — never sell a player you want purely to save a tenth.`,
+                        actionLabel: 'View options',
+                        action: `openTransferPanel(${a.player.id})`
+                    });
+                });
+            }
+
             /* --- 5. Template gaps.
 
                FPL is scored against a global average, so a player owned by most of

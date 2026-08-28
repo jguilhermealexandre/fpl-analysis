@@ -512,6 +512,56 @@
         // exact same maths as the headline figure — otherwise its "before" number
         // disagrees with the score already on screen.
 
+        /* ===== Planning horizon =====
+
+           One gameweek answers "who plays this week"; it cannot answer "who is
+           worth owning". A player with a soft run and a player facing three of
+           the top four look identical over a single fixture and completely
+           different over three, so the multi-gameweek views project across a
+           run rather than a match.
+
+           Three is the default because it is roughly how far ahead a squad is
+           actually plannable: far enough for a fixture swing to show up, close
+           enough that the underlying rates still mean something. The transfer
+           recommender deliberately uses a longer five, because committing a
+           transfer is a longer-lived decision than picking a lineup — it passes
+           its own horizon in rather than taking this default.
+
+           These live here, in the shared engine, so the draft, the wizards and
+           the recommender all sum the same per-gameweek projection instead of
+           each growing a private one. */
+        const XP_PLAN_HORIZON = 3;
+
+        /* The next `n` gameweeks that have not kicked off yet, in order.
+           `fromGW` lets the draft ask about a run starting at the gameweek being
+           planned rather than at today. */
+        function xpPlanGWs(n, fromGW) {
+            const fixtures = (typeof allFixtures !== 'undefined' && allFixtures) || [];
+            const started = new Set(fixtures
+                .filter(f => f.event !== null && (f.started || f.finished_provisional))
+                .map(f => f.event));
+            const upcoming = [...new Set(fixtures
+                .filter(f => f.event !== null && !f.finished_provisional && !started.has(f.event))
+                .map(f => f.event))].sort((a, b) => a - b);
+            const from = fromGW ? upcoming.filter(g => g >= fromGW) : upcoming;
+            return from.slice(0, n === undefined ? XP_PLAN_HORIZON : n);
+        }
+
+        /* A player's projected total across a list of gameweeks. Blanks cost
+           nothing extra to handle: projectPlayerPointsForGW returns 0 for a
+           gameweek the player's team does not play in, and counts both fixtures
+           of a double. */
+        function xpOver(player, gws) {
+            if (!player || !gws || !gws.length) return 0;
+            const total = gws.reduce((s, g) => s + projectPlayerPointsForGW(player, g), 0);
+            return Math.round(total * 10) / 10;
+        }
+
+        // Convenience for the common case: the next three, optionally from a gameweek.
+        function xpNext3(player, fromGW) {
+            return xpOver(player, xpPlanGWs(XP_PLAN_HORIZON, fromGW));
+        }
+
         // A host page can call this before projecting to confirm the globals the
         // engine reads actually exist, rather than silently producing zeros.
         function xpEngineReady() {
