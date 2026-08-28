@@ -64,8 +64,8 @@
            the recommender below reads better with them, but there is only one
            implementation now. The recommender passes TW_HORIZON explicitly —
            it decides over five gameweeks, not the engine's default three. */
-        function twPlanGWs(n) {
-            return typeof xpPlanGWs === 'function' ? xpPlanGWs(n) : [];
+        function twPlanGWs(n, fromGW) {
+            return typeof xpPlanGWs === 'function' ? xpPlanGWs(n, fromGW) : [];
         }
 
         function twXPOver(player, gws) {
@@ -149,10 +149,36 @@
             return false;
         }
 
-        function twXPCached(player, gws, cache) {
+        // A small, bounded nudge from the team's own recent results — genuinely
+        // independent of the player's own regressed per-90 rate (a squad can be
+        // hot or cold before an individual's underlying numbers catch up), the
+        // same signal findReplacements()/analyzePlayer() already lean on. Kept
+        // deliberately small relative to a typical multi-GW xP swing so it can
+        // only ever break a close call, never override what the projection
+        // itself already says once fixture difficulty and form are folded in.
+        //
+        // Opt-in (see twXPCached below): the Transfer Wizard's own recommendation
+        // card and the dashboard alert already show "X.X xP" numbers built from
+        // this same cache without it, and turning it on unconditionally would
+        // quietly change those already-shipped figures. GW Draft's recommender
+        // asks for it explicitly; everyone else keeps today's behaviour.
+        function twTeamContextNudge(player) {
+            const ta = typeof teamAnalysis !== 'undefined' ? teamAnalysis[player.teamId] : null;
+            if (!ta || !ta.matchesPlayed) return 0;
+            const powerField = player.position >= 3 ? ta.attackPower : ta.defensePower;
+            let nudge = (ta.formRating - 50) / 50;
+            nudge += powerField !== undefined ? (powerField - 50) / 50 : 0;
+            nudge += (ta.fixtureScore - 50) / 100;
+            return Math.max(-2.5, Math.min(2.5, nudge));
+        }
+
+        function twXPCached(player, gws, cache, useTeamContext) {
             if (!player) return 0;
-            if (cache[player.id] === undefined) cache[player.id] = twXPOver(player, gws);
-            return cache[player.id];
+            const key = useTeamContext ? `${player.id}:tc` : player.id;
+            if (cache[key] === undefined) {
+                cache[key] = twXPOver(player, gws) + (useTeamContext ? twTeamContextNudge(player) : 0);
+            }
+            return cache[key];
         }
 
         /* What a squad is actually worth over the window.
@@ -187,9 +213,9 @@
 
         // One entry per squad player, reused across every candidate so the lineup
         // solve is the only per-candidate work.
-        function twBuildPool(squad, gws, cache) {
+        function twBuildPool(squad, gws, cache, useTeamContext) {
             return squad.map(p => ({
-                id: p.id, pos: p.position, lwScore: twXPCached(p, gws, cache), _ref: p
+                id: p.id, pos: p.position, lwScore: twXPCached(p, gws, cache, useTeamContext), _ref: p
             }));
         }
 
@@ -197,7 +223,7 @@
         // Scored on what the swap does to the squad's total, not to the player's.
         function twBestSwapFor(out, ctx) {
             const budget = (out.sellPrice || out.price) + ctx.bank;
-            const outXP = twXPCached(out, ctx.gws, ctx.cache);
+            const outXP = twXPCached(out, ctx.gws, ctx.cache, ctx.useTeamContext);
             const slot = ctx.pool.findIndex(e => e.id === out.id);
             if (slot < 0) return null;
 
@@ -213,7 +239,7 @@
                 const held = (ctx.clubCount[cand.teamId] || 0) - (cand.teamId === out.teamId ? 1 : 0);
                 if (held >= 3) continue;
 
-                const inXP = twXPCached(cand, ctx.gws, ctx.cache);
+                const inXP = twXPCached(cand, ctx.gws, ctx.cache, ctx.useTeamContext);
                 trial[slot] = { id: cand.id, pos: cand.position, lwScore: inXP, _ref: cand };
                 const gain = twSquadValue(trial) - ctx.baseValue;
 
@@ -230,12 +256,14 @@
         }
 
         /* opts lets a host without the squad page's globals supply them:
-             { squad, bank, freeTransfers }
-           Anything omitted falls back to the squad page's own state, so the
-           wizard's existing call site is unaffected. */
+             { squad, bank, freeTransfers, fromGW, useTeamContext }
+           Anything omitted falls back to the squad page's own state (or today,
+           for fromGW), so the wizard's existing call site is unaffected. GW
+           Draft is the one host that passes fromGW — "project from GW7", not
+           from today — and useTeamContext (see twTeamContextNudge above). */
         function twBuildRecommendation(opts) {
             const o = opts || {};
-            const gws = twPlanGWs(TW_HORIZON);
+            const gws = twPlanGWs(TW_HORIZON, o.fromGW);
             const squad = (o.squad && o.squad.length) ? o.squad
                 : ((typeof selectedPlayers !== 'undefined' && selectedPlayers.length) ? selectedPlayers : []);
             if (!squad.length || !gws.length) return null;
@@ -244,11 +272,12 @@
             squad.forEach(p => { clubCount[p.teamId] = (clubCount[p.teamId] || 0) + 1; });
 
             const cache = {};
-            const pool = twBuildPool(squad, gws, cache);
+            const pool = twBuildPool(squad, gws, cache, o.useTeamContext);
             const baseXI = typeof solveQuickLineup === 'function' ? solveQuickLineup(pool).xi : pool.slice(0, 11);
 
             const ctx = {
-                gws, bank: (o.bank != null ? o.bank : (typeof getTWBank === 'function' ? getTWBank() : 0)), cache, pool,
+                gws, useTeamContext: o.useTeamContext,
+                bank: (o.bank != null ? o.bank : (typeof getTWBank === 'function' ? getTWBank() : 0)), cache, pool,
                 baseValue: twSquadValue(pool),
                 baseXIIds: new Set(baseXI.map(p => p.id)),
                 ownedIds: new Set(squad.map(p => p.id)),
@@ -359,8 +388,19 @@
             } else if (m.out.status === 'd') {
                 bits.push(`${m.out.name} is carrying a doubt`);
             }
-            const outFx = (m.out.fixtures || []).slice(0, gws.length).map(f => f.difficulty || 3);
-            const inFx = (m.in.fixtures || []).slice(0, gws.length).map(f => f.difficulty || 3);
+            // player.fixtures is always "the next N from today" — right for the
+            // Transfer Wizard's own call (gws IS the next N from today), but
+            // GW Draft passes gws starting at some future gameweek, where that
+            // property would silently describe the wrong weeks. Reading
+            // teamFixtures6 and filtering to the actual gws list is correct
+            // either way.
+            const fxFor = player => {
+                const all = (typeof teamFixtures6 !== 'undefined' && teamFixtures6[player.teamId]) || player.fixtures || [];
+                const forGws = all.filter(f => gws.includes(f.event));
+                return (forGws.length ? forGws : all.slice(0, gws.length)).map(f => f.difficulty || 3);
+            };
+            const outFx = fxFor(m.out);
+            const inFx = fxFor(m.in);
             const avg = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 3;
             const outAvg = avg(outFx), inAvg = avg(inFx);
             if (inAvg <= outAvg - 0.4) {

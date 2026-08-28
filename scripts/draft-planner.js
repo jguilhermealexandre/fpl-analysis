@@ -542,13 +542,17 @@
             document.getElementById('draftTransferComparison').innerHTML = html;
         }
 
-        function confirmDraftTransfer(outId, inId) {
+        // The actual bookkeeping — push the transfer into this gameweek's plan
+        // and replay it forward. Split out of confirmDraftTransfer so a bulk
+        // action (apply several transfers across several gameweeks) can call
+        // it in a loop without the panel-close/save/re-render firing after
+        // every single one.
+        function applyDraftTransfer(gw, outId, inId) {
             const ds = getActiveDraft();
-            const gw = ds.selectedGW;
             const squad = getDraftSquad(gw);
             const outPlayer = squad.find(p => p.id === outId);
             const inPlayer = allPlayersById[inId];
-            if (!outPlayer || !inPlayer) return;
+            if (!outPlayer || !inPlayer) return false;
 
             ds.transfers[gw].push({
                 outId: outId,
@@ -560,6 +564,12 @@
             });
 
             rebuildDraftSquads();
+            return true;
+        }
+
+        function confirmDraftTransfer(outId, inId) {
+            const ds = getActiveDraft();
+            if (!applyDraftTransfer(ds.selectedGW, outId, inId)) return;
             closeDraftTransferPanel();
             saveDraft();
             rerenderDraftView();
@@ -2136,9 +2146,195 @@
             </div>`;
         }
 
+        // ===== STRATEGY SIDEBAR: SUGGEST TRANSFERS =====
+        // The Copilot above is the cheap, single-gameweek option — raw xP delta
+        // for this week alone, pre-filtered to 30 candidates a side for speed.
+        // This is the deep one: the same squad-value/joint-transfer engine
+        // behind the Transfer Wizard's "Recommended Move" (whole-squad scan,
+        // 5-gameweek projection, hit-cost-aware viability threshold), scoped to
+        // whichever gameweek is selected — its budget, its free transfers, its
+        // fixtures — plus team form, fixture swings and price-change urgency
+        // folded into the reasoning under each suggestion.
+        //
+        // A wildcard/free-hit gameweek is excluded: free-hit discards its squad
+        // next gameweek (rebuildDraftSquads never lets it persist), so
+        // recommending an incremental swap for it is answering a question
+        // nobody's asking. Wildcard keeps ordinary transfer bookkeeping, so it
+        // stays in — just with the hit-cost math turned off.
+        function draftBuildSuggestion(gw) {
+            const ds = getActiveDraft();
+            if (!ds || !gw) return null;
+            const chip = ds.chips[gw];
+            if (chip === 'freehit') return null;
+            if (typeof twBuildRecommendation !== 'function') return null;
+            return twBuildRecommendation({
+                squad: getDraftSquad(gw),
+                bank: getDraftBudget(gw),
+                freeTransfers: chip === 'wildcard' ? 999 : getDraftFreeTransfers(gw),
+                fromGW: gw,
+                useTeamContext: true
+            });
+        }
+
+        // Whether a price move looks imminent enough to mention. Mirrors the
+        // squad page's own Price Watch section — the official meter first,
+        // the softer transfer-momentum heuristic only if the meter has nothing.
+        function draftMovePriceFlag(player) {
+            if (typeof pwIsLocked === 'function' && pwIsLocked(player)) return null;
+            const pw = typeof pwClassify === 'function' ? pwClassify(player, 20) : null;
+            if (pw) return pw;
+            return typeof priceMomentum === 'function' ? priceMomentum(player) : null;
+        }
+
+        // The "why" line under a suggested move. twMoveReason() (transfer-engine.js)
+        // already covers the core argument — bench dilution, availability, fixture
+        // difficulty, price as context. This adds the three signals that engine
+        // doesn't: team-level form (independent of the swap itself), the fixture
+        // swing each club is walking into within the horizon being projected, and
+        // whether either player's price is about to move.
+        function buildDraftMoveNarrative(m, gws) {
+            const sentences = [];
+            const base = typeof twMoveReason === 'function' ? twMoveReason(m, gws) : '';
+            if (base) sentences.push(base.charAt(0).toUpperCase() + base.slice(1) + '.');
+
+            const outTA = teamAnalysis[m.out.teamId], inTA = teamAnalysis[m.in.teamId];
+            if (outTA && inTA && outTA.matchesPlayed && inTA.matchesPlayed && (inTA.formRating - outTA.formRating) >= 15) {
+                sentences.push(`${escHTML(m.in.team)} are also in better form than ${escHTML(m.out.team)} right now (${inTA.formRating} vs ${outTA.formRating}).`);
+            }
+
+            const inSwing = fixtureSwingData[m.in.teamId];
+            if (inSwing && inSwing.direction === 'improving' && gws.some(g => g >= inSwing.swingGW)) {
+                sentences.push(`${escHTML(m.in.team)}'s fixtures ease further from GW${inSwing.swingGW}.`);
+            }
+            const outSwing = fixtureSwingData[m.out.teamId];
+            if (outSwing && outSwing.direction === 'worsening' && gws.some(g => g >= outSwing.swingGW)) {
+                sentences.push(`${escHTML(m.out.team)}'s run gets harder from GW${outSwing.swingGW} too.`);
+            }
+
+            const inPW = draftMovePriceFlag(m.in);
+            if (inPW && inPW.dir === 'rise') {
+                sentences.push(inPW.tier === 'due'
+                    ? `${escHTML(m.in.name)}'s price meter is full — a rise is due at the next update, so buying now costs less than buying later.`
+                    : `${escHTML(m.in.name)}'s price meter is ${Math.round(Math.abs(inPW.progress))}% toward a rise.`);
+            }
+            const outPW = draftMovePriceFlag(m.out);
+            if (outPW && outPW.dir === 'fall') {
+                sentences.push(outPW.tier === 'due'
+                    ? `${escHTML(m.out.name)}'s price is due to drop at the next update — selling now protects the value.`
+                    : `${escHTML(m.out.name)}'s price meter is ${Math.round(Math.abs(outPW.progress))}% toward a fall.`);
+            }
+
+            return sentences.join(' ');
+        }
+
+        function applyDraftSuggestion(gw, outId, inId) {
+            if (!applyDraftTransfer(gw, outId, inId)) return;
+            saveDraft();
+            rerenderDraftView();
+            if (typeof updateStatus === 'function') updateStatus(`Applied the suggested transfer for GW${gw}.`, 'success');
+        }
+
+        function renderDraftSuggestForGW(gw) {
+            const ds = getActiveDraft();
+            if (ds.chips[gw] === 'freehit') {
+                return `<div class="dp-side-empty">Free Hit rebuilds the whole squad for GW${gw} rather than swapping players in and out — pick the XI directly for this week instead.</div>`;
+            }
+            const rec = draftBuildSuggestion(gw);
+            if (!rec) return `<div class="dp-side-empty">Not enough fixture data loaded to project GW${gw} yet.</div>`;
+            if (rec.noLegalMove) {
+                return `<div class="dp-side-empty">No legal transfer is available for GW${gw} — every option is unaffordable, blocked by the three-per-club limit, or already in this squad.</div>`;
+            }
+            const span = rec.gws.length > 1 ? `GW${rec.gws[0]}–GW${rec.gws[rec.gws.length - 1]}` : `GW${rec.gws[0]}`;
+            const best = rec.best;
+            if (!best || best.n === 0) {
+                const closest = rec.moves[0];
+                return `<div class="dp-side-empty">✋ Hold for GW${gw} — nothing clears its margin over ${span}.
+                    ${closest ? `<div class="dp-copilot-note" style="margin-top:8px;">Closest: ${escHTML(closest.out.name)} → ${escHTML(closest.in.name)} (${closest.gain >= 0 ? '+' : ''}${closest.gain.toFixed(1)} xP) — short of the free-transfer margin.</div>` : ''}
+                </div>`;
+            }
+            const hitNote = best.cost > 0 ? `, after a −${best.cost}-point hit` : ', on a free transfer';
+            const movesHtml = best.moves.map(m => `<div class="dp-move dp-move-suggest">
+                <div class="dp-move-body">
+                    <div class="dp-move-players">
+                        <span class="dp-move-out">${escHTML(m.out.name)}</span>
+                        <span class="dp-move-arrow">→</span>
+                        <span class="dp-move-in">${escHTML(m.in.name)}</span>
+                        <span class="dp-move-gain ${m.gain >= 0 ? 'good' : 'bad'}">${m.gain >= 0 ? '+' : ''}${m.gain.toFixed(1)} xP</span>
+                    </div>
+                    <div class="dp-move-why">${buildDraftMoveNarrative(m, rec.gws)}</div>
+                </div>
+                <button class="dp-move-apply" onclick="applyDraftSuggestion(${gw}, ${m.out.id}, ${m.in.id})" data-tooltip="Apply this transfer to GW${gw} of this plan">Apply</button>
+            </div>`).join('');
+            return `<div class="dp-copilot-note">${best.n === 1 ? '1 transfer' : `${best.n} transfers`} recommended for GW${gw}${hitNote} — net +${best.net.toFixed(1)} xP over ${span}.</div>
+                ${movesHtml}`;
+        }
+
+        function renderDraftSuggestBody() {
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
+            return `<div class="dp-copilot-note">Projects squad value over a ${TW_HORIZON}-gameweek window from this gameweek on — the same engine behind the Transfer Wizard's own recommendation, scoped to this plan's budget and free transfers at each gameweek.</div>
+                <div class="dp-suggest-actions">
+                    <button class="draft-action-btn" onclick="draftAutoSuggestAllGWs()" data-tooltip="Runs this recommendation on every gameweek in the plan, in order, applying each accepted move before evaluating the next gameweek — a transfer at GW3 changes what GW4 needs.">✨ Auto-suggest all gameweeks</button>
+                    ${ds.lastSuggestSnapshot ? `<button class="draft-action-btn danger" onclick="undoDraftAutoSuggest()">↩ Undo auto-suggested transfers</button>` : ''}
+                </div>
+                ${renderDraftSuggestForGW(gw)}`;
+        }
+
+        // Runs Auto-suggest against every gameweek in the plan, applying the
+        // accepted move(s) before evaluating the next — transfers, unlike
+        // lineups, carry forward (confirmDraftTransfer already replays them
+        // through rebuildDraftSquads), so GW5's suggestion has to see whatever
+        // GW3/GW4 just did rather than the squad as it stood before this ran.
+        // One-shot undo: ds.transfers is snapshotted first and restored whole
+        // if the manager doesn't like the result, same idea as a single undo
+        // step rather than a full history.
+        function draftAutoSuggestAllGWs() {
+            const ds = getActiveDraft();
+            if (!ds || !ds.gwNumbers || !ds.gwNumbers.length) return;
+
+            const snapshot = JSON.parse(JSON.stringify(ds.transfers));
+            let appliedCount = 0;
+            const appliedGWs = [];
+
+            ds.gwNumbers.forEach(gw => {
+                if (ds.chips[gw] === 'freehit') return;
+                const rec = draftBuildSuggestion(gw);
+                if (!rec || rec.noLegalMove || !rec.best || rec.best.n === 0) return;
+                let appliedHere = false;
+                rec.best.moves.forEach(m => {
+                    if (applyDraftTransfer(gw, m.out.id, m.in.id)) { appliedCount++; appliedHere = true; }
+                });
+                if (appliedHere) appliedGWs.push(gw);
+            });
+
+            if (!appliedCount) {
+                if (typeof updateStatus === 'function') updateStatus('No gameweek in this plan has a transfer worth making right now — holding everywhere.', 'info');
+                return;
+            }
+
+            ds.lastSuggestSnapshot = snapshot;
+            saveDraft();
+            rerenderDraftView();
+            if (typeof updateStatus === 'function') {
+                updateStatus(`Applied ${appliedCount} transfer${appliedCount > 1 ? 's' : ''} across GW${appliedGWs[0]}–GW${appliedGWs[appliedGWs.length - 1]}. Use "Undo auto-suggested transfers" in the sidebar to revert.`, 'success');
+            }
+        }
+
+        function undoDraftAutoSuggest() {
+            const ds = getActiveDraft();
+            if (!ds.lastSuggestSnapshot) return;
+            ds.transfers = ds.lastSuggestSnapshot;
+            ds.lastSuggestSnapshot = null;
+            rebuildDraftSquads();
+            saveDraft();
+            rerenderDraftView();
+            if (typeof updateStatus === 'function') updateStatus('Reverted the auto-suggested transfers.', 'success');
+        }
+
         function renderDraftSidebarBody() {
             const ds = getActiveDraft();
             if (draftSidebarTab === 'copilot') return renderDraftCopilot();
+            if (draftSidebarTab === 'suggest') return renderDraftSuggestBody();
             return `<div class="dp-notes">
                 <div class="dp-notes-head">
                     <span class="notepad-gw-label" id="notepadGwLabel">GW${ds.selectedGW}</span>
@@ -2155,6 +2351,7 @@
                 <aside class="dp-sidebar">
                     <div class="dp-side-tabs">
                         <button class="dp-side-tab ${draftSidebarTab === 'copilot' ? 'active' : ''}" data-tab="copilot" onclick="setDraftSidebarTab('copilot')">🤖 AI Copilot</button>
+                        <button class="dp-side-tab ${draftSidebarTab === 'suggest' ? 'active' : ''}" data-tab="suggest" onclick="setDraftSidebarTab('suggest')">💡 Suggest</button>
                         <button class="dp-side-tab ${draftSidebarTab === 'notes' ? 'active' : ''}" data-tab="notes" onclick="setDraftSidebarTab('notes')">✏️ Notes</button>
                     </div>
                     <div class="dp-side-body" id="draftSidebarBody">${renderDraftSidebarBody()}</div>
