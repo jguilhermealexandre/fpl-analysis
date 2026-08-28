@@ -683,7 +683,15 @@
             const gw = ds.selectedGW;
             if (!gw) return;
             const lineup = getDraftSquad(gw);
+            const activeChip = ds.chips[gw];
             const runGWs = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON, gw) : [gw];
+
+            // Snapshot the lineup as it stood before optimising, for the report's
+            // before/after and "what got benched" — the same idea as Squad
+            // Analysis's runAutoOptimize, just scoped to gw instead of "now".
+            const beforeXI = new Set(lineup.filter(p => !p.onBench).map(p => p.id));
+            const beforeCaptainId = (lineup.find(p => p.isCaptain) || {}).id ?? null;
+            const beforeXP = typeof projectLineupForGW === 'function' ? projectLineupForGW(lineup, gw, activeChip) : 0;
 
             const pool = lineup.map(p => {
                 const excluded = p.status === 'i' || p.status === 'u' || p.status === 's';
@@ -709,14 +717,68 @@
             if (xiByGW[0]) xiByGW[0].isCaptain = true;
             if (xiByGW[1]) xiByGW[1].isVice = true;
 
+            const afterXP = typeof projectLineupForGW === 'function' ? projectLineupForGW(lineup, gw, activeChip) : 0;
+
+            // ----- Build the same report Squad Analysis's Auto-Optimize shows,
+            // just for this gameweek instead of "next fixture". Keyed by gw so
+            // each week in the plan keeps its own report and its own summary. -----
+            const finalXI = lineup.filter(p => !p.onBench)
+                .sort((a, b) => projectPlayerPointsForGW(b, gw) - projectPlayerPointsForGW(a, gw));
+            const finalBench = lineup.filter(p => p.onBench).sort((a, b) => a.pickPosition - b.pickPosition);
+
+            const promotedPool = lineup.filter(p => !p.onBench && !beforeXI.has(p.id))
+                .sort((a, b) => projectPlayerPointsForGW(b, gw) - projectPlayerPointsForGW(a, gw));
+            const benchedOut = [...beforeXI].filter(id => lineup.find(p => p.id === id && p.onBench))
+                .map(id => lineup.find(p => p.id === id))
+                .filter(Boolean)
+                .sort((a, b) => projectPlayerPointsForGW(b, gw) - projectPlayerPointsForGW(a, gw))
+                // detailed is deliberately empty: the heuristic breakdown
+                // (computeQuickLineupScoreDetailed) reads a player's fixture[0],
+                // meaning "today's next match" — wrong lens for a future gw. The
+                // report's own gw-aware FDR check covers "tough fixture" instead.
+                .map(p => ({ player: p, detailed: {}, replacedBy: null }));
+            benchedOut.forEach(entry => {
+                const i = promotedPool.findIndex(q => q.position === entry.player.position);
+                if (i >= 0) entry.replacedBy = promotedPool.splice(i, 1)[0];
+            });
+            benchedOut.forEach(entry => {
+                if (!entry.replacedBy && promotedPool.length) {
+                    entry.replacedBy = promotedPool.shift();
+                    entry.shapeChange = true;
+                }
+            });
+
+            ds.optimizeReports = ds.optimizeReports || {};
+            ds.optimizeReports[gw] = {
+                gw,
+                formation: typeof getFormation === 'function' ? getFormation(lineup) : '',
+                beforeXP, afterXP, gain: afterXP - beforeXP,
+                captain: finalXI[0] || null,
+                captainAlternatives: finalXI.slice(1, 3),
+                xi: finalXI,
+                benchOrder: finalBench,
+                captainShortlist: finalXI.slice(0, 5),
+                formationScores: result.formationScores || [],
+                viceId: (lineup.find(p => p.isVice) || {}).id ?? null,
+                previousCaptain: beforeCaptainId != null ? { player: lineup.find(p => p.id === beforeCaptainId) } : null,
+                benchedOut,
+                promoted: lineup.filter(p => !p.onBench && !beforeXI.has(p.id))
+            };
+
             draftSwapSource = null;
             saveDraft();
             rerenderDraftView();
-            if (typeof updateStatus === 'function') {
-                updateStatus(runGWs.length > 1
-                    ? `GW${gw} lineup optimized using expected points across GW${runGWs[0]}–GW${runGWs[runGWs.length - 1]}`
-                    : `GW${gw} lineup optimized (${result.formation})`, 'success');
-            }
+        }
+
+        function openDraftOptimizeReport(gw) {
+            const ds = getActiveDraft();
+            const report = ds.optimizeReports && ds.optimizeReports[gw];
+            if (!report) return;
+            const title = document.getElementById('optReportTitle');
+            if (title) title.textContent = `📊 GW${gw} optimization report`;
+            document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal(report, gw);
+            document.getElementById('optReportOverlay').classList.add('show');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         // ===== DRAFT localStorage PERSISTENCE =====
@@ -1324,6 +1386,14 @@
                 <button class="draft-action-btn" onclick="draftAutoOptimizeLineup()" data-tooltip="Rebuild GW${gw}'s XI, bench order and captain from the players available that week${optimizeRunGWs.length > 1 ? `, ranked on expected points across GW${optimizeRunGWs[0]}–GW${optimizeRunGWs[optimizeRunGWs.length - 1]} combined` : ''}.">✨ Auto-optimise</button>
                 <button class="draft-action-btn danger" onclick="resetDraft()" data-tooltip="Discard every change in this plan and start again from your current squad.">↩ Reset plan</button>
             </div>`;
+
+            // Each gameweek keeps its own report — switching weeks shows that
+            // week's summary (or none, if it hasn't been optimised yet), same as
+            // Squad Analysis's own summary line under its Auto-Optimize button.
+            const report = ds.optimizeReports && ds.optimizeReports[gw];
+            if (report) {
+                html += `<div class="sq-optimize-summary">✨ ${buildOptimizeSummary(report, `openDraftOptimizeReport(${gw})`)}</div>`;
+            }
 
             return html;
         }

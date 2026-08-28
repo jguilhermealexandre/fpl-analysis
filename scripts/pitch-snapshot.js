@@ -639,12 +639,23 @@
         // Leads with the number that answers "was this worth doing?", then names the
         // decisions, then offers the detail behind them — rather than asserting one
         // reason for one player and leaving the rest unexplained.
-        function buildOptimizeSummary(report) {
+        // `openCall` is the onclick target for "View Full Report" — defaults to
+        // the Squad Analysis opener; GW Draft passes its own so the button opens
+        // the report for the gameweek this summary actually describes.
+        function buildOptimizeSummary(report, openCall) {
             if (!report) return '';
             const gain = report.gain;
+            // Squad Analysis's optimizer has a safety net that never leaves this
+            // week worse off, so gain is never meaningfully negative there. GW
+            // Draft's optimizer picks the XI on a run of gameweeks, not this one
+            // alone, and deliberately can trade a slightly worse week for a
+            // better next two — so it needs its own honest phrasing rather than
+            // "already optimal" for a lineup that did change, just not upward.
             const headline = gain > 0.05
                 ? `AI Lineup Optimized <strong>(Gained +${gain.toFixed(1)} xP)</strong>`
-                : `AI Lineup checked — <strong>your XI was already optimal</strong>`;
+                : gain < -0.05
+                    ? `AI Lineup Optimized <strong>(${gain.toFixed(1)} xP this week, set up better for the weeks ahead)</strong>`
+                    : `AI Lineup checked — <strong>your XI was already optimal</strong>`;
 
             const bits = [];
             if (report.captain) {
@@ -660,41 +671,62 @@
             }
 
             return `<span class="opt-summary-text">${headline}. ${bits.join(' ')}</span>
-                <button class="opt-report-btn" onclick="openOptimizeReport()">📊 View Full Report</button>`;
+                <button class="opt-report-btn" onclick="${openCall || 'openOptimizeReport()'}">📊 View Full Report</button>`;
         }
 
         // ===== OPTIMIZATION REPORT MODAL =====
-        function optFdrFor(player) {
-            const fx = (player.fixtures || [])[0];
+        // Every helper below takes an optional `gw`. Squad Analysis always
+        // optimizes for the very next fixture, so omitting it keeps the original
+        // behaviour (player.fixtures[0], the immediate next match). GW Draft
+        // optimizes an arbitrary future gameweek — "GW7 while sitting in GW3" —
+        // so it passes gw explicitly and every lookup here reads that gameweek's
+        // fixture(s) out of teamFixtures6 instead of "whatever's next today".
+        function optFixturesForGW(player, gw) {
+            return (teamFixtures6[player.teamId] || []).filter(f => f.event === gw);
+        }
+
+        function optFdrFor(player, gw) {
+            const fx = gw != null ? optFixturesForGW(player, gw)[0] : (player.fixtures || [])[0];
             return fx ? (fx.difficulty || 3) : 3;
         }
 
-        function optFixtureLabel(player) {
-            const fx = (player.fixtures || [])[0];
-            return fx ? `${escHTML(fx.opponent)} (${fx.isHome ? 'H' : 'A'})` : '—';
+        function optFixtureLabel(player, gw) {
+            const fixtures = gw != null ? optFixturesForGW(player, gw) : (player.fixtures || []).slice(0, 1);
+            if (!fixtures.length) return '—';
+            const label = fx => `${escHTML(fx.opponent)} (${fx.isHome ? 'H' : 'A'})`;
+            return fixtures.length > 1 ? `${label(fixtures[0])} +${fixtures.length - 1}` : label(fixtures[0]);
         }
 
         // Where a player's projected points actually come from. Showing the split
         // is the difference between "trust me, 6.2" and a number you can argue with.
-        function optXpBreakdown(p) {
-            const d = projectPlayerPointsDetailed(p);
+        // Sums every fixture in the gameweek (plural for a double), so the bar's
+        // own total never disagrees with projectPlayerPointsForGW's headline figure.
+        function optXpBreakdown(p, gw) {
+            const fixtures = gw != null ? optFixturesForGW(p, gw) : null;
+            const details = fixtures && fixtures.length
+                ? fixtures.map(fx => projectPlayerPointsDetailed(p, { fixture: fx }))
+                : [projectPlayerPointsDetailed(p)];
+            const d = details.reduce((acc, cur) => {
+                Object.keys(cur).forEach(k => { if (typeof cur[k] === 'number') acc[k] = (acc[k] || 0) + cur[k]; });
+                return acc;
+            }, {});
             const parts = [
-                { key: 'Mins', v: d.appearance },
-                { key: 'Attack', v: d.attack },
-                { key: 'CS', v: d.cleanSheet },
-                { key: 'Saves', v: d.saves },
-                { key: 'Bonus', v: d.bonus },
+                { key: 'Mins', v: d.appearance || 0 },
+                { key: 'Attack', v: d.attack || 0 },
+                { key: 'CS', v: d.cleanSheet || 0 },
+                { key: 'Saves', v: d.saves || 0 },
+                { key: 'Bonus', v: d.bonus || 0 },
                 // Defensive contribution and cards were both missing here, so the
                 // legend did not add up to the xP printed beside it.
-                { key: 'DefCon', v: d.defCon },
-                { key: 'Conceded', v: d.conceded },
-                { key: 'Cards', v: d.cards }
+                { key: 'DefCon', v: d.defCon || 0 },
+                { key: 'Conceded', v: d.conceded || 0 },
+                { key: 'Cards', v: d.cards || 0 }
             ].filter(x => Math.abs(x.v) >= 0.05);
             return { detailed: d, parts };
         }
 
-        function optBreakdownBar(p) {
-            const { detailed, parts } = optXpBreakdown(p);
+        function optBreakdownBar(p, gw) {
+            const { detailed, parts } = optXpBreakdown(p, gw);
             const total = Math.max(0.01, parts.filter(x => x.v > 0).reduce((s, x) => s + x.v, 0));
             const seg = parts.filter(x => x.v > 0).map(x =>
                 `<span class="opt-seg opt-seg-${x.key.toLowerCase()}" style="width:${Math.round((x.v / total) * 100)}%"
@@ -704,7 +736,9 @@
         }
 
         // Starter likelihood in words. A 6.0 xP player who might not start is a
-        // different proposition from a 6.0 xP nailed-on one.
+        // different proposition from a 6.0 xP nailed-on one. Not gameweek-aware —
+        // it reads rotation history, which is the same lens whichever week you're
+        // planning (there's no model here of a specific future week's minutes).
         function optMinutesRisk(p) {
             const { pStart } = expectedMinutesModel(p);
             const pct = Math.round(pStart * 100);
@@ -713,23 +747,28 @@
             return { pct, cls, word };
         }
 
-        function optTeamContext(p, ranks) {
+        function optTeamContext(p, ranks, gw) {
             const ta = teamAnalysis[p.teamId];
-            const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
+            const fx = gw != null ? optFixturesForGW(p, gw)[0] : (p.fixtures || teamFixtures[p.teamId] || [])[0];
             const ctx = fx ? opponentContext(p.teamId, fx, ranks) : null;
             return { ta, fx, ctx };
         }
 
-        function renderOptimizeReportModal() {
-            const r = snapshotOptimizeReport;
+        // `reportArg`/`gw` let this serve GW Draft too: pass the stored per-
+        // gameweek report and its gameweek number and every figure below reads
+        // that week instead of "whichever fixture is next" (Squad Analysis's
+        // own call, with both omitted, is unchanged).
+        function renderOptimizeReportModal(reportArg, gw) {
+            const r = reportArg || snapshotOptimizeReport;
             if (!r) return '<div class="detail-section">Run Auto-Optimize to see a report.</div>';
+            const gwPoints = p => gw != null ? projectPlayerPointsForGW(p, gw) : predictedGWPoints(p);
 
             const ranks = getDefensiveRanks();
             const xi = (r.xi && r.xi.length) ? r.xi : [...snapshotXI].map(id => (getSquadAnalysisMap().get(id) || {}).player).filter(Boolean);
             const bench = r.benchOrder || [];
 
             // ---------- 1. Squad outlook: the shape of the whole lineup ----------
-            const xiXP = xi.reduce((s, p) => s + predictedGWPoints(p), 0);
+            const xiXP = xi.reduce((s, p) => s + gwPoints(p), 0);
             const starts = xi.map(p => expectedMinutesModel(p).pStart);
             const expectedAbsent = starts.reduce((s, v) => s + (1 - v), 0);
             const doubts = xi.filter(p => p.status === 'd');
@@ -741,7 +780,7 @@
             const stacked = Object.keys(byTeam).filter(t => byTeam[t] >= 3)
                 .map(t => `${teams[t]?.short_name || '???'} (${byTeam[t]})`);
 
-            const fdrs = xi.map(p => optFdrFor(p));
+            const fdrs = xi.map(p => optFdrFor(p, gw));
             const hardCount = fdrs.filter(f => f >= 4).length;
             const easyCount = fdrs.filter(f => f <= 2).length;
             const avgFdr = fdrs.length ? fdrs.reduce((s, f) => s + f, 0) / fdrs.length : 3;
@@ -764,43 +803,43 @@
             const capRows = shortlist.map((p, i) => {
                 const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
                 const risk = optMinutesRisk(p);
-                const { ctx } = optTeamContext(p, ranks);
+                const { ctx } = optTeamContext(p, ranks, gw);
                 const isVice = p.id === r.viceId;
                 return `<tr class="${i === 0 ? 'opt-pick' : ''}">
                     <td>${i === 0 ? '👑 ' : isVice ? '🅥 ' : ''}${escHTML(p.name)}${i === 0 ? ' <span class="opt-tag">AI pick</span>' : isVice ? ' <span class="opt-tag vice">Vice</span>' : ''}
                         <div class="opt-cap-sub">${escHTML(p.team)} · ${p.ownership != null ? `${p.ownership}% owned` : ''}${ctx && ctx.ranked ? ` · opponent concedes ${ctx.conceded.toFixed(1)}/game` : ''}</div></td>
-                    <td class="opt-num">${predictedGWPoints(p).toFixed(1)}</td>
+                    <td class="opt-num">${gwPoints(p).toFixed(1)}</td>
                     <td class="opt-num">${form.toFixed(1)}</td>
                     <td class="opt-num"><span class="opt-risk ${risk.cls}" data-tooltip="${risk.pct}% likely to start — ${risk.word}.">${risk.pct}%</span></td>
-                    <td><span class="fixture-chip fdr-${optFdrFor(p)}">${optFixtureLabel(p)}</span></td>
+                    <td><span class="fixture-chip fdr-${optFdrFor(p, gw)}">${optFixtureLabel(p, gw)}</span></td>
                 </tr>`;
             }).join('');
 
             const capLead = r.captain && shortlist[1]
-                ? (predictedGWPoints(r.captain) - predictedGWPoints(shortlist[1]))
+                ? (gwPoints(r.captain) - gwPoints(shortlist[1]))
                 : 0;
-            const capBreakdown = r.captain ? optBreakdownBar(r.captain) : '';
+            const capBreakdown = r.captain ? optBreakdownBar(r.captain, gw) : '';
             const capRisk = r.captain ? optMinutesRisk(r.captain) : null;
 
             // ---------- 3. The starting eleven, each with its points split ----------
             const xiRows = xi.map(p => {
                 const risk = optMinutesRisk(p);
-                const { ctx } = optTeamContext(p, ranks);
+                const { ctx } = optTeamContext(p, ranks, gw);
                 const isCap = r.captain && p.id === r.captain.id;
                 return `<div class="opt-xi-row">
                     <div class="opt-xi-head">
                         <span class="position-badge ${POSITION_CONFIG[p.position].class}">${POSITION_CONFIG[p.position].short}</span>
                         <span class="opt-xi-name">${isCap ? '👑 ' : p.id === r.viceId ? '🅥 ' : ''}${escHTML(p.name)}</span>
                         <span class="opt-xi-team">${escHTML(p.team)}</span>
-                        <span class="fixture-chip fdr-${optFdrFor(p)}">${optFixtureLabel(p)}</span>
-                        <span class="opt-xi-xp">${predictedGWPoints(p).toFixed(1)}<span class="opt-xi-xp-unit">xP</span></span>
+                        <span class="fixture-chip fdr-${optFdrFor(p, gw)}">${optFixtureLabel(p, gw)}</span>
+                        <span class="opt-xi-xp">${gwPoints(p).toFixed(1)}<span class="opt-xi-xp-unit">xP</span></span>
                     </div>
                     <div class="opt-xi-meta">
                         <span class="opt-risk ${risk.cls}" data-tooltip="${risk.pct}% likely to start.">${risk.word} ${risk.pct}%</span>
                         ${ctx && ctx.ranked ? `<span data-tooltip="How leaky this opponent's defence is across the league.">Opponent ${ordinal(ctx.rank)} leakiest</span>` : ''}
                         ${p.status === 'd' ? `<span class="opt-flag">Fitness doubt${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}</span>` : ''}
                     </div>
-                    ${optBreakdownBar(p)}
+                    ${optBreakdownBar(p, gw)}
                 </div>`;
             }).join('');
 
@@ -809,7 +848,7 @@
                 const p = b.player;
                 const d = b.detailed || {};
                 const reasons = [];
-                if (d.fixture < -3 || optFdrFor(p) >= 4) reasons.push(`tough fixture vs ${optFixtureLabel(p)}`);
+                if (d.fixture < -3 || optFdrFor(p, gw) >= 4) reasons.push(`tough fixture vs ${optFixtureLabel(p, gw)}`);
                 if (d.matchup < -1.5) reasons.push('unfavourable team matchup');
                 const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
                 if (form < 3) reasons.push(`weak form (${form.toFixed(1)})`);
@@ -818,10 +857,10 @@
                 if (risk.pct < 60) reasons.push(`only ${risk.pct}% likely to start`);
                 if (!reasons.length) reasons.push('a higher-projected option was available');
                 const swap = b.replacedBy
-                    ? ` — ${b.shapeChange ? 'slot given to' : 'replaced by'} <strong>${escHTML(b.replacedBy.name)}</strong> (${predictedGWPoints(b.replacedBy).toFixed(1)} xP${b.shapeChange ? `, ${POS_SHORT_MAP[b.replacedBy.position]}` : ''})`
+                    ? ` — ${b.shapeChange ? 'slot given to' : 'replaced by'} <strong>${escHTML(b.replacedBy.name)}</strong> (${gwPoints(b.replacedBy).toFixed(1)} xP${b.shapeChange ? `, ${POS_SHORT_MAP[b.replacedBy.position]}` : ''})`
                     : '';
                 return `<div class="opt-bench-row">
-                    <div class="opt-bench-head"><strong>${escHTML(p.name)}</strong> (${predictedGWPoints(p).toFixed(1)} xP) benched${swap}</div>
+                    <div class="opt-bench-head"><strong>${escHTML(p.name)}</strong> (${gwPoints(p).toFixed(1)} xP) benched${swap}</div>
                     <div class="opt-bench-why">${escHTML(reasons.join(' · '))}</div>
                 </div>`;
             }).join('') : `<div class="opt-empty">No one was dropped — your starting XI already had the best available players in it.</div>`;
@@ -835,8 +874,8 @@
                             <span class="opt-suborder-n">${p.position === 1 ? 'GK' : i + 1}</span>
                             <span class="opt-suborder-name">${escHTML(p.name)}</span>
                             <span class="opt-suborder-team">${escHTML(p.team)}</span>
-                            <span class="fixture-chip fdr-${optFdrFor(p)}">${optFixtureLabel(p)}</span>
-                            <span class="opt-suborder-xp">${predictedGWPoints(p).toFixed(1)} xP</span>
+                            <span class="fixture-chip fdr-${optFdrFor(p, gw)}">${optFixtureLabel(p, gw)}</span>
+                            <span class="opt-suborder-xp">${gwPoints(p).toFixed(1)} xP</span>
                             <span class="opt-risk ${risk.cls}">${risk.pct}%</span>
                         </div>`;
                     }).join('')}
@@ -845,7 +884,7 @@
 
             // ---------- 5. Formation, and the shapes that lost ----------
             const byPos = pos => xi.filter(p => p.position === pos);
-            const posXP = pos => byPos(pos).reduce((s, p) => s + predictedGWPoints(p), 0);
+            const posXP = pos => byPos(pos).reduce((s, p) => s + gwPoints(p), 0);
             const shape = describeFormation(xi);
             const blocks = [
                 { label: 'Defenders', xp: posXP(2), n: byPos(2).length },
@@ -882,10 +921,13 @@
 
             return `
             <div class="detail-section">
+                ${gw != null ? `<div class="opt-gw-badge">GW${gw}</div>` : ''}
                 <div class="opt-headline ${r.gain > 0.05 ? 'gain' : 'flat'}">
                     ${r.gain > 0.05
                         ? `<span class="opt-gain">+${r.gain.toFixed(1)} xP</span><span>projected gain from this optimization</span>`
-                        : `<span class="opt-gain">No change</span><span>your lineup was already the best available</span>`}
+                        : r.gain < -0.05
+                            ? `<span class="opt-gain">${r.gain.toFixed(1)} xP</span><span>this week — picked for the strongest run across the weeks ahead, not just this one</span>`
+                            : `<span class="opt-gain">No change</span><span>your lineup was already the best available</span>`}
                     <div class="opt-beforeafter">${r.beforeXP.toFixed(1)} xP before · ${r.afterXP.toFixed(1)} xP after <span class="opt-note">(includes the captain's double)</span></div>
                 </div>
             </div>
@@ -939,6 +981,8 @@
         }
 
         function openOptimizeReport() {
+            const title = document.getElementById('optReportTitle');
+            if (title) title.textContent = '📊 Optimization report';
             document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal();
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
