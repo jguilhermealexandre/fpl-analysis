@@ -2042,7 +2042,7 @@
         }
 
         // ===== STRATEGY SIDEBAR: AI COPILOT =====
-        let draftSidebarTab = 'copilot';
+        let draftSidebarTab = 'suggest';
 
         function setDraftSidebarTab(tab) {
             draftSidebarTab = tab;
@@ -2064,94 +2064,10 @@
             }
         }
 
-        // The single transfer that gains the most projected points in this gameweek.
-        // Candidates are pre-filtered on FPL's own estimate before anything is
-        // projected — running the full model over every player in the game for each
-        // of fifteen squad slots would be thousands of projections for no better answer.
-        function buildDraftCopilot(gw, limit) {
-            const ds = getActiveDraft();
-            if (!ds) return [];
-            const squad = getDraftSquad(gw);
-            const budget = getDraftBudget(gw);
-            const squadIds = new Set(squad.map(p => p.id));
-
-            // Squad rules still apply to a suggestion, or it is not a legal move.
-            const teamCounts = {};
-            squad.forEach(p => { teamCounts[p.teamId] = (teamCounts[p.teamId] || 0) + 1; });
-
-            const poolByPos = {};
-            [1, 2, 3, 4].forEach(pos => {
-                poolByPos[pos] = allPlayers
-                    .filter(p => p.position === pos && !squadIds.has(p.id)
-                        && (p.status === 'a' || p.status === 'd')
-                        && (p.minutes || 0) >= minMinutesForCandidate())
-                    .sort((a, b) => (b.epNext || b.form || 0) - (a.epNext || a.form || 0))
-                    .slice(0, 30);
-            });
-
-            const best = [];
-            squad.forEach(out => {
-                const outPrice = out.sellPrice || out.price;
-                const outXP = projectPlayerPointsForGW(out, gw);
-                let top = null;
-                (poolByPos[out.position] || []).forEach(cand => {
-                    if (cand.price > budget + outPrice + 0.001) return;
-                    // Max three from any one club, counting the player leaving.
-                    const after = (teamCounts[cand.teamId] || 0) + (cand.teamId === out.teamId ? 0 : 1);
-                    if (after > 3) return;
-                    const gain = projectPlayerPointsForGW(cand, gw) - outXP;
-                    if (!top || gain > top.gain) top = { out, cand, gain, spend: cand.price - outPrice };
-                });
-                if (top && top.gain > 0.3) best.push(top);
-            });
-
-            best.sort((a, b) => b.gain - a.gain);
-            return best.slice(0, limit || 3);
-        }
-
-        function renderDraftCopilot() {
-            const ds = getActiveDraft();
-            const gw = ds.selectedGW;
-            const moves = buildDraftCopilot(gw, 3);
-            const ft = getDraftFreeTransfers(gw);
-            const used = (ds.transfers[gw] || []).length;
-
-            if (!moves.length) {
-                return `<div class="dp-side-empty">No transfer improves your GW${gw} projection by more than 0.3 points. Your squad is already well set for this week.</div>`;
-            }
-
-            return `<div class="dp-copilot">
-                <div class="dp-copilot-note">Ranked by projected points gained in GW${gw}. Each respects your budget and the three-per-club limit.</div>
-                ${moves.map((m, i) => {
-                    // A move beyond the free ones costs 4, so show the gain net of it.
-                    const wouldHit = (used + 1) > ft;
-                    const net = m.gain - (wouldHit ? 4 : 0);
-                    return `<div class="dp-move">
-                        <div class="dp-move-rank">${i + 1}</div>
-                        <div class="dp-move-body">
-                            <div class="dp-move-players">
-                                <span class="dp-move-out">${escHTML(m.out.name)}</span>
-                                <span class="dp-move-arrow">→</span>
-                                <span class="dp-move-in">${escHTML(m.cand.name)}</span>
-                            </div>
-                            <div class="dp-move-meta">
-                                <span class="dp-move-gain ${net > 0 ? 'good' : 'bad'}" data-tooltip="${m.cand.name} projects ${projectPlayerPointsForGW(m.cand, gw).toFixed(1)} against ${m.out.name}'s ${projectPlayerPointsForGW(m.out, gw).toFixed(1)} in GW${gw}${wouldHit ? ', before the 4-point hit this transfer would cost' : ''}.">+${m.gain.toFixed(1)} xP</span>
-                                ${wouldHit ? `<span class="dp-move-hit" data-tooltip="You have ${ft} free transfer${ft === 1 ? '' : 's'} and have used ${used}. This one costs 4 points, leaving ${net.toFixed(1)}.">−4 → ${net > 0 ? '+' : ''}${net.toFixed(1)}</span>` : ''}
-                                <span class="dp-move-spend" data-tooltip="${m.spend > 0 ? 'Costs' : 'Frees up'} £${Math.abs(m.spend).toFixed(1)}m of your £${getDraftBudget(gw).toFixed(1)}m budget.">${m.spend > 0 ? '−' : '+'}£${Math.abs(m.spend).toFixed(1)}m</span>
-                            </div>
-                        </div>
-                        <button class="dp-move-apply" onclick="confirmDraftTransfer(${m.out.id}, ${m.cand.id})" data-tooltip="Apply this transfer to GW${gw} of this plan">Apply</button>
-                    </div>`;
-                }).join('')}
-            </div>`;
-        }
-
         // ===== STRATEGY SIDEBAR: SUGGEST TRANSFERS =====
-        // The Copilot above is the cheap, single-gameweek option — raw xP delta
-        // for this week alone, pre-filtered to 30 candidates a side for speed.
-        // This is the deep one: the same squad-value/joint-transfer engine
-        // behind the Transfer Wizard's "Recommended Move" (whole-squad scan,
-        // 5-gameweek projection, hit-cost-aware viability threshold), scoped to
+        // The same squad-value/joint-transfer engine behind the Transfer
+        // Wizard's "Recommended Move" (whole-squad scan, 5-gameweek
+        // projection, hit-cost-aware viability threshold), scoped to
         // whichever gameweek is selected — its budget, its free transfers, its
         // fixtures — plus team form, fixture swings and price-change urgency
         // folded into the reasoning under each suggestion.
@@ -2333,7 +2249,6 @@
 
         function renderDraftSidebarBody() {
             const ds = getActiveDraft();
-            if (draftSidebarTab === 'copilot') return renderDraftCopilot();
             if (draftSidebarTab === 'suggest') return renderDraftSuggestBody();
             return `<div class="dp-notes">
                 <div class="dp-notes-head">
@@ -2350,8 +2265,7 @@
                         data-tooltip="${collapsed ? 'Open the strategy panel' : 'Collapse the panel and give the pitch the full width'}">${collapsed ? '◀' : '▶'}</button>
                 <aside class="dp-sidebar">
                     <div class="dp-side-tabs">
-                        <button class="dp-side-tab ${draftSidebarTab === 'copilot' ? 'active' : ''}" data-tab="copilot" onclick="setDraftSidebarTab('copilot')">🤖 AI Copilot</button>
-                        <button class="dp-side-tab ${draftSidebarTab === 'suggest' ? 'active' : ''}" data-tab="suggest" onclick="setDraftSidebarTab('suggest')">💡 Suggest</button>
+                        <button class="dp-side-tab ${draftSidebarTab === 'suggest' ? 'active' : ''}" data-tab="suggest" onclick="setDraftSidebarTab('suggest')">💡 Suggest Transfers</button>
                         <button class="dp-side-tab ${draftSidebarTab === 'notes' ? 'active' : ''}" data-tab="notes" onclick="setDraftSidebarTab('notes')">✏️ Notes</button>
                     </div>
                     <div class="dp-side-body" id="draftSidebarBody">${renderDraftSidebarBody()}</div>
