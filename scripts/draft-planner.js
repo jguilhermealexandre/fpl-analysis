@@ -682,6 +682,35 @@
             const ds = getActiveDraft();
             const gw = ds.selectedGW;
             if (!gw) return;
+            optimizeDraftGWLineup(ds, gw);
+            draftSwapSource = null;
+            saveDraft();
+            rerenderDraftView();
+        }
+
+        // Runs Auto-optimise against every gameweek in the current plan, not
+        // just the one on screen — six clicks collapsed into one. Each week's
+        // squad is its own array (getDraftSquad(gw) per gw), only linked by the
+        // cumulative transfers/chips already applied to it, so optimising them
+        // in a loop is exactly as safe as optimising them one at a time; the
+        // only difference is saving and re-rendering once at the end instead
+        // of after every gameweek.
+        function draftAutoOptimizeAllGWs() {
+            const ds = getActiveDraft();
+            if (!ds || !ds.gwNumbers || !ds.gwNumbers.length) return;
+            ds.gwNumbers.forEach(gw => optimizeDraftGWLineup(ds, gw));
+            draftSwapSource = null;
+            saveDraft();
+            rerenderDraftView();
+            if (typeof updateStatus === 'function') {
+                updateStatus(`Optimised all ${ds.gwNumbers.length} gameweeks in this plan (GW${ds.gwNumbers[0]}–GW${ds.gwNumbers[ds.gwNumbers.length - 1]})`, 'success');
+            }
+        }
+
+        // The actual per-gameweek optimize + report-build, shared by the single-
+        // gameweek button and the "optimise all" one above. Mutates ds.lineups[gw]
+        // and ds.optimizeReports[gw] in place; callers own save/re-render/status.
+        function optimizeDraftGWLineup(ds, gw) {
             const lineup = getDraftSquad(gw);
             const activeChip = ds.chips[gw];
             const runGWs = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON, gw) : [gw];
@@ -764,10 +793,6 @@
                 benchedOut,
                 promoted: lineup.filter(p => !p.onBench && !beforeXI.has(p.id))
             };
-
-            draftSwapSource = null;
-            saveDraft();
-            rerenderDraftView();
         }
 
         function openDraftOptimizeReport(gw) {
@@ -1327,6 +1352,7 @@
                 let badges = '';
                 if (chip) badges += `<span class="draft-tl-chip" data-tooltip="${escHTML(DRAFT_CHIP_NAME[chip])} played in GW${g}">${DRAFT_CHIP_SHORT[chip]}</span>`;
                 if (dgw.has(g)) badges += `<span class="draft-tl-dgw" data-tooltip="Double gameweek — at least one of your players has two matches.">DGW</span>`;
+                if (ds.optimizeReports && ds.optimizeReports[g]) badges += `<span class="draft-tl-opt" data-tooltip="Auto-optimised — open this gameweek to view its report.">✨</span>`;
 
                 return `<button class="${cls}" onclick="switchDraftGW(${g})">
                     <span class="draft-tl-gw">GW${g}${badges}</span>
@@ -1384,6 +1410,7 @@
                     <input id="draftStartFT" type="number" class="draft-ft-input" value="${ds.startingFT}" min="0" max="5" onchange="updateDraftStartingFT(this.value)">
                 </div>
                 <button class="draft-action-btn" onclick="draftAutoOptimizeLineup()" data-tooltip="Rebuild GW${gw}'s XI, bench order and captain from the players available that week${optimizeRunGWs.length > 1 ? `, ranked on expected points across GW${optimizeRunGWs[0]}–GW${optimizeRunGWs[optimizeRunGWs.length - 1]} combined` : ''}.">✨ Auto-optimise</button>
+                <button class="draft-action-btn" onclick="draftAutoOptimizeAllGWs()" data-tooltip="Run Auto-optimise on every gameweek in this plan (GW${ds.gwNumbers[0]}–GW${ds.gwNumbers[ds.gwNumbers.length - 1]}) in one go, each scored against its own week and its own run ahead.">✨ Auto-optimise all</button>
                 <button class="draft-action-btn danger" onclick="resetDraft()" data-tooltip="Discard every change in this plan and start again from your current squad.">↩ Reset plan</button>
             </div>`;
 
