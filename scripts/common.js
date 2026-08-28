@@ -158,6 +158,43 @@ async function fetchWithProxy(url) {
     return res;
 }
 
+// FPL's own API goes down or rate-limits for a few minutes right after every
+// gameweek deadline while it processes team updates — a manager who already
+// has a saved Team ID hitting that window should see an accurate "try again
+// shortly" message, not the same copy as a genuinely wrong Team ID.
+// fetchWithProxy only ever throws Error('HTTP <status>') on a non-OK response,
+// or a bare network/AbortError with no status at all (offline, DNS failure,
+// or its own 15-second timeout) — both are read here.
+function fplErrorStatus(error) {
+    const match = /^HTTP (\d+)$/.exec((error && error.message) || '');
+    return match ? parseInt(match[1], 10) : null;
+}
+
+// Transient: FPL's own outage/rate-limit, or the request never got an answer
+// at all. Not the Team ID's fault — safe to keep it saved and let the
+// manager just retry, unlike a 404 where the ID itself needs correcting.
+function isTransientFplError(error) {
+    const status = fplErrorStatus(error);
+    return status === null || status === 502 || status === 503 || status === 504 || status === 429;
+}
+
+function friendlyFplErrorMessage(error) {
+    const status = fplErrorStatus(error);
+    if (status === 404) {
+        return "We couldn't find a team with that ID — check the number and try again, or try a demo team below.";
+    }
+    if (status === 502 || status === 503 || status === 504) {
+        return "FPL's own servers are being updated — this happens for a few minutes right after every gameweek deadline. Please try again shortly.";
+    }
+    if (status === 429) {
+        return 'FPL is receiving a lot of requests right now. Please wait a moment and try again.';
+    }
+    if (status === null) {
+        return "Couldn't reach FPL's servers — check your connection and try again.";
+    }
+    return 'Something went wrong loading your team. Please try again.';
+}
+
 // ===== DEMO TEAM MOCK DATA =====
 let _demoBootstrapPromise = null;
 let _demoSquadPromise = null;

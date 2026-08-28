@@ -19,8 +19,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=64">
-    <link rel="stylesheet" href="styles/wizard.css?v=64">
+    <link rel="stylesheet" href="styles/common.css?v=65">
+    <link rel="stylesheet" href="styles/wizard.css?v=65">
 </head>
 <body>
 
@@ -701,9 +701,11 @@
             updateStatus(`Team loaded for GW${currentGW} — choose your wizard mode`,'success');
         } catch(err) {
             console.error(err);
-            const friendly = err.message === 'HTTP 404'
-                ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
-                : 'Something went wrong loading your team. Please try again.';
+            const friendly = typeof friendlyFplErrorMessage === 'function'
+                ? friendlyFplErrorMessage(err)
+                : (err.message === 'HTTP 404'
+                    ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
+                    : 'Something went wrong loading your team. Please try again.');
             updateStatus(friendly, 'error');
             document.getElementById('managerInfo').classList.add('hidden');
             var emptyEl2 = document.getElementById('wizardEmptyState');
@@ -1609,7 +1611,7 @@
     }
     document.getElementById('teamIdInput').addEventListener('keypress',e=>{if(e.key==='Enter')loadTeamById();});
     </script>
-    <script src="scripts/common.js?v=64"></script>
+    <script src="scripts/common.js?v=65"></script>
     <script>
         initIcons();
         // Re-render Lucide icons after dynamic content updates

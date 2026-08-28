@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=64">
-    <link rel="stylesheet" href="styles/v2-design.css?v=64">
+    <link rel="stylesheet" href="styles/common.css?v=65">
+    <link rel="stylesheet" href="styles/v2-design.css?v=65">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3667,12 +3667,12 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/price-watch.js?v=64"></script>
-    <script src="scripts/xp-engine.js?v=64"></script>
-    <script src="scripts/live-gw.js?v=64"></script>
-    <script src="scripts/transfer-engine.js?v=64"></script>
-    <script src="scripts/common.js?v=64"></script>
-    <script src="scripts/sidebar-nav.js?v=64"></script>
+    <script src="scripts/price-watch.js?v=65"></script>
+    <script src="scripts/xp-engine.js?v=65"></script>
+    <script src="scripts/live-gw.js?v=65"></script>
+    <script src="scripts/transfer-engine.js?v=65"></script>
+    <script src="scripts/common.js?v=65"></script>
+    <script src="scripts/sidebar-nav.js?v=65"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5263,11 +5263,21 @@
                 // });
             } catch (err) {
                 console.error('Ticker load error:', err);
-                const friendly = err.message === 'HTTP 404'
-                    ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
-                    : 'Something went wrong loading your team. Please try again.';
-                clearTeamId();
-                showNavTeamInput();
+                const friendly = typeof friendlyFplErrorMessage === 'function'
+                    ? friendlyFplErrorMessage(err)
+                    : (err.message === 'HTTP 404'
+                        ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
+                        : 'Something went wrong loading your team. Please try again.');
+                // A 503/502/504/429 or a bare timeout is FPL's own outage, not a
+                // wrong Team ID — clearing a valid ID just forces the manager to
+                // retype it on every retry during a window that can run 10-30
+                // minutes right after a deadline. Only a real 404 means the ID
+                // itself needs fixing.
+                const transient = typeof isTransientFplError === 'function' && isTransientFplError(err);
+                if (!transient) {
+                    clearTeamId();
+                    showNavTeamInput();
+                }
                 if (typeof onTeamIdCleared === 'function') onTeamIdCleared();
                 const errEl = document.getElementById('onboardingError');
                 if (errEl) { errEl.textContent = friendly; errEl.classList.remove('hidden'); }

@@ -613,9 +613,16 @@
                 }
             } catch (error) {
                 console.error('Error loading team:', error);
-                const friendly = error.message === 'HTTP 404'
-                    ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
-                    : 'Something went wrong loading your team. Please try again.';
+                // friendlyFplErrorMessage distinguishes FPL's own post-deadline
+                // outage/rate-limit (503/502/504/429, or a bare timeout) from an
+                // actually-wrong Team ID — this page never clears the saved ID on
+                // failure either way, so a transient hit just means retrying
+                // shortly works without retyping anything.
+                const friendly = typeof friendlyFplErrorMessage === 'function'
+                    ? friendlyFplErrorMessage(error)
+                    : (error.message === 'HTTP 404'
+                        ? "We couldn't find a team with that ID — check the number and try again, or try a demo team below."
+                        : 'Something went wrong loading your team. Please try again.');
                 updateStatus(friendly, 'error');
                 document.getElementById('tabBar').classList.remove('visible');
                 document.getElementById('landingPage').style.display = '';
