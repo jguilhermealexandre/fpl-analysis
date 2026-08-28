@@ -347,12 +347,21 @@
 
             // A move must clear its margin, not merely beat zero. Anything unavailable
             // is exempt — a player who cannot play is worth replacing regardless.
+            //
+            // o.freeTransfersOnly (opts) drops any hit-costing option outright,
+            // must-sells aside — for an automated bulk run across several
+            // gameweeks at once, nobody reviewed any single one of those hits,
+            // so "clears its margin" isn't consent to spend points on it. A
+            // manager reviewing one gameweek by hand still sees hit-taking
+            // options; this only narrows what an unattended loop is allowed
+            // to pick for itself.
             const unavailable = m => m.out.status === 'i' || m.out.status === 'u' || m.out.status === 's';
-            const viable = options.filter(o => {
-                if (o.n === 0) return true;
-                if (o.moves.some(unavailable)) return true;
-                const margin = o.cost > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
-                return o.net >= margin;
+            const viable = options.filter(opt => {
+                if (opt.n === 0) return true;
+                if (opt.moves.some(unavailable)) return true;
+                if (o.freeTransfersOnly && opt.cost > 0) return false;
+                const margin = opt.cost > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
+                return opt.net >= margin;
             });
 
             const best = viable.sort((a, b) => b.net - a.net || a.n - b.n)[0];

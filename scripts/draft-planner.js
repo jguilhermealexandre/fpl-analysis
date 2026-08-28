@@ -2077,7 +2077,13 @@
         // recommending an incremental swap for it is answering a question
         // nobody's asking. Wildcard keeps ordinary transfer bookkeeping, so it
         // stays in — just with the hit-cost math turned off.
-        function draftBuildSuggestion(gw) {
+        // freeTransfersOnly: true keeps a hit off the table entirely (bar a
+        // must-sell) — used by the unattended "auto-suggest all" run below, so
+        // it can never rack up hits across a plan nobody reviewed one gameweek
+        // at a time. The single-gameweek card in the sidebar leaves it off, so
+        // a manager looking at just this week still sees a hit-taking option
+        // if one genuinely clears its (much higher) margin.
+        function draftBuildSuggestion(gw, freeTransfersOnly) {
             const ds = getActiveDraft();
             if (!ds || !gw) return null;
             const chip = ds.chips[gw];
@@ -2088,7 +2094,8 @@
                 bank: getDraftBudget(gw),
                 freeTransfers: chip === 'wildcard' ? 999 : getDraftFreeTransfers(gw),
                 fromGW: gw,
-                useTeamContext: true
+                useTeamContext: true,
+                freeTransfersOnly: !!freeTransfersOnly
             });
         }
 
@@ -2190,7 +2197,8 @@
             const gw = ds.selectedGW;
             return `<div class="dp-copilot-note">Projects squad value over a ${TW_HORIZON}-gameweek window from this gameweek on — the same engine behind the Transfer Wizard's own recommendation, scoped to this plan's budget and free transfers at each gameweek.</div>
                 <div class="dp-suggest-actions">
-                    <button class="draft-action-btn" onclick="draftAutoSuggestAllGWs()" data-tooltip="Runs this recommendation on every gameweek in the plan, in order, applying each accepted move before evaluating the next gameweek — a transfer at GW3 changes what GW4 needs.">✨ Auto-suggest all gameweeks</button>
+                    <button class="draft-action-btn" onclick="draftAutoSuggestAllGWs()" data-tooltip="Runs this recommendation on every gameweek in the plan, in order, applying each accepted move before evaluating the next gameweek — a transfer at GW3 changes what GW4 needs. Only spends free transfers; it never takes a points hit on its own.">✨ Auto-suggest all gameweeks</button>
+                    ${ds.lastSuggestLog ? `<button class="draft-action-btn" onclick="openDraftSuggestSummary()">📊 View last summary</button>` : ''}
                     ${ds.lastSuggestSnapshot ? `<button class="draft-action-btn danger" onclick="undoDraftAutoSuggest()">↩ Undo auto-suggested transfers</button>` : ''}
                 </div>
                 ${renderDraftSuggestForGW(gw)}`;
@@ -2201,6 +2209,18 @@
         // lineups, carry forward (confirmDraftTransfer already replays them
         // through rebuildDraftSquads), so GW5's suggestion has to see whatever
         // GW3/GW4 just did rather than the squad as it stood before this ran.
+        //
+        // freeTransfersOnly is passed to every gameweek's recommendation: an
+        // unattended loop across up to six gameweeks has nobody reviewing any
+        // single hit it might take, and six independently-"worth it" -4s add
+        // up to a lot of points sacrificed to a plan nobody actually looked
+        // at. A must-sell (injured/suspended) still gets fixed regardless —
+        // see twBuildRecommendation's own exemption for that.
+        //
+        // Every gameweek gets a log entry, applied or held-and-why, so the
+        // result is fully visible afterwards rather than a single toast line
+        // — openDraftSuggestSummary() renders it, and "View last summary" in
+        // the sidebar reopens it any time, not just right after the run.
         // One-shot undo: ds.transfers is snapshotted first and restored whole
         // if the manager doesn't like the result, same idea as a single undo
         // step rather than a full history.
@@ -2209,31 +2229,47 @@
             if (!ds || !ds.gwNumbers || !ds.gwNumbers.length) return;
 
             const snapshot = JSON.parse(JSON.stringify(ds.transfers));
+            const log = [];
             let appliedCount = 0;
-            const appliedGWs = [];
 
             ds.gwNumbers.forEach(gw => {
-                if (ds.chips[gw] === 'freehit') return;
-                const rec = draftBuildSuggestion(gw);
-                if (!rec || rec.noLegalMove || !rec.best || rec.best.n === 0) return;
-                let appliedHere = false;
+                const chip = ds.chips[gw];
+                if (chip === 'freehit') {
+                    log.push({ gw, chip, applied: [], reason: 'Free Hit rebuilds the whole squad for this gameweek — not an incremental transfer.' });
+                    return;
+                }
+                const rec = draftBuildSuggestion(gw, true);
+                if (!rec) {
+                    log.push({ gw, chip, applied: [], reason: 'Not enough fixture data loaded to project this gameweek yet.' });
+                    return;
+                }
+                if (rec.noLegalMove) {
+                    log.push({ gw, chip, applied: [], reason: 'No legal transfer available — unaffordable, blocked by the three-per-club limit, or already in the squad.' });
+                    return;
+                }
+                if (!rec.best || rec.best.n === 0) {
+                    log.push({ gw, chip, applied: [], reason: 'Nothing clears the free-transfer margin this week.' });
+                    return;
+                }
+                const applied = [];
                 rec.best.moves.forEach(m => {
-                    if (applyDraftTransfer(gw, m.out.id, m.in.id)) { appliedCount++; appliedHere = true; }
+                    if (applyDraftTransfer(gw, m.out.id, m.in.id)) {
+                        applied.push({ outName: m.out.name, inName: m.in.name, gain: m.gain });
+                        appliedCount++;
+                    }
                 });
-                if (appliedHere) appliedGWs.push(gw);
+                log.push({ gw, chip, applied, reason: applied.length ? '' : 'The recommended move could not be applied.' });
             });
 
-            if (!appliedCount) {
-                if (typeof updateStatus === 'function') updateStatus('No gameweek in this plan has a transfer worth making right now — holding everywhere.', 'info');
-                return;
+            ds.lastSuggestLog = log;
+            if (appliedCount > 0) {
+                ds.lastSuggestSnapshot = snapshot;
+                saveDraft();
+                rerenderDraftView();
+            } else {
+                rerenderDraftView();
             }
-
-            ds.lastSuggestSnapshot = snapshot;
-            saveDraft();
-            rerenderDraftView();
-            if (typeof updateStatus === 'function') {
-                updateStatus(`Applied ${appliedCount} transfer${appliedCount > 1 ? 's' : ''} across GW${appliedGWs[0]}–GW${appliedGWs[appliedGWs.length - 1]}. Use "Undo auto-suggested transfers" in the sidebar to revert.`, 'success');
-            }
+            openDraftSuggestSummary();
         }
 
         function undoDraftAutoSuggest() {
@@ -2241,10 +2277,59 @@
             if (!ds.lastSuggestSnapshot) return;
             ds.transfers = ds.lastSuggestSnapshot;
             ds.lastSuggestSnapshot = null;
+            ds.lastSuggestLog = null;
             rebuildDraftSquads();
             saveDraft();
             rerenderDraftView();
+            if (typeof closeOptimizeReport === 'function') closeOptimizeReport();
             if (typeof updateStatus === 'function') updateStatus('Reverted the auto-suggested transfers.', 'success');
+        }
+
+        // Reuses the Optimization Report's own modal shell (#optReportOverlay/
+        // #optReportBody) rather than adding a second overlay to the page —
+        // same pattern as openDraftOptimizeReport, just a different renderer.
+        function renderDraftSuggestSummaryModal() {
+            const ds = getActiveDraft();
+            const log = ds.lastSuggestLog || [];
+            if (!log.length) return '<div class="detail-section">Run "Auto-suggest all gameweeks" to see a summary here.</div>';
+
+            const appliedTotal = log.reduce((s, row) => s + row.applied.length, 0);
+            const gainTotal = log.reduce((s, row) => s + row.applied.reduce((s2, a) => s2 + a.gain, 0), 0);
+
+            const rows = log.map(row => {
+                const chipBadge = row.chip ? ` <span class="draft-tl-chip" data-tooltip="${escHTML(DRAFT_CHIP_NAME[row.chip] || row.chip)} played in GW${row.gw}">${escHTML(DRAFT_CHIP_SHORT[row.chip] || row.chip)}</span>` : '';
+                if (row.applied.length) {
+                    return `<div class="opt-bench-row">
+                        <div class="opt-bench-head">GW${row.gw}${chipBadge} — ${row.applied.map(a => `${escHTML(a.outName)} → ${escHTML(a.inName)} <strong>(+${a.gain.toFixed(1)} xP)</strong>`).join(', ')}</div>
+                    </div>`;
+                }
+                return `<div class="opt-bench-row">
+                    <div class="opt-bench-head">GW${row.gw}${chipBadge} — ✋ Held</div>
+                    <div class="opt-bench-why">${escHTML(row.reason || '')}</div>
+                </div>`;
+            }).join('');
+
+            return `<div class="detail-section">
+                <div class="opt-headline ${appliedTotal ? 'gain' : 'flat'}">
+                    ${appliedTotal
+                        ? `<span class="opt-gain">${appliedTotal} transfer${appliedTotal > 1 ? 's' : ''}</span><span>applied across this plan, all on free transfers — no points hit anywhere</span>`
+                        : `<span class="opt-gain">No changes</span><span>nothing cleared its margin on a free transfer in any gameweek of this plan</span>`}
+                    ${appliedTotal ? `<div class="opt-beforeafter">+${gainTotal.toFixed(1)} xP projected gain in total</div>` : ''}
+                </div>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title">📅 Gameweek by gameweek</div>
+                ${rows}
+            </div>
+            ${ds.lastSuggestSnapshot ? `<div class="detail-section"><button class="rc-btn" style="width:100%;" onclick="undoDraftAutoSuggest()">↩ Undo all auto-suggested transfers</button></div>` : ''}`;
+        }
+
+        function openDraftSuggestSummary() {
+            const title = document.getElementById('optReportTitle');
+            if (title) title.textContent = '📊 Auto-suggested transfers';
+            document.getElementById('optReportBody').innerHTML = renderDraftSuggestSummaryModal();
+            document.getElementById('optReportOverlay').classList.add('show');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function renderDraftSidebarBody() {
