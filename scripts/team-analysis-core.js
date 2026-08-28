@@ -84,7 +84,8 @@
             viceCaptain: null,     // vice-captain player ID
             originalXIIds: new Set(),    // original starting XI IDs from FPL
             originalCaptain: null,       // original captain ID
-            originalVC: null             // original vice-captain ID
+            originalVC: null,            // original vice-captain ID
+            optimizeReport: null         // last Auto-optimise report, for the summary line + full report modal
         };
         let transferState = {
             pending: [],           // Array of { soldPlayer, replacement } — up to 5 transfer slots

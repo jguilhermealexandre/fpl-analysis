@@ -50,6 +50,10 @@
             lineupState.originalXIIds = new Set(squad.filter(p => !p.onBench).map(p => p.id));
             lineupState.originalCaptain = squad.find(p => p.isCaptain)?.id || null;
             lineupState.originalVC = squad.find(p => p.isViceCaptain)?.id || null;
+            // A report from a previous team (or an earlier GW's squad) naming
+            // players who may not even be in this one would be actively
+            // misleading, not just stale.
+            lineupState.optimizeReport = null;
 
             squad.forEach(p => {
                 if (p.status === 'i' || p.status === 'u' || p.status === 's') lineupState.excluded.add(p.id);
@@ -74,6 +78,9 @@
             lineupState.bench = lineupState.squad.filter(p => !xiIds.has(p.id))
                 .sort((a, b) => (a.pos === 1 ? 1 : 0) - (b.pos === 1 ? 1 : 0) || b.gwScore - a.gwScore);
             lineupState.formation = result.formation;
+            // Kept for the optimization report's "shapes considered" section —
+            // otherwise solveQuickLineup's per-formation totals are thrown away.
+            lineupState.formationScores = result.formationScores || [];
         }
 
         // Total the lineup actually projects THIS gameweek, including the armband.
@@ -102,6 +109,7 @@
                         </div>
                         <button class="rc-btn" onclick="resetLineupToOptimal()" data-tooltip="${optimiseTip}">✨ Auto-optimise</button>
                     </div>
+                    ${lineupState.optimizeReport ? `<div class="sq-optimize-summary">✨ ${buildOptimizeSummary(lineupState.optimizeReport, 'openLineupOptimizeReport()')}</div>` : ''}
                     <div class="lw-cc-body">
                         <div class="lw-cc-pitch" id="lwPitchPane">${renderLWPitch()}</div>
                         <div class="lw-cc-intel" id="lwIntelPane">${renderLWIntel()}</div>
@@ -429,13 +437,67 @@
             // display lwScore as projected points, so overwriting it with the 0-100
             // ranking score would put "41.0 xP" on a player worth four.
             lineupState.swapSource = null;
+
+            // Snapshot before solving, for the report — same idea as Squad
+            // Analysis's runAutoOptimize and GW Draft's Auto-optimise, just
+            // scored on this panel's own lwTotalXP() rather than rebuilding it.
+            const beforeXI = new Set(lineupState.xi.map(p => p.id));
+            const beforeCaptainId = lineupState.captain;
+            const beforeXP = lwTotalXP();
+
             solveLWLineup();
             // Captaincy pays out for this gameweek alone, so it's picked on gwScore
             // even though the XI itself was just chosen on the summed run.
             const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.gwScore - a.gwScore);
             if (!lineupState.xi.some(p => p.id === lineupState.captain)) lineupState.captain = cap[0]?.id || null;
             if (!lineupState.xi.some(p => p.id === lineupState.viceCaptain)) lineupState.viceCaptain = cap[1]?.id || null;
-            refreshLWView();
+
+            const afterXP = lwTotalXP();
+
+            // Build the same report Squad Analysis and GW Draft show after their
+            // own Auto-Optimize — same shape, fed from this panel's own state
+            // instead of the snapshot/draft one.
+            const finalXI = [...lineupState.xi].sort((a, b) => b.gwScore - a.gwScore);
+            const promotedPool = finalXI.filter(p => !beforeXI.has(p.id)).slice();
+            const benchedOut = lineupState.bench.filter(p => beforeXI.has(p.id))
+                .sort((a, b) => b.gwScore - a.gwScore)
+                .map(p => ({ player: p, detailed: p._detailed || {}, replacedBy: null }));
+            benchedOut.forEach(entry => {
+                const i = promotedPool.findIndex(q => q.pos === entry.player.pos);
+                if (i >= 0) entry.replacedBy = promotedPool.splice(i, 1)[0];
+            });
+            benchedOut.forEach(entry => {
+                if (!entry.replacedBy && promotedPool.length) {
+                    entry.replacedBy = promotedPool.shift();
+                    entry.shapeChange = true;
+                }
+            });
+
+            lineupState.optimizeReport = {
+                formation: lineupState.formation,
+                beforeXP, afterXP, gain: afterXP - beforeXP,
+                captain: finalXI[0] || null,
+                captainAlternatives: finalXI.slice(1, 3),
+                xi: finalXI,
+                benchOrder: lineupState.bench,
+                captainShortlist: finalXI.slice(0, 5),
+                formationScores: lineupState.formationScores || [],
+                viceId: lineupState.viceCaptain,
+                previousCaptain: beforeCaptainId != null ? { player: lineupState.squad.find(p => p.id === beforeCaptainId) } : null,
+                benchedOut,
+                promoted: finalXI.filter(p => !beforeXI.has(p.id))
+            };
+
+            renderLineupCommandCenter();
+        }
+
+        function openLineupOptimizeReport() {
+            if (!lineupState.optimizeReport) return;
+            const title = document.getElementById('optReportTitle');
+            if (title) title.textContent = `📊 GW${currentGW} optimization report`;
+            document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal(lineupState.optimizeReport);
+            document.getElementById('optReportOverlay').classList.add('show');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         // ── STEP 3: Captain & Summary ──
