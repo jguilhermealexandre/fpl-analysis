@@ -304,6 +304,24 @@
         // Expected share of a start, and the minutes that implies. A player with no
         // minutes yet still gets a small floor rather than zero — reporting 0.00 for
         // every fixture of an unplayed player reads as broken data, not as caution.
+        // A season-long minutes-per-start average is a fine prior once there is
+        // a real season behind it, but a flat "80 minutes" prior is not — it
+        // pulls a nailed-on 90-minute player down toward a generic average
+        // regardless of how clear-cut his role actually is, and the effect is
+        // largest exactly when it is most visible: early in a season, when
+        // every single player who started gameweek 1 blends toward the same
+        // number no matter how obviously undroppable each of them looks. Last
+        // season's own minutes-per-start is a far better prior than a
+        // league-wide guess, when there is enough of it to trust — same
+        // 5-appearance-minimum idea lastSeasonPointsPerGame uses for the same
+        // reason, just a lower bar since minutes-per-start needs less sample
+        // to be reliable than a scoring rate does.
+        function lastSeasonMinsPerStart(player) {
+            const ls = typeof lastSeasonFor === 'function' ? lastSeasonFor(player.id) : null;
+            if (!ls || !ls.starts || ls.starts < 5) return null;
+            return Math.min(90, ls.minutes / ls.starts);
+        }
+
         function expectedMinutesModel(player) {
             const avail = player.status === 'd'
                 ? (player.chanceNextRound != null ? player.chanceNextRound : 50) / 100
@@ -339,14 +357,17 @@
             /* Minutes when he does start, taken from his own record rather than a
                flat 82 for everybody. A player averaging 65 minutes a start is a
                different asset to one who plays the full ninety, and the previous
-               formula treated them identically. Regressed toward a typical
-               starter's 80 while the sample is thin, so one early substitution
-               does not brand a player as a 60-minute man. */
+               formula treated them identically. Regressed toward a prior while
+               the sample is thin, so one early substitution does not brand a
+               player as a 60-minute man — last season's own rate when there is
+               enough of it to trust (see lastSeasonMinsPerStart above), a flat
+               80 only for a player with no usable history at all. */
             const startEvidence = Math.min(1, starts / 3);
             const ownMinsPerStart = starts > 0 ? Math.min(90, (player.minutes || 0) / starts) : 0;
+            const priorMinsPerStart = lastSeasonMinsPerStart(player) ?? 80;
             const minsPerStart = starts > 0
-                ? ownMinsPerStart * startEvidence + 80 * (1 - startEvidence)
-                : 80;
+                ? ownMinsPerStart * startEvidence + priorMinsPerStart * (1 - startEvidence)
+                : priorMinsPerStart;
             const expMins = pStart * minsPerStart + (1 - pStart) * 12;
             return { pStart, expMins, min90: expMins / 90 };
         }

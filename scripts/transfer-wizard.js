@@ -13,6 +13,18 @@
 
         // ===== TRANSFER WIZARD ENGINE =====
 
+        // The shortlist (the star icon on fpl-players-analysis.html) is authored
+        // there, under localStorage key fpl_shortlist — a plain array of player
+        // ids. This page never writes it, only reads it, the same read-only
+        // relationship index.html's Market Watch widget already has with it.
+        function getTWShortlistIds() {
+            try {
+                return new Set(JSON.parse(localStorage.getItem('fpl_shortlist') || '[]'));
+            } catch (e) {
+                return new Set();
+            }
+        }
+
         // Recency-weighted average, Transfer Wizard flavor: pre-filters to played-minutes
         // games before windowing. Named distinctly from the shared recencyWeightedAvg() in
         // scripts/compare-report.js (which windows raw, unfiltered history) to avoid the two
@@ -836,6 +848,13 @@
             const priceFilter = transferState.marketFilter.priceRange;
             const posName = ['', 'Goalkeepers', 'Defenders', 'Midfielders', 'Forwards'][pos];
 
+            // Computed unconditionally (not just inside the branch below) so the
+            // tab button itself can show how many of this position are shortlisted,
+            // even while a different tab is the one actually showing.
+            const shortlistIds = getTWShortlistIds();
+            const shortlistCountForPos = allPlayers.filter(p =>
+                shortlistIds.has(p.id) && p.position === pos && !excludeIds.has(p.id)).length;
+
             let candidates;
             if (tab === 'ai') {
                 const cacheKey = pos + '_' + maxPrice.toFixed(1);
@@ -843,6 +862,19 @@
                     transferState.candidateCache[cacheKey] = findTransferCandidates(pos, maxPrice, excludeIds);
                 }
                 candidates = [...transferState.candidateCache[cacheKey]];
+            } else if (tab === 'favorites') {
+                // Deliberately not filtered by maxPrice, unlike AI/Browse — the
+                // point of this tab is "how does the player I've starred compare",
+                // which is a question worth answering even when he's currently
+                // unaffordable. The existing unafford styling below already marks
+                // that case rather than hiding it.
+                candidates = allPlayers.filter(p =>
+                    shortlistIds.has(p.id) && p.position === pos && !excludeIds.has(p.id));
+                candidates.forEach(c => {
+                    if (c._transferScore == null) c._transferScore = calculateTransferScore(c, c.position);
+                    if (!c._recentStats) c._recentStats = getPlayerRecentStats(c.id, 5);
+                });
+                candidates.sort((a, b) => (b._transferScore || 0) - (a._transferScore || 0));
             } else {
                 const query = (transferState.browseSearch || '').toLowerCase();
                 candidates = allPlayers.filter(p =>
@@ -913,7 +945,14 @@
 
             let rowsHtml = '';
             if (display.length === 0) {
-                rowsHtml = '<div class="tw-market-empty">' + (tab === 'browse' && transferState.browseSearch ? 'No players match your search' : 'No candidates found within budget') + '</div>';
+                const emptyMsg = tab === 'browse' && transferState.browseSearch
+                    ? 'No players match your search'
+                    : tab === 'favorites'
+                        ? (shortlistIds.size === 0
+                            ? 'You haven\'t shortlisted any players yet — star players on the Players Analysis page to see them here.'
+                            : `None of your shortlisted ${posName.toLowerCase()} are available for this slot — they may already be in your squad or staged elsewhere in this plan.`)
+                        : 'No candidates found within budget';
+                rowsHtml = '<div class="tw-market-empty">' + emptyMsg + '</div>';
             } else {
                 for (let i = 0; i < display.length; i++) {
                     const c = display[i];
@@ -955,6 +994,7 @@
 
             const tabsHtml = '<div class="tw-market-tabs">' +
                 '<button class="tw-market-tab' + (tab === 'ai' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'ai\')">AI Picks</button>' +
+                '<button class="tw-market-tab' + (tab === 'favorites' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'favorites\')" data-tooltip="Players you\'ve starred on the Players Analysis page, compared against ' + escHTML(sold.name) + ' the same way as any other candidate.">⭐ Favorites' + (shortlistCountForPos ? ' (' + shortlistCountForPos + ')' : '') + '</button>' +
                 '<button class="tw-market-tab' + (tab === 'browse' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'browse\')">Browse All</button></div>';
 
             const searchHtml = tab === 'browse' ? '<input class="tw-market-search" type="text" placeholder="Search by name..." value="' + (transferState.browseSearch || '').replace(/"/g, '&quot;') + '" oninput="twSearchInput(this.value)">' : '';

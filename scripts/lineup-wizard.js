@@ -155,9 +155,9 @@
             const cls = ['dp-card', posClass, out ? 'is-out' : '', selected ? 'lw-picked' : '',
                 isSwapSrc ? 'swap-selected' : '', isSwapTgt ? 'swap-target' : ''].filter(Boolean).join(' ');
 
-            return `<div class="${cls}" onclick="handleLWRowClick(${p.id})">
+            return `<div class="${cls}" onclick="handleLWSwapClick(${p.id})">
                 <div class="dp-badges">${badges}</div>
-                <button class="dp-transfer" onclick="handleLWSwapBtnClick(${p.id}, event)" data-tooltip="Swap ${escHTML(p.web_name)} between the XI and the bench">↕</button>
+                <button class="dp-transfer" onclick="handleLWInfoBtnClick(${p.id}, event)" data-tooltip="View ${escHTML(p.web_name)}'s detail — click a second player to compare them">ℹ️</button>
                 <div class="dp-name">${escHTML(p.web_name)}</div>
                 <div class="dp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
                 <div class="dp-fixtures">${fixChip}</div>
@@ -180,8 +180,8 @@
             html += `<div class="dp-bench-row">${bench.map(p => lwCard(p, p.pos === 1 ? 'GK' : ++benchCount)).join('')}</div>`;
             html += `</div></div>`;
             html += `<div class="lw-pitch-hint">${lineupState.swapSource
-                ? `Swapping <strong>${escHTML((lineupState.squad.find(p => p.id === lineupState.swapSource) || {}).web_name || '')}</strong> — click ↕ on another player to complete it.`
-                : 'Click a player for their detail. Click a second to compare them side by side. Use ↕ to swap.'}</div>`;
+                ? `Swapping <strong>${escHTML((lineupState.squad.find(p => p.id === lineupState.swapSource) || {}).web_name || '')}</strong> — click another player to complete it, or click them again to cancel.`
+                : 'Click a player to swap them. Use ℹ️ to view detail, or click a second ℹ️ to compare two side by side.'}</div>`;
             return html;
         }
 
@@ -272,7 +272,7 @@
                     ${risky.filter(p => !flagged.some(f => f.id === p.id)).map(p => `<div class="lw-sum-flag"><strong>${escHTML(p.web_name)}</strong> — rotation risk, ${Math.round(expectedMinutesModel(p).pStart * 100)}% likely to start</div>`).join('')}
                 </div>` : ''}
 
-                <div class="lw-sum-hintline">Click any player on the pitch for their detail, or two to compare them.</div>
+                <div class="lw-sum-hintline">Click a player on the pitch to swap them. Use ℹ️ for their detail, or two ℹ️s to compare.</div>
             </div>`;
         }
 
@@ -649,7 +649,7 @@
                 <div class="lw-ctx-empty">
                     <div class="lw-ctx-empty-icon"><i data-lucide="mouse-pointer-click" style="width:32px;height:32px;"></i></div>
                     <div style="font-weight:600;margin-bottom:4px;">Player Intel Panel</div>
-                    <div>Click any player to view deep stats & score breakdown.<br>Click two to compare side-by-side.</div>
+                    <div>Click a player's ℹ️ to view deep stats & score breakdown.<br>Click a second ℹ️ to compare side-by-side.</div>
                 </div>
             </div>`;
         }
@@ -875,14 +875,16 @@
             }
         }
 
-        // ── LINEUP WIZARD: Row Click Handler (separates view from swap) ──
-        function handleLWRowClick(playerId) {
-            // If in swap mode, delegate to swap handler
-            if (lineupState.swapSource) {
-                handleLWSwapClick(playerId);
-                return;
-            }
-            // Toggle selection for context panel (max 2)
+        // ── LINEUP WIZARD: Info/Compare Button Handler ──
+        // A plain click on the card itself now swaps (see lwCard's onclick,
+        // matching how the Squad Analysis pitch already lets you swap by just
+        // clicking two players — no dedicated button needed for that). This is
+        // the ℹ️ button's handler instead: always toggles compare-select,
+        // independent of any swap in progress, so viewing a player's detail
+        // never gets swallowed by swap mode the way the old combined handler
+        // used to swallow it.
+        function handleLWInfoBtnClick(playerId, event) {
+            if (event) event.stopPropagation();
             const idx = lineupState.selectedPlayers.indexOf(playerId);
             if (idx >= 0) {
                 lineupState.selectedPlayers.splice(idx, 1);
@@ -893,11 +895,6 @@
                 lineupState.selectedPlayers.push(playerId);
             }
             updateLWContextPanel();
-        }
-
-        function handleLWSwapBtnClick(playerId, event) {
-            event.stopPropagation();
-            handleLWSwapClick(playerId);
         }
 
         // ===== INITIALIZATION =====
