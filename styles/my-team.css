@@ -1635,18 +1635,32 @@
 .lw-ctx-section { margin-bottom: 16px; }
 .lw-ctx-section:last-child { margin-bottom: 0; }
 .lw-ctx-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
-.lw-ctx-score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
-.lw-ctx-score-label { width: 70px; color: var(--text-secondary); font-size: 11px; flex-shrink: 0; }
-.lw-ctx-score-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.lw-ctx-score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
-.lw-ctx-score-val { width: 36px; text-align: right; font-family: var(--font-mono); font-weight: 600; font-size: 11px; flex-shrink: 0; }
-.lw-ctx-fixtures-strip { display: flex; gap: 4px; flex-wrap: wrap; }
-.lw-ctx-fixture-chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid var(--border-subtle); background: var(--surface-2); }
-.lw-ctx-fixture-chip .fdr-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.lw-ctx-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.lw-ctx-stat-box { text-align: center; padding: 8px 4px; background: var(--surface-2); border-radius: 6px; }
-.lw-ctx-stat-box-val { font-family: var(--font-mono); font-weight: 600; font-size: 14px; }
-.lw-ctx-stat-box-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
+
+/* Full profile — one player's whole analytical card (AI report, key stats,
+   routes to points, price watch, team context, opponent form) dropped into
+   the intel pane. Stacked in compare mode (see renderLWContextCompare), not
+   side by side — the pane is already the narrower half of a 3fr/2fr split
+   with the pitch. */
+.lw-deep-col {
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.lw-deep-col.in { border-color: var(--color-primary); }
+
+.lw-deep-col-head {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.lw-deep-col-head.in { color: var(--color-primary); }
 
 /* Comparison mode */
 .lw-ctx-compare { display: grid; grid-template-columns: 1fr 1fr; }
@@ -4683,6 +4697,42 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twh-l { font-size: 9px; color: var(--text-muted); text-align: center; min-width: 108px; cursor: help; }
 .twh-actions { display: flex; gap: 6px; }
 .twh-actions .rc-btn { flex: 1; }
+
+/* Full profile — stacked rather than side by side: this panel is already one
+   of two columns in the wizard's layout (.twc-body), so a further 2-up split
+   here would squeeze each player's detail into a quarter of the page width. */
+.twh-deep-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin: 4px 0 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.twh-deep { display: flex; flex-direction: column; gap: 16px; margin-bottom: 10px; }
+
+.twh-deep-col {
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+}
+
+.twh-deep-col.in { border-color: var(--color-primary); }
+
+.twh-deep-col-head {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.twh-deep-col-head.in { color: var(--color-primary); }
 
 /* Preview modal */
 .twp-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }

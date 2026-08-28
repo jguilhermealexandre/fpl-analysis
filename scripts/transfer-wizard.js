@@ -1055,6 +1055,23 @@
                 statRows += row(nameMatch ? nameMatch[1] : statsS[i].label, statsS[i].season, statsC[i].season, statsS[i].higherBetter !== false, tipMatch ? tipMatch[1] : '');
             }
 
+            // Full-depth profile per player — the same AI report, price watch,
+            // team context and opponent-form sections the Squad Analysis inline
+            // card shows, reused here so "comparing two players" means the same
+            // thing everywhere on this page instead of this one screen falling
+            // back to five raw stat rows. The candidate never had analyzePlayer()
+            // run on them (they're not in your squad), so getPlayerAnalysis()
+            // runs it fresh; their recommendation box and replacement suggestions
+            // are squad-decision language ("transfer out before GW6") that makes
+            // no sense for someone you're evaluating to buy, so both are switched
+            // off for that side only.
+            const soldProfile = typeof buildPlayerFullProfileHTML === 'function' && typeof getPlayerAnalysis === 'function'
+                ? buildPlayerFullProfileHTML(sold, getPlayerAnalysis(sold), { header: false, replacements: false, context: 'squad' })
+                : '';
+            const candProfile = typeof buildPlayerFullProfileHTML === 'function' && typeof getPlayerAnalysis === 'function'
+                ? buildPlayerFullProfileHTML(cand, getPlayerAnalysis(cand), { header: false, recommendation: false, replacements: false, context: 'candidate' })
+                : '';
+
             el.innerHTML = `<div class="twc-panel">
                 <div class="twc-panel-head">
                     <button class="twc-mini" onclick="twBackToMarket()" data-tooltip="Back to the replacement list">← Market</button>
@@ -1085,6 +1102,18 @@
 
                     <div class="twh-chart"><canvas id="twFdrCanvas"></canvas></div>
                     <div class="twh-chart-note">Fixture difficulty over the next ${fdrGWs.length} gameweeks — lower is easier. A gap means no fixture.</div>
+
+                    <div class="twh-deep-label">Full profile</div>
+                    <div class="twh-deep">
+                        <div class="twh-deep-col out">
+                            <div class="twh-deep-col-head out">OUT · ${escHTML(sold.name)}</div>
+                            ${soldProfile}
+                        </div>
+                        <div class="twh-deep-col in">
+                            <div class="twh-deep-col-head in">IN · ${escHTML(cand.name)}</div>
+                            ${candProfile}
+                        </div>
+                    </div>
 
                     <div class="twh-actions">
                         <button class="rc-btn" onclick="twBackToMarket()">← Back</button>

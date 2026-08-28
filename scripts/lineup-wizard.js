@@ -604,23 +604,6 @@
             if (!p) return renderLWContextEmpty();
             const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
-            const detailed = computeQuickLineupScoreDetailed(p);
-            const ta = teamAnalysis[p.teamId];
-            const fx = p.fixtures || [];
-            const gamesPlayed = Math.max(currentGW - 1, 1);
-            const xGIPer90 = p.minutes > 0 ? ((p.xGI / p.minutes) * 90) : 0;
-            const mpg = (p.minutes || 0) / gamesPlayed;
-
-            // Score bar helper
-            function scoreBar(label, value, maxVal, color) {
-                const pct = Math.min(Math.max(Math.abs(value) / maxVal * 100, 0), 100);
-                const isNeg = value < 0;
-                return `<div class="lw-ctx-score-row">
-                    <div class="lw-ctx-score-label">${label}</div>
-                    <div class="lw-ctx-score-bar"><div class="lw-ctx-score-bar-fill" style="width:${pct}%;background:${isNeg ? 'var(--color-error)' : color};"></div></div>
-                    <div class="lw-ctx-score-val" style="color:${isNeg ? 'var(--color-error)' : value > 0 ? color : 'var(--text-muted)'}">${value > 0 ? '+' : ''}${value.toFixed(1)}</div>
-                </div>`;
-            }
 
             let html = `<div class="lw-ctx-panel">`;
             // Header
@@ -633,139 +616,25 @@
 
             html += `<div class="lw-ctx-body">`;
 
-            // AI Score Breakdown
-            html += `<div class="lw-ctx-section">`;
-            html += `<div class="lw-ctx-section-title"><i data-lucide="brain" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> AI Score Breakdown</div>`;
-            html += `<div style="text-align:center;margin-bottom:10px;"><span style="font-family:var(--font-mono);font-size:24px;font-weight:700;color:${p.gwScore >= 30 ? 'var(--color-success)' : p.gwScore >= 10 ? '#F59E0B' : 'var(--color-error)'};">${p.gwScore}</span><span style="font-size:11px;color:var(--text-muted);margin-left:4px;">pts</span></div>`;
-            html += scoreBar('Exp Pts', detailed.ep, 15, 'var(--color-info)');
-            html += scoreBar('Form', detailed.form, 15, '#A78BFA');
-            html += scoreBar('Fixture', detailed.fixture, 10, 'var(--color-success)');
-            html += scoreBar('Home', detailed.home, 2, '#F59E0B');
-            html += scoreBar('xGI/90', detailed.xgi, 10, '#EC4899');
-            html += scoreBar('Minutes', detailed.minutes, 5, '#06B6D4');
-            html += scoreBar('PPG', detailed.ppg, 10, '#8B5CF6');
-            if (detailed.doubtful !== 0) html += scoreBar('Doubtful', detailed.doubtful, 20, 'var(--color-error)');
-            html += `</div>`;
+            // The same AI report, verdict, key stats, season numbers, routes to
+            // points, price watch, team context (with the fixture-swing
+            // breakdown) and opponent-form sections the Squad Analysis inline
+            // card and the Transfer Wizard compare show — this panel's own
+            // header above already covers name/position/price, so the profile's
+            // own header is switched off to avoid repeating it.
+            const analysis = typeof getPlayerAnalysis === 'function' ? getPlayerAnalysis(p) : null;
+            html += analysis && typeof buildPlayerFullProfileHTML === 'function'
+                ? buildPlayerFullProfileHTML(p, analysis, { header: false })
+                : '';
 
-            // Next 3 Fixtures
-            if (fx.length > 0) {
-                html += `<div class="lw-ctx-section">`;
-                html += `<div class="lw-ctx-section-title"><i data-lucide="calendar" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Next Fixtures</div>`;
-                html += `<div class="lw-ctx-fixtures-strip">`;
-                fx.slice(0, 5).forEach(f => {
-                    html += `<div class="lw-ctx-fixture-chip">
-                        <span class="fdr-dot fdr-${f.difficulty}"></span>
-                        <span>${escHTML(f.opponent)}</span>
-                        <span style="font-size:9px;color:var(--text-muted);">${f.isHome ? 'H' : 'A'}</span>
-                    </div>`;
-                });
-                html += `</div></div>`;
-            }
-
-            // Season Stats
-            html += `<div class="lw-ctx-section">`;
-            html += `<div class="lw-ctx-section-title"><i data-lucide="bar-chart-3" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Season Stats</div>`;
-            html += `<div class="lw-ctx-stat-grid">`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.form}</div><div class="lw-ctx-stat-box-label">Form</div></div>`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${(p.points / gamesPlayed).toFixed(1)}</div><div class="lw-ctx-stat-box-label">PPG</div></div>`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${xGIPer90.toFixed(2)}</div><div class="lw-ctx-stat-box-label">xGI/90</div></div>`;
-            if (p.pos >= 3) {
-                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.goals}</div><div class="lw-ctx-stat-box-label">Goals</div></div>`;
-                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.assists}</div><div class="lw-ctx-stat-box-label">Assists</div></div>`;
-            } else {
-                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.cleanSheets}</div><div class="lw-ctx-stat-box-label">CS</div></div>`;
-                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.pos === 1 ? p.saves : p.goals}</div><div class="lw-ctx-stat-box-label">${p.pos === 1 ? 'Saves' : 'Goals'}</div></div>`;
-            }
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${mpg.toFixed(0)}</div><div class="lw-ctx-stat-box-label">Min/G</div></div>`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.bonus}</div><div class="lw-ctx-stat-box-label">Bonus</div></div>`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${p.ictIndex.toFixed(0)}</div><div class="lw-ctx-stat-box-label">ICT</div></div>`;
-            html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val">${(p.epNext || 0).toFixed(1)}</div><div class="lw-ctx-stat-box-label">EP Next</div></div>`;
-            html += `</div></div>`;
-
-            // Team Context
-            if (ta) {
-                html += `<div class="lw-ctx-section">`;
-                html += `<div class="lw-ctx-section-title"><i data-lucide="shield" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Team Context — ${escHTML(p.team)}</div>`;
-                function pw(v) { return v > 60 ? 'var(--color-success)' : v < 40 ? 'var(--color-error)' : 'var(--text-secondary)'; }
-                html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">`;
-                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val" style="color:${pw(ta.attackPower)}">${ta.attackPower}</div><div class="lw-ctx-stat-box-label">ATK</div></div>`;
-                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val" style="color:${pw(ta.defensePower)}">${ta.defensePower}</div><div class="lw-ctx-stat-box-label">DEF</div></div>`;
-                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val" style="color:${pw(ta.formRating)}">${ta.formRating}</div><div class="lw-ctx-stat-box-label">Form</div></div>`;
-                html += `<div class="lw-ctx-stat-box"><div class="lw-ctx-stat-box-val" style="color:${pw(ta.fixtureScore)}">${ta.fixtureScore}</div><div class="lw-ctx-stat-box-label">Fix</div></div>`;
-                html += `</div></div>`;
-            }
-
-            // Routes to Points
-            html += lwBuildSingleRoutes(p);
-            // Rising Form Signals
-            html += lwBuildSingleRisingForm(p);
-            // Home/Away Splits
+            // Home/Away Splits and xG Regression are genuinely unique to this
+            // panel — player-level splits and goals-vs-xG, neither of which the
+            // shared profile above covers — so they stay, appended after it.
             html += lwBuildSingleSplits(p);
-            // xG Regression
             html += lwBuildSingleXgRegression(p);
 
             html += `</div></div>`;
             return html;
-        }
-
-        // ── LW Intel: Routes to Points (single) ──
-        function lwBuildSingleRoutes(p) {
-            const pos = p.pos || p.position;
-            const seasonGames = Math.max(currentGW - 1, 1);
-            const recent = getPlayerRecentStats(p.id, 5);
-            const rg = recent?.games || 1;
-            const blend = (rVal, sVal, sDivisor) => ((rVal || 0) / rg) * 0.6 + ((sVal || 0) / sDivisor) * 0.4;
-            const xGpg = blend(recent?.xG, p.xG, seasonGames);
-            const xApg = blend(recent?.xA, p.xA, seasonGames);
-            const goalsPg = blend(recent?.goals, p.goals, seasonGames);
-            const csPg = blend(recent?.cs, p.cleanSheets, seasonGames);
-            const bonusPg = blend(recent?.bonus, p.bonus, seasonGames);
-            const savesPg = pos === 1 ? blend(recent?.saves, p.saves, seasonGames) : 0;
-            const goalThresh = { 1: 0.03, 2: 0.06, 3: 0.12, 4: 0.15 }[pos] || 0.1;
-            const assistThresh = { 1: 0.02, 2: 0.06, 3: 0.10, 4: 0.08 }[pos] || 0.08;
-            const csThresh = { 1: 0.15, 2: 0.15, 3: 0.30, 4: 999 }[pos] || 0.2;
-            const bonusThresh = { 1: 0.3, 2: 0.3, 3: 0.4, 4: 0.5 }[pos] || 0.3;
-            const routes = [];
-            if (xGpg >= goalThresh || goalsPg >= goalThresh * 1.5) { const c = pos === 4 ? 0.6 : pos === 3 ? 0.5 : 0.3; routes.push({ name: 'Goals', str: Math.min(100, (xGpg / c) * 100), detail: xGpg.toFixed(2) + ' xG/g', color: '#F87171' }); }
-            if (xApg >= assistThresh) { const c = pos === 3 ? 0.4 : 0.3; routes.push({ name: 'Assists', str: Math.min(100, (xApg / c) * 100), detail: xApg.toFixed(2) + ' xA/g', color: '#60A5FA' }); }
-            if (csPg >= csThresh) routes.push({ name: 'Clean Sheets', str: Math.min(100, (csPg / 0.55) * 100), detail: (csPg * 100).toFixed(0) + '% rate', color: '#34D399' });
-            if (bonusPg >= bonusThresh) routes.push({ name: 'Bonus', str: Math.min(100, (bonusPg / 2) * 100), detail: bonusPg.toFixed(1) + '/g', color: '#FBBF24' });
-            if (pos === 1 && savesPg >= 2) routes.push({ name: 'Saves', str: Math.min(100, (savesPg / 5) * 100), detail: savesPg.toFixed(1) + '/g', color: '#A78BFA' });
-            if (routes.length === 0) return '';
-            let h = '<div class="lw-ctx-section"><div class="lw-ctx-section-title"><i data-lucide="route" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Routes to Points (' + routes.length + ')</div>';
-            routes.forEach(r => {
-                h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">' +
-                    '<span style="font-size:10px;width:65px;flex-shrink:0;color:var(--text-muted);">' + r.name + '</span>' +
-                    '<div style="flex:1;height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + r.str + '%;background:' + r.color + ';border-radius:3px;"></div></div>' +
-                    '<span style="font-size:10px;font-family:var(--font-mono);color:var(--text-secondary);width:55px;text-align:right;">' + r.detail + '</span></div>';
-            });
-            h += '</div>';
-            return h;
-        }
-
-        // ── LW Intel: Rising Form Signals (single) ──
-        function lwBuildSingleRisingForm(p) {
-            const ta = teamAnalysis[p.teamId] || {};
-            const swing = fixtureSwingData[p.teamId] || {};
-            const ss = seasonStats[p.teamId] || {};
-            const txg = teamXgData[p.teamId] || {};
-            const signals = [];
-            if (ta.formRating > 55) signals.push({ label: 'Team in Form', value: (ss.last5 || ta.formRating + ' rating'), positive: true });
-            if (txg.recentXgPg && txg.seasonXgPg && txg.recentXgPg > txg.seasonXgPg * 1.05) signals.push({ label: 'xG Rising', value: '+' + ((txg.recentXgPg - txg.seasonXgPg) * 100 / txg.seasonXgPg).toFixed(0) + '%', positive: true });
-            if (txg.recentXgcPg && txg.seasonXgcPg && txg.recentXgcPg < txg.seasonXgcPg * 0.95) signals.push({ label: 'xGC Improving', value: ((txg.seasonXgcPg - txg.recentXgcPg) * 100 / txg.seasonXgcPg).toFixed(0) + '%', positive: true });
-            if (swing.direction === 'improving') signals.push({ label: 'Fixtures ↑', value: 'Swing +' + (swing.magnitude || ''), positive: true });
-            else if (swing.direction === 'worsening') signals.push({ label: 'Fixtures ↓', value: 'Swing -' + (swing.magnitude || ''), positive: false });
-            if ((ta.avgFdr || 3) <= 2.5) signals.push({ label: 'Easy Run', value: 'FDR ' + (ta.avgFdr || 3).toFixed(1), positive: true });
-            if (signals.length === 0) return '';
-            let h = '<div class="lw-ctx-section"><div class="lw-ctx-section-title"><i data-lucide="trending-up" style="width:12px;height:12px;display:inline;vertical-align:middle;"></i> Rising Form Signals</div>';
-            signals.forEach(s => {
-                h += '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;">' +
-                    '<span style="color:' + (s.positive ? 'var(--color-success)' : 'var(--color-error)') + ';">' + (s.positive ? '▲' : '▼') + '</span>' +
-                    '<span style="font-weight:600;">' + s.label + '</span>' +
-                    '<span style="color:var(--text-muted);margin-left:auto;font-family:var(--font-mono);font-size:10px;">' + s.value + '</span></div>';
-            });
-            h += '</div>';
-            return h;
         }
 
         // ── LW Intel: Home/Away Splits (single) ──
@@ -884,10 +753,20 @@
             });
             html += `</div>`;
 
-            // Routes comparison
-            html += lwBuildCompareRoutes(p1, p2);
-            // Rising Form comparison
-            html += lwBuildCompareRisingForm(p1, p2);
+            // Full profile per player — same AI report/verdict/key stats/routes/
+            // price watch/team context/opponent form as the single-player view
+            // above, stacked rather than side by side: this panel is already the
+            // narrower 2fr of a 3fr/2fr split with the pitch, so a further 2-up
+            // split here would squeeze each player's detail into a sliver.
+            [p1, p2].forEach(p => {
+                const analysis = typeof getPlayerAnalysis === 'function' ? getPlayerAnalysis(p) : null;
+                if (!analysis || typeof buildPlayerFullProfileHTML !== 'function') return;
+                html += `<div class="lw-deep-col ${p === p2 ? 'in' : ''}">
+                    <div class="lw-deep-col-head ${p === p2 ? 'in' : ''}">${escHTML(p.web_name)}</div>
+                    ${buildPlayerFullProfileHTML(p, analysis, { header: false })}
+                </div>`;
+            });
+
             // Home/Away comparison
             html += lwBuildCompareSplits(p1, p2);
             // xG Regression comparison
@@ -895,22 +774,6 @@
 
             html += `</div>`;
             return html;
-        }
-
-        function lwBuildCompareRoutes(p1, p2) {
-            const r1 = lwBuildSingleRoutes(p1), r2 = lwBuildSingleRoutes(p2);
-            if (!r1 && !r2) return '';
-            return '<div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border-subtle);">' +
-                '<div style="padding:12px 12px;border-right:1px solid var(--border-subtle);">' + (r1 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No routes</div>') + '</div>' +
-                '<div style="padding:12px 12px;">' + (r2 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No routes</div>') + '</div></div>';
-        }
-
-        function lwBuildCompareRisingForm(p1, p2) {
-            const r1 = lwBuildSingleRisingForm(p1), r2 = lwBuildSingleRisingForm(p2);
-            if (!r1 && !r2) return '';
-            return '<div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border-subtle);">' +
-                '<div style="padding:12px 12px;border-right:1px solid var(--border-subtle);">' + (r1 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No signals</div>') + '</div>' +
-                '<div style="padding:12px 12px;">' + (r2 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">No signals</div>') + '</div></div>';
         }
 
         function lwBuildCompareSplits(p1, p2) {

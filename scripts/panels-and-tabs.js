@@ -1383,7 +1383,14 @@
         // reads player form, team form, the fixture swing, the very next opponent
         // and price momentum together, rather than leaving a manager to cross-
         // reference five separate widgets themselves.
-        function buildPlayerNarrativeReport(player, analysis) {
+        // `context` swaps only the opening sentence's framing: analyzePlayer's
+        // verdict is inherently a squad decision ("hold" / "sell candidate"),
+        // which reads as a non-sequitur applied to a transfer target you don't
+        // own yet \u2014 nobody is deciding whether to sell a player they're
+        // considering buying. Everything after the opener (form, team form,
+        // fixture swing, opponent, price) is already ownership-neutral fact,
+        // so only the lead needs a second wording.
+        function buildPlayerNarrativeReport(player, analysis, context) {
             const { verdict, verdictReason, concerns, positives } = analysis;
             const posConfig = POSITION_CONFIG[player.position];
             const ta = teamAnalysis[player.teamId];
@@ -1394,12 +1401,18 @@
 
             const sentences = [];
 
-            const verdictLead = {
+            const leads = context === 'candidate' ? {
+                star: `${player.name} would be one of the stronger names in this squad`,
+                hold: `${player.name} looks like a solid, low-drama pickup`,
+                monitor: `${player.name} is a fair option but not without questions`,
+                sell: `${player.name}'s underlying signals are weak right now`
+            } : {
                 star: `${player.name} is one of the stronger assets in this squad right now`,
                 hold: `${player.name} looks like a solid, low-drama hold`,
                 monitor: `${player.name} is worth keeping an eye on`,
                 sell: `${player.name} is flagged as a sell candidate`
-            }[verdict] || `${player.name}'s outlook is mixed`;
+            };
+            const verdictLead = leads[verdict] || `${player.name}'s outlook is mixed`;
             const reason = verdictReason ? verdictReason.charAt(0).toLowerCase() + verdictReason.slice(1) : '';
             sentences.push(reason ? `${verdictLead} \u2014 ${reason}` : `${verdictLead}.`);
 
@@ -1440,41 +1453,83 @@
             return sentences.join(' ');
         }
 
-        // Builds the full inline player-detail card \u2014 everything that used to live
-        // in the right-side panel, reorganised under Player / Team / Opponents,
-        // plus the AI report, price watch and opponent-form sections. Returns a
-        // plain HTML string; the caller (squad-table-chart.js) drops it straight
-        // into the expanded row, so nothing here touches the DOM itself.
-        function buildPlayerDetailHTML(playerId) {
-            const analysis = analysisResults.find(a => a.player.id === playerId);
-            if (!analysis) return '';
-            const { player, verdict, verdictReason, recommendation, concerns, positives, sellRating, fixtures } = analysis;
+        // Full player analysis, reusing the cached copy for a squad member or
+        // running analyzePlayer() fresh for anyone else (a transfer candidate
+        // never seen before). analyzePlayer() reads player.fixtures for its FDR
+        // read \u2014 a squad member gets that from the pick-mapping step, a raw
+        // allPlayers candidate never has it, so it's patched in first, same
+        // fix openTransferPanel already applies for computePlayerStatColumns.
+        function getPlayerAnalysis(player) {
+            const existing = (analysisResults || []).find(a => a.player.id === player.id);
+            if (existing) return existing;
+            if (!player.fixtures || !player.fixtures.length) {
+                player.fixtures = teamFixtures[player.teamId] || [];
+            }
+            return analyzePlayer(player);
+        }
+
+        // Builds a player's full analytical profile \u2014 AI report, verdict, key
+        // stats, season numbers, routes to points, price watch, concerns/
+        // positives, upcoming fixtures, team context (incl. fixture swing) and
+        // opponent form. Shared by the Squad Analysis inline detail card
+        // (buildPlayerDetailHTML below) and the Transfer Wizard's head-to-head
+        // compare, so a buy candidate gets exactly the same depth as one of
+        // your own XI. `opts`:
+        //   header         show the name/team/price strip (default true)
+        //   aiReport       show the narrative paragraph (default true)
+        //   recommendation show the "Recommendation: ..." box (default true) \u2014
+        //                  turn off for a candidate: analyzePlayer's advice is
+        //                  squad-decision language ("transfer out before GW6"),
+        //                  which is a non-sequitur for a player you don't own
+        //   replacements   show "Best Replacement Comparison" (default true) \u2014
+        //                  meaningless in a head-to-head, pass false there
+        //   context        'squad' (default) or 'candidate' \u2014 only changes the
+        //                  AI report's opening sentence and the verdict chip
+        function buildPlayerFullProfileHTML(player, analysis, opts) {
+            opts = opts || {};
+            const showHeader = opts.header !== false;
+            const showReport = opts.aiReport !== false;
+            const showRecommendation = opts.recommendation !== false;
+            const showReplacements = opts.replacements !== false;
+            const context = opts.context || 'squad';
+            const { verdict, verdictReason, recommendation, concerns, positives, sellRating, fixtures } = analysis;
             const posConfig = POSITION_CONFIG[player.position];
             const gamesPlayed = Math.max(currentGW - 1, 1);
             const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
             const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
             const statsScopeLabel = player.position === 1 ? 'Goalkeeping' : player.position === 2 ? 'Defensive' : 'Attacking';
+            // "SELL" as a badge on a player you're evaluating to BUY reads as an
+            // instruction, not a rating \u2014 candidate mode swaps in strength words.
+            const chipLabel = context === 'candidate'
+                ? { star: '\u2605 STRONG', hold: 'SOLID', monitor: 'MIXED', sell: 'WEAK' }[verdict] || verdict.toUpperCase()
+                : (verdict === 'star' ? '\u2605 STAR' : verdict.toUpperCase());
 
-            let html = `<div class="pd-header">
-                <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
-                <span class="pd-header-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${escHTML(player.name)}</span>
-                <span class="pd-header-meta">${escHTML(player.team)} \u00b7 \u00a3${player.price.toFixed(1)}m \u00b7 ${player.ownership.toFixed(1)}% owned</span>
-            </div>`;
+            let html = '';
 
-            html += `<div class="detail-section pd-report">
-                <div class="detail-section-title">\ud83e\udde0 AI Report</div>
-                <div class="pd-report-text">${escHTML(buildPlayerNarrativeReport(player, analysis))}</div>
-            </div>`;
+            if (showHeader) {
+                html += `<div class="pd-header">
+                    <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
+                    <span class="pd-header-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${escHTML(player.name)}</span>
+                    <span class="pd-header-meta">${escHTML(player.team)} \u00b7 \u00a3${player.price.toFixed(1)}m \u00b7 ${player.ownership.toFixed(1)}% owned</span>
+                </div>`;
+            }
+
+            if (showReport) {
+                html += `<div class="detail-section pd-report">
+                    <div class="detail-section-title">\ud83e\udde0 AI Report</div>
+                    <div class="pd-report-text">${escHTML(buildPlayerNarrativeReport(player, analysis, context))}</div>
+                </div>`;
+            }
 
             // ===== PLAYER =====
             html += `<div class="pd-group"><div class="pd-group-title">\ud83d\udc64 Player</div>`;
 
             html += `<div class="detail-section">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-                    <div class="verdict-chip ${verdict}" style="font-size:13px;padding:6px 14px;">${verdict === 'star' ? '\u2605 STAR' : verdict.toUpperCase()}</div>
+                    <div class="verdict-chip ${verdict}" style="font-size:13px;padding:6px 14px;">${chipLabel}</div>
                     <div style="font-size:14px;color:var(--text-secondary);flex:1;">${escHTML(verdictReason)}</div>
                 </div>
-                ${recommendation ? `<div style="font-size:12px;color:var(--text-secondary);padding:8px 12px;background:rgba(167,139,250,0.06);border-radius:6px;margin-bottom:6px;border-left:3px solid var(--verdict-${verdict});"><strong>Recommendation:</strong> ${escHTML(recommendation)}</div>` : ''}
+                ${showRecommendation && recommendation ? `<div style="font-size:12px;color:var(--text-secondary);padding:8px 12px;background:rgba(167,139,250,0.06);border-radius:6px;margin-bottom:6px;border-left:3px solid var(--verdict-${verdict});"><strong>Recommendation:</strong> ${escHTML(recommendation)}</div>` : ''}
                 <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100</div>
             </div>`;
 
@@ -1547,7 +1602,7 @@
                 </div>`;
             }
 
-            if (verdict === 'sell' || verdict === 'monitor') {
+            if (showReplacements && (verdict === 'sell' || verdict === 'monitor')) {
                 const replacements = findReplacements(player, 5);
                 if (replacements.length > 0) {
                     const best = replacements[0];
@@ -1624,6 +1679,15 @@
             }
 
             return html;
+        }
+
+        // Thin wrapper kept for the Squad Analysis inline row \u2014 everything the
+        // old right-side panel showed, at the defaults (full header, AI report,
+        // recommendation and replacement suggestions all on).
+        function buildPlayerDetailHTML(playerId) {
+            const analysis = analysisResults.find(a => a.player.id === playerId);
+            if (!analysis) return '';
+            return buildPlayerFullProfileHTML(analysis.player, analysis);
         }
 
         function renderDetailStat(label, value, barPct, color, context) {
