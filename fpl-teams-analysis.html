@@ -17,11 +17,11 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=67">
-    <link rel="stylesheet" href="styles/teams.css?v=67">
-    <link rel="stylesheet" href="styles/v2-design.css?v=67">
-    <script src="scripts/common.js?v=67"></script>
-    <script src="scripts/sidebar-nav.js?v=67"></script>
+    <link rel="stylesheet" href="styles/common.css?v=68">
+    <link rel="stylesheet" href="styles/teams.css?v=68">
+    <link rel="stylesheet" href="styles/v2-design.css?v=68">
+    <script src="scripts/common.js?v=68"></script>
+    <script src="scripts/sidebar-nav.js?v=68"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1304,11 +1304,14 @@
             const standalone = !!(opts && opts.standalone);
             const window5 = displayGWs.filter(gw => gw >= currentGW).slice(0, 5);
 
+            // Six, not a dozen. Twelve of twenty clubs is most of the league, and a
+            // shortlist that holds most of the league is not a shortlist — if
+            // nearly everyone is a target then none of them is.
             const ranked = allTeamsData
                 .map(t => ({ team: t, score: softTargetScore(t) }))
                 .filter(x => x.score !== null)
                 .sort((a, b) => b.score - a.score)
-                .slice(0, standalone ? 12 : 6);
+                .slice(0, 6);
 
             if (!ranked.length) {
                 return `<div class="soft-section">
@@ -1346,12 +1349,19 @@
                         </span>`).join('')
                     : '<span class="soft-face-none">No fixtures scheduled in this window</span>';
 
-                return `<div class="soft-card" onclick="openTeamReport(${t.id})" data-tooltip="Open the full report for ${escHTML(t.name)}">
+                /* Being in the top six does not make a side soft — it makes them
+                   the softest six available, which in a tight league can still be
+                   ordinary. Every card used to print its score in the same alarm
+                   red, so the sixth-ranked team read exactly like the first. */
+                const tier = entry.score >= 60 ? 'prime' : entry.score >= 45 ? 'fair' : 'mild';
+                const tierWord = tier === 'prime' ? 'prime target' : tier === 'fair' ? 'worth a look' : 'marginal';
+
+                return `<div class="soft-card tier-${tier}" onclick="openTeamReport(${t.id})" data-tooltip="Open the full report for ${escHTML(t.name)}">
                     <div class="soft-card-head">
                         <span class="soft-rank">${i + 1}</span>
                         <img src="${t.badgeUrl}" alt="" class="soft-badge" onerror="this.style.display='none'">
                         <span class="soft-name">${escHTML(t.name)}</span>
-                        <span class="soft-score" data-tooltip="How attackable this defence looks right now, from defensive quality, current form, goals conceded and clean-sheet rate, adjusted for whether they are trending better or worse.">${entry.score}</span>
+                        <span class="soft-score" data-tooltip="How attackable this defence looks right now, from defensive quality, current form, goals conceded and clean-sheet rate, adjusted for whether they are trending better or worse. 60 and above is a genuinely soft defence; below 45 they are only here because someone has to be sixth.">${entry.score}<em>${tierWord}</em></span>
                     </div>
                     <div class="soft-metrics">
                         <span class="soft-metric" data-tooltip="Goals conceded per game across ${games} matches."><em>${parseFloat(t.avgConceded).toFixed(2)}</em>conceded/gm</span>
