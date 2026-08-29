@@ -17,11 +17,11 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=65">
-    <link rel="stylesheet" href="styles/teams.css?v=65">
-    <link rel="stylesheet" href="styles/v2-design.css?v=65">
-    <script src="scripts/common.js?v=65"></script>
-    <script src="scripts/sidebar-nav.js?v=65"></script>
+    <link rel="stylesheet" href="styles/common.css?v=66">
+    <link rel="stylesheet" href="styles/teams.css?v=66">
+    <link rel="stylesheet" href="styles/v2-design.css?v=66">
+    <script src="scripts/common.js?v=66"></script>
+    <script src="scripts/sidebar-nav.js?v=66"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -40,6 +40,7 @@
         <div class="tabs" id="viewTabs">
             <button class="tab active" data-view="rankings">Teams Rankings</button>
             <button class="tab" data-view="swings">Fixture Swings</button>
+            <button class="tab" data-view="targets">Soft Targets</button>
             <button class="tab" data-view="calendar">Full Calendar</button>
             <button class="tab" data-view="stats">Stats Table</button>
         </div>
@@ -107,7 +108,7 @@
         window.playerElements = [];  // Raw bootstrap elements (for season xG)
 
         // Hash routing
-        const HASH_TO_VIEW = { 'rankings': 'rankings', 'swings': 'swings', 'calendar': 'calendar', 'stats': 'stats', 'xg': 'xg' };
+        const HASH_TO_VIEW = { 'rankings': 'rankings', 'swings': 'swings', 'targets': 'targets', 'calendar': 'calendar', 'stats': 'stats', 'xg': 'xg' };
 
         // ===== INITIALIZATION =====
 
@@ -902,6 +903,10 @@
                     renderFixtureSwings(contentArea);
                     break;
 
+                case 'targets':
+                    renderSoftTargetsView(contentArea);
+                    break;
+
                 case 'calendar':
                     renderFullCalendar(contentArea);
                     break;
@@ -1204,8 +1209,6 @@
                     </div>
                     
                     ${renderTargetableCalendar(teamFixtureMap, easyRuns, displayGWs)}
-
-                    ${renderSoftTargets(teamFixtureMap, displayGWs)}
                 </div>
             `;
 
@@ -1267,14 +1270,31 @@
             return rows;
         }
 
-        function renderSoftTargets(fixtureMap, displayGWs) {
+        /* Its own view now rather than a section at the bottom of Fixture Swings.
+           buildFullSeasonMap() is rebuilt here because a visitor can land on
+           #targets directly, and window._teamFixtureMap — which the team report
+           modal reads for its attack/defence fixture table — would otherwise
+           never have been populated. */
+        function renderSoftTargetsView(container) {
+            const fixtureMap = buildFullSeasonMap();
+            const allGWs = new Set();
+            Object.values(fixtureMap).forEach(team => {
+                Object.keys(team).forEach(gw => allGWs.add(parseInt(gw)));
+            });
+            const displayGWs = Array.from(allGWs).sort((a, b) => a - b).filter(gw => gw >= currentGW);
+            window._teamFixtureMap = fixtureMap;
+            container.innerHTML = renderSoftTargets(fixtureMap, displayGWs, { standalone: true });
+        }
+
+        function renderSoftTargets(fixtureMap, displayGWs, opts) {
+            const standalone = !!(opts && opts.standalone);
             const window5 = displayGWs.filter(gw => gw >= currentGW).slice(0, 5);
 
             const ranked = allTeamsData
                 .map(t => ({ team: t, score: softTargetScore(t) }))
                 .filter(x => x.score !== null)
                 .sort((a, b) => b.score - a.score)
-                .slice(0, 6);
+                .slice(0, standalone ? 12 : 6);
 
             if (!ranked.length) {
                 return `<div class="soft-section">
@@ -1333,13 +1353,14 @@
                 </div>`;
             }).join('');
 
-            return `<div class="soft-section">
+            return `<div class="soft-section${standalone ? ' standalone' : ''}">
                 <div class="soft-header">
                     <span class="soft-title"><i data-lucide="crosshair" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> Soft Targets</span>
                     <span class="soft-count">next ${window5.length} GW${window5.length === 1 ? '' : 's'}</span>
                 </div>
-                <p class="soft-desc">The defences worth attacking right now, and whose players get to do it. Ranked on defensive quality, current form, goals conceded and clean-sheet rate — then adjusted for whether they are trending better or worse. This is the opposite question to the panels above: not whose fixtures are kind, but who is <em>currently</em> easy to score against.</p>
+                <p class="soft-desc">The defences worth attacking right now, and whose players get to do it. Ranked on defensive quality, current form, goals conceded and clean-sheet rate — then adjusted for whether they are trending better or worse. This is the opposite of a fixture ticker: not whose schedule is kind, but who is <em>currently</em> easy to score against. A fixture difficulty rating is set before a ball is kicked and never moves; form and defensive records do.</p>
                 <div class="soft-grid">${cards}</div>
+                ${standalone ? `<p class="soft-method">Every figure is read from each club's most recent matches, so the ranking moves with form rather than reputation. Click any club for its full report. Fixture <em>runs</em> — whose schedule eases and when — live under <a href="#swings" onclick="document.querySelector('.tab[data-view=&quot;swings&quot;]').click();return false;">Fixture Swings</a>.</p>` : ''}
             </div>`;
         }
 

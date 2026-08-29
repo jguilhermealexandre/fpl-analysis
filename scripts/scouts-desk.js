@@ -79,6 +79,41 @@ function sdLastRound() {
     return last;
 }
 
+/* The last gameweek that is actually OVER.
+
+   sdLastRound() reads the highest round present in player history, which ticks
+   over the moment the first fixture of a new gameweek is under way. That is the
+   right number for "how current is this data" and the wrong one for anything
+   retrospective: it published a full "Gameweek 2 Debrief" — average score,
+   winners, blanks, the lot — off one match out of ten, quoting an average of 18
+   for a round that had barely started. The builder never rewrites an existing
+   article, by design, so that premature record would have stood permanently.
+
+   Bootstrap's own event flags are authoritative: `finished` once every match has
+   been played, `data_checked` once bonus and final points are settled. A debrief
+   is a permanent record of final numbers, so it waits for both. The fixture list
+   is the fallback when those flags are unavailable. */
+function sdCompletedRound() {
+    let last = 0;
+    (sdBoot?.events || []).forEach(e => {
+        if (e.finished && e.data_checked && e.id > last) last = e.id;
+    });
+    if (last) return last;
+
+    const byRound = {};
+    (sdFixtures || []).forEach(f => {
+        if (f.event == null) return;
+        const r = byRound[f.event] || (byRound[f.event] = { total: 0, done: 0 });
+        r.total++;
+        if (f.finished) r.done++;
+    });
+    Object.keys(byRound).forEach(k => {
+        const r = byRound[k];
+        if (r.total > 0 && r.done === r.total && Number(k) > last) last = Number(k);
+    });
+    return last;
+}
+
 // Per-gameweek rows for one round, joined to the player record.
 function sdRoundRows(round) {
     const byId = {};
@@ -244,7 +279,9 @@ function sdUpcomingGws(count) {
    are real figures about a completed gameweek, so they carry the article's
    length without any of it resting on a one-round trend claim. */
 function sdGenGameweekDebrief() {
-    const gw = sdLastRound();
+    // A debrief only ever describes a finished round — see sdCompletedRound().
+    const gw = sdCompletedRound();
+    if (!gw) return null;
     const rows = sdRoundRows(gw);
     if (!rows.length) return null;
 
@@ -561,7 +598,10 @@ function sdGenPreDeadlineCaptaincy() {
     const lead = template[0] || pool[0];
 
     const ev = sdEvent(gw);
-    const prevEv = sdEvent(sdLastRound());
+    // "Last time" has to mean a round that finished, not one in progress —
+    // mid-gameweek this would quote a most-captained player off part of a round.
+    const lastDone = sdCompletedRound();
+    const prevEv = lastDone ? sdEvent(lastDone) : null;
     const lastCaptain = prevEv && prevEv.most_captained ? sdPlayerById(prevEv.most_captained) : null;
 
     let md = `## The armband is the biggest call you make\n\n`;
@@ -631,11 +671,11 @@ function sdGenPreDeadlineCaptaincy() {
 
     // What the crowd did last week, and what it cost or earned them.
     if (lastCaptain) {
-        const lastRows = sdRoundRows(sdLastRound());
+        const lastRows = sdRoundRows(lastDone);
         const capRow = lastRows.find(r => r.id === lastCaptain.id);
         const bestLast = [...lastRows].sort((a, b) => b.gwPoints - a.gwPoints)[0];
         md += `## What the field did last time\n\n`;
-        md += `The most-captained player in Gameweek ${sdLastRound()} was **${lastCaptain.name}**`;
+        md += `The most-captained player in Gameweek ${lastDone} was **${lastCaptain.name}**`;
         md += capRow ? `, and he returned ${capRow.gwPoints} — ${capRow.gwPoints * 2} with the armband on.` : `.`;
         md += `\n\n`;
         if (capRow && bestLast) {
@@ -1649,25 +1689,31 @@ function sdRecurringDue(gw) {
 // The builder writes only what is missing, so this can be called repeatedly.
 function sdBuildArchive() {
     const gw = sdLastRound();
+    const done = sdCompletedRound();
     const out = [];
     const push = (art, slug, dated) => {
         if (!art) return;
         art.slug = slug;
         art.words = sdWordCount(art.body);
         art.readTime = sdReadTime(art.body);
-        art.gw = dated ? gw : null;
+        art.gw = dated == null ? null : dated;
         out.push(art);
     };
 
     if (gw > 0) {
-        // Weekly: the round just played, and the deadline coming up.
-        push(sdGenGameweekDebrief(), `gameweek-${gw}-debrief`, true);
-        push(sdGenPreDeadlineCaptaincy(), `gameweek-${sdNextGw()}-captaincy-matrix`, true);
-        // Everything else runs to its own cadence.
-        sdRecurringDue(gw).forEach(r => push(r.gen(), `gameweek-${gw}-${r.key}`, true));
+        // Retrospective, so it is tagged and slugged with the round that actually
+        // finished. Slugging it with sdLastRound() is what let a part-played
+        // gameweek claim a debrief of its own.
+        if (done > 0) push(sdGenGameweekDebrief(), `gameweek-${done}-debrief`, done);
+        // Forward-looking: these describe the deadline ahead, so they belong to
+        // the live gameweek and are correct to run mid-round.
+        push(sdGenPreDeadlineCaptaincy(), `gameweek-${sdNextGw()}-captaincy-matrix`, gw);
+        sdRecurringDue(gw).forEach(r => push(r.gen(), `gameweek-${gw}-${r.key}`, gw));
     }
     // No live data behind it, so it is written once and never rewritten.
-    push(sdGenInsideAlgorithm(), 'inside-the-algorithm', false);
+    // Belongs to no gameweek — `push` now takes the gameweek itself, so this
+    // passes null rather than a falsy flag.
+    push(sdGenInsideAlgorithm(), 'inside-the-algorithm', null);
     return out;
 }
 

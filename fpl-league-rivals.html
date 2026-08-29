@@ -17,10 +17,10 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=66">
-    <link rel="stylesheet" href="styles/v2-design.css?v=66">
-    <script src="scripts/common.js?v=66"></script>
-    <script src="scripts/sidebar-nav.js?v=66"></script>
+    <link rel="stylesheet" href="styles/common.css?v=67">
+    <link rel="stylesheet" href="styles/v2-design.css?v=67">
+    <script src="scripts/common.js?v=67"></script>
+    <script src="scripts/sidebar-nav.js?v=67"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -874,14 +874,11 @@
             </h1>
         </header>
 
-        <!-- Compact Edit Bar (shown after analysis) -->
-        <div id="editLeagueBar" style="display:none;margin-bottom:var(--space-4);padding:var(--space-3) var(--space-4);background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);align-items:center;gap:var(--space-3);font-size:13px;flex-wrap:wrap;">
-            <i data-lucide="trophy" style="width:16px;height:16px;color:var(--color-primary);flex-shrink:0;"></i>
-            <span id="editLeagueLabel" style="font-weight:600;"></span>
-            <span style="color:var(--text-muted);">·</span>
-            <span id="editTeamLabel" style="color:var(--text-secondary);"></span>
-            <button onclick="showInputSection()" style="margin-left:auto;padding:4px 12px;background:var(--surface-2);border:1px solid var(--border-default);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;color:var(--text-secondary);font-family:inherit;font-weight:500;">Change</button>
-        </div>
+        <!-- League command header. Lives out here rather than inside the Insights
+             tab so one bar serves every tab: it used to sit below a second,
+             thinner bar that repeated the same league and team with none of the
+             standings, which read as the page saying everything twice. -->
+        <div class="league-command" id="leagueCommand" style="display:none;"></div>
 
         <!-- Input Section -->
         <div class="input-section" id="inputSection">
@@ -925,9 +922,6 @@
         <div id="resultsContainer" style="display: none;">
             <!-- Tab: Insights -->
             <div class="tab-content active" id="tab-insights">
-                <!-- League command header -->
-                <div class="league-command" id="leagueCommand" style="display:none;"></div>
-
                 <!-- Summary Cards -->
                 <div class="summary-grid" id="summaryGrid">
                     <div class="summary-card danger">
@@ -1531,15 +1525,13 @@
                 renderLeagueRace();
                 renderSquadStrength();
                 
-                // Collapse input section and show compact edit bar
+                // Collapse the setup form — renderCommandHeader() above has already
+                // put the league, your team and the standings in the bar that
+                // replaces it.
                 document.getElementById('inputSection').style.display = 'none';
                 document.getElementById('pageHeader').style.display = 'none';
                 document.getElementById('statusBar').style.display = 'none';
-                const myManager = managerPicks[myTeamId]?.manager;
-                document.getElementById('editLeagueLabel').textContent = leagueData.league.name;
-                document.getElementById('editTeamLabel').textContent = myManager ? `${myManager.player_name} (${myManager.entry_name})` : '';
-                document.getElementById('editLeagueBar').style.display = 'flex';
-                
+
                 if (typeof lucide !== 'undefined') lucide.createIcons();
                 
             } catch (err) {
@@ -2121,7 +2113,7 @@
         function showInputSection() {
             document.getElementById('inputSection').style.display = '';
             document.getElementById('pageHeader').style.display = '';
-            document.getElementById('editLeagueBar').style.display = 'none';
+            document.getElementById('leagueCommand').style.display = 'none';
         }
 
         function autoSelectLeader() {
