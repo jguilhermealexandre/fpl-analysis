@@ -209,10 +209,38 @@
             </div>`;
         }
 
-        // The panel's default state. An empty pane that asks to be clicked wastes
-        // the most valuable position on the screen, so it opens with the read on
-        // the lineup: what it projects, where it is weakest, and what is sitting
-        // on the bench that maybe should not be.
+        // Where a group of players' projected points actually come from, summed.
+        // projectPlayerPointsDetailed already splits every projection into
+        // appearance/attack/clean sheet/saves/bonus/defcon — the panel just never
+        // showed it, so "37.2 projected" arrived with no account of itself.
+        function lwPointsSources(players) {
+            const totals = {};
+            players.forEach(p => {
+                if (typeof optXpBreakdown !== 'function') return;
+                optXpBreakdown(p).parts.forEach(x => { totals[x.key] = (totals[x.key] || 0) + x.v; });
+            });
+            return Object.keys(totals)
+                .map(k => ({ key: k, v: totals[k] }))
+                .filter(x => Math.abs(x.v) >= 0.05)
+                .sort((a, b) => b.v - a.v);
+        }
+
+        function lwSourcesBar(sources) {
+            const positive = sources.filter(x => x.v > 0);
+            const total = Math.max(0.01, positive.reduce((s, x) => s + x.v, 0));
+            const seg = positive.map(x =>
+                `<span class="opt-seg opt-seg-${x.key.toLowerCase()}" style="width:${Math.round((x.v / total) * 100)}%"
+                    data-tooltip="${escHTML(x.key)}: ${x.v.toFixed(1)} of the eleven's projected points"></span>`).join('');
+            return `<div class="opt-bar">${seg}</div>
+                <div class="opt-bar-legend">${sources.map(x => `${escHTML(x.key)} <strong>${x.v.toFixed(1)}</strong>`).join(' · ')}</div>`;
+        }
+
+        // The panel's default state, and the reason the Overview tab is worth
+        // landing on: the full standing read on the lineup — what it projects and
+        // where that comes from, how nailed it is, what it faces, where it is
+        // weakest, and what is sitting on the bench that maybe should not be.
+        // This is the analysis the optimisation report used to hold hostage until
+        // you pressed Auto-optimise.
         function renderLWSummary() {
             const xi = lineupState.xi, bench = lineupState.bench;
             if (!xi.length) return `<div class="lw-side-empty">Load a squad to see the lineup read.</div>`;
@@ -237,10 +265,52 @@
             const risky = xi.filter(p => typeof expectedMinutesModel === 'function' && expectedMinutesModel(p).pStart < 0.6);
             const cap = lineupState.squad.find(p => p.id === lineupState.captain);
 
+            // How dependable the eleven is, and what it is walking into.
+            const starts = xi.map(p => typeof expectedMinutesModel === 'function' ? expectedMinutesModel(p).pStart : 1);
+            const nailed = starts.filter(v => v >= 0.8).length;
+            const expectedAbsent = starts.reduce((s, v) => s + (1 - v), 0);
+            const fdrs = xi.map(p => typeof optFdrFor === 'function' ? optFdrFor(p) : 3);
+            const avgFdr = fdrs.length ? fdrs.reduce((s, f) => s + f, 0) / fdrs.length : 3;
+            const easyCount = fdrs.filter(f => f <= 2).length;
+            const hardCount = fdrs.filter(f => f >= 4).length;
+
+            // Three starters from one club is one result deciding your week.
+            const byTeam = {};
+            xi.forEach(p => { byTeam[p.teamId] = (byTeam[p.teamId] || 0) + 1; });
+            const stacked = Object.keys(byTeam).filter(t => byTeam[t] >= 3)
+                .map(t => `${(typeof teams !== 'undefined' && teams[t] ? teams[t].short_name : null) || '???'} (${byTeam[t]})`);
+
+            const sources = lwPointsSources(xi);
+
             return `<div class="lw-sum">
                 <div class="lw-sum-hero">
                     <div class="lw-sum-hero-v">${lwTotalXP().toFixed(1)}</div>
                     <div class="lw-sum-hero-l">projected points · ${escHTML(lineupState.formation)}${cap ? ` · ${escHTML(cap.web_name)} captained` : ''}</div>
+                </div>
+
+                <div class="opt-grid">
+                    <div class="opt-stat"><div class="opt-stat-v">${xi.reduce((s, p) => s + p.gwScore, 0).toFixed(1)}</div>
+                        <div class="opt-stat-l" data-tooltip="Sum of projected points across the eleven starters, before the captain's double.">XI xP</div></div>
+                    <div class="opt-stat"><div class="opt-stat-v">${nailed}<span class="opt-stat-sub">/11</span></div>
+                        <div class="opt-stat-l" data-tooltip="Starters at least 80% likely to start, from minutes per appearance and fitness.">Nailed on</div></div>
+                    <div class="opt-stat"><div class="opt-stat-v">${expectedAbsent.toFixed(1)}</div>
+                        <div class="opt-stat-l" data-tooltip="Expected number of your eleven who do not start. This is what the bench order insures against.">Expected absent</div></div>
+                    <div class="opt-stat"><div class="opt-stat-v">${avgFdr.toFixed(1)}</div>
+                        <div class="opt-stat-l" data-tooltip="Average fixture difficulty faced by the starting eleven this gameweek.">Avg FDR</div></div>
+                </div>
+
+                ${sources.length ? `<div class="lw-sum-block">
+                    <div class="lw-sum-h">📊 Where the points come from</div>
+                    ${lwSourcesBar(sources)}
+                    <div class="lw-sum-note">${escHTML(sources[0].key)} is the largest single source at <strong>${sources[0].v.toFixed(1)}</strong> projected points across the eleven.</div>
+                </div>` : ''}
+
+                <div class="lw-sum-block">
+                    <div class="lw-sum-h">🗓️ What the eleven face</div>
+                    <div class="lw-sum-note">${easyCount} of the eleven face a difficulty-2-or-easier fixture and ${hardCount} face a 4 or harder.
+                        ${stacked.length
+                            ? `You are stacked on <strong>${escHTML(stacked.join(', '))}</strong> — a strong week for them lifts the whole team, a poor one sinks it.`
+                            : 'No club supplies three or more of your starters, so the week is spread across teams.'}</div>
                 </div>
 
                 <div class="lw-sum-block">
@@ -272,6 +342,8 @@
                     ${risky.filter(p => !flagged.some(f => f.id === p.id)).map(p => `<div class="lw-sum-flag"><strong>${escHTML(p.web_name)}</strong> — rotation risk, ${Math.round(expectedMinutesModel(p).pStart * 100)}% likely to start</div>`).join('')}
                 </div>` : ''}
 
+                ${renderLWChanges()}
+
                 <div class="lw-sum-hintline">Click a player on the pitch to swap them. Use ℹ️ for their detail, or two ℹ️s to compare.</div>
             </div>`;
         }
@@ -288,7 +360,7 @@
             // The armband only ever pays out for this gameweek, so candidates are
             // ranked on gwScore, not the run score the XI itself was picked on.
             const candidates = lineupState.xi.filter(p => p.pos !== 1)
-                .sort((a, b) => b.gwScore - a.gwScore).slice(0, 3);
+                .sort((a, b) => b.gwScore - a.gwScore).slice(0, 5);
 
             if (!candidates.length) return `<div class="lw-side-empty">No outfield players in the XI yet.</div>`;
 
@@ -297,6 +369,17 @@
                 const ctx = fx && typeof opponentContext === 'function' ? opponentContext(p.teamId, fx, ranks) : null;
                 const per90 = typeof regressedPer90 === 'function' ? regressedPer90(p) : { xg90: 0, xa90: 0 };
                 const threat = per90.xg90 + per90.xa90;
+                const risk = typeof optMinutesRisk === 'function' ? optMinutesRisk(p) : null;
+                // The opponent's defence is not a fixed quantity — a side shipping
+                // goals lately is a different bet from one whose season xGC merely
+                // looks bad, and the armband is a one-week call on current form.
+                const oppTA = fx && typeof teamAnalysis !== 'undefined' ? teamAnalysis[fx.opponentId] : null;
+                const oppTrend = oppTA && oppTA.xgcTrend === 'rising' ? 'leaking more lately'
+                    : oppTA && oppTA.xgcTrend === 'falling' ? 'tightening up lately' : null;
+                const myTA = typeof teamAnalysis !== 'undefined' ? teamAnalysis[p.teamId] : null;
+                const venuePower = myTA && fx
+                    ? (fx.isHome ? myTA.attackPowerHome : myTA.attackPowerAway)
+                    : null;
 
                 // Two bars: how dangerous this player is, and how leaky the defence
                 // they face. A high threat into a tight defence is a different bet
@@ -322,7 +405,12 @@
                             <span class="lw-cap-bar">${weakPct != null ? `<span class="lw-cap-bar-f weak" style="width:${weakPct}%"></span>` : '<span class="lw-cap-bar-na">not yet ranked</span>'}</span>
                         </div>
                     </div>
-                    <div class="lw-cap-meta">Form <strong>${form.toFixed(1)}</strong> · Owned <strong>${p.ownership != null ? p.ownership + '%' : '—'}</strong></div>
+                    <div class="lw-cap-meta">Form <strong>${form.toFixed(1)}</strong> · Owned <strong>${p.ownership != null ? p.ownership + '%' : '—'}</strong>${risk ? ` · <span class="opt-risk ${risk.cls}" data-tooltip="${risk.pct}% likely to start — ${risk.word}. A captain who does not play costs you double.">${risk.word} ${risk.pct}%</span>` : ''}</div>
+                    ${(oppTrend || venuePower != null) ? `<div class="lw-cap-ctx">${[
+                        oppTrend ? `${escHTML(fx.opponent || 'Opponent')} ${oppTrend}` : '',
+                        venuePower != null ? `${escHTML(p.team)} attack ${Math.round(venuePower)}/100 ${fx.isHome ? 'at home' : 'away'}` : ''
+                    ].filter(Boolean).join(' · ')}</div>` : ''}
+                    ${typeof optBreakdownBar === 'function' ? `<div class="lw-cap-break">${optBreakdownBar(p)}</div>` : ''}
                     <div class="lw-cap-actions">
                         <button class="lw-cap-btn ${isCap ? 'active-c' : ''}" onclick="setLWCaptain(${p.id})" data-tooltip="Give ${escHTML(p.web_name)} the armband">C</button>
                         <button class="lw-cap-btn ${isVC ? 'active-vc' : ''}" onclick="setLWViceCaptain(${p.id})" data-tooltip="Make ${escHTML(p.web_name)} vice-captain">VC</button>
@@ -330,10 +418,26 @@
                 </div>`;
             }).join('');
 
+            // How clear the call is, stated up front. A 0.2-point lead and a
+            // 2.0-point lead are the same ordering and completely different
+            // decisions, and the grid alone never said which one you were looking at.
+            const lead = candidates.length > 1 ? candidates[0].gwScore - candidates[1].gwScore : 0;
+            const picked = lineupState.squad.find(p => p.id === lineupState.captain);
+            const topRisk = typeof optMinutesRisk === 'function' ? optMinutesRisk(candidates[0]) : null;
+            const verdict = lead > 0.8
+                ? `<strong>${escHTML(candidates[0].web_name)}</strong> is the clear call — ${lead.toFixed(1)} projected points clear of ${escHTML(candidates[1].web_name)} before the armband doubles it.`
+                : candidates.length > 1
+                    ? `Close call: ${escHTML(candidates[0].web_name)} leads ${escHTML(candidates[1].web_name)} by only <strong>${lead.toFixed(1)}</strong> projected points, so fixture and minutes risk decide it more than projection does.`
+                    : `${escHTML(candidates[0].web_name)} is the only outfield option in your XI.`;
+            const offPick = picked && picked.id !== candidates[0].id
+                ? `<div class="lw-cap-off">You have the armband on <strong>${escHTML(picked.web_name)}</strong>, ${(candidates[0].gwScore - picked.gwScore).toFixed(1)} projected points behind ${escHTML(candidates[0].web_name)}.</div>`
+                : '';
+
             return `<div class="lw-cap-matrix">
-                <div class="lw-cap-lead">Ranked by projected points. The bars set what each player threatens against how leaky the defence they face is.</div>
+                <div class="lw-cap-lead">${verdict}${topRisk && topRisk.pct < 80 ? ` Worth noting they are only ${topRisk.pct}% likely to start.` : ''}</div>
+                ${offPick}
                 <div class="lw-cap-grid">${cards}</div>
-                ${renderLWChanges()}
+                <div class="lw-cap-foot">Ranked on this gameweek alone — the armband only ever pays out once. The bars set what each player threatens against how leaky the defence they face is.</div>
             </div>`;
         }
 
@@ -443,7 +547,12 @@
             // scored on this panel's own lwTotalXP() rather than rebuilding it.
             const beforeXI = new Set(lineupState.xi.map(p => p.id));
             const beforeCaptainId = lineupState.captain;
+            const beforeViceId = lineupState.viceCaptain;
             const beforeXP = lwTotalXP();
+            // The report leads on what changed, so the shape before the solve has
+            // to be recorded before solveLWLineup() overwrites it.
+            const beforeFormation = lineupState.formation;
+            const beforeBenchIds = lineupState.bench.map(p => p.id);
 
             solveLWLineup();
             // Captaincy pays out for this gameweek alone, so it's picked on gwScore
@@ -475,15 +584,27 @@
 
             lineupState.optimizeReport = {
                 formation: lineupState.formation,
+                beforeFormation, beforeBenchIds, beforeViceId,
                 beforeXP, afterXP, gain: afterXP - beforeXP,
-                captain: finalXI[0] || null,
-                captainAlternatives: finalXI.slice(1, 3),
+                /* The armband holder, not the top-projected name in the XI. These
+                   diverge: the block above only reassigns the captain when the
+                   existing one drops out of the eleven, and finalXI is sorted
+                   across all starters including the keeper. Reporting finalXI[0]
+                   as "the captain" therefore claimed the armband had moved to
+                   someone it had not, and fed the same wrong name to the summary
+                   strip. Alternatives are outfield-only for the same reason. */
+                captain: lineupState.squad.find(p => p.id === lineupState.captain) || null,
+                captainAlternatives: finalXI.filter(p => p.pos !== 1 && p.id !== lineupState.captain).slice(0, 2),
                 xi: finalXI,
                 benchOrder: lineupState.bench,
                 captainShortlist: finalXI.slice(0, 5),
                 formationScores: lineupState.formationScores || [],
                 viceId: lineupState.viceCaptain,
-                previousCaptain: beforeCaptainId != null ? { player: lineupState.squad.find(p => p.id === beforeCaptainId) } : null,
+                // Only wrapped when the player is actually found — buildOptimizeSummary
+                // reads previousCaptain.player.id unguarded, so { player: undefined }
+                // would throw rather than read as "no previous captain".
+                previousCaptain: (beforeCaptainId != null && lineupState.squad.some(p => p.id === beforeCaptainId))
+                    ? { player: lineupState.squad.find(p => p.id === beforeCaptainId) } : null,
                 benchedOut,
                 promoted: finalXI.filter(p => !beforeXI.has(p.id))
             };
@@ -491,11 +612,167 @@
             renderLineupCommandCenter();
         }
 
+        /* Why the armband moved, or why it did not. Both are answers; only one of
+           them used to get said. */
+        function lwCaptainChangeSection(r) {
+            const now = r.captain;
+            const was = r.previousCaptain && r.previousCaptain.player;
+            if (!now) return '';
+            const alts = r.captainAlternatives || [];
+            const lead = alts.length ? now.gwScore - alts[0].gwScore : 0;
+            const risk = typeof optMinutesRisk === 'function' ? optMinutesRisk(now) : null;
+            const fixture = typeof optFixtureLabel === 'function' ? optFixtureLabel(now) : '';
+            const changed = !was || was.id !== now.id;
+
+            const head = changed
+                ? `<div class="opt-bench-head">👑 Armband moved${was ? ` from <strong>${escHTML(was.web_name || was.name)}</strong>` : ''} to <strong>${escHTML(now.web_name || now.name)}</strong></div>`
+                : `<div class="opt-bench-head">👑 Armband stayed on <strong>${escHTML(now.web_name || now.name)}</strong></div>`;
+
+            const why = [];
+            if (changed && was) {
+                const delta = now.gwScore - was.gwScore;
+                why.push(`projects ${delta > 0 ? `<strong>+${delta.toFixed(1)}</strong> more` : `${delta.toFixed(1)}`} than ${escHTML(was.web_name || was.name)} this gameweek`);
+                if (!lineupState.xi.some(p => p.id === was.id)) why.push(`${escHTML(was.web_name || was.name)} is no longer in the eleven`);
+            } else if (!changed) {
+                why.push(lead > 0.05
+                    ? `still ${lead.toFixed(1)} projected points clear of the next option`
+                    : 'still the highest-projecting outfield starter');
+            }
+            if (fixture && fixture !== '—') why.push(`faces ${escHTML(fixture)}`);
+            if (risk) why.push(`${risk.pct}% likely to start`);
+
+            return `<div class="opt-bench-row">
+                ${head}
+                <div class="opt-bench-why">${why.join(' · ')}</div>
+            </div>`;
+        }
+
+        /* The Auto-optimise report, rebuilt around the one question it is opened
+           to answer: what did this button just do to my team, and why.
+
+           It deliberately does NOT reuse renderOptimizeReportModal() any more.
+           That report opens with a full squad outlook, the whole eleven's
+           projections and a formation essay — a standing description of the
+           lineup, which is now what the Overview and Captaincy tabs carry
+           permanently. Repeating it here buried the four rows that actually
+           changed under six sections that had not. Squad Analysis and GW Draft
+           still use the shared report, where an overview is the point. */
+        function renderLWChangeReport(r) {
+            if (!r) return '<div class="detail-section">Run Auto-optimise to see what changed.</div>';
+
+            const moved = r.benchedOut || [];
+            const capChanged = !!r.captain && (!r.previousCaptain || r.previousCaptain.player.id !== r.captain.id);
+            const shapeChanged = r.beforeFormation && r.beforeFormation !== r.formation;
+            const benchReordered = (() => {
+                const before = r.beforeBenchIds || [];
+                const after = (r.benchOrder || []).map(p => p.id);
+                if (before.length !== after.length) return true;
+                return before.some((id, i) => id !== after[i]);
+            })();
+            const changeCount = moved.length + (capChanged ? 1 : 0) + (shapeChanged ? 1 : 0);
+
+            const rows = moved.map(b => {
+                const p = b.player;
+                const inP = b.replacedBy;
+                const d = b.detailed || {};
+                const risk = typeof optMinutesRisk === 'function' ? optMinutesRisk(p) : null;
+                const reasons = [];
+                if (inP) {
+                    const delta = (inP.gwScore || 0) - (p.gwScore || 0);
+                    if (delta > 0.05) reasons.push(`${escHTML(inP.web_name || inP.name)} projects <strong>+${delta.toFixed(1)}</strong> more this gameweek`);
+                }
+                if (typeof optFdrFor === 'function' && optFdrFor(p) >= 4) reasons.push(`hard fixture, ${escHTML(optFixtureLabel(p))}`);
+                if (d.matchup < -1.5) reasons.push('unfavourable team matchup');
+                const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+                if (form < 3) reasons.push(`weak form (${form.toFixed(1)})`);
+                if (p.status === 'd') reasons.push(`fitness doubt${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}`);
+                if (risk && risk.pct < 60) reasons.push(`only ${risk.pct}% likely to start`);
+                if (!reasons.length) reasons.push('a higher-projected option was available for the slot');
+
+                return `<div class="opt-bench-row">
+                    <div class="opt-bench-head">
+                        <span class="lw-chg-out">↓ ${escHTML(p.web_name || p.name)}</span>
+                        ${inP ? `<span class="lw-chg-arrow">→</span><span class="lw-chg-in">↑ ${escHTML(inP.web_name || inP.name)}</span>` : ''}
+                        ${b.shapeChange ? '<span class="lw-chg-tag">shape change</span>' : ''}
+                    </div>
+                    <div class="opt-bench-why">${reasons.join(' · ')}</div>
+                </div>`;
+            }).join('');
+
+            const shapeHtml = shapeChanged ? `<div class="opt-bench-row">
+                    <div class="opt-bench-head">📐 Shape changed from <strong>${escHTML(r.beforeFormation)}</strong> to <strong>${escHTML(r.formation)}</strong></div>
+                    <div class="opt-bench-why">The eleven above only fits in this shape. ${(r.formationScores || []).length > 1
+                        ? `${escHTML(r.formation)} scored ${r.formationScores[0].total.toFixed(1)} against ${r.formationScores[1].total.toFixed(1)} for the next best shape.`
+                        : ''}</div>
+                </div>` : '';
+
+            const altHtml = (r.formationScores || []).length > 1 ? `
+                <div class="opt-alt">
+                    <div class="opt-alt-head">Shapes considered</div>
+                    ${r.formationScores.slice(0, 4).map((f, i) => `<div class="opt-alt-row ${i === 0 ? 'win' : ''}">
+                        <span>${escHTML(f.formation)}</span>
+                        <span class="opt-alt-bar"><span style="width:${Math.round((f.total / Math.max(r.formationScores[0].total, 0.01)) * 100)}%"></span></span>
+                        <span class="opt-alt-n">${f.total.toFixed(1)}${i === 0 ? '' : ` (−${(r.formationScores[0].total - f.total).toFixed(1)})`}</span>
+                    </div>`).join('')}
+                </div>` : '';
+
+            const benchHtml = (r.benchOrder || []).length ? `
+                <div class="opt-suborder">
+                    <div class="opt-suborder-head">Bench order ${benchReordered ? '(reordered)' : '(unchanged)'}</div>
+                    ${r.benchOrder.map((p, i) => {
+                        const risk = typeof optMinutesRisk === 'function' ? optMinutesRisk(p) : { pct: 0, cls: '' };
+                        return `<div class="opt-suborder-row">
+                            <span class="opt-suborder-n">${p.pos === 1 || p.position === 1 ? 'GK' : i + 1}</span>
+                            <span class="opt-suborder-name">${escHTML(p.web_name || p.name)}</span>
+                            <span class="opt-suborder-team">${escHTML(p.team)}</span>
+                            <span class="fixture-chip fdr-${typeof optFdrFor === 'function' ? optFdrFor(p) : 3}">${typeof optFixtureLabel === 'function' ? optFixtureLabel(p) : ''}</span>
+                            <span class="opt-suborder-xp">${(p.gwScore || 0).toFixed(1)} xP</span>
+                            <span class="opt-risk ${risk.cls}">${risk.pct}%</span>
+                        </div>`;
+                    }).join('')}
+                    <div class="opt-why">This order is what decides your auto-substitutions if a starter does not play.</div>
+                </div>` : '';
+
+            return `
+            <div class="detail-section">
+                <div class="opt-headline ${r.gain > 0.05 ? 'gain' : 'flat'}">
+                    ${r.gain > 0.05
+                        ? `<span class="opt-gain">+${r.gain.toFixed(1)} xP</span><span>from ${changeCount} change${changeCount === 1 ? '' : 's'}</span>`
+                        : r.gain < -0.05
+                            ? `<span class="opt-gain">${r.gain.toFixed(1)} xP</span><span>this week — the eleven was picked for the strongest run across the weeks ahead, not this one alone</span>`
+                            : `<span class="opt-gain">No change</span><span>your lineup was already the best available</span>`}
+                    <div class="opt-beforeafter">${r.beforeXP.toFixed(1)} xP before · ${r.afterXP.toFixed(1)} xP after <span class="opt-note">(includes the captain's double)</span></div>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <div class="detail-section-title">🔀 What changed</div>
+                ${changeCount === 0
+                    ? '<div class="opt-empty">Nothing moved. Your eleven, shape and armband were already the best available from this squad.</div>'
+                    : `${rows}${shapeHtml}${lwCaptainChangeSection(r)}`}
+            </div>
+
+            ${shapeChanged ? `<div class="detail-section">
+                <div class="detail-section-title">📐 Why this shape</div>
+                ${altHtml}
+            </div>` : ''}
+
+            <div class="detail-section">
+                <div class="detail-section-title">🪑 Bench</div>
+                ${benchHtml}
+            </div>
+
+            <div class="detail-section opt-crosslink">
+                The full read on the lineup — where its points come from, what it faces and what could go wrong — lives in the
+                <strong>Overview</strong> and <strong>Captaincy</strong> tabs, which stay up to date whether or not you optimise.
+            </div>`;
+        }
+
         function openLineupOptimizeReport() {
             if (!lineupState.optimizeReport) return;
             const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = `📊 GW${currentGW} optimization report`;
-            document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal(lineupState.optimizeReport);
+            if (title) title.textContent = `📊 GW${currentGW} — what Auto-optimise changed`;
+            document.getElementById('optReportBody').innerHTML = renderLWChangeReport(lineupState.optimizeReport);
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
