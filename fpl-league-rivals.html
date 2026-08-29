@@ -17,10 +17,10 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=65">
-    <link rel="stylesheet" href="styles/v2-design.css?v=65">
-    <script src="scripts/common.js?v=65"></script>
-    <script src="scripts/sidebar-nav.js?v=65"></script>
+    <link rel="stylesheet" href="styles/common.css?v=66">
+    <link rel="stylesheet" href="styles/v2-design.css?v=66">
+    <script src="scripts/common.js?v=66"></script>
+    <script src="scripts/sidebar-nav.js?v=66"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -720,21 +720,44 @@
         }
         .lc-change:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
-        .rival-switch { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-4); }
-        .rs-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); font-weight: 700; margin-right: 4px; }
-        .rs-pill {
             display: inline-flex; align-items: center; gap: 5px;
             padding: 5px 11px; border-radius: 999px; cursor: pointer;
             border: 1px solid var(--border-default); background: var(--surface-2);
             color: var(--text-secondary); font-size: 11.5px; font-weight: 600; font-family: inherit;
         }
-        .rs-pill:hover { border-color: var(--color-primary); color: var(--text-primary); }
-        .rs-pill.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
-        .rs-rank { font-size: 9px; opacity: .7; font-weight: 800; }
 
         .summary-ctx { margin-top: 6px; font-size: 11px; line-height: 1.4; color: var(--text-muted); }
 
         /* ---- threat & damage control ---- */
+        /* ===== Deeper league analysis (Insights tab) ===== */
+        .ins-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-4); }
+        .ins-chart-card { padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); }
+        .ins-chart-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+        .ins-chart-sub { font-size: 11px; line-height: 1.5; color: var(--text-muted); margin: 2px 0 var(--space-3); }
+        .ins-canvas-wrap { position: relative; height: 210px; }
+        .ins-canvas-wrap.tall { height: 300px; }
+        .ins-read { margin-top: var(--space-3); font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+        .ins-read strong { color: var(--text-primary); }
+        .ins-div-grid { display: flex; flex-direction: column; gap: var(--space-2); }
+        .ins-div-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3);
+            border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); }
+        .ins-div-pos { width: 100px; flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--text-primary); }
+        .ins-div-bars { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 80px; }
+        .ins-div-bar { height: 7px; border-radius: 4px; background: var(--surface-3); overflow: hidden; cursor: help; }
+        .ins-div-fill { display: block; height: 100%; border-radius: 4px; }
+        .ins-div-fill.you { background: var(--color-info); }
+        .ins-div-fill.field { background: var(--text-muted); opacity: .55; }
+        .ins-div-n { flex-shrink: 0; font-size: 12px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); }
+        .ins-div-n em { font-style: normal; font-size: 10px; font-weight: 500; color: var(--text-muted); }
+        .ins-div-tag { flex-shrink: 0; width: 108px; text-align: right; font-size: 10px; font-weight: 700; color: var(--text-muted); }
+        .ins-div-tag.bold { color: var(--color-success); }
+        .ins-div-tag.safe { color: var(--color-warning); }
+        .ins-div-none { font-size: 11px; color: var(--text-muted); }
+        @media (max-width: 640px) {
+            .ins-div-row { flex-wrap: wrap; }
+            .ins-div-pos { width: 100%; }
+            .ins-div-tag { width: auto; }
+        }
         .threat-panel {
             padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5);
             background: var(--surface-1); border: 1px solid var(--border-default);
@@ -904,8 +927,6 @@
             <div class="tab-content active" id="tab-insights">
                 <!-- League command header -->
                 <div class="league-command" id="leagueCommand" style="display:none;"></div>
-                <!-- Rival focus switcher -->
-                <div class="rival-switch" id="rivalSwitch" style="display:none;"></div>
 
                 <!-- Summary Cards -->
                 <div class="summary-grid" id="summaryGrid">
@@ -962,6 +983,44 @@
                     </div>
                     <p class="section-desc">Players YOU own that less than 30% of rivals have. Your edge if they haul.</p>
                     <div class="player-grid" id="diffGrid"></div>
+                </div>
+
+                <!-- Deeper league analysis -->
+                <div class="players-section">
+                    <div class="section-header">
+                        <h2><i data-lucide="pie-chart" style="width:20px;height:20px;display:inline;"></i> How This League Picks</h2>
+                    </div>
+                    <p class="section-desc">Whether you are in a template monoculture or a league of gamblers changes what a differential is worth. Every bar below is this league's own ownership, not the global game's.</p>
+                    <div class="ins-charts">
+                        <div class="ins-chart-card">
+                            <div class="ins-chart-title">Ownership landscape</div>
+                            <div class="ins-chart-sub">Every player owned by at least one rival, grouped by how much of the league holds them — and how much of each band you cover.</div>
+                            <div class="ins-canvas-wrap"><canvas id="ownershipChart"></canvas></div>
+                        </div>
+                        <div class="ins-chart-card">
+                            <div class="ins-chart-title">Your squad against the field</div>
+                            <div class="ins-chart-sub">Where your fifteen sit on this league's ownership scale.</div>
+                            <div class="ins-canvas-wrap"><canvas id="compositionChart"></canvas></div>
+                            <div id="compositionRead" class="ins-read"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="players-section">
+                    <div class="section-header">
+                        <h2><i data-lucide="git-compare-arrows" style="width:20px;height:20px;display:inline;"></i> Where You Diverge</h2>
+                    </div>
+                    <p class="section-desc">Average league ownership of your players in each position, against the league's own average. Lower means you are taking the unconventional route in that area.</p>
+                    <div id="posDivergence" class="ins-div-grid"></div>
+                </div>
+
+                <div class="players-section">
+                    <div class="section-header">
+                        <h2><i data-lucide="activity" style="width:20px;height:20px;display:inline;"></i> Gameweek Divergence</h2>
+                    </div>
+                    <p class="section-desc">Your score each gameweek minus the league average. Bars above the line are weeks you gained ground; the running line is your cumulative lead or deficit against the average manager.</p>
+                    <div class="ins-canvas-wrap tall"><canvas id="divergenceChart"></canvas></div>
+                    <div id="divergenceRead" class="ins-read"></div>
                 </div>
             </div>
 
@@ -1438,12 +1497,13 @@
                 
                 // Update summary cards
                 renderCommandHeader();
-                renderRivalSwitcher(rivalIds);
                 renderKpiTiles(missingTemplates, yourDifferentials, onlyYouOwn, similarityPct, playerOwnership);
                 
                 // Render insights tab
                 renderInsights(missingTemplates, yourDifferentials);
                 renderThreatMatrix(missingTemplates);
+                renderPositionDivergence(playerOwnership);
+                renderLeagueInsightCharts(playerOwnership);
                 
                 // Populate rival select
                 const rivalSelect = document.getElementById('rivalSelect');
@@ -1519,33 +1579,6 @@
         }
 
         // Pin a rival to compare against without leaving the tab.
-        let focusRivalId = null;
-        function renderRivalSwitcher(rivalIds) {
-            const el = document.getElementById('rivalSwitch');
-            if (!el) return;
-            const top = rivalIds
-                .map(id => managerPicks[id].manager)
-                .sort((a, b) => (a.rank || 999) - (b.rank || 999))
-                .slice(0, 6);
-            el.innerHTML = `<span class="rs-label">Focus rival</span>
-                <button class="rs-pill ${focusRivalId === null ? 'active' : ''}" onclick="setFocusRival(null)">Whole league</button>
-                ${top.map(m => `<button class="rs-pill ${focusRivalId == m.entry ? 'active' : ''}" onclick="setFocusRival(${m.entry})">
-                    <span class="rs-rank">${m.rank}</span>${escHTML(m.player_name)}</button>`).join('')}`;
-            el.style.display = 'flex';
-        }
-
-        function setFocusRival(id) {
-            focusRivalId = id;
-            renderRivalSwitcher(window.rivalIds || []);
-            // Head-to-head is the view built for one rival, so send them there.
-            if (id) {
-                const sel = document.getElementById('rivalSelect');
-                if (sel) { sel.value = String(id); renderRivalComparison(); }
-                showTab('h2h');
-                document.querySelectorAll('.tabs .tab').forEach(t => t.classList.toggle('active', /Head/.test(t.textContent)));
-            }
-        }
-
         function renderKpiTiles(missingTemplates, yourDifferentials, onlyYouOwn, similarityPct, playerOwnership) {
             const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
             const cls = (sel, name) => { const e = document.querySelector(sel); if (e) e.className = 'summary-card ' + name; };
@@ -1623,6 +1656,194 @@
             }
         }
         
+        /* ===== Deeper league analysis =====
+           These read this league's own ownership rather than the global game's.
+           A 55%-owned player is a template pick in one league and a differential
+           in another, and only the local number tells you which. */
+        let ownershipChart = null, compositionChart = null, divergenceChart = null;
+
+        const OWN_BANDS = [
+            { label: '0%', lo: 0, hi: 0 },
+            { label: '1-20%', lo: 1, hi: 20 },
+            { label: '21-40%', lo: 21, hi: 40 },
+            { label: '41-60%', lo: 41, hi: 60 },
+            { label: '61-80%', lo: 61, hi: 80 },
+            { label: '81-100%', lo: 81, hi: 100 }
+        ];
+
+        function bandFor(pct) {
+            return OWN_BANDS.findIndex(b => pct >= b.lo && pct <= b.hi);
+        }
+
+        function renderLeagueInsightCharts(playerOwnership) {
+            if (typeof Chart === 'undefined') return;
+            const grid = 'rgba(148,163,184,0.15)';
+            const tick = '#94A3B8';
+
+            // ---- 1. Ownership landscape: the league's shape, and your coverage ----
+            const owned = new Array(OWN_BANDS.length).fill(0);
+            const notOwned = new Array(OWN_BANDS.length).fill(0);
+            playerOwnership.forEach(p => {
+                const b = bandFor(p.pct);
+                if (b < 0) return;
+                if (p.youOwn) owned[b]++; else notOwned[b]++;
+            });
+
+            const ownCanvas = document.getElementById('ownershipChart');
+            if (ownCanvas) {
+                if (ownershipChart) ownershipChart.destroy();
+                ownershipChart = new Chart(ownCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: OWN_BANDS.map(b => b.label),
+                        datasets: [
+                            { label: 'You own', data: owned, backgroundColor: '#3B82F6', borderRadius: 3 },
+                            { label: 'You do not', data: notOwned, backgroundColor: 'rgba(148,163,184,0.35)', borderRadius: 3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: tick, boxWidth: 10, font: { size: 10 } } },
+                            tooltip: { callbacks: { title: items => `Owned by ${items[0].label} of your rivals` } }
+                        },
+                        scales: {
+                            x: { stacked: true, grid: { display: false }, ticks: { color: tick, font: { size: 10 } } },
+                            y: { stacked: true, grid: { color: grid }, ticks: { color: tick, precision: 0, font: { size: 10 } },
+                                 title: { display: true, text: 'players', color: tick, font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+
+            // ---- 2. Your fifteen, placed on that same scale ----
+            const mine = playerOwnership.filter(p => p.youOwn);
+            const tiers = [
+                { key: 'Unique', test: p => p.pct === 0, color: '#A78BFA' },
+                { key: 'Differential', test: p => p.pct > 0 && p.pct < 30, color: '#34D399' },
+                { key: 'Popular', test: p => p.pct >= 30 && p.pct < 50, color: '#60A5FA' },
+                { key: 'Template', test: p => p.pct >= 50, color: '#FBBF24' }
+            ];
+            const tierCounts = tiers.map(t => mine.filter(t.test).length);
+
+            const compCanvas = document.getElementById('compositionChart');
+            if (compCanvas) {
+                if (compositionChart) compositionChart.destroy();
+                compositionChart = new Chart(compCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: tiers.map(t => t.key),
+                        datasets: [{ data: tierCounts, backgroundColor: tiers.map(t => t.color), borderWidth: 0 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: '58%',
+                        plugins: {
+                            legend: { position: 'right', labels: { color: tick, boxWidth: 10, font: { size: 10 } } },
+                            tooltip: { callbacks: { label: c => `${c.label}: ${c.raw} of ${mine.length}` } }
+                        }
+                    }
+                });
+            }
+
+            const readEl = document.getElementById('compositionRead');
+            if (readEl) {
+                const template = tierCounts[3], diff = tierCounts[1] + tierCounts[0];
+                readEl.innerHTML = mine.length === 0 ? '' : template > diff
+                    ? `You are running with the field: <strong>${template}</strong> of your ${mine.length} are owned by at least half this league, against <strong>${diff}</strong> genuine differentials. That protects your rank when the template hauls and does nothing to close a gap.`
+                    : `You are playing for ground: <strong>${diff}</strong> of your ${mine.length} are differentials against <strong>${template}</strong> template picks. That closes gaps quickly and loses ground just as fast when the template returns.`;
+            }
+
+            // ---- 3. Divergence per gameweek against the league average ----
+            const ids = Object.keys(managerHistory);
+            const maxGW = ids.length ? Math.max(...ids.map(id => (managerHistory[id]?.current || []).length)) : 0;
+            const mineHist = managerHistory[myTeamId]?.current || [];
+            const diffs = [], cumulative = [];
+            let running = 0;
+            for (let i = 0; i < maxGW; i++) {
+                const scores = ids.map(id => managerHistory[id]?.current?.[i]?.points).filter(v => v != null);
+                const avg = scores.length ? scores.reduce((s, v) => s + v, 0) / scores.length : 0;
+                const minePts = mineHist[i]?.points;
+                const d = minePts == null ? 0 : minePts - avg;
+                diffs.push(Math.round(d * 10) / 10);
+                running += d;
+                cumulative.push(Math.round(running * 10) / 10);
+            }
+
+            const divCanvas = document.getElementById('divergenceChart');
+            if (divCanvas && maxGW) {
+                if (divergenceChart) divergenceChart.destroy();
+                divergenceChart = new Chart(divCanvas, {
+                    data: {
+                        labels: Array.from({ length: maxGW }, (_, i) => `GW${i + 1}`),
+                        datasets: [
+                            { type: 'bar', label: 'Vs league average', data: diffs, borderRadius: 3,
+                              backgroundColor: diffs.map(v => v >= 0 ? 'rgba(52,211,153,0.65)' : 'rgba(248,113,113,0.65)') },
+                            { type: 'line', label: 'Cumulative', data: cumulative, borderColor: '#3B82F6',
+                              backgroundColor: 'rgba(59,130,246,0.12)', borderWidth: 2, tension: 0.3,
+                              pointRadius: 0, pointHoverRadius: 4, fill: true, yAxisID: 'y1' }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: tick, boxWidth: 10, font: { size: 10 } } } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: tick, font: { size: 9 }, maxRotation: 0, autoSkip: true } },
+                            y: { grid: { color: grid }, ticks: { color: tick, font: { size: 10 } },
+                                 title: { display: true, text: 'points vs average', color: tick, font: { size: 10 } } },
+                            y1: { position: 'right', grid: { display: false }, ticks: { color: '#3B82F6', font: { size: 10 } },
+                                  title: { display: true, text: 'cumulative', color: '#3B82F6', font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+
+            const divRead = document.getElementById('divergenceRead');
+            if (divRead) {
+                const total = cumulative.length ? cumulative[cumulative.length - 1] : 0;
+                const wins = diffs.filter(v => v > 0).length;
+                divRead.innerHTML = !maxGW ? '' :
+                    `You have beaten this league's average in <strong>${wins}</strong> of ${maxGW} gameweeks, for a net <strong>${total > 0 ? '+' : ''}${total.toFixed(1)}</strong> points against the average manager.`;
+            }
+        }
+
+        // Average league ownership of your picks per position, against the league's
+        // own average for that position — where you are conventional and where you
+        // are not. Distinct from Squad Strength, which compares points, not risk.
+        function renderPositionDivergence(playerOwnership) {
+            const el = document.getElementById('posDivergence');
+            if (!el) return;
+            const POS = [{ id: 1, label: 'Goalkeepers' }, { id: 2, label: 'Defenders' },
+                         { id: 3, label: 'Midfielders' }, { id: 4, label: 'Forwards' }];
+
+            el.innerHTML = POS.map(pos => {
+                // `pos`, not `position` — this page builds its own lighter player
+                // objects from bootstrap and names the field differently to the
+                // squad pages.
+                const inPos = playerOwnership.filter(p => p.player.pos === pos.id);
+                const mine = inPos.filter(p => p.youOwn);
+                if (!mine.length || !inPos.length) {
+                    return `<div class="ins-div-row"><span class="ins-div-pos">${pos.label}</span>
+                        <span class="ins-div-none">No players to compare</span></div>`;
+                }
+                const myAvg = mine.reduce((s, p) => s + p.pct, 0) / mine.length;
+                const fieldAvg = inPos.reduce((s, p) => s + p.pct, 0) / inPos.length;
+                const gap = myAvg - fieldAvg;
+                const cls = gap < -8 ? 'bold' : gap > 8 ? 'safe' : '';
+                const word = gap < -8 ? 'Unconventional' : gap > 8 ? 'With the field' : 'Balanced';
+                return `<div class="ins-div-row">
+                    <span class="ins-div-pos">${pos.label}</span>
+                    <div class="ins-div-bars">
+                        <div class="ins-div-bar" data-tooltip="Your ${pos.label.toLowerCase()} are owned by an average of ${myAvg.toFixed(0)}% of this league.">
+                            <span class="ins-div-fill you" style="width:${Math.min(100, myAvg)}%"></span></div>
+                        <div class="ins-div-bar" data-tooltip="Across every ${pos.label.toLowerCase().replace(/s$/, '')} anyone in this league owns, the average is ${fieldAvg.toFixed(0)}%.">
+                            <span class="ins-div-fill field" style="width:${Math.min(100, fieldAvg)}%"></span></div>
+                    </div>
+                    <span class="ins-div-n">${myAvg.toFixed(0)}% <em>vs ${fieldAvg.toFixed(0)}%</em></span>
+                    <span class="ins-div-tag ${cls}">${word}</span>
+                </div>`;
+            }).join('');
+        }
+
         // What a missing template actually costs. Rather than asserting a rank
         // drop, this re-ranks the whole league with the hypothetical applied — the
         // same projection used everywhere else, asked a what-if question.
