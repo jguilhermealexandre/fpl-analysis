@@ -698,6 +698,57 @@
             return bank + sellTotal - buyTotal;
         }
 
+        // Players who cannot be bought right now: everyone still in the squad who
+        // is not staged for sale, plus everyone already staged as an incoming.
+        function twUnbuyableIds() {
+            const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
+            const ids = new Set();
+            for (const p of selectedPlayers) if (!soldIds.has(p.id)) ids.add(p.id);
+            for (const s of transferState.pending) if (s.replacement) ids.add(s.replacement.id);
+            return ids;
+        }
+
+        // The floor price for filling a slot of this position — the cheapest player
+        // who could legally go into it.
+        function twCheapestFor(position, unbuyable) {
+            let min = Infinity;
+            for (const p of allPlayers) {
+                if (p.position !== position) continue;
+                if (p.status !== 'a' && p.status !== 'd') continue;
+                if (unbuyable && unbuyable.has(p.id)) continue;
+                if (p.price < min) min = p.price;
+            }
+            return Number.isFinite(min) ? min : 4.0;
+        }
+
+        // Money that must be held back from this slot so the other unfilled slots
+        // can still be filled at all.
+        function twReservedFor(slotIdx) {
+            const unbuyable = twUnbuyableIds();
+            let reserved = 0;
+            transferState.pending.forEach((s, i) => {
+                if (i === slotIdx || s.replacement) return;
+                reserved += twCheapestFor(s.soldPlayer.position, unbuyable);
+            });
+            return reserved;
+        }
+
+        /* What one slot can actually spend.
+
+           getTWLiveITB() pools every staged sale, which is the right number for
+           the plan as a whole and the wrong one for a single slot. Stage three
+           sales worth £21m and the first slot's market would offer a £14m
+           striker — affordable on its own, and leaving two slots that could no
+           longer be filled by anybody. Each remaining unfilled slot still needs
+           a body in it, so the cheapest legal player for each is reserved before
+           this slot is told what it has to spend. */
+        function twSlotBudget(slotIdx) {
+            const slot = transferState.pending[slotIdx];
+            if (!slot) return getTWLiveITB();
+            const refund = slot.replacement ? slot.replacement.price : 0;
+            return Math.max(0, getTWLiveITB() + refund - twReservedFor(slotIdx));
+        }
+
         // FPL's three-per-club rule, evaluated for one transfer slot: how many
         // players from this club you would hold if that slot were empty. The
         // market has to know about this and not only twConfirmPick(), because an
@@ -754,11 +805,48 @@
             const allFilled = count > 0 && filled === count;
             const itbClass = itb < 0 ? 'danger' : itb < 0.5 ? 'warning' : 'success';
 
-            const cart = transferState.pending.map((s, i) => `<span class="twc-chip ${s.replacement ? 'done' : ''} ${i === transferState.activeSlot ? 'active' : ''}" onclick="twSelectSlot(${i})"
-                data-tooltip="${s.replacement ? `${escHTML(s.soldPlayer.name)} out, ${escHTML(s.replacement.name)} in` : `${escHTML(s.soldPlayer.name)} out — no replacement chosen yet`}">
-                ${escHTML(s.soldPlayer.name)}${s.replacement ? ` → ${escHTML(s.replacement.name)}` : ' → ?'}
-                <button class="twc-chip-x" onclick="event.stopPropagation();twRemoveSlot(${i})" data-tooltip="Remove this transfer">×</button>
-            </span>`).join('');
+            /* One row per staged transfer, always on screen. The market pane only
+               ever shows the slot you are working on, so with three swaps staged
+               the other two were invisible — you could not see the plan you were
+               supposedly planning, or which slot the shrinking bank belonged to. */
+            const railGWs = twPlanGWs(3);
+            const openCount = transferState.pending.filter(s => !s.replacement).length;
+            let planGain = 0;
+            const rows = transferState.pending.map((s, i) => {
+                const out = s.soldPlayer, inP = s.replacement;
+                const budget = twSlotBudget(i);
+                const posShort = ['', 'GK', 'DEF', 'MID', 'FWD'][out.position];
+                let deltaHtml = '';
+                if (inP) {
+                    const d = twXPOver(inP, railGWs) - twXPOver(out, railGWs);
+                    planGain += d;
+                    const cls = d > 0.3 ? 'up' : d < -0.3 ? 'down' : 'flat';
+                    deltaHtml = `<span class="twc-plan-delta ${cls}" data-tooltip="Projected across the next ${railGWs.length} gameweeks.">${d > 0 ? '+' : ''}${d.toFixed(1)}</span>`;
+                } else {
+                    deltaHtml = `<span class="twc-plan-delta pending" data-tooltip="£${budget.toFixed(1)}m available for this slot">£${budget.toFixed(1)}m</span>`;
+                }
+                return `<div class="twc-plan-row ${inP ? 'done' : 'open'} ${i === transferState.activeSlot ? 'active' : ''}" onclick="twSelectSlot(${i})"
+                    data-tooltip="${inP ? escHTML(`${out.name} out, ${inP.name} in`) : escHTML(`${out.name} out — pick a replacement`)}">
+                    <span class="twc-plan-n">${i + 1}</span>
+                    <span class="twc-plan-pos ${posShort.toLowerCase()}">${posShort}</span>
+                    <span class="twc-plan-out">${escHTML(out.name)}</span>
+                    <span class="twc-plan-arrow">→</span>
+                    <span class="twc-plan-in ${inP ? '' : 'empty'}">${inP ? escHTML(inP.name) : 'Choose…'}</span>
+                    ${deltaHtml}
+                    <button class="twc-plan-x" onclick="event.stopPropagation();twRemoveSlot(${i})" data-tooltip="Remove this transfer">×</button>
+                </div>`;
+            }).join('');
+
+            const netGain = planGain - hit;
+            const cart = `<div class="twc-plan-head">
+                    <span class="twc-plan-title">Your plan</span>
+                    <span class="twc-plan-sum ${netGain > 0.3 ? 'up' : netGain < -0.3 ? 'down' : 'flat'}"
+                        data-tooltip="Projected points gained across the next ${railGWs.length} gameweeks from the transfers you have filled in${hit > 0 ? `, after the ${hit}-point hit` : ''}.">
+                        ${netGain > 0 ? '+' : ''}${netGain.toFixed(1)} pts${hit > 0 ? ` (after −${hit})` : ''}
+                    </span>
+                    ${openCount ? `<button class="twc-plan-fill" onclick="twFillAllSlots()" data-tooltip="Pick the best affordable replacement for every open slot, sharing the bank across them.">✨ Fill ${openCount} open slot${openCount === 1 ? '' : 's'}</button>` : ''}
+                </div>
+                <div class="twc-plan-rows">${rows}</div>`;
 
             el.innerHTML = `
                 <div class="twc-head">
@@ -784,7 +872,7 @@
                         <button class="rc-btn primary" ${!allFilled ? 'disabled' : ''} onclick="twShowSummary()" data-tooltip="${allFilled ? 'Review the finished plan' : 'Every transfer needs a replacement before you can review'}">Summary →</button>
                     </div>
                 </div>
-                ${count ? `<div class="twc-cart">${cart}</div>` : ''}`;
+                ${count ? `<div class="twc-plan">${cart}</div>` : ''}`;
         }
 
         function renderTWSquadPane() {
@@ -895,8 +983,12 @@
             const sold = slot.soldPlayer;
             const pos = sold.position;
             const itb = getTWLiveITB();
-            let maxPrice = itb;
-            if (slot.replacement) maxPrice += slot.replacement.price;
+            // Allocated, not pooled — see twSlotBudget(). The reserved figure is
+            // surfaced in the header below so the number is explainable rather
+            // than just smaller than the bank.
+            const maxPrice = twSlotBudget(slotIdx);
+            const reserved = twReservedFor(slotIdx);
+            const openOtherSlots = transferState.pending.filter((s, i) => i !== slotIdx && !s.replacement).length;
 
             const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
             const boughtIds = new Set(transferState.pending.filter(s => s.replacement).map(s => s.replacement.id));
@@ -1094,7 +1186,11 @@
 
             el.innerHTML = '<div class="tw-scout">' +
                 '<div class="tw-scout-header"><i data-lucide="search" style="width:14px;height:14px;"></i> Replacements for ' + sold.name +
-                '<span style="margin-left:auto;font-size:10px;font-weight:600;color:var(--text-muted);font-family:var(--font-mono);">Budget: £' + maxPrice.toFixed(1) + 'm</span></div>' +
+                '<span class="tw-scout-budget"' +
+                    (reserved > 0 ? ' data-tooltip="' + escHTML(`£${itb.toFixed(1)}m is staged in total, but ${openOtherSlots} other slot${openOtherSlots === 1 ? '' : 's'} still needs filling. £${reserved.toFixed(1)}m is held back so ${openOtherSlots === 1 ? 'it' : 'they'} can be.`) + '"' : '') +
+                    '>Budget: £' + maxPrice.toFixed(1) + 'm' +
+                    (reserved > 0 ? '<em>£' + reserved.toFixed(1) + 'm reserved</em>' : '') +
+                '</span></div>' +
                 tabsHtml + searchHtml + sortHtml +
                 '<div class="tw-market-header"><span class="tw-market-title">' + posName + '</span>' +
                 '<div class="tw-market-filters">' +
@@ -1141,14 +1237,22 @@
             const soldXP = twXPOver(sold, planGWs);
             const candXP = twXPOver(cand, planGWs);
             const delta = candXP - soldXP;
-            const itb = getTWLiveITB() + (slot.replacement ? slot.replacement.price : 0);
+            const itb = twSlotBudget(slotIdx);
+            const reserved = twReservedFor(slotIdx);
             const affordable = cand.price <= itb + 0.001;
             const clubFull = twClubBlocked(cand, slotIdx);
-            const blockedReason = !affordable
-                ? `£${cand.price.toFixed(1)}m is outside the £${itb.toFixed(1)}m this slot has`
-                : clubFull
-                    ? `You already hold three players from ${escHTML(cand.team || 'that club')}`
-                    : '';
+            // Reserved money is not a preference — it is the cheapest body each
+            // other open slot needs. Spending it here leaves those slots
+            // unfillable, so the way out is to drop a slot, not to overspend.
+            const strandsOthers = !affordable && reserved > 0
+                && cand.price <= getTWLiveITB() + (slot.replacement ? slot.replacement.price : 0) + 0.001;
+            const blockedReason = strandsOthers
+                ? `£${reserved.toFixed(1)}m is reserved to fill your other open slots, leaving £${itb.toFixed(1)}m here — remove a slot to free it`
+                : !affordable
+                    ? `£${cand.price.toFixed(1)}m is outside the £${itb.toFixed(1)}m this slot has`
+                    : clubFull
+                        ? `You already hold three players from ${escHTML(cand.team || 'that club')}`
+                        : '';
 
             const seasonS = getPlayerSeasonPer90(sold), seasonC = getPlayerSeasonPer90(cand);
             const statsS = getPositionStats(sold, seasonS, getPlayerRecentStats(sold.id, 6));
@@ -1174,6 +1278,8 @@
             // The bottom line, stated first.
             const verdict = clubFull
                 ? { cls: 'bad', text: `You already hold three players from ${escHTML(cand.team || 'that club')}, so ${escHTML(cand.name)} cannot be added — FPL caps it at three. Sell one of them first.` }
+                : strandsOthers
+                ? { cls: 'bad', text: `${escHTML(cand.name)} fits your total bank but not this slot — £${reserved.toFixed(1)}m is held back to fill your other open transfers, leaving £${itb.toFixed(1)}m here. Drop one of those slots and he becomes affordable.` }
                 : !affordable
                 ? { cls: 'bad', text: `You cannot afford ${escHTML(cand.name)} — £${cand.price.toFixed(1)}m against £${itb.toFixed(1)}m available.` }
                 : delta > 0.3
@@ -1494,8 +1600,8 @@
             if (slotIdx < 0 || !transferState.previewPlayer) return;
             const candidate = transferState.previewPlayer;
             const slot = transferState.pending[slotIdx];
-            const itb = getTWLiveITB();
-            const extraBudget = slot.replacement ? slot.replacement.price : 0;
+            const slotBudget = twSlotBudget(slotIdx);
+            const reserved = twReservedFor(slotIdx);
 
             // Every rejection below used to be a bare `return`, which left an
             // enabled button doing nothing at all. Each one now says why.
@@ -1503,8 +1609,10 @@
                 updateStatus(`${candidate.name} is a ${['', 'goalkeeper', 'defender', 'midfielder', 'forward'][candidate.position] || 'different position'} — this slot replaces ${slot.soldPlayer.name}`, 'error');
                 return;
             }
-            if (candidate.price > itb + extraBudget + 0.01) {
-                updateStatus(`${candidate.name} costs £${candidate.price.toFixed(1)}m and this slot has £${(itb + extraBudget).toFixed(1)}m available`, 'error');
+            if (candidate.price > slotBudget + 0.01) {
+                updateStatus(reserved > 0
+                    ? `${candidate.name} costs £${candidate.price.toFixed(1)}m but this slot has £${slotBudget.toFixed(1)}m — £${reserved.toFixed(1)}m is reserved to fill your other open slots. Remove one to free it.`
+                    : `${candidate.name} costs £${candidate.price.toFixed(1)}m and this slot has £${slotBudget.toFixed(1)}m available`, 'error');
                 return;
             }
             if (twClubBlocked(candidate, slotIdx)) {
@@ -1525,6 +1633,83 @@
                 transferState.mode = 'squad';
                 transferState.activeSlot = -1;
             }
+            renderTWAll();
+        }
+
+        /* Fill every open slot at once, sharing one bank between them.
+
+           Greedy, and deliberately so: each round scores the best affordable
+           candidate for every open slot and commits only the single strongest
+           pair, then re-prices the rest. That ordering matters — the money goes
+           to the biggest upgrade first rather than to whichever slot happens to
+           be at the top of the list. It is safe against stranding because every
+           quote comes from twSlotBudget(), which has already reserved the
+           cheapest body for each slot still waiting, so no round can spend a
+           later slot out of existence.
+
+           xpOver() is uncached and this asks for a few hundred projections per
+           round, so the per-player results are memoised for the run. */
+        function twFillAllSlots() {
+            const gws = twPlanGWs(3);
+            const xpCache = new Map();
+            const xpOf = p => {
+                if (!xpCache.has(p.id)) xpCache.set(p.id, twXPOver(p, gws));
+                return xpCache.get(p.id);
+            };
+
+            let filled = 0;
+            // Bounded by the slot count; the guard is only there so a scoring
+            // change can never turn this into an infinite loop.
+            for (let round = 0; round < twMaxTransfers() + 1; round++) {
+                const open = transferState.pending
+                    .map((s, i) => (s.replacement ? -1 : i)).filter(i => i >= 0);
+                if (!open.length) break;
+
+                const unbuyable = twUnbuyableIds();
+                let best = null;
+                for (const i of open) {
+                    const out = transferState.pending[i].soldPlayer;
+                    const budget = twSlotBudget(i);
+                    const blocked = twBlockedClubIds(i);
+                    const outXP = xpOf(out);
+                    for (const c of allPlayers) {
+                        if (c.position !== out.position) continue;
+                        if (c.price > budget + 0.001) continue;
+                        if (unbuyable.has(c.id)) continue;
+                        if (blocked.has(c.teamId)) continue;
+                        if (c.status !== 'a' && c.status !== 'd') continue;
+                        if (c.minutes < minMinutesForCandidate()) continue;
+                        const gain = xpOf(c) - outXP;
+                        if (!best || gain > best.gain) best = { slotIdx: i, cand: c, gain };
+                    }
+                }
+                // Nothing legal for any remaining slot — the bank is too thin or
+                // every option is club-blocked. Leave them open rather than
+                // forcing something through.
+                if (!best) break;
+                transferState.pending[best.slotIdx].replacement = best.cand;
+                filled++;
+            }
+
+            transferState.candidateCache = {};
+            const stillOpen = transferState.pending.filter(s => !s.replacement).length;
+            if (!filled) {
+                updateStatus('No affordable replacement found for the open slots — free up funds or drop a slot', 'error');
+            } else {
+                updateStatus(`Filled ${filled} slot${filled === 1 ? '' : 's'}${stillOpen ? ` — ${stillOpen} still open` : ''}`, 'success');
+            }
+
+            // Land on the first slot still needing attention, or the plan summary
+            // once nothing does.
+            const nextOpen = transferState.pending.findIndex(s => !s.replacement);
+            if (nextOpen >= 0) {
+                transferState.activeSlot = nextOpen;
+                transferState.mode = 'market';
+            } else {
+                transferState.mode = 'squad';
+                transferState.activeSlot = -1;
+            }
+            transferState.previewPlayer = null;
             renderTWAll();
         }
 
