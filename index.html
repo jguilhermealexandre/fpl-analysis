@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=65">
-    <link rel="stylesheet" href="styles/v2-design.css?v=65">
+    <link rel="stylesheet" href="styles/common.css?v=66">
+    <link rel="stylesheet" href="styles/v2-design.css?v=66">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3051,9 +3051,55 @@
             .price-ticker-bar { height: 26px; }
             .pticker-item { font-size: 10px; padding: 0 12px; }
         }
+
+        /* Fixed-position outage toast: onboardingError sits far down the
+           page below the hero/welcome/how-it-works sections, so a manager
+           retrying from the always-visible nav widget never scrolls past
+           it. This floats above everything, wherever they're scrolled to. */
+        .fpl-toast {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            max-width: 460px;
+            width: calc(100% - 32px);
+            padding: 12px 14px;
+            background: var(--surface-1);
+            border: 1px solid var(--color-error);
+            color: var(--text-primary);
+            border-radius: 10px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .fpl-toast.hidden { display: none; }
+        .fpl-toast-icon { flex-shrink: 0; color: var(--color-error); font-size: 16px; line-height: 1.4; }
+        .fpl-toast-text { flex: 1; }
+        .fpl-toast-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+            flex-shrink: 0;
+        }
+        .fpl-toast-close:hover { color: var(--text-primary); }
     </style>
 </head>
 <body>
+
+    <!-- Fixed outage toast, visible regardless of scroll position (see .fpl-toast CSS) -->
+    <div class="fpl-toast hidden" id="fplOutageToast" role="alert">
+        <span class="fpl-toast-icon">⚠️</span>
+        <span class="fpl-toast-text" id="fplOutageToastText"></span>
+        <button class="fpl-toast-close" onclick="document.getElementById('fplOutageToast').classList.add('hidden')" aria-label="Dismiss">&times;</button>
+    </div>
 
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
 
@@ -3667,12 +3713,12 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/price-watch.js?v=65"></script>
-    <script src="scripts/xp-engine.js?v=65"></script>
-    <script src="scripts/live-gw.js?v=65"></script>
-    <script src="scripts/transfer-engine.js?v=65"></script>
-    <script src="scripts/common.js?v=65"></script>
-    <script src="scripts/sidebar-nav.js?v=65"></script>
+    <script src="scripts/price-watch.js?v=66"></script>
+    <script src="scripts/xp-engine.js?v=66"></script>
+    <script src="scripts/live-gw.js?v=66"></script>
+    <script src="scripts/transfer-engine.js?v=66"></script>
+    <script src="scripts/common.js?v=66"></script>
+    <script src="scripts/sidebar-nav.js?v=66"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4890,6 +4936,8 @@
             tickerBar.classList.remove('hidden');
             tickerLoading.style.display = 'flex';
             tickerTrack.style.display = 'none';
+            const outageToast = document.getElementById('fplOutageToast');
+            if (outageToast) outageToast.classList.add('hidden');
 
             try {
                 // Phase 1: Load basic stats and render ticker immediately
@@ -5281,6 +5329,17 @@
                 if (typeof onTeamIdCleared === 'function') onTeamIdCleared();
                 const errEl = document.getElementById('onboardingError');
                 if (errEl) { errEl.textContent = friendly; errEl.classList.remove('hidden'); }
+                // onboardingError sits far down the page (below hero/welcome/how-it-works),
+                // so a manager retrying from the always-visible nav widget near the top would
+                // never see it there — surface it in a fixed toast too.
+                if (transient) {
+                    const toast = document.getElementById('fplOutageToast');
+                    const toastText = document.getElementById('fplOutageToastText');
+                    if (toast && toastText) {
+                        toastText.textContent = friendly;
+                        toast.classList.remove('hidden');
+                    }
+                }
             }
         }
 
