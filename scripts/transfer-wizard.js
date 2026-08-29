@@ -19,10 +19,29 @@
         // relationship index.html's Market Watch widget already has with it.
         function getTWShortlistIds() {
             try {
-                return new Set(JSON.parse(localStorage.getItem('fpl_shortlist') || '[]'));
+                const raw = JSON.parse(localStorage.getItem('fpl_shortlist') || '[]');
+                // Coerced to numbers deliberately: a Set holding "123" never matches
+                // a player id of 123, and the stored array has been written by more
+                // than one version of the star control over time.
+                return new Set((Array.isArray(raw) ? raw : [])
+                    .map(Number).filter(n => Number.isFinite(n)));
             } catch (e) {
                 return new Set();
             }
+        }
+
+        // Accounts for the starred players this slot cannot offer. An empty
+        // Favorites tab is otherwise indistinguishable from a broken one, which is
+        // exactly how it read: the two filters below are correct, just invisible.
+        function twShortlistBreakdownText(owned, otherPos, posName) {
+            const parts = [];
+            if (owned.length) {
+                parts.push(`${owned.length} ${owned.length === 1 ? 'is' : 'are'} already in your squad (${escHTML(owned.map(p => p.name).join(', '))})`);
+            }
+            if (otherPos.length) {
+                parts.push(`${otherPos.length} ${otherPos.length === 1 ? 'plays' : 'play'} another position — this slot only takes ${escHTML(posName.toLowerCase())}`);
+            }
+            return parts.length ? parts.join('; ') + '.' : '';
         }
 
         // Recency-weighted average, Transfer Wizard flavor: pre-filters to played-minutes
@@ -301,11 +320,16 @@
         }
 
         // Find replacement candidates for a position within budget
-        function findTransferCandidates(position, maxPrice, excludeIds) {
+        // blockedClubs is optional and only the Control Room market passes it: teams
+        // you already hold three of. Filtering here rather than after the slice(0, 30)
+        // below matters — a full club can own a lot of the top of the list, and
+        // trimming afterwards would silently shorten the recommendations.
+        function findTransferCandidates(position, maxPrice, excludeIds, blockedClubs) {
             const candidates = allPlayers.filter(p =>
                 p.position === position &&
                 p.price <= maxPrice &&
                 !excludeIds.has(p.id) &&
+                !(blockedClubs && blockedClubs.has(p.teamId)) &&
                 (p.status === 'a' || p.status === 'd') &&
                 p.minutes >= minMinutesForCandidate()
             );
@@ -674,6 +698,41 @@
             return bank + sellTotal - buyTotal;
         }
 
+        // FPL's three-per-club rule, evaluated for one transfer slot: how many
+        // players from this club you would hold if that slot were empty. The
+        // market has to know about this and not only twConfirmPick(), because an
+        // AI pick that Confirm then silently refuses reads as a broken button.
+        // Mirrors twConfirmPick()'s own counting exactly — players staged for
+        // sale do not count, replacements already chosen in other slots do.
+        function twClubCountExcludingSlot(teamId, slotIdx) {
+            const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
+            let n = 0;
+            for (const p of selectedPlayers) {
+                if (soldIds.has(p.id)) continue;
+                if (p.teamId === teamId) n++;
+            }
+            for (let i = 0; i < transferState.pending.length; i++) {
+                if (i === slotIdx) continue;
+                const repl = transferState.pending[i].replacement;
+                if (repl && repl.teamId === teamId) n++;
+            }
+            return n;
+        }
+
+        function twClubBlocked(candidate, slotIdx) {
+            return twClubCountExcludingSlot(candidate.teamId, slotIdx) >= 3;
+        }
+
+        // Every club that is already full for this slot, as a Set of team ids.
+        function twBlockedClubIds(slotIdx) {
+            const blocked = new Set();
+            for (const tid of Object.keys(teams)) {
+                const id = parseInt(tid, 10);
+                if (twClubCountExcludingSlot(id, slotIdx) >= 3) blocked.add(id);
+            }
+            return blocked;
+        }
+
         function getTWHitCost() {
             // A wildcard makes every transfer free — showing accumulated hits during
             // one is the single most misleading thing this screen could do.
@@ -852,14 +911,28 @@
             // tab button itself can show how many of this position are shortlisted,
             // even while a different tab is the one actually showing.
             const shortlistIds = getTWShortlistIds();
-            const shortlistCountForPos = allPlayers.filter(p =>
-                shortlistIds.has(p.id) && p.position === pos && !excludeIds.has(p.id)).length;
+            const shortlistPlayers = allPlayers.filter(p => shortlistIds.has(p.id));
+            const shortlistCountForPos = shortlistPlayers.filter(p =>
+                p.position === pos && !excludeIds.has(p.id)).length;
+            // The two reasons a starred player legitimately does not appear in this
+            // slot's list. Both are counted so an empty tab can say which it is
+            // instead of looking like the shortlist failed to load.
+            const shortlistOwned = shortlistPlayers.filter(p => p.position === pos && excludeIds.has(p.id));
+            const shortlistOtherPos = shortlistPlayers.filter(p => p.position !== pos);
+
+            // Clubs you already hold three of. The AI list drops them outright —
+            // recommending a player Confirm will refuse is worse than recommending
+            // nobody — while the two browsing tabs keep them visible but marked,
+            // since there you are looking someone up rather than being advised.
+            const blockedClubs = twBlockedClubIds(slotIdx);
 
             let candidates;
             if (tab === 'ai') {
-                const cacheKey = pos + '_' + maxPrice.toFixed(1);
+                // The blocked clubs belong in the cache key: the same position and
+                // budget produce a different top 30 once a club fills up.
+                const cacheKey = pos + '_' + maxPrice.toFixed(1) + '_' + [...blockedClubs].sort((a, b) => a - b).join('.');
                 if (!transferState.candidateCache[cacheKey]) {
-                    transferState.candidateCache[cacheKey] = findTransferCandidates(pos, maxPrice, excludeIds);
+                    transferState.candidateCache[cacheKey] = findTransferCandidates(pos, maxPrice, excludeIds, blockedClubs);
                 }
                 candidates = [...transferState.candidateCache[cacheKey]];
             } else if (tab === 'favorites') {
@@ -868,8 +941,7 @@
                 // which is a question worth answering even when he's currently
                 // unaffordable. The existing unafford styling below already marks
                 // that case rather than hiding it.
-                candidates = allPlayers.filter(p =>
-                    shortlistIds.has(p.id) && p.position === pos && !excludeIds.has(p.id));
+                candidates = shortlistPlayers.filter(p => p.position === pos && !excludeIds.has(p.id));
                 candidates.forEach(c => {
                     if (c._transferScore == null) c._transferScore = calculateTransferScore(c, c.position);
                     if (!c._recentStats) c._recentStats = getPlayerRecentStats(c.id, 5);
@@ -948,15 +1020,16 @@
                 const emptyMsg = tab === 'browse' && transferState.browseSearch
                     ? 'No players match your search'
                     : tab === 'favorites'
-                        ? (shortlistIds.size === 0
-                            ? 'You haven\'t shortlisted any players yet — star players on the Players Analysis page to see them here.'
-                            : `None of your shortlisted ${posName.toLowerCase()} are available for this slot — they may already be in your squad or staged elsewhere in this plan.`)
+                        ? (shortlistPlayers.length === 0
+                            ? 'You haven\'t starred any players yet — use the ⭐ on the Players Analysis page and they will show up here.'
+                            : `None of your ${shortlistPlayers.length} starred players can fill this slot. ${twShortlistBreakdownText(shortlistOwned, shortlistOtherPos, posName)}`)
                         : 'No candidates found within budget';
                 rowsHtml = '<div class="tw-market-empty">' + emptyMsg + '</div>';
             } else {
                 for (let i = 0; i < display.length; i++) {
                     const c = display[i];
                     const affordable = c.price <= maxPrice;
+                    const clubFull = blockedClubs.has(c.teamId);
                     const previewed = transferState.previewPlayer?.id === c.id;
                     const score = c._transferScore || 0;
                     const cols = getStatCols(c);
@@ -975,11 +1048,12 @@
                     const stats = cols.map(col => `<span class="twc-cstat" data-tooltip="${escHTML(col.label)}">
                         <span class="twc-cstat-l">${escHTML(col.label)}</span><span class="twc-cstat-v">${escHTML(String(col.val))}</span></span>`).join('');
 
-                    rowsHtml += `<div class="twc-card ${previewed ? 'previewed' : ''} ${!affordable ? 'unafford' : ''}" onclick="twPreviewPlayer(${c.id})">
+                    rowsHtml += `<div class="twc-card ${previewed ? 'previewed' : ''} ${!affordable || clubFull ? 'unafford' : ''}" onclick="twPreviewPlayer(${c.id})">
                         <div class="twc-card-top">
                             <span class="twc-card-rank">${i + 1}</span>
                             <span class="twc-card-name">${escHTML(c.name)}</span>
                             <span class="twc-card-team">${escHTML(teamName)}</span>
+                            ${clubFull ? `<span class="twc-card-block" data-tooltip="You already hold three players from ${escHTML(teamName)}. Sell one before buying a fourth.">CLUB FULL</span>` : ''}
                             <span class="twc-card-price">£${c.price.toFixed(1)}m ${priceChangeBadge(c)}</span>
                         </div>
                         <div class="twc-card-mid">
@@ -992,9 +1066,21 @@
                 }
             }
 
+            // Shown alongside a populated list too, not only an empty one — "5 of
+            // your 9 starred players are here" is the part that makes the tab
+            // trustworthy.
+            if (tab === 'favorites' && display.length > 0 && (shortlistOwned.length || shortlistOtherPos.length)) {
+                rowsHtml += '<div class="tw-market-note">' +
+                    twShortlistBreakdownText(shortlistOwned, shortlistOtherPos, posName) + '</div>';
+            }
+
             const tabsHtml = '<div class="tw-market-tabs">' +
                 '<button class="tw-market-tab' + (tab === 'ai' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'ai\')">AI Picks</button>' +
-                '<button class="tw-market-tab' + (tab === 'favorites' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'favorites\')" data-tooltip="Players you\'ve starred on the Players Analysis page, compared against ' + escHTML(sold.name) + ' the same way as any other candidate.">⭐ Favorites' + (shortlistCountForPos ? ' (' + shortlistCountForPos + ')' : '') + '</button>' +
+                '<button class="tw-market-tab' + (tab === 'favorites' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'favorites\')" data-tooltip="' +
+                    (shortlistPlayers.length
+                        ? escHTML(`${shortlistCountForPos} of your ${shortlistPlayers.length} starred players can fill this slot, compared against ${sold.name} the same way as any other candidate.`)
+                        : 'Star players with the ⭐ on the Players Analysis page and they show up here.') +
+                '">⭐ Favorites' + (shortlistCountForPos ? ' (' + shortlistCountForPos + ')' : '') + '</button>' +
                 '<button class="tw-market-tab' + (tab === 'browse' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'browse\')">Browse All</button></div>';
 
             const searchHtml = tab === 'browse' ? '<input class="tw-market-search" type="text" placeholder="Search by name..." value="' + (transferState.browseSearch || '').replace(/"/g, '&quot;') + '" oninput="twSearchInput(this.value)">' : '';
@@ -1057,6 +1143,12 @@
             const delta = candXP - soldXP;
             const itb = getTWLiveITB() + (slot.replacement ? slot.replacement.price : 0);
             const affordable = cand.price <= itb + 0.001;
+            const clubFull = twClubBlocked(cand, slotIdx);
+            const blockedReason = !affordable
+                ? `£${cand.price.toFixed(1)}m is outside the £${itb.toFixed(1)}m this slot has`
+                : clubFull
+                    ? `You already hold three players from ${escHTML(cand.team || 'that club')}`
+                    : '';
 
             const seasonS = getPlayerSeasonPer90(sold), seasonC = getPlayerSeasonPer90(cand);
             const statsS = getPositionStats(sold, seasonS, getPlayerRecentStats(sold.id, 6));
@@ -1080,7 +1172,9 @@
             const formC = isPreseason ? (cand.ppg || 0) : (parseFloat(cand.form) || 0);
 
             // The bottom line, stated first.
-            const verdict = !affordable
+            const verdict = clubFull
+                ? { cls: 'bad', text: `You already hold three players from ${escHTML(cand.team || 'that club')}, so ${escHTML(cand.name)} cannot be added — FPL caps it at three. Sell one of them first.` }
+                : !affordable
                 ? { cls: 'bad', text: `You cannot afford ${escHTML(cand.name)} — £${cand.price.toFixed(1)}m against £${itb.toFixed(1)}m available.` }
                 : delta > 0.3
                     ? { cls: 'good', text: `Recommended. ${escHTML(cand.name)} projects <strong>+${delta.toFixed(1)} points</strong> more than ${escHTML(sold.name)} over the next ${planGWs.length} gameweeks${getTWHitCost() > 0 && !transferState.wildcard ? `, before the ${getTWHitCost()}-point hit this plan carries` : ''}.` }
@@ -1155,10 +1249,17 @@
                         </div>
                     </div>
 
-                    <div class="twh-actions">
-                        <button class="rc-btn" onclick="twBackToMarket()">← Back</button>
-                        <button class="rc-btn primary" ${!affordable ? 'disabled' : ''} onclick="twConfirmPick()"
-                            data-tooltip="${affordable ? 'Add this transfer to the plan' : 'Outside your budget'}">Confirm ${escHTML(cand.name)} →</button>
+                    <!-- Sticky: the two full player profiles above are long enough
+                         that this bar used to sit several screens below the fold,
+                         so the decision the panel exists to support was the one
+                         thing you had to go hunting for. -->
+                    <div class="twh-actionbar">
+                        ${blockedReason ? `<div class="twh-actions-why">${blockedReason}.</div>` : ''}
+                        <div class="twh-actions">
+                            <button class="rc-btn" onclick="twBackToMarket()">← Back</button>
+                            <button class="rc-btn primary" ${blockedReason ? 'disabled' : ''} onclick="twConfirmPick()"
+                                data-tooltip="${blockedReason || 'Add this transfer to the plan'}">Confirm ${escHTML(cand.name)} →</button>
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -1395,21 +1496,21 @@
             const slot = transferState.pending[slotIdx];
             const itb = getTWLiveITB();
             const extraBudget = slot.replacement ? slot.replacement.price : 0;
-            if (candidate.price > itb + extraBudget + 0.01) return;
 
-            // Team count check (max 3 per team)
-            const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
-            const teamCounts = {};
-            for (const p of selectedPlayers) {
-                if (soldIds.has(p.id)) continue;
-                teamCounts[p.teamId] = (teamCounts[p.teamId] || 0) + 1;
+            // Every rejection below used to be a bare `return`, which left an
+            // enabled button doing nothing at all. Each one now says why.
+            if (candidate.position !== slot.soldPlayer.position) {
+                updateStatus(`${candidate.name} is a ${['', 'goalkeeper', 'defender', 'midfielder', 'forward'][candidate.position] || 'different position'} — this slot replaces ${slot.soldPlayer.name}`, 'error');
+                return;
             }
-            for (let i = 0; i < transferState.pending.length; i++) {
-                if (i === slotIdx) continue;
-                const repl = transferState.pending[i].replacement;
-                if (repl) teamCounts[repl.teamId] = (teamCounts[repl.teamId] || 0) + 1;
+            if (candidate.price > itb + extraBudget + 0.01) {
+                updateStatus(`${candidate.name} costs £${candidate.price.toFixed(1)}m and this slot has £${(itb + extraBudget).toFixed(1)}m available`, 'error');
+                return;
             }
-            if ((teamCounts[candidate.teamId] || 0) >= 3) return;
+            if (twClubBlocked(candidate, slotIdx)) {
+                updateStatus(`You would have four players from ${candidate.team || 'that club'} — FPL allows three. Sell one of them first.`, 'error');
+                return;
+            }
 
             slot.replacement = candidate;
             transferState.previewPlayer = null;

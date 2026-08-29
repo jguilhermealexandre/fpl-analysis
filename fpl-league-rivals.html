@@ -17,10 +17,10 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=64">
-    <link rel="stylesheet" href="styles/v2-design.css?v=64">
-    <script src="scripts/common.js?v=64"></script>
-    <script src="scripts/sidebar-nav.js?v=64"></script>
+    <link rel="stylesheet" href="styles/common.css?v=65">
+    <link rel="stylesheet" href="styles/v2-design.css?v=65">
+    <script src="scripts/common.js?v=65"></script>
+    <script src="scripts/sidebar-nav.js?v=65"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -630,12 +630,6 @@
         .captain-table th { background: var(--surface-2); font-weight: 600; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
         .captain-table tr:hover td { background: var(--surface-0); }
         .captain-table tr.you-row { background: rgba(59, 130, 246, 0.05); }
-        .eo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); }
-        .eo-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); transition: all 150ms; }
-        .eo-card:hover { transform: translateY(-2px); border-color: var(--border-emphasis); }
-        .eo-card.your-edge { border-left: 3px solid var(--color-success); }
-        .eo-card.rival-edge { border-left: 3px solid var(--color-error); }
-        .eo-bars { margin-top: var(--space-3); }
         .eo-bar-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); font-size: 11px; }
         .eo-bar-label { width: 80px; color: var(--text-muted); flex-shrink: 0; }
         .eo-bar-track { flex: 1; height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
@@ -989,12 +983,6 @@
                         <tbody id="captainTableBody"></tbody>
                     </table>
                 </div>
-
-                <div class="section-header" style="margin-top:var(--space-6);">
-                    <h2><i data-lucide="bar-chart-3" style="width:20px;height:20px;display:inline;"></i> Effective Ownership</h2>
-                </div>
-                <p class="section-desc">Captain counts as 2× ownership, <abbr title="Triple Captain — chip that makes your captain earn 3× points for one gameweek">TC</abbr> as 3×. Green border = your <abbr title="Effective Ownership — weighted ownership accounting for captain (2×) and Triple Captain (3×) multipliers">EO</abbr> advantage. Red = rival advantage.</p>
-                <div class="eo-grid" id="eoGrid"></div>
             </div>
 
             <!-- Tab: League Race -->
@@ -1326,9 +1314,11 @@
                 }
                 
                 showStatus(`Loaded ${managers.length} managers from "${leagueData.league.name}"`, 'success');
-                
+                return true;
+
             } catch (err) {
                 showStatus('Failed to load league: ' + err.message, 'error');
+                return false;
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Load League';
@@ -2053,38 +2043,6 @@
             });
             tableBody.innerHTML = rows;
             
-            // EO cards
-            const eoPlayers = window.playerOwnership
-                .filter(p => p.eo > 0)
-                .sort((a, b) => b.eo - a.eo)
-                .slice(0, 12);
-            
-            const eoGrid = document.getElementById('eoGrid');
-            eoGrid.innerHTML = eoPlayers.map(p => {
-                const edgeClass = p.yourEo > p.eo ? 'your-edge' : p.yourEo < p.eo ? 'rival-edge' : '';
-                const maxEo = Math.max(p.eo, p.yourEo, 100);
-                return `
-                    <div class="eo-card ${edgeClass}">
-                        <div class="player-top">
-                            <div>
-                                <div class="player-name">${escHTML(p.player.name)} ${p.youCaptain ? '<span class="captain-badge">ⓒ YOUR CAP</span>' : p.youOwn ? '<span class="you-badge">You Own</span>' : '<span class="missing-badge">Missing</span>'}</div>
-                                <div class="player-meta">${escHTML(p.player.teamName)} • ${escHTML(p.player.posName)}</div>
-                            </div>
-                        </div>
-                        <div class="eo-bars">
-                            <div class="eo-bar-row">
-                                <span class="eo-bar-label">Your EO</span>
-                                <div class="eo-bar-track"><div class="eo-bar-fill" style="width:${(p.yourEo/maxEo)*100}%;background:var(--color-info);"></div></div>
-                                <span class="eo-bar-value" style="color:var(--color-info);">${p.yourEo}%</span>
-                            </div>
-                            <div class="eo-bar-row">
-                                <span class="eo-bar-label">League EO</span>
-                                <div class="eo-bar-track"><div class="eo-bar-fill" style="width:${(p.eo/maxEo)*100}%;background:var(--color-warning);"></div></div>
-                                <span class="eo-bar-value" style="color:var(--color-warning);">${p.eo}%</span>
-                            </div>
-                        </div>
-                    </div>`;
-            }).join('');
         }
         
         // ===== LEAGUE RACE =====
@@ -2492,6 +2450,20 @@
                 document.getElementById('leagueIdInput').value = savedLeagueId;
             }
             updateClearLeagueBtn();
+
+            // Both ids are already known, so making the manager click Load League,
+            // re-pick the team they just told us about, then click Analyse is three
+            // steps that ask for nothing new. Go straight to the results and leave
+            // the setup card above them for anyone who wants to change either id.
+            // Falls back to the manual flow on its own: a failed league load shows
+            // its error, and a team outside the loaded slice leaves the picker empty.
+            if (savedLeagueId && savedTeamId) {
+                const loaded = await loadLeague();
+                const select = document.getElementById('yourTeamSelect');
+                if (loaded && select && select.value) {
+                    await analyzeRivals();
+                }
+            }
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
