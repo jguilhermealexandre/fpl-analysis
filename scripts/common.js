@@ -495,7 +495,7 @@ function initIcons() {
 
 // ===== NAV LOADING =====
 function loadNav() {
-    return fetch('nav.html?v=45')
+    return fetch('nav.html?v=46')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);

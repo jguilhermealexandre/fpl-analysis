@@ -17,11 +17,11 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=66">
-    <link rel="stylesheet" href="styles/teams.css?v=66">
-    <link rel="stylesheet" href="styles/v2-design.css?v=66">
-    <script src="scripts/common.js?v=66"></script>
-    <script src="scripts/sidebar-nav.js?v=66"></script>
+    <link rel="stylesheet" href="styles/common.css?v=67">
+    <link rel="stylesheet" href="styles/teams.css?v=67">
+    <link rel="stylesheet" href="styles/v2-design.css?v=67">
+    <script src="scripts/common.js?v=67"></script>
+    <script src="scripts/sidebar-nav.js?v=67"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -120,6 +120,20 @@
             if (HASH_TO_VIEW[hash]) {
                 currentView = hash;
             }
+        });
+
+        /* The sidebar's section links are same-page hash links. Following one from
+           this page — #rankings to #targets, say — changes the URL without a
+           reload, so without this the nav item appears to do nothing at all.
+           The tab buttons use history.replaceState, which does not fire
+           hashchange, so there is no loop back into this. */
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.replace('#', '');
+            if (!HASH_TO_VIEW[hash] || hash === currentView) return;
+            currentView = hash;
+            // Before the first load resolves there is nothing to draw; that render
+            // will pick up currentView on its own.
+            if (allTeamsData.length) renderCurrentView();
         });
 
         function initFilters() {
