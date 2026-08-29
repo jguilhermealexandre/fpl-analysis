@@ -17,11 +17,11 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=64">
-    <link rel="stylesheet" href="styles/teams.css?v=64">
-    <link rel="stylesheet" href="styles/v2-design.css?v=64">
-    <script src="scripts/common.js?v=64"></script>
-    <script src="scripts/sidebar-nav.js?v=64"></script>
+    <link rel="stylesheet" href="styles/common.css?v=65">
+    <link rel="stylesheet" href="styles/teams.css?v=65">
+    <link rel="stylesheet" href="styles/v2-design.css?v=65">
+    <script src="scripts/common.js?v=65"></script>
+    <script src="scripts/sidebar-nav.js?v=65"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1204,6 +1204,8 @@
                     </div>
                     
                     ${renderTargetableCalendar(teamFixtureMap, easyRuns, displayGWs)}
+
+                    ${renderSoftTargets(teamFixtureMap, displayGWs)}
                 </div>
             `;
 
@@ -1211,6 +1213,134 @@
             // Not deferred through requestAnimationFrame: it can be throttled to
             // never firing for work scheduled around freshly-inserted markup.
             applyGwWindow();
+        }
+
+        // ===== SOFT TARGETS (in Fixture Swings tab) =====
+        /* Everything else in this tab answers "whose fixtures are kind" — which
+           teams to own. This answers the opposite question, which is the one that
+           actually picks a captain or a differential striker: whose defence is
+           worth attacking right now, and who gets to attack it.
+
+           A team can have a terrible schedule and still be a fine target, and a
+           side with a soft run can be tightening up. Neither shows in an FDR
+           number, which is set before a ball is kicked and never moves. */
+        function softTargetScore(team) {
+            const games = (team.wins || 0) + (team.draws || 0) + (team.losses || 0);
+            if (!games) return null;
+
+            const conceded = parseFloat(team.avgConceded) || 0;
+            const csRate = (team.cleanSheets || 0) / games;
+
+            // Four independent readings of the same weakness, so no single noisy
+            // one runs away with the ranking. Note the `??` rather than `||`:
+            // these ratings are genuinely 0-100 and the worst team in the league
+            // can score 0, which `||` would silently rewrite to an average 50.
+            const defWeak = 100 - (team.defensePower ?? 50);            // structural quality
+            const formWeak = 100 - (team.formRating ?? 50);             // are they losing right now
+            const leak = Math.min(100, (conceded / 2.5) * 100);         // goals actually shipped
+            const csDrought = Math.max(0, 100 - csRate * 250);          // 40% CS rate scores 0
+
+            let score = defWeak * 0.34 + formWeak * 0.24 + leak * 0.26 + csDrought * 0.16;
+
+            // Direction of travel. xgcTrend on this page reads 'improving' /
+            // 'worsening' (team-analysis-core.js uses rising/falling for the same
+            // idea — do not cross the two vocabularies).
+            if (team.xgcTrend === 'worsening') score += 6;
+            else if (team.xgcTrend === 'improving') score -= 6;
+
+            return Math.round(Math.max(0, Math.min(100, score)));
+        }
+
+        // Who gets to play this defence, and when. The payoff of the whole
+        // section: a leaky team is only useful if you know whose attackers face it.
+        function attackersFacing(teamId, fixtureMap, gws) {
+            const rows = [];
+            gws.forEach(gw => {
+                (fixtureMap[teamId]?.[gw] || []).forEach(fx => {
+                    const opp = allTeamsData.find(t => t.id === fx.opponentId);
+                    if (!opp) return;
+                    // fx.isHome is the SOFT TEAM's venue, so the attacking side's
+                    // venue is the opposite of it.
+                    rows.push({ gw, team: opp, attackerAtHome: !fx.isHome });
+                });
+            });
+            return rows;
+        }
+
+        function renderSoftTargets(fixtureMap, displayGWs) {
+            const window5 = displayGWs.filter(gw => gw >= currentGW).slice(0, 5);
+
+            const ranked = allTeamsData
+                .map(t => ({ team: t, score: softTargetScore(t) }))
+                .filter(x => x.score !== null)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 6);
+
+            if (!ranked.length) {
+                return `<div class="soft-section">
+                    <div class="soft-header">
+                        <span class="soft-title"><i data-lucide="crosshair" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> Soft Targets</span>
+                    </div>
+                    <div class="soft-empty">No matches played yet this season, so there is no form or defensive record to rank teams on. This fills in once the season is under way.</div>
+                </div>`;
+            }
+
+            const cards = ranked.map((entry, i) => {
+                const t = entry.team;
+                const games = t.wins + t.draws + t.losses;
+                const csRate = Math.round(((t.cleanSheets || 0) / games) * 100);
+                const form = (t.pastResults || []).slice(-5)
+                    .map(r => `<span class="soft-form-dot ${r.result.toLowerCase()}" data-tooltip="${escHTML(r.result === 'W' ? 'Won' : r.result === 'D' ? 'Drew' : 'Lost')} ${escHTML(r.score)} ${r.isHome ? 'at home to' : 'away at'} ${escHTML(r.opponentName)}">${r.result}</span>`).join('');
+
+                // A side can be solid at home and a free hit on the road. Averaging
+                // that away is how "they concede a lot" ends up pointed at the
+                // wrong fixture.
+                const venueGap = (t.defensePowerHome ?? 50) - (t.defensePowerAway ?? 50);
+                const venueNote = venueGap > 12 ? `Much softer away from home`
+                    : venueGap < -12 ? `Much softer at home`
+                    : null;
+
+                const trendNote = t.xgcTrend === 'worsening' ? 'Conceding more than their season rate lately'
+                    : t.xgcTrend === 'improving' ? 'Tightening up lately — the record overstates how soft they are'
+                    : null;
+
+                const facing = attackersFacing(t.id, fixtureMap, window5);
+                const facingHtml = facing.length
+                    ? facing.map(f => `<span class="soft-face ${f.attackerAtHome ? 'home' : 'away'}"
+                            data-tooltip="${escHTML(f.team.name)} ${f.attackerAtHome ? 'host' : 'travel to'} ${escHTML(t.shortName)} in GW${f.gw}">
+                            <span class="soft-face-gw">GW${f.gw}</span>${escHTML(f.team.shortName)}<span class="soft-face-ha">${f.attackerAtHome ? 'H' : 'A'}</span>
+                        </span>`).join('')
+                    : '<span class="soft-face-none">No fixtures scheduled in this window</span>';
+
+                return `<div class="soft-card" onclick="openTeamReport(${t.id})" data-tooltip="Open the full report for ${escHTML(t.name)}">
+                    <div class="soft-card-head">
+                        <span class="soft-rank">${i + 1}</span>
+                        <img src="${t.badgeUrl}" alt="" class="soft-badge" onerror="this.style.display='none'">
+                        <span class="soft-name">${escHTML(t.name)}</span>
+                        <span class="soft-score" data-tooltip="How attackable this defence looks right now, from defensive quality, current form, goals conceded and clean-sheet rate, adjusted for whether they are trending better or worse.">${entry.score}</span>
+                    </div>
+                    <div class="soft-metrics">
+                        <span class="soft-metric" data-tooltip="Goals conceded per game across ${games} matches."><em>${parseFloat(t.avgConceded).toFixed(2)}</em>conceded/gm</span>
+                        <span class="soft-metric" data-tooltip="Share of matches they have kept a clean sheet in."><em>${csRate}%</em>clean sheets</span>
+                        <span class="soft-metric" data-tooltip="Defensive rating out of 100 — higher is a better defence."><em>${t.defensePower}</em>defence</span>
+                        <span class="soft-form">${form}</span>
+                    </div>
+                    ${(venueNote || trendNote) ? `<div class="soft-note">${[venueNote, trendNote].filter(Boolean).join(' · ')}</div>` : ''}
+                    <div class="soft-facing">
+                        <span class="soft-facing-l">Attacked by</span>
+                        <div class="soft-facing-list">${facingHtml}</div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            return `<div class="soft-section">
+                <div class="soft-header">
+                    <span class="soft-title"><i data-lucide="crosshair" style="width:16px;height:16px;display:inline;vertical-align:middle;"></i> Soft Targets</span>
+                    <span class="soft-count">next ${window5.length} GW${window5.length === 1 ? '' : 's'}</span>
+                </div>
+                <p class="soft-desc">The defences worth attacking right now, and whose players get to do it. Ranked on defensive quality, current form, goals conceded and clean-sheet rate — then adjusted for whether they are trending better or worse. This is the opposite question to the panels above: not whose fixtures are kind, but who is <em>currently</em> easy to score against.</p>
+                <div class="soft-grid">${cards}</div>
+            </div>`;
         }
 
         // ===== TARGETABLE PATCHES CALENDAR (in Fixture Swings tab) =====
@@ -3311,15 +3441,53 @@
             return Math.round(fdr) >= 5 ? '#fff' : '#000';
         }
 
+        function teamOrdinal(n) {
+            const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+            return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        }
+
+        // Where a team sits across the league on one metric. A bare "62/100"
+        // means nothing without knowing whether that is second or twelfth.
+        function teamRankOf(team, key, higherIsBetter) {
+            const vals = allTeamsData
+                .map(t => ({ id: t.id, v: parseFloat(t[key]) }))
+                .filter(x => !isNaN(x.v));
+            if (!vals.length) return null;
+            vals.sort((a, b) => higherIsBetter ? b.v - a.v : a.v - b.v);
+            const i = vals.findIndex(x => x.id === team.id);
+            return i < 0 ? null : { rank: i + 1, total: vals.length };
+        }
+
+        function teamRankPill(label, r, tip) {
+            if (!r) return '';
+            // Top third is a strength, bottom third a weakness, whichever way the
+            // metric runs — the sort above has already handled direction.
+            const cls = r.rank <= r.total / 3 ? 'good' : r.rank > (r.total * 2) / 3 ? 'bad' : '';
+            return `<div class="report-rank ${cls}" data-tooltip="${escHTML(tip || '')}">
+                <div class="report-rank-v">${teamOrdinal(r.rank)}</div>
+                <div class="report-rank-l">${escHTML(label)}</div>
+            </div>`;
+        }
+
         function openTeamReport(teamId) {
             const team = allTeamsData.find(t => t.id === teamId);
             if (!team) return;
+
+            /* Almost every counting stat on this object is a LAST FIVE MATCHES
+               figure: pastFixtures is .slice(-5) before anything is summed, so
+               totalGoals, totalXG, cleanSheets, wins/draws/losses, avgConceded and
+               the venue splits are all five-match numbers. seasonXg is the only
+               genuine season-long series. They used to be labelled "Goals", "xG"
+               and "CS" side by side with season xG, which reads as a season total
+               and is out by a factor of four. Every window is now stated. */
+            const gp = (team.wins || 0) + (team.draws || 0) + (team.losses || 0);
+            const windowLabel = gp ? `last ${gp}` : 'no games';
 
             const header = `
                 <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="modal-header-badge" onerror="this.style.display='none'">
                 <div class="modal-header-info">
                     <div class="modal-title">${escHTML(team.name)}</div>
-                    <div class="modal-subtitle">${team.wins}W ${team.draws}D ${team.losses}L &nbsp;•&nbsp; Avg <abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> ${team.avgFdr}</div>
+                    <div class="modal-subtitle">${team.wins}W ${team.draws}D ${team.losses}L <span class="modal-window">(${escHTML(windowLabel)})</span> &nbsp;•&nbsp; Avg <abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> ${team.avgFdr} next 5</div>
                 </div>
                 <button class="modal-close" onclick="closeModal()" aria-label="Close modal">✕</button>
             `;
@@ -3344,15 +3512,15 @@
                 <div class="report-grid">
                     <div class="report-stat">
                         <div class="report-stat-value">${team.totalGoals}</div>
-                        <div class="report-stat-label">Goals</div>
+                        <div class="report-stat-label" data-tooltip="Goals scored across their last ${gp} matches, not the season.">Goals (${escHTML(windowLabel)})</div>
                     </div>
                     <div class="report-stat">
                         <div class="report-stat-value">${team.totalXG}</div>
-                        <div class="report-stat-label">xG</div>
+                        <div class="report-stat-label" data-tooltip="Expected goals across the same ${gp} matches. Compare with goals beside it to see over- or under-performance.">xG (${escHTML(windowLabel)})</div>
                     </div>
                     <div class="report-stat">
                         <div class="report-stat-value">${team.cleanSheets}</div>
-                        <div class="report-stat-label">CS</div>
+                        <div class="report-stat-label" data-tooltip="Clean sheets in their last ${gp} matches — ${gp ? Math.round((team.cleanSheets / gp) * 100) : 0}% of them.">CS (${escHTML(windowLabel)})</div>
                     </div>
                     <div class="report-stat">
                         <div class="report-stat-value ${parseFloat(team.bullyIndex) >= 60 ? 'good' : ''}">${team.bullyIndex}</div>
@@ -3362,8 +3530,22 @@
             `;
 
             // Venue splits
-            const hs = team.homeStats || {};
-            const as = team.awayStats || {};
+            /* homeStats/awayStats carry raw counts only — {goals, conceded, games,
+               wins, cleanSheets}. The rows below read avgGoals/avgConceded off
+               them, which never existed: Home silently fell back to the team's
+               overall average and Away printed a dash, so the "Venue Split"
+               section showed no split on the two rows it exists for. Derived from
+               the counts instead. */
+            const withAvgs = s => {
+                const o = Object.assign({}, s || {});
+                if (o.games > 0) {
+                    o.avgGoals = o.goals / o.games;
+                    o.avgConceded = o.conceded / o.games;
+                }
+                return o;
+            };
+            const hs = withAvgs(team.homeStats);
+            const as = withAvgs(team.awayStats);
             const venueSplit = `
                 <div class="report-venue-split">
                     <div class="report-venue-card">
@@ -3372,6 +3554,8 @@
                         <div class="report-venue-stat"><span>Defence</span><span>${team.defensePowerHome}</span></div>
                         <div class="report-venue-stat"><span>Avg Goals</span><span>${hs.avgGoals !== undefined ? hs.avgGoals.toFixed(2) : team.avgGoals}</span></div>
                         <div class="report-venue-stat"><span>Avg Conceded</span><span>${hs.avgConceded !== undefined ? hs.avgConceded.toFixed(2) : '-'}</span></div>
+                        <div class="report-venue-stat"><span>Record</span><span>${hs.games ? `${hs.wins}W of ${hs.games}` : '—'}</span></div>
+                        <div class="report-venue-stat"><span>Clean sheets</span><span>${hs.games ? `${hs.cleanSheets} of ${hs.games}` : '—'}</span></div>
                     </div>
                     <div class="report-venue-card">
                         <div class="report-venue-title"><i data-lucide="plane" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Away</div>
@@ -3379,6 +3563,8 @@
                         <div class="report-venue-stat"><span>Defence</span><span>${team.defensePowerAway}</span></div>
                         <div class="report-venue-stat"><span>Avg Goals</span><span>${as.avgGoals !== undefined ? as.avgGoals.toFixed(2) : '-'}</span></div>
                         <div class="report-venue-stat"><span>Avg Conceded</span><span>${as.avgConceded !== undefined ? as.avgConceded.toFixed(2) : '-'}</span></div>
+                        <div class="report-venue-stat"><span>Record</span><span>${as.games ? `${as.wins}W of ${as.games}` : '—'}</span></div>
+                        <div class="report-venue-stat"><span>Clean sheets</span><span>${as.games ? `${as.cleanSheets} of ${as.games}` : '—'}</span></div>
                     </div>
                 </div>
             `;
@@ -3439,6 +3625,102 @@
                 </div>`;
             }).join('');
 
+            /* One FDR number answers two different questions badly. The fixture
+               map already separates them — attackFdr is set by the opponent's
+               defence and defenseFdr by their attack — so a fixture can be kind
+               to your striker and hostile to your defender at the same time.
+               Nothing on this page was surfacing the distinction. */
+            const fxMap = window._teamFixtureMap || {};
+            const splitGWs = Object.keys(fxMap[teamId] || {}).map(Number)
+                .filter(g => g >= currentGW).sort((a, b) => a - b).slice(0, 5);
+            const splitRows = splitGWs.map(gw => (fxMap[teamId][gw] || []).map(f => `
+                <tr>
+                    <td class="fx-split-gw">GW${gw}</td>
+                    <td class="fx-split-opp">${escHTML(f.opponent)} <span class="fx-split-ha">${f.isHome ? 'H' : 'A'}</span></td>
+                    <td><span class="fx-split-chip fdr-${f.attackFdr}" data-tooltip="How kind this is to ${escHTML(team.shortName)}'s attackers — set by the opponent's defence.">${f.attackFdr}</span></td>
+                    <td><span class="fx-split-chip fdr-${f.defenseFdr}" data-tooltip="How kind this is to ${escHTML(team.shortName)}'s defenders and keeper — set by the opponent's attack.">${f.defenseFdr}</span></td>
+                    <td class="fx-split-cs">${f.csChance != null ? Math.round(f.csChance * 100) + '%' : '—'}</td>
+                </tr>`).join('')).join('');
+            const fixtureSplitSection = splitRows ? `
+                <table class="fx-split-table">
+                    <thead><tr><th>GW</th><th>Opponent</th>
+                        <th data-tooltip="Fixture difficulty for this team's attackers.">ATT</th>
+                        <th data-tooltip="Fixture difficulty for this team's defenders.">DEF</th>
+                        <th data-tooltip="Estimated clean sheet chance.">CS</th></tr></thead>
+                    <tbody>${splitRows}</tbody>
+                </table>
+                <p class="fx-split-note">Attack and defence difficulty are rated separately — a fixture can suit one and punish the other.</p>` : '';
+
+            // ===== Where they rank across the league =====
+            const rAtt = teamRankOf(team, 'attackPower', true);
+            const rDef = teamRankOf(team, 'defensePower', true);
+            const rForm = teamRankOf(team, 'formRating', true);
+            const rFix = teamRankOf(team, 'fixtureScore', true);
+            const rConc = teamRankOf(team, 'avgConceded', false);
+            const rankSection = `
+                <div class="modal-section">
+                    <div class="modal-section-title">Where They Rank</div>
+                    <div class="report-ranks">
+                        ${teamRankPill('Attack', rAtt, `${team.attackPower}/100 attacking rating — ${rAtt ? teamOrdinal(rAtt.rank) + ' of ' + rAtt.total : ''}.`)}
+                        ${teamRankPill('Defence', rDef, `${team.defensePower}/100 defensive rating — ${rDef ? teamOrdinal(rDef.rank) + ' of ' + rDef.total : ''}.`)}
+                        ${teamRankPill('Form', rForm, `${team.formRating}/100 weighted recent form — ${rForm ? teamOrdinal(rForm.rank) + ' of ' + rForm.total : ''}.`)}
+                        ${teamRankPill('Fixtures', rFix, `Next five fixtures, ${rFix ? teamOrdinal(rFix.rank) + ' kindest of ' + rFix.total : ''}.`)}
+                        ${teamRankPill('Tightest', rConc, `${parseFloat(team.avgConceded).toFixed(2)} conceded per game — ${rConc ? teamOrdinal(rConc.rank) + ' tightest of ' + rConc.total : ''}.`)}
+                    </div>
+                </div>`;
+
+            // ===== How attackable they are — the Soft Targets read, per team =====
+            const softScore = softTargetScore(team);
+            const softSection = softScore === null ? '' : `
+                <div class="modal-section">
+                    <div class="modal-section-title">How Attackable Are They</div>
+                    <div class="report-soft">
+                        <div class="report-soft-score ${softScore >= 60 ? 'bad' : softScore <= 35 ? 'good' : ''}">${softScore}<span>/100</span></div>
+                        <div class="report-soft-text">
+                            ${softScore >= 60
+                                ? `A soft target right now — ${parseFloat(team.avgConceded).toFixed(2)} conceded per game and ${gp ? Math.round((team.cleanSheets / gp) * 100) : 0}% clean sheets across their last ${gp}. Their upcoming opponents' attackers are worth a look.`
+                                : softScore <= 35
+                                    ? `A hard team to score against right now. Their opponents' attackers are a tougher sell, and their own defensive assets carry more value.`
+                                    : `Middling — neither a free hit nor a wall. Fixture and venue matter more than the defence itself here.`}
+                            ${team.xgcTrend === 'worsening' ? ' They are conceding more than their season rate lately.' : team.xgcTrend === 'improving' ? ' They have been tightening up lately, so the raw record overstates how soft they are.' : ''}
+                            ${Math.abs((team.defensePowerHome ?? 50) - (team.defensePowerAway ?? 50)) > 12
+                                ? ` Notably ${(team.defensePowerHome ?? 50) > (team.defensePowerAway ?? 50) ? 'softer away from home' : 'softer at home'}.`
+                                : ''}
+                        </div>
+                    </div>
+                </div>`;
+
+            // ===== Best FPL assets — previously stranded in a separate modal =====
+            const POS_MAP = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const assets = (window.playerElements || [])
+                .filter(e => e.team === teamId && e.status === 'a' && e.minutes > 0)
+                .map(e => ({
+                    name: e.web_name, pos: POS_MAP[e.element_type] || '?',
+                    price: e.now_cost / 10, points: e.total_points,
+                    form: parseFloat(e.form) || 0, own: parseFloat(e.selected_by_percent) || 0,
+                    xGI: parseFloat(e.expected_goal_involvements) || 0
+                }))
+                .sort((a, b) => (b.points - a.points) || (b.form - a.form))
+                .slice(0, 8);
+            const assetsSection = `
+                <div class="modal-section">
+                    <div class="modal-section-title">Best FPL Assets</div>
+                    ${assets.length ? `<table class="assets-table">
+                        <thead><tr><th>Player</th><th>Pos</th><th>Price</th><th>Pts</th><th>Form</th><th>xGI</th><th>Owned</th></tr></thead>
+                        <tbody>${assets.map(p => `<tr>
+                            <td class="assets-name">${escHTML(p.name)}</td>
+                            <td><span class="assets-pos pos-${p.pos}">${p.pos}</span></td>
+                            <td>£${p.price.toFixed(1)}m</td>
+                            <td><strong>${p.points}</strong></td>
+                            <td>${p.form.toFixed(1)}</td>
+                            <td>${p.xGI.toFixed(2)}</td>
+                            <td>${p.own.toFixed(1)}%</td>
+                        </tr>`).join('')}</tbody>
+                    </table>
+                    <p class="assets-note">Ranked on points scored this season, restricted to players with minutes.</p>`
+                    : '<p class="assets-empty">No players with minutes recorded yet at this club.</p>'}
+                </div>`;
+
             // Build verdict
             const verdictParts = [];
             if (team.attackPower >= 65) verdictParts.push(`Strong attacking side (${team.attackPower}/100).`);
@@ -3458,23 +3740,27 @@
                     <div class="modal-section-title">Power Overview</div>
                     ${powerBars}
                 </div>
+                ${rankSection}
                 <div class="modal-section">
                     <div class="modal-section-title">Key Stats</div>
                     ${statsGrid}
                 </div>
+                ${softSection}
                 <div class="modal-section">
                     <div class="modal-section-title">Venue Split</div>
                     ${venueSplit}
                 </div>
                 ${xgSection}
                 <div class="modal-section">
-                    <div class="modal-section-title">Recent Form</div>
+                    <div class="modal-section-title">Recent Form <span class="modal-window">oldest to latest</span></div>
                     <div class="report-form-strip">${formStrip}</div>
                 </div>
                 <div class="modal-section">
                     <div class="modal-section-title">Fixture Outlook</div>
                     <div class="report-fdr-row">${fdrRow}</div>
+                    ${fixtureSplitSection}
                 </div>
+                ${assetsSection}
                 <div class="modal-section">
                     <div class="modal-section-title">Verdict</div>
                     <div class="report-verdict"><p>${verdictParts.join(' ')}</p></div>
