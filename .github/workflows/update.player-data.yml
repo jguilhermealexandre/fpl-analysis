@@ -7,6 +7,13 @@ on:
     - cron: '0 3,7,11,15,19,23 * * *'
   workflow_dispatch: # Allow manual trigger
 
+# Shared with refresh-live-data.yml: both write data/ on main, so they queue
+# behind one another rather than racing. Queued, not cancelled — a run that has
+# already spent minutes fetching 610 players is worth letting finish.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
 jobs:
   update-player-data:
     runs-on: ubuntu-latest
@@ -25,13 +32,38 @@ jobs:
           # Create data directory if it doesn't exist
           mkdir -p data
           
-          # Fetch bootstrap-static (has all basic player info)
+          # Fetched to temp files and validated before replacing anything.
+          # `curl -s URL > file` exits 0 on an HTTP error and writes the error page
+          # into the file, so an FPL outage would commit an HTML document over good
+          # data and break JSON.parse across the whole site.
           echo "Fetching bootstrap data..."
-          curl -s "https://fantasy.premierleague.com/api/bootstrap-static/" > data/bootstrap-static.json
-          
-          # Fetch fixtures data
+          curl -sS --fail --retry 3 --retry-delay 5 --max-time 60 \
+            "https://fantasy.premierleague.com/api/bootstrap-static/" -o /tmp/bootstrap.json
           echo "Fetching fixtures data..."
-          curl -s "https://fantasy.premierleague.com/api/fixtures/" > data/fixtures.json
+          curl -sS --fail --retry 3 --retry-delay 5 --max-time 60 \
+            "https://fantasy.premierleague.com/api/fixtures/" -o /tmp/fixtures.json
+
+          node -e '
+            const fs = require("fs");
+            const read = (p, name) => {
+              try { return JSON.parse(fs.readFileSync(p, "utf8")); }
+              catch (e) {
+                console.error(`::error::${name} is not valid JSON — refusing to overwrite good data`);
+                process.exit(1);
+              }
+            };
+            const boot = read("/tmp/bootstrap.json", "bootstrap-static");
+            const fx = read("/tmp/fixtures.json", "fixtures");
+            if (!Array.isArray(boot.elements) || boot.elements.length < 100) {
+              console.error("::error::bootstrap-static has no usable player list"); process.exit(1);
+            }
+            if (!Array.isArray(fx) || fx.length < 100) {
+              console.error("::error::fixtures list looks truncated"); process.exit(1);
+            }
+          '
+
+          cp /tmp/bootstrap.json data/bootstrap-static.json
+          cp /tmp/fixtures.json data/fixtures.json
           
           # Extract player IDs
           echo "Processing player data..."
@@ -160,8 +192,11 @@ jobs:
             console.log(`\nComplete: ${processed} players processed, ${failed} failed`);
             console.log(`Coverage: ${playerData.length}/${activePlayers.length} player IDs in the feed`);
             if (playerData.length !== activePlayers.length) {
-              console.error(`COVERAGE SHORTFALL: ${activePlayers.length - playerData.length} players missing from the feed`);
-              process.exitCode = 1;
+              // Flagged loudly, but NOT fatal. A non-zero exit here failed the step
+              // and skipped every step after it — article build, timestamp and the
+              // commit — so one missing player threw away an otherwise complete
+              // refresh, including the fresh bootstrap and fixtures above.
+              console.error(`::warning::COVERAGE SHORTFALL: ${activePlayers.length - playerData.length} players missing from the feed`);
             }
             
             // Save combined data
@@ -198,11 +233,36 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add data/players-data.json data/bootstrap-static.json data/fixtures.json data/last-updated.json
-          git add data/articles articles sitemap.xml robots.txt
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update FPL data - $(date +'%Y-%m-%d %H:%M UTC')"
-            git push
-          fi
+
+          # A plain `git push` silently threw away entire refreshes: this job runs
+          # for several minutes, and anyone pushing to main inside that window
+          # rejected the push, failed the step and left the data untouched. These
+          # are regenerated whole files, so re-apply them on top of wherever main
+          # has moved to and retry. No merge, so no conflict is possible.
+          mkdir -p /tmp/out
+          cp -R data /tmp/out/
+          cp -R articles /tmp/out/ 2>/dev/null || true
+          cp sitemap.xml robots.txt /tmp/out/ 2>/dev/null || true
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp -R /tmp/out/data .
+            cp -R /tmp/out/articles . 2>/dev/null || true
+            cp /tmp/out/sitemap.xml /tmp/out/robots.txt . 2>/dev/null || true
+            git add data/players-data.json data/bootstrap-static.json data/fixtures.json data/last-updated.json
+            git add data/articles articles sitemap.xml robots.txt
+            if git diff --staged --quiet; then
+              echo "No changes to commit"
+              exit 0
+            fi
+            git commit -m "Update FPL data - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+          echo "::error::Could not push after 5 attempts."
+          exit 1

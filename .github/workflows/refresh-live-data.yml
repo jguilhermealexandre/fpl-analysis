@@ -1,0 +1,117 @@
+name: Refresh Live FPL Data
+
+# The fast half of the data refresh.
+#
+# update.player-data.yml fetches element-summary for all ~610 players one at a
+# time, so a run takes many minutes and cannot sensibly go more often than every
+# few hours. But almost nothing on a match day depends on that file. What the
+# site actually reads to know a match has been played is fixtures.json —
+# team-analysis-core.js builds its "upcoming" list from
+# `.filter(f => !f.finished_provisional)` — and bootstrap-static.json for
+# minutes, points and player status.
+#
+# Those are two plain GETs that take a couple of seconds, so they get their own
+# workflow and a cadence that suits a match day: with the four-hourly schedule
+# alone, matches that kicked off at 16:00 were still being projected as upcoming
+# fixtures at 22:00, and every player in them still read as "will be playing".
+
+on:
+  schedule:
+    # Match window. Premier League kickoffs run roughly 11:30-22:00 UTC and
+    # bonus points settle up to a couple of hours after full time, so this is
+    # every day rather than weekends only — midweek rounds matter too.
+    - cron: '*/15 11-22 * * *'
+    # Outside it, hourly. Prices settle around 01:30 UTC and nothing else moves
+    # fast enough to need more.
+    - cron: '0 0-10,23 * * *'
+  workflow_dispatch:
+
+# Never let two refreshes race each other to the same branch. Queued rather than
+# cancelled: a run that has reached its push is worth finishing.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch bootstrap and fixtures
+        run: |
+          mkdir -p data
+
+          # --fail matters. `curl -s URL > file` exits 0 on an HTTP error and
+          # writes the error page into the file, so an FPL outage would commit an
+          # HTML document over good data and break JSON.parse on every page of the
+          # site. Fetch to a temp file, validate, and only then replace.
+          curl -sS --fail --retry 3 --retry-delay 5 --max-time 60 \
+            "https://fantasy.premierleague.com/api/bootstrap-static/" -o /tmp/bootstrap.json
+          curl -sS --fail --retry 3 --retry-delay 5 --max-time 60 \
+            "https://fantasy.premierleague.com/api/fixtures/" -o /tmp/fixtures.json
+
+          node -e '
+            const fs = require("fs");
+            const read = (p, name) => {
+              try { return JSON.parse(fs.readFileSync(p, "utf8")); }
+              catch (e) {
+                console.error(`::error::${name} is not valid JSON — refusing to overwrite good data`);
+                process.exit(1);
+              }
+            };
+            const boot = read("/tmp/bootstrap.json", "bootstrap-static");
+            const fx = read("/tmp/fixtures.json", "fixtures");
+            // Shape checks, so a valid-JSON-but-empty response is caught too.
+            if (!Array.isArray(boot.elements) || boot.elements.length < 100) {
+              console.error("::error::bootstrap-static has no usable player list"); process.exit(1);
+            }
+            if (!Array.isArray(boot.events) || !boot.events.length) {
+              console.error("::error::bootstrap-static has no events"); process.exit(1);
+            }
+            if (!Array.isArray(fx) || fx.length < 100) {
+              console.error("::error::fixtures list looks truncated"); process.exit(1);
+            }
+            const played = fx.filter(f => f.finished_provisional).length;
+            console.log(`bootstrap: ${boot.elements.length} players, ${boot.events.length} events`);
+            console.log(`fixtures: ${fx.length} total, ${played} played`);
+          '
+
+          cp /tmp/bootstrap.json data/bootstrap-static.json
+          cp /tmp/fixtures.json data/fixtures.json
+          echo "{\"lastUpdated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > data/last-updated.json
+
+      - name: Commit and push
+        run: |
+          git config user.name 'GitHub Action'
+          git config user.email 'action@github.com'
+
+          FILES="data/bootstrap-static.json data/fixtures.json data/last-updated.json"
+          mkdir -p /tmp/fresh
+          cp $FILES /tmp/fresh/
+
+          # A plain `git push` is what let refreshes disappear silently. Anyone
+          # pushing to main during the run rejects it, the step fails, and the
+          # data never lands — which is how the feed reached 36 hours old while
+          # the schedule looked healthy. These files are whole-file replacements,
+          # so the fix is simply to re-apply them on top of wherever main has got
+          # to and try again. No merge, so no conflict is possible.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/fresh/bootstrap-static.json /tmp/fresh/fixtures.json /tmp/fresh/last-updated.json data/
+            git add $FILES
+            if git diff --staged --quiet; then
+              echo "No changes to commit."
+              exit 0
+            fi
+            git commit -m "Refresh live FPL data - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+          echo "::error::Could not push after 5 attempts."
+          exit 1
