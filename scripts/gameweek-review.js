@@ -31,26 +31,80 @@
             return (allFixtures || []).some(f => f.event === gw && f.finished_provisional);
         }
 
+        /* The fresh source. data/event-live.json is one trimmed copy of
+           event/{gw}/live/, rewritten every 15 minutes by refresh-live-data.yml,
+           where the per-GW rows inside players-data.json only arrive with the
+           four-hourly job that walks 610 element-summary endpoints. A goal scored
+           at 16:20 showed up here within a quarter of an hour and in the history
+           file some hours later, so this is preferred whenever it covers the
+           gameweek being asked about. */
+        let eventLiveData = null;
+        function setEventLiveData(d) { eventLiveData = d || null; }
+
+        const GWR_LIVE_KEYS = { pts: 'total_points', min: 'minutes', st: 'starts', g: 'goals_scored',
+            a: 'assists', b: 'bonus', cs: 'clean_sheets', gc: 'goals_conceded', sv: 'saves',
+            ps: 'penalties_saved', pm: 'penalties_missed', og: 'own_goals', yc: 'yellow_cards',
+            rc: 'red_cards', bps: 'bps', dc: 'defensive_contribution' };
+
+        // A live row expanded into the same shape a history row has, so both
+        // sources can go through one code path below.
+        function gwLiveRow(playerId, gw) {
+            if (!eventLiveData || eventLiveData.event !== gw) return null;
+            const row = eventLiveData.elements?.[playerId] ?? eventLiveData.elements?.[String(playerId)];
+            if (!row) return null;
+            const out = {};
+            Object.keys(GWR_LIVE_KEYS).forEach(k => { out[GWR_LIVE_KEYS[k]] = row[k] || 0; });
+            return out;
+        }
+
+        // The fixtures a team played in a gameweek, straight from fixtures.json —
+        // which the same 15-minute job keeps current, so opponent and scoreline
+        // stay in step with the stats above rather than lagging behind them.
+        function gwTeamFixtures(teamId, gw) {
+            return (allFixtures || [])
+                .filter(f => f.event === gw && (f.team_h === teamId || f.team_a === teamId))
+                .map(f => {
+                    const home = f.team_h === teamId;
+                    const oppId = home ? f.team_a : f.team_h;
+                    const hasScore = f.team_h_score != null && f.team_a_score != null;
+                    return {
+                        name: teams[oppId]?.short_name || '?',
+                        home,
+                        scoreline: hasScore ? `${f.team_h_score}-${f.team_a_score}` : null,
+                        result: !hasScore ? null
+                            : Math.sign(home ? f.team_h_score - f.team_a_score
+                                             : f.team_a_score - f.team_h_score),
+                        played: !!f.finished_provisional
+                    };
+                });
+        }
+
         // Totalled stats for a player's gameweek, or null if there is no row at all.
         function gwPlayerStats(player, gw) {
-            const rows = gwRowsFor(player.id, gw);
+            const live = gwLiveRow(player.id, gw);
+            const rows = live ? [live] : gwRowsFor(player.id, gw);
             if (!rows.length) return null;
             const sum = k => rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
-            const opponents = rows.map(r => {
-                const opp = teams[r.opponent_team];
-                const scoreline = (r.team_h_score != null && r.team_a_score != null)
-                    ? `${r.team_h_score}-${r.team_a_score}` : null;
-                return {
-                    name: opp?.short_name || '?',
-                    home: !!r.was_home,
-                    scoreline,
-                    // Result from this player's perspective.
-                    result: scoreline == null ? null
-                        : (r.was_home ? Math.sign(r.team_h_score - r.team_a_score)
-                                      : Math.sign(r.team_a_score - r.team_h_score))
-                };
-            });
+            // The live feed carries no opponent, so fixtures.json supplies it for
+            // both sources — one way of naming the opponent, not two.
+            const opponents = live
+                ? gwTeamFixtures(player.teamId, gw)
+                : rows.map(r => {
+                    const opp = teams[r.opponent_team];
+                    const scoreline = (r.team_h_score != null && r.team_a_score != null)
+                        ? `${r.team_h_score}-${r.team_a_score}` : null;
+                    return {
+                        name: opp?.short_name || '?',
+                        home: !!r.was_home,
+                        scoreline,
+                        // Result from this player's perspective.
+                        result: scoreline == null ? null
+                            : (r.was_home ? Math.sign(r.team_h_score - r.team_a_score)
+                                          : Math.sign(r.team_a_score - r.team_h_score))
+                    };
+                });
             return {
+                source: live ? 'live' : 'history',
                 points: sum('total_points'), minutes: sum('minutes'), starts: sum('starts'),
                 goals: sum('goals_scored'), assists: sum('assists'), bonus: sum('bonus'),
                 cleanSheets: sum('clean_sheets'), goalsConceded: sum('goals_conceded'),
@@ -59,7 +113,10 @@
                 yellow: sum('yellow_cards'), red: sum('red_cards'), bps: sum('bps'),
                 defCon: sum('defensive_contribution'),
                 xG: sum('expected_goals'), xA: sum('expected_assists'),
-                fixtures: opponents, isDouble: rows.length > 1
+                // Counted off the fixtures, not the rows: the live feed already
+                // sums both halves of a double into a single row, so rows.length
+                // alone would report every double gameweek as a single.
+                fixtures: opponents, isDouble: opponents.length > 1 || rows.length > 1
             };
         }
 
@@ -185,7 +242,115 @@
             };
         }
 
+        /* ===== JUDGEMENT =====
+
+           A list of what happened is a scorecard. What a manager wants to know is
+           whether the calls were right, and a call is not judged by its outcome:
+           captaining the highest-projected player in your squad is correct even
+           when he blanks, and a punt that comes off was still a punt. Each verdict
+           below therefore separates the decision from the result, and only says
+           "mistake" where the information needed was available beforehand. */
+
+        function gwCaptainVerdict(r) {
+            const c = r.captain;
+            if (!c) return null;
+            const mult = c.multiplier || 2;
+            const alt = r.bestCapAlt;
+            const gain = alt ? (c.raw - alt.raw) * mult : 0;
+            const fieldCap = r.mostCaptainedStats ? r.mostCaptainedStats.points : null;
+            const vsField = fieldCap != null ? (c.raw - fieldCap) * mult : null;
+
+            let tone, verdict, lesson;
+            if (!c.played) {
+                tone = 'pending'; verdict = 'Still to play.';
+                lesson = 'Judgement waits until the fixture is done.';
+            } else if (!c.stats || !c.stats.minutes) {
+                tone = 'bad';
+                verdict = `${escHTML(c.player.name)} did not get on the pitch, so the armband returned nothing.`;
+                lesson = 'A captain who might be rotated costs double. Where two picks project close, the one certain to start is worth the smaller projection.';
+            } else if (alt && gain >= 0) {
+                tone = 'good';
+                verdict = `The best armband available to you. ${escHTML(c.player.name)} outscored every other starter${gain > 0 ? ` by ${(gain / mult).toFixed(0)}` : ''}.`;
+                lesson = 'Nothing to change — the pick and the outcome agreed.';
+            } else if (alt) {
+                const missed = Math.abs(gain);
+                tone = missed >= 12 ? 'bad' : 'mixed';
+                verdict = `${escHTML(alt.player.name)} would have been worth <strong>${missed}</strong> more.`;
+                // Was it a defensible call at the time? Ownership is the closest
+                // proxy the data offers for what the field expected.
+                const capOwn = c.player.ownership, altOwn = alt.player.ownership;
+                lesson = (capOwn != null && altOwn != null && capOwn >= altOwn)
+                    ? `Defensible in advance — ${escHTML(c.player.name)} was the more owned of the two at ${capOwn.toFixed(0)}% against ${altOwn.toFixed(0)}%, so this was variance rather than a misread.`
+                    : `${escHTML(alt.player.name)} was the more popular pick at ${altOwn != null ? altOwn.toFixed(0) : '?'}%, so the field was ahead of you here. Worth asking what made you go the other way.`;
+            } else {
+                tone = 'mixed'; verdict = 'No alternative to compare against.'; lesson = '';
+            }
+
+            return { tone, verdict, lesson, vsField, fieldCap, mult };
+        }
+
+        /* Benching is the one decision on this page that is unambiguously
+           checkable after the fact: either a bench player outscored a starter in
+           the same position or he did not. Auto-subs already rescue the case where
+           a starter played no minutes, so those are excluded — they cost nothing. */
+        function gwBenchVerdict(r) {
+            const misses = [];
+            r.bench.forEach(b => {
+                if (b.multiplier > 0) return;               // came on as an auto-sub
+                if (!b.played || !b.stats) return;
+                const beaten = r.xi.filter(e =>
+                    e.player.position === b.player.position &&
+                    e.played && e.raw < b.raw && (e.stats?.minutes || 0) > 0);
+                if (!beaten.length) return;
+                const worst = beaten.sort((a, c) => a.raw - c.raw)[0];
+                misses.push({ benched: b, starter: worst, swing: b.raw - worst.raw });
+            });
+            misses.sort((a, b) => b.swing - a.swing);
+
+            const total = r.benchPoints;
+            let tone, verdict, lesson;
+            if (!misses.length) {
+                tone = 'good';
+                verdict = total > 0
+                    ? `Nothing was misplaced. The ${total} point${total === 1 ? '' : 's'} on your bench came from players who could not have replaced a starter in the same position.`
+                    : 'Your bench scored nothing, which is exactly what a correct bench looks like.';
+                lesson = 'The eleven you picked was the eleven to pick.';
+            } else {
+                const swing = misses.reduce((s, m) => s + m.swing, 0);
+                tone = swing >= 10 ? 'bad' : 'mixed';
+                verdict = `<strong>${swing}</strong> point${swing === 1 ? '' : 's'} sat on your bench that a straight swap would have collected.`;
+                const worst = misses[0];
+                const startProb = typeof expectedMinutesModel === 'function'
+                    ? Math.round((expectedMinutesModel(worst.benched.player).pStart || 0) * 100) : null;
+                lesson = startProb != null && startProb >= 70
+                    ? `${escHTML(worst.benched.player.name)} was ${startProb}% likely to start, so this was a selection call rather than bad luck — the Lineup Wizard would have flagged him.`
+                    : `${escHTML(worst.benched.player.name)} was a genuine rotation risk beforehand, so benching him was reasonable even though it cost you.`;
+            }
+            return { tone, verdict, lesson, misses };
+        }
+
+        // Who justified their place and who did not, judged against what could
+        // have replaced them rather than against an arbitrary points line.
+        function gwSelectionVerdict(r) {
+            const played = r.xi.filter(e => e.played && e.stats);
+            if (!played.length) return null;
+            const blanks = played.filter(e => e.raw <= 2 && (e.stats.minutes || 0) > 0);
+            const hauls = played.filter(e => e.raw >= 8);
+            const ghosts = r.xi.filter(e => e.played && (!e.stats || !e.stats.minutes));
+            return { blanks, hauls, ghosts };
+        }
+
         // ===== RENDERING =====
+
+        function gwrVerdictBlock(title, v) {
+            if (!v) return '';
+            const icon = v.tone === 'good' ? '✅' : v.tone === 'bad' ? '❌' : v.tone === 'pending' ? '⏳' : '⚖️';
+            return `<div class="gwr-verdict ${v.tone}">
+                <div class="gwr-verdict-head">${icon} ${escHTML(title)}</div>
+                <div class="gwr-verdict-text">${v.verdict}</div>
+                ${v.lesson ? `<div class="gwr-verdict-lesson"><strong>Takeaway:</strong> ${v.lesson}</div>` : ''}
+            </div>`;
+        }
 
         function gwrDelta(v, unit) {
             const cls = v > 0 ? 'up' : v < 0 ? 'down' : 'flat';
@@ -226,6 +391,7 @@
             </div>`;
 
             // ---------- captaincy ----------
+            const capV = gwCaptainVerdict(r);
             let capHtml;
             if (!r.captain) {
                 capHtml = '<div class="opt-empty">No captain recorded for this gameweek.</div>';
@@ -249,7 +415,8 @@
                                 : alt ? ` Nobody else in your eleven beat him — the best alternative was ${escHTML(alt.player.name)} on ${alt.raw}.` : ''}
                         </div>
                     </div>
-                    ${r.mostCaptained ? `<div class="opt-why">The field's most-captained pick was <strong>${escHTML(r.mostCaptained.name)}</strong>${r.mostCaptainedStats ? `, who returned ${r.mostCaptainedStats.points}` : ''}${r.mostCaptained.id === r.captain.player.id ? ' — you were with the crowd.' : ' — you went a different way.'}</div>` : ''}`;
+                    ${r.mostCaptained ? `<div class="opt-why">The field's most-captained pick was <strong>${escHTML(r.mostCaptained.name)}</strong>${r.mostCaptainedStats ? `, who returned ${r.mostCaptainedStats.points}` : ''}${r.mostCaptained.id === r.captain.player.id ? ' — you were with the crowd.' : ' — you went a different way.'}${capV && capV.vsField != null && r.mostCaptained.id !== r.captain.player.id ? ` That is <strong>${capV.vsField > 0 ? '+' : ''}${capV.vsField}</strong> against the crowd's armband.` : ''}</div>` : ''}
+                    ${gwrVerdictBlock('Was the armband right?', capV)}`;
             }
 
             // ---------- who delivered ----------
@@ -268,11 +435,23 @@
             };
 
             const best = r.ranked[0], worst = [...r.ranked].reverse().find(e => e.played);
+            const sel = gwSelectionVerdict(r);
+            const selV = !sel ? null : {
+                tone: sel.ghosts.length ? 'bad' : sel.blanks.length > sel.hauls.length ? 'mixed' : 'good',
+                verdict: `${sel.hauls.length} of your eleven returned 8 or more, ${sel.blanks.length} brought back 2 or less${sel.ghosts.length ? `, and ${sel.ghosts.length} did not play at all` : ''}.`,
+                lesson: sel.ghosts.length
+                    ? `Starting a player who never got on is the costliest kind of blank, because the bench only rescues it if the auto-sub order allows. ${escHTML(sel.ghosts.map(e => e.player.name).join(', '))} — check start probability before locking the eleven.`
+                    : sel.blanks.length > sel.hauls.length
+                        ? 'More of your starters blanked than hauled. One week is noise; if the same names keep it up, the problem is the pick rather than the luck.'
+                        : 'The eleven did what it was picked to do.'
+            };
             const deliveredHtml = `
                 ${best ? `<div class="opt-why">Your best return was <strong>${escHTML(best.player.name)}</strong> on ${best.scored}${worst && worst.player.id !== best.player.id ? `, and the quietest starter who actually played was <strong>${escHTML(worst.player.name)}</strong> on ${worst.scored}` : ''}.</div>` : ''}
-                <div class="gwr-rows">${r.ranked.map(row).join('')}</div>`;
+                <div class="gwr-rows">${r.ranked.map(row).join('')}</div>
+                ${gwrVerdictBlock('Did the eleven justify itself?', selV)}`;
 
             // ---------- bench ----------
+            const benchV = gwBenchVerdict(r);
             const autoSubbed = r.bench.filter(e => e.multiplier > 0);
             const benchHtml = `
                 <div class="opt-why">
@@ -281,7 +460,10 @@
                         : 'Nothing was wasted on the bench.'}
                     ${autoSubbed.length ? ` ${autoSubbed.length} auto-substitution${autoSubbed.length === 1 ? '' : 's'} came on for you.` : ''}
                 </div>
-                <div class="gwr-rows">${r.benchRanked.map(row).join('')}</div>`;
+                <div class="gwr-rows">${r.benchRanked.map(row).join('')}</div>
+                ${benchV.misses.length ? `<div class="gwr-misses">${benchV.misses.map(m =>
+                    `<div class="gwr-miss"><strong>${escHTML(m.benched.player.name)}</strong> (${m.benched.raw}) outscored <strong>${escHTML(m.starter.player.name)}</strong> (${m.starter.raw}) in the same position — a swap worth <strong>${m.swing}</strong>.</div>`).join('')}</div>` : ''}
+                ${gwrVerdictBlock('Was the bench right?', benchV)}`;
 
             // ---------- the week in the game ----------
             const fieldHtml = `
@@ -292,6 +474,37 @@
                 </div>
                 ${(r.ev.chip_plays || []).length ? `<div class="gwr-chips">${r.ev.chip_plays.map(c =>
                     `<span class="gwr-chip"><strong>${(c.num_played || 0).toLocaleString()}</strong> ${escHTML({ bboost: 'Bench Boost', freehit: 'Free Hit', wildcard: 'Wildcard', '3xc': 'Triple Captain' }[c.chip_name] || c.chip_name)}</span>`).join('')}</div>` : ''}`;
+
+            /* The whole review in three or four sentences, because the sections
+               above answer "was this call right" one at a time and nobody reads a
+               report to assemble the conclusion themselves. Only lines with
+               something to say are kept. */
+            const learnings = [
+                capV && capV.lesson ? { icon: '👑', tone: capV.tone, text: capV.lesson } : null,
+                benchV && benchV.lesson ? { icon: '🪑', tone: benchV.tone, text: benchV.lesson } : null,
+                selV && selV.lesson ? { icon: '📋', tone: selV.tone, text: selV.lesson } : null,
+                (r.hit > 0) ? (() => {
+                    // A hit is only justified if the players brought in cleared it.
+                    const covered = vsAvg != null && vsAvg > 0;
+                    return { icon: '🔁', tone: covered ? 'good' : 'bad',
+                        text: covered
+                            ? `You paid ${r.hit} points for transfers and still finished above the average, so the move carried its own cost.`
+                            : `You paid ${r.hit} points for transfers and finished below the average. A hit has to beat what the outgoing player would have scored, not merely bring in someone good.` };
+                })() : null,
+                (r.benchPoints >= 15 && (!benchV || !benchV.misses.length))
+                    ? { icon: '💤', tone: 'mixed', text: `${r.benchPoints} points sat on your bench legitimately. That much value in reserve every week is a squad-balance question rather than a selection one — a Bench Boost turns it into points.` }
+                    : null
+            ].filter(Boolean);
+
+            const learningsHtml = `
+            <div class="detail-section">
+                <div class="detail-section-title">🎓 What to take from this week</div>
+                ${learnings.length
+                    ? `<div class="gwr-learnings">${learnings.map(l =>
+                        `<div class="gwr-learning ${l.tone}"><span class="gwr-learning-icon">${l.icon}</span><span>${l.text}</span></div>`).join('')}</div>`
+                    : '<div class="opt-empty">Nothing stands out either way — a quiet, correctly played week.</div>'}
+                ${!r.complete ? '<div class="opt-why">These read on a part-played round, so they may change once the remaining matches finish.</div>' : ''}
+            </div>`;
 
             return `
             ${headline}
@@ -310,7 +523,8 @@
             <div class="detail-section">
                 <div class="detail-section-title">🌍 The week in the game</div>
                 ${fieldHtml}
-            </div>`;
+            </div>
+            ${learningsHtml}`;
         }
 
         function openGameweekReview() {

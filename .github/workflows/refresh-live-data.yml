@@ -79,6 +79,52 @@ jobs:
 
           cp /tmp/bootstrap.json data/bootstrap-static.json
           cp /tmp/fixtures.json data/fixtures.json
+
+          # Per-player stats for the round in progress. players-data.json also
+          # carries this, but only via 610 sequential element-summary calls on the
+          # four-hourly job, so a goal scored at 16:20 was not in the site's
+          # gameweek review until hours later. event/{gw}/live/ is one request for
+          # the whole league, and trimming it to players who actually featured
+          # takes 432 KB down to about 15 KB — small enough to commit this often.
+          export GW
+          GW=$(node -e 'const b=require("/tmp/bootstrap.json");const e=b.events.find(x=>x.is_current)||b.events.find(x=>x.is_next);process.stdout.write(String(e?e.id:""))')
+          if [ -n "$GW" ]; then
+            echo "Fetching live stats for GW$GW..."
+            if curl -sS --fail --retry 3 --retry-delay 5 --max-time 60 \
+                 "https://fantasy.premierleague.com/api/event/$GW/live/" -o /tmp/live.json; then
+              node -e '
+                const fs = require("fs");
+                let d;
+                try { d = JSON.parse(fs.readFileSync("/tmp/live.json", "utf8")); }
+                catch (e) { console.error("::warning::event live is not valid JSON — skipping"); process.exit(0); }
+                if (!d || !Array.isArray(d.elements)) {
+                  console.error("::warning::event live has no elements — skipping"); process.exit(0);
+                }
+                const keep = { total_points:"pts", minutes:"min", starts:"st", goals_scored:"g",
+                  assists:"a", bonus:"b", clean_sheets:"cs", goals_conceded:"gc", saves:"sv",
+                  penalties_saved:"ps", penalties_missed:"pm", own_goals:"og", yellow_cards:"yc",
+                  red_cards:"rc", bps:"bps", defensive_contribution:"dc" };
+                const out = {};
+                for (const el of d.elements) {
+                  const s = el.stats || {};
+                  // Anyone who did not feature is simply absent; the site reads that
+                  // as "no data" and falls back to the fixture to say why.
+                  if (!s.minutes && !s.total_points && !s.starts) continue;
+                  const row = {};
+                  for (const k in keep) if (s[k]) row[keep[k]] = s[k];
+                  row.pts = s.total_points || 0;
+                  row.min = s.minutes || 0;
+                  out[el.id] = row;
+                }
+                fs.writeFileSync(process.env.GITHUB_WORKSPACE + "/data/event-live.json",
+                  JSON.stringify({ event: Number(process.env.GW), updated: new Date().toISOString(), elements: out }));
+                console.log(`event-live: ${Object.keys(out).length} players who featured in GW${process.env.GW}`);
+              '
+            else
+              echo "::warning::event live fetch failed — leaving the previous file in place"
+            fi
+          fi
+
           echo "{\"lastUpdated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > data/last-updated.json
 
       - name: Commit and push
@@ -86,7 +132,12 @@ jobs:
           git config user.name 'GitHub Action'
           git config user.email 'action@github.com'
 
-          FILES="data/bootstrap-static.json data/fixtures.json data/last-updated.json"
+          # event-live.json is absent on a first run and when the live fetch was
+          # skipped, so the set is built from what actually exists.
+          FILES=""
+          for f in data/bootstrap-static.json data/fixtures.json data/event-live.json data/last-updated.json; do
+            [ -f "$f" ] && FILES="$FILES $f"
+          done
           mkdir -p /tmp/fresh
           cp $FILES /tmp/fresh/
 
@@ -99,7 +150,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
-            cp /tmp/fresh/bootstrap-static.json /tmp/fresh/fixtures.json /tmp/fresh/last-updated.json data/
+            cp /tmp/fresh/*.json data/
             git add $FILES
             if git diff --staged --quiet; then
               echo "No changes to commit."

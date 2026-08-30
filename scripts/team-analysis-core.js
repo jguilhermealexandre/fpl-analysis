@@ -444,11 +444,17 @@
 
             try {
                 // Load bootstrap + fixtures + players-data in parallel
-                const [bootData, fixturesData, playersDataRes] = await Promise.all([
+                // event-live carries this gameweek's per-player stats and is
+                // rewritten every 15 minutes, where players-data.json's per-GW
+                // history only lands with the four-hourly job. Optional: absent or
+                // stale, the Gameweek Review falls back to that history.
+                const [bootData, fixturesData, playersDataRes, eventLiveRes] = await Promise.all([
                     DataCache.fetchJSON(DATA_URLS.bootstrap),
                     DataCache.fetchJSON(DATA_URLS.fixtures).catch(() => []),
-                    DataCache.fetchJSON(DATA_URLS.players).catch(() => null)
+                    DataCache.fetchJSON(DATA_URLS.players).catch(() => null),
+                    DataCache.fetchJSON(DATA_URLS.eventLive).catch(() => null)
                 ]);
+                if (typeof setEventLiveData === 'function') setEventLiveData(eventLiveRes);
 
                 teams = {};
                 bootData.teams.forEach(t => { teams[t.id] = t; });

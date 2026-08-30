@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=67">
-    <link rel="stylesheet" href="styles/v2-design.css?v=67">
+    <link rel="stylesheet" href="styles/common.css?v=68">
+    <link rel="stylesheet" href="styles/v2-design.css?v=68">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3090,6 +3090,75 @@
             flex-shrink: 0;
         }
         .fpl-toast-close:hover { color: var(--text-primary); }
+
+        /* ===== Attention-column summaries ===== */
+        .v2-attn-summary {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+            padding: 10px 12px; margin-bottom: 4px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .v2-attn-stat { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .v2-attn-stat-v {
+            font-size: 17px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary);
+            line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .v2-attn-stat-l {
+            font-size: 9px; font-weight: 600; color: var(--text-muted); cursor: help;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .v2-attn-stat.warn .v2-attn-stat-v { color: var(--color-warning); }
+
+        /* ===== This week's read: debrief + team news ===== */
+        .v2-feed {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-4); margin-top: var(--space-5);
+        }
+        .v2-feed-col { display: flex; flex-direction: column; }
+        .v2-feed-article {
+            display: flex; flex-direction: column; gap: 4px; padding: 14px 16px;
+            border: 1px solid var(--border-default); border-radius: 12px; background: var(--surface-1);
+            text-decoration: none; transition: border-color 150ms, transform 150ms;
+        }
+        .v2-feed-article:hover { border-color: var(--color-primary); transform: translateY(-2px); }
+        .v2-feed-kicker {
+            font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--color-primary);
+        }
+        .v2-feed-title { font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
+        .v2-feed-dek { font-size: 12px; line-height: 1.55; color: var(--text-secondary); }
+        .v2-feed-meta { margin-top: 4px; font-size: 10px; color: var(--text-muted); }
+        .v2-feed-newslist {
+            display: flex; flex-direction: column; gap: 4px;
+            border: 1px solid var(--border-default); border-radius: 12px;
+            background: var(--surface-1); padding: 8px; max-height: 260px; overflow-y: auto;
+        }
+        .v2-feed-news {
+            display: flex; align-items: baseline; gap: 8px; padding: 6px 8px; border-radius: 8px;
+            font-size: 11px; border-left: 3px solid transparent;
+        }
+        .v2-feed-news.own { border-left-color: var(--color-primary); background: var(--surface-2); }
+        .v2-feed-news-name { flex-shrink: 0; font-weight: 700; color: var(--text-primary); }
+        .v2-feed-news-name em {
+            font-style: normal; margin-left: 5px; padding: 1px 5px; border-radius: 3px;
+            font-size: 8px; font-weight: 700; text-transform: uppercase;
+            background: var(--color-primary); color: #fff;
+        }
+        .v2-feed-news-text {
+            flex: 1; color: var(--text-secondary); line-height: 1.5;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .v2-feed-news-pct { flex-shrink: 0; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+        .v2-feed-news-pct.warn { color: var(--color-warning); }
+        .v2-feed-news-pct.bad { color: var(--color-error); }
+        .v2-feed-empty {
+            padding: 14px 16px; border: 1px dashed var(--border-default); border-radius: 12px;
+            font-size: 12px; color: var(--text-muted);
+        }
+        .v2-feed-more { margin-top: 8px; font-size: 11px; color: var(--color-primary); text-decoration: none; }
+        .v2-feed-more:hover { text-decoration: underline; }
+        @media (max-width: 640px) {
+            .v2-attn-summary { grid-template-columns: repeat(2, 1fr); row-gap: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -3256,6 +3325,9 @@
 
                 <!-- Needs Your Attention: Starting XI | Transfers -->
                 <div class="v2-attention-grid" id="v2AttentionGrid"></div>
+
+                <!-- This week's read: the Scout's Desk debrief plus news, own players first -->
+                <div class="v2-feed" id="v2Feed" style="display:none;"></div>
 
                 <!-- Quick Actions (full-width row) -->
                 <div class="v2-quick-actions">
@@ -3713,12 +3785,12 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/price-watch.js?v=67"></script>
-    <script src="scripts/xp-engine.js?v=67"></script>
-    <script src="scripts/live-gw.js?v=67"></script>
-    <script src="scripts/transfer-engine.js?v=67"></script>
-    <script src="scripts/common.js?v=67"></script>
-    <script src="scripts/sidebar-nav.js?v=67"></script>
+    <script src="scripts/price-watch.js?v=68"></script>
+    <script src="scripts/xp-engine.js?v=68"></script>
+    <script src="scripts/live-gw.js?v=68"></script>
+    <script src="scripts/transfer-engine.js?v=68"></script>
+    <script src="scripts/common.js?v=68"></script>
+    <script src="scripts/sidebar-nav.js?v=68"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4322,7 +4394,134 @@
         }
 
         // ===== NEEDS YOUR ATTENTION =====
-        function renderAttentionGrid({ transferRec, squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets }) {
+        /* The two columns list problems, which is useful and, on a week with no
+           problems, empty. "Lineup looks good" told a manager nothing about the
+           gameweek they were about to play. Each column now opens with the state
+           of that side of the team — what the eleven projects, who has the
+           armband, what is in the bank, when the deadline is — and keeps the
+           alerts underneath. */
+        /* The debrief and the news, in one strip under the attention grid.
+
+           Two sources, deliberately ordered. The Scout's Desk debrief is written
+           for the round just played and is the single most relevant thing on the
+           site the morning after a gameweek. The news beneath it puts your own
+           players first: an injury to someone in your fifteen matters more than
+           any headline about a club you do not own, and sorting purely by
+           recency buries exactly the item you needed to see. */
+        async function renderGameweekFeed({ squad, allPlayers }) {
+            const el = document.getElementById('v2Feed');
+            if (!el) return;
+
+            const ownedIds = new Set((squad || []).map(p => p.id));
+            const ownedTeams = new Set((squad || []).map(p => (p.team || '').toLowerCase()).filter(Boolean));
+
+            // ---- 1. Latest gameweek debrief ----
+            let articleHtml = '';
+            try {
+                const idx = await fetch('data/articles/index.json?v=' + CACHE_BUSTER).then(r => r.ok ? r.json() : []);
+                const debrief = (idx || []).find(a => a.category === 'Gameweek Debrief')
+                    || (idx || [])[0];
+                if (debrief) {
+                    articleHtml = `<a class="v2-feed-article" href="articles/${encodeURIComponent(debrief.slug)}.html">
+                        <span class="v2-feed-kicker">${esc(debrief.category || 'Scout\u2019s Desk')}${debrief.gw ? ` \u00b7 GW${debrief.gw}` : ''}</span>
+                        <span class="v2-feed-title">${esc(debrief.title)}</span>
+                        <span class="v2-feed-dek">${esc(debrief.dek || '')}</span>
+                        <span class="v2-feed-meta">${debrief.readTime ? `${debrief.readTime} min read` : ''}${debrief.words ? ` \u00b7 ${Number(debrief.words).toLocaleString()} words` : ''} \u2192</span>
+                    </a>`;
+                }
+            } catch (e) { /* the feed is optional; a missing archive is not an error */ }
+
+            // ---- 2. FPL's own player news, own squad first ----
+            const items = [];
+            const thirtyDays = Date.now() - 30 * 24 * 60 * 60 * 1000;
+            (allPlayers || []).forEach(p => {
+                if (!p.news || !p.news.trim()) return;
+                if (p.newsAdded && new Date(p.newsAdded).getTime() < thirtyDays) return;
+                const owned = ownedIds.has(p.id);
+                // Everyone else's news is only worth showing if it is severe enough
+                // to be a transfer target or a warning about one.
+                if (!owned && (p.chanceNextRound == null || p.chanceNextRound > 25)) return;
+                items.push({
+                    owned,
+                    name: p.name,
+                    team: p.team,
+                    text: p.news.trim(),
+                    chance: p.chanceNextRound,
+                    when: p.newsAdded ? new Date(p.newsAdded).getTime() : 0
+                });
+            });
+            items.sort((a, b) => (b.owned - a.owned) || (b.when - a.when));
+
+            const newsHtml = items.length
+                ? items.slice(0, 8).map(n => `<div class="v2-feed-news ${n.owned ? 'own' : ''}">
+                    <span class="v2-feed-news-name">${esc(n.name)}${n.owned ? '<em>yours</em>' : ''}</span>
+                    <span class="v2-feed-news-text">${esc(n.text)}</span>
+                    ${n.chance != null ? `<span class="v2-feed-news-pct ${n.chance <= 25 ? 'bad' : n.chance < 100 ? 'warn' : ''}">${n.chance}%</span>` : ''}
+                </div>`).join('')
+                : '<div class="v2-feed-empty">No injury or availability news affecting your squad.</div>';
+
+            const ownedCount = items.filter(n => n.owned).length;
+            el.innerHTML = `
+                <div class="v2-feed-col">
+                    <div class="v2-section-label">This week&rsquo;s read</div>
+                    ${articleHtml || '<div class="v2-feed-empty">The gameweek debrief appears once the round has finished.</div>'}
+                </div>
+                <div class="v2-feed-col">
+                    <div class="v2-section-label">Team news${ownedCount ? ` \u00b7 <strong>${ownedCount}</strong> in your squad` : ''}</div>
+                    <div class="v2-feed-newslist">${newsHtml}</div>
+                    <a class="v2-feed-more" href="fpl-news.html">All news and headlines \u2192</a>
+                </div>`;
+            el.style.display = '';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function renderAttentionSummary(kind, ctx) {
+            const cell = (v, l, tip, cls) =>
+                `<div class="v2-attn-stat ${cls || ''}"><span class="v2-attn-stat-v">${v}</span><span class="v2-attn-stat-l" ${tip ? `title="${esc(tip)}"` : ''}>${l}</span></div>`;
+
+            if (kind === 'xi') {
+                const xi = (ctx.squad || []).filter(p => p.pickPosition <= 11);
+                if (!xi.length) return '';
+                const proj = p => typeof predictedGWPoints === 'function' ? predictedGWPoints(p) : (p.epNext || 0);
+                const cap = xi.find(p => p.isCaptain);
+                const total = xi.reduce((s, p) => s + proj(p) * (p.isCaptain ? 2 : 1), 0);
+                const counts = [2, 3, 4].map(t => xi.filter(p => p.position === t).length);
+                const flagged = xi.filter(p => p.status !== 'a').length;
+                const risky = xi.filter(p => {
+                    if (typeof expectedMinutesModel !== 'function' || p.status !== 'a') return false;
+                    try { return expectedMinutesModel(p).pStart < 0.65; } catch (e) { return false; }
+                }).length;
+                const capFx = cap && (cap.fixtures || [])[0];
+                return `<div class="v2-attn-summary">
+                    ${cell(total.toFixed(0), 'projected', 'Projected points for your starting eleven this gameweek, with the captain doubled.')}
+                    ${cell(counts.join('-'), 'shape', 'Your formation: defenders-midfielders-forwards.')}
+                    ${cell(cap ? esc(cap.name.split(' ').pop()) : '—', 'captain', cap ? `${cap.name}${capFx ? ` — ${capFx.isHome ? 'home to' : 'away at'} ${capFx.opponent}` : ''}` : 'No captain set')}
+                    ${cell(flagged + risky, 'at risk', 'Starters carrying an injury or fitness flag, or under a 65% chance of starting.', (flagged + risky) ? 'warn' : '')}
+                </div>`;
+            }
+
+            const drops = (ctx.priceDropRisk || []).filter(c => c.tier === 'due').length;
+            const rises = (ctx.priceRiseTargets || []).filter(c => c.tier === 'due').length;
+            let deadline = '—', deadlineTip = 'Deadline time unavailable';
+            if (ctx.deadlineTime) {
+                const ms = new Date(ctx.deadlineTime).getTime() - Date.now();
+                if (ms > 0) {
+                    const hrs = Math.floor(ms / 3600000), days = Math.floor(hrs / 24);
+                    deadline = days >= 1 ? `${days}d` : hrs >= 1 ? `${hrs}h` : `${Math.max(1, Math.floor(ms / 60000))}m`;
+                } else { deadline = 'closed'; }
+                deadlineTip = new Date(ctx.deadlineTime).toLocaleString();
+            }
+            const ft = ctx.freeTransfers != null ? ctx.freeTransfers : 1;
+            return `<div class="v2-attn-summary">
+                ${cell(ft, ft === 1 ? 'free transfer' : 'free transfers', 'Transfers you can make without taking a points hit.')}
+                ${cell('£' + (ctx.bank != null ? Number(ctx.bank).toFixed(1) : '0.0') + 'm', 'in the bank', 'Money available to spend right now.')}
+                ${cell(deadline, 'to deadline', deadlineTip, deadline !== 'closed' && /^[0-9]+[hm]$/.test(deadline) ? 'warn' : '')}
+                ${cell(drops + rises, 'price moves', 'Owned or watched players due to change price at the next update.', (drops + rises) ? 'warn' : '')}
+            </div>`;
+        }
+
+        function renderAttentionGrid({ transferRec, squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets,
+                                       freeTransfers, bank, deadlineTime, currentGW }) {
             const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
 
             const xiItems = [];
@@ -4442,7 +4641,9 @@
             // The rest of the price rows: near the line, but not tonight's news.
             pushPriceRows('close');
 
-            function renderCol(items, iconName, title, emptyText, linkBase) {
+            const summaryCtx = { squad, priceDropRisk, priceRiseTargets, freeTransfers, bank, deadlineTime };
+
+            function renderCol(items, iconName, title, emptyText, linkBase, summaryKind) {
                 let rowsHtml = '';
                 if (items.length === 0) {
                     rowsHtml = `<div class="v2-attn-empty"><i data-lucide="check-circle" class="icon"></i> ${emptyText}</div>`;
@@ -4469,12 +4670,13 @@
                 const countBadge = items.length > 0 ? `<span class="v2-attn-col-count has-items">${items.length}</span>` : `<span class="v2-attn-col-count">0</span>`;
                 return `<div class="v2-attn-col">
                     <div class="v2-attn-col-header"><i data-lucide="${iconName}" class="icon"></i> ${title}${countBadge}</div>
+                    ${renderAttentionSummary(summaryKind, summaryCtx)}
                     ${rowsHtml}
                 </div>`;
             }
 
-            const html = renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup')
-                       + renderCol(txItems, 'repeat', 'Transfers', 'No urgent transfer actions right now', 'fpl-my-team-analysis.html#transfers');
+            const html = renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup', 'xi')
+                       + renderCol(txItems, 'repeat', 'Transfers', 'No urgent transfer actions right now', 'fpl-my-team-analysis.html#transfers', 'tx');
             document.getElementById('v2AttentionGrid').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -5257,8 +5459,8 @@
                    misprices a -4 is worse than none. One extra request, and it
                    fails soft. */
                 let transferRec = null;
+                let freeTransfers = 1;   // hoisted: the Transfers column reports it too
                 try {
-                    let freeTransfers = 1;
                     try {
                         const hRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`);
                         const hist = await hRes.json();
@@ -5297,9 +5499,11 @@
                 });
                 if (leagueInfo) loadLeagueGap(leagueInfo.id, teamId, totalPointsRaw);
 
-                renderAttentionGrid({ transferRec, squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets });
+                renderAttentionGrid({ transferRec, squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets,
+                    freeTransfers, bank, deadlineTime, currentGW });
                 renderPitchView({ squad, analysisResults });
                 renderPriceTicker(allPlayers, squad);
+                renderGameweekFeed({ squad, allPlayers });
 
                 // DASHBOARD WIDGETS DISABLED: News Hub (news strip + headlines widget). Commented
                 // out (not just hidden) to also avoid firing the 4 external RSS fetches for nothing.

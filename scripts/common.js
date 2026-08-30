@@ -378,6 +378,7 @@ const DATA_URLS = {
     fixtures:  'data/fixtures.json?v=' + CACHE_BUSTER,
     players:   'data/players-data.json?v=' + CACHE_BUSTER,
     teams:     'data/teams-data.json?v=' + CACHE_BUSTER,
+    eventLive: 'data/event-live.json?v=' + CACHE_BUSTER,
     lastUpdated: 'data/last-updated.json?v=' + CACHE_BUSTER
 };
 
