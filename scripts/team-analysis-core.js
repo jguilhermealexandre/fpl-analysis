@@ -1425,8 +1425,13 @@
 
         function renderTeamOverview(health, sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
             const circumference = 2 * Math.PI * 54;
-            const healthColor = health >= 75 ? 'var(--verdict-hold)' : health >= 50 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
+            /* One set of bands, not two. The colour used to break at 75/50 while the
+               wording broke at 85/70/55/40, so a squad on 72 was labelled "Good
+               Shape" and drawn in warning orange at the same time, and one on 52
+               read "Concerning" in the same orange as a 68. The ring now takes its
+               colour from the band the words already put you in. */
             const healthText = health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape' : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed';
+            const healthColor = health >= 70 ? 'var(--verdict-hold)' : health >= 55 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
 
             return `
             <div class="team-overview">
@@ -1454,6 +1459,16 @@
                         const played = Math.max(0, (currentGW || 1) - 1) || (currentGW === 1 ? 1 : 0);
                         return played < 4
                             ? `<div class="health-sample">Based on ${played} gameweek${played === 1 ? '' : 's'} — form is still weighted toward what each player is expected to do, not what he did once.</div>`
+                            : '';
+                    })()}
+                    ${(() => {
+                        // Everything else in this panel is about the gameweeks ahead.
+                        // Once the current round has started there is a second
+                        // question worth answering — what just happened — and it
+                        // gets its own report rather than crowding this column.
+                        const reviewGW = typeof gwReviewTarget === 'function' ? gwReviewTarget() : null;
+                        return reviewGW
+                            ? `<button class="gwr-open" onclick="openGameweekReview()" data-tooltip="How your squad actually did in GW${reviewGW} — the armband, the bench, who delivered, and how it compares with the field.">📊 Review Gameweek ${reviewGW}</button>`
                             : '';
                     })()}
                     <div class="insight-moves">

@@ -1515,8 +1515,16 @@
             }
 
             if (showReport) {
+                // Every other number on this card is season-to-date or a projection,
+                // so what the player actually did in the round just played had
+                // nowhere to live \u2014 you had to leave the card to find out whether
+                // the man you are reading about scored on Saturday.
+                const gwLine = typeof gwPlayerReportLine === 'function' && typeof gwReviewTarget === 'function'
+                    ? gwPlayerReportLine(player, gwReviewTarget())
+                    : '';
                 html += `<div class="detail-section pd-report">
                     <div class="detail-section-title">\ud83e\udde0 AI Report</div>
+                    ${gwLine}
                     <div class="pd-report-text">${escHTML(buildPlayerNarrativeReport(player, analysis, context))}</div>
                 </div>`;
             }
