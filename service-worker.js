@@ -18,6 +18,7 @@ const STATIC_ASSETS = [
   '/styles/players.css',
   '/styles/teams.css',
   '/styles/my-team.css',
+  '/scripts/error-monitor.js',
   '/scripts/common.js',
   '/scripts/xp-engine.js',
   '/scripts/live-gw.js',

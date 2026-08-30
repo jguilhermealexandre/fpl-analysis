@@ -383,6 +383,29 @@ const DATA_URLS = {
 };
 
 // ===== HTML ESCAPING =====
+/* One shape for a player object, whichever page built it.
+
+   Each page maps FPL's `element` into its own player object, and they disagreed
+   on one field: three call the position `position`, fpl-league-rivals.html calls
+   it `pos`. Nothing errors when they cross — `p.position` on an object that only
+   has `pos` is undefined, every comparison is false, and the feature returns an
+   empty list. That is how the Transfer Wizard's Favorites tab shipped empty, and
+   how the League Rivals position breakdown would have reported every position as
+   having no players.
+
+   Rather than rewrite four data paths at once, this guarantees both names are
+   present and equal. New mappings should call it; existing readers of either
+   name keep working.
+
+   Mutates and returns the same object: these are built in hot .map() loops over
+   600+ players and cloning them buys nothing. */
+function normalisePlayerShape(player) {
+    if (!player || typeof player !== 'object') return player;
+    if (player.position == null && player.pos != null) player.position = player.pos;
+    else if (player.pos == null && player.position != null) player.pos = player.position;
+    return player;
+}
+
 function escHTML(str) {
     const d = document.createElement('div');
     d.textContent = str || '';

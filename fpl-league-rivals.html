@@ -19,6 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/common.css?v=86">
     <link rel="stylesheet" href="styles/v2-design.css?v=86">
+    <script src="scripts/error-monitor.js?v=86"></script>
     <script src="scripts/common.js?v=86"></script>
     <script src="scripts/sidebar-nav.js?v=86"></script>
     <style>
@@ -1200,7 +1201,10 @@
                     DataCache.fetchJSON(FIXTURES_URL).catch(() => null)
                 ]);
                 
-                allPlayers = data.elements.map(p => ({
+                // normalisePlayerShape keeps `position` and `pos` in step; this page
+                // names it `pos`, three others name it `position`, and code that
+                // reads the wrong one fails silently rather than throwing.
+                allPlayers = data.elements.map(p => normalisePlayerShape({
                     id: p.id,
                     name: p.web_name,
                     team: p.team,
