@@ -4,12 +4,16 @@
   "type": "module",
   "description": "EasyFPL \u2014 static FPL analysis site. No bundler by design; see eslint.config.js.",
   "scripts": {
-    "lint": "eslint scripts tools",
+    "dev": "node tools/dev-server.mjs",
+    "test": "node --test tests/",
+    "lint": "eslint scripts tools tests",
     "check:globals": "node tools/check-globals.mjs",
     "check:versions": "node tools/check-versions.mjs",
+    "check:inline": "node tools/check-inline-syntax.mjs",
     "gen:globals": "node tools/gen-eslint-globals.mjs",
     "stamp": "node tools/stamp-version.mjs",
-    "check": "npm run lint && npm run check:globals && npm run check:versions"
+    "log": "git log --oneline --invert-grep --grep='^Update FPL data' --grep='^Refresh live FPL data'",
+    "check": "npm run lint && npm run check:globals && npm run check:versions && npm run check:inline && npm test"
   },
   "devDependencies": {
     "eslint": "^9.12.0",

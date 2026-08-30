@@ -929,7 +929,7 @@ export default [
         }
     },
     {
-        files: ['tools/**/*.mjs', 'scripts/build-articles.js'],
+        files: ['tools/**/*.mjs', 'tests/**/*.mjs', 'scripts/build-articles.js'],
         languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } },
         rules: { 'no-undef': 'error' }
     }
