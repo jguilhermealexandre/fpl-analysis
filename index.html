@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=68">
-    <link rel="stylesheet" href="styles/v2-design.css?v=68">
+    <link rel="stylesheet" href="styles/common.css?v=69">
+    <link rel="stylesheet" href="styles/v2-design.css?v=69">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3785,12 +3785,12 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/price-watch.js?v=68"></script>
-    <script src="scripts/xp-engine.js?v=68"></script>
-    <script src="scripts/live-gw.js?v=68"></script>
-    <script src="scripts/transfer-engine.js?v=68"></script>
-    <script src="scripts/common.js?v=68"></script>
-    <script src="scripts/sidebar-nav.js?v=68"></script>
+    <script src="scripts/price-watch.js?v=69"></script>
+    <script src="scripts/xp-engine.js?v=69"></script>
+    <script src="scripts/live-gw.js?v=69"></script>
+    <script src="scripts/transfer-engine.js?v=69"></script>
+    <script src="scripts/common.js?v=69"></script>
+    <script src="scripts/sidebar-nav.js?v=69"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4411,6 +4411,8 @@
         async function renderGameweekFeed({ squad, allPlayers }) {
             const el = document.getElementById('v2Feed');
             if (!el) return;
+            const esc = t => String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
             const ownedIds = new Set((squad || []).map(p => p.id));
             const ownedTeams = new Set((squad || []).map(p => (p.team || '').toLowerCase()).filter(Boolean));
@@ -4418,7 +4420,10 @@
             // ---- 1. Latest gameweek debrief ----
             let articleHtml = '';
             try {
-                const idx = await fetch('data/articles/index.json?v=' + CACHE_BUSTER).then(r => r.ok ? r.json() : []);
+                // Same five-minute buster the page's other data fetches use, rather
+                // than common.js's CACHE_BUSTER — one less cross-file dependency.
+                const idx = await fetch('data/articles/index.json?v=' + Math.floor(Date.now() / 300000))
+                    .then(r => r.ok ? r.json() : []);
                 const debrief = (idx || []).find(a => a.category === 'Gameweek Debrief')
                     || (idx || [])[0];
                 if (debrief) {
@@ -4476,6 +4481,8 @@
         }
 
         function renderAttentionSummary(kind, ctx) {
+            const esc = t => String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             const cell = (v, l, tip, cls) =>
                 `<div class="v2-attn-stat ${cls || ''}"><span class="v2-attn-stat-v">${v}</span><span class="v2-attn-stat-l" ${tip ? `title="${esc(tip)}"` : ''}>${l}</span></div>`;
 
