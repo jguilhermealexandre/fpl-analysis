@@ -461,7 +461,10 @@ function showNavTeamInput() {
 
 // ===== FOOTER LOADING =====
 function loadFooter() {
-    fetch('footer.html?v=' + (window.ASSET_V || '62'))
+    // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
+    // nothing in the codebase ever assigned — so the footer sat on the '62'
+    // fallback permanently and could not be cache-busted at all.
+    fetch('footer.html?v=86')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -496,7 +499,7 @@ function initIcons() {
 
 // ===== NAV LOADING =====
 function loadNav() {
-    return fetch('nav.html?v=46')
+    return fetch('nav.html?v=86')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);

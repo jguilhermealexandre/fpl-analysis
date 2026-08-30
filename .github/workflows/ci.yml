@@ -1,0 +1,65 @@
+name: CI
+
+# Guards for a site with no build step. Everything here is cheap and runs on
+# every push, because the failures it catches are all silent ones: a helper that
+# only exists in another function's scope, a second file quietly redefining a
+# global, a shared script changed without re-stamping the pages that cache it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No lockfile and three dev dependencies, so a plain install is fine and
+      # keeps the repo free of node_modules bookkeeping.
+      - name: Install dev dependencies
+        run: npm install --no-save eslint@^9.12.0 @eslint/js@^9.12.0 globals@^15.11.0
+
+      # Both of these were verified against the current tree before landing, so
+      # they are blocking from day one.
+      - name: No colliding globals
+        run: node tools/check-globals.mjs
+
+      - name: Asset version stamped everywhere
+        run: node tools/check-versions.mjs
+
+      # ESLint could not be run locally when it was introduced (no Node on the
+      # authoring machine), so this reports rather than blocks for now. Flip
+      # continue-on-error off once a clean run is confirmed — the rules in
+      # eslint.config.js are correctness-only, so the list should be short and
+      # every entry should be a real defect.
+      - name: ESLint (reporting only for now)
+        continue-on-error: true
+        run: npx eslint scripts tools
+
+      # The generated globals block must match the code it was generated from,
+      # or no-undef starts lying in both directions.
+      - name: Generated globals are current
+        run: |
+          cp eslint.config.js /tmp/eslint.before
+          node tools/gen-eslint-globals.mjs
+          if ! diff -q /tmp/eslint.before eslint.config.js > /dev/null; then
+            echo "::error::eslint.config.js globals are stale. Run: npm run gen:globals"
+            diff /tmp/eslint.before eslint.config.js | head -20
+            exit 1
+          fi
+          echo "✓ generated globals match"
+
+      # Inline <script> in every page must at least parse. Cheap insurance for
+      # the ~14.6k lines that ESLint cannot see until they are extracted.
+      - name: Inline page scripts parse
+        run: node tools/check-inline-syntax.mjs
