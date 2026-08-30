@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=69">
-    <link rel="stylesheet" href="styles/v2-design.css?v=69">
+    <link rel="stylesheet" href="styles/common.css?v=70">
+    <link rel="stylesheet" href="styles/v2-design.css?v=70">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3106,6 +3106,7 @@
             font-size: 9px; font-weight: 600; color: var(--text-muted); cursor: help;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
+        .v2-attn-summary.five { grid-template-columns: repeat(5, 1fr); }
         .v2-attn-stat.warn .v2-attn-stat-v { color: var(--color-warning); }
 
         /* ===== This week's read: debrief + team news ===== */
@@ -3137,6 +3138,7 @@
             font-size: 11px; border-left: 3px solid transparent;
         }
         .v2-feed-news.own { border-left-color: var(--color-primary); background: var(--surface-2); }
+        .v2-feed-news.watch { border-left-color: var(--color-warning); }
         .v2-feed-news-name { flex-shrink: 0; font-weight: 700; color: var(--text-primary); }
         .v2-feed-news-name em {
             font-style: normal; margin-left: 5px; padding: 1px 5px; border-radius: 3px;
@@ -3157,7 +3159,7 @@
         .v2-feed-more { margin-top: 8px; font-size: 11px; color: var(--color-primary); text-decoration: none; }
         .v2-feed-more:hover { text-decoration: underline; }
         @media (max-width: 640px) {
-            .v2-attn-summary { grid-template-columns: repeat(2, 1fr); row-gap: 10px; }
+            .v2-attn-summary, .v2-attn-summary.five { grid-template-columns: repeat(2, 1fr); row-gap: 10px; }
         }
     </style>
 </head>
@@ -3785,12 +3787,12 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/price-watch.js?v=69"></script>
-    <script src="scripts/xp-engine.js?v=69"></script>
-    <script src="scripts/live-gw.js?v=69"></script>
-    <script src="scripts/transfer-engine.js?v=69"></script>
-    <script src="scripts/common.js?v=69"></script>
-    <script src="scripts/sidebar-nav.js?v=69"></script>
+    <script src="scripts/price-watch.js?v=70"></script>
+    <script src="scripts/xp-engine.js?v=70"></script>
+    <script src="scripts/live-gw.js?v=70"></script>
+    <script src="scripts/transfer-engine.js?v=70"></script>
+    <script src="scripts/common.js?v=70"></script>
+    <script src="scripts/sidebar-nav.js?v=70"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4436,43 +4438,60 @@
                 }
             } catch (e) { /* the feed is optional; a missing archive is not an error */ }
 
-            // ---- 2. FPL's own player news, own squad first ----
+            /* ---- 2. Team news, scoped to players that are actually yours ----
+
+               The first cut of this sorted owned players first and then let
+               anyone else through on a severity test, which sounds reasonable and
+               is not: 81 of the 100 players carrying recent news are on 25% or
+               less, nearly all of them reserves at clubs you do not own. They
+               swamped the list, so a section headed "Team news" showed a stranger's
+               fourth-choice left-back and none of your fifteen. Ownership now
+               decides inclusion, not just ordering. */
+            const shortlist = (() => {
+                try { return new Set(JSON.parse(localStorage.getItem('fpl_shortlist') || '[]').map(Number)); }
+                catch (e) { return new Set(); }
+            })();
+
             const items = [];
             const thirtyDays = Date.now() - 30 * 24 * 60 * 60 * 1000;
             (allPlayers || []).forEach(p => {
                 if (!p.news || !p.news.trim()) return;
                 if (p.newsAdded && new Date(p.newsAdded).getTime() < thirtyDays) return;
                 const owned = ownedIds.has(p.id);
-                // Everyone else's news is only worth showing if it is severe enough
-                // to be a transfer target or a warning about one.
-                if (!owned && (p.chanceNextRound == null || p.chanceNextRound > 25)) return;
+                const starred = shortlist.has(p.id);
+                // Anyone outside your squad and your shortlist has to earn a place
+                // by being someone the game as a whole owns — real FPL news rather
+                // than a squad filler's ankle.
+                const notable = !owned && !starred && (p.ownership || 0) >= 5;
+                if (!owned && !starred && !notable) return;
                 items.push({
-                    owned,
-                    name: p.name,
-                    team: p.team,
-                    text: p.news.trim(),
+                    scope: owned ? 'own' : starred ? 'watch' : 'game',
+                    rank: owned ? 0 : starred ? 1 : 2,
+                    name: p.name, team: p.team, text: p.news.trim(),
                     chance: p.chanceNextRound,
+                    ownership: p.ownership || 0,
                     when: p.newsAdded ? new Date(p.newsAdded).getTime() : 0
                 });
             });
-            items.sort((a, b) => (b.owned - a.owned) || (b.when - a.when));
+            items.sort((a, b) => a.rank - b.rank || b.when - a.when);
 
+            const scopeLabel = { own: 'yours', watch: 'watching', game: '' };
             const newsHtml = items.length
-                ? items.slice(0, 8).map(n => `<div class="v2-feed-news ${n.owned ? 'own' : ''}">
-                    <span class="v2-feed-news-name">${esc(n.name)}${n.owned ? '<em>yours</em>' : ''}</span>
+                ? items.slice(0, 8).map(n => `<div class="v2-feed-news ${n.scope}">
+                    <span class="v2-feed-news-name">${esc(n.name)}${scopeLabel[n.scope] ? `<em>${scopeLabel[n.scope]}</em>` : ''}</span>
                     <span class="v2-feed-news-text">${esc(n.text)}</span>
                     ${n.chance != null ? `<span class="v2-feed-news-pct ${n.chance <= 25 ? 'bad' : n.chance < 100 ? 'warn' : ''}">${n.chance}%</span>` : ''}
                 </div>`).join('')
-                : '<div class="v2-feed-empty">No injury or availability news affecting your squad.</div>';
+                : '<div class="v2-feed-empty">Nothing flagged against your squad, your shortlist, or any widely owned player.</div>';
 
-            const ownedCount = items.filter(n => n.owned).length;
+            const ownedCount = items.filter(n => n.scope === 'own').length;
             el.innerHTML = `
                 <div class="v2-feed-col">
                     <div class="v2-section-label">This week&rsquo;s read</div>
                     ${articleHtml || '<div class="v2-feed-empty">The gameweek debrief appears once the round has finished.</div>'}
                 </div>
                 <div class="v2-feed-col">
-                    <div class="v2-section-label">Team news${ownedCount ? ` \u00b7 <strong>${ownedCount}</strong> in your squad` : ''}</div>
+                    <div class="v2-section-label">Team news \u00b7 ${ownedCount ? `<strong>${ownedCount}</strong> in your squad` : 'none in your squad'}</div>
                     <div class="v2-feed-newslist">${newsHtml}</div>
                     <a class="v2-feed-more" href="fpl-news.html">All news and headlines \u2192</a>
                 </div>`;
@@ -4487,22 +4506,56 @@
                 `<div class="v2-attn-stat ${cls || ''}"><span class="v2-attn-stat-v">${v}</span><span class="v2-attn-stat-l" ${tip ? `title="${esc(tip)}"` : ''}>${l}</span></div>`;
 
             if (kind === 'xi') {
+                /* What belongs here is what a manager checks in the last hour
+                   before a deadline, and the two things most often got wrong are
+                   not the ones this panel used to show.
+
+                   The armband is only half a decision: if the captain plays no
+                   minutes at all the multiplier passes to the vice, so a vice who
+                   is himself a rotation risk quietly voids the biggest call of the
+                   week. And auto-substitutions only fire for a bench player who
+                   actually played and who keeps the formation legal, so a first
+                   substitute who is not going to start is no insurance at all.
+                   Both now have a cell. */
                 const xi = (ctx.squad || []).filter(p => p.pickPosition <= 11);
                 if (!xi.length) return '';
+                const bench = (ctx.squad || []).filter(p => p.pickPosition > 11)
+                    .sort((a, b) => a.pickPosition - b.pickPosition);
                 const proj = p => typeof predictedGWPoints === 'function' ? predictedGWPoints(p) : (p.epNext || 0);
+                const startProb = p => {
+                    if (typeof expectedMinutesModel !== 'function') return null;
+                    try { return expectedMinutesModel(p).pStart; } catch (e) { return null; }
+                };
                 const cap = xi.find(p => p.isCaptain);
+                const vice = (ctx.squad || []).find(p => p.isViceCaptain);
                 const total = xi.reduce((s, p) => s + proj(p) * (p.isCaptain ? 2 : 1), 0);
                 const counts = [2, 3, 4].map(t => xi.filter(p => p.position === t).length);
+
+                // Cover means an outfield substitute who is likely to play at all;
+                // a 4.0m benchwarmer in the first slot is the classic false comfort.
+                const outfieldBench = bench.filter(p => p.position !== 1);
+                const cover = outfieldBench.filter(p => p.status === 'a' && (startProb(p) ?? 0) >= 0.5).length;
+
+                const viceProb = vice ? startProb(vice) : null;
+                const viceOK = vice && vice.status === 'a' && (viceProb == null || viceProb >= 0.65);
+                const viceLabel = !vice ? '—' : esc(vice.name.split(' ').pop());
+                const viceTip = !vice ? 'No vice-captain set'
+                    : `${vice.name} takes the armband only if ${cap ? cap.name : 'your captain'} plays no minutes at all.`
+                      + (viceProb != null ? ` He is ${Math.round(viceProb * 100)}% likely to start himself.` : '')
+                      + (vice.status !== 'a' ? ' He is carrying a fitness flag.' : '');
+
                 const flagged = xi.filter(p => p.status !== 'a').length;
-                const risky = xi.filter(p => {
-                    if (typeof expectedMinutesModel !== 'function' || p.status !== 'a') return false;
-                    try { return expectedMinutesModel(p).pStart < 0.65; } catch (e) { return false; }
-                }).length;
+                const risky = xi.filter(p => p.status === 'a' && (startProb(p) ?? 1) < 0.65).length;
                 const capFx = cap && (cap.fixtures || [])[0];
-                return `<div class="v2-attn-summary">
+
+                return `<div class="v2-attn-summary five">
                     ${cell(total.toFixed(0), 'projected', 'Projected points for your starting eleven this gameweek, with the captain doubled.')}
-                    ${cell(counts.join('-'), 'shape', 'Your formation: defenders-midfielders-forwards.')}
-                    ${cell(cap ? esc(cap.name.split(' ').pop()) : '—', 'captain', cap ? `${cap.name}${capFx ? ` — ${capFx.isHome ? 'home to' : 'away at'} ${capFx.opponent}` : ''}` : 'No captain set')}
+                    ${cell(cap ? esc(cap.name.split(' ').pop()) : '—', 'captain',
+                        cap ? `${cap.name}${capFx ? ` — ${capFx.isHome ? 'home to' : 'away at'} ${capFx.opponent}` : ''}` : 'No captain set')}
+                    ${cell(viceLabel, 'vice', viceTip, viceOK ? '' : 'warn')}
+                    ${cell(`${cover}/${outfieldBench.length || 0}`, 'bench cover',
+                        'Outfield substitutes fit and likely to play. Auto-subs only replace a starter with a bench player who actually featured and keeps the formation legal.',
+                        cover === 0 ? 'warn' : '')}
                     ${cell(flagged + risky, 'at risk', 'Starters carrying an injury or fitness flag, or under a 65% chance of starting.', (flagged + risky) ? 'warn' : '')}
                 </div>`;
             }
@@ -4567,6 +4620,61 @@
                         href: `fpl-my-team-analysis.html#squad?player=${p.id}`
                     });
                 });
+            }
+
+            /* Two failure modes that cost points silently, both named in FPL's own
+               guidance on auto-substitutions and the vice-captaincy. Neither shows
+               up as an injury flag, so nothing else on this page catches them. */
+            const benchAll = squad.filter(p => p.pickPosition > 11).sort((a, b) => a.pickPosition - b.pickPosition);
+            const outfieldSubs = benchAll.filter(p => p.position !== 1);
+            const startsPct = p => {
+                if (typeof expectedMinutesModel !== 'function') return null;
+                try { return Math.round(expectedMinutesModel(p).pStart * 100); } catch (e) { return null; }
+            };
+
+            // The vice only matters when the captain plays nothing at all, but that
+            // is exactly when it matters most — a doubtful vice voids the biggest
+            // call of the week.
+            const viceP = squad.find(p => p.isViceCaptain);
+            if (viceP) {
+                const vp = startsPct(viceP);
+                if (viceP.status !== 'a' || (vp != null && vp < 60)) {
+                    xiItems.push({
+                        name: viceP.name,
+                        reason: viceP.status !== 'a'
+                            ? 'Your vice-captain is carrying a fitness flag — if your captain blanks, the armband may pass to nobody'
+                            : `Your vice-captain is only ${vp}% likely to start — the armband passes to him only if your captain plays no minutes`,
+                        severity: 'monitor',
+                        href: `fpl-my-team-analysis.html#squad?player=${viceP.id}`
+                    });
+                }
+            }
+
+            // An auto-sub only fires for a bench player who actually played, so the
+            // first outfield substitute is the one that has to be a real footballer.
+            if (outfieldSubs.length) {
+                const first = outfieldSubs[0];
+                const fp = startsPct(first);
+                if (first.status !== 'a' || (fp != null && fp < 45)) {
+                    xiItems.push({
+                        name: first.name,
+                        reason: `First on your bench but ${first.status !== 'a' ? 'flagged' : `only ${fp}% likely to play`} — an auto-sub cannot use a player who did not feature`,
+                        severity: 'monitor',
+                        href: 'fpl-my-team-analysis.html#lineup'
+                    });
+                }
+                // Playing three at the back with no defender in reserve means a
+                // defensive blank cannot legally be substituted at all.
+                const startDef = squad.filter(p => p.pickPosition <= 11 && p.position === 2).length;
+                const benchDef = outfieldSubs.filter(p => p.position === 2).length;
+                if (startDef <= 3 && benchDef === 0) {
+                    xiItems.push({
+                        name: 'No defensive cover',
+                        reason: `You start ${startDef} defenders with none on the bench — if one blanks, no auto-sub can legally replace him`,
+                        severity: 'monitor',
+                        href: 'fpl-my-team-analysis.html#lineup'
+                    });
+                }
             }
 
             const currentCaptain = squad.find(p => p.isCaptain);
@@ -4641,9 +4749,23 @@
                 });
             };
             pushPriceRows('due');
+            /* A Sell verdict and the recommended move above it are answers to two
+               different questions — "is this player a problem" and "what single
+               change adds most points" — and they do not always land on the same
+               name. Left unexplained that reads as the page arguing with itself,
+               so each Sell row now says where it stands relative to the move. */
+            const recOutIds = new Set(((transferRec && transferRec.best && transferRec.best.moves) || []).map(m => m.out.id));
+            const recBlocked = transferRec && transferRec.best && transferRec.best.n === 0;
             squad.forEach((p, i) => {
                 const a = analysisResults[i];
-                if (a && a.verdict === 'sell') txItems.push({ name: p.name, reason: a.topConcern || 'Rated Sell — consider moving on', severity: 'sell', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
+                if (!a || a.verdict !== 'sell') return;
+                const concern = a.topConcern || 'Rated Sell';
+                const reason = recOutIds.has(p.id)
+                    ? `${concern} — the move above replaces him`
+                    : recBlocked
+                        ? `${concern}, but no replacement clears the margin yet — holding is still the better play`
+                        : `${concern} — not in the recommended move, which gains more elsewhere this week`;
+                txItems.push({ name: p.name, reason, severity: 'sell', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
             });
             // The rest of the price rows: near the line, but not tonight's news.
             pushPriceRows('close');
@@ -5476,10 +5598,18 @@
                     } catch (e) { /* fall back to one, the season's opening position */ }
 
                     if (typeof twBuildRecommendation === 'function') {
+                        // Players the squad analysis has already told this manager
+                        // to move on. Passed as a tie-breaker so the recommended
+                        // move and the Sell rows below it stop contradicting each
+                        // other on near-equal options — see TW_FLAGGED_NUDGE.
+                        const priorityOutIds = new Set(
+                            squad.filter((p, i) => analysisResults[i] && analysisResults[i].verdict === 'sell')
+                                 .map(p => p.id));
                         transferRec = twBuildRecommendation({
                             squad,
                             bank,
-                            freeTransfers
+                            freeTransfers,
+                            priorityOutIds
                         });
                     }
                 } catch (e) {

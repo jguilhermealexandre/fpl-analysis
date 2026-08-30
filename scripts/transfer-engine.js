@@ -92,6 +92,12 @@
         const TW_MIN_FREE_GAIN = 3.0;   // spend a free transfer
         const TW_MIN_HIT_GAIN  = 4.0;   // clear the 4-point hit by this much again
 
+        /* How much a squad-analysis Sell verdict is worth when ordering otherwise
+           comparable moves. Deliberately well under TW_MIN_FREE_GAIN: it decides
+           ties between moves the engine already rates similarly, and can never
+           promote one that falls short of the margin a transfer has to clear. */
+        const TW_FLAGGED_NUDGE = 0.75;
+
         /* Free transfers, replayed from a manager's history.
 
            The official API does not publish the count, so it has to be
@@ -284,9 +290,51 @@
                 clubCount
             };
 
-            const moves = squad.map(p => twBestSwapFor(p, ctx))
+            /* Ranking, with an optional thumb on the scale for players the squad
+               analysis has already flagged.
+
+               The two engines answer different questions and so can disagree
+               honestly: a verdict asks "is this player a problem" from form,
+               minutes, fixtures and price risk, while the swap search asks "which
+               single change adds most to the squad's projected points". A flagged
+               player with no affordable upgrade is correctly left alone, and the
+               biggest xP gain can sit on a player rated Hold.
+
+               But telling a manager "Sell Gordon" in one column and "transfer out
+               Semenyo" in the next, with nothing connecting them, reads as the
+               site contradicting itself. o.priorityOutIds lets a host pass the
+               flagged ids so that where two moves are within noise of each other,
+               the one that resolves a problem the manager has already been shown
+               wins. It is a tie-breaker, not an override: TW_FLAGGED_NUDGE is far
+               too small to promote a materially worse move, and the gain reported
+               on the card is always the real one. */
+            const flagged = o.priorityOutIds instanceof Set ? o.priorityOutIds : null;
+            const ftNow = o.freeTransfers != null ? o.freeTransfers : twFreeTransfers();
+            const cost1 = Math.max(0, 1 - ftNow) * 4;
+            const margin1 = cost1 > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
+            const clearsBar = m => (m.gain - cost1) >= margin1;
+
+            const byGain = squad.map(p => twBestSwapFor(p, ctx))
                 .filter(Boolean)
                 .sort((a, b) => b.gain - a.gain);
+
+            /* Promote a flagged player's move only when doing so costs nothing.
+
+               Adding the nudge to the sort key directly looks equivalent and is
+               not: a flagged move on 2.6 outranks an unflagged 3.2, becomes the
+               only candidate considered, then fails the 3.0 viability margin on
+               its real gain — turning a legitimate recommendation into "hold" and
+               losing the manager a move they should have been offered. The swap
+               is therefore allowed only when the flagged move clears the same bar,
+               or when the move it displaces was not going to clear it either. */
+            let moves = byGain;
+            if (flagged && byGain.length && !flagged.has(byGain[0].out.id)) {
+                const top = byGain[0];
+                const alt = byGain.find(m => flagged.has(m.out.id) && (top.gain - m.gain) <= TW_FLAGGED_NUDGE);
+                if (alt && (clearsBar(alt) || !clearsBar(top))) {
+                    moves = [alt].concat(byGain.filter(m => m !== alt));
+                }
+            }
 
             // No legal move at all — everything is unaffordable, blocked by the
             // three-per-club limit, or already owned. That is a hold, not a
