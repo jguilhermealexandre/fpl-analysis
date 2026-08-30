@@ -1,0 +1,45 @@
+# Cloudflare Pages response headers.
+#
+# This file was called _headers.txt and therefore did nothing. Pages reads
+# `_headers`, no extension, so every rule below had never been applied: a live
+# check showed no Content-Security-Policy, no Strict-Transport-Security, no
+# X-Frame-Options and no Permissions-Policy, and /data/*.json being served with
+# Pages' default `max-age=0, must-revalidate` rather than the 300s intended
+# here. The two headers that were present, nosniff and Referrer-Policy, are
+# Pages defaults and arrive with or without this file.
+#
+# The CSP below was audited against what the site actually loads before being
+# switched on, because a wrong one fails closed and breaks the page:
+#
+#   script-src   cdn.jsdelivr.net (Chart.js) and unpkg.com (lucide, injected at
+#                runtime by common.js). 'unsafe-inline' is not optional: there
+#                are 333 inline onclick= handlers and ~14.6k lines of inline
+#                <script>. No eval or new Function anywhere, so 'unsafe-eval'
+#                is deliberately absent.
+#   connect-src  the FPL proxy worker; api.rss2json.com for the news feeds;
+#                docs.google.com for the Season Vault CSV export; and
+#                pulselive for shirt numbers — that last one is fetched from
+#                team-analysis-core.js and index.html and was missing from the
+#                original policy, so enabling the file as written would have
+#                broken jersey numbers on two pages.
+#   img-src      https: covers the Premier League badge CDN.
+#   font-src     Google Fonts, plus 'self' for anything served locally later.
+#
+# No iframes and no <form> elements exist on the site, so frame-ancestors,
+# form-action and object-src are locked down rather than left to default-src.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://fpl-proxy.jguilhermealexandre.workers.dev https://api.rss2json.com https://docs.google.com https://sdp-prem-prod.premier-league-prod.pulselive.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# The data feed is rewritten every 15 minutes during match windows, so 300s at
+# the edge is roughly one refresh behind at worst and takes the repeated reads
+# off the origin entirely. Without this rule these were cf-cache-status: DYNAMIC
+# — every visitor fetching every file from origin, on the hottest paths on the
+# site.
+/data/*
+  Cache-Control: public, max-age=300, s-maxage=300
