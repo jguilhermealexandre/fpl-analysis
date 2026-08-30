@@ -1,6 +1,7 @@
 /* ============================================
    EasyFPL — Sidebar Nav
-   Fetch-injects sidebar-nav.html, mirrors loadNav()'s pattern in common.js.
+   Fetch-injects sidebar-nav.html. This is the site's only nav; the older
+   nav.html and its loadNav() were retired with the standalone wizard.
    ============================================ */
 
 // Restore the rail preference before the injected sidebar is painted.
@@ -27,7 +28,7 @@ function loadSidebarNav() {
             const activeItem = document.querySelector(`.v2-nav-item[data-page="${page}"]`);
             if (activeItem) activeItem.classList.add('active');
 
-            // Restore Team ID widget from localStorage (same ids as nav.html)
+            // Restore Team ID widget from localStorage
             const savedId = getSavedTeamId();
             if (savedId) showNavTeamBadge(savedId);
 

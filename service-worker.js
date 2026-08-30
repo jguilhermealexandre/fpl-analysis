@@ -1,4 +1,4 @@
-const CACHE_NAME = 'easyfpl-v4';
+const CACHE_NAME = 'easyfpl-v5';
 
 const STATIC_ASSETS = [
   '/',
@@ -6,7 +6,6 @@ const STATIC_ASSETS = [
   '/fpl-players-analysis.html',
   '/fpl-teams-analysis.html',
   '/fpl-my-team-analysis.html',
-  '/fpl-transfer-wizard.html',
   '/fpl-league-rivals.html',
   '/fpl-news.html',
   '/fpl-faq.html',
@@ -19,14 +18,12 @@ const STATIC_ASSETS = [
   '/styles/players.css',
   '/styles/teams.css',
   '/styles/my-team.css',
-  '/styles/wizard.css',
   '/scripts/common.js',
   '/scripts/xp-engine.js',
   '/scripts/live-gw.js',
   '/scripts/transfer-engine.js',
   '/scripts/players-ai.js',
   '/scripts/players-tables.js',
-  '/nav.html',
   '/footer.html',
 ];
 

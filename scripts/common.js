@@ -496,68 +496,10 @@ function initIcons() {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     });
 }
+/* loadNav() and nav.html were removed with the standalone Transfer Wizard,
+   the only page still on that nav. Every page now uses loadSidebarNav().
+   Keeping both meant every nav change had to be made twice. */
 
-// ===== NAV LOADING =====
-function loadNav() {
-    return fetch('nav.html?v=86')
-        .then(r => r.text())
-        .then(html => {
-            document.body.insertAdjacentHTML('afterbegin', html);
-
-            // Set active class based on current page
-            const page = location.pathname.split('/').pop() || 'index.html';
-            const topLink = document.querySelector(`.nav-links a.nav-link[href="${page}"]`);
-            if (topLink) topLink.classList.add('active');
-            // For mega menu triggers, match by data-mega attr → page prefix
-            const megaMap = { 'fpl-my-team-analysis.html': 'myteam', 'fpl-players-analysis.html': 'players', 'fpl-teams-analysis.html': 'teams', 'fpl-league-rivals.html': 'rivals' };
-            const megaKey = megaMap[page];
-            if (megaKey) {
-                const trigger = document.querySelector(`.nav-dropdown[data-mega="${megaKey}"] .nav-mega-trigger`);
-                if (trigger) trigger.classList.add('active');
-            }
-            const mobileLink = document.querySelector(`.mobile-nav a.mobile-nav-item[href="${page}"]`);
-            if (mobileLink) mobileLink.classList.add('active');
-
-            // Initialize Team ID widget from localStorage
-            const savedId = getSavedTeamId();
-            if (savedId) {
-                showNavTeamBadge(savedId);
-                // Also sync drawer Team ID
-                const drawerBadge = document.getElementById('drawerTidBadge');
-                const drawerInput = document.getElementById('drawerTidInput');
-                const drawerDisplay = document.getElementById('drawerTeamIdDisplay');
-                if (drawerBadge && drawerInput && drawerDisplay) {
-                    drawerDisplay.textContent = _formatTeamIdLabel(savedId);
-                    drawerBadge.querySelector('.nav-tid-badge')?.classList.toggle('nav-tid-badge--demo', savedId === DEMO_TEAM_ID);
-                    drawerBadge.classList.remove('hidden');
-                    drawerInput.classList.add('hidden');
-                }
-            }
-
-            // Keyboard handler for Team ID inputs
-            const navInput = document.getElementById('navTeamIdInput');
-            if (navInput) {
-                navInput.addEventListener('keypress', e => {
-                    if (e.key === 'Enter') submitTeamIdNav();
-                });
-            }
-            const drawerInput = document.getElementById('drawerTeamIdInput');
-            if (drawerInput) {
-                drawerInput.addEventListener('keypress', e => {
-                    if (e.key === 'Enter') submitTeamIdDrawer();
-                });
-            }
-
-            // Initialize icons in the newly injected nav
-            if (window.lucide) lucide.createIcons();
-
-            // Setup mega menu interactions
-            initMegaMenu();
-
-            // Setup collapsing tab bar
-            initTabAutoHide();
-        });
-}
 
 // ===== MEGA MENU =====
 function initMegaMenu() {

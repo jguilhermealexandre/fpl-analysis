@@ -605,8 +605,10 @@ function renderActionsCell(p) {
 // The transfer planner lives on the My Team page; hand the player over rather
 // than pretending this page can complete the move.
 function swapFromTable(playerId) {
-    try { localStorage.setItem('fpl_swap_target', String(playerId)); } catch (e) {}
-    window.location.href = 'fpl-transfer-wizard.html?swap=' + encodeURIComponent(playerId);
+    // Was a dead handoff: it stashed fpl_swap_target, which nothing has ever
+    // read, and navigated to a wizard page that never looked at its query
+    // string. Goes to the working planner instead.
+    window.location.href = 'fpl-my-team-analysis.html#transfers';
 }
 
 function renderCell(p, colKey, position, isSelected) {
