@@ -1,0 +1,27 @@
+name: CDN Integrity Canary
+
+# The pinned CDN scripts carry SRI hashes, so if a CDN ever serves different
+# bytes the browser blocks the file and the feature dies silently — Chart.js
+# going missing takes every graph on the site with it. This notices within a day
+# instead of whenever someone opens devtools.
+#
+# Separate from CI because it depends on the network and on third parties: a
+# failure here is news about the outside world, not about the commit.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node tools/check-sri.mjs

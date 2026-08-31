@@ -505,7 +505,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=88')
+    fetch('footer.html?v=89')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -526,7 +526,13 @@ function loadFooter() {
 const _lucideReady = new Promise(function(resolve) {
     if (typeof lucide !== 'undefined') { resolve(); return; }
     var s = document.createElement('script');
-    s.src = 'https://unpkg.com/lucide@0.577.0';
+    // Canonical path rather than the bare package URL, which 302s — the hash has
+    // to match the bytes actually executed. integrity and crossOrigin are both
+    // required: without CORS the browser cannot read the response to check it.
+    s.src = 'https://unpkg.com/lucide@0.577.0/dist/umd/lucide.min.js';
+    s.integrity = 'sha384-orgVf2eX2+m1zKAOIi09hD0W6GtVhoOUmqDK+sysYB2JTZ4vS86j4jm+X7a4Nnei';
+    s.crossOrigin = 'anonymous';
+    s.referrerPolicy = 'no-referrer';
     s.onload = resolve;
     s.onerror = resolve; // degrade gracefully
     document.head.appendChild(s);
