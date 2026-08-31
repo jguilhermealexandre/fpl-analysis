@@ -40,7 +40,7 @@ jobs:
       # ESLint could not be run locally when it was introduced (no Node on the
       # authoring machine), so this reports rather than blocks for now. Flip
       # continue-on-error off once a clean run is confirmed — the rules in
-      # eslint.config.js are correctness-only, so the list should be short and
+      # eslint.config.mjs are correctness-only, so the list should be short and
       # every entry should be a real defect.
       - name: ESLint (reporting only for now)
         continue-on-error: true
@@ -50,11 +50,11 @@ jobs:
       # or no-undef starts lying in both directions.
       - name: Generated globals are current
         run: |
-          cp eslint.config.js /tmp/eslint.before
+          cp eslint.config.mjs /tmp/eslint.before
           node tools/gen-eslint-globals.mjs
-          if ! diff -q /tmp/eslint.before eslint.config.js > /dev/null; then
-            echo "::error::eslint.config.js globals are stale. Run: npm run gen:globals"
-            diff /tmp/eslint.before eslint.config.js | head -20
+          if ! diff -q /tmp/eslint.before eslint.config.mjs > /dev/null; then
+            echo "::error::eslint.config.mjs globals are stale. Run: npm run gen:globals"
+            diff /tmp/eslint.before eslint.config.mjs | head -20
             exit 1
           fi
           echo "✓ generated globals match"
@@ -63,6 +63,14 @@ jobs:
       # the ~14.6k lines that ESLint cannot see until they are extracted.
       - name: Inline page scripts parse
         run: node tools/check-inline-syntax.mjs
+
+      # scripts/build-articles.js and scripts/scouts-desk.js are CommonJS and are
+      # run by node in the data workflow. Adding "type": "module" to package.json
+      # silently broke that — require() throws in an ES module scope, and the only
+      # place it showed up was a scheduled job failing hours later. One line here
+      # catches the whole class.
+      - name: CommonJS data scripts still load
+        run: node -e "const sd = require('./scripts/scouts-desk.js'); if (typeof sd.sdBuildArchive !== 'function') { throw new Error('scouts-desk exports broken'); } console.log('✓ CommonJS entry points load');"
 
       # node:test, no browser and no test framework. Classic scripts are loaded
       # into a vm sandbox rather than imported, since there is nothing to import.

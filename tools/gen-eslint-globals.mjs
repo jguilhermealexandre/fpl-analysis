@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Regenerates the shared-globals block in eslint.config.js.
+/* Regenerates the shared-globals block in eslint.config.mjs.
 
    Classic scripts reach each other's top-level names by design, which reads to
    any linter as thousands of undefined references. Declaring them is what makes
@@ -28,8 +28,8 @@ for (const { inline } of Object.values(pages())) {
 
 const sorted = [...names].sort();
 const block = sorted.map(n => `                ${n}: 'writable',`).join('\n');
-const cfg = fs.readFileSync('eslint.config.js', 'utf8');
-fs.writeFileSync('eslint.config.js', cfg.replace(
+const cfg = fs.readFileSync('eslint.config.mjs', 'utf8');
+fs.writeFileSync('eslint.config.mjs', cfg.replace(
     /(\/\* GENERATED-GLOBALS-START \*\/\n)[\s\S]*?(\n\s*\/\* GENERATED-GLOBALS-END \*\/)/,
     `$1${block}$2`));
 console.log(`✓ ${sorted.length} shared globals (${inlineCount} from inline page blocks)`);
