@@ -11,6 +11,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# CI only reads the tree. Nothing here needs write access, and scoping the
+# token limits what a compromised action or dependency could do.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true

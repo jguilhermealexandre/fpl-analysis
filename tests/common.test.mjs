@@ -51,3 +51,21 @@ test('an FPL outage is transient, a bad team id is not', () => {
     assert.equal(isTransientFplError(new Error('HTTP 404')), false);
     assert.equal(isTransientFplError(new Error('Failed to fetch')), true, 'a bare network failure is transient');
 });
+
+test('escHTML is safe in attribute contexts, not just text', () => {
+    // It sits inside 78 title=, data-tooltip=, href=, src= and alt= values. The
+    // old textContent round-trip escaped & < > only, so a value with a double
+    // quote closed the attribute and everything after it became markup. FPL
+    // manager names are user-set and rendered on the League Rivals page.
+    const escHTML = loadFunction('scripts/common.js', 'escHTML');
+    const payload = 'https://evil/x" onerror="alert(1)';
+    assert.ok(!escHTML(payload).includes('"'), 'double quotes must be encoded');
+    assert.ok(!escHTML("it's").includes("'"), 'single quotes must be encoded');
+    assert.equal(escHTML('<script>'), '&lt;script&gt;');
+    assert.equal(escHTML('a & b'), 'a &amp; b', 'no double-encoding');
+    assert.equal(escHTML(null), '');
+    assert.equal(escHTML(0), '0', 'zero is a value, not an empty string');
+    // The whole point: an injected value cannot escape its attribute.
+    const rendered = `<img src="${escHTML(payload)}" onerror="fallback()">`;
+    assert.equal(rendered.split('"').length, 5, 'exactly two attributes remain');
+});

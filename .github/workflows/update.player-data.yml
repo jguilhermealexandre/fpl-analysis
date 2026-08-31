@@ -7,6 +7,11 @@ on:
     - cron: '0 3,7,11,15,19,23 * * *'
   workflow_dispatch: # Allow manual trigger
 
+# Writes data/ and articles/ back to main, and nothing else. Scoping the token
+# limits what a compromised action or dependency could reach.
+permissions:
+  contents: write
+
 # Shared with refresh-live-data.yml: both write data/ on main, so they queue
 # behind one another rather than racing. Queued, not cancelled — a run that has
 # already spent minutes fetching 610 players is worth letting finish.

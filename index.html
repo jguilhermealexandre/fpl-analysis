@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=87">
-    <link rel="stylesheet" href="styles/v2-design.css?v=87">
+    <link rel="stylesheet" href="styles/common.css?v=88">
+    <link rel="stylesheet" href="styles/v2-design.css?v=88">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3787,13 +3787,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=87"></script>
-    <script src="scripts/price-watch.js?v=87"></script>
-    <script src="scripts/xp-engine.js?v=87"></script>
-    <script src="scripts/live-gw.js?v=87"></script>
-    <script src="scripts/transfer-engine.js?v=87"></script>
-    <script src="scripts/common.js?v=87"></script>
-    <script src="scripts/sidebar-nav.js?v=87"></script>
+    <script src="scripts/error-monitor.js?v=88"></script>
+    <script src="scripts/price-watch.js?v=88"></script>
+    <script src="scripts/xp-engine.js?v=88"></script>
+    <script src="scripts/live-gw.js?v=88"></script>
+    <script src="scripts/transfer-engine.js?v=88"></script>
+    <script src="scripts/common.js?v=88"></script>
+    <script src="scripts/sidebar-nav.js?v=88"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4156,7 +4156,9 @@
             const tickerBar = document.getElementById('tickerBar');
             const tickerTrack = document.getElementById('tickerTrack');
             const tickerLoading = document.getElementById('tickerLoading');
-            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+            const esc = t => String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
             let items = '';
             items += `<span class="ticker-item"><span class="ticker-manager">${esc(managerName)}</span></span>`;
@@ -4208,7 +4210,9 @@
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
             el('heroTeamName', teamName || 'My Team');
             el('heroGwBadge', 'GW' + currentGW);
-            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+            const esc = t => String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
             // ===== DEADLINE HERO CARD =====
             const heroEl = document.getElementById('v2DeadlineHero');
@@ -4340,7 +4344,9 @@
         function renderLeagueSlot(leagueInfo) {
             const slot = document.getElementById('v2LeagueSlot');
             if (!slot) return;
-            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+            const esc = t => String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             if (!leagueInfo) {
                 if (localStorage.getItem('fpl_league_prompt_dismissed') === '1') { slot.innerHTML = ''; return; }
                 slot.innerHTML = `<div class="v2-league-prompt" id="v2LeaguePrompt">
@@ -4583,7 +4589,9 @@
 
         function renderAttentionGrid({ transferRec, squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets,
                                        freeTransfers, bank, deadlineTime, currentGW }) {
-            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+            const esc = t => String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
             const xiItems = [];
             squad.filter(p => p.pickPosition <= 11).forEach(p => {
@@ -4844,7 +4852,9 @@
         function renderPitchView({ squad, analysisResults }) {
             const wrap = document.getElementById('v2PitchWrap');
             if (!squad || !squad.length) { wrap.innerHTML = ''; return; }
-            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+            const esc = t => String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             const posColorVar = { 1: 'var(--position-gk)', 2: 'var(--position-def)', 3: 'var(--position-mid)', 4: 'var(--position-fwd)' };
             const verdictMap = {};
             analysisResults.forEach((a, i) => { if (squad[i]) verdictMap[squad[i].id] = a; });
@@ -5077,7 +5087,9 @@
             const top3 = externalItems.filter(i => i.headline && i.headline.trim().length >= 10).slice(0, 3);
             if (!top3.length) return;
 
-            const escH = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+            const escH = s => String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             const newspaperSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M18 10h-8"/></svg>';
             const sourceColors = { bbc: '#BB1D1D', pl: '#38006A', sky: '#0062B2', guardian: '#05517E' };
 
@@ -5190,7 +5202,9 @@
             if (!bar || !track) return;
             const squadIds = new Set(squad.map(p => p.id));
             const totalFpl = 11000000;
-            const esc = t => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; };
+            const esc = t => String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
             /* The market strip reads the game's own price meter rather than
                inferring pressure from net transfers. Transfers are the cause;

@@ -17,11 +17,11 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=87">
-    <link rel="stylesheet" href="styles/v2-design.css?v=87">
-    <script src="scripts/error-monitor.js?v=87"></script>
-    <script src="scripts/common.js?v=87"></script>
-    <script src="scripts/sidebar-nav.js?v=87"></script>
+    <link rel="stylesheet" href="styles/common.css?v=88">
+    <link rel="stylesheet" href="styles/v2-design.css?v=88">
+    <script src="scripts/error-monitor.js?v=88"></script>
+    <script src="scripts/common.js?v=88"></script>
+    <script src="scripts/sidebar-nav.js?v=88"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -1984,7 +1984,9 @@
             let headHtml = '<tr><th class="player-col">Player</th><th>You</th><th>%</th>';
             rivals.forEach(r => {
                 const shortName = r.player_name.split(' ').map(n => n[0]).join('');
-                headHtml += `<th class="rotate" title="${r.player_name}">${shortName}</th>`;
+                // player_name is set by the manager in their own FPL account, so it
+                // is attacker-controlled for everyone else viewing the league.
+                headHtml += `<th class="rotate" title="${escHTML(r.player_name)}">${escHTML(shortName)}</th>`;
             });
             headHtml += '</tr>';
             document.getElementById('matrixHead').innerHTML = headHtml;

@@ -406,10 +406,28 @@ function normalisePlayerShape(player) {
     return player;
 }
 
+/* Escapes for BOTH text and attribute contexts.
+
+   This used to be a textContent -> innerHTML round trip, which escapes & < >
+   and nothing else. That is correct for text and unsafe in an attribute, and
+   escHTML sits inside 78 title=, data-tooltip=, href=, src= and alt= values
+   across the site. A value containing a double quote closed the attribute early
+   and everything after it became markup — with 'unsafe-inline' in script-src,
+   an injected onerror= or onmouseover= runs.
+
+   The reachable sources are not hypothetical: FPL manager and team names are
+   set by users and rendered on the League Rivals page, player news text comes
+   from FPL, and the news feeds arrive through a third-party JSON API.
+
+   Entity-encoding the quotes is safe in text too — the browser decodes them
+   back for display. */
 function escHTML(str) {
-    const d = document.createElement('div');
-    d.textContent = str || '';
-    return d.innerHTML;
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // ===== POSITION CONFIGURATION =====
@@ -487,7 +505,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=87')
+    fetch('footer.html?v=88')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
