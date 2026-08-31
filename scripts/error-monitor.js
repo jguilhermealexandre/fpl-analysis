@@ -124,6 +124,25 @@
         capture('unhandledrejection', (r && r.message) || r, { stack: r && r.stack });
     });
 
+    /* Content-Security-Policy violations.
+
+       These were being found by chance, with devtools open, which is exactly how
+       the last silent failure surfaced. A blocked resource is otherwise invisible:
+       the page renders, nothing throws, and a feature simply does not work —
+       Cloudflare Web Analytics sat dead this way, blocked by a policy that had
+       just been switched on.
+
+       The browser fires securitypolicyviolation at the document, so this costs
+       nothing and makes the whole class visible in fplErrorLog(). */
+    var cspTarget = (typeof document !== 'undefined' && document.addEventListener) ? document : window;
+    cspTarget.addEventListener('securitypolicyviolation', function (ev) {
+        capture('csp', (ev.violatedDirective || 'csp') + ' blocked ' + (ev.blockedURI || 'inline'), {
+            source: ev.blockedURI || '',
+            line: ev.lineNumber || 0,
+            col: ev.columnNumber || 0
+        });
+    });
+
     /* For code that catches an error, handles it, and still wants it recorded.
        Most of this codebase's catch blocks degrade deliberately — a failed news
        fetch should not break a page — but silent is not the same as unrecorded,

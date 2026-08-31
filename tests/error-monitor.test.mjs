@@ -62,3 +62,19 @@ test('resource failures are classified apart from exceptions', () => {
     ctx.__listeners.error[0]({ target: { tagName: 'IMG', src: 'https://x/badge.png' } });
     assert.equal(ctx.fplErrorLog()[0].kind, 'resource');
 });
+
+test('CSP violations are captured', () => {
+    // Blocked resources are otherwise invisible: nothing throws, the page
+    // renders, and a feature is simply dead. Cloudflare Web Analytics sat
+    // blocked this way after the CSP was first switched on.
+    const ctx = boot();
+    ctx.__listeners.securitypolicyviolation[0]({
+        violatedDirective: 'script-src',
+        blockedURI: 'https://static.cloudflareinsights.com/beacon.min.js',
+        lineNumber: 1, columnNumber: 1
+    });
+    const [e] = ctx.fplErrorLog();
+    assert.equal(e.kind, 'csp');
+    assert.match(e.message, /script-src blocked/);
+    assert.match(e.message, /cloudflareinsights/);
+});

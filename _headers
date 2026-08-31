@@ -27,6 +27,19 @@
 #
 # No iframes and no <form> elements exist on the site, so frame-ancestors,
 # form-action and object-src are locked down rather than left to default-src.
+#
+# Two things only a real page load could reveal, both found with devtools open:
+#
+#   Cloudflare Web Analytics injects static.cloudflareinsights.com/beacon.min.js
+#   at the edge, so it appears in no file in this repo and in no curl of the
+#   origin. It needs script-src for the beacon AND connect-src for the RUM POST
+#   it then makes to cloudflareinsights.com — allowing only the first would have
+#   loaded the script and blocked its payload, producing a second violation
+#   instead of a fix. Analytics had been silently dead since the rename.
+#
+#   Source maps are fetched under connect-src, not script-src, so unpkg and
+#   jsdelivr appear in both. This only bites with devtools open, but a console
+#   full of CSP noise is how a real violation gets missed.
 
 /*
   X-Frame-Options: DENY
@@ -34,7 +47,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://fpl-proxy.jguilhermealexandre.workers.dev https://api.rss2json.com https://docs.google.com https://sdp-prem-prod.premier-league-prod.pulselive.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://fpl-proxy.jguilhermealexandre.workers.dev https://api.rss2json.com https://docs.google.com https://sdp-prem-prod.premier-league-prod.pulselive.com https://cloudflareinsights.com https://cdn.jsdelivr.net https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
 # The data feed is rewritten every 15 minutes during match windows, so 300s at
 # the edge is roughly one refresh behind at worst and takes the repeated reads

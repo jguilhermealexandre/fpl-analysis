@@ -27,7 +27,13 @@ export function browserStubs(extra = {}) {
         },
         navigator: { userAgent: 'node-test', sendBeacon: () => true },
         location: { pathname: '/index.html', hash: '', search: '' },
-        document: { createElement: () => ({ style: {}, classList: { add() {}, remove() {} } }), getElementById: () => null },
+        document: {
+            createElement: () => ({ style: {}, classList: { add() {}, remove() {} } }),
+            getElementById: () => null,
+            // Shares the listener map with window: CSP violations are the only
+            // document-level event captured, so the names cannot collide.
+            addEventListener: (k, f) => { (listeners[k] ||= []).push(f); }
+        },
         addEventListener: (k, f) => { (listeners[k] ||= []).push(f); },
         fetch: () => Promise.resolve({ ok: false }),
         setTimeout, clearTimeout,
