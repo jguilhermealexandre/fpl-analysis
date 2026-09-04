@@ -5384,3 +5384,60 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     .twf-group-l { flex: none; padding-top: 0; }
     .twf-club-stats { flex: 1 1 100%; order: 9; }
 }
+
+/* ===== Matchday odds panel (scripts/odds-panel.js) =====
+   The Lineup Wizard's third intel tab. Sits inside .lw-intel-body, which is
+   about half the command centre's width, so everything here is built to read at
+   ~340px and to stack rather than truncate. */
+.bo-panel { display: flex; flex-direction: column; gap: 8px; }
+.bo-head { display: flex; align-items: baseline; gap: 8px; }
+.bo-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.bo-gw { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: var(--radius-full); background: var(--surface-3); color: var(--text-secondary); }
+.bo-src { margin-left: auto; font-size: 10px; color: var(--text-muted); cursor: help; }
+.bo-stale { padding: 6px 8px; border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-warning) 12%, transparent); color: var(--color-warning); font-size: 10px; line-height: 1.45; }
+
+.bo-matches { display: flex; flex-direction: column; gap: 7px; }
+.bo-match { padding: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-1); }
+/* A fixture none of your players are in is context, not a decision. */
+.bo-match.bo-dim { opacity: .62; }
+.bo-match-head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+.bo-ko { font-size: 9px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+.bo-fix { flex: 1; font-size: 11px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+.bo-fix em { font-style: normal; font-weight: 400; color: var(--text-muted); }
+.bo-goals { font-family: var(--font-mono); font-size: 12px; font-weight: 800; color: var(--text-secondary); cursor: help; white-space: nowrap; }
+.bo-goals i { font-style: normal; font-size: 8px; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+
+/* Home / draw / away, drawn from the de-vigged market rather than the model. */
+.bo-res { display: flex; height: 7px; border-radius: 4px; overflow: hidden; background: var(--surface-3); margin-bottom: 7px; }
+.bo-res i { display: block; height: 100%; cursor: help; }
+.bo-res-h { background: var(--color-primary); }
+.bo-res-d { background: var(--surface-4); }
+.bo-res-a { background: var(--color-info); }
+
+.bo-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+.bo-side { padding: 5px 6px; border-radius: var(--radius-md); background: var(--surface-2); }
+.bo-side-top { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; }
+.bo-team { font-size: 11px; font-weight: 800; color: var(--text-primary); }
+.bo-ha { font-size: 8px; font-weight: 700; padding: 0 3px; border-radius: 2px; background: var(--surface-4); color: var(--text-secondary); }
+.bo-metric { display: flex; align-items: baseline; gap: 4px; font-size: 10px; cursor: help; }
+.bo-metric-l { color: var(--text-muted); min-width: 18px; }
+.bo-metric b { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-primary); }
+/* Where the market and this site's own model disagree by 10pp or more — the
+   part of this panel that is actually worth reading. */
+.bo-metric.wide b { color: var(--color-warning); }
+.bo-model { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); }
+
+.bo-extras { display: flex; flex-wrap: wrap; gap: 4px; }
+.bo-ex { padding: 2px 6px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border-subtle); font-size: 9px; color: var(--text-muted); cursor: help; }
+.bo-ex b { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--text-secondary); margin-left: 2px; }
+
+.bo-mine { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-subtle); }
+.bo-mine.none { font-size: 9px; color: var(--text-muted); }
+.bo-mine-l { font-size: 8px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.bo-chip { padding: 1px 6px; border-radius: var(--radius-full); font-size: 9px; font-weight: 600; cursor: help; }
+.bo-chip.xi { background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary); }
+.bo-chip.bench { background: var(--surface-3); color: var(--text-muted); }
+
+.bo-foot { font-size: 9px; line-height: 1.5; color: var(--text-muted); padding-top: 2px; }
+
+@media (max-width: 620px) { .bo-sides { grid-template-columns: 1fr; } }

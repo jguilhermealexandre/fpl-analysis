@@ -59,6 +59,10 @@
                 if (p.status === 'i' || p.status === 'u' || p.status === 's') lineupState.excluded.add(p.id);
             });
 
+            // Fetched now rather than on first click of the Matchday tab: it is
+            // one small file, and the tab is then populated the moment it opens.
+            if (typeof boLoadOdds === 'function') boLoadOdds();
+
             solveLWLineup();
             const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.gwScore - a.gwScore);
             lineupState.captain = cap[0]?.id || null;
@@ -194,6 +198,13 @@
             const tab = lineupState.intelTab || 'overview';
             let body;
             if (tab === 'captaincy') body = renderLWCaptaincyMatrix();
+            // Bookmakers price one round at a time, so odds can only ever speak
+            // about the gameweek being picked — which is exactly this screen's
+            // question, and why the tab lives here rather than in the Transfer
+            // Wizard. scripts/odds-panel.js loads the feed lazily on first view.
+            else if (tab === 'odds') body = typeof renderBOMatchdayPanel === 'function'
+                ? renderBOMatchdayPanel()
+                : '<div class="lw-side-empty">The odds panel is not loaded on this page.</div>';
             else {
                 const sel = lineupState.selectedPlayers;
                 body = !sel.length ? renderLWSummary()
@@ -204,6 +215,7 @@
                 <div class="lw-intel-tabs">
                     <button class="lw-intel-tab ${tab === 'overview' ? 'active' : ''}" onclick="setLWIntelTab('overview')">🧠 Overview</button>
                     <button class="lw-intel-tab ${tab === 'captaincy' ? 'active' : ''}" onclick="setLWIntelTab('captaincy')">👑 Captaincy</button>
+                    <button class="lw-intel-tab ${tab === 'odds' ? 'active' : ''}" onclick="setLWIntelTab('odds')" data-tooltip="What the betting market expects from this gameweek's fixtures — goals, clean sheets and results, with the bookmaker's margin removed.">📈 Matchday</button>
                 </div>
                 <div class="lw-intel-body">${body}</div>
             </div>`;

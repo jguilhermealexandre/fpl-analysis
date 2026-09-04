@@ -1,0 +1,71 @@
+name: Fetch Bookmaker Odds
+
+# Bookmakers price one round at a time, so this is a weekly rhythm rather than a
+# live feed. Four runs a day is enough to track a line that moves over days, and
+# 09:00 UTC lands an hour before a typical 11:00 BST Saturday deadline — the one
+# moment where being current actually changes a decision.
+on:
+  schedule:
+    - cron: '0 3,9,15,21 * * *'
+  workflow_dispatch:
+
+# Writes data/odds.json and nothing else.
+permissions:
+  contents: write
+
+# Shared with refresh-live-data.yml and update.player-data.yml: all three write
+# data/ on main, so they queue rather than race.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
+jobs:
+  fetch-odds:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # tools/fetch-odds.mjs validates before it writes and exits non-zero
+      # without touching data/odds.json if anything is wrong — a missing source,
+      # too few priced fixtures, or a reconstruction that stops agreeing with the
+      # prices it came from. Nothing else in this job produces data, so failing
+      # here is the correct and complete response: the previous odds stay, and
+      # the run goes red.
+      - name: Fetch and derive odds
+        run: node tools/fetch-odds.mjs --out data/odds.json
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          # Same re-apply-and-retry as the other data jobs: this pushes to a
+          # branch the other two also write, and a plain push would be rejected
+          # and silently drop the refresh whenever one of them lands first.
+          # odds.json is a whole-file replacement, so there is nothing to merge.
+          cp data/odds.json /tmp/odds.json
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/odds.json data/odds.json
+            git add data/odds.json
+            if git diff --staged --quiet; then
+              echo "Odds unchanged since the last run."
+              exit 0
+            fi
+            git commit -m "Update bookmaker odds - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+          echo "::error::Could not push after 5 attempts."
+          exit 1

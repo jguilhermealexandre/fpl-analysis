@@ -379,7 +379,11 @@ const DATA_URLS = {
     players:   'data/players-data.json?v=' + CACHE_BUSTER,
     teams:     'data/teams-data.json?v=' + CACHE_BUSTER,
     eventLive: 'data/event-live.json?v=' + CACHE_BUSTER,
-    lastUpdated: 'data/last-updated.json?v=' + CACHE_BUSTER
+    lastUpdated: 'data/last-updated.json?v=' + CACHE_BUSTER,
+    // Bookmakers' prices for the upcoming round, written by
+    // .github/workflows/fetch-odds.yml. Optional: the Matchday panel is the
+    // only reader and it degrades to a message if the file is absent.
+    odds:      'data/odds.json?v=' + CACHE_BUSTER
 };
 
 // ===== HTML ESCAPING =====
@@ -505,7 +509,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=90')
+    fetch('footer.html?v=91')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

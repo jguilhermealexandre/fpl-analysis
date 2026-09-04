@@ -32,13 +32,13 @@ Consequences you have to work with:
   `compare-report.js` already owns `recencyWeightedAvg` with different
   semantics. `npm run check:globals` fails the build on this.
 - **Prefixes are the namespace.** `tw*` transfer wizard, `twf*` the transfer
-  wizard's market funnel, `lw*` lineup wizard, `dp*` draft planner, `sd*`
-  scout's desk, `gwr*` gameweek review, `opt*` the shared optimisation report.
-  Keep using them.
+  wizard's market funnel, `lw*` lineup wizard, `bo*` the matchday odds panel,
+  `dp*` draft planner, `sd*` scout's desk, `gwr*` gameweek review, `opt*` the
+  shared optimisation report. Keep using them.
 
 ## Data
 
-Two feeds, different cadences, and it matters which one you read.
+Three sources, different cadences, and it matters which one you read.
 
 | File | Written by | Cadence | Holds |
 |---|---|---|---|
@@ -47,6 +47,7 @@ Two feeds, different cadences, and it matters which one you read.
 | `data/event-live.json` | same | same | per-player stats for the round in progress |
 | `data/players-data.json` | `update.player-data.yml` | every 4 h | per-gameweek history for all ~610 players |
 | `data/articles/*.json` | `update.player-data.yml` | every 4 h | Scout's Desk archive |
+| `data/odds.json` | `fetch-odds.yml` | 4x daily | bookmakers' prices for the next round, as probabilities |
 
 The split exists because `players-data.json` needs 610 sequential
 `element-summary` calls and takes minutes, while the first three are two or
@@ -60,6 +61,15 @@ absent or covers a different round. Opponent and scoreline always come from
 
 Live manager data (picks, leagues, history) goes through the Cloudflare Worker
 proxy in `WORKER_URL`, never direct to FPL — the API has no CORS headers.
+
+`data/odds.json` is the one feed not sourced from FPL. It comes from
+football-data.co.uk, which needs no API key — which is the reason it was
+chosen, since a key could not live in the browser on a static site. Bookmakers
+price one round at a time, so the feed only ever covers the next gameweek: the
+Lineup Wizard's Matchday tab reads it, and the Transfer Wizard deliberately
+does not. Nobody quotes clean-sheet percentages, so those are derived in
+`tools/odds-model.mjs` from the 1X2 and over/under 2.5 markets and committed
+already computed.
 
 ## Conventions
 
