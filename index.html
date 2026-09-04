@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=92">
-    <link rel="stylesheet" href="styles/v2-design.css?v=92">
+    <link rel="stylesheet" href="styles/common.css?v=93">
+    <link rel="stylesheet" href="styles/v2-design.css?v=93">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -702,6 +702,77 @@
         .v2-stat-card--minor .v2-stat-value { font-size: 15px; }
 
         /* --- Needs Your Attention --- */
+        /* ===== Matchday panel (scripts/matchday.js) =====
+           This gameweek's fixtures, grouped by what is happening in them. The
+           live group leads because during a round it is the only one anybody is
+           looking at; between rounds it is empty and the section reads as a
+           plain fixture list. */
+        .v2-matchday { margin-bottom: 20px; text-align: left; }
+        .md-panel { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-xl); padding: 16px; }
+        .md-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .md-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-primary); }
+        .md-h-live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: #DC2626; letter-spacing: .02em; }
+        .md-h-note { font-size: 11px; color: var(--text-muted); }
+        .md-total { margin-left: auto; font-family: var(--font-mono); font-size: 20px; font-weight: 800; color: var(--color-primary); cursor: help; }
+        .md-total em { font-style: normal; font-size: 10px; font-weight: 600; color: var(--text-muted); margin-left: 3px; }
+
+        /* The pulse is the only animation here, and it exists only while a match
+           is actually in play — a dashboard that pulses at nothing is noise. */
+        .md-dot { width: 6px; height: 6px; border-radius: 50%; background: #DC2626; display: inline-block; animation: mdPulse 1.6s ease-in-out infinite; flex-shrink: 0; }
+        @keyframes mdPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.75); } }
+        @media (prefers-reduced-motion: reduce) { .md-dot { animation: none; } }
+
+        .md-group + .md-group { margin-top: 14px; }
+        .md-group-l { font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 7px; }
+        .md-group.live .md-group-l { color: #DC2626; }
+        .md-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 8px; }
+
+        .md-match { padding: 9px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-2); transition: border-color 140ms ease; }
+        .md-match.is-live { border-color: rgba(220, 38, 38, .38); background: color-mix(in srgb, #DC2626 5%, var(--surface-1)); }
+        .md-match.is-done { opacity: .82; }
+        /* A match none of your players are in is context, not a decision. */
+        .md-match.is-dim { opacity: .5; }
+        .md-match-head { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+        .md-status { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 6px; border-radius: var(--radius-full); background: var(--surface-3); color: var(--text-muted); }
+        .md-status.live { background: rgba(220, 38, 38, .13); color: #DC2626; }
+        .md-status.soon { background: rgba(245, 158, 11, .15); color: #B45309; }
+        .md-status.ft { background: var(--surface-3); color: var(--text-secondary); }
+        .md-mine-total { margin-left: auto; font-family: var(--font-mono); font-size: 13px; font-weight: 800; color: var(--color-primary); cursor: help; }
+        .md-mine-total em { font-style: normal; font-size: 8px; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+
+        .md-score { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+        .md-team { font-size: 12px; font-weight: 700; color: var(--text-primary); flex: 1; }
+        .md-team.a { text-align: right; }
+        .md-goals { font-family: var(--font-mono); font-size: 17px; font-weight: 800; color: var(--text-primary); }
+        .md-goals i { font-style: normal; color: var(--text-muted); margin: 0 2px; font-size: 13px; }
+        .md-goals.pre { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+
+        .md-players { display: flex; flex-wrap: wrap; gap: 4px; }
+        .md-none { font-size: 9px; color: var(--text-muted); }
+        .md-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: var(--radius-full); background: var(--surface-1); border: 1px solid var(--border-subtle); font-size: 10px; cursor: help; }
+        .md-chip.on { border-color: rgba(16, 185, 129, .4); }
+        .md-chip.bench { opacity: .6; border-style: dashed; }
+        .md-chip-name { font-weight: 600; color: var(--text-primary); }
+        .md-chip-pts { font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: var(--color-primary); }
+        .md-chip-pts.pending { color: var(--text-muted); font-weight: 600; }
+        /* Projected bonus is lighter than the rest on purpose: it is the one part
+           of the number the game has not committed to yet. */
+        .md-chip-proj { font-style: normal; font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: var(--color-warning); }
+        .md-ev { font-style: normal; font-size: 9px; line-height: 1; }
+        .md-arm { font-size: 8px; font-weight: 800; padding: 0 3px; border-radius: 2px; }
+        .md-arm.c { background: #F59E0B; color: #fff; }
+        .md-arm.v { background: var(--surface-3); color: var(--text-secondary); }
+
+        /* The gameweek badge gains a state word beside the number. */
+        .hero-greeting-gw .md-badge-sub { font-family: var(--font-body); font-size: 10px; font-weight: 600; letter-spacing: 0; color: var(--text-muted); margin-left: 6px; }
+        .hero-greeting-gw .md-badge-live { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-body); font-size: 10px; font-weight: 800; letter-spacing: .04em; color: #DC2626; margin-left: 6px; }
+        .hero-greeting-gw.is-live { background: rgba(220, 38, 38, .08); border-color: rgba(220, 38, 38, .28); }
+
+        @media (max-width: 640px) {
+            .md-grid { grid-template-columns: 1fr; }
+            .md-panel { padding: 12px; }
+        }
+
         .v2-attention-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -3325,6 +3396,9 @@
                     </aside>
                 </div>
 
+                <!-- This gameweek's matches, live while they are being played -->
+                <section class="v2-matchday" id="v2Matchday" style="display:none;"></section>
+
                 <!-- Needs Your Attention: Starting XI | Transfers -->
                 <div class="v2-attention-grid" id="v2AttentionGrid"></div>
 
@@ -3787,14 +3861,15 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=92"></script>
-    <script src="scripts/price-watch.js?v=92"></script>
-    <script src="scripts/xp-engine.js?v=92"></script>
-    <script src="scripts/odds-panel.js?v=92"></script>
-    <script src="scripts/live-gw.js?v=92"></script>
-    <script src="scripts/transfer-engine.js?v=92"></script>
-    <script src="scripts/common.js?v=92"></script>
-    <script src="scripts/sidebar-nav.js?v=92"></script>
+    <script src="scripts/error-monitor.js?v=93"></script>
+    <script src="scripts/price-watch.js?v=93"></script>
+    <script src="scripts/xp-engine.js?v=93"></script>
+    <script src="scripts/odds-panel.js?v=93"></script>
+    <script src="scripts/live-gw.js?v=93"></script>
+    <script src="scripts/matchday.js?v=93"></script>
+    <script src="scripts/transfer-engine.js?v=93"></script>
+    <script src="scripts/common.js?v=93"></script>
+    <script src="scripts/sidebar-nav.js?v=93"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4210,7 +4285,9 @@
                                      pointsDiff, deadlineTime, deadlineGW, avgFDR, captainRec, leagueInfo }) {
             const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
             el('heroTeamName', teamName || 'My Team');
-            el('heroGwBadge', 'GW' + currentGW);
+            // Left as a fallback for the moment before mdInit() runs; matchday.js
+            // owns this element from then on and keeps it ticking.
+            if (typeof mdCtx === 'undefined' || !mdCtx) el('heroGwBadge', 'GW' + currentGW);
             const esc = t => String(t == null ? '' : t)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -5288,13 +5365,16 @@
 
             try {
                 // Phase 1: Load basic stats and render ticker immediately
-                const [bootData, fixturesData, oddsData, mgrRes, historyRes] = await Promise.all([
+                const [bootData, fixturesData, oddsData, eventLiveData, mgrRes, historyRes] = await Promise.all([
                     fetch('data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000)).then(r => { if (!r.ok) throw new Error('Data load failed'); return r.json(); }),
                     fetch('data/fixtures.json?v=' + Math.floor(Date.now()/300000)).then(r => r.ok ? r.json() : []),
                     // Optional, and loaded here for the same reason the squad page
                     // loads it up front: this page projects points too, and the
                     // two must not quote different numbers for the same player.
                     fetch('data/odds.json?v=' + Math.floor(Date.now()/300000)).then(r => r.ok ? r.json() : null).catch(() => null),
+                    // Per-player points for the round in progress. Optional: the
+                    // matchday panel falls back to fixtures alone without it.
+                    fetch('data/event-live.json?v=' + Math.floor(Date.now()/300000)).then(r => r.ok ? r.json() : null).catch(() => null),
                     fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`),
                     fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`).catch(() => null)
                 ]);
@@ -5586,6 +5666,7 @@
                    than estimated — validated against a settled gameweek, where it
                    reproduced all 64 awarded bonus points with no mismatches. */
                 let live = null;
+                let liveByIdRaw = null, liveProjBonusRaw = null;   // for the matchday panel
                 if (typeof liveIsInPlay === 'function' && liveIsInPlay(fixturesData, currentGW)) {
                     try {
                         const { byId, byFixture } = await liveFetchStats(currentGW);
@@ -5593,6 +5674,7 @@
                         const projBonus = liveProjectedBonus(byFixture, pending);
                         const score = liveSquadScore(picksData.picks, byId, projBonus,
                             { activeChip: picksData.active_chip });
+                        liveByIdRaw = byId; liveProjBonusRaw = projBonus;
                         live = Object.assign(score, {
                             average: currEvent ? (currEvent.average_entry_score || 0) : 0
                         });
@@ -5601,6 +5683,21 @@
                         // it; the panel simply stays in its pre-deadline form.
                         console.warn('Live gameweek unavailable:', e.message);
                     }
+                }
+
+                /* This gameweek's matches, and the gameweek badge that names them.
+
+                   Given the live endpoint's numbers when the proxy answered and
+                   the committed event-live.json when it did not, so the panel
+                   renders either way. From here matchday.js owns #heroGwBadge and
+                   keeps it ticking — the deadline flip is arithmetic on the clock,
+                   so it no longer waits for a reload or for is_current to catch up. */
+                if (typeof mdInit === 'function') {
+                    mdInit({
+                        events: bootData.events, fixtures: fixturesData, teams,
+                        squad, eventLive: eventLiveData,
+                        byId: liveByIdRaw, projBonus: liveProjBonusRaw
+                    });
                 }
 
                 /* The best move available, from the same recommender the squad page

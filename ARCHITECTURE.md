@@ -33,8 +33,9 @@ Consequences you have to work with:
   semantics. `npm run check:globals` fails the build on this.
 - **Prefixes are the namespace.** `tw*` transfer wizard, `twf*` the transfer
   wizard's market funnel, `lw*` lineup wizard, `bo*` the matchday odds panel,
-  `dp*` draft planner, `sd*` scout's desk, `gwr*` gameweek review, `opt*` the
-  shared optimisation report. Keep using them.
+  `md*` the dashboard's live matchday panel and gameweek state, `dp*` draft
+  planner, `sd*` scout's desk, `gwr*` gameweek review, `opt*` the shared
+  optimisation report. Keep using them.
 
 ## Data
 
