@@ -46,7 +46,13 @@ export function browserStubs(extra = {}) {
     return ctx;
 }
 
-/** Evaluate a script from the repo in a sandbox and return the context. */
+/** Evaluate a script from the repo in a sandbox and return the context.
+ *
+ *  Note for callers: everything the script returns is built in the vm's realm,
+ *  so its objects carry that realm's Object.prototype. assert.deepStrictEqual
+ *  compares prototypes and rejects them with "same structure but not
+ *  reference-equal" — spread the value into this realm before comparing, or
+ *  assert the fields individually. Primitives cross the boundary fine. */
 export function loadScript(relPath, stubs = browserStubs()) {
     const src = fs.readFileSync(path.join(ROOT, relPath), 'utf8');
     const ctx = vm.createContext(stubs);

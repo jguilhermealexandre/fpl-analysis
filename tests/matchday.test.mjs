@@ -74,7 +74,12 @@ test('a match in play makes the round live', () => {
     const s = mdGameweekState(EVENTS, round2Done.concat(fx(3, [PLAYING, UNPLAYED])), T0 + DAY);
     assert.equal(s.phase, 'live');
     assert.equal(s.gw, 3);
-    assert.deepEqual(s.fixtures, { total: 2, finished: 0, live: 1, upcoming: 1 });
+    // Spread first: loadScript evaluates the module in a vm context, so the
+    // object it returns carries that realm's Object.prototype and
+    // deepStrictEqual — which compares prototypes — rejects it as
+    // "same structure but not reference-equal". Copying it into this realm is
+    // the fix; comparing the fields one by one would work too.
+    assert.deepEqual({ ...s.fixtures }, { total: 2, finished: 0, live: 1, upcoming: 1 });
 });
 
 test('a round with one match left to play is still live, not finished', () => {
