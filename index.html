@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=91">
-    <link rel="stylesheet" href="styles/v2-design.css?v=91">
+    <link rel="stylesheet" href="styles/common.css?v=92">
+    <link rel="stylesheet" href="styles/v2-design.css?v=92">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3787,13 +3787,14 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=91"></script>
-    <script src="scripts/price-watch.js?v=91"></script>
-    <script src="scripts/xp-engine.js?v=91"></script>
-    <script src="scripts/live-gw.js?v=91"></script>
-    <script src="scripts/transfer-engine.js?v=91"></script>
-    <script src="scripts/common.js?v=91"></script>
-    <script src="scripts/sidebar-nav.js?v=91"></script>
+    <script src="scripts/error-monitor.js?v=92"></script>
+    <script src="scripts/price-watch.js?v=92"></script>
+    <script src="scripts/xp-engine.js?v=92"></script>
+    <script src="scripts/odds-panel.js?v=92"></script>
+    <script src="scripts/live-gw.js?v=92"></script>
+    <script src="scripts/transfer-engine.js?v=92"></script>
+    <script src="scripts/common.js?v=92"></script>
+    <script src="scripts/sidebar-nav.js?v=92"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5287,13 +5288,18 @@
 
             try {
                 // Phase 1: Load basic stats and render ticker immediately
-                const [bootData, fixturesData, mgrRes, historyRes] = await Promise.all([
+                const [bootData, fixturesData, oddsData, mgrRes, historyRes] = await Promise.all([
                     fetch('data/bootstrap-static.json?v=' + Math.floor(Date.now()/300000)).then(r => { if (!r.ok) throw new Error('Data load failed'); return r.json(); }),
                     fetch('data/fixtures.json?v=' + Math.floor(Date.now()/300000)).then(r => r.ok ? r.json() : []),
+                    // Optional, and loaded here for the same reason the squad page
+                    // loads it up front: this page projects points too, and the
+                    // two must not quote different numbers for the same player.
+                    fetch('data/odds.json?v=' + Math.floor(Date.now()/300000)).then(r => r.ok ? r.json() : null).catch(() => null),
                     fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`),
                     fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`).catch(() => null)
                 ]);
 
+                if (typeof boSetOdds === 'function') boSetOdds(oddsData);
                 const managerData = await mgrRes.json();
                 const historyData = historyRes ? await historyRes.json().catch(() => null) : null;
                 const currEvent = bootData.events.find(e => e.is_current);

@@ -49,12 +49,14 @@ jobs:
           # and silently drop the refresh whenever one of them lands first.
           # odds.json is a whole-file replacement, so there is nothing to merge.
           cp data/odds.json /tmp/odds.json
+          cp data/odds-calibration.json /tmp/odds-calibration.json 2>/dev/null || true
 
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
             cp /tmp/odds.json data/odds.json
-            git add data/odds.json
+            cp /tmp/odds-calibration.json data/odds-calibration.json 2>/dev/null || true
+            git add data/odds.json data/odds-calibration.json
             if git diff --staged --quiet; then
               echo "Odds unchanged since the last run."
               exit 0

@@ -116,6 +116,25 @@
             if (!opp && fixture) {
                 xga *= 1 + ((fixture.difficulty || 3) - 3) * 0.12;
             }
+
+            /* The betting market's estimate of this same number, where it has
+               one — which is the next gameweek and nothing beyond it.
+
+               This is the only place the market enters the projection, and that
+               is deliberate: clean sheets and goals-conceded points are both
+               derived from xga a few lines below, so correcting it here corrects
+               them together and cannot leave the two disagreeing. The weight
+               fades as the model's own sample grows, and boMarketXGA returns null
+               unless every fixture in the round is priced — see the reasoning in
+               scripts/odds-panel.js. Absent the feed, nothing changes. */
+            if (typeof boMarketXGA === 'function') {
+                const marketXga = boMarketXGA(teamId, fixture);
+                if (marketXga != null) {
+                    const w = boMarketWeight(ta ? ta.matchesPlayed : 0);
+                    xga = xga * (1 - w) + marketXga * w;
+                }
+            }
+
             return Math.max(0.25, Math.min(4.0, xga));
         }
 

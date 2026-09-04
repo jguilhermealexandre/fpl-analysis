@@ -18,9 +18,11 @@
    and exits non-zero — a stale odds panel is a small problem, an empty one that
    claims a fixture has no chance of a clean sheet is a much larger one.
 
-   Usage: node tools/fetch-odds.mjs [--out data/odds.json] [--csv /tmp/fx.csv] */
+   Usage: node tools/fetch-odds.mjs [--out data/odds.json] [--csv /tmp/fx.csv]
+                                    [--calibration data/odds-calibration.json] */
 import fs from 'node:fs';
 import { deriveMatch } from './odds-model.mjs';
+import { calibrationSample, appendRound, summarise } from './odds-calibration.mjs';
 
 const FIXTURES_URL = 'https://www.football-data.co.uk/fixtures.csv';
 const DIVISION = 'E0';                 // Premier League
@@ -92,6 +94,7 @@ async function main() {
     const args = process.argv.slice(2);
     const outPath = args.includes('--out') ? args[args.indexOf('--out') + 1] : 'data/odds.json';
     const csvArg = args.includes('--csv') ? args[args.indexOf('--csv') + 1] : null;
+    const calibPath = args.includes('--calibration') ? args[args.indexOf('--calibration') + 1] : 'data/odds-calibration.json';
 
     let csv;
     if (csvArg) {
@@ -175,6 +178,23 @@ async function main() {
     matches.sort((a, b) => String(a.kickoff).localeCompare(String(b.kickoff)));
     const events = [...new Set(matches.map(m => m.event))].sort((a, b) => a - b);
 
+    /* Whether each round is priced in full.
+
+       Consumers blend these goal expectations into their own projections, and a
+       half-priced round is worse than an unpriced one: some teams would carry
+       market numbers and the rest would not, so every comparison across that
+       line would be measuring the difference between two estimators rather than
+       between two footballers. Only this job can see how many fixtures the round
+       actually holds, so only this job can answer it. */
+    const coverage = events.map(event => {
+        const priced = matches.filter(m => m.event === event).length;
+        const scheduled = fixtures.filter(f => f.event === event).length;
+        return { event, priced, scheduled, complete: priced === scheduled };
+    });
+    coverage.forEach(c => {
+        if (!c.complete) console.log(`GW${c.event}: ${c.priced} of ${c.scheduled} fixtures priced — consumers will not blend this round`);
+    });
+
     const output = {
         metadata: {
             lastUpdated: new Date().toISOString(),
@@ -183,6 +203,7 @@ async function main() {
             division: DIVISION,
             matches: matches.length,
             events,
+            coverage,
             worstDrawError: Math.round(worstDraw * 1000) / 1000,
             model: 'independent Poisson fitted to de-vigged 1X2 and over/under 2.5'
         },
@@ -191,6 +212,25 @@ async function main() {
 
     fs.writeFileSync(outPath, JSON.stringify(output, null, 1) + '\n');
     console.log(`Wrote ${outPath}: ${matches.length} matches across GW${events.join(', GW')}, worst draw error ${(worstDraw * 100).toFixed(1)}pp`);
+
+    /* Record what the site's own model said about the same fixtures.
+
+       Strictly a by-product: it runs after the feed is safely written, it cannot
+       fail the job, and nothing on the site reads it. It exists so that in ten
+       rounds there is evidence about where the model is biased, instead of an
+       argument about it. */
+    const calibRows = calibrationSample(output, boot, fixtures);
+    if (!calibRows) {
+        console.log('No calibration sample this run.');
+        return;
+    }
+    let existingCalib = null;
+    try { existingCalib = JSON.parse(fs.readFileSync(calibPath, 'utf8')); } catch (e) { existingCalib = null; }
+    const nextCalib = appendRound(existingCalib, output.metadata.lastUpdated, calibRows);
+    fs.writeFileSync(calibPath, JSON.stringify(nextCalib, null, 1) + '\n');
+    const stats = nextCalib.metadata.overall || summarise(calibRows);
+    console.log(`Calibration: ${calibRows.length} samples, ${nextCalib.metadata.rounds} round(s) held.` +
+        (stats ? ` mean market/model ${stats.meanRatio} (home ${stats.meanRatioHome}, away ${stats.meanRatioAway}); venue effect vs market ${stats.venueEffectVsMarket}x` : ''));
 }
 
 main().catch(err => fail(`odds fetch threw: ${err.message}`));

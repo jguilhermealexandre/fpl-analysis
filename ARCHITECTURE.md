@@ -48,6 +48,7 @@ Three sources, different cadences, and it matters which one you read.
 | `data/players-data.json` | `update.player-data.yml` | every 4 h | per-gameweek history for all ~610 players |
 | `data/articles/*.json` | `update.player-data.yml` | every 4 h | Scout's Desk archive |
 | `data/odds.json` | `fetch-odds.yml` | 4x daily | bookmakers' prices for the next round, as probabilities |
+| `data/odds-calibration.json` | same | same | the model's expected goals against, next to the market's |
 
 The split exists because `players-data.json` needs 610 sequential
 `element-summary` calls and takes minutes, while the first three are two or
@@ -70,6 +71,17 @@ Lineup Wizard's Matchday tab reads it, and the Transfer Wizard deliberately
 does not. Nobody quotes clean-sheet percentages, so those are derived in
 `tools/odds-model.mjs` from the 1X2 and over/under 2.5 markets and committed
 already computed.
+
+The market does reach the projection, in exactly one place: `expectedGoalsAgainst()`
+in `xp-engine.js` blends it into its own estimate, weighted by how much
+evidence the model has of its own (heavy at two matches played, light by a
+dozen). Everything defensive — clean sheets, goals-conceded deductions —
+derives from that one number, so correcting it there corrects them together.
+It only applies to a round where every fixture is priced: half a round would
+mean comparing players across two different estimators. `data/odds-calibration.json`
+accumulates model-versus-market pairs so the model's bias can be measured
+rather than argued about — the first round found its overall level right and
+its home/away split roughly 1.8x too strong.
 
 ## Conventions
 

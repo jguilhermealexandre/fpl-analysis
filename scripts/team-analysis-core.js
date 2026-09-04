@@ -448,13 +448,19 @@
                 // rewritten every 15 minutes, where players-data.json's per-GW
                 // history only lands with the four-hourly job. Optional: absent or
                 // stale, the Gameweek Review falls back to that history.
-                const [bootData, fixturesData, playersDataRes, eventLiveRes] = await Promise.all([
+                const [bootData, fixturesData, playersDataRes, eventLiveRes, oddsRes] = await Promise.all([
                     DataCache.fetchJSON(DATA_URLS.bootstrap),
                     DataCache.fetchJSON(DATA_URLS.fixtures).catch(() => []),
                     DataCache.fetchJSON(DATA_URLS.players).catch(() => null),
-                    DataCache.fetchJSON(DATA_URLS.eventLive).catch(() => null)
+                    DataCache.fetchJSON(DATA_URLS.eventLive).catch(() => null),
+                    // Optional. Fetched here rather than when the Matchday tab is
+                    // opened so that every projection in a render pass is built
+                    // from the same inputs — half a screen priced by the market
+                    // and half by the model would be worse than neither.
+                    DataCache.fetchJSON(DATA_URLS.odds).catch(() => null)
                 ]);
                 if (typeof setEventLiveData === 'function') setEventLiveData(eventLiveRes);
+                if (typeof boSetOdds === 'function') boSetOdds(oddsRes);
 
                 teams = {};
                 bootData.teams.forEach(t => { teams[t.id] = t; });

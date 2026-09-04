@@ -93,6 +93,129 @@
             };
         }
 
+        /* ===== Feeding the market back into the projection =====
+
+           The site's own expected-goals-against and the market's are estimates of
+           exactly the same quantity, and both turn it into a clean sheet the same
+           way — exp(-xGA). So there is one number to reconcile, not two models.
+
+           Measuring them against each other on a full round found something worth
+           acting on. The model's total for the round was almost exactly the
+           market's (30.9 goals against 29.5), so its overall level is right. Its
+           home/away split was not: home sides were projected to concede 9.99
+           where the market said 13.48, away sides 20.94 against 16.01. That is a
+           venue effect roughly 1.8 times what the market prices, and it traces to
+           expectedGoalsAgainst applying venue three times over — through the
+           team's own home/away defensive rating, again through the opponent's
+           home/away attacking rating, and once more through an explicit
+           venueFactor.
+
+           Rather than hard-code a correction from twenty samples in one round,
+           the market is blended in with the weight the rest of this engine
+           already uses for evidence: heavy while the model knows little, fading
+           as its own sample fills in. At two matches played the market carries
+           most of it; by a dozen the model is trusted with most of its own
+           judgement. The floor is deliberately not zero — a liquid market prices
+           team news, suspensions and motivation that no ratings model sees. */
+        const BO_WEIGHT_EARLY = 0.75;
+        const BO_WEIGHT_LATE = 0.30;
+        const BO_WEIGHT_FULL_EVIDENCE = 12;   // matches played before the floor
+
+        function boMarketWeight(matchesPlayed) {
+            const played = Math.max(0, Number(matchesPlayed) || 0);
+            const t = Math.min(1, played / BO_WEIGHT_FULL_EVIDENCE);
+            return BO_WEIGHT_EARLY + (BO_WEIGHT_LATE - BO_WEIGHT_EARLY) * t;
+        }
+
+        /* Injected during the page's data-loading phase rather than fetched when
+           the tab is first opened.
+
+           If the feed arrived lazily, the projections rendered before it landed
+           would use the model and the ones after it would use the market — on the
+           same screen, for the same players. Loading it with bootstrap and
+           fixtures means every number in a render pass comes from the same
+           inputs. boLoadOdds() remains for anything that opens the panel without
+           having gone through that phase. */
+        let _boIndex = null;
+        let _boPricedRounds = null;
+
+        function boSetOdds(data) {
+            boOdds = (data && Array.isArray(data.matches) && data.matches.length) ? data : null;
+            if (!boOdds && data) boOddsError = 'the odds feed is present but empty';
+            boOddsPromise = Promise.resolve(boOdds);
+            _boIndex = null;
+            _boPricedRounds = null;
+            return boOdds;
+        }
+
+        // Keyed by opponent as well as gameweek: in a double gameweek a team has
+        // two fixtures in one event, and keying on the event alone would price
+        // both of them off whichever was written last.
+        function boIndex() {
+            if (_boIndex) return _boIndex;
+            _boIndex = new Map();
+            if (!boOdds) return _boIndex;
+            boOdds.matches.forEach(m => {
+                _boIndex.set(m.homeId + ':' + m.event + ':' + m.awayId, { xga: m.lambdaAway, xgf: m.lambdaHome });
+                _boIndex.set(m.awayId + ':' + m.event + ':' + m.homeId, { xga: m.lambdaHome, xgf: m.lambdaAway });
+            });
+            return _boIndex;
+        }
+
+        /* Only ever applied to a gameweek where every fixture is priced.
+
+           A partially priced round is worse than an unpriced one: eight teams
+           would carry market goal expectations and twelve would not, and every
+           comparison between a player from one group and a player from the other
+           would be measuring the difference between two estimators rather than
+           between two footballers. */
+        function boRoundFullyPriced(event) {
+            if (!boOdds || event == null) return false;
+            if (!_boPricedRounds) _boPricedRounds = new Map();
+            if (_boPricedRounds.has(event)) return _boPricedRounds.get(event);
+            const priced = boOdds.matches.filter(m => m.event === event).length;
+            const stated = ((boOdds.metadata && boOdds.metadata.coverage) || [])
+                .find(c => c.event === event);
+            let ok = false;
+            if (priced > 0 && stated && stated.complete) {
+                // The feed says the round is complete. Where the page also holds
+                // the fixture list, check it — a postponement after the odds were
+                // written would make that claim stale.
+                ok = (typeof allFixtures !== 'undefined' && Array.isArray(allFixtures) && allFixtures.length)
+                    ? allFixtures.filter(f => f.event === event).length === priced
+                    : true;
+            }
+            _boPricedRounds.set(event, ok);
+            return ok;
+        }
+
+        // The market's expected goals against for one team in one fixture, or
+        // null when there is no usable price — which is the normal case for every
+        // gameweek except the next one.
+        function boMarketXGA(teamId, fixture) {
+            if (!boOdds || !fixture || fixture.event == null || fixture.opponentId == null) return null;
+            if (!boRoundFullyPriced(fixture.event)) return null;
+            const hit = boIndex().get(teamId + ':' + fixture.event + ':' + fixture.opponentId);
+            return hit ? hit.xga : null;
+        }
+
+        // What the panel reports about itself, so a blended projection is never a
+        // silent one.
+        function boBlendInfo() {
+            if (!boOdds) return { active: false };
+            const events = [...new Set(boOdds.matches.map(m => m.event))].sort((a, b) => a - b);
+            const event = events[0];
+            const played = (typeof teamAnalysis !== 'undefined' && teamAnalysis)
+                ? (Object.values(teamAnalysis)[0] || {}).matchesPlayed : null;
+            return {
+                active: boRoundFullyPriced(event),
+                event,
+                weight: boMarketWeight(played),
+                matchesPlayed: played,
+                priced: boOdds.matches.filter(m => m.event === event).length
+            };
+        }
+
         function boPct(v) { return Math.round(v * 100) + '%'; }
 
         function boKickoff(iso) {
@@ -204,6 +327,15 @@
                         ${matches.length} matches${updated ? ` · ${escHTML(updated.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }))}` : ''}</span>
                 </div>
                 ${stale ? `<div class="bo-stale">These prices are more than a day old — the odds job has not run since. Treat them as indicative.</div>` : ''}
+                ${(() => {
+                    const b = boBlendInfo();
+                    return b.active
+                        ? `<div class="bo-blend on" data-tooltip="${escHTML(
+                            `Every projection on this page for GW${b.event} is ${Math.round(b.weight * 100)}% the market's goal expectations and ${Math.round((1 - b.weight) * 100)}% this site's model. The market's share falls as the season gives the model more of its own evidence — currently ${b.matchesPlayed ?? 0} matches played. Later gameweeks are model-only: bookmakers do not price them yet.`)}">
+                            Blended into GW${b.event} projections · market weight ${Math.round(b.weight * 100)}%</div>`
+                        : `<div class="bo-blend off" data-tooltip="Projections are model-only. The market is blended in only when every fixture in the round is priced, so that no two players are being compared across different estimators.">
+                            Shown for reference — not blended into projections</div>`;
+                })()}
                 <div class="bo-matches">${matches.map(boRenderMatch).join('')}</div>
                 <div class="bo-foot">Derived from de-vigged 1X2 and over/under 2.5 prices, fitted to independent Poisson. Odds describe one gameweek only, which is why they appear here and not in the Transfer Wizard. Source: football-data.co.uk.</div>
             </div>`;
