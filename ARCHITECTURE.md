@@ -31,9 +31,10 @@ Consequences you have to work with:
   one wins, with no error. `twRecencyWeightedAvg` exists only because
   `compare-report.js` already owns `recencyWeightedAvg` with different
   semantics. `npm run check:globals` fails the build on this.
-- **Prefixes are the namespace.** `tw*` transfer wizard, `lw*` lineup wizard,
-  `dp*` draft planner, `sd*` scout's desk, `gwr*` gameweek review, `opt*` the
-  shared optimisation report. Keep using them.
+- **Prefixes are the namespace.** `tw*` transfer wizard, `twf*` the transfer
+  wizard's market funnel, `lw*` lineup wizard, `dp*` draft planner, `sd*`
+  scout's desk, `gwr*` gameweek review, `opt*` the shared optimisation report.
+  Keep using them.
 
 ## Data
 

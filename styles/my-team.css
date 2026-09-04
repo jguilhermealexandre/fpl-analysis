@@ -5193,3 +5193,194 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .gwr-learning.bad { border-left-color: var(--verdict-sell); }
 .gwr-learning.mixed { border-left-color: var(--verdict-monitor); }
 .gwr-learning-icon { flex-shrink: 0; font-size: 14px; line-height: 1.4; }
+
+/* ===== Transfer Funnel (scripts/transfer-funnel.js) =====
+   The market pane of the Transfer Wizard: a two-step funnel replacing the flat
+   tabbed list. Step 1 narrows by fixture run and player type, step 2 shows what
+   survived with the evidence behind each projection.
+
+   Fixture chips deliberately set no background of their own — the global
+   .fdr-1….fdr-5 rules in common.css supply it, and declaring one here would win
+   on source order and flatten every strip to a single colour. */
+.twf { display: flex; flex-direction: column; border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); overflow: hidden; }
+
+.twf-head { padding: 8px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); }
+.twf-head-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.twf-head-title { font-size: 12px; color: var(--text-secondary); }
+.twf-head-title strong { color: var(--text-primary); }
+.twf-budget { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text-primary); cursor: help; }
+.twf-budget em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--color-warning); }
+.twf-head-bot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.twf-steps { display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-full); overflow: hidden; }
+.twf-step { padding: 4px 11px; border: none; background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: .02em; color: var(--text-muted); cursor: pointer; }
+.twf-step.active { background: var(--color-primary); color: #fff; }
+
+.twf-counts { display: inline-flex; align-items: center; gap: 4px; cursor: help; }
+.twf-count { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-muted); }
+.twf-count.cut { color: var(--text-primary); }
+.twf-count.final { color: var(--color-primary); font-size: 13px; }
+.twf-count-arrow { font-size: 9px; color: var(--text-muted); }
+
+.twf-hzs { margin-left: auto; display: inline-flex; gap: 3px; cursor: help; }
+.twf-hz { padding: 3px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 700; color: var(--text-muted); cursor: pointer; }
+.twf-hz.active { background: var(--color-info); border-color: var(--color-info); color: #fff; }
+
+.twf-body { padding: 8px; max-height: 640px; overflow-y: auto; }
+.twf-section + .twf-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); }
+.twf-section-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.twf-section-title { font-size: 11px; font-weight: 700; color: var(--text-primary); }
+.twf-section-sub { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+.twf-reset { margin-left: auto; border: none; background: none; font-family: var(--font-body); font-size: 10px; font-weight: 600; color: var(--color-info); cursor: pointer; padding: 0; }
+
+.twf-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.twf-preset { padding: 3px 9px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
+.twf-preset:hover { border-color: var(--color-primary); color: var(--text-primary); }
+.twf-preset.active { background: var(--surface-3); }
+
+/* One club per row. The fixture strip is forced onto a second line by its
+   flex-basis so it always gets the pane's full width — at an eight-gameweek
+   horizon it would otherwise squeeze the ratings off the end of the row. */
+.twf-clubs { max-height: 330px; overflow-y: auto; padding-right: 2px; }
+.twf-club { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 5px 7px; margin-bottom: 4px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-1); cursor: pointer; transition: border-color 140ms ease; }
+.twf-club:hover { border-color: var(--border-emphasis); }
+.twf-club.on { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 7%, transparent); }
+.twf-club.blocked { opacity: .45; }
+.twf-club.empty { opacity: .55; }
+.twf-club-check { width: 13px; height: 13px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-emphasis); border-radius: 3px; font-size: 9px; font-weight: 800; color: #fff; }
+.twf-club.on .twf-club-check { background: var(--color-primary); border-color: var(--color-primary); }
+.twf-club-name { width: 34px; flex-shrink: 0; font-size: 11px; font-weight: 700; color: var(--text-primary); }
+.twf-club-run { display: inline-flex; align-items: center; gap: 5px; cursor: help; }
+.twf-bar { width: 44px; height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.twf-bar i { display: block; height: 100%; background: var(--color-primary); }
+.twf-club-run b { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-primary); }
+.twf-club-stats { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.twf-ms { font-size: 9px; color: var(--text-muted); cursor: help; }
+.twf-ms b { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--text-secondary); }
+.twf-ms.dim b { color: var(--text-muted); }
+.twf-club-n { margin-left: auto; min-width: 18px; text-align: right; font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--text-muted); cursor: help; }
+.twf-fxs { order: 10; flex: 1 1 100%; display: flex; gap: 3px; flex-wrap: wrap; }
+.twf-fx { padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; line-height: 1.5; cursor: help; }
+.twf-fx i { font-style: normal; opacity: .65; font-size: 8px; margin-left: 1px; }
+.twf-fx.dbl { outline: 1px solid var(--color-warning); outline-offset: -1px; }
+.twf-fx.blank { background: var(--surface-3); color: var(--text-muted); }
+
+.twf-swing { padding: 1px 6px; border-radius: var(--radius-full); font-size: 9px; font-weight: 700; cursor: help; white-space: nowrap; }
+.twf-swing.improving { background: color-mix(in srgb, var(--verdict-hold) 16%, transparent); color: var(--verdict-hold); }
+.twf-swing.worsening { background: color-mix(in srgb, var(--verdict-sell) 16%, transparent); color: var(--verdict-sell); }
+.twf-trend { font-size: 8px; font-weight: 800; letter-spacing: .02em; cursor: help; }
+.twf-trend.up { color: var(--verdict-hold); }
+.twf-trend.down { color: var(--verdict-sell); }
+.twf-form5 { display: inline-flex; gap: 2px; }
+.twf-r { width: 11px; height: 11px; border-radius: 2px; font-style: normal; font-size: 7px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+.twf-r.w { background: var(--verdict-hold); color: #fff; }
+.twf-r.d { background: var(--surface-3); color: var(--text-secondary); }
+.twf-r.l { background: var(--verdict-sell); color: #fff; }
+
+.twf-searchrow { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.twf-search { flex: 1 1 160px; padding: 5px 9px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-2); font-family: var(--font-body); font-size: 11px; color: var(--text-primary); }
+.twf-search:focus { outline: none; border-color: var(--color-info); }
+
+.twf-group { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
+.twf-group-l { flex: 0 0 96px; padding-top: 3px; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); cursor: help; }
+.twf-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.twf-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 140ms ease; }
+.twf-chip:hover { border-color: var(--color-primary); color: var(--text-primary); }
+.twf-chip.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.twf-chip.dead { opacity: .4; }
+.twf-chip[disabled] { opacity: .35; cursor: not-allowed; }
+.twf-chip em { font-style: normal; font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 0 4px; border-radius: var(--radius-full); background: var(--surface-3); color: var(--text-muted); }
+.twf-chip.active em { background: rgba(255, 255, 255, .25); color: #fff; }
+
+.twf-foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--border-default); background: var(--surface-2); }
+.twf-foot-why { flex: 1; font-size: 10px; color: var(--text-muted); line-height: 1.4; }
+.twf-back { padding: 5px 11px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: transparent; font-family: var(--font-body); font-size: 11px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
+.twf-back:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
+.twf-go { margin-left: auto; padding: 6px 14px; border: none; border-radius: var(--radius-md); background: var(--color-primary); font-family: var(--font-body); font-size: 11px; font-weight: 700; color: #fff; cursor: pointer; }
+.twf-go[disabled] { background: var(--surface-3); color: var(--text-muted); cursor: not-allowed; }
+
+/* ----- Step 2, the shortlist ----- */
+.twf-sortrow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.twf-out { display: flex; align-items: center; gap: 6px; padding: 5px 8px; margin-bottom: 8px; border: 1px dashed var(--border-emphasis); border-radius: var(--radius-md); background: var(--surface-2); cursor: help; }
+.twf-out-l { font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--verdict-sell); }
+.twf-out-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.twf-out-sub { font-size: 10px; color: var(--text-muted); }
+.twf-out-xp { margin-left: auto; font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+.twf-out-xp i { font-style: normal; font-size: 8px; color: var(--text-muted); margin-left: 2px; }
+
+.twf-card { padding: 9px; margin-bottom: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-1); cursor: pointer; transition: border-color 140ms ease; }
+.twf-card:hover { border-color: var(--color-primary); }
+.twf-card.unafford { opacity: .5; }
+.twf-card-top { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+.twf-rank { width: 17px; height: 17px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--surface-3); color: var(--text-secondary); font-size: 9px; font-weight: 700; }
+.twf-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.twf-team { font-size: 9px; color: var(--text-muted); }
+.twf-price { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.twf-block { font-size: 8px; font-weight: 800; letter-spacing: .04em; padding: 1px 4px; border-radius: 3px; background: color-mix(in srgb, var(--color-error) 18%, transparent); color: var(--color-error); }
+.twf-flag { font-size: 9px; font-weight: 800; padding: 0 4px; border-radius: 3px; cursor: help; }
+.twf-flag.doubt { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
+.twf-flag.out { background: color-mix(in srgb, var(--color-error) 18%, transparent); color: var(--color-error); }
+.twf-sp-badge { font-size: 8px; font-weight: 800; letter-spacing: .03em; padding: 1px 4px; border-radius: 3px; background: var(--surface-3); color: var(--text-secondary); cursor: help; }
+.twf-sp-badge.pen { background: color-mix(in srgb, var(--color-warning) 22%, transparent); color: var(--color-warning); }
+
+.twf-verdict { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.twf-xp { font-family: var(--font-mono); font-size: 19px; font-weight: 800; color: var(--text-primary); cursor: help; }
+.twf-xp i { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+.twf-gain { display: inline-flex; flex-direction: column; padding: 2px 7px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 12px; font-weight: 800; line-height: 1.25; }
+.twf-gain i { font-style: normal; font-family: var(--font-body); font-size: 8px; font-weight: 600; opacity: .8; }
+.twf-gain.up { background: color-mix(in srgb, var(--verdict-hold) 16%, transparent); color: var(--verdict-hold); }
+.twf-gain.down { background: color-mix(in srgb, var(--verdict-sell) 16%, transparent); color: var(--verdict-sell); }
+.twf-gain.flat { background: var(--surface-3); color: var(--text-muted); }
+/* Where the projection comes from — the component breakdown the xP engine has
+   always returned and nothing had ever put on screen. */
+.twf-bar-wrap { flex: 1; min-width: 60px; display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface-3); cursor: help; }
+.twf-seg { display: block; height: 100%; }
+.twf-seg.a { background: var(--color-primary); }
+.twf-seg.c { background: var(--color-info); }
+.twf-seg.s { background: #38BDF8; }
+.twf-seg.d { background: var(--color-wizard); }
+.twf-seg.b { background: var(--color-warning); }
+.twf-seg.p { background: var(--text-muted); }
+.twf-risk { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--verdict-sell); cursor: help; }
+
+.twf-strip { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 7px; }
+.twf-gw { display: inline-flex; flex-direction: column; align-items: center; min-width: 34px; padding: 2px 4px; border-radius: 4px; font-size: 8px; font-weight: 600; line-height: 1.3; cursor: help; }
+.twf-gw b { font-family: var(--font-mono); font-size: 11px; font-weight: 800; }
+.twf-gw.blank { background: var(--surface-3); color: var(--text-muted); }
+
+.twf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.twf-col-h { font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+.twf-spark { display: flex; align-items: flex-end; gap: 2px; height: 26px; margin-bottom: 5px; }
+.twf-spark i { flex: 1; min-height: 2px; border-radius: 2px 2px 0 0; background: var(--color-info); cursor: help; }
+.twf-spark i.haul { background: var(--color-primary); }
+.twf-spark i.out { background: var(--surface-3); }
+.twf-spark i.none { background: none; }
+.twf-kv { display: flex; align-items: baseline; gap: 5px; padding: 2px 0; font-size: 10px; border-bottom: 1px solid var(--border-subtle); }
+.twf-kv:last-child { border-bottom: none; }
+.twf-kv > span:first-child { flex: 1; color: var(--text-muted); }
+.twf-kv b { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-primary); }
+.twf-kv b.up { color: var(--verdict-hold); }
+.twf-kv b.down { color: var(--verdict-sell); }
+.twf-dim { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); }
+.twf-dim.up { color: var(--verdict-hold); }
+.twf-dim.down { color: var(--verdict-sell); }
+.twf-dir { font-size: 9px; font-weight: 700; }
+.twf-dir.up { color: var(--verdict-hold); }
+.twf-dir.down { color: var(--verdict-sell); }
+.twf-dir.flat { color: var(--text-muted); }
+
+.twf-empty { padding: 24px 14px; text-align: center; font-size: 11px; line-height: 1.6; color: var(--text-muted); }
+.twf-empty div { margin-top: 6px; }
+.twf-linkbtn { border: none; background: none; padding: 0; font-family: var(--font-body); font-size: 11px; font-weight: 600; color: var(--color-info); cursor: pointer; text-decoration: underline; }
+.twf-trimmed { padding: 8px; text-align: center; font-size: 10px; color: var(--text-muted); }
+
+/* The pane is one of two columns until 1000px, where .twc-body stacks — below
+   that the funnel has the full width and the two evidence columns fit; above it
+   they are sharing about 520px, which is where they need to stack instead. */
+@media (min-width: 1001px) and (max-width: 1400px) { .twf-cols { grid-template-columns: 1fr; } }
+@media (max-width: 620px) {
+    .twf-cols { grid-template-columns: 1fr; }
+    .twf-group { flex-direction: column; gap: 3px; }
+    .twf-group-l { flex: none; padding-top: 0; }
+    .twf-club-stats { flex: 1 1 100%; order: 9; }
+}

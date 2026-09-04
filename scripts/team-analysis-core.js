@@ -92,8 +92,8 @@
             activeSlot: -1,        // Index into pending[]
             mode: 'squad',         // 'squad' | 'market' | 'compare' | 'summary'
             candidateCache: {},    // cacheKey -> scored candidates
-            marketFilter: { pos: 0, priceRange: 'all' },
-            previewPlayer: null    // candidate being previewed in comparison
+            previewPlayer: null,   // candidate being previewed in comparison
+            funnel: null           // market filters; scripts/transfer-funnel.js owns the shape
         };
 
         let userSettings = {
@@ -506,6 +506,27 @@
                     // FPL, worth 2 points once a per-match threshold is cleared.
                     defCon: p.defensive_contribution || 0,
                     defCon90: parseFloat(p.defensive_contribution_per_90) || 0,
+                    /* FPL publishes its own per-90s and its own within-position
+                       ranks. Both were being recomputed from season totals in
+                       three places and the ranks were not available at all, which
+                       is why every rate on the site was shown raw — 0.32 xGI/90
+                       is elite for a defender and ordinary for a striker, and
+                       nothing could say which. rank_type is 1 = best within the
+                       position; scripts/transfer-funnel.js turns them into
+                       percentiles for its quality filter. */
+                    xG90: p.expected_goals_per_90 != null ? parseFloat(p.expected_goals_per_90) : null,
+                    xA90: p.expected_assists_per_90 != null ? parseFloat(p.expected_assists_per_90) : null,
+                    xGI90: p.expected_goal_involvements_per_90 != null ? parseFloat(p.expected_goal_involvements_per_90) : null,
+                    xGC90: p.expected_goals_conceded_per_90 != null ? parseFloat(p.expected_goals_conceded_per_90) : null,
+                    saves90: p.saves_per_90 != null ? parseFloat(p.saves_per_90) : null,
+                    starts90: p.starts_per_90 != null ? parseFloat(p.starts_per_90) : null,
+                    cs90: p.clean_sheets_per_90 != null ? parseFloat(p.clean_sheets_per_90) : null,
+                    formRankType: p.form_rank_type || null,
+                    ppgRankType: p.points_per_game_rank_type || null,
+                    ictRankType: p.ict_index_rank_type || null,
+                    threatRankType: p.threat_rank_type || null,
+                    creativityRankType: p.creativity_rank_type || null,
+                    ownershipRankType: p.selected_rank_type || null,
                     // Set-piece duty as published, rather than inferred from a
                     // goals-minus-xG gap. 1 = first choice.
                     penaltiesOrder: p.penalties_order || null,
@@ -605,7 +626,7 @@
                 lineupRendered = false;
                 draftTabRendered = false;
                 newsRendered = false;
-                transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null };
+                transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, previewPlayer: null, funnel: null };
                 document.getElementById('tabBar').classList.add('visible');
                 if (window._pendingTab) {
                     const pending = window._pendingTab;

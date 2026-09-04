@@ -461,7 +461,10 @@
                 initDraft(activeDraftSlot);
                 loadDraft();
             }
-            transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, marketFilter: { pos: 0, priceRange: 'all' }, previewPlayer: null, marketTab: 'ai', browseSearch: '', browseSort: 'score', wildcard: false, sellMode: false };
+            // funnel holds every market filter. It is deliberately created once here
+            // and never reset when moving between slots: filling eight slots on a
+            // wildcard should not mean re-picking the same six clubs eight times.
+            transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, previewPlayer: null, wildcard: false, sellMode: false, funnel: twfDefaultFilters() };
             const container = document.getElementById('transferDisplay');
 
             // Two panes side by side rather than one panel switching between squad,
@@ -957,7 +960,7 @@
             transferState.mode = 'market';
             transferState.previewPlayer = null;
             transferState.candidateCache = {};
-            transferState.marketTab = 'ai';
+            twfState().search = '';
             renderTWAll();
         }
 
@@ -972,237 +975,27 @@
                 <div class="twc-idle">Hit <strong>🔄 Swap</strong> on any player and their replacements appear here, already filtered to their position and what you can afford.</div></div>`;
         }
 
+        /* The market pane.
+
+           The body of this function used to be two hundred lines of flat list:
+           three tabs, four price bands, and a ranked table whose only team
+           context was three difficulty chips. It is now a two-step funnel in
+           scripts/transfer-funnel.js — narrow by fixture run and player type,
+           then pick from what survives — and this stays as the entry point so
+           renderTWMarketPane() and the comparison view's fall-back call site
+           are both unchanged.
+
+           The guard below is the one thing that cannot move into the funnel:
+           it runs before the funnel is asked for anything, and a slot that has
+           gone away has to send the pane back to the squad rather than render
+           against undefined. */
         function renderTWMarket(el) {
             const slotIdx = transferState.activeSlot;
             if (slotIdx < 0 || !transferState.pending[slotIdx]) {
                 renderTWSquadPane();
                 return;
             }
-
-            const slot = transferState.pending[slotIdx];
-            const sold = slot.soldPlayer;
-            const pos = sold.position;
-            const itb = getTWLiveITB();
-            // Allocated, not pooled — see twSlotBudget(). The reserved figure is
-            // surfaced in the header below so the number is explainable rather
-            // than just smaller than the bank.
-            const maxPrice = twSlotBudget(slotIdx);
-            const reserved = twReservedFor(slotIdx);
-            const openOtherSlots = transferState.pending.filter((s, i) => i !== slotIdx && !s.replacement).length;
-
-            const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
-            const boughtIds = new Set(transferState.pending.filter(s => s.replacement).map(s => s.replacement.id));
-            const excludeIds = new Set([...selectedPlayers.map(p => p.id), ...boughtIds]);
-            for (const id of soldIds) excludeIds.delete(id);
-
-            const tab = transferState.marketTab || 'ai';
-            const priceFilter = transferState.marketFilter.priceRange;
-            const posName = ['', 'Goalkeepers', 'Defenders', 'Midfielders', 'Forwards'][pos];
-
-            // Computed unconditionally (not just inside the branch below) so the
-            // tab button itself can show how many of this position are shortlisted,
-            // even while a different tab is the one actually showing.
-            const shortlistIds = getTWShortlistIds();
-            const shortlistPlayers = allPlayers.filter(p => shortlistIds.has(p.id));
-            const shortlistCountForPos = shortlistPlayers.filter(p =>
-                p.position === pos && !excludeIds.has(p.id)).length;
-            // The two reasons a starred player legitimately does not appear in this
-            // slot's list. Both are counted so an empty tab can say which it is
-            // instead of looking like the shortlist failed to load.
-            const shortlistOwned = shortlistPlayers.filter(p => p.position === pos && excludeIds.has(p.id));
-            const shortlistOtherPos = shortlistPlayers.filter(p => p.position !== pos);
-
-            // Clubs you already hold three of. The AI list drops them outright —
-            // recommending a player Confirm will refuse is worse than recommending
-            // nobody — while the two browsing tabs keep them visible but marked,
-            // since there you are looking someone up rather than being advised.
-            const blockedClubs = twBlockedClubIds(slotIdx);
-
-            let candidates;
-            if (tab === 'ai') {
-                // The blocked clubs belong in the cache key: the same position and
-                // budget produce a different top 30 once a club fills up.
-                const cacheKey = pos + '_' + maxPrice.toFixed(1) + '_' + [...blockedClubs].sort((a, b) => a - b).join('.');
-                if (!transferState.candidateCache[cacheKey]) {
-                    transferState.candidateCache[cacheKey] = findTransferCandidates(pos, maxPrice, excludeIds, blockedClubs);
-                }
-                candidates = [...transferState.candidateCache[cacheKey]];
-            } else if (tab === 'favorites') {
-                // Deliberately not filtered by maxPrice, unlike AI/Browse — the
-                // point of this tab is "how does the player I've starred compare",
-                // which is a question worth answering even when he's currently
-                // unaffordable. The existing unafford styling below already marks
-                // that case rather than hiding it.
-                candidates = shortlistPlayers.filter(p => p.position === pos && !excludeIds.has(p.id));
-                candidates.forEach(c => {
-                    if (c._transferScore == null) c._transferScore = calculateTransferScore(c, c.position);
-                    if (!c._recentStats) c._recentStats = getPlayerRecentStats(c.id, 5);
-                });
-                candidates.sort((a, b) => (b._transferScore || 0) - (a._transferScore || 0));
-            } else {
-                const query = (transferState.browseSearch || '').toLowerCase();
-                candidates = allPlayers.filter(p =>
-                    p.position === pos &&
-                    p.price <= maxPrice &&
-                    !excludeIds.has(p.id) &&
-                    (p.status === 'a' || p.status === 'd') &&
-                    p.minutes >= 50 &&
-                    (!query || p.name.toLowerCase().includes(query))
-                );
-                candidates.forEach(c => {
-                    if (c._transferScore == null) c._transferScore = calculateTransferScore(c, c.position);
-                    if (!c._recentStats) c._recentStats = getPlayerRecentStats(c.id, 5);
-                });
-                const sortBy = transferState.browseSort || 'score';
-                if (sortBy === 'price') candidates.sort((a, b) => b.price - a.price);
-                else if (sortBy === 'form') candidates.sort((a, b) => (b.form || 0) - (a.form || 0));
-                else if (sortBy === 'ppg') candidates.sort((a, b) => (b.ppg || 0) - (a.ppg || 0));
-                else candidates.sort((a, b) => (b._transferScore || 0) - (a._transferScore || 0));
-            }
-
-            if (priceFilter === 'budget') candidates = candidates.filter(c => c.price <= 6);
-            else if (priceFilter === 'mid') candidates = candidates.filter(c => c.price > 6 && c.price <= 9);
-            else if (priceFilter === 'premium') candidates = candidates.filter(c => c.price > 9);
-
-            const display = candidates.slice(0, tab === 'ai' ? 15 : 50);
-
-            // Position-specific stat columns
-            function getStatCols(p) {
-                const rs = p._recentStats || getPlayerRecentStats(p.id, 5);
-                const ss = getPlayerSeasonPer90(p);
-                const fmt = (v) => v != null ? v.toFixed(2) : '-';
-                const fPct = (v) => v != null ? v.toFixed(0) + '%' : '-';
-                if (pos === 1) return [
-                    { label: 'Sv%', val: fPct(rs?.savePct ?? ss.savePct), raw: rs?.savePct ?? ss.savePct ?? 0, lb: false },
-                    { label: 'CS%', val: fPct(rs?.csPercent ?? ss.csPercent), raw: rs?.csPercent ?? ss.csPercent ?? 0, lb: false },
-                    { label: 'xGC/90', val: fmt(rs?.xGCPer90 ?? ss.xGCPer90), raw: rs?.xGCPer90 ?? ss.xGCPer90 ?? 0, lb: true }
-                ];
-                if (pos === 2) return [
-                    { label: 'CS%', val: fPct(rs?.csPercent ?? ss.csPercent), raw: rs?.csPercent ?? ss.csPercent ?? 0, lb: false },
-                    { label: 'xGI/90', val: fmt(rs?.xGIPer90 ?? ss.xGIPer90), raw: rs?.xGIPer90 ?? ss.xGIPer90 ?? 0, lb: false },
-                    { label: 'xGC/90', val: fmt(rs?.xGCPer90 ?? ss.xGCPer90), raw: rs?.xGCPer90 ?? ss.xGCPer90 ?? 0, lb: true }
-                ];
-                if (pos === 3) return [
-                    { label: 'xGI/90', val: fmt(rs?.xGIPer90 ?? ss.xGIPer90), raw: rs?.xGIPer90 ?? ss.xGIPer90 ?? 0, lb: false },
-                    { label: 'xG/90', val: fmt(rs?.xGPer90 ?? ss.xGPer90), raw: rs?.xGPer90 ?? ss.xGPer90 ?? 0, lb: false },
-                    { label: 'xA/90', val: fmt(rs?.xAPer90 ?? ss.xAPer90), raw: rs?.xAPer90 ?? ss.xAPer90 ?? 0, lb: false }
-                ];
-                return [
-                    { label: 'xG/90', val: fmt(rs?.xGPer90 ?? ss.xGPer90), raw: rs?.xGPer90 ?? ss.xGPer90 ?? 0, lb: false },
-                    { label: 'xGI/90', val: fmt(rs?.xGIPer90 ?? ss.xGIPer90), raw: rs?.xGIPer90 ?? ss.xGIPer90 ?? 0, lb: false },
-                    { label: 'Goals', val: String(rs?.goals ?? p.goals ?? 0), raw: rs?.goals ?? p.goals ?? 0, lb: false }
-                ];
-            }
-
-            function statCls(col) {
-                const t = { 'Sv%': [70, 60], 'CS%': [35, 20], 'xGC/90': [1.0, 1.4], 'xGI/90': [0.35, 0.2], 'xG/90': [0.3, 0.15], 'xA/90': [0.2, 0.1], 'Goals': [6, 3] }[col.label];
-                if (!t) return '';
-                if (col.lb) return col.raw <= t[0] ? ' good' : col.raw >= t[1] ? ' poor' : '';
-                return col.raw >= t[0] ? ' good' : col.raw <= t[1] ? ' poor' : '';
-            }
-
-            // Every candidate is priced against the player being sold, over the same
-            // gameweeks, so "is this an upgrade" is answered on the card rather than
-            // left as an exercise for the reader.
-            const planGWs = twPlanGWs(3);
-            const soldXP = twXPOver(slot.soldPlayer, planGWs);
-
-            let rowsHtml = '';
-            if (display.length === 0) {
-                const emptyMsg = tab === 'browse' && transferState.browseSearch
-                    ? 'No players match your search'
-                    : tab === 'favorites'
-                        ? (shortlistPlayers.length === 0
-                            ? 'You haven\'t starred any players yet — use the ⭐ on the Players Analysis page and they will show up here.'
-                            : `None of your ${shortlistPlayers.length} starred players can fill this slot. ${twShortlistBreakdownText(shortlistOwned, shortlistOtherPos, posName)}`)
-                        : 'No candidates found within budget';
-                rowsHtml = '<div class="tw-market-empty">' + emptyMsg + '</div>';
-            } else {
-                for (let i = 0; i < display.length; i++) {
-                    const c = display[i];
-                    const affordable = c.price <= maxPrice;
-                    const clubFull = blockedClubs.has(c.teamId);
-                    const previewed = transferState.previewPlayer?.id === c.id;
-                    const score = c._transferScore || 0;
-                    const cols = getStatCols(c);
-                    const teamName = c.team || teams[c.teamId]?.short_name || '';
-                    const fixes = teamFixtures[c.teamId] || c.fixtures || [];
-
-                    const gain = twXPOver(c, planGWs) - soldXP;
-                    const gainCls = gain > 0.3 ? 'up' : gain < -0.3 ? 'down' : 'flat';
-                    const gainTxt = gain > 0.3 ? `▲ +${gain.toFixed(1)}` : gain < -0.3 ? `▼ ${gain.toFixed(1)}` : '±0.0';
-
-                    const fdrBlocks = fixes.slice(0, 3).map(f =>
-                        `<span class="twc-fdr fdr-${f.difficulty || 3}" data-tooltip="${f.isHome ? 'Home to' : 'Away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3}">${escHTML((f.opponent || '?').slice(0, 3))}</span>`).join('');
-
-                    // Labelled stats — the old row printed bare numbers with nothing
-                    // saying which was which.
-                    const stats = cols.map(col => `<span class="twc-cstat" data-tooltip="${escHTML(col.label)}">
-                        <span class="twc-cstat-l">${escHTML(col.label)}</span><span class="twc-cstat-v">${escHTML(String(col.val))}</span></span>`).join('');
-
-                    rowsHtml += `<div class="twc-card ${previewed ? 'previewed' : ''} ${!affordable || clubFull ? 'unafford' : ''}" onclick="twPreviewPlayer(${c.id})">
-                        <div class="twc-card-top">
-                            <span class="twc-card-rank">${i + 1}</span>
-                            <span class="twc-card-name">${escHTML(c.name)}</span>
-                            <span class="twc-card-team">${escHTML(teamName)}</span>
-                            ${clubFull ? `<span class="twc-card-block" data-tooltip="You already hold three players from ${escHTML(teamName)}. Sell one before buying a fourth.">CLUB FULL</span>` : ''}
-                            <span class="twc-card-price">£${c.price.toFixed(1)}m ${priceChangeBadge(c)}</span>
-                        </div>
-                        <div class="twc-card-mid">
-                            <span class="twc-delta ${gainCls}" data-tooltip="Projected over the next ${planGWs.length} gameweeks: ${escHTML(c.name)} ${twXPOver(c, planGWs).toFixed(1)} against ${escHTML(slot.soldPlayer.name)} ${soldXP.toFixed(1)}.">${gainTxt} xP</span>
-                            <span class="twc-score" data-tooltip="AI transfer score — the engine's overall ranking for your squad. A ranking, not a points prediction.">${score.toFixed(0)}</span>
-                            <span class="twc-fdrs">${fdrBlocks}</span>
-                        </div>
-                        <div class="twc-card-stats">${stats}</div>
-                    </div>`;
-                }
-            }
-
-            // Shown alongside a populated list too, not only an empty one — "5 of
-            // your 9 starred players are here" is the part that makes the tab
-            // trustworthy.
-            if (tab === 'favorites' && display.length > 0 && (shortlistOwned.length || shortlistOtherPos.length)) {
-                rowsHtml += '<div class="tw-market-note">' +
-                    twShortlistBreakdownText(shortlistOwned, shortlistOtherPos, posName) + '</div>';
-            }
-
-            const tabsHtml = '<div class="tw-market-tabs">' +
-                '<button class="tw-market-tab' + (tab === 'ai' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'ai\')">AI Picks</button>' +
-                '<button class="tw-market-tab' + (tab === 'favorites' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'favorites\')" data-tooltip="' +
-                    (shortlistPlayers.length
-                        ? escHTML(`${shortlistCountForPos} of your ${shortlistPlayers.length} starred players can fill this slot, compared against ${sold.name} the same way as any other candidate.`)
-                        : 'Star players with the ⭐ on the Players Analysis page and they show up here.') +
-                '">⭐ Favorites' + (shortlistCountForPos ? ' (' + shortlistCountForPos + ')' : '') + '</button>' +
-                '<button class="tw-market-tab' + (tab === 'browse' ? ' active' : '') + '" onclick="twSwitchMarketTab(\'browse\')">Browse All</button></div>';
-
-            const searchHtml = tab === 'browse' ? '<input class="tw-market-search" type="text" placeholder="Search by name..." value="' + (transferState.browseSearch || '').replace(/"/g, '&quot;') + '" oninput="twSearchInput(this.value)">' : '';
-
-            const sortBy = transferState.browseSort || 'score';
-            const sortHtml = tab === 'browse' ? '<div class="tw-market-sort">' +
-                '<button class="tw-filter-pill' + (sortBy === 'score' ? ' active' : '') + '" onclick="twSetBrowseSort(\'score\')">Score</button>' +
-                '<button class="tw-filter-pill' + (sortBy === 'price' ? ' active' : '') + '" onclick="twSetBrowseSort(\'price\')">Price</button>' +
-                '<button class="tw-filter-pill' + (sortBy === 'form' ? ' active' : '') + '" onclick="twSetBrowseSort(\'form\')">Form</button>' +
-                '<button class="tw-filter-pill' + (sortBy === 'ppg' ? ' active' : '') + '" onclick="twSetBrowseSort(\'ppg\')">PPG</button></div>' : '';
-
-            el.innerHTML = '<div class="tw-scout">' +
-                '<div class="tw-scout-header"><i data-lucide="search" style="width:14px;height:14px;"></i> Replacements for ' + sold.name +
-                '<span class="tw-scout-budget"' +
-                    (reserved > 0 ? ' data-tooltip="' + escHTML(`£${itb.toFixed(1)}m is staged in total, but ${openOtherSlots} other slot${openOtherSlots === 1 ? '' : 's'} still needs filling. £${reserved.toFixed(1)}m is held back so ${openOtherSlots === 1 ? 'it' : 'they'} can be.`) + '"' : '') +
-                    '>Budget: £' + maxPrice.toFixed(1) + 'm' +
-                    (reserved > 0 ? '<em>£' + reserved.toFixed(1) + 'm reserved</em>' : '') +
-                '</span></div>' +
-                tabsHtml + searchHtml + sortHtml +
-                '<div class="tw-market-header"><span class="tw-market-title">' + posName + '</span>' +
-                '<div class="tw-market-filters">' +
-                '<button class="tw-filter-pill' + (priceFilter === 'all' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'all\')">All</button>' +
-                '<button class="tw-filter-pill' + (priceFilter === 'budget' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'budget\')">≤£6m</button>' +
-                '<button class="tw-filter-pill' + (priceFilter === 'mid' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'mid\')">£6-9m</button>' +
-                '<button class="tw-filter-pill' + (priceFilter === 'premium' ? ' active' : '') + '" onclick="twSetMarketFilter(\'priceRange\',\'premium\')">≥£9m</button>' +
-                '</div></div>' +
-                '<div id="twMarketList" class="tw-scout-body tw-market-list">' + rowsHtml + '</div>' +
-                '<div style="padding:8px 14px;"><button class="tw-btn tw-btn-secondary" onclick="twBackToSquad()" style="width:100%;"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i> Back to Squad</button></div>' +
-                '</div>';
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            twfRenderMarket(el, slotIdx);
         }
 
         let _twRadarChart = null;
@@ -1545,8 +1338,7 @@
             transferState.mode = 'market';
             transferState.previewPlayer = null;
             transferState.candidateCache = {};
-            transferState.marketTab = 'ai';
-            transferState.browseSearch = '';
+            twfState().search = '';
             renderTWAll();
         }
 
@@ -1710,33 +1502,6 @@
                 transferState.activeSlot = -1;
             }
             transferState.previewPlayer = null;
-            renderTWAll();
-        }
-
-        function twSetMarketFilter(key, value) {
-            transferState.marketFilter[key] = value;
-            renderTWAll();
-        }
-
-        let twSearchTimeout = null;
-        function twSwitchMarketTab(tab) {
-            transferState.marketTab = tab;
-            transferState.browseSearch = '';
-            renderTWAll();
-        }
-
-        function twSearchInput(value) {
-            transferState.browseSearch = value;
-            clearTimeout(twSearchTimeout);
-            twSearchTimeout = setTimeout(() => {
-                renderTWAll();
-                const inp = document.querySelector('.tw-market-search');
-                if (inp) { inp.focus(); inp.selectionStart = inp.selectionEnd = inp.value.length; }
-            }, 250);
-        }
-
-        function twSetBrowseSort(sort) {
-            transferState.browseSort = sort;
             renderTWAll();
         }
 
