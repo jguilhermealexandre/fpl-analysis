@@ -1333,8 +1333,208 @@ function sdGenTacticalPlaybook() {
     };
 }
 
+/* ---------- The Hall of Shame ---------- */
+
+/* One gameweek, awarded.
+
+   Every other format here is written straight: this one is not, and the tone is
+   the whole point of it existing. Two rules keep it from curdling.
+
+   The joke is aimed at us. A footballer having a quiet afternoon is not funny;
+   two-thirds of the game captaining him is. Every line here lands on the
+   manager's decision rather than on the player's ability, which is both kinder
+   and the version people actually laugh at, because it is the one they were in.
+
+   And every award is a real lookup. The comedy is in the selection — the most
+   expensive nothing, the cameo that lasted four minutes and still found a yellow
+   card — not in adjectives bolted onto ordinary numbers. If the data has no
+   candidate for an award, the award does not appear. Nothing here is invented.
+
+   No language model runs at build time, so the variety comes from phrasings
+   picked by a gameweek-seeded hash: stable for any given round, different across
+   the season, and never the same opening eight weeks running. */
+
+function sdRoastPick(seed, options) {
+    // FNV-1a over the seed. Small, dependency-free, and stable across runs —
+    // which matters because build-articles.js never rewrites a published file,
+    // so a wobbling hash would only show up as two gameweeks sounding alike.
+    let h = 2166136261;
+    const s = String(seed);
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return options[Math.abs(h) % options.length];
+}
+
+function sdRoastAward(icon, title, body) {
+    return { icon, title, body };
+}
+
+function sdGenGameweekRoast() {
+    const gw = sdCompletedRound();
+    if (!gw) return null;
+    const rows = sdRoundRows(gw);
+    // Under a full slate the awards start repeating the same three players.
+    if (rows.length < 20) return null;
+
+    const ev = sdEvent(gw);
+    const played = rows.filter(r => r.gwMinutes > 0);
+    if (played.length < 10) return null;
+    const money = r => `£${r.price.toFixed(1)}m`;
+    const pl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const awards = [];
+
+    /* The Golden Blank — the most expensive full ninety that produced nothing.
+       Restricted to players who actually started, because a substitute on two
+       points is not the joke; a fifteen-million-pound striker on two is. */
+    const blanks = played.filter(r => r.gwMinutes >= 60 && r.gwPoints <= 2 && r.price >= 6)
+        .sort((a, b) => b.price - a.price || b.own - a.own);
+    if (blanks.length) {
+        const b = blanks[0];
+        awards.push(sdRoastAward('\u{1FAA6}', 'The Golden Blank', sdRoastPick(`blank-${gw}`, [
+            `**${b.name}**, ${money(b)}, ${b.gwMinutes} minutes, ${pl(b.gwPoints, 'point', 'points')}. He was owned by ${b.own}% of the game going in, so at least the disappointment was catered.`,
+            `**${b.name}** cost ${money(b)} and returned ${pl(b.gwPoints, 'point', 'points')} from ${b.gwMinutes} minutes ${b.gwHome ? 'at home to' : 'away at'} ${b.gwOpponent}. ${b.own}% of managers watched all of it.`,
+            `${money(b)} buys a lot of things. On this occasion it bought ${b.gwMinutes} minutes of **${b.name}** and ${pl(b.gwPoints, 'point', 'points')}, which ${b.own}% of you had budgeted for rather differently.`
+        ])));
+    }
+
+    /* The Armband Tax — what the field captained, and what the field got for it.
+       FPL publishes most_captained, so this is the one award where the subject is
+       genuinely everybody. */
+    const capt = ev && ev.most_captained ? rows.find(r => r.id === ev.most_captained) : null;
+    if (capt) {
+        const doubled = capt.gwPoints * 2;
+        awards.push(sdRoastAward('\u{1F9E2}', 'The Armband Tax', capt.gwPoints <= 3
+            ? sdRoastPick(`capt-bad-${gw}`, [
+                `The game captained **${capt.name}**. He returned ${pl(capt.gwPoints, 'point', 'points')}, which doubled to ${doubled}. Doubling a small number remains one of the great disappointments available to a person on a Saturday.`,
+                `Most-captained: **${capt.name}**. Points: ${capt.gwPoints}. Doubled: ${doubled}. The armband is the biggest call you make each week, and this week most of us made it in unison and were wrong together.`,
+                `**${capt.name}** wore the majority armband and came back with ${pl(capt.gwPoints, 'point', 'points')}. Twice ${capt.gwPoints} is ${doubled}. There is no way to write that sentence that makes it better.`
+            ])
+            : sdRoastPick(`capt-ok-${gw}`, [
+                `The field captained **${capt.name}** and, for once, the field was right: ${capt.gwPoints} became ${doubled}. Enjoy it. This award is not usually a compliment.`,
+                `**${capt.name}** was the popular armband and returned ${pl(capt.gwPoints, 'point', 'points')}, which the armband turned into ${doubled}. A rare week where the crowd and the scoreboard agreed.`
+            ])));
+    }
+
+    /* The Differential — the best return nobody owned. The needle is the
+       ownership, not the score: a great haul at 40% ownership is just a good
+       week for everyone. */
+    const diffs = played.filter(r => r.own < 5 && r.gwPoints >= 8)
+        .sort((a, b) => b.gwPoints - a.gwPoints || a.own - b.own);
+    if (diffs.length) {
+        const d = diffs[0];
+        awards.push(sdRoastAward('\u{1F0CF}', 'The One You Did Not Own', sdRoastPick(`diff-${gw}`, [
+            `**${d.name}** (${money(d)}) scored ${d.gwPoints} while owned by ${d.own}% of managers. The other ${(100 - d.own).toFixed(1)}% are currently explaining to themselves that they would never have started him, which is true, and beside the point.`,
+            `${d.gwPoints} points from **${d.name}**, owned by ${d.own}%. Somewhere a very small number of people are having their best Saturday of the season and telling absolutely everybody.`,
+            `**${d.name}** at ${d.own}% ownership returned ${d.gwPoints}. That is the differential working exactly as advertised, for almost nobody.`
+        ])));
+    }
+
+    /* Cameo of the Week — the shortest appearance that still managed to matter,
+       in either direction. Bookings included, because a four-minute yellow is
+       the purest available unit of comedy. */
+    const cameos = played.filter(r => r.gwMinutes > 0 && r.gwMinutes <= 20)
+        .sort((a, b) => (b.gwPoints - a.gwPoints) || (a.gwMinutes - b.gwMinutes));
+    const cameo = cameos.find(r => r.gwPoints >= 3) || cameos[0];
+    if (cameo) {
+        awards.push(sdRoastAward('\u{23F1}\u{FE0F}', 'Cameo of the Week', cameo.gwPoints >= 3
+            ? sdRoastPick(`cameo-good-${gw}`, [
+                `**${cameo.name}** was on the pitch for ${cameo.gwMinutes} minutes and came off it with ${pl(cameo.gwPoints, 'point', 'points')}. Efficiency of that order should be studied, or at least owned.`,
+                `${cameo.gwMinutes} minutes. ${pl(cameo.gwPoints, 'point', 'points')}. **${cameo.name}** did more after coming on than several people did all afternoon, most of them in your starting eleven.`
+            ])
+            : sdRoastPick(`cameo-flat-${gw}`, [
+                `**${cameo.name}** managed ${cameo.gwMinutes} minutes for ${pl(cameo.gwPoints, 'point', 'points')}. A brief, complete career.`,
+                `${cameo.gwMinutes} minutes of **${cameo.name}**, ${pl(cameo.gwPoints, 'point', 'points')}. Blink and you would have missed it, which several of his owners did, deliberately.`
+            ])));
+    }
+
+    /* Best value — the opposite award, and the only one that is unambiguously
+       nice. Points per million, floor on price so a 4.0 keeper on 6 points does
+       not win it every single week. */
+    const value = played.filter(r => r.gwPoints >= 6 && r.price >= 4)
+        .map(r => ({ ...r, ppm: r.gwPoints / r.price }))
+        .sort((a, b) => b.ppm - a.ppm);
+    if (value.length) {
+        const v = value[0];
+        awards.push(sdRoastAward('\u{1F4B0}', 'Best Value on the Board', sdRoastPick(`value-${gw}`, [
+            `**${v.name}** at ${money(v)} returned ${v.gwPoints} — ${v.ppm.toFixed(1)} points per million. Premium ownership is a lifestyle choice and this is the invoice.`,
+            `${v.gwPoints} points for ${money(v)}. **${v.name}** did in one afternoon what some of your budget lines have not managed all season.`,
+            `**${v.name}**, ${money(v)}, ${v.gwPoints} points, ${v.ppm.toFixed(1)} per million. Quietly the most sensible thing that happened all weekend.`
+        ])));
+    }
+
+    /* The Robbery — the biggest gap between what a player deserved and what he
+       got. Both directions are funny, and both are useful: one is a buy signal
+       and the other is a warning. */
+    const robbed = played.filter(r => r.gwXGI >= 0.8 && r.gwGoals === 0 && r.gwAssists === 0)
+        .sort((a, b) => b.gwXGI - a.gwXGI);
+    const larceny = played.filter(r => (r.gwGoals + r.gwAssists) >= 2 && r.gwXGI <= 0.4)
+        .sort((a, b) => (b.gwGoals + b.gwAssists) - (a.gwGoals + a.gwAssists));
+    if (robbed.length) {
+        const r = robbed[0];
+        awards.push(sdRoastAward('\u{1F3AF}', 'Mugged by the Woodwork', sdRoastPick(`robbed-${gw}`, [
+            `**${r.name}** generated ${r.gwXGI.toFixed(2)} expected goal involvements and converted precisely none of them. The underlying numbers liked him a great deal more than the scoreboard did, which is either a buy signal or a warning depending on how your season is going.`,
+            `${r.gwXGI.toFixed(2)} xGI, zero returns: **${r.name}** did everything but the last bit. Historically the last bit arrives. Historically it arrives the week after you sell him.`
+        ])));
+    } else if (larceny.length) {
+        const r = larceny[0];
+        awards.push(sdRoastAward('\u{1F3AF}', 'Daylight Robbery', sdRoastPick(`larceny-${gw}`, [
+            `**${r.name}** produced ${pl(r.gwGoals + r.gwAssists, 'return', 'returns')} from ${r.gwXGI.toFixed(2)} expected goal involvements. Beautiful to watch, impossible to repeat, and the model would like a word.`,
+            `${pl(r.gwGoals + r.gwAssists, 'return', 'returns')} from ${r.gwXGI.toFixed(2)} xGI. **${r.name}** has been sent from the future to punish everyone who reads underlying statistics.`
+        ])));
+    }
+
+    if (awards.length < 3) return null;
+
+    // ---- assemble ----
+    const opener = sdRoastPick(`open-${gw}`, [
+        `Every gameweek produces a handful of moments that are only funny once they cannot hurt you any more. Gameweek ${gw} has finished, so here they are.`,
+        `The serious write-up of Gameweek ${gw} is elsewhere on this desk. This is the other one: the same numbers, read for entertainment rather than instruction.`,
+        `Gameweek ${gw} is in the books, the damage is priced in, and it is now safe to laugh about it.`
+    ]);
+
+    let md = `## The awards nobody wants\n\n${opener}\n\n`;
+    md += `Every award below is a real lookup against the round's data. Nothing here is invented, which is the part that stings.\n\n`;
+
+    md += sdTakeaways([
+        blanks.length ? `**${blanks[0].name}** takes the Golden Blank at ${money(blanks[0])}.` : null,
+        capt ? `The field captained **${capt.name}** for ${pl(capt.gwPoints, 'point', 'points')}.` : null,
+        diffs.length ? `**${diffs[0].name}** scored ${diffs[0].gwPoints} at ${diffs[0].own}% ownership.` : null
+    ]);
+
+    awards.forEach(a => { md += `### ${a.icon} ${a.title}\n\n${a.body}\n\n`; });
+
+    // ---- the round in context, played straight ----
+    if (ev && ev.average_entry_score) {
+        const beat = ev.highest_score && ev.average_entry_score
+            ? ev.highest_score - ev.average_entry_score : null;
+        md += `## For the record\n\n`;
+        md += `The average manager scored **${ev.average_entry_score}**`;
+        md += ev.highest_score ? `, the best score in the game was **${ev.highest_score}**` : '';
+        md += beat ? `, and the gap between them was ${beat} points — roughly a captain, a bench and a small amount of luck.` : '.';
+        md += `\n\n`;
+    }
+
+    const closer = sdRoastPick(`close-${gw}`, [
+        `None of this is advice. The advice is next door, and it is considerably better behaved.`,
+        `The useful version of this gameweek is in the Debrief. This one was for morale.`,
+        `Normal analytical service resumes on the rest of the desk. Gameweek ${gw + 1} will produce its own list, and one of these entries will probably be yours.`
+    ]);
+    md += sdCallout('insight', closer);
+
+    const headline = blanks.length ? blanks[0] : (capt || played[0]);
+    return {
+        id: `gw-${gw}-hall-of-shame`,
+        title: `Gameweek ${gw} Hall of Shame: the blanks, the cameos, and the captain who cost you`,
+        category: 'Hall of Shame',
+        icon: '\u{1F3C6}',
+        dek: `The awards nobody wants from Gameweek ${gw}${headline ? `, starting with ${headline.name}` : ''}. Every one of them a real number, which is the problem.`,
+        body: md,
+        source: 'Official FPL data'
+    };
+}
+
 const SD_RECURRING = [
     { key: 'gw-debrief', label: 'The Gameweek Debrief', cadence: 'Weekly', gen: sdGenGameweekDebrief },
+    { key: 'hall-of-shame', label: 'The Hall of Shame', cadence: 'Weekly', gen: sdGenGameweekRoast },
     { key: 'pre-deadline-captaincy', label: 'Captaincy Matrix', cadence: 'Weekly', gen: sdGenPreDeadlineCaptaincy },
     { key: 'under-the-hood', label: 'Under the Hood', cadence: 'Every 2 weeks', gen: sdGenUnderTheHood },
     { key: 'fixture-horizon', label: 'The Fixture Horizon', cadence: 'Every 2 weeks', gen: sdGenFixtureHorizon },
@@ -1613,6 +1813,7 @@ async function initScoutsDesk() {
             // and are replaced by the archived versions once they exist.
             const built = [
                 sdGenGameweekDebrief(),
+                sdGenGameweekRoast(),
                 sdGenPreDeadlineCaptaincy(),
                 sdGenUnderTheHood(),
                 sdGenFixtureHorizon(),
@@ -1705,6 +1906,7 @@ function sdBuildArchive() {
         // finished. Slugging it with sdLastRound() is what let a part-played
         // gameweek claim a debrief of its own.
         if (done > 0) push(sdGenGameweekDebrief(), `gameweek-${done}-debrief`, done);
+        if (done > 0) push(sdGenGameweekRoast(), `gameweek-${done}-hall-of-shame`, done);
         // Forward-looking: these describe the deadline ahead, so they belong to
         // the live gameweek and are correct to run mid-round.
         push(sdGenPreDeadlineCaptaincy(), `gameweek-${sdNextGw()}-captaincy-matrix`, gw);
@@ -1722,6 +1924,7 @@ function sdBuildArchive() {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         sdSetData, sdBuildArchive, sdMarkdown, sdReadTime, sdWordCount, sdLastRound,
-        sdRoundsPlayed, sdSlugify, sdRecurringDue, sdNextGw
+        sdRoundsPlayed, sdSlugify, sdRecurringDue, sdNextGw,
+        sdRoastPick, sdGenGameweekRoast
     };
 }

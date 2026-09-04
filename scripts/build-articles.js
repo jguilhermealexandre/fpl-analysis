@@ -29,7 +29,7 @@ const SITE = 'https://easyfpl.com';
 const sd = require('./scouts-desk.js');
 
 // Reading order within a single build. Evergreen explainer sits last.
-const SECTION_ORDER = ['Gameweek Debrief', 'Strategy', 'Fixture Watch', 'Data Deep-Dive',
+const SECTION_ORDER = ['Gameweek Debrief', 'Hall of Shame', 'Strategy', 'Fixture Watch', 'Data Deep-Dive',
     'Market', 'Tactical', 'Differentials', 'Budget', 'Behind the Build'];
 
 function readJSON(file, fallback) {
