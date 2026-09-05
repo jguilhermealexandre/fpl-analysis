@@ -39,10 +39,36 @@ function lineOfOffset(text, offset) {
     return text.slice(0, offset).split('\n').length;
 }
 
+/* A comment sitting between two selectors in the same list.
+ *
+ * This is the fingerprint of an edit that anchored on a selector and inserted
+ * ahead of it without noticing the anchor was the second half of a list. It
+ * happened here: a rule inserted before `.tm-watch-row {` landed inside
+ * `.sq-position-group .sq-row,\n.tm-watch-row {`, which silently handed every
+ * squad row a three-column grid meant for a price-meter heading. The CSS was
+ * perfectly valid and the braces balanced — only the table it wrecked said
+ * anything, and only to a person looking at it.
+ *
+ * Legitimate CSS effectively never comments in the middle of a selector list,
+ * so this is a cheap, low-noise guard on a mistake that is otherwise invisible
+ * until someone opens the page. */
+function danglingSelectorComments(css) {
+    const hits = [];
+    const re = /,[ \t]*\r?\n\s*\/\*/g;
+    let m;
+    while ((m = re.exec(css)) !== null) hits.push(m.index);
+    return hits;
+}
+
 let bad = 0, checked = 0;
 
 function checkCss(label, css, lineOffset = 0) {
     checked++;
+    for (const at of danglingSelectorComments(css)) {
+        console.error(`✗ ${label}: a comment interrupts a selector list at line ${lineOffset + lineOfOffset(css, at)} — `
+            + 'the selector before the comma is now sharing whatever rule follows the comment.');
+        bad++;
+    }
     const { depth, min } = depthOf(css);
     if (depth === 0 && min === 0) return;
     if (min < 0) {
@@ -83,7 +109,7 @@ function walk(dir) {
 walk('styles');
 
 if (bad) {
-    console.error(`\n${bad} stylesheet(s) with unbalanced braces. A browser discards everything it cannot parse, so this silently disables rules further down.`);
+    console.error(`\n${bad} problem(s) found. Unbalanced braces silently disable every rule that follows; a comment inside a selector list silently applies a rule to the wrong element.`);
     process.exit(1);
 }
-console.log(`✓ braces balanced in all ${checked} stylesheet(s) and inline <style> block(s)`);
+console.log(`✓ braces balanced and no split selector lists in all ${checked} stylesheet(s) and inline <style> block(s)`);
