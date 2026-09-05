@@ -1,4 +1,4 @@
-const CACHE_NAME = 'easyfpl-v5';
+const CACHE_NAME = 'easyfpl-v6';
 
 const STATIC_ASSETS = [
   '/',
@@ -110,4 +110,84 @@ self.addEventListener('fetch', event => {
     );
     return;
   }
+});
+
+/* ===== Push notifications =====
+
+   The only mechanic on this site that reaches a manager without him first
+   remembering the site exists — which makes it the most valuable thing here
+   and the only feature that can lose a user outright. Everything below is
+   built to be quiet: one notification per distinct piece of news, collapsed by
+   tag so a second one about the same thing replaces the first rather than
+   stacking, and never a broadcast. If it is not about your squad it is not
+   sent.
+
+   Payloads are produced by the push Worker (see workers/push/). The shape is
+   { title, body, tag, url, renotify } and everything is optional except title,
+   because a malformed payload must still produce something a person can read
+   rather than the browser's own "This site has been updated in the background".
+
+   iOS note: this only ever fires for a home-screen install. Safari has no
+   Push API in a normal tab, so the subscribe button is hidden there — see
+   scripts/push-alerts.js. */
+
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = {}; }
+
+  const title = data.title || 'EasyFPL';
+  const options = {
+    body: data.body || '',
+    // Collapse on subject. Three price alerts about the same player over an
+    // evening should be one notification that updates, not three to dismiss.
+    tag: data.tag || 'easyfpl',
+    renotify: data.renotify === true,
+    data: { url: data.url || '/' },
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    timestamp: Date.now()
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+
+  /* Focus an existing tab rather than opening a fourth copy of the dashboard.
+     The URL is compared on origin only: a manager who already has the site open
+     on the transfers tab should be brought there and navigated, not given a
+     duplicate window. */
+  event.waitUntil((async () => {
+    const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of all) {
+      if (new URL(client.url).origin === self.location.origin) {
+        await client.focus();
+        if ('navigate' in client) { try { await client.navigate(target); } catch (e) { /* focus is enough */ } }
+        return;
+      }
+    }
+    await clients.openWindow(target);
+  })());
+});
+
+/* A subscription can be rotated by the browser at any time — after a long
+   idle, or when the push service reissues an endpoint. Without this the
+   subscription silently dies and the manager simply stops hearing from us,
+   which is indistinguishable from us having nothing to say. */
+self.addEventListener('pushsubscriptionchange', event => {
+  event.waitUntil((async () => {
+    try {
+      const sub = await self.registration.pushManager.subscribe(
+        event.oldSubscription ? event.oldSubscription.options : { userVisibleOnly: true });
+      await fetch('/api/push/resubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          old: event.oldSubscription ? event.oldSubscription.endpoint : null,
+          subscription: sub
+        })
+      });
+    } catch (e) { /* nothing useful to do here; the client re-subscribes on next visit */ }
+  })());
 });
