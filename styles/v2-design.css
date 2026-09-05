@@ -1432,19 +1432,40 @@ html.v2-theme body {
     position: relative;
 }
 
+/* Wide enough to hold the position's initial, so the edge names the position
+   as well as colouring it. A 3px stripe asked you to have learnt the palette;
+   a letter does not, and it costs far less room than the GK/DEF/MID/FWD pill
+   this replaced. The letter is set through content on the pseudo-element, so
+   no row markup has to carry it. */
 .v2-pos-edge::before {
     content: '';
     position: absolute;
     left: 0; top: 0; bottom: 0;
-    width: 3px;
-    border-radius: 3px 0 0 3px;
+    width: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
     background: var(--v2-pos-color, var(--position-mid));
+    color: #FFFFFF;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0;
 }
 
 .v2-pos-edge.pos-gk  { --v2-pos-color: var(--position-gk); }
 .v2-pos-edge.pos-def { --v2-pos-color: var(--position-def); }
 .v2-pos-edge.pos-mid { --v2-pos-color: var(--position-mid); }
 .v2-pos-edge.pos-fwd { --v2-pos-color: var(--position-fwd); }
+
+.v2-pos-edge.pos-gk::before  { content: 'G'; }
+.v2-pos-edge.pos-def::before { content: 'D'; }
+.v2-pos-edge.pos-mid::before { content: 'M'; }
+.v2-pos-edge.pos-fwd::before { content: 'F'; }
+
+/* A pseudo-element's text is not dependable for a screen reader, so the row's
+   own tooltip and its player detail still carry the position in words. */
 
 /* ----- Fixture difficulty, one ramp everywhere -----
    The same five steps the squad table uses: dark green, light green, grey,
