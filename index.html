@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=112">
-    <link rel="stylesheet" href="styles/v2-design.css?v=112">
+    <link rel="stylesheet" href="styles/common.css?v=113">
+    <link rel="stylesheet" href="styles/v2-design.css?v=113">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -501,6 +501,7 @@
 
         .hero-greeting-text {
             font-family: var(--font-display);
+            min-height: 1.2em;
             font-size: 28px;
             font-weight: 600;
             color: var(--text-primary);
@@ -522,6 +523,8 @@
             gap: 4px;
             flex: 0 0 auto;
             margin-left: auto;
+            min-width: 84px;
+            min-height: 38px;
             padding: 8px 18px;
             background: var(--color-primary-muted);
             border: 1px solid rgba(16, 185, 129, 0.20);
@@ -1296,14 +1299,29 @@
            name sits behind the badge at z-index -1, so a badge that 404s — a
            promoted club the endpoint has no code for yet — leaves the club
            named rather than a hole in the card. */
+        .v2-pitch-token-ids {
+            display: flex; align-items: center; justify-content: center; gap: 3px;
+            margin-bottom: 1px;
+        }
+        /* The club photos are 110x140 cut-outs on transparency, framed head and
+           shoulders — so a circle crops to the face with the top of the frame
+           kept, rather than centring on the chest. The tinted disc behind means
+           a transparent cut-out has something to sit on. */
+        .v2-pitch-token-face {
+            width: 30px; height: 30px; border-radius: 50%;
+            object-fit: cover; object-position: 50% 12%;
+            background: rgba(15,23,42,0.06);
+            flex-shrink: 0;
+        }
         .v2-pitch-token-crest {
             position: relative;
-            width: 26px; height: 26px;
+            width: 20px; height: 20px;
             display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
         }
         .v2-pitch-token-crest img {
             position: relative; z-index: 1;
-            width: 26px; height: 26px; object-fit: contain;
+            width: 20px; height: 20px; object-fit: contain;
         }
         .v2-pitch-token-crest-fallback {
             position: absolute; z-index: 0;
@@ -1358,8 +1376,9 @@
             overflow-x: auto;
         }
         .v2-pitch-bench-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; align-self: center; flex-shrink: 0; margin-right: 2px; }
-        .v2-pitch-bench .v2-pitch-token-crest { width: 22px; height: 22px; }
-        .v2-pitch-bench .v2-pitch-token-crest img { width: 22px; height: 22px; }
+        .v2-pitch-bench .v2-pitch-token-crest { width: 16px; height: 16px; }
+        .v2-pitch-bench .v2-pitch-token-crest img { width: 16px; height: 16px; }
+        .v2-pitch-bench .v2-pitch-token-face { width: 24px; height: 24px; }
         .v2-pitch-bench .v2-pitch-token {
             flex-shrink: 0; width: auto; min-width: 74px; padding: 7px 8px 6px;
             background: var(--surface-1);
@@ -3656,8 +3675,14 @@
             <!-- Personalized hero (logged-in state) -->
             <div class="hero-personalized hidden" id="heroPersonalized">
                 <div class="hero-greeting">
-                    <div class="hero-greeting-text v2-page-heading" id="heroTeamName">My Team</div>
-                    <div class="hero-greeting-gw" id="heroGwBadge">GW1</div>
+                    <!-- Empty, not "My Team" and "GW1". This block is only ever
+                         shown to a manager whose team has loaded, so those were
+                         never read as copy — they were a wrong team name and a
+                         wrong gameweek on screen until the real ones arrived. The
+                         reserved sizes below hold the row's height so filling
+                         them in does not move the page. -->
+                    <div class="hero-greeting-text v2-page-heading" id="heroTeamName"></div>
+                    <div class="hero-greeting-gw" id="heroGwBadge"></div>
                     <!-- What happened while you were away (scripts/notifications.js) -->
                     <div class="nt-centre" id="ntCentre"></div>
                 </div>
@@ -4138,20 +4163,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=112"></script>
-    <script src="scripts/price-watch.js?v=112"></script>
-    <script src="scripts/xp-engine.js?v=112"></script>
-    <script src="scripts/odds-panel.js?v=112"></script>
-    <script src="scripts/live-gw.js?v=112"></script>
-    <script src="scripts/matchday.js?v=112"></script>
-    <script src="scripts/market-panel.js?v=112"></script>
-    <script src="scripts/eo-layer.js?v=112"></script>
-    <script src="scripts/readiness.js?v=112"></script>
-    <script src="scripts/push-alerts.js?v=112"></script>
-    <script src="scripts/notifications.js?v=112"></script>
-    <script src="scripts/transfer-engine.js?v=112"></script>
-    <script src="scripts/common.js?v=112"></script>
-    <script src="scripts/sidebar-nav.js?v=112"></script>
+    <script src="scripts/error-monitor.js?v=113"></script>
+    <script src="scripts/price-watch.js?v=113"></script>
+    <script src="scripts/xp-engine.js?v=113"></script>
+    <script src="scripts/odds-panel.js?v=113"></script>
+    <script src="scripts/live-gw.js?v=113"></script>
+    <script src="scripts/matchday.js?v=113"></script>
+    <script src="scripts/market-panel.js?v=113"></script>
+    <script src="scripts/eo-layer.js?v=113"></script>
+    <script src="scripts/readiness.js?v=113"></script>
+    <script src="scripts/push-alerts.js?v=113"></script>
+    <script src="scripts/notifications.js?v=113"></script>
+    <script src="scripts/transfer-engine.js?v=113"></script>
+    <script src="scripts/common.js?v=113"></script>
+    <script src="scripts/sidebar-nav.js?v=113"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5129,6 +5154,12 @@
                     ? `${esc(p.name)} — ${xp.toFixed(1)} projected points against ${oppTxt}${minsTxt}${isBestCap ? '. Highest projection in your XI.' : ''}`
                     : `${esc(p.name)} — ${posLabel}${minsTxt}`;
                 return `<div class="v2-pitch-token" title="${tip}">
+                  <div class="v2-pitch-token-ids">
+                    ${p.code != null
+                        ? `<img class="v2-pitch-token-face"
+                             src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png"
+                             alt="" loading="lazy" onerror="this.remove()">`
+                        : ''}
                     <div class="v2-pitch-token-crest${ringClass}">
                         ${p.teamCode != null
                             ? `<img src="https://resources.premierleague.com/premierleague/badges/50/t${p.teamCode}.png"
@@ -5137,6 +5168,7 @@
                         <span class="v2-pitch-token-crest-fallback">${esc(p.team)}</span>
                         ${badge}
                     </div>
+                  </div>
                     <span class="v2-pitch-token-name">${esc(p.name)}${isBestCap ? '<span class="v2-pitch-token-star" title="Highest projected points in your XI">★</span>' : ''}</span>
                     <span class="v2-pitch-token-opp">${oppTxt}</span>
                     ${xp != null
