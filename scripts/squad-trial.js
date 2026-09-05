@@ -216,8 +216,8 @@
                key was pressed. Options are built from what has been typed
                instead, which is also 260 fewer nodes on every render. */
             return `<div class="tl-picker">
-                <label class="tl-picker-l" for="tlPick">Try a player</label>
                 <input id="tlPick" class="tl-picker-in" list="tlPlayers" placeholder="Search a player you do not own…"
+                    aria-label="Try a player you do not own"
                     oninput="tlSuggest(this)" onchange="tlPickFromInput(this)" autocomplete="off">
                 <datalist id="tlPlayers"></datalist>
             </div>`;

@@ -317,7 +317,9 @@
 
             const badge = teamBadgeUrl(p.teamId);
             return `<div class="pcard ${a.verdict} ${isBench ? 'pcard-bench' : ''} ${swapClass} ${injured ? 'pcard-injured' : ''}"
+                    data-player-id="${p.id}"
                     draggable="true"
+                    onpointerdown="snapshotPointerDown(event, ${p.id})"
                     onclick="snapshotSwapClick(${p.id})"
                     ondragstart="snapshotDragStart(event, ${p.id})"
                     ondragover="snapshotDragOver(event, ${p.id})"
@@ -453,12 +455,131 @@
         // ===== DRAG & DROP =====
         let snapshotDragId = null;
 
+        /* Marks legal destinations without re-rendering, by toggling the same
+           classes renderSnapshotCard() would have written. This exists because
+           a drag cannot survive its own source element being replaced: the
+           previous version called refreshSnapshot() inside dragstart, which
+           rebuilt the entire pitch — the card under the cursor included — and
+           the browser cancelled the drag before it moved a pixel. Click-to-swap
+           was unaffected, which is why the feature looked half-working. */
+        function snapshotMarkSwapTargets(sourceId) {
+            document.querySelectorAll('.pcard[data-player-id]').forEach(card => {
+                card.classList.remove('swap-selected', 'swap-target', 'swap-blocked');
+                if (sourceId === null) return;
+                const id = Number(card.dataset.playerId);
+                if (id === sourceId) card.classList.add('swap-selected');
+                else if (canSnapshotSwap(sourceId, id)) card.classList.add('swap-target');
+                else card.classList.add('swap-blocked');
+            });
+        }
+
+        /* ===== Pointer-driven dragging =====
+           The cards also carry the HTML5 drag attributes, and those work where
+           the native protocol does. This does not rely on it.
+
+           Two reasons. Native drag-and-drop does not exist on touch at all, so
+           on a phone the pitch could only ever be rearranged by tapping. And it
+           is easy to break by accident from CSS or from a re-render — this file
+           did exactly that, rebuilding the pitch inside dragstart and killing
+           the drag it had just begun.
+
+           Pointer events have neither problem: one code path for mouse, pen and
+           touch, and nothing about it depends on the browser's drag machinery.
+           A drag only begins after 6px of movement, so a click still reads as a
+           click and click-to-swap is untouched. */
+        const SNAP_DRAG_THRESHOLD = 6;
+        let snapPointer = null;
+
+        function snapshotPointerDown(event, playerId) {
+            if (event.button != null && event.button !== 0) return;   // left button / touch only
+            if (event.target.closest('.cv-toggle')) return;           // the C/V controls are their own thing
+            snapPointer = {
+                id: playerId,
+                x: event.clientX,
+                y: event.clientY,
+                card: event.currentTarget,
+                active: false,
+                ghost: null
+            };
+        }
+
+        function snapshotPointerMove(event) {
+            if (!snapPointer) return;
+            const dx = event.clientX - snapPointer.x;
+            const dy = event.clientY - snapPointer.y;
+
+            if (!snapPointer.active) {
+                if (Math.hypot(dx, dy) < SNAP_DRAG_THRESHOLD) return;
+                snapPointer.active = true;
+                snapshotSwapSource = snapPointer.id;
+                snapshotMarkSwapTargets(snapPointer.id);
+
+                /* A copy follows the cursor rather than the card itself moving:
+                   the original has to stay in the layout, or every other card
+                   reflows the moment the drag begins. */
+                const rect = snapPointer.card.getBoundingClientRect();
+                const ghost = snapPointer.card.cloneNode(true);
+                ghost.classList.add('pcard-ghost');
+                ghost.style.width = `${rect.width}px`;
+                ghost.style.left = `${rect.left}px`;
+                ghost.style.top = `${rect.top}px`;
+                document.body.appendChild(ghost);
+                snapPointer.ghost = ghost;
+                snapPointer.offX = snapPointer.x - rect.left;
+                snapPointer.offY = snapPointer.y - rect.top;
+                snapPointer.card.classList.add('pcard-dragging');
+            }
+
+            if (snapPointer.ghost) {
+                snapPointer.ghost.style.left = `${event.clientX - snapPointer.offX}px`;
+                snapPointer.ghost.style.top = `${event.clientY - snapPointer.offY}px`;
+            }
+
+            // The ghost is pointer-events:none, so this reads the card beneath it.
+            const over = document.elementFromPoint(event.clientX, event.clientY);
+            const card = over && over.closest('.pcard[data-player-id]');
+            document.querySelectorAll('.pcard.pcard-drop-hot').forEach(c => c.classList.remove('pcard-drop-hot'));
+            if (card && card.classList.contains('swap-target')) card.classList.add('pcard-drop-hot');
+        }
+
+        function snapshotPointerUp(event) {
+            if (!snapPointer) return;
+            const state = snapPointer;
+            snapPointer = null;
+
+            if (state.ghost) state.ghost.remove();
+            if (state.card) state.card.classList.remove('pcard-dragging');
+            document.querySelectorAll('.pcard.pcard-drop-hot').forEach(c => c.classList.remove('pcard-drop-hot'));
+
+            if (!state.active) return;   // never moved far enough — leave it to the click handler
+
+            const over = document.elementFromPoint(event.clientX, event.clientY);
+            const card = over && over.closest('.pcard[data-player-id]');
+            const targetId = card ? Number(card.dataset.playerId) : null;
+
+            if (targetId != null && targetId !== state.id && canSnapshotSwap(state.id, targetId)) {
+                performSnapshotSwap(state.id, targetId);
+                return;
+            }
+            snapshotSwapSource = null;
+            snapshotMarkSwapTargets(null);
+        }
+
+        /* Bound once on the document rather than per card, because the cards are
+           replaced on every re-render and a listener on one would not survive a
+           swap. */
+        if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+            document.addEventListener('pointermove', snapshotPointerMove);
+            document.addEventListener('pointerup', snapshotPointerUp);
+            document.addEventListener('pointercancel', snapshotPointerUp);
+        }
+
         function snapshotDragStart(event, playerId) {
             snapshotDragId = playerId;
             snapshotSwapSource = playerId; // reuse the same highlight pass as click-to-swap
             try { event.dataTransfer.setData('text/plain', String(playerId)); } catch (e) { /* older browsers */ }
             if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-            refreshSnapshot();
+            snapshotMarkSwapTargets(playerId);
         }
 
         function snapshotDragOver(event, playerId) {
@@ -473,7 +594,7 @@
             snapshotDragId = null;
             if (sourceId === null || sourceId === playerId) {
                 snapshotSwapSource = null;
-                refreshSnapshot();
+                snapshotMarkSwapTargets(null);
                 return;
             }
             performSnapshotSwap(sourceId, playerId);
@@ -483,7 +604,7 @@
             if (snapshotDragId === null) return; // a successful drop already tidied up
             snapshotDragId = null;
             snapshotSwapSource = null;
-            refreshSnapshot();
+            snapshotMarkSwapTargets(null);
         }
 
         /* The armband has to stay on the pitch.

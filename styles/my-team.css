@@ -829,7 +829,22 @@
 
 .sq-panel-search { min-width: 0; }
 .sq-panel-search .tl-picker { display: flex; align-items: center; gap: 8px; margin: 0; }
-.sq-panel-search .tl-picker-in { flex: 1; min-width: 0; }
+.sq-panel-search .tl-picker-in {
+    flex: 1; min-width: 0;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+    border-radius: var(--radius-full);
+    padding: 8px 14px;
+    background: var(--surface-1);
+    font-family: inherit; font-size: 12.5px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.sq-panel-search .tl-picker-in::placeholder { color: var(--text-muted); }
+.sq-panel-search .tl-picker-in:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-muted);
+}
 
 @media (max-width: 900px) {
     .sq-panel-controls { grid-template-columns: 1fr; }
@@ -863,25 +878,59 @@
 /* ----- Visual Analysis, as a modal ----- */
 .sq-chart-open {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 7px 14px; border-radius: var(--radius-full);
-    border: 1px solid var(--border-emphasis); background: transparent;
+    padding: 8px 16px; border-radius: var(--radius-full);
+    border: 1px solid var(--color-primary); background: var(--color-primary);
     font-family: inherit; font-size: 12px; font-weight: 650;
-    color: var(--text-secondary); cursor: pointer;
-    transition: all 140ms ease;
+    color: #fff; cursor: pointer;
+    transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
-.sq-chart-open:hover { background: var(--color-primary-muted); border-color: var(--color-primary); color: var(--color-primary-text); }
+.sq-chart-open:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); transform: translateY(-1px); }
 
 /* teams.css is not loaded on this page, so these two class names are defined
    here — chosen deliberately, because they are what initOverlayDismiss()
    watches, which is how this gets click-away and Escape for nothing. */
+/* Blur alone, no dark wash: the page behind stays itself, just out of focus,
+   which reads as depth rather than as the lights being turned off.
+
+   Laid out rather than display:none so the open and close can be animated —
+   an element that was not rendered a moment ago has no state to move from, so
+   toggling display jumps straight to the end (the same reason the drawers
+   never slid). visibility carries the delay on the way out so the fade has
+   time to finish. */
 .sq-chart-modal.modal-overlay {
     position: fixed; inset: 0; z-index: 220;
-    display: none; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     padding: 24px;
-    background: rgba(10, 14, 20, 0.55);
-    backdrop-filter: blur(4px);
+    background: transparent;
+    backdrop-filter: blur(0px);
+    opacity: 0;
+    visibility: hidden;
+    /* pointer-events:none is not optional here. Laying the overlay out so it
+       can animate leaves a full-viewport element at z-index 220 over the page;
+       without this it wins every hit test, and nothing underneath can be
+       clicked or dragged at all. */
+    pointer-events: none;
+    transition: opacity 200ms ease, backdrop-filter 240ms ease, visibility 0s linear 240ms;
 }
-.sq-chart-modal.modal-overlay.open { display: flex; }
+.sq-chart-modal.modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    backdrop-filter: blur(10px);
+    transition: opacity 200ms ease, backdrop-filter 240ms ease, visibility 0s;
+}
+
+/* The panel rises a little and settles, rather than appearing at full size. */
+.sq-chart-modal .modal-container {
+    transform: translateY(10px) scale(0.985);
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sq-chart-modal.open .modal-container { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .sq-chart-modal.modal-overlay,
+    .sq-chart-modal .modal-container { transition: none; }
+}
 .sq-chart-modal .modal-container {
     width: 100%; max-width: 1040px; max-height: 88vh;
     display: flex; flex-direction: column;
@@ -1830,6 +1879,28 @@
 .pcard:active { cursor: grabbing; }
 .pcard img { -webkit-user-drag: none; user-select: none; pointer-events: none; }
 .pcard .pcard-name, .pcard .pcard-fixture, .pcard .pcard-pts { user-select: none; }
+
+/* The copy that follows the cursor during a pointer drag. pointer-events:none
+   is what lets elementFromPoint see the card underneath it. */
+.pcard-ghost {
+    position: fixed;
+    z-index: 400;
+    margin: 0;
+    pointer-events: none;
+    opacity: 0.92;
+    transform: rotate(-2deg) scale(1.03);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+}
+
+/* The original stays in the layout — removing it would reflow every other
+   card the moment a drag started — but recedes while its copy is in flight. */
+.pcard-dragging { opacity: 0.35; }
+
+/* The destination under the cursor, distinct from the other legal ones. */
+.pcard-drop-hot {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
 
 /* ===== PLAYER CARD ===== */
 .pcard {
@@ -2860,16 +2931,29 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     border-top: 1px solid var(--border-subtle);
 }
 
-/* Inside a panel the rows carry the tint. --surface-2 against the panel's
-   --surface-1 is the same one-step separation the reference uses, and it
-   leaves the row's position edge as the only saturated colour on it. */
+/* A much lighter tint than --surface-2: at full strength fifteen grey slabs
+   inside a white panel were the loudest thing on the page, which is the
+   opposite of what a background is for. A third of the way from the panel's
+   own white is enough to separate a row from its neighbour and no more.
+
+   The hover lifts instead of darkening — the row goes white and gains a soft
+   shadow, so the one under the cursor rises out of the list rather than being
+   shaded into it. */
 .sq-position-group .sq-row {
-    background: var(--surface-2);
+    background: color-mix(in srgb, var(--surface-2) 34%, var(--surface-1));
     border-color: transparent;
+    transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
 .sq-position-group .sq-row:hover {
-    background: color-mix(in srgb, var(--color-primary) 6%, var(--surface-2));
+    background: var(--surface-1);
+    box-shadow: 0 2px 10px rgba(16, 24, 40, 0.09);
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] .sq-position-group .sq-row:hover {
+    background: var(--surface-2);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 
 .sq-position-header {
@@ -4436,9 +4520,11 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .tm-ticker {
     overflow: hidden;
     white-space: nowrap;
-    border: 1px solid var(--border-default);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
     border-radius: var(--radius-lg);
-    background: var(--surface-2);
+    /* White, like every other surface on these pages. Grey made the strip read
+       as a well cut into the page rather than as a panel sitting on it. */
+    background: var(--surface-1);
     padding: 7px 0;
     margin-bottom: 10px;
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
@@ -4592,12 +4678,16 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .sq-tickers { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 .sq-ticker-row { display: flex; align-items: center; gap: 8px; }
 
+/* The label is the only thing distinguishing two identical-looking strips, so
+   it carries a colour rather than the same grey as everything else: green for
+   your own squad, blue for the market beyond it — the same pairing the two
+   transfer columns use. */
 .sq-ticker-label {
     flex: 0 0 auto;
-    padding: 3px 7px;
-    border-radius: 4px;
-    background: var(--surface-3);
-    color: var(--text-muted);
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-muted);
+    color: var(--color-primary-text);
     font-size: 9px;
     font-weight: 800;
     letter-spacing: .07em;
@@ -4606,6 +4696,12 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 /* Reuses .tm-ticker from Price Watch for the scroll mechanics, so both strips
    move at the same rate and there is one marquee implementation. */
+/* Second row is the wider market, not your squad. */
+.sq-ticker-row:nth-child(2) .sq-ticker-label {
+    background: color-mix(in srgb, var(--color-info) 14%, transparent);
+    color: var(--color-info);
+}
+
 .sq-ticker-row .tm-ticker { flex: 1; min-width: 0; margin-bottom: 0; padding: 5px 0; }
 
 /* ===== GW Draft: timeline, stat chips, chip pills, pitch cards ===== */
