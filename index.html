@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=113">
-    <link rel="stylesheet" href="styles/v2-design.css?v=113">
+    <link rel="stylesheet" href="styles/common.css?v=114">
+    <link rel="stylesheet" href="styles/v2-design.css?v=114">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1307,11 +1307,21 @@
            shoulders — so a circle crops to the face with the top of the frame
            kept, rather than centring on the chest. The tinted disc behind means
            a transparent cut-out has something to sit on. */
-        .v2-pitch-token-face {
+        .v2-pitch-token-avatar {
+            position: relative;
             width: 30px; height: 30px; border-radius: 50%;
-            object-fit: cover; object-position: 50% 12%;
             background: rgba(15,23,42,0.06);
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; flex-shrink: 0;
+        }
+        .v2-pitch-token-initials {
+            font-size: 11px; font-weight: 700; letter-spacing: 0;
+            color: rgba(15,23,42,0.45);
+        }
+        .v2-pitch-token-face {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; object-position: 50% 12%;
         }
         .v2-pitch-token-crest {
             position: relative;
@@ -1327,19 +1337,24 @@
             position: absolute; z-index: 0;
             font-size: 8.5px; font-weight: 700; color: var(--text-muted);
         }
+        /* The armband belongs to the card, not to the crest it used to be
+           nested in — in there it sat beneath the club badge, which paints at
+           z-index 1, and a captain marker you cannot see is worse than none. */
         .v2-pitch-token-badge {
             position: absolute;
-            top: -5px; right: -5px;
-            width: 15px; height: 15px;
+            top: -6px; right: -6px;
+            z-index: 2;
+            width: 17px; height: 17px;
             border-radius: 50%;
             background: #FBBF24;
             color: #1f2937;
-            font-size: 9px;
-            font-weight: 600;
+            font-size: 9.5px;
+            font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1.5px solid #fff;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.18);
         }
         .v2-pitch-token-name {
             font-size: 12px;
@@ -1378,7 +1393,8 @@
         .v2-pitch-bench-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; align-self: center; flex-shrink: 0; margin-right: 2px; }
         .v2-pitch-bench .v2-pitch-token-crest { width: 16px; height: 16px; }
         .v2-pitch-bench .v2-pitch-token-crest img { width: 16px; height: 16px; }
-        .v2-pitch-bench .v2-pitch-token-face { width: 24px; height: 24px; }
+        .v2-pitch-bench .v2-pitch-token-avatar { width: 24px; height: 24px; }
+        .v2-pitch-bench .v2-pitch-token-initials { font-size: 9px; }
         .v2-pitch-bench .v2-pitch-token {
             flex-shrink: 0; width: auto; min-width: 74px; padding: 7px 8px 6px;
             background: var(--surface-1);
@@ -4163,20 +4179,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=113"></script>
-    <script src="scripts/price-watch.js?v=113"></script>
-    <script src="scripts/xp-engine.js?v=113"></script>
-    <script src="scripts/odds-panel.js?v=113"></script>
-    <script src="scripts/live-gw.js?v=113"></script>
-    <script src="scripts/matchday.js?v=113"></script>
-    <script src="scripts/market-panel.js?v=113"></script>
-    <script src="scripts/eo-layer.js?v=113"></script>
-    <script src="scripts/readiness.js?v=113"></script>
-    <script src="scripts/push-alerts.js?v=113"></script>
-    <script src="scripts/notifications.js?v=113"></script>
-    <script src="scripts/transfer-engine.js?v=113"></script>
-    <script src="scripts/common.js?v=113"></script>
-    <script src="scripts/sidebar-nav.js?v=113"></script>
+    <script src="scripts/error-monitor.js?v=114"></script>
+    <script src="scripts/price-watch.js?v=114"></script>
+    <script src="scripts/xp-engine.js?v=114"></script>
+    <script src="scripts/odds-panel.js?v=114"></script>
+    <script src="scripts/live-gw.js?v=114"></script>
+    <script src="scripts/matchday.js?v=114"></script>
+    <script src="scripts/market-panel.js?v=114"></script>
+    <script src="scripts/eo-layer.js?v=114"></script>
+    <script src="scripts/readiness.js?v=114"></script>
+    <script src="scripts/push-alerts.js?v=114"></script>
+    <script src="scripts/notifications.js?v=114"></script>
+    <script src="scripts/transfer-engine.js?v=114"></script>
+    <script src="scripts/common.js?v=114"></script>
+    <script src="scripts/sidebar-nav.js?v=114"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5089,6 +5105,15 @@
             const verdictMap = {};
             analysisResults.forEach((a, i) => { if (squad[i]) verdictMap[squad[i].id] = a; });
 
+            /* "B.Fernandes" -> BF, "Haaland" -> H. FPL's web_name is already the
+               short display name, so its own punctuation is the word boundary. */
+            const initialsOf = name => String(name || '')
+                .split(/[\s.'’-]+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(w => w[0].toUpperCase())
+                .join('');
+
             const starters = squad.filter(p => p.pickPosition <= 11).sort((a, b) => a.pickPosition - b.pickPosition);
             const bench = squad.filter(p => p.pickPosition >= 12).sort((a, b) => a.pickPosition - b.pickPosition);
 
@@ -5155,20 +5180,28 @@
                     : `${esc(p.name)} — ${posLabel}${minsTxt}`;
                 return `<div class="v2-pitch-token" title="${tip}">
                   <div class="v2-pitch-token-ids">
-                    ${p.code != null
-                        ? `<img class="v2-pitch-token-face"
-                             src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png"
-                             alt="" loading="lazy" onerror="this.remove()">`
-                        : ''}
+                    <span class="v2-pitch-token-avatar">
+                        <!-- The initials sit underneath and are only ever seen
+                             when the photo is missing: the club publishes a shot
+                             per player code and a new signing has none for a
+                             while. Removing the <img> on error uncovers them, so
+                             every card carries a face-shaped mark either way. -->
+                        <b class="v2-pitch-token-initials" aria-hidden="true">${esc(initialsOf(p.name))}</b>
+                        ${p.code != null
+                            ? `<img class="v2-pitch-token-face"
+                                 src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png"
+                                 alt="" loading="lazy" onerror="this.remove()">`
+                            : ''}
+                    </span>
                     <div class="v2-pitch-token-crest${ringClass}">
                         ${p.teamCode != null
                             ? `<img src="https://resources.premierleague.com/premierleague/badges/50/t${p.teamCode}.png"
                                  alt="" loading="lazy" onerror="this.style.display='none'">`
                             : ''}
                         <span class="v2-pitch-token-crest-fallback">${esc(p.team)}</span>
-                        ${badge}
                     </div>
                   </div>
+                  ${badge}
                     <span class="v2-pitch-token-name">${esc(p.name)}${isBestCap ? '<span class="v2-pitch-token-star" title="Highest projected points in your XI">★</span>' : ''}</span>
                     <span class="v2-pitch-token-opp">${oppTxt}</span>
                     ${xp != null

@@ -1321,3 +1321,41 @@ html.v2-theme body {
        the reference. It is the one place green appears without meaning good. */
     color: var(--color-primary);
 }
+
+/* ----- Top bars: grow into place instead of appearing under the cursor -----
+   #tickerBar, #newsStrip and #priceTickerBar each start .hidden and drop that
+   class independently, whenever their own data lands. Every one of them is
+   display:none until that moment, so each arrival shoved the whole page down
+   by its own height — three separate jolts of 30-32px, arriving over about a
+   second, which is most of what reads as the dashboard loading "glitchy".
+
+   Reserving the space up front would trade the jolt for up to ~94px of empty
+   strip on a load where a bar never populates. Animating the height costs
+   nothing in that case — a bar that never arrives stays at zero — and turns
+   the ones that do arrive into a movement the eye can follow rather than a
+   snap it can only notice after the fact. */
+.v2-main-content > :is(.ticker-bar, .news-strip, .price-ticker-bar) {
+    transition: height 300ms cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 300ms ease;
+    will-change: height;
+}
+
+.v2-main-content > :is(.ticker-bar, .news-strip, .price-ticker-bar).hidden {
+    /* .hidden is display:none !important in common.css — there is no way to
+       animate out of that, so these three opt out of it and collapse instead. */
+    display: flex !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .v2-main-content > :is(.ticker-bar, .news-strip, .price-ticker-bar) {
+        transition: none;
+    }
+}
