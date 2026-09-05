@@ -1057,7 +1057,7 @@ html.v2-theme body {
 .v2-main-content .data-table thead th,
 .v2-main-content table:not(.matrix-table) thead th {
     background: var(--surface-1);
-    border-bottom: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--border-emphasis);
     color: var(--text-muted);
     font-size: 10.5px;
     letter-spacing: 0.6px;
@@ -1123,7 +1123,7 @@ html.v2-theme body {
 
 .v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .site-footer {
     background: transparent;
-    border-top: 1px solid var(--border-default);
+    border-top: 1px solid var(--border-emphasis);
     color: var(--text-muted);
     margin-top: 36px;
     /* loadFooter() appends to <body>, outside .v2-main-content, so the
@@ -1227,5 +1227,71 @@ html.v2-theme body {
 
     .v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--learn {
         margin-left: 0;
+    }
+}
+
+/* ----- Footer: telling the categories from the links -----
+   Inline, the group labels scanned as more links: "FAQ COMPANY Contact Us"
+   read as one run. Three things separate them now — the labels are smaller,
+   tracked wider and lower in contrast; the gap inside a group is tighter
+   than the gap between groups; and a rule sits between the two groups so
+   the boundary is drawn rather than implied.
+
+   The email stops being a link with an icon stuck to it and becomes the
+   pill it always was in intent — which also balances the row, since the
+   API badge is the same shape at the other end of it. */
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col-title {
+    font-size: 9.5px;
+    font-weight: 700;
+    /* common.css tracks everything matching [class*="title"] to -0.5px with
+       !important. That rule is aimed at headings; a small-caps category label
+       is the one place on the page that needs tracking to open up rather than
+       tighten, and negative tracking is exactly what made these read as links.
+       The original 1.5px in common.css was being overridden the same way. */
+    letter-spacing: 0.12em !important;
+    opacity: 0.55;
+}
+
+/* Tighter within a group than between groups: 12px against the row's 26px. */
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col {
+    gap: 8px 12px;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links {
+    gap: 12px;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--company {
+    border-left: 1px solid var(--border-emphasis);
+    padding-left: 26px;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail {
+    margin: 0 0 0 6px;
+    padding: 5px 12px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: var(--radius-full);
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    transition: border-color 160ms ease, color 160ms ease;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    color: var(--color-primary);
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail .icon {
+    width: 13px;
+    height: 13px;
+    opacity: 0.7;
+}
+
+/* The divider only makes sense while the groups sit side by side. */
+@media (max-width: 900px) {
+    .v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--company {
+        border-left: none;
+        padding-left: 0;
     }
 }
