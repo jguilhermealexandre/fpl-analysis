@@ -1651,44 +1651,45 @@
                             <circle class="health-ring-fill" id="healthRingFill" cx="60" cy="60" r="54"
                                 stroke="${healthColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"
                                 style="transform:rotate(-90deg);transform-origin:center;"/>
-                            <text x="60" y="55" text-anchor="middle" fill="${healthColor}" font-size="30" font-weight="700" font-family="var(--font-mono)">${health}</text>
-                            <text x="60" y="72" text-anchor="middle" fill="var(--text-muted)" font-size="10" font-weight="600">HEALTH</text>
+                            <text x="60" y="57" text-anchor="middle" fill="${healthColor}" font-size="34" font-weight="800" font-family="var(--font-mono)" letter-spacing="-1">${health}</text>
+                            <text x="60" y="74" text-anchor="middle" fill="var(--text-muted)" font-size="9" font-weight="700" letter-spacing="1.2">HEALTH</text>
                         </svg>
                     </div>
                     <div class="health-sublabel">${healthText}</div>
                     ${healthBreakdown && healthBreakdown.length
                         ? `<div class="health-breakdown">${healthBreakdown.map(b => `${b.count} ${escHTML(b.label)}`).join(' · ')}</div>`
                         : `<div class="health-breakdown">No injuries or fixture red flags</div>`}
-                    ${(() => {
-                        // Say how much season is behind the number. A score built on
-                        // one or two gameweeks is mostly a statement about fixtures
-                        // and availability, and should not read as a verdict on the
-                        // squad — which is exactly how a single quiet Saturday used
-                        // to present itself.
-                        const played = Math.max(0, (currentGW || 1) - 1) || (currentGW === 1 ? 1 : 0);
-                        return played < 4
-                            ? `<div class="health-sample">Based on ${played} gameweek${played === 1 ? '' : 's'} — form is still weighted toward what each player is expected to do, not what he did once.</div>`
-                            : '';
-                    })()}
-                    ${(() => {
-                        // Everything else in this panel is about the gameweeks ahead.
-                        // Once the current round has started there is a second
-                        // question worth answering — what just happened — and it
-                        // gets its own report rather than crowding this column.
-                        const reviewGW = typeof gwReviewTarget === 'function' ? gwReviewTarget() : null;
-                        return reviewGW
-                            ? `<button class="gwr-open" onclick="openGameweekReview()" data-tooltip="How your squad actually did in GW${reviewGW} — the armband, the bench, who delivered, and how it compares with the field.">📊 Review Gameweek ${reviewGW}</button>`
-                            : '';
-                    })()}
-                    <div class="insight-moves">
-                        <div class="insight-moves-head">Do this week</div>
-                        ${renderSuggestedMoves(suggestedMoves || [])}
-                    </div>
+
+                    <!-- The verdict counts describe the score above them, so they
+                         sit with it. They used to be last in the column, under the
+                         actions, which put two unrelated ideas either side of the
+                         thing they each belong to. -->
                     <div class="health-verdict-counts">
                         ${sells.length ? `<span class="hv-count sell">● ${sells.length} Sell</span>` : ''}
                         ${monitors.length ? `<span class="hv-count monitor">● ${monitors.length} Monitor</span>` : ''}
                         ${stars.length ? `<span class="hv-count star">★ ${stars.length} Star</span>` : ''}
                         <span class="hv-count hold">● ${holds.length} Hold</span>
+                    </div>
+
+                    <!-- Everything above is the squad's state; everything below is
+                         something to do about it. The panel was one flat column of
+                         seven items with no grouping, which is why nothing in it
+                         looked more important than anything else. -->
+                    <div class="health-actions">
+                        <div class="insight-moves">
+                            <div class="insight-moves-head">Do this week</div>
+                            ${renderSuggestedMoves(suggestedMoves || [])}
+                        </div>
+                        ${(() => {
+                            // Once the current round has started there is a second
+                            // question worth answering — what just happened — and it
+                            // gets its own report rather than crowding this column.
+                            // Secondary to the moves above it, and styled that way.
+                            const reviewGW = typeof gwReviewTarget === 'function' ? gwReviewTarget() : null;
+                            return reviewGW
+                                ? `<button class="gwr-open" onclick="openGameweekReview()" data-tooltip="How your squad actually did in GW${reviewGW} — the armband, the bench, who delivered, and how it compares with the field.">📊 Review Gameweek ${reviewGW}</button>`
+                                : '';
+                        })()}
                     </div>
                 </div>
                 ${renderSnapshotBody()}

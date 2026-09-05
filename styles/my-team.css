@@ -434,8 +434,20 @@
    (pointer-events: none) so the main page stays fully usable while the panel is
    open — only .detail-panel itself (pointer-events: auto) can be interacted with.
    No backdrop dimming since the rest of the page is genuinely still active. */
+/* The panel inside this has always carried transform: translateX(100%) and a
+   0.3s transition, and it has never once animated. The overlay went from
+   display:none to display:block in the same frame that the panel's transform
+   changed to 0 — an element that was not rendered a moment ago has no start
+   value to move from, so the browser jumps straight to the end. The drawer
+   appeared, fully formed, in one frame.
+
+   Staying laid out and toggling visibility instead gives the transform
+   something to animate from, in both directions. overflow:hidden keeps the
+   parked panel — sitting one screen-width to the right — from adding a
+   horizontal scrollbar to the page. */
 .detail-overlay {
-    display: none;
+    display: block;
+    visibility: hidden;
     position: fixed;
     top: 0;
     left: 0;
@@ -443,10 +455,19 @@
     bottom: 0;
     z-index: 200;
     pointer-events: none;
+    overflow: hidden;
+    /* Held visible for the length of the slide out, then hidden. */
+    transition: visibility 0s linear 300ms;
 }
 
 .detail-overlay.show {
-    display: block;
+    visibility: visible;
+    transition-delay: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .detail-overlay { transition: none; }
+    .detail-panel { transition: none; }
 }
 
 .detail-panel { position: fixed; top: 0; right: 0; width: 100%; max-width: 480px; height: 100%; background: var(--surface-0); border-left: 1px solid var(--border-default); box-shadow: -8px 0 32px rgba(0,0,0,0.25); z-index: 201; overflow-y: auto; transform: translateX(100%); transition: transform 0.3s ease; pointer-events: auto; }
@@ -791,7 +812,8 @@
 }
 .health-ring-container { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
 .health-panel-title { align-self: stretch; margin: -16px -16px 8px; padding: 18px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 17px; font-weight: 600; text-align: left; }
-.health-ring svg { width: 110px; height: 110px; }
+.health-ring svg { width: 128px; height: 128px; }
+.health-sublabel + .health-breakdown { margin-top: 3px; }
 .market-watch-panel { display: flex; flex-direction: column; gap: 0; min-height: 100%; padding: 14px 16px; background: #fff; border: 1px solid var(--border-default); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); font-size: 11px; }
 [data-theme="dark"] .market-watch-panel { background: var(--surface-1); }
 .market-watch-panel .mw-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
@@ -803,7 +825,10 @@
 .market-watch-panel .mw-empty { font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px 0; }
 .health-ring-track { fill: none; stroke: var(--surface-3); stroke-width: 10; }
 .health-ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1), stroke 0.3s; }
-.health-sublabel { font-size: 12px; color: var(--text-secondary); text-align: center; font-weight: 600; }
+/* The word under the ring is the reading of the number, so it carries more
+   weight than the fixture note beneath it. The two were the same size and
+   colour, which flattened them into one three-line block. */
+.health-sublabel { font-size: 15px; color: var(--text-primary); text-align: center; font-weight: 650; letter-spacing: -0.2px; margin-top: 2px; }
 .health-factors { display: flex; flex-direction: column; gap: 4px; width: 100%; margin: 4px 0 8px; }
 .health-factor { font-size: 11px; padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px; }
 .health-factor.positive { color: #4ADE80; background: rgba(74,222,128,0.08); }
@@ -1308,8 +1333,27 @@
 
 /* ===== SQUAD HEALTH & INSIGHTS PANEL ===== */
 .health-breakdown { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 2px; }
-.health-sample { margin-top: 8px; font-size: 10.5px; line-height: 1.45; color: var(--text-muted); max-width: 260px; text-align: center; }
-.insight-moves { align-self: stretch; margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+/* .health-sample removed with the "Based on N gameweeks" line it styled. */
+
+/* ===== The two halves of this panel =====
+   It was one flat column: ring, verdict word, breakdown, a caveat paragraph,
+   a button, the moves, the counts. Seven items, no grouping, so nothing in it
+   read as more important than anything else — and the two counts describing
+   the score sat at the bottom, separated from it by everything else.
+
+   Now it reads as two things. Above the rule: what your squad is. Below it:
+   what to do about it. */
+.health-actions {
+    align-self: stretch;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-emphasis);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.insight-moves { align-self: stretch; display: flex; flex-direction: column; gap: 6px; }
 .insight-moves-head { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
 .insight-move { display: flex; gap: 8px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--surface-0); border: 1px solid var(--border-subtle); text-align: left; }
 /* The single most urgent action is visually pulled to the front of the queue. */
@@ -1321,7 +1365,7 @@
 .insight-move-detail { font-size: 11px; color: var(--text-secondary); line-height: 1.4; margin-top: 2px; }
 .insight-move-action { margin-top: 6px; padding: 3px 10px; font-size: 10px; font-weight: 600; border-radius: var(--radius-full); border: 1px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; }
 .insight-move-action:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.health-verdict-counts { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+.health-verdict-counts { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
 .hv-count { font-size: 12px; font-weight: 600; }
 .hv-count.sell { color: var(--verdict-sell); }
 .hv-count.monitor { color: var(--verdict-monitor); }
@@ -2390,8 +2434,12 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     background: var(--verdict-monitor-bg);
 }
 
+/* The BENCH tag says a player is benched. Fading the row said it a second
+   time, at the cost of every number in it — an xP, a form figure and five
+   fixture chips all lost contrast, on rows you read precisely to decide
+   whether someone should still be on the bench. The tag carries it alone. */
 .sq-row.sq-row-bench {
-    opacity: 0.65;
+    opacity: 1;
 }
 
 .sq-row-clickable {
@@ -2725,8 +2773,12 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     background: var(--verdict-monitor-bg);
 }
 
+/* The BENCH tag says a player is benched. Fading the row said it a second
+   time, at the cost of every number in it — an xP, a form figure and five
+   fixture chips all lost contrast, on rows you read precisely to decide
+   whether someone should still be on the bench. The tag carries it alone. */
 .sq-row.sq-row-bench {
-    opacity: 0.65;
+    opacity: 1;
 }
 
 .sq-compare-checkbox {
@@ -5282,10 +5334,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 
 /* ===== GAMEWEEK REVIEW ===== */
-.gwr-open { width: 100%; margin: 10px 0 0; padding: 8px 12px; border: 1px solid var(--color-primary); border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary);
-    font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; transition: background 140ms ease; }
-.gwr-open:hover { background: color-mix(in srgb, var(--color-primary) 20%, transparent); }
+/* Secondary to the moves it now sits beneath: an outline rather than a fill,
+   so "Do this week" is the thing the eye lands on first. */
+.gwr-open { width: 100%; margin: 0; padding: 8px 12px; border: 1px solid var(--border-emphasis); border-radius: var(--radius-lg);
+    background: transparent; color: var(--text-secondary);
+    font-size: 12px; font-weight: 650; font-family: inherit; cursor: pointer; transition: background 140ms ease, color 140ms ease, border-color 140ms ease; }
+.gwr-open:hover { background: color-mix(in srgb, var(--color-primary) 10%, transparent); border-color: var(--color-primary); color: var(--color-primary); }
 .gwr-partial { margin-bottom: 10px; padding: 7px 10px; border-radius: var(--radius-md); font-size: 11px; line-height: 1.5;
     background: color-mix(in srgb, var(--verdict-monitor) 12%, transparent); border-left: 3px solid var(--verdict-monitor); color: var(--text-secondary); }
 .gwr-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
