@@ -1996,14 +1996,17 @@
                 </div>
 
                 <div class="mgr-chips">
-                    <div class="mgr-chips-head">🃏 ${activeLabel ? `Active: <strong>${escHTML(activeLabel)}</strong>` : 'No chip active'}</div>
+                    <!-- The count rides on the heading rather than sitting on a
+                         line of its own underneath: "4 of 4 still available" was
+                         a whole row to say a number the chips beside it already
+                         spell out one by one. -->
+                    <div class="mgr-chips-head">🃏 ${activeLabel ? `Active: <strong>${escHTML(activeLabel)}</strong>` : 'No chip active'}${d.chips.length ? ` <span class="mgr-chips-count" title="${chipsAvail.length} of ${d.chips.length} chips still available">(${chipsAvail.length}/${d.chips.length})</span>` : ''}</div>
                     <div class="mgr-chips-list">
                         ${d.chips.length ? d.chips.map(ch => `<span class="mgr-chip ${ch.available ? 'avail' : 'used'} ${d.activeChip === ch.name ? 'active' : ''}"
                             title="${escHTML(ch.label)} — ${d.activeChip === ch.name ? 'active this gameweek' : ch.available ? 'available' : 'already used'}">
                             ${ch.icon} ${escHTML(ch.label)}</span>`).join('')
                         : '<span class="mgr-chip used">None available</span>'}
                     </div>
-                    ${d.chips.length ? `<div class="mgr-chips-note">${chipsAvail.length} of ${d.chips.length} still available</div>` : ''}
                 </div>
 
                 ${p.total ? `<div class="mgr-progress">

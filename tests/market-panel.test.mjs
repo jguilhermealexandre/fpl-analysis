@@ -69,14 +69,23 @@ test('a rise and a fall never render the same', () => {
     const m = mk.mkSquadMovers([player(1, 'Riser', 6.0, 100), player(2, 'Faller', 6.0, -100)]);
     const html = mk.mkRenderPanel(m);
 
-    const riser = /class="mk-row up[\s\S]*?<\/a>/.exec(html);
-    const faller = /class="mk-row down[\s\S]*?<\/a>/.exec(html);
+    const riser = /class="mk-row up[\s\S]*?<\/div>\s*<\/div>/.exec(html);
+    const faller = /class="mk-row down[\s\S]*?<\/div>\s*<\/div>/.exec(html);
     assert.ok(riser && faller, 'both directions render');
     assert.ok(riser[0].includes('▲') && faller[0].includes('▼'), 'the arrow differs');
     assert.ok(riser[0].includes('Rise due') && faller[0].includes('Drop due'), 'the wording differs');
     // Colour alone is not readable to everyone, so the class is not the only cue —
     // but it must still differ, since the CSS keys the green and red off it.
     assert.ok(!riser[0].includes('mk-row down') && !faller[0].includes('mk-row up'));
+});
+
+test('a row is not a link', () => {
+    /* It read as one and behaved like one: the click landed you in the squad
+       table on a player whose profile has nothing more to say about the price
+       move than the row already does. */
+    const html = mk.mkRenderPanel(mk.mkSquadMovers([player(1, 'Riser', 6.0, 100)]));
+    assert.doesNotMatch(html, /<a[^>]*class="mk-row/);
+    assert.doesNotMatch(html, /href=/, 'and there is nothing to navigate to');
 });
 
 test('the price shown is the one it is heading to', () => {

@@ -82,15 +82,19 @@
             const label = typeof pwLabel === 'function' ? pwLabel(c) : (pct + '%');
             const detail = typeof pwDetail === 'function' ? pwDetail(c) : '';
 
-            return `<a class="mk-row ${rising ? 'up' : 'down'}${c.tier === 'due' ? ' is-due' : ''}"
-                href="fpl-my-team-analysis.html#squad?player=${c.player.id}"
+            /* Not a link. It read as one and behaved like one, but a price
+               meter is a thing to notice rather than a thing to act on: the
+               click landed you in the squad table on a player whose profile
+               has nothing more to say about the change than this row already
+               does. The tooltip carries the detail; nothing here navigates. */
+            return `<div class="mk-row ${rising ? 'up' : 'down'}${c.tier === 'due' ? ' is-due' : ''}"
                 data-tooltip="${escHTML(`${c.player.name} — ${detail}`)}">
                 <span class="mk-arrow" aria-hidden="true">${rising ? '▲' : '▼'}</span>
                 <span class="mk-name">${escHTML(c.player.name)}</span>
                 <span class="mk-price">£${from.toFixed(1)}<i>→</i>£${to.toFixed(1)}</span>
                 <span class="mk-meter" aria-hidden="true"><i style="width:${pct}%"></i></span>
                 <span class="mk-tag">${escHTML(label)}</span>
-            </a>`;
+            </div>`;
         }
 
         function mkColumn(list, rising) {

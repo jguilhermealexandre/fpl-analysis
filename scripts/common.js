@@ -191,6 +191,65 @@ function playerPhotoHTML(code, className) {
         onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else { this.remove(); }">`;
 }
 
+// ===== NEWS THUMBNAILS =====
+/* Pulling a picture out of an RSS item.
+ *
+ * The three news views each did this the same way and each got it wrong the
+ * same way: `article.thumbnail || article.enclosure?.link`. Those are the two
+ * fields rss2json fills in when the feed happens to use <media:thumbnail> or
+ * an <enclosure>, and half the Premier League feeds use neither — the BBC and
+ * the Guardian put the picture in the item body as an <img>, so most cards fell
+ * back to the coloured placeholder even though the article had an image all
+ * along.
+ *
+ * So: those two first, then the body HTML, and only then nothing.
+ *
+ * Two rules about rewriting what comes back. The scheme is forced to https,
+ * because the page is served over https and a http:// image is blocked as
+ * mixed content — a URL that would have worked, dropped for a reason nothing
+ * on screen explains. And the size is left alone for everything except the
+ * BBC: Guardian URLs carry an HMAC over their query string (that trailing
+ * `s=`), so "improving" the width on one turns a working image into a 403.
+ */
+const NEWS_THUMB_SKIP = /(?:^|\/)(?:1x1|pixel|spacer|blank|transparent)\.(?:gif|png|jpg)(?:\?|$)/i;
+
+/* Every <img> in the body, not just the first: a feed that opens its item with
+   a tracking pixel would otherwise cost us the real picture two tags later. */
+function newsThumbsFromHTML(html) {
+    if (!html) return [];
+    const out = [];
+    const re = /<img[^>]+?src\s*=\s*["']([^"']+)["']/gi;
+    let m;
+    while ((m = re.exec(String(html))) !== null) out.push(m[1]);
+    return out;
+}
+
+/* The BBC serves the same image at any width from a path segment, and the RSS
+   feed asks for a 240px one that is visibly soft on a card. No signature to
+   invalidate, so this is safe; nothing else is touched. */
+function newsThumbUpgrade(url) {
+    return url.replace(/(ichef\.bbci\.co\.uk\/[a-z]+\/[a-z]+\/)\d{2,4}(\/)/i, '$1800$2');
+}
+
+function newsThumbnail(article) {
+    if (!article) return null;
+    const candidates = [
+        article.thumbnail,
+        article.enclosure && article.enclosure.link,
+        article.image,
+        ...newsThumbsFromHTML(article.content),
+        ...newsThumbsFromHTML(article.description)
+    ];
+    for (const raw of candidates) {
+        if (typeof raw !== 'string') continue;
+        const url = raw.trim();
+        if (!/^https?:\/\//i.test(url)) continue;
+        if (NEWS_THUMB_SKIP.test(url)) continue;
+        return newsThumbUpgrade(url.replace(/^http:\/\//i, 'https://'));
+    }
+    return null;
+}
+
 // ===== PLAYER IDENTITY =====
 /* Face, club badge and position colour — the three marks that say who a row
  * or a card is about, drawn once here and used by the dashboard pitch, the
@@ -832,7 +891,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=150')
+    fetch('footer.html?v=151')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=150">
-    <link rel="stylesheet" href="styles/v2-design.css?v=150">
+    <link rel="stylesheet" href="styles/common.css?v=151">
+    <link rel="stylesheet" href="styles/v2-design.css?v=151">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -915,7 +915,7 @@
         .mk-more { font-size: 9px; color: var(--text-muted); padding: 4px 6px 0; }
 
         .mk-row { display: grid; grid-template-columns: 12px 1fr auto; grid-template-areas: 'arrow name price' 'arrow meter tag'; gap: 2px 7px; align-items: center; padding: 5px 6px; border-radius: var(--radius-md); text-decoration: none; transition: background 140ms ease; }
-        .mk-row:hover { background: var(--surface-2); }
+        .mk-row { cursor: default; }
         .mk-row + .mk-row { margin-top: 3px; }
         .mk-arrow { grid-area: arrow; font-size: 11px; font-weight: 800; }
         .mk-row.up .mk-arrow { color: var(--color-success); }
@@ -1054,6 +1054,45 @@
             .rd-lanes { grid-template-columns: 1fr; }
             .rd-lane + .rd-lane { border-left: none; border-top: 1px solid var(--border-subtle); }
         }
+
+        /* ===== The bar inside the info panel =====
+           It is the panel's last row now, in a column about a third of the page
+           wide, so the two lanes stack and the passing checks stop being seven
+           full rows. They have no detail to show — that is what "clear" means —
+           so they collapse to a wrap of ticked labels, which says the same
+           thing in three lines instead of seven. */
+        .v2-readiness:empty { display: none; }
+        .v2-info-panel .rd-bar {
+            grid-column: auto;
+            border: none; border-top: 1px solid var(--border-subtle);
+            border-left: none; border-radius: 0;
+            background: transparent;
+        }
+        .v2-info-panel .rd-bar-head {
+            gap: 8px 12px; padding: 13px 18px 10px; border-radius: 0;
+        }
+        .v2-info-panel .rd-bar-main { flex: 1 1 100%; }
+        .v2-info-panel .rd-headline { font-size: 14px; }
+        .v2-info-panel .rd-meter { flex: 1 1 auto; }
+        .v2-info-panel .rd-clock { font-size: 11px; }
+        .v2-info-panel .rd-lanes { grid-template-columns: 1fr; border-top: none; }
+        .v2-info-panel .rd-lane { padding: 10px 18px 12px; background: transparent; }
+        .v2-info-panel .rd-lane + .rd-lane { border-left: none; border-top: 1px solid var(--border-subtle); }
+        .v2-info-panel .rd-check { font-size: 12px; padding: 5px 0; }
+
+        /* The clear lane, as labels rather than rows. */
+        .v2-info-panel .rd-lane.done .rd-list {
+            flex-direction: row; flex-wrap: wrap; gap: 5px;
+        }
+        .v2-info-panel .rd-lane.done .rd-check {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 9px; border: none; border-radius: 999px;
+            background: color-mix(in srgb, var(--color-success) 9%, transparent);
+            font-size: 10.5px; line-height: 1.35;
+        }
+        .v2-info-panel .rd-lane.done .rd-check + .rd-check { border-top: none; }
+        .v2-info-panel .rd-lane.done .rd-mark { font-size: 9px; }
+        .v2-info-panel .rd-lane.done .rd-label { color: var(--text-secondary); }
 
         /* The alerts offer. Spans both columns and stays quiet — it is an offer,
            not a call to action, and it sits below the checks because that is the
@@ -2904,7 +2943,7 @@
             position: sticky;
             top: 0; /* was 56px, sized for the old .top-nav bar — sidebar layout has none */
             z-index: 99;
-            background: var(--surface-0);
+            background: var(--surface-1);
             border-bottom: 1px solid var(--border-default);
             overflow: hidden;
             height: 56px;
@@ -3515,7 +3554,7 @@
         }
 
         /* ===== NEWS STRIP ===== */
-        .news-strip { background: var(--surface-0); border-bottom: 1px solid var(--border-default); overflow: hidden; height: 32px; display: flex; align-items: center; }
+        .news-strip { background: var(--surface-1); border-bottom: 1px solid var(--border-default); overflow: hidden; height: 32px; display: flex; align-items: center; }
         .news-strip-track { display: flex; width: max-content; gap: 12px; align-items: center; animation: news-scroll 30s linear infinite; }
         .news-strip:hover .news-strip-track { animation-play-state: paused; }
         .news-strip-content { display: inline-flex; align-items: center; gap: 12px; padding: 0 12px; }
@@ -3544,7 +3583,10 @@
 
         /* ===== PRICE TICKER BAR (stock market style) ===== */
         .price-ticker-bar {
-            background: linear-gradient(90deg, rgba(16,185,129,0.04) 0%, var(--surface-1) 15%, var(--surface-1) 85%, rgba(239,68,68,0.04) 100%);
+            /* Flat white, like the two strips above it. The green-to-red wash
+               across the ends implied the strip was sorted by direction, which
+               it is not — it scrolls in price-meter order. */
+            background: var(--surface-1);
             border-bottom: 1px solid var(--border-default);
             overflow: hidden;
             height: 30px;
@@ -3552,20 +3594,6 @@
             align-items: center;
         }
         .price-ticker-bar.hidden { display: none !important; }
-        .price-ticker-label {
-            font-size: 9px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
-            white-space: nowrap;
-            padding: 0 10px;
-            border-right: 1px solid var(--border-default);
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
         .price-ticker-track {
             display: flex;
             width: max-content;
@@ -3592,9 +3620,16 @@
         .pticker-name { font-family: var(--font-display); font-weight: 600; font-size: 10px; }
         .pticker-price { font-size: 11px; }
         .pticker-arrow { font-size: 9px; }
-        .pticker-item.bull { color: #10B981; }
-        .pticker-item.bear { color: #EF4444; }
-        .pticker-item.stable { color: var(--text-muted); }
+        /* The tone is carried in a variable as well as in `color`, because the
+           full-meter pill below paints its background from it. `currentColor`
+           cannot do that job there: a rule that sets `color` and reads
+           `currentColor` in the same declaration block reads the colour it is
+           setting, not the one it inherited — so the pill was drawing #0B1220
+           text on a #0B1220 background, a black rectangle in the middle of the
+           ticker with the player's name invisible inside it. */
+        .pticker-item.bull { color: #10B981; --pticker-tone: #10B981; }
+        .pticker-item.bear { color: #EF4444; --pticker-tone: #EF4444; }
+        .pticker-item.stable { color: var(--text-muted); --pticker-tone: var(--text-muted); }
         .pticker-sep {
             color: var(--border-emphasis);
             font-size: 8px;
@@ -3610,8 +3645,8 @@
             letter-spacing: 0.03em;
             padding: 1px 5px;
             border-radius: 4px;
-            background: currentColor;
-            color: #0B1220;
+            background: var(--pticker-tone, var(--text-muted));
+            color: #FFFFFF;
         }
         .pticker-item.tier-close { opacity: 0.72; }
         @keyframes price-ticker-scroll {
@@ -3804,8 +3839,11 @@
     </div>
 
     <!-- Price Ticker (stock market style, shown when team is loaded) -->
+    <!-- No "MARKET" label. It sat at the left of the bar in the flow while the
+         track scrolled past underneath it, so whichever player happened to be
+         at the head of the strip was always half-hidden behind the word. The
+         rows say £ and carry a rise/drop arrow; nothing needed naming. -->
     <div class="price-ticker-bar hidden" id="priceTickerBar">
-        <div class="price-ticker-label"><span style="width:5px;height:5px;border-radius:50%;background:#10B981;animation:pricePulse 1.5s ease-in-out infinite;display:inline-block;"></span> MARKET</div>
         <div class="price-ticker-track" id="priceTickerTrack"></div>
     </div>
 
@@ -3973,6 +4011,13 @@
                              about your squad before the deadline, the same kind
                              as the rank and the bank above it. -->
                         <section class="v2-market" id="v2Market" style="display:none;"></section>
+                        <!-- Deadline readiness. It used to be a full-width band
+                             below the pitch, spanning the two attention columns
+                             it heads. It says the same thing the rest of this
+                             panel does — where your squad stands before the
+                             deadline — and as the panel's last row it costs a
+                             third of the page rather than all of it. -->
+                        <div class="v2-readiness" id="v2Readiness"></div>
                     </aside>
                 </div>
 
@@ -4424,20 +4469,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=150"></script>
-    <script src="scripts/price-watch.js?v=150"></script>
-    <script src="scripts/xp-engine.js?v=150"></script>
-    <script src="scripts/odds-panel.js?v=150"></script>
-    <script src="scripts/live-gw.js?v=150"></script>
-    <script src="scripts/matchday.js?v=150"></script>
-    <script src="scripts/market-panel.js?v=150"></script>
-    <script src="scripts/eo-layer.js?v=150"></script>
-    <script src="scripts/readiness.js?v=150"></script>
-    <script src="scripts/push-alerts.js?v=150"></script>
-    <script src="scripts/notifications.js?v=150"></script>
-    <script src="scripts/transfer-engine.js?v=150"></script>
-    <script src="scripts/common.js?v=150"></script>
-    <script src="scripts/sidebar-nav.js?v=150"></script>
+    <script src="scripts/error-monitor.js?v=151"></script>
+    <script src="scripts/price-watch.js?v=151"></script>
+    <script src="scripts/xp-engine.js?v=151"></script>
+    <script src="scripts/odds-panel.js?v=151"></script>
+    <script src="scripts/live-gw.js?v=151"></script>
+    <script src="scripts/matchday.js?v=151"></script>
+    <script src="scripts/market-panel.js?v=151"></script>
+    <script src="scripts/eo-layer.js?v=151"></script>
+    <script src="scripts/readiness.js?v=151"></script>
+    <script src="scripts/push-alerts.js?v=151"></script>
+    <script src="scripts/notifications.js?v=151"></script>
+    <script src="scripts/transfer-engine.js?v=151"></script>
+    <script src="scripts/common.js?v=151"></script>
+    <script src="scripts/sidebar-nav.js?v=151"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5311,8 +5356,10 @@
                 </div>`;
             }
 
-            const html = rdSummaryHTML(built.summary, deadlineTime, Date.now(), built.checks)
-                       + renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup', 'xi')
+            const rdSlot = document.getElementById('v2Readiness');
+            if (rdSlot) rdSlot.innerHTML = rdSummaryHTML(built.summary, deadlineTime, Date.now(), built.checks);
+
+            const html = renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup', 'xi')
                        + renderCol(txItems, 'repeat', 'Transfers', 'No urgent transfer actions right now', 'fpl-my-team-analysis.html#transfers', 'tx')
                        /* The alerts offer goes last, under the checks rather
                           than above them. The browser permission prompt is
@@ -5559,7 +5606,7 @@
                             text: `${article.title} — ${feed.source}`,
                             headline: article.title,
                             link: article.link,
-                            thumbnail: article.thumbnail || article.enclosure?.link || null,
+                            thumbnail: newsThumbnail(article),
                             source: feed.source,
                             badge: feed.badge,
                             timestamp: article.pubDate,

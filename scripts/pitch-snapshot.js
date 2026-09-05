@@ -1279,6 +1279,8 @@
                         urgent: true,
                         title: `Change captain to ${bestAlt.player.name}`,
                         detail: `${bestAlt.player.name} [${bestAltXP.toFixed(1)} xP] is a better captain option than ${capAnalysis.player.name} [${capXP.toFixed(1)} xP] — worth about +${((bestAltXP - capXP)).toFixed(1)} pts once doubled`,
+                        doLabel: 'Make captain',
+                        doAction: `applySuggestedCaptain(${bestAlt.player.id})`,
                         actionLabel: 'Compare',
                         action: `openPairCompare(${bestAlt.player.id}, ${capAnalysis.player.id})`
                     });
@@ -1293,6 +1295,8 @@
                     urgent: false,
                     title: `Start ${s.bench.player.name} over ${s.starter.player.name}`,
                     detail: `Projected +${s.delta.toFixed(1)} pts (${s.benchScore.toFixed(1)} xP vs ${s.starterScore.toFixed(1)} xP)`,
+                    doLabel: 'Make the swap',
+                    doAction: `applySuggestedSwap(${s.bench.player.id}, ${s.starter.player.id})`,
                     actionLabel: 'Compare',
                     action: `openPairCompare(${s.bench.player.id}, ${s.starter.player.id})`
                 });
@@ -1361,6 +1365,47 @@
                 .slice(0, MAX_SUGGESTED_MOVES);
         }
 
+        /* ===== Doing what the list suggests =====
+
+           Every card in "Do this week" used to offer only "Compare" or "View
+           options" — a way to look at the move, never a way to make it. For the
+           two kinds this page can actually carry out that was a needless detour:
+           the manager reads "Change captain to Haaland", agrees, and then has to
+           go and find Haaland on the pitch to do it by hand.
+
+           Only captain changes and bench swaps get a Do it. A transfer is not
+           one action — it has a budget, a team limit and a sale price to settle,
+           which is the Transfer Wizard's job — and a price drop is a fact rather
+           than a move, so those two keep "View options" and nothing else.
+
+           Both executors re-render the whole analysis rather than only the
+           pitch: the move list is built from the squad they have just changed,
+           so the card that was clicked should be gone by the time the click
+           finishes, and that is the confirmation. */
+        function applySuggestedCaptain(playerId) {
+            const a = (analysisResults || []).find(x => x.player.id === playerId);
+            if (!a) return;
+            setSnapshotCaptain(playerId);
+            syncSnapshotToSquad();
+            renderTeamAnalysis();
+            if (typeof updateStatus === 'function') {
+                updateStatus(`${a.player.name} is now your captain`, 'success');
+            }
+        }
+
+        function applySuggestedSwap(benchId, starterId) {
+            const inA = (analysisResults || []).find(x => x.player.id === benchId);
+            const outA = (analysisResults || []).find(x => x.player.id === starterId);
+            if (!inA || !outA) return;
+            /* performSnapshotSwap re-renders and reports its own refusal if the
+               swap would break the formation, so there is nothing to check here
+               that it does not already check. */
+            performSnapshotSwap(benchId, starterId);
+            if (typeof updateStatus === 'function' && snapshotXI.has(benchId)) {
+                updateStatus(`${inA.player.name} starts, ${outA.player.name} to the bench`, 'success');
+            }
+        }
+
         function renderSuggestedMoves(moves) {
             if (!moves.length) {
                 return `<div class="insight-move insight-move-clear">
@@ -1375,7 +1420,10 @@
                     <div class="insight-move-body">
                         <div class="insight-move-title">${escHTML(m.title)}</div>
                         <div class="insight-move-detail">${escHTML(m.detail)}</div>
-                        ${m.action ? `<button class="insight-move-action" onclick="${m.action}">${escHTML(m.actionLabel)}</button>` : ''}
+                        <div class="insight-move-actions">
+                            ${m.doAction ? `<button class="insight-move-do" onclick="${m.doAction}">${escHTML(m.doLabel)}</button>` : ''}
+                            ${m.action ? `<button class="insight-move-action" onclick="${m.action}">${escHTML(m.actionLabel)}</button>` : ''}
+                        </div>
                     </div>
                 </div>`).join('');
         }
