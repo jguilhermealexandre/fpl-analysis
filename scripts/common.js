@@ -245,12 +245,16 @@ function newsThumbUpgrade(url) {
  * named fields have already come up empty, so a feed that fills them in
  * properly never reaches it. */
 const NEWS_THUMB_IMAGE_URL = /^https?:\/\/[^\s"']+\.(?:jpe?g|png|webp|avif)(?:[?#][^\s"']*)?$/i;
+/* Image CDNs whose URLs do not always carry a file extension. Matching the host
+   is safe in a scan that is already only looking at one item's own fields. */
+const NEWS_THUMB_IMAGE_HOST = /^https?:\/\/(?:i\.guim\.co\.uk|ichef\.bbci\.co\.uk|e\d\.365dm\.com|[a-z0-9-]+\.premierleague\.com|images\.[a-z0-9-]+\.[a-z]+)\//i;
 
 function newsThumbDeepScan(value, depth) {
     if (depth > 4 || value == null) return null;
     if (typeof value === 'string') {
         const url = value.trim();
-        return NEWS_THUMB_IMAGE_URL.test(url) && !NEWS_THUMB_SKIP.test(url) ? url : null;
+        if (NEWS_THUMB_SKIP.test(url)) return null;
+        return (NEWS_THUMB_IMAGE_URL.test(url) || NEWS_THUMB_IMAGE_HOST.test(url)) ? url : null;
     }
     if (Array.isArray(value)) {
         for (const v of value) {
@@ -268,24 +272,56 @@ function newsThumbDeepScan(value, depth) {
     return null;
 }
 
-function newsThumbnail(article) {
+/* Which field the picture came from, per source, for the run just done.
+ *
+ * This exists because the answer cannot be worked out from the code. Whether a
+ * given feed's image survives depends on how the RSS-to-JSON proxy maps
+ * namespaced elements it is not obliged to map at all, and that is a property
+ * of a live response — not something a reading of this file, or a test against
+ * a hand-written fixture, can settle. So the page counts what it actually got.
+ *
+ * Read it in the console on the News page: newsThumbReport(). */
+const newsThumbStats = Object.create(null);
+
+function newsThumbNote(source, field) {
+    if (!source) return;
+    const row = newsThumbStats[source] || (newsThumbStats[source] = { total: 0, found: 0, by: Object.create(null) });
+    row.total++;
+    if (field !== 'none') row.found++;
+    row.by[field] = (row.by[field] || 0) + 1;
+}
+
+function newsThumbReport() {
+    const out = {};
+    for (const [source, row] of Object.entries(newsThumbStats)) {
+        out[source] = `${row.found}/${row.total} with a picture — ${
+            Object.entries(row.by).map(([k, n]) => `${k}: ${n}`).join(', ')}`;
+    }
+    return out;
+}
+
+function newsThumbnail(article, source) {
     if (!article) return null;
-    const candidates = [
-        article.thumbnail,
-        article.enclosure && article.enclosure.link,
-        article.enclosure && article.enclosure.thumbnail,
-        article.image,
-        ...newsThumbsFromHTML(article.content),
-        ...newsThumbsFromHTML(article.description)
+    const named = [
+        ['thumbnail', article.thumbnail],
+        ['enclosure.link', article.enclosure && article.enclosure.link],
+        ['enclosure.thumbnail', article.enclosure && article.enclosure.thumbnail],
+        ['enclosure.url', article.enclosure && article.enclosure.url],
+        ['image', article.image]
     ];
-    for (const raw of candidates) {
+    for (const html of newsThumbsFromHTML(article.content)) named.push(['content img', html]);
+    for (const html of newsThumbsFromHTML(article.description)) named.push(['description img', html]);
+
+    for (const [field, raw] of named) {
         if (typeof raw !== 'string') continue;
         const url = raw.trim();
         if (!/^https?:\/\//i.test(url)) continue;
         if (NEWS_THUMB_SKIP.test(url)) continue;
+        newsThumbNote(source, field);
         return newsThumbUpgrade(url.replace(/^http:\/\//i, 'https://'));
     }
     const found = newsThumbDeepScan(article, 0);
+    newsThumbNote(source, found ? 'deep scan' : 'none');
     return found ? newsThumbUpgrade(found.replace(/^http:\/\//i, 'https://')) : null;
 }
 
@@ -942,7 +978,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=155')
+    fetch('footer.html?v=156')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

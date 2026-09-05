@@ -846,7 +846,7 @@
                             category: 'external', categoryLabel: feed.source,
                             headline: article.title,
                             link: article.link,
-                            thumbnail: newsThumbnail(article),
+                            thumbnail: newsThumbnail(article, feed.source),
                             source: feed.source, badge: feed.badge,
                             detail: rawDesc.slice(0, 140) || feed.source,
                             isSquad: false,

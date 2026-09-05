@@ -11,10 +11,12 @@ import { loadFunction } from './helpers/load.mjs';
 
 const NEWS_THUMB_SKIP = /(?:^|\/)(?:1x1|pixel|spacer|blank|transparent)\.(?:gif|png|jpg)(?:\?|$)/i;
 const NEWS_THUMB_IMAGE_URL = /^https?:\/\/[^\s"']+\.(?:jpe?g|png|webp|avif)(?:[?#][^\s"']*)?$/i;
+const NEWS_THUMB_IMAGE_HOST = /^https?:\/\/(?:i\.guim\.co\.uk|ichef\.bbci\.co\.uk|e\d\.365dm\.com|[a-z0-9-]+\.premierleague\.com|images\.[a-z0-9-]+\.[a-z]+)\//i;
 const deps = {
     newsThumbsFromHTML: loadFunction('scripts/common.js', 'newsThumbsFromHTML'),
     newsThumbUpgrade: loadFunction('scripts/common.js', 'newsThumbUpgrade'),
-    NEWS_THUMB_SKIP, NEWS_THUMB_IMAGE_URL
+    NEWS_THUMB_SKIP, NEWS_THUMB_IMAGE_URL, NEWS_THUMB_IMAGE_HOST,
+    newsThumbNote: () => {}
 };
 deps.newsThumbDeepScan = loadFunction('scripts/common.js', 'newsThumbDeepScan', deps);
 const newsThumbnail = loadFunction('scripts/common.js', 'newsThumbnail', deps);
@@ -80,6 +82,12 @@ test('a Guardian item is found wherever the proxy folded media:content into', ()
     };
     assert.equal(newsThumbnail(item),
         'https://i.guim.co.uk/img/media/abc/master/140.jpg?width=140&s=deadbeef');
+});
+
+test('an image CDN URL with no file extension is still an image', () => {
+    // Guardian and BBC URLs do not always end in .jpg once the query is on them.
+    assert.equal(newsThumbnail({ media: { content: [{ url: 'https://i.guim.co.uk/img/media/abc/master/500' }] } }),
+        'https://i.guim.co.uk/img/media/abc/master/500');
 });
 
 test('the deep scan does not mistake the article link for a picture', () => {

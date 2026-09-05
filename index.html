@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=155">
-    <link rel="stylesheet" href="styles/v2-design.css?v=155">
+    <link rel="stylesheet" href="styles/common.css?v=156">
+    <link rel="stylesheet" href="styles/v2-design.css?v=156">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1088,9 +1088,19 @@
         .v2-info-panel .rd-lanes { grid-template-columns: 1fr; border-top: none; }
         .v2-info-panel .rd-lane { padding: 8px 16px 10px; background: transparent; }
         .v2-info-panel .rd-lane + .rd-lane { border-left: none; border-top: 1px solid var(--border-subtle); }
-        .v2-info-panel .rd-check { padding: 4px 0; }
-        .v2-info-panel .rd-items { margin-top: 2px; }
-        .v2-info-panel .rd-item { padding: 4px 8px; font-size: 11px; gap: 6px; flex-wrap: nowrap; }
+        /* minmax(0, 1fr), not 1fr: a grid item defaults to min-width:auto, so the
+           column grows to fit its longest line instead of holding the width and
+           letting the text ellipse. That is what pushed these rows past the
+           panel's edge. */
+        .v2-info-panel .rd-check { padding: 4px 0; grid-template-columns: 14px minmax(0, 1fr); }
+        .v2-info-panel .rd-items { margin-top: 2px; min-width: 0; }
+        .v2-info-panel .rd-item {
+            padding: 4px 8px; font-size: 11px; gap: 6px; flex-wrap: nowrap;
+            /* Without this the row runs past the panel's edge and the reason is
+               cut off mid-word with no ellipsis to say it was. */
+            max-width: 100%; overflow: hidden;
+        }
+        .v2-info-panel .rd-i-name { flex-shrink: 0; }
         /* One line each. The full reason is a click away on the squad page, and
            two of these wrapping to four lines apiece is what pushed this panel
            past the bottom of the pitch beside it. */
@@ -1681,7 +1691,7 @@
 
         .v2-top-row {
             display: grid;
-            grid-template-columns: 1.7fr 1fr;
+            grid-template-columns: minmax(280px, 1fr) minmax(0, 2.1fr);
             gap: 16px;
             margin-bottom: 20px;
             text-align: left;
@@ -1800,7 +1810,7 @@
            that is meant to be glanceable. Two columns from 768 up, with a gentler
            ratio than desktop so the right-hand panel stays readable. */
         @media (min-width: 768px) and (max-width: 900px) {
-            .v2-top-row { grid-template-columns: 1.25fr 1fr; gap: 12px; }
+            .v2-top-row { grid-template-columns: minmax(240px, 1fr) minmax(0, 1.45fr); gap: 12px; }
         }
         @media (max-width: 767px) {
             .v2-top-row { grid-template-columns: 1fr; }
@@ -3876,9 +3886,13 @@
                         </a>
                     </div>
                 </nav>
-                <!-- Top row: Squad Snapshot (left) + unified info panel (right) -->
+                <!-- Top row: info panel (left, narrow) + Squad Snapshot (right).
+                     The panel leads because it is the answer to "where do I
+                     stand" — deadline, rank, market, readiness — and the pitch
+                     is what you look at once you have it. In DOM order too, so
+                     the single-column layout on a phone puts the countdown
+                     above the lineup rather than below it. -->
                 <div class="v2-top-row">
-                    <div class="v2-pitch-wrap" id="v2PitchWrap"></div>
                     <aside class="v2-info-panel">
                         <div class="v2-deadline-hero" id="v2DeadlineHero"></div>
                         <div class="v2-status-stack" id="v2StatusStack"></div>
@@ -3896,6 +3910,7 @@
                              third of the page rather than all of it. -->
                         <div class="v2-readiness" id="v2Readiness"></div>
                     </aside>
+                    <div class="v2-pitch-wrap" id="v2PitchWrap"></div>
                 </div>
 
                 <!-- This gameweek's matches, live while they are being played -->
@@ -4343,20 +4358,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=155"></script>
-    <script src="scripts/price-watch.js?v=155"></script>
-    <script src="scripts/xp-engine.js?v=155"></script>
-    <script src="scripts/odds-panel.js?v=155"></script>
-    <script src="scripts/live-gw.js?v=155"></script>
-    <script src="scripts/matchday.js?v=155"></script>
-    <script src="scripts/market-panel.js?v=155"></script>
-    <script src="scripts/eo-layer.js?v=155"></script>
-    <script src="scripts/readiness.js?v=155"></script>
-    <script src="scripts/push-alerts.js?v=155"></script>
-    <script src="scripts/notifications.js?v=155"></script>
-    <script src="scripts/transfer-engine.js?v=155"></script>
-    <script src="scripts/common.js?v=155"></script>
-    <script src="scripts/sidebar-nav.js?v=155"></script>
+    <script src="scripts/error-monitor.js?v=156"></script>
+    <script src="scripts/price-watch.js?v=156"></script>
+    <script src="scripts/xp-engine.js?v=156"></script>
+    <script src="scripts/odds-panel.js?v=156"></script>
+    <script src="scripts/live-gw.js?v=156"></script>
+    <script src="scripts/matchday.js?v=156"></script>
+    <script src="scripts/market-panel.js?v=156"></script>
+    <script src="scripts/eo-layer.js?v=156"></script>
+    <script src="scripts/readiness.js?v=156"></script>
+    <script src="scripts/push-alerts.js?v=156"></script>
+    <script src="scripts/notifications.js?v=156"></script>
+    <script src="scripts/transfer-engine.js?v=156"></script>
+    <script src="scripts/common.js?v=156"></script>
+    <script src="scripts/sidebar-nav.js?v=156"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5318,7 +5333,7 @@
                             text: `${article.title} — ${feed.source}`,
                             headline: article.title,
                             link: article.link,
-                            thumbnail: newsThumbnail(article),
+                            thumbnail: newsThumbnail(article, feed.source),
                             source: feed.source,
                             badge: feed.badge,
                             timestamp: article.pubDate,
