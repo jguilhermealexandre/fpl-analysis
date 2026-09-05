@@ -269,7 +269,11 @@
            reader announcing "Hull City crest, HUL" reads the team twice. */
         function mdCrest(team) {
             if (!team || team.code == null) return '';
+            /* A badge that 404s — a promoted club whose code the endpoint does
+               not have yet — must leave nothing behind rather than a broken
+               image glyph in the middle of the scoreline. */
             return `<img class="md-crest" width="22" height="22" loading="lazy" alt=""
+                onerror="this.remove()"
                 src="https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png">`;
         }
 
