@@ -814,10 +814,25 @@
 /* ----- The squad panel's own header ----- */
 .sq-panel-head {
     display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+/* Three zones on one row: filters left, search centre, chart right. */
+.sq-panel-controls {
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1fr) auto;
     align-items: center;
     gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
+}
+
+.sq-panel-search { min-width: 0; }
+.sq-panel-search .tl-picker { display: flex; align-items: center; gap: 8px; margin: 0; }
+.sq-panel-search .tl-picker-in { flex: 1; min-width: 0; }
+
+@media (max-width: 900px) {
+    .sq-panel-controls { grid-template-columns: 1fr; }
 }
 .sq-panel-title {
     display: inline-flex; align-items: center; gap: 8px;
@@ -826,9 +841,6 @@
     color: var(--text-primary);
 }
 .sq-panel-title svg { width: 17px; height: 17px; color: var(--color-primary); }
-/* Pills centred between the title and the chart button. */
-.sq-panel-head .sq-filter-pills { margin: 0 auto; }
-
 /* Each position filter in its own colour, hover and active alike — the same
    tokens as the row edges and the pitch, so "green means defender" holds
    everywhere. "All" is not a position, so it keeps the brand green. */
@@ -838,7 +850,7 @@
 .sq-filter-pill.pos-fwd { --v2-pos-color: var(--position-fwd); }
 
 .sq-filter-pill[class*="pos-"] { border-color: var(--v2-pos-color); color: var(--v2-pos-color); }
-.sq-filter-pill[class*="pos-"]:hover {
+.sq-filter-pill[class*="pos-"]:not(.active):hover {
     background: color-mix(in srgb, var(--v2-pos-color) 14%, transparent);
     color: var(--v2-pos-color);
 }
@@ -847,10 +859,6 @@
     border-color: var(--v2-pos-color);
     color: #fff;
 }
-
-/* The trial picker now lives in the right-hand column. */
-.sq-status-card .tl-picker { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.sq-status-card .tl-picker-in { width: 100%; }
 
 /* ----- Visual Analysis, as a modal ----- */
 .sq-chart-open {
@@ -906,59 +914,107 @@
    away in another, so "how am I doing" meant reading three places. */
 .sq-kpis {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, 1fr) auto;
     gap: 12px;
     margin-bottom: 16px;
 }
+
+/* Help and settings, stacked at the strip's right-hand end. */
+.sq-kpi-tools { display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.sq-kpi-tool {
+    width: 38px; height: 38px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 11px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    cursor: pointer; padding: 0;
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.sq-kpi-tool svg { width: 17px; height: 17px; }
+.sq-kpi-tool:hover { background: var(--color-primary-muted); border-color: var(--color-primary); color: var(--color-primary-text); }
 .sq-kpi {
-    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
     background: var(--surface-1);
     border: 1px solid var(--v2-card-border, var(--border-emphasis));
     border-radius: var(--v2-card-radius, 16px);
     box-shadow: var(--v2-card-shadow, none);
     min-width: 0;
 }
-/* The health box carries its ring beside the number: a score with no scale
-   behind it reads as an arbitrary figure. Laid out as a row so the box keeps
-   the same height as the other three. */
-.sq-kpi-health { display: flex; align-items: center; gap: 12px; }
-.sq-kpi-health > div { min-width: 0; flex: 1; }
-.sq-kpi-ring { width: 56px; height: 56px; flex-shrink: 0; }
+/* Each box leads with a tinted icon, so the four are told apart before a word
+   is read. */
+.sq-kpi-icon {
+    width: 38px; height: 38px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 11px;
+}
+.sq-kpi-icon svg { width: 18px; height: 18px; }
+.sq-kpi-icon.tone-amber { background: color-mix(in srgb, var(--color-warning) 14%, transparent); color: var(--color-warning); }
+.sq-kpi-icon.tone-blue  { background: color-mix(in srgb, var(--color-info) 14%, transparent); color: var(--color-info); }
+.sq-kpi-icon.tone-green { background: var(--color-primary-muted); color: var(--color-primary); }
 
-/* The projected XI score, moved out of the pitch's toolbar — it is a
-   squad-level figure and belongs with the squad-level figures. */
+.sq-kpi-body { display: flex; flex-direction: column; min-width: 0; }
+
+/* The ring is the scale for the number, so the number sits inside it —
+   split apart, the box read as two facts rather than one. */
+.sq-kpi-ring-wrap { position: relative; width: 56px; height: 56px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.sq-kpi-ring { width: 56px; height: 56px; }
+.sq-kpi-ring-num {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 17px; font-weight: 800; letter-spacing: -0.5px;
+}
+
+/* The projected XI score rides on the Squad status heading's own line, the way
+   the manager card carries "GW3 · LIVE" beside the name. */
 .sq-status-score {
-    display: flex; align-items: baseline; gap: 8px;
-    padding: 8px 10px; margin-bottom: 10px;
-    border-radius: var(--radius-md);
+    margin-left: auto;
+    display: inline-flex; align-items: baseline; gap: 4px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
     background: var(--color-primary-muted);
+    color: var(--color-primary-text);
+    font-family: var(--font-body);
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;
+    white-space: nowrap;
     cursor: help;
 }
-.sq-status-score-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--color-primary-text); }
-.sq-status-score-value { margin-left: auto; font-family: var(--font-mono); font-size: 18px; font-weight: 800; color: var(--color-primary-text); }
-.sq-status-score-value em { font-style: normal; font-size: 10px; font-weight: 600; opacity: 0.7; margin-left: 3px; }
+.sq-status-score b { font-family: var(--font-mono); font-size: 14px; font-weight: 800; letter-spacing: -0.3px; }
+.sq-status-score em { font-style: normal; font-size: 9px; font-weight: 700; opacity: 0.75; }
 
 .sq-kpi-label {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.4px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.6px;
     text-transform: uppercase; color: var(--text-muted);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* 32px, and the label above it dropped to a quiet 10.5px: the old pair were
+   close enough in weight that four boxes of grey text read as captions rather
+   than as the page's headline figures. */
 .sq-kpi-value {
-    margin-top: 6px;
+    margin-top: 3px;
     font-family: var(--font-mono);
-    font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1.1;
+    font-size: 32px; font-weight: 800; letter-spacing: -1.4px; line-height: 1.05;
     color: var(--text-primary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sq-kpi-sub { margin-top: 4px; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sq-kpi.urgent .sq-kpi-value { color: var(--verdict-sell); }
+/* The countdown reuses .mgr-deadline-value so the existing ticker can find it,
+   and that class carries the manager card's 14px. In the strip it is a
+   headline figure like the other three. */
+.sq-kpi .mgr-deadline-value { font-size: 32px; font-weight: 800; letter-spacing: -1.4px; line-height: 1.05; }
+
+.sq-kpi.urgent .sq-kpi-value, .sq-kpi.urgent .mgr-deadline-value { color: var(--verdict-sell); }
+.sq-kpi.urgent .sq-kpi-icon { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
 .sq-kpi.passed .sq-kpi-value { color: var(--text-muted); }
 
 @media (max-width: 1100px) {
-    .sq-kpis { grid-template-columns: repeat(2, 1fr); }
+    .sq-kpis { grid-template-columns: repeat(2, 1fr) auto; }
 }
 @media (max-width: 560px) {
-    .sq-kpis { grid-template-columns: 1fr; }
+    .sq-kpis { grid-template-columns: 1fr auto; }
 }
 
 /* ----- Squad status, beside the pitch ----- */
@@ -970,7 +1026,7 @@
     box-shadow: var(--v2-card-shadow, none);
 }
 .sq-status-head {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     font-family: var(--font-display);
     font-size: 15px; font-weight: 650; letter-spacing: -0.2px;
     color: var(--text-primary);
@@ -1286,7 +1342,7 @@
 .tm-pos-filter { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; }
 .tm-pos-filter::-webkit-scrollbar { display: none; }
 .tm-pos-btn { padding: 6px 14px; border: 1px solid var(--border-default); background: var(--surface-1); border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-secondary); font-family: inherit; transition: all 0.15s; white-space: nowrap; }
-.tm-pos-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+.tm-pos-btn:not(.active):hover { background: var(--surface-2); color: var(--text-primary); }
 .tm-pos-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); box-shadow: 0 2px 8px rgba(16,185,129,0.25); }
 
 /* Each position filter wears its own colour: an outline at rest, filled when
@@ -1302,7 +1358,7 @@
     color: var(--v2-pos-color);
 }
 
-.tm-pos-btn[class*="pos-"]:hover {
+.tm-pos-btn[class*="pos-"]:not(.active):hover {
     background: color-mix(in srgb, var(--v2-pos-color) 12%, transparent);
     color: var(--v2-pos-color);
 }
@@ -1707,6 +1763,7 @@
     top: 10px; left: 10px;
     z-index: 6;
     display: flex;
+    flex-direction: column;
     gap: 6px;
 }
 
@@ -1725,10 +1782,14 @@
 }
 
 .sq-pc svg { width: 16px; height: 16px; }
-.sq-pc:hover { background: #fff; transform: translateY(-1px); }
+.sq-pc:not(.active):hover { background: #fff; transform: translateY(-1px); }
 .sq-pc.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
-.sq-pc-go { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
-.sq-pc-go:hover { background: var(--color-primary-hover); }
+/* The two view toggles change what the pitch shows; this one changes the
+   squad. Purple separates an action from a view — the same --verdict-star
+   colour the Star count uses, which is the only other place on this page that
+   means "the model picked this". */
+.sq-pc-go { background: var(--verdict-star); border-color: var(--verdict-star); color: #fff; }
+.sq-pc-go:hover { background: color-mix(in srgb, var(--verdict-star) 82%, #000); }
 
 .pitch-grass {
     position: relative;
@@ -1761,6 +1822,14 @@
 .dugout-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 8px; }
 .dugout-cards { display: flex; gap: 8px; flex-wrap: wrap; }
 .dugout-cards .pcard { flex: 1 1 0; min-width: 78px; max-width: 130px; }
+
+/* A card you can pick up should look like one, and nothing inside it should
+   be draggable in its own right — an image or a text selection starting its
+   own drag is how a substitution fails to begin. */
+.pcard { cursor: grab; }
+.pcard:active { cursor: grabbing; }
+.pcard img { -webkit-user-drag: none; user-select: none; pointer-events: none; }
+.pcard .pcard-name, .pcard .pcard-fixture, .pcard .pcard-pts { user-select: none; }
 
 /* ===== PLAYER CARD ===== */
 .pcard {
@@ -2469,7 +2538,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .gw-stats-hub { margin-top: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
 .hub-tab-nav { display: flex; gap: 0; border-bottom: 1px solid var(--border-default); background: var(--surface-2); }
 .hub-tab { flex: 1; padding: 10px 16px; font-size: 0.78rem; font-weight: 600; font-family: var(--font-display); color: var(--text-secondary); background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-.hub-tab:hover { color: var(--text-primary); background: var(--surface-1); }
+.hub-tab:not(.active):hover { color: var(--text-primary); background: var(--surface-1); }
 .hub-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); background: var(--surface-1); }
 .hub-panel { display: none; padding: 16px; }
 .hub-panel.active { display: block; }
@@ -2482,7 +2551,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .news-container { max-width: 1060px; margin: 0 auto; padding: 24px; }
 .news-filter-bar { display: flex; gap: 6px; padding: 5px; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-bottom: 24px; overflow-x: auto; }
 .news-filter-btn { padding: 7px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: transparent; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all 150ms; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
-.news-filter-btn:hover { color: var(--text-primary); background: var(--surface-1); }
+.news-filter-btn:not(.active):hover { color: var(--text-primary); background: var(--surface-1); }
 .news-filter-btn.active { color: var(--color-primary); background: var(--surface-1); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
 .news-filter-btn .filter-icon { font-size: 13px; line-height: 1; }
 .news-filter-btn .btn-icon { display: inline-flex; align-items: center; }
@@ -3589,7 +3658,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     transition: all 0.15s;
 }
 
-.sq-filter-pill:hover {
+.sq-filter-pill:not(.active):hover {
     border-color: var(--color-primary);
 }
 
@@ -4654,26 +4723,53 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 /* The pitch is a contained card, so it stops reading as a second product bolted
    onto a light page. */
+/* The same field as the dashboard and squad pitches: striped grass in
+   #57ab5a/#4e9e51 rather than a dark gradient, with white markings at the same
+   opacity. Three pitches on one site were three different greens. */
 .dp-pitch-card {
     position: relative;
     border-radius: var(--radius-xl);
     border: 1px solid var(--border-default);
-    background: linear-gradient(180deg, #14472a 0%, #1a5c36 45%, #14472a 100%);
+    background: repeating-linear-gradient(0deg, #57ab5a 0, #57ab5a 12.5%, #4e9e51 12.5%, #4e9e51 25%);
     box-shadow: var(--shadow-md);
     padding: 14px 12px 12px;
     overflow: hidden;
 }
 
+/* Halfway line and centre circle, as on the other two. */
+.dp-pitch-card::before {
+    content: ''; position: absolute;
+    left: 6%; right: 6%; top: 50%;
+    border-top: 2px solid rgba(255, 255, 255, 0.22);
+    pointer-events: none;
+}
+.dp-pitch-card::after {
+    content: ''; position: absolute;
+    left: 50%; top: 50%;
+    width: 128px; height: 128px;
+    transform: translate(-50%, -50%);
+    border: 2px solid rgba(255, 255, 255, 0.22);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.dp-pitch, .dp-bench { position: relative; z-index: 1; }
+
 .dp-pitch { display: flex; flex-direction: column; gap: 10px; }
 .dp-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
 
+/* The bench sits on the panel rather than on the grass, like the dashboard's
+   and the squad page's. It keeps everything it shows — this view's bench
+   carries more than the others' — but on a surface the numbers can be read
+   against. */
 .dp-bench {
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px dashed rgba(255,255,255,.25);
+    margin: 12px -12px -12px;
+    padding: 10px 12px 12px;
+    border-top: none;
+    background: var(--surface-1);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
 
-.dp-bench-label { font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.7); margin-bottom: 6px; }
+.dp-bench-label { font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
 .dp-bench-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
 
 .dp-card {
@@ -5510,7 +5606,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     font-family: inherit; font-size: 11.5px; font-weight: 600; white-space: nowrap;
     transition: background 140ms ease, color 140ms ease;
 }
-.gw-toggle-btn:hover { color: var(--text-primary); }
+.gw-toggle-btn:not(.active):hover { color: var(--text-primary); }
 .gw-toggle-btn.active { background: var(--color-primary); color: #fff; }
 
 /* ---- dugout ----

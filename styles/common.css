@@ -531,7 +531,7 @@ body {
     white-space: nowrap;
 }
 
-.tab:hover {
+.tab:not(.active):hover {
     color: var(--text-primary);
     background: var(--surface-2);
 }
@@ -579,7 +579,11 @@ body {
     font-weight: 600;
     letter-spacing: -0.2px;
 }
-.tabs .tab:hover:not(:disabled) { color: var(--text-primary); border-bottom-color: var(--border-emphasis); background: transparent; }
+/* :not(.active) so the tab you are on does not repaint grey the moment the
+   cursor crosses it — the selected tab is the one control on the row that
+   should stay put. This rule is more specific than .tab:hover above, so it is
+   the one that actually decides the colour. */
+.tabs .tab:hover:not(:disabled):not(.active) { color: var(--text-primary); border-bottom-color: var(--border-emphasis); background: transparent; }
 .tabs .tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); background: transparent; box-shadow: none; }
 .tabs .tab:disabled { opacity: 0.4; cursor: not-allowed; }
 

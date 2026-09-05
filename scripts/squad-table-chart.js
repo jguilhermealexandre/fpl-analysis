@@ -403,14 +403,21 @@
             /* Max £ was removed. It filtered a fifteen-player squad you already
                own, where price is a column you can read — it answered a
                question the market views are for, not this one. */
+            /* Title, then one row of three: filter left, search centre, chart
+               right. The search is here rather than beside the squad it changes
+               because it is a filter on the same list the pills filter — the
+               three controls belong to this panel, so they sit in its header. */
             return `<div class="sq-panel-head">
                 <span class="sq-panel-title">${typeof v2Icon === 'function' ? v2Icon('shirt') : ''}Your squad</span>
-                <div class="sq-filter-pills">
-                    ${positions.map(p => `<button class="sq-filter-pill ${p.c} ${squadFilterPos === p.v ? 'active' : ''}" onclick="setSquadFilterPos('${p.v}')">${p.l}</button>`).join('')}
+                <div class="sq-panel-controls">
+                    <div class="sq-filter-pills">
+                        ${positions.map(p => `<button class="sq-filter-pill ${p.c} ${squadFilterPos === p.v ? 'active' : ''}" onclick="setSquadFilterPos('${p.v}')">${p.l}</button>`).join('')}
+                    </div>
+                    <div class="sq-panel-search">${typeof tlRenderPicker === 'function' ? tlRenderPicker() : ''}</div>
+                    <button class="sq-chart-open" onclick="toggleSquadChart()" data-tooltip="Plot any two metrics against each other for your squad or the whole league">
+                        <i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i> Visual analysis
+                    </button>
                 </div>
-                <button class="sq-chart-open" onclick="toggleSquadChart()" data-tooltip="Plot any two metrics against each other for your squad or the whole league">
-                    <i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i> Visual analysis
-                </button>
             </div>`;
         }
 

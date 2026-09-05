@@ -133,18 +133,18 @@
                         onclick="setSnapshotViewMode('current')"
                         aria-label="Show Gameweek ${currentGW}"
                         data-tooltip="Current GW${currentGW} — points scored, live while matches are on">
-                        <i data-lucide="activity"></i>
+                        <i data-lucide="circle-play"></i>
                     </button>
                     <button class="sq-pc ${snapshotViewMode === 'next' ? 'active' : ''}"
                         onclick="setSnapshotViewMode('next')"
                         aria-label="Show Gameweek ${currentGW + 1}"
                         data-tooltip="Next GW${currentGW + 1} — projected points and the fixture coming up">
-                        <i data-lucide="telescope"></i>
+                        <i data-lucide="skip-forward"></i>
                     </button>
                     <button class="sq-pc sq-pc-go" onclick="runAutoOptimize()"
                         aria-label="Auto-optimise lineup"
                         data-tooltip="Auto-optimise — the best legal XI across your next 3 gameweeks">
-                        <i data-lucide="wand-sparkles"></i>
+                        <i data-lucide="wand-2"></i>
                     </button>
                 </div>
                 ${snapshotOptimizeSummary ? `<div class="sq-optimize-summary">✨ ${snapshotOptimizeSummary}</div>` : ''}
@@ -336,7 +336,7 @@
                         ${typeof playerPhotoHTML === 'function' ? playerPhotoHTML(p.code, 'pcard-face') : ''}
                     </span>
                     <div class="pcard-crest">
-                        ${badge ? `<img src="${badge}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+                        ${badge ? `<img src="${badge}" alt="" loading="lazy" draggable="false" onerror="this.style.display='none'">` : ''}
                         <span class="pcard-crest-fallback">${escHTML(p.team)}</span>
                         ${injuryBadge(p)}
                         ${marketBadge(p)}

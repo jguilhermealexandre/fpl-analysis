@@ -1322,8 +1322,8 @@
             html += renderSquadTickers();
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
             /* A trial sits under the numbers it moves, so before and after are
-               read in one glance. The picker that starts one has moved into the
-               right-hand column — see renderSquadStatusCard(). */
+               read in one glance. The picker that starts one sits in the squad
+               panel's own header — see renderSquadFilterBar(). */
             if (typeof tlRenderInto === 'function') html += tlRenderInto();
             /* Filters, the chart button and every position group in one panel.
                They were three stacked boxes with four more inside the last of
@@ -1650,53 +1650,81 @@
            being squeezed into a middle third. */
         function renderSquadKpiStrip(health, healthText, healthColor) {
             const d = buildManagerPanelData();
-            const box = (label, value, sub, subClass) => `<div class="sq-kpi">
-                <div class="sq-kpi-label">${label}</div>
-                <div class="sq-kpi-value">${value}</div>
-                ${sub ? `<div class="sq-kpi-sub ${subClass || ''}">${sub}</div>` : ''}
+
+            /* Each box leads with a tinted icon so the four are told apart
+               before a word is read, and the figure is set at 32px — the old
+               strip put a 26px number under an uppercase label of almost the
+               same weight, so four boxes of grey text read as a caption rather
+               than as the page's headline numbers. */
+            const box = (tone, icon, label, value, sub, extraClass) => `<div class="sq-kpi ${extraClass || ''}">
+                <span class="sq-kpi-icon tone-${tone}">${typeof v2Icon === 'function' ? v2Icon(icon) : ''}</span>
+                <span class="sq-kpi-body">
+                    <span class="sq-kpi-label">${label}</span>
+                    <span class="sq-kpi-value">${value}</span>
+                    ${sub ? `<span class="sq-kpi-sub">${sub}</span>` : ''}
+                </span>
             </div>`;
 
             /* Same id and inner class the countdown ticker already writes into,
-               so it needs no changes — and the manager card below drops its own
-               copy, because two elements cannot share the id it looks up. */
+               so it needs no changes — and the manager card drops its own copy,
+               because two elements cannot share the id it looks up. */
             const deadline = d && d.deadline
                 ? `<div class="sq-kpi" id="mgrDeadline" data-deadline="${escHTML(d.deadline)}" data-gw="${d.deadlineGW}">
-                       <div class="sq-kpi-label">GW${d.deadlineGW} deadline</div>
-                       <div class="sq-kpi-value mgr-deadline-value">—</div>
-                       <div class="sq-kpi-sub">until the squad locks</div>
+                       <span class="sq-kpi-icon tone-amber">${typeof v2Icon === 'function' ? v2Icon('clock') : ''}</span>
+                       <span class="sq-kpi-body">
+                           <span class="sq-kpi-label">GW${d.deadlineGW} deadline</span>
+                           <span class="sq-kpi-value mgr-deadline-value">—</span>
+                           <span class="sq-kpi-sub">until your squad locks</span>
+                       </span>
                    </div>`
-                : box('Deadline', '—', 'no upcoming gameweek');
+                : box('amber', 'clock', 'Deadline', '—', 'no upcoming gameweek');
 
             const rank = d
-                ? box('Overall rank', fmtRank(d.overallRank), renderRankDelta(d.rankDelta) || 'no change yet')
-                : box('Overall rank', '—', '');
+                ? box('blue', 'trophy', 'Overall rank', fmtRank(d.overallRank), renderRankDelta(d.rankDelta) || 'no change yet')
+                : box('blue', 'trophy', 'Overall rank', '—', '');
 
             const money = d
-                ? box('Squad · Bank', `£${d.squadValue.toFixed(1)}m`, `£${d.bank.toFixed(1)}m in the bank`)
-                : box('Squad · Bank', '—', '');
+                ? box('green', 'wallet', 'Squad value', `£${d.squadValue.toFixed(1)}m`, `£${d.bank.toFixed(1)}m in the bank`)
+                : box('green', 'wallet', 'Squad value', '—', '');
 
-            /* The ring is back — the number alone said how healthy, but not how
-               healthy out of what, and a score with no scale behind it reads as
-               an arbitrary figure. It sits beside the label rather than above
-               a caption, so the box keeps the strip's height. */
-            const circumference = 2 * Math.PI * 26;
+            /* The number sits inside the ring rather than beside it: the ring
+               is the scale for that number and nothing else, and splitting them
+               made the box read as two facts instead of one. */
+            const r = 30, circumference = 2 * Math.PI * r;
+            const pct = Math.max(0, Math.min(100, health)) / 100;
             const healthBox = `<div class="sq-kpi sq-kpi-health">
-                <div>
-                    <div class="sq-kpi-label">Squad health</div>
-                    <div class="sq-kpi-value" style="color:${healthColor};">${health}</div>
-                    <div class="sq-kpi-sub">${escHTML(healthText)}</div>
-                </div>
-                <svg class="sq-kpi-ring" viewBox="0 0 60 60" aria-hidden="true">
-                    <circle cx="30" cy="30" r="26" fill="none" stroke="var(--surface-3)" stroke-width="6"/>
-                    <circle cx="30" cy="30" r="26" fill="none" stroke="${healthColor}" stroke-width="6"
-                        stroke-linecap="round"
-                        stroke-dasharray="${circumference}"
-                        stroke-dashoffset="${circumference * (1 - Math.max(0, Math.min(100, health)) / 100)}"
-                        transform="rotate(-90 30 30)"/>
-                </svg>
+                <span class="sq-kpi-ring-wrap">
+                    <svg class="sq-kpi-ring" viewBox="0 0 72 72" aria-hidden="true">
+                        <circle cx="36" cy="36" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="7"/>
+                        <circle cx="36" cy="36" r="${r}" fill="none" stroke="${healthColor}" stroke-width="7"
+                            stroke-linecap="round"
+                            stroke-dasharray="${circumference}"
+                            stroke-dashoffset="${circumference * (1 - pct)}"
+                            transform="rotate(-90 36 36)"/>
+                    </svg>
+                    <span class="sq-kpi-ring-num" style="color:${healthColor};">${health}</span>
+                </span>
+                <span class="sq-kpi-body">
+                    <span class="sq-kpi-label">Squad health</span>
+                    <span class="sq-kpi-value" style="color:${healthColor};font-size:20px;">${escHTML(healthText)}</span>
+                    <span class="sq-kpi-sub">out of 100</span>
+                </span>
             </div>`;
 
-            return `<div class="sq-kpis">${deadline}${healthBox}${rank}${money}</div>`;
+            /* Help and settings live at the end of the strip, stacked. They
+               were in the page's header row, where they sat beside the title
+               and squeezed the two tickers underneath into a shorter run than
+               the same component gets on Transfers. */
+            const tools = `<div class="sq-kpi-tools">
+                <button class="sq-kpi-tool" id="helpBtn" onclick="openHelpOverlay()" aria-label="How to use this page" data-tooltip="How to use this page">
+                    <i data-lucide="help-circle"></i>
+                </button>
+                <button class="sq-kpi-tool" id="settingsBtn" onclick="openSettings()" aria-label="Analysis settings" data-tooltip="Analysis settings">
+                    <i data-lucide="settings"></i>
+                </button>
+            </div>`;
+
+            return `<div class="sq-kpis">${deadline}${healthBox}${rank}${money}${tools}</div>`;
         }
 
         /* What the squad needs from you, in one box beside the pitch: the
@@ -1709,13 +1737,16 @@
                built before the pitch is in the document, so a DOM read here
                would be null on the first render and one gameweek stale after. */
             const projected = typeof computeProjectedXIScore === 'function' ? computeProjectedXIScore() : null;
+            /* The score rides on the heading's own line, the way the manager
+               card carries "GW3 · LIVE" beside the name — it is a fact about
+               this box rather than a row inside it. */
             return `<div class="sq-status-card">
-                <div class="sq-status-head">${typeof v2Icon === 'function' ? v2Icon('activity') : ''}Squad status</div>
-
-                ${projected != null ? `<div class="sq-status-score" data-tooltip="Projected points for your starting eleven over the gameweek the pitch is showing.">
-                    <span class="sq-status-score-label">Projected XI</span>
-                    <span class="sq-status-score-value">${escHTML(String(projected))}<em>pts</em></span>
-                </div>` : ''}
+                <div class="sq-status-head">
+                    ${typeof v2Icon === 'function' ? v2Icon('activity') : ''}Squad status
+                    ${projected != null ? `<span class="sq-status-score" data-tooltip="Projected points for your starting eleven over the gameweek the pitch is showing.">
+                        Projected XI <b>${escHTML(String(projected))}</b><em>pts</em>
+                    </span>` : ''}
+                </div>
 
                 <div class="health-breakdown">${healthBreakdown && healthBreakdown.length
                     ? healthBreakdown.map(b => `${b.count} ${escHTML(b.label)}`).join(' · ')
@@ -1727,8 +1758,6 @@
                     ${stars.length ? `<span class="hv-count star">★ ${stars.length} Star</span>` : ''}
                     <span class="hv-count hold">● ${holds.length} Hold</span>
                 </div>
-
-                ${typeof tlRenderPicker === 'function' ? tlRenderPicker() : ''}
 
                 <div class="health-actions">
                     <div class="insight-moves">

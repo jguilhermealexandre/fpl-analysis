@@ -179,7 +179,12 @@ function playerPhotoLegacySrc(code) {
  * inline handlers, and the rest of the codebase uses them. */
 function playerPhotoHTML(code, className) {
     if (code == null) return '';
-    return `<img class="${className}" alt="" loading="lazy"
+    /* draggable="false" matters on the squad pitch: a .pcard is draggable so
+       you can substitute by dragging it, and an <img> inside a draggable
+       element is itself draggable by default — so grabbing a card by the
+       player's face started an image drag and the substitution never began.
+       The crest below opts out for the same reason. */
+    return `<img class="${className}" alt="" loading="lazy" draggable="false"
         src="${playerPhotoSrc(code)}"
         data-photo-fallback="${playerPhotoLegacySrc(code)}"
         onload="this.parentNode.classList.add('has-photo')"
@@ -234,7 +239,7 @@ function v2CrestHTML(player) {
         + `<span class="v2-pid-crest-fallback">${esc((player && player.team) || '')}</span>`
         + (code != null
             ? `<img src="https://resources.premierleague.com/premierleague/badges/50/t${code}.png"
-                 alt="" loading="lazy" onerror="this.remove()">`
+                 alt="" loading="lazy" draggable="false" onerror="this.remove()">`
             : '')
         + `</span>`;
 }
@@ -380,7 +385,17 @@ const V2_ICON_PATHS = {
     activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
     // Headlines.
     news: '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9h4"/>'
-        + '<path d="M18 6h-8"/><path d="M15 10h-5"/>'
+        + '<path d="M18 6h-8"/><path d="M15 10h-5"/>',
+    // The deadline.
+    clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    // Where you rank.
+    trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>'
+        + '<path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>'
+        + '<path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>'
+        + '<path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+    // What you have to spend.
+    wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>'
+        + '<path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>'
 };
 
 function v2Icon(name) {
@@ -759,7 +774,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=135')
+    fetch('footer.html?v=141')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
