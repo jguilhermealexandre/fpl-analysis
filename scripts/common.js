@@ -142,6 +142,106 @@ function computeIsPreseason(bootData, fixturesData) {
     return bootData.events.every(e => !e.finished);
 }
 
+// ===== DISMISSING PANELS =====
+/* Click away to close, for every overlay on the site.
+ *
+ * The drawers could not do this, and not by oversight: .detail-overlay is
+ * pointer-events:none on purpose, so that the page behind a panel stays live
+ * rather than being sealed behind a backdrop. The consequence nobody followed
+ * through on is that the overlay never receives a click either — so the
+ * onclick="close...(event)" handlers sitting on those elements have never once
+ * fired, and the X has been the only way out.
+ *
+ * Listening on the document instead keeps the deliberate part (the page is
+ * still usable) and fixes the rest. Closing goes through each panel's own
+ * close control rather than by stripping its class here, so whatever that
+ * control tears down — timers, selection state, a restored scroll position —
+ * still happens. Removing the class is only the fallback for a panel that has
+ * no close button.
+ *
+ * The listener is bound only while something is open, and only from the frame
+ * after it opens, so the click that opened a panel cannot also close it.
+ */
+const OVERLAY_OPEN_SELECTORS = [
+    '.detail-overlay.show',
+    '.player-modal.show',
+    '.compare-modal.show',
+    '.modal-overlay.open'
+];
+
+// The element that actually holds the content — a click inside it is not "outside".
+const OVERLAY_CONTENT_SELECTORS = [
+    '.detail-panel',
+    '.player-modal-container',
+    '.compare-modal-container',
+    '.modal-container'
+].join(',');
+
+const OVERLAY_CLOSE_SELECTORS = [
+    '.detail-close',
+    '.player-modal-close',
+    '.compare-modal-close',
+    '.modal-close',
+    '.drawer-close'
+].join(',');
+
+function openOverlays() {
+    return [...document.querySelectorAll(OVERLAY_OPEN_SELECTORS.join(','))];
+}
+
+function dismissOverlay(overlay) {
+    const closer = overlay.querySelector(OVERLAY_CLOSE_SELECTORS);
+    if (closer) { closer.click(); return; }
+    overlay.classList.remove('show', 'open');
+}
+
+function initOverlayDismiss() {
+    if (window.__overlayDismissReady) return;
+    window.__overlayDismissReady = true;
+
+    let armed = false;
+
+    function onDocumentPointerDown(event) {
+        if (!armed) return;
+        openOverlays().forEach(overlay => {
+            const content = overlay.querySelector(OVERLAY_CONTENT_SELECTORS) || overlay;
+            if (!content.contains(event.target)) dismissOverlay(overlay);
+        });
+    }
+
+    function onKeyDown(event) {
+        if (event.key !== 'Escape') return;
+        const open = openOverlays();
+        if (open.length) dismissOverlay(open[open.length - 1]);
+    }
+
+    document.addEventListener('pointerdown', onDocumentPointerDown, true);
+    document.addEventListener('keydown', onKeyDown);
+
+    /* Arming is driven by the class the openers already set, so no opener has
+       to be told about any of this. */
+    const sync = () => {
+        const any = openOverlays().length > 0;
+        if (!any) { armed = false; return; }
+        if (!armed) requestAnimationFrame(() => { armed = openOverlays().length > 0; });
+    };
+
+    new MutationObserver(sync).observe(document.documentElement, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class']
+    });
+    sync();
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initOverlayDismiss);
+    } else {
+        initOverlayDismiss();
+    }
+}
+
 // ===== SECTION ICONS =====
 /* One little outline icon in front of each panel heading, drawn from one
    place so the set stays a set.
@@ -548,7 +648,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=117')
+    fetch('footer.html?v=118')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

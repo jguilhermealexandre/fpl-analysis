@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=117">
-    <link rel="stylesheet" href="styles/v2-design.css?v=117">
+    <link rel="stylesheet" href="styles/common.css?v=118">
+    <link rel="stylesheet" href="styles/v2-design.css?v=118">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1346,6 +1346,11 @@
             font-size: 11px; font-weight: 700; letter-spacing: 0;
             color: rgba(15,23,42,0.45);
         }
+        /* The photos are cut-outs on transparency, so a two- or three-letter
+           set of initials shows through the empty space around the head rather
+           than being covered by it. They are for the case where no photo
+           arrives, so once one does they come out entirely. */
+        .v2-pitch-token-avatar.has-photo .v2-pitch-token-initials { display: none; }
         .v2-pitch-token-face {
             position: absolute; inset: 0;
             width: 100%; height: 100%;
@@ -4274,20 +4279,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=117"></script>
-    <script src="scripts/price-watch.js?v=117"></script>
-    <script src="scripts/xp-engine.js?v=117"></script>
-    <script src="scripts/odds-panel.js?v=117"></script>
-    <script src="scripts/live-gw.js?v=117"></script>
-    <script src="scripts/matchday.js?v=117"></script>
-    <script src="scripts/market-panel.js?v=117"></script>
-    <script src="scripts/eo-layer.js?v=117"></script>
-    <script src="scripts/readiness.js?v=117"></script>
-    <script src="scripts/push-alerts.js?v=117"></script>
-    <script src="scripts/notifications.js?v=117"></script>
-    <script src="scripts/transfer-engine.js?v=117"></script>
-    <script src="scripts/common.js?v=117"></script>
-    <script src="scripts/sidebar-nav.js?v=117"></script>
+    <script src="scripts/error-monitor.js?v=118"></script>
+    <script src="scripts/price-watch.js?v=118"></script>
+    <script src="scripts/xp-engine.js?v=118"></script>
+    <script src="scripts/odds-panel.js?v=118"></script>
+    <script src="scripts/live-gw.js?v=118"></script>
+    <script src="scripts/matchday.js?v=118"></script>
+    <script src="scripts/market-panel.js?v=118"></script>
+    <script src="scripts/eo-layer.js?v=118"></script>
+    <script src="scripts/readiness.js?v=118"></script>
+    <script src="scripts/push-alerts.js?v=118"></script>
+    <script src="scripts/notifications.js?v=118"></script>
+    <script src="scripts/transfer-engine.js?v=118"></script>
+    <script src="scripts/common.js?v=118"></script>
+    <script src="scripts/sidebar-nav.js?v=118"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5290,7 +5295,8 @@
                         ${p.code != null
                             ? `<img class="v2-pitch-token-face"
                                  src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png"
-                                 alt="" loading="lazy" onerror="this.remove()">`
+                                 alt="" loading="lazy" onerror="this.remove()"
+                                 onload="this.parentNode.classList.add('has-photo')">`
                             : ''}
                     </span>
                     <div class="v2-pitch-token-crest${ringClass}">
@@ -5973,6 +5979,41 @@
                     }
                 }
 
+                /* The top of the page is rendered before the panels below it.
+
+                   These two calls used to sit ~100 lines further down, after
+                   matchday, the market panel and the attention grid — so on
+                   every load the dashboard filled from the bottom up, and the
+                   two things a manager looks at first were the last to arrive.
+                   Nothing here was waiting on data: every input is resolved by
+                   this point, `live` on the line above being the last of them.
+                   It was only the order of the calls.
+
+                   renderStatusStrip's own fallback for #heroGwBadge is written
+                   for exactly this position — it fills the badge only while
+                   mdInit() has not run yet, and mdInit() takes the element over
+                   immediately below. */
+                renderStatusStrip({
+                    live,
+                    teamName: managerData.name,
+                    currentGW,
+                    rank: rankRaw,
+                    totalPoints: totalPointsRaw,
+                    gwPoints,
+                    gwRank,
+                    bank: bank.toFixed(1),
+                    squadValue,
+                    rankDelta,
+                    pointsDiff,
+                    deadlineTime,
+                    deadlineGW,
+                    avgFDR,
+                    captainRec,
+                    leagueInfo
+                });
+                if (leagueInfo) loadLeagueGap(leagueInfo.id, teamId, totalPointsRaw);
+                renderPitchView({ squad, analysisResults });
+
                 /* This gameweek's matches, and the gameweek badge that names them.
 
                    Given the live endpoint's numbers when the proxy answered and
@@ -6030,26 +6071,6 @@
                     console.warn('Transfer recommendation unavailable:', e.message);
                 }
 
-                renderStatusStrip({
-                    live,
-                    teamName: managerData.name,
-                    currentGW,
-                    rank: rankRaw,
-                    totalPoints: totalPointsRaw,
-                    gwPoints,
-                    gwRank,
-                    bank: bank.toFixed(1),
-                    squadValue,
-                    rankDelta,
-                    pointsDiff,
-                    deadlineTime,
-                    deadlineGW,
-                    avgFDR,
-                    captainRec,
-                    leagueInfo
-                });
-                if (leagueInfo) loadLeagueGap(leagueInfo.id, teamId, totalPointsRaw);
-
                 // Scoped to the squad and shortlist, same pool the old inline rows
                 // used — the market-wide view is the ticker at the top of the page.
                 if (typeof mkRenderInto === 'function') mkRenderInto(mine);
@@ -6073,7 +6094,6 @@
                         && eventLiveData.event === currentGW) ? (eventLiveData.elements || {}) : {};
                     ntRenderInto({ squad, live: liveRows, phase, gw: currentGW });
                 }
-                renderPitchView({ squad, analysisResults });
                 renderPriceTicker(allPlayers, squad);
                 renderGameweekFeed({ squad, allPlayers });
 

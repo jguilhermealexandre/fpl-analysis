@@ -321,6 +321,7 @@
                         <b class="pcard-initials" aria-hidden="true">${escHTML(pcardInitials(p.name))}</b>
                         ${p.code != null
                             ? `<img class="pcard-face" alt="" loading="lazy" onerror="this.remove()"
+                                 onload="this.parentNode.classList.add('has-photo')"
                                  src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png">`
                             : ''}
                     </span>
