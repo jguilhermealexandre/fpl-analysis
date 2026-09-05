@@ -1422,7 +1422,7 @@
 .pitch-row:nth-child(3) { top: 62%; }
 .pitch-row:nth-child(4) { top: 86%; }
 
-.pitch-dugout { padding: 10px 12px 12px; background: var(--surface-2); border-top: 1px solid var(--border-default); }
+.pitch-dugout { padding: 10px 12px 12px; }
 .dugout-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 8px; }
 .dugout-cards { display: flex; gap: 8px; flex-wrap: wrap; }
 .dugout-cards .pcard { flex: 1 1 0; min-width: 78px; max-width: 130px; }
@@ -1454,8 +1454,19 @@
 .pcard-bench { background: rgba(255,255,255,0.98); }
 
 .pcard-cv { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; z-index: 3; }
-.pcard-crest { position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
-.pcard-crest img { width: 30px; height: 30px; object-fit: contain; }
+/* Face beside the badge, as on the dashboard's pitch. The initials sit under
+   the photo and are only ever seen when the club has published none for that
+   player yet, so every card carries a face-shaped mark either way. */
+.pcard-ids { display: flex; align-items: center; justify-content: center; gap: 3px; }
+.pcard-avatar {
+    position: relative; width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(15,23,42,0.06); overflow: hidden; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.pcard-initials { font-size: 11px; font-weight: 700; color: rgba(15,23,42,0.45); }
+.pcard-face { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+.pcard-crest { position: relative; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pcard-crest img { width: 20px; height: 20px; object-fit: contain; }
 .pcard-crest-fallback { position: absolute; font-size: 9px; font-weight: 700; color: var(--text-muted); z-index: -1; }
 .pcard-name { font-size: 11px; font-weight: 600; color: #17301F; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pcard-fixture { font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
@@ -4936,7 +4947,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    the name and the score on a 86px tile. The armband is now a small badge that
    only appears on the two players who hold it; the controls surface on hover. */
 .pcard-armband {
-    position: absolute; top: 4px; left: 4px; z-index: 3;
+    /* Top-right, matching the dashboard's cards, but inset rather than
+       overhanging: these rows are packed tighter than the dashboard's, so a
+       badge hung outside the corner lands on the neighbouring card. */
+    position: absolute; top: 3px; right: 3px; z-index: 3;
     width: 17px; height: 17px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 9px; font-weight: 800; line-height: 1;
@@ -4991,12 +5005,13 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    substitute so the order that drives auto-subs is visible rather than implied
    by left-to-right position alone. */
 .pitch-dugout {
+    /* Was a striped grey slab with an inset shadow, which read as a second
+       surface competing with the pitch above it. Plain, like the dashboard's
+       bench: the cards are the content, the band was decoration. */
     padding: 12px 14px 14px;
-    background:
-        repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 2px, transparent 2px 9px),
-        var(--surface-3);
-    border-top: 2px solid var(--border-default);
-    box-shadow: inset 0 6px 12px -8px rgba(0,0,0,.5);
+    background: transparent;
+    border-top: none;
+    box-shadow: none;
 }
 .dugout-hint { margin-left: 8px; font-weight: 500; text-transform: none; letter-spacing: 0; opacity: .75; }
 .dugout-cards { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }

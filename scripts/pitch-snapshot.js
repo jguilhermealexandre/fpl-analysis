@@ -175,6 +175,17 @@
             </div>`;
         }
 
+        /* Same rule the dashboard's pitch uses: web_name is already the short
+           display name, so its own punctuation is the word boundary. */
+        function pcardInitials(name) {
+            return String(name || '')
+                .split(/[\s.'\u2019-]+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(w => w[0].toUpperCase())
+                .join('');
+        }
+
         function teamBadgeUrl(teamId) {
             const code = teams[teamId]?.code;
             return code ? `https://resources.premierleague.com/premierleague/badges/50/t${code}.png` : '';
@@ -305,11 +316,20 @@
                     <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make ${escHTML(p.name)} captain">Set C</button>
                     <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make ${escHTML(p.name)} vice-captain">Set V</button>
                 </div>
-                <div class="pcard-crest">
-                    ${badge ? `<img src="${badge}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
-                    <span class="pcard-crest-fallback">${escHTML(p.team)}</span>
-                    ${injuryBadge(p)}
-                    ${marketBadge(p)}
+                <div class="pcard-ids">
+                    <span class="pcard-avatar">
+                        <b class="pcard-initials" aria-hidden="true">${escHTML(pcardInitials(p.name))}</b>
+                        ${p.code != null
+                            ? `<img class="pcard-face" alt="" loading="lazy" onerror="this.remove()"
+                                 src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png">`
+                            : ''}
+                    </span>
+                    <div class="pcard-crest">
+                        ${badge ? `<img src="${badge}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+                        <span class="pcard-crest-fallback">${escHTML(p.team)}</span>
+                        ${injuryBadge(p)}
+                        ${marketBadge(p)}
+                    </div>
                 </div>
                 <div class="pcard-name">${escHTML(p.name)}</div>
                 ${fixtureTag}
