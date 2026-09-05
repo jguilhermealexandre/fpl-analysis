@@ -69,6 +69,13 @@ jobs:
       - name: Inline page scripts parse
         run: node tools/check-inline-syntax.mjs
 
+      # And inline <style> must be balanced. A browser recovers from broken CSS
+      # by discarding what it cannot parse, so an unclosed rule takes out every
+      # rule after it and reports nothing anywhere — which is exactly how a
+      # 30px scrolling marquee shipped as a 147px static block.
+      - name: Stylesheets are balanced
+        run: node tools/check-inline-css.mjs
+
       # scripts/build-articles.js and scripts/scouts-desk.js are CommonJS and are
       # run by node in the data workflow. Adding "type": "module" to package.json
       # silently broke that — require() throws in an ES module scope, and the only

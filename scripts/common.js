@@ -231,11 +231,49 @@ function newsThumbUpgrade(url) {
     return url.replace(/(ichef\.bbci\.co\.uk\/[a-z]+\/[a-z]+\/)\d{2,4}(\/)/i, '$1800$2');
 }
 
+/* Anything in the item that looks like a picture, wherever it is.
+ *
+ * The named fields cover most feeds. The Guardian is the one that defeats them:
+ * its items carry no <enclosure> and no <media:thumbnail>, only a stack of
+ * <media:content> elements at different widths, and its <description> is the
+ * standfirst as plain text with no <img> in it — so every field this function
+ * knows the name of is empty and the card falls back to a placeholder.
+ *
+ * Which field a proxy folds <media:content> into is its own business and has
+ * changed before, so rather than guessing another name, this walks the item and
+ * takes the first string that reads as an image URL. It only runs when the
+ * named fields have already come up empty, so a feed that fills them in
+ * properly never reaches it. */
+const NEWS_THUMB_IMAGE_URL = /^https?:\/\/[^\s"']+\.(?:jpe?g|png|webp|avif)(?:[?#][^\s"']*)?$/i;
+
+function newsThumbDeepScan(value, depth) {
+    if (depth > 4 || value == null) return null;
+    if (typeof value === 'string') {
+        const url = value.trim();
+        return NEWS_THUMB_IMAGE_URL.test(url) && !NEWS_THUMB_SKIP.test(url) ? url : null;
+    }
+    if (Array.isArray(value)) {
+        for (const v of value) {
+            const hit = newsThumbDeepScan(v, depth + 1);
+            if (hit) return hit;
+        }
+        return null;
+    }
+    if (typeof value === 'object') {
+        for (const v of Object.values(value)) {
+            const hit = newsThumbDeepScan(v, depth + 1);
+            if (hit) return hit;
+        }
+    }
+    return null;
+}
+
 function newsThumbnail(article) {
     if (!article) return null;
     const candidates = [
         article.thumbnail,
         article.enclosure && article.enclosure.link,
+        article.enclosure && article.enclosure.thumbnail,
         article.image,
         ...newsThumbsFromHTML(article.content),
         ...newsThumbsFromHTML(article.description)
@@ -247,7 +285,8 @@ function newsThumbnail(article) {
         if (NEWS_THUMB_SKIP.test(url)) continue;
         return newsThumbUpgrade(url.replace(/^http:\/\//i, 'https://'));
     }
-    return null;
+    const found = newsThumbDeepScan(article, 0);
+    return found ? newsThumbUpgrade(found.replace(/^http:\/\//i, 'https://')) : null;
 }
 
 // ===== PLAYER IDENTITY =====
@@ -903,7 +942,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=153')
+    fetch('footer.html?v=154')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

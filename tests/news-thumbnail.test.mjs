@@ -9,11 +9,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadFunction } from './helpers/load.mjs';
 
-const newsThumbnail = loadFunction('scripts/common.js', 'newsThumbnail', {
+const NEWS_THUMB_SKIP = /(?:^|\/)(?:1x1|pixel|spacer|blank|transparent)\.(?:gif|png|jpg)(?:\?|$)/i;
+const NEWS_THUMB_IMAGE_URL = /^https?:\/\/[^\s"']+\.(?:jpe?g|png|webp|avif)(?:[?#][^\s"']*)?$/i;
+const deps = {
     newsThumbsFromHTML: loadFunction('scripts/common.js', 'newsThumbsFromHTML'),
     newsThumbUpgrade: loadFunction('scripts/common.js', 'newsThumbUpgrade'),
-    NEWS_THUMB_SKIP: /(?:^|\/)(?:1x1|pixel|spacer|blank|transparent)\.(?:gif|png|jpg)(?:\?|$)/i
-});
+    NEWS_THUMB_SKIP, NEWS_THUMB_IMAGE_URL
+};
+deps.newsThumbDeepScan = loadFunction('scripts/common.js', 'newsThumbDeepScan', deps);
+const newsThumbnail = loadFunction('scripts/common.js', 'newsThumbnail', deps);
 
 test('the media thumbnail wins when the feed supplies one', () => {
     assert.equal(
@@ -56,6 +60,41 @@ test('a BBC thumbnail is asked for at a size that is not soft on a card', () => 
     assert.equal(
         newsThumbnail({ thumbnail: 'https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/x/y.jpg' }),
         'https://ichef.bbci.co.uk/ace/standard/800/cpsprodpb/x/y.jpg');
+});
+
+test('a Guardian item is found wherever the proxy folded media:content into', () => {
+    /* The feed that defeats every named field: no <enclosure>, no
+       <media:thumbnail>, and a <description> that is the standfirst as plain
+       text with no <img> in it. Which key the proxy puts <media:content> under
+       is its own business and has changed before, so the last resort walks the
+       item for anything that reads as an image URL. */
+    const item = {
+        title: 'Something happened at Anfield',
+        link: 'https://www.theguardian.com/football/2026/sep/05/match-report',
+        description: '<p>The standfirst, with no picture in it at all.</p>',
+        enclosure: {},
+        media: { content: [
+            { url: 'https://i.guim.co.uk/img/media/abc/master/140.jpg?width=140&s=deadbeef', width: '140' },
+            { url: 'https://i.guim.co.uk/img/media/abc/master/460.jpg?width=460&s=cafe', width: '460' }
+        ] }
+    };
+    assert.equal(newsThumbnail(item),
+        'https://i.guim.co.uk/img/media/abc/master/140.jpg?width=140&s=deadbeef');
+});
+
+test('the deep scan does not mistake the article link for a picture', () => {
+    assert.equal(newsThumbnail({
+        link: 'https://www.theguardian.com/football/2026/sep/05/report',
+        description: '<p>No image.</p>'
+    }), null);
+});
+
+test('a named field still wins over the deep scan', () => {
+    // The scan is a last resort; a feed that fills its fields in never reaches it.
+    assert.equal(newsThumbnail({
+        thumbnail: 'https://cdn/named.jpg',
+        media: { content: [{ url: 'https://cdn/deep.jpg' }] }
+    }), 'https://cdn/named.jpg');
 });
 
 test('nothing else has its size rewritten', () => {
