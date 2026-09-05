@@ -287,13 +287,32 @@
 
             /* Ownership matters for what it does to your rank, not your score,
                so each branch says which way the risk runs rather than leaving
-               the reader to work out what a signed percentage point means. */
+               the reader to work out what a signed percentage point means.
+
+               Where effective ownership is available it is used in preference,
+               because plain ownership is the wrong measure of exactly this: a
+               75%-owned player captained by 72% of the top ten thousand carries
+               148% of that field, and the headcount alone says 75. Raw ownership
+               remains the fall-back for a page loaded before the weekly sample,
+               or for a player the sample never saw. */
             const own = r.ownership;
-            const ownNames = `${escHTML(r.in.name)} ${own.in}%, ${escHTML(r.out.name)} ${own.out}%`;
-            const ownLine = own.delta == null ? ''
-                : Math.abs(own.delta) < 1 ? `Owned by much the same share (${ownNames}), so this barely moves you against the field.`
+            const swing = (typeof eoSwing === 'function' && typeof eoReady === 'function' && eoReady())
+                ? eoSwing(r.out.id, r.in.id) : null;
+            let ownLine = '';
+            if (swing) {
+                const names = `${escHTML(r.in.name)} ${eoText(swing.in)}, ${escHTML(r.out.name)} ${eoText(swing.out)}`;
+                const field = `of the ${escHTML(swing.label.toLowerCase())}`;
+                ownLine = Math.abs(swing.delta) < 2
+                    ? `Both carry about the same share ${field} (${names}), so this barely moves you against them.`
+                    : swing.delta > 0
+                        ? `${names} ${field} — taking on ${swing.delta}pp more of the field, which protects your rank in a good week and cannot gain you much.`
+                        : `${names} ${field} — shedding ${Math.abs(swing.delta)}pp of the field, so it gains rank when it comes off and loses rank when it does not.`;
+            } else if (own.delta != null) {
+                const ownNames = `${escHTML(r.in.name)} ${own.in}%, ${escHTML(r.out.name)} ${own.out}%`;
+                ownLine = Math.abs(own.delta) < 1 ? `Owned by much the same share (${ownNames}), so this barely moves you against the field.`
                     : own.delta > 0 ? `${ownNames} — ${own.delta}pp more owned, which follows the field rather than trying to beat it.`
                         : `${ownNames} — ${Math.abs(own.delta)}pp less owned, so it gains rank when it comes off and loses rank when it does not.`;
+            }
 
             return `<div class="tr-card">
                 ${showHeader ? `<div class="tr-move">

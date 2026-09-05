@@ -448,7 +448,7 @@
                 // rewritten every 15 minutes, where players-data.json's per-GW
                 // history only lands with the four-hourly job. Optional: absent or
                 // stale, the Gameweek Review falls back to that history.
-                const [bootData, fixturesData, playersDataRes, eventLiveRes, oddsRes] = await Promise.all([
+                const [bootData, fixturesData, playersDataRes, eventLiveRes, oddsRes, eoRes] = await Promise.all([
                     DataCache.fetchJSON(DATA_URLS.bootstrap),
                     DataCache.fetchJSON(DATA_URLS.fixtures).catch(() => []),
                     DataCache.fetchJSON(DATA_URLS.players).catch(() => null),
@@ -457,10 +457,16 @@
                     // opened so that every projection in a render pass is built
                     // from the same inputs — half a screen priced by the market
                     // and half by the model would be worse than neither.
-                    DataCache.fetchJSON(DATA_URLS.odds).catch(() => null)
+                    DataCache.fetchJSON(DATA_URLS.odds).catch(() => null),
+                    // Also optional, and for the same reason: ownership and
+                    // effective ownership disagree, so a page that used one in
+                    // the transfer card and the other in the squad view would be
+                    // arguing with itself.
+                    DataCache.fetchJSON(DATA_URLS.eo).catch(() => null)
                 ]);
                 if (typeof setEventLiveData === 'function') setEventLiveData(eventLiveRes);
                 if (typeof boSetOdds === 'function') boSetOdds(oddsRes);
+                if (typeof eoSetData === 'function') eoSetData(eoRes);
 
                 teams = {};
                 bootData.teams.forEach(t => { teams[t.id] = t; });
@@ -1083,6 +1089,70 @@
         }
 
         // ===== RENDERING =====
+        /* Where this squad sits against the field it is competing with.
+
+           Ownership is a squad-level property, which is why it belongs here
+           rather than beside any one transfer: the question is not whether a
+           player is popular but whether the eleven you field look like everyone
+           else's eleven. A squad that mirrors the top 10k moves with them and
+           can only win slowly; one that does not swings both ways.
+
+           The gaps are the actionable half. A player the top 10k own and you do
+           not is a position you lose ground on every week he returns, and it is
+           the one thing plain ownership genuinely cannot tell you — the game's
+           own percentage is diluted across thirteen million teams, most of whom
+           are not playing the same game.
+
+           Renders nothing at all when the weekly sample is missing. A partial
+           answer here would be read as a complete one. */
+        function renderSquadEO() {
+            if (typeof eoReady !== 'function' || !eoReady()) return '';
+            const load = eoSquadLoad(selectedPlayers);
+            if (!load) return '';
+
+            const owned = new Set(selectedPlayers.map(p => p.id));
+            const byId = {};
+            (allPlayers || []).forEach(p => { byId[p.id] = p; });
+
+            const gaps = Object.keys(eoMeta() ? eoData.players : {})
+                .filter(id => !owned.has(Number(id)) && byId[id])
+                .map(id => ({ p: byId[id], v: eoFor(id) }))
+                .filter(x => x.v && x.v.eo >= 25)
+                .sort((a, b) => b.v.eo - a.v.eo)
+                .slice(0, 4);
+
+            const mine = selectedPlayers
+                .filter(p => p.pickPosition == null || p.pickPosition <= 11)
+                .map(p => ({ p, v: eoFor(p.id) }))
+                .filter(x => x.v)
+                .sort((a, b) => a.v.eo - b.v.eo)
+                .slice(0, 3);
+
+            const chip = (name, v, cls) =>
+                `<span class="eo-chip ${cls}" data-tooltip="${escHTML(
+                    v.below ? `Owned by fewer than ${eoResolution(v.tier)}% of this tier.`
+                        : `${v.own}% own him and ${v.cap}% captain him, so he carries ${v.eo}% of the field.`)}"
+                 >${escHTML(name)}<b>${escHTML(eoText(v))}</b></span>`;
+
+            return `<div class="eo-panel">
+                <div class="eo-head">
+                    <span class="eo-title">Against the ${escHTML(load.label.toLowerCase())}</span>
+                    <span class="eo-load" data-tooltip="The average share of this tier carried by each of your starters, counting your captain twice. Higher means your team looks more like theirs.">
+                        ${load.perStarter}%<em>per starter</em>
+                    </span>
+                </div>
+                ${gaps.length ? `<div class="eo-row">
+                    <span class="eo-row-l" data-tooltip="Players this tier owns that you do not. Every week one of them returns, you lose ground without having done anything wrong.">Not owned</span>
+                    <span class="eo-chips">${gaps.map(x => chip(x.p.name, x.v, 'gap')).join('')}</span>
+                </div>` : ''}
+                ${mine.length ? `<div class="eo-row">
+                    <span class="eo-row-l" data-tooltip="Your starters carrying least of this tier. These are what gain you rank when they return and cost you nothing when they blank.">Your differentials</span>
+                    <span class="eo-chips">${mine.map(x => chip(x.p.name, x.v, 'diff')).join('')}</span>
+                </div>` : ''}
+                <p class="eo-note">Sampled from ${load.counted ? escHTML(String(eoMeta().tiers.find(t => t.id === load.tier).sampled)) : '?'} managers in GW${escHTML(String(eoMeta().event))}. Effective ownership counts starters and doubles captains, so it sits below plain ownership for anyone the field benches.</p>
+            </div>`;
+        }
+
         function renderTeamAnalysis() {
             const sells = analysisResults.filter(a => a.verdict === 'sell');
             const monitors = analysisResults.filter(a => a.verdict === 'monitor');
@@ -1149,6 +1219,7 @@
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
             html += renderSquadTickers();
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
+            html += renderSquadEO();
             html += renderSquadFilterBar();
             html += renderSquadChartWidget();
             html += `<div id="sq-table-wrap">${renderSquadTable()}</div>`;

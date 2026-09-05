@@ -1,0 +1,58 @@
+name: Update Effective Ownership
+
+# Effective ownership has to be sampled, because FPL does not publish it and
+# never will — publishing what the top 10k own would move the market it
+# describes. See tools/fetch-eo.mjs for the method.
+#
+# Timing matters more here than for the other feeds. Picks only exist once a
+# deadline has passed, and they keep changing until the next one, so the useful
+# moment is early in the week: after the weekend has settled and well before
+# anyone is acting on it. Tuesday morning UK.
+
+on:
+  schedule:
+    - cron: '20 7 * * 2'
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: 'Managers sampled per tier'
+        required: false
+        default: '400'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-eo
+  cancel-in-progress: false
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # bootstrap-static tells the job which gameweek is current. It is
+      # committed by the sibling data workflow and is normally fresh; refusing
+      # to run on a stale one would trade a small inaccuracy for no data at all.
+      - name: Sample effective ownership
+        run: node tools/fetch-eo.mjs --sample "${{ github.event.inputs.sample || '400' }}" --concurrency 5
+
+      # The tool exits non-zero and leaves the file untouched if a tier came
+      # back thin, so reaching this step means the table is complete.
+      - name: Commit
+        run: |
+          if git diff --quiet -- data/eo.json; then
+            echo "No change in effective ownership."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/eo.json
+          git commit -m "Update effective ownership - $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push

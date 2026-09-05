@@ -383,7 +383,8 @@ const DATA_URLS = {
     // Bookmakers' prices for the upcoming round, written by
     // .github/workflows/fetch-odds.yml. Optional: the Matchday panel is the
     // only reader and it degrades to a message if the file is absent.
-    odds:      'data/odds.json?v=' + CACHE_BUSTER
+    odds:      'data/odds.json?v=' + CACHE_BUSTER,
+    eo:        'data/eo.json?v=' + CACHE_BUSTER
 };
 
 // ===== HTML ESCAPING =====
