@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=94">
-    <link rel="stylesheet" href="styles/v2-design.css?v=94">
+    <link rel="stylesheet" href="styles/common.css?v=95">
+    <link rel="stylesheet" href="styles/v2-design.css?v=95">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -772,6 +772,57 @@
             .md-grid { grid-template-columns: 1fr; }
             .md-panel { padding: 12px; }
         }
+
+        /* ===== Your market (scripts/market-panel.js) =====
+           Two columns, and they must never be mistakable for one another: a
+           player you own rising is good news and one falling is bad, and the
+           previous version rendered both as the same amber dot. Colour carries
+           it, and so does the arrow and the column heading, because colour alone
+           is not readable to everyone. */
+        .v2-market { margin-bottom: 20px; text-align: left; }
+        .mk-panel { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-xl); padding: 14px 16px; }
+        .mk-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        .mk-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-primary); }
+        .mk-sub { font-size: 11px; color: var(--text-muted); }
+        .mk-net { margin-left: auto; font-family: var(--font-mono); font-size: 18px; font-weight: 800; cursor: help; }
+        .mk-net em { font-style: normal; font-family: var(--font-body); font-size: 10px; font-weight: 600; color: var(--text-muted); margin-left: 4px; }
+        .mk-net.up { color: var(--color-success); }
+        .mk-net.down { color: var(--color-error); }
+        .mk-net.flat { color: var(--text-muted); }
+
+        .mk-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .mk-col { border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 9px 10px; }
+        .mk-col.up { background: color-mix(in srgb, var(--color-success) 5%, var(--surface-1)); border-color: color-mix(in srgb, var(--color-success) 22%, transparent); }
+        .mk-col.down { background: color-mix(in srgb, var(--color-error) 5%, var(--surface-1)); border-color: color-mix(in srgb, var(--color-error) 22%, transparent); }
+        .mk-col-head { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; cursor: help; }
+        .mk-col-t { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+        .mk-col.up .mk-col-t { color: var(--color-success); }
+        .mk-col.down .mk-col-t { color: var(--color-error); }
+        .mk-col-n { margin-left: auto; font-family: var(--font-mono); font-size: 12px; font-weight: 800; color: var(--text-secondary); }
+        .mk-none { font-size: 10px; color: var(--text-muted); line-height: 1.5; }
+        .mk-more { font-size: 9px; color: var(--text-muted); padding: 4px 6px 0; }
+
+        .mk-row { display: grid; grid-template-columns: 12px 1fr auto; grid-template-areas: 'arrow name price' 'arrow meter tag'; gap: 2px 7px; align-items: center; padding: 5px 6px; border-radius: var(--radius-md); text-decoration: none; transition: background 140ms ease; }
+        .mk-row:hover { background: var(--surface-2); }
+        .mk-row + .mk-row { margin-top: 3px; }
+        .mk-arrow { grid-area: arrow; font-size: 11px; font-weight: 800; }
+        .mk-row.up .mk-arrow { color: var(--color-success); }
+        .mk-row.down .mk-arrow { color: var(--color-error); }
+        .mk-name { grid-area: name; font-size: 12px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mk-price { grid-area: price; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+        .mk-price i { font-style: normal; color: var(--text-muted); margin: 0 2px; }
+        .mk-meter { grid-area: meter; height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+        .mk-meter i { display: block; height: 100%; }
+        .mk-row.up .mk-meter i { background: var(--color-success); }
+        .mk-row.down .mk-meter i { background: var(--color-error); }
+        .mk-tag { grid-area: tag; font-size: 9px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+        /* A full meter changes tonight. That is a different claim from "closing
+           in", and price-watch.js is strict about never conflating the two. */
+        .mk-row.is-due .mk-tag { font-weight: 800; }
+        .mk-row.is-due.up .mk-tag { color: var(--color-success); }
+        .mk-row.is-due.down .mk-tag { color: var(--color-error); }
+
+        @media (max-width: 640px) { .mk-cols { grid-template-columns: 1fr; } }
 
         .v2-attention-grid {
             display: grid;
@@ -3399,6 +3450,9 @@
                 <!-- This gameweek's matches, live while they are being played -->
                 <section class="v2-matchday" id="v2Matchday" style="display:none;"></section>
 
+                <!-- Price movement in your own squad, direction first -->
+                <section class="v2-market" id="v2Market" style="display:none;"></section>
+
                 <!-- Needs Your Attention: Starting XI | Transfers -->
                 <div class="v2-attention-grid" id="v2AttentionGrid"></div>
 
@@ -3861,15 +3915,16 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=94"></script>
-    <script src="scripts/price-watch.js?v=94"></script>
-    <script src="scripts/xp-engine.js?v=94"></script>
-    <script src="scripts/odds-panel.js?v=94"></script>
-    <script src="scripts/live-gw.js?v=94"></script>
-    <script src="scripts/matchday.js?v=94"></script>
-    <script src="scripts/transfer-engine.js?v=94"></script>
-    <script src="scripts/common.js?v=94"></script>
-    <script src="scripts/sidebar-nav.js?v=94"></script>
+    <script src="scripts/error-monitor.js?v=95"></script>
+    <script src="scripts/price-watch.js?v=95"></script>
+    <script src="scripts/xp-engine.js?v=95"></script>
+    <script src="scripts/odds-panel.js?v=95"></script>
+    <script src="scripts/live-gw.js?v=95"></script>
+    <script src="scripts/matchday.js?v=95"></script>
+    <script src="scripts/market-panel.js?v=95"></script>
+    <script src="scripts/transfer-engine.js?v=95"></script>
+    <script src="scripts/common.js?v=95"></script>
+    <script src="scripts/sidebar-nav.js?v=95"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4645,8 +4700,14 @@
                 </div>`;
             }
 
-            const drops = (ctx.priceDropRisk || []).filter(c => c.tier === 'due').length;
-            const rises = (ctx.priceRiseTargets || []).filter(c => c.tier === 'due').length;
+            // Price moves used to be counted here, tallying only full meters
+            // while the rows beneath were drawn from anything past 80% — so the
+            // cell read 0 directly above two rows about players 89% and 92% of
+            // the way to a change. Both were right by their own definition and
+            // the pair was nonsense. Price now has its own panel; this column
+            // counts the thing it is actually about.
+            const sellNow = (ctx.squad || []).filter((p, i) =>
+                (ctx.analysisResults || [])[i] && ctx.analysisResults[i].verdict === 'sell').length;
             let deadline = '—', deadlineTip = 'Deadline time unavailable';
             if (ctx.deadlineTime) {
                 const ms = new Date(ctx.deadlineTime).getTime() - Date.now();
@@ -4661,11 +4722,11 @@
                 ${cell(ft, ft === 1 ? 'free transfer' : 'free transfers', 'Transfers you can make without taking a points hit.')}
                 ${cell('£' + (ctx.bank != null ? Number(ctx.bank).toFixed(1) : '0.0') + 'm', 'in the bank', 'Money available to spend right now.')}
                 ${cell(deadline, 'to deadline', deadlineTip, deadline !== 'closed' && /^[0-9]+[hm]$/.test(deadline) ? 'warn' : '')}
-                ${cell(drops + rises, 'price moves', 'Owned or watched players due to change price at the next update.', (drops + rises) ? 'warn' : '')}
+                ${cell(sellNow, sellNow === 1 ? 'rated sell' : 'rated sell', 'Players your squad analysis rates as a sell on form, fixtures or minutes. Price movement is in Your market, below.', sellNow ? 'warn' : '')}
             </div>`;
         }
 
-        function renderAttentionGrid({ transferRec, squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets,
+        function renderAttentionGrid({ transferRec, squad, analysisResults, captainRec,
                                        freeTransfers, bank, deadlineTime, currentGW }) {
             const esc = t => String(t == null ? '' : t)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -4806,36 +4867,12 @@
                 });
             }
 
-            /* This column renders six rows out of however many it is given, so
-               ordering decides what a manager actually sees. A price change is
-               the only item here with its own clock: it lands at the next daily
-               update and cannot be acted on afterwards, while a "weak team
-               attack" reads the same tomorrow. So the ones already over the line
-               go in near the top, and the ones merely closing in wait at the
-               back with everything else. */
-            const pushPriceRows = tier => {
-                priceDropRisk.filter(c => c.tier === tier).forEach(c => {
-                    txItems.push({
-                        name: c.player.name,
-                        reason: tier === 'due'
-                            ? `Drops to £${(c.player.price - 0.1).toFixed(1)}m at the next price update`
-                            : `${Math.round(Math.abs(c.progress))}% of the way to a price drop`,
-                        severity: tier === 'due' ? 'sell' : 'monitor',
-                        href: `fpl-my-team-analysis.html#squad?player=${c.player.id}`
-                    });
-                });
-                priceRiseTargets.filter(c => c.tier === tier).slice(0, 2).forEach(c => {
-                    txItems.push({
-                        name: c.player.name,
-                        reason: tier === 'due'
-                            ? `Rises to £${(c.player.price + 0.1).toFixed(1)}m at the next price update`
-                            : `${Math.round(Math.abs(c.progress))}% of the way to a price rise`,
-                        severity: 'monitor',
-                        href: `fpl-my-team-analysis.html#squad?player=${c.player.id}`
-                    });
-                });
-            };
-            pushPriceRows('due');
+            /* Price movement used to be interleaved here. It has its own panel
+               now — see scripts/market-panel.js — because a rise and a fall were
+               rendered as the same amber dot, which made the one piece of news
+               that is unambiguously good for a manager look identical to the one
+               that is bad. Direction is the whole point of a price move. */
+
             /* A Sell verdict and the recommended move above it are answers to two
                different questions — "is this player a problem" and "what single
                change adds most points" — and they do not always land on the same
@@ -4854,10 +4891,7 @@
                         : `${concern} — not in the recommended move, which gains more elsewhere this week`;
                 txItems.push({ name: p.name, reason, severity: 'sell', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
             });
-            // The rest of the price rows: near the line, but not tonight's news.
-            pushPriceRows('close');
-
-            const summaryCtx = { squad, priceDropRisk, priceRiseTargets, freeTransfers, bank, deadlineTime };
+            const summaryCtx = { squad, analysisResults, freeTransfers, bank, deadlineTime };
 
             function renderCol(items, iconName, title, emptyText, linkBase, summaryKind) {
                 let rowsHtml = '';
@@ -5537,22 +5571,13 @@
                 const squadIds = new Set(squad.map(p => p.id));
                 const shortlistIds = new Set(JSON.parse(localStorage.getItem('fpl_shortlist') || '[]'));
                 const myPlayerIds = p => squadIds.has(p.id) || shortlistIds.has(p.id);
-                /* Price risk, from the game's own meter.
-
-                   This used to infer pressure from net transfers weighted by the
-                   ownership base, because at the time nothing had moved all
-                   season and there was nothing to calibrate a threshold against.
-                   That is no longer true: the game publishes a progress meter per
-                   player and four prices moved overnight. Transfers were only ever
-                   a proxy for the meter, so the proxy goes and the meter stays.
-
-                   Scoped to your squad and shortlist — the market-wide view is the
-                   ticker at the top of the page. See scripts/price-watch.js for
-                   why only two tiers exist and what each is allowed to claim. */
+                /* Your squad and shortlist, which is the pool the market panel
+                   classifies. The market-wide view is the ticker at the top of the
+                   page; scripts/price-watch.js owns the classification itself, and
+                   scripts/market-panel.js renders it. Split out and pre-sliced here
+                   it produced two lists that were then interleaved into the
+                   Transfers column, where a rise and a fall looked identical. */
                 const mine = allPlayers.filter(myPlayerIds);
-                const myMovers = typeof pwMovers === 'function' ? pwMovers(mine, 5) : { risers: [], fallers: [] };
-                const priceDropRisk = myMovers.fallers;
-                const priceRiseTargets = myMovers.risers;
 
                 // --- Squad health score (aligned with fpl-my-team-analysis.html) ---
                 const paired = squad.map((p, i) => ({ sq: p, an: analysisResults[i] }));
@@ -5754,7 +5779,11 @@
                 });
                 if (leagueInfo) loadLeagueGap(leagueInfo.id, teamId, totalPointsRaw);
 
-                renderAttentionGrid({ transferRec, squad, analysisResults, captainRec, priceDropRisk, priceRiseTargets,
+                // Scoped to the squad and shortlist, same pool the old inline rows
+                // used — the market-wide view is the ticker at the top of the page.
+                if (typeof mkRenderInto === 'function') mkRenderInto(mine);
+
+                renderAttentionGrid({ transferRec, squad, analysisResults, captainRec,
                     freeTransfers, bank, deadlineTime, currentGW });
                 renderPitchView({ squad, analysisResults });
                 renderPriceTicker(allPlayers, squad);
