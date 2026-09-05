@@ -398,6 +398,9 @@
                     <label for="sq-filter-price-input">Max £</label>
                     <input type="number" id="sq-filter-price-input" step="0.5" min="4" max="15" placeholder="Any" value="${squadFilterMaxPrice ?? ''}" oninput="setSquadFilterMaxPrice(this.value)">
                 </div>
+                <button class="sq-chart-open" onclick="toggleSquadChart()" data-tooltip="Plot any two metrics against each other for your squad or the whole league">
+                    <i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i> Visual analysis
+                </button>
             </div>`;
         }
 
@@ -429,13 +432,20 @@
             // first metric in SQ_CHART_METRICS for both axes: "Price (£m)" vs "Price (£m)").
             const metricOptions = selected => Object.keys(SQ_CHART_METRICS)
                 .map(k => `<option value="${k}" ${k === selected ? 'selected' : ''}>${SQ_CHART_METRICS[k].label}</option>`).join('');
-            return `<div class="sq-chart-widget">
-                <div class="sq-chart-header" onclick="toggleSquadChart()">
-                    <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i>
-                    <span class="sq-chart-header-title">Visual Analysis</span>
-                    <span class="sq-chart-chevron ${sqChartExpanded ? 'open' : ''}" id="sq-chart-chevron"><i data-lucide="chevron-down" style="width:16px;height:16px;"></i></span>
-                </div>
-                <div class="sq-chart-body-outer ${sqChartExpanded ? 'open' : ''}" id="sq-chart-body">
+            /* A modal rather than an accordion. Expanded inline it pushed the
+               whole squad table a screen down the page, so the two things you
+               compare — a point on the chart and the row it belongs to — could
+               not be seen at once anyway. .modal-overlay and .modal-container
+               are the class names initOverlayDismiss() already watches, so
+               clicking away and pressing Escape work without a line of extra
+               script here. */
+            return `<div class="modal-overlay sq-chart-modal ${sqChartExpanded ? 'open' : ''}" id="sqChartModal">
+                <div class="modal-container">
+                    <div class="sq-chart-modal-head">
+                        <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i>
+                        <span class="sq-chart-header-title">Visual Analysis</span>
+                        <button class="modal-close" onclick="toggleSquadChart()" aria-label="Close">&times;</button>
+                    </div>
                     <div class="sq-chart-body-inner">
                         <div class="sq-chart-controls">
                             <label class="sq-chart-field">
@@ -538,10 +548,8 @@
         function toggleSquadChart() {
             sqChartExpanded = !sqChartExpanded;
             localStorage.setItem('fpl_charts_expanded', sqChartExpanded ? '1' : '0');
-            const body = document.getElementById('sq-chart-body');
-            const chevron = document.getElementById('sq-chart-chevron');
-            if (body) body.classList.toggle('open', sqChartExpanded);
-            if (chevron) chevron.classList.toggle('open', sqChartExpanded);
+            const modal = document.getElementById('sqChartModal');
+            if (modal) modal.classList.toggle('open', sqChartExpanded);
             if (sqChartExpanded) ensureSquadChart();
         }
 

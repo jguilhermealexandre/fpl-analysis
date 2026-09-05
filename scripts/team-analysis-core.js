@@ -1325,9 +1325,16 @@
                before and after are read in the same glance. */
             if (typeof tlRenderInto === 'function') html += tlRenderInto();
             if (typeof tlRenderPicker === 'function') html += tlRenderPicker();
+            /* Filters, the chart button and every position group in one panel.
+               They were three stacked boxes with four more inside the last of
+               them, so the squad read as seven cards rather than one table with
+               sections. The chart's modal is appended outside the panel, since
+               it is fixed to the viewport rather than part of the flow. */
+            html += `<div class="sq-panel">`;
             html += renderSquadFilterBar();
-            html += renderSquadChartWidget();
             html += `<div id="sq-table-wrap">${renderSquadTable()}</div>`;
+            html += `</div>`;
+            html += renderSquadChartWidget();
 
             if (sqChartInstance) { sqChartInstance.destroy(); sqChartInstance = null; }
             document.getElementById('teamDisplay').innerHTML = html;

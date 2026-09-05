@@ -811,6 +811,54 @@
 .team-overview { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(280px, 1fr); gap: 16px; align-items: start; margin-bottom: 20px; animation: fadeInUp 0.5s ease; }
 .sq-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
+/* ----- Visual Analysis, as a modal ----- */
+.sq-chart-open {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: var(--radius-full);
+    border: 1px solid var(--border-emphasis); background: transparent;
+    font-family: inherit; font-size: 12px; font-weight: 650;
+    color: var(--text-secondary); cursor: pointer;
+    transition: all 140ms ease;
+}
+.sq-chart-open:hover { background: var(--color-primary-muted); border-color: var(--color-primary); color: var(--color-primary-text); }
+
+/* teams.css is not loaded on this page, so these two class names are defined
+   here — chosen deliberately, because they are what initOverlayDismiss()
+   watches, which is how this gets click-away and Escape for nothing. */
+.sq-chart-modal.modal-overlay {
+    position: fixed; inset: 0; z-index: 220;
+    display: none; align-items: center; justify-content: center;
+    padding: 24px;
+    background: rgba(10, 14, 20, 0.55);
+    backdrop-filter: blur(4px);
+}
+.sq-chart-modal.modal-overlay.open { display: flex; }
+.sq-chart-modal .modal-container {
+    width: 100%; max-width: 1040px; max-height: 88vh;
+    display: flex; flex-direction: column;
+    background: var(--surface-1);
+    border: 1px solid var(--border-emphasis);
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+    overflow: hidden;
+}
+.sq-chart-modal-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-family: var(--font-display); font-size: 15px; font-weight: 650;
+    color: var(--text-primary);
+}
+.sq-chart-modal-head .modal-close {
+    margin-left: auto;
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid var(--border-emphasis); background: transparent;
+    color: var(--text-secondary); font-size: 18px; line-height: 1; cursor: pointer;
+}
+.sq-chart-modal-head .modal-close:hover { background: var(--surface-2); color: var(--text-primary); }
+.sq-chart-modal .sq-chart-body-inner { padding: 16px; overflow: auto; }
+.sq-chart-modal .sq-chart-canvas-wrap { height: min(58vh, 520px); }
+
 /* ----- The four figures, across the top -----
    When the deadline is, how the squad rates, where you rank, what you can
    spend. They were spread between a ring in one column and rows two panels
@@ -2620,16 +2668,31 @@ tr.planner-swap-ineligible { opacity: 0.35; }
    the next began; fifteen white slabs on grey read as one long list with
    captions dropped into it. Giving each position a white panel and tinting
    the rows inside it draws the group, and costs no extra ink. */
-.sq-position-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding: 12px;
-    margin-bottom: 12px;
+/* One panel holds the filters and every position group; the groups are
+   sections inside it, not cards of their own. Seven boxes stacked down the
+   page read as seven things — a squad is one thing with four parts. */
+.sq-panel {
+    padding: 16px;
     background: var(--surface-1);
     border: 1px solid var(--v2-card-border, var(--border-emphasis));
     border-radius: var(--v2-card-radius, 16px);
     box-shadow: var(--v2-card-shadow, none);
+    margin-bottom: 20px;
+}
+
+.sq-panel .sq-filter-bar { margin-bottom: 14px; }
+
+.sq-position-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* A rule between sections rather than a gap between cards. */
+.sq-position-group + .sq-position-group {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-subtle);
 }
 
 /* Inside a panel the rows carry the tint. --surface-2 against the panel's
