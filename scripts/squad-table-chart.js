@@ -298,7 +298,7 @@
                         ${hazardIcon}
                         <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
                         <div class="sq-row-name-block">
-                            <div class="sq-row-name">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}</div>
+                            <div class="sq-row-name">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}${typeof tlBadge === 'function' ? tlBadge(player) : ''}</div>
                             <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${priceChangeBadge(player)} ${renderTeamBadges(player)}</div>
                         </div>
                     </div>
@@ -409,7 +409,11 @@
         };
 
         function getFilteredSquad() {
-            return analysisResults.filter(a => {
+            /* A trial substitutes one player for the table's purposes only —
+               analysisResults itself is never touched, so nothing else on the
+               page starts believing you own him. tlBadge marks him in the row. */
+            const source = (typeof tlDisplayResults === 'function' && tlDisplayResults()) || analysisResults;
+            return source.filter(a => {
                 if (squadFilterPos !== 'all' && a.player.position !== squadFilterPos) return false;
                 if (squadFilterMaxPrice != null && a.player.price > squadFilterMaxPrice) return false;
                 return true;

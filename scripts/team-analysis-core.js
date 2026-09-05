@@ -1232,72 +1232,99 @@
             </div>`;
         }
 
+        /* How healthy a squad is, as one number and the reasons behind it.
+
+           Extracted from renderTeamAnalysis so it can be run against a squad
+           you do not own. That is the whole point of a trial: "he is better"
+           is an opinion until the same scoring that judges your team judges the
+           one with him in it. Nothing about the arithmetic changed in the move.
+
+           Takes analysis results rather than players, because every charge here
+           is levied against a verdict that analyzePlayer has already reached. */
+        function computeSquadHealth(results) {
+            const analysisResults = results || [];
+            // Read from the verdicts rather than passed in: the bonus below is
+            // a fact about this squad, so it has to be counted from this squad.
+            const stars = analysisResults.filter(a => a.verdict === 'star');
+        // Calculate team health score (multi-factor)
+        const starters = analysisResults.filter(a => !a.player.onBench);
+        const bench = analysisResults.filter(a => a.player.onBench);
+        // sellRating already contains an availability charge (up to +40) and a
+        // form charge (up to ±30). The explicit penalties further down charge
+        // for both again, so an injured starter was being docked twice — once
+        // through the average, once through the subtraction. Strip those two
+        // components out of the base so each factor is counted exactly once
+        // and the explicit weights below mean what they say.
+        const baseQuality = a => 100 - (a.sellRating - (a.availPenalty || 0) - (a.formPenalty || 0));
+        const starterAvg = starters.reduce((s, a) => s + baseQuality(a), 0) / Math.max(starters.length, 1);
+        const benchAvg = bench.reduce((s, a) => s + baseQuality(a), 0) / Math.max(bench.length, 1);
+        // A bench player scores nothing in a normal gameweek, so squad health
+        // is overwhelmingly about the eleven who play; the bench counts as
+        // cover rather than as a fifth of the answer.
+        let healthScore = starterAvg * 0.88 + benchAvg * 0.12;
+
+        // One aggregated breakdown of what's dragging the score down, instead of
+        // a scrolling list of individually-phrased warnings that repeated the
+        // same underlying problem several ways.
+        const injuredStarters = starters.filter(a => a.player.status === 'i' || a.player.status === 'u' || a.player.status === 's');
+        const doubtfulStarters = starters.filter(a => a.player.status === 'd');
+        const toughFixtureStarters = starters.filter(a => ((a.fixtures || [])[0]?.difficulty || 3) >= 4);
+        // Guarded on status 'a' rather than on `!status`. Every player carries a
+        // status ('a', 'd', 'i', 's', 'u'), all truthy, so the old negation was
+        // never true — this penalty and its breakdown line never once fired.
+        // The intent was "out of form and not already counted as unavailable".
+        // Reads the regressed form, not the raw figure. On the raw one, 53% of
+        // everyone who played counted as out of form after a single gameweek,
+        // and eleven starters at -3 apiece is most of a health score.
+        const poorFormStarters = starters.filter(a => a.effectiveForm < 2.5 && a.player.status === 'a');
+
+        // Each of these is now the only place its factor is charged.
+        healthScore -= injuredStarters.length * 8;
+        healthScore -= doubtfulStarters.length * 3;
+        healthScore -= poorFormStarters.length * 3;
+        healthScore -= Math.min(6, toughFixtureStarters.length * 1.5);
+
+        const capAnalysis = starters.find(a => a.player.isCaptain);
+        if (capAnalysis) {
+            if (capAnalysis.verdict === 'star') healthScore += 3;
+            else if (capAnalysis.verdict === 'sell') healthScore -= 5;
+            else if (capAnalysis.verdict === 'monitor') healthScore -= 2;
+        }
+        if (stars.length >= 3) healthScore += 2;
+
+        const healthBreakdown = [
+            { count: injuredStarters.length, label: 'injured' },
+            { count: doubtfulStarters.length, label: 'doubtful' },
+            { count: toughFixtureStarters.length, label: 'tough fixtures' },
+            { count: poorFormStarters.length, label: 'out of form' },
+        ].filter(b => b.count > 0);
+
+
+            return {
+                health: Math.max(0, Math.min(100, Math.round(healthScore))),
+                breakdown: healthBreakdown,
+                starters, bench, injuredStarters, doubtfulStarters, capAnalysis
+            };
+        }
+
         function renderTeamAnalysis() {
             const sells = analysisResults.filter(a => a.verdict === 'sell');
             const monitors = analysisResults.filter(a => a.verdict === 'monitor');
             const stars = analysisResults.filter(a => a.verdict === 'star');
             const holds = analysisResults.filter(a => a.verdict === 'hold');
 
-            // Calculate team health score (multi-factor)
-            const starters = analysisResults.filter(a => !a.player.onBench);
-            const bench = analysisResults.filter(a => a.player.onBench);
-            // sellRating already contains an availability charge (up to +40) and a
-            // form charge (up to ±30). The explicit penalties further down charge
-            // for both again, so an injured starter was being docked twice — once
-            // through the average, once through the subtraction. Strip those two
-            // components out of the base so each factor is counted exactly once
-            // and the explicit weights below mean what they say.
-            const baseQuality = a => 100 - (a.sellRating - (a.availPenalty || 0) - (a.formPenalty || 0));
-            const starterAvg = starters.reduce((s, a) => s + baseQuality(a), 0) / Math.max(starters.length, 1);
-            const benchAvg = bench.reduce((s, a) => s + baseQuality(a), 0) / Math.max(bench.length, 1);
-            // A bench player scores nothing in a normal gameweek, so squad health
-            // is overwhelmingly about the eleven who play; the bench counts as
-            // cover rather than as a fifth of the answer.
-            let healthScore = starterAvg * 0.88 + benchAvg * 0.12;
-
-            // One aggregated breakdown of what's dragging the score down, instead of
-            // a scrolling list of individually-phrased warnings that repeated the
-            // same underlying problem several ways.
-            const injuredStarters = starters.filter(a => a.player.status === 'i' || a.player.status === 'u' || a.player.status === 's');
-            const doubtfulStarters = starters.filter(a => a.player.status === 'd');
-            const toughFixtureStarters = starters.filter(a => ((a.fixtures || [])[0]?.difficulty || 3) >= 4);
-            // Guarded on status 'a' rather than on `!status`. Every player carries a
-            // status ('a', 'd', 'i', 's', 'u'), all truthy, so the old negation was
-            // never true — this penalty and its breakdown line never once fired.
-            // The intent was "out of form and not already counted as unavailable".
-            // Reads the regressed form, not the raw figure. On the raw one, 53% of
-            // everyone who played counted as out of form after a single gameweek,
-            // and eleven starters at -3 apiece is most of a health score.
-            const poorFormStarters = starters.filter(a => a.effectiveForm < 2.5 && a.player.status === 'a');
-
-            // Each of these is now the only place its factor is charged.
-            healthScore -= injuredStarters.length * 8;
-            healthScore -= doubtfulStarters.length * 3;
-            healthScore -= poorFormStarters.length * 3;
-            healthScore -= Math.min(6, toughFixtureStarters.length * 1.5);
-
-            const capAnalysis = starters.find(a => a.player.isCaptain);
-            if (capAnalysis) {
-                if (capAnalysis.verdict === 'star') healthScore += 3;
-                else if (capAnalysis.verdict === 'sell') healthScore -= 5;
-                else if (capAnalysis.verdict === 'monitor') healthScore -= 2;
-            }
-            if (stars.length >= 3) healthScore += 2;
-
-            const healthBreakdown = [
-                { count: injuredStarters.length, label: 'injured' },
-                { count: doubtfulStarters.length, label: 'doubtful' },
-                { count: toughFixtureStarters.length, label: 'tough fixtures' },
-                { count: poorFormStarters.length, label: 'out of form' },
-            ].filter(b => b.count > 0);
-
-            const teamHealth = Math.max(0, Math.min(100, Math.round(healthScore)));
+            const { health: teamHealth, breakdown: healthBreakdown, starters,
+                injuredStarters, doubtfulStarters, capAnalysis } = computeSquadHealth(analysisResults);
             const suggestedMoves = buildSuggestedMoves(starters, injuredStarters, doubtfulStarters, capAnalysis);
 
             let html = '';
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
             html += renderSquadTickers();
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
+            /* A trial sits directly under the two numbers it moves, so the
+               before and after are read in the same glance. */
+            if (typeof tlRenderInto === 'function') html += tlRenderInto();
+            if (typeof tlRenderPicker === 'function') html += tlRenderPicker();
             html += renderSquadFilterBar();
             html += renderSquadChartWidget();
             html += `<div id="sq-table-wrap">${renderSquadTable()}</div>`;
