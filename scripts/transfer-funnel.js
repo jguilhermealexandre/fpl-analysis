@@ -45,14 +45,12 @@
         const TWF_POS_NAMES = ['', 'Goalkeepers', 'Defenders', 'Midfielders', 'Forwards'];
         const TWF_POS_SHORT = ['', 'GK', 'DEF', 'MID', 'FWD'];
 
-        /* Every filter the funnel holds, in one object.
-
-           Kept on transferState so it survives moving between slots: filling
-           eight slots on a wildcard should not mean re-picking the same six
-           clubs eight times. Only renderTransferWizard() — a full restart —
-           clears it. */
+        /* Every filter the funnel holds, in one object. One of these lives on
+           each pending transfer — see twfState and twfSeedFilters below for
+           which slot owns which, and what a new slot starts out as. */
         function twfDefaultFilters() {
             return {
+                view: 'quick',      // quick | custom — see twfRenderQuick
                 step: 1,
                 horizon: 5,
                 clubs: [],          // team ids; empty means every club
@@ -70,9 +68,72 @@
             };
         }
 
-        function twfState() {
-            if (!transferState.funnel) transferState.funnel = twfDefaultFilters();
-            return transferState.funnel;
+        /* How many replacements Quick picks offers. Small on purpose: this is
+           the answer to "who is the obvious swap", and a list you have to scan
+           is the thing the funnel is for. */
+        const TWF_QUICK_SHOW = 6;
+
+        /* Horizon, sort and which of the two views you are in describe how you
+           like to work rather than who you are looking for, so they follow you
+           between slots while every actual filter starts clean. Someone who
+           prefers the funnel should not have to re-open it for every transfer. */
+        let twfViewPrefs = { horizon: 5, sort: 'xp', view: 'quick' };
+
+        /* Filters belong to the slot, not to the screen.
+
+           They used to live on one transferState.funnel shared by every pending
+           transfer. Narrow the market to cheap defenders from improving-fixture
+           clubs for your centre-back, then hit Swap on your striker, and you
+           were handed a striker list still restricted to those clubs and to a
+           price band chosen for somebody else — with the chips at the top
+           describing a search you were no longer running.
+
+           That is what "the panel loses context when I select multiple players"
+           actually was. Nothing was being lost: the wrong thing was being kept,
+           which looks the same from the outside and is the opposite bug. Each
+           pending transfer now carries its own funnel, so switching between
+           slots restores the search you left there, and a slot that goes away
+           takes its filters with it. */
+        function twfState(slotIdx) {
+            const i = slotIdx == null ? transferState.activeSlot : slotIdx;
+            const slot = transferState.pending[i];
+            /* The summary and comparison panes read filters with no slot
+               selected. They get a screen-level object rather than a throw —
+               it is only ever read for horizon and sort in that state. */
+            if (!slot) {
+                if (!transferState.funnel) transferState.funnel = twfDefaultFilters();
+                return transferState.funnel;
+            }
+            if (!slot.funnel) slot.funnel = twfSeedFilters(slot);
+            return slot.funnel;
+        }
+
+        /* What a slot's filters start out as.
+
+           Two demands pull against each other here. Filling eight slots on a
+           wildcard should not mean re-picking the same six clubs eight times,
+           which argues for carrying the last search over. But handing a striker
+           search the club list and price band chosen for a centre-back is
+           exactly the carry-over that read as lost context.
+
+           Position settles it: the same position is the same kind of search and
+           inherits, a different one starts clean. The scan runs backwards so it
+           picks up the most recent slot of that position rather than the oldest.
+           Step and free-text search always reset — a search for one player is
+           never the right starting point for another. */
+        function twfSeedFilters(slot) {
+            let prev = null;
+            for (let i = transferState.pending.length - 1; i >= 0; i--) {
+                const other = transferState.pending[i];
+                if (other !== slot && other.funnel && other.soldPlayer.position === slot.soldPlayer.position) {
+                    prev = other.funnel;
+                    break;
+                }
+            }
+            const base = prev
+                ? Object.assign({}, prev, { step: 1, search: '' })
+                : twfDefaultFilters();
+            return Object.assign(base, twfViewPrefs);
         }
 
         // The gameweeks the whole screen is reasoning over. One horizon drives
@@ -428,6 +489,18 @@
 
             const base = twfBasePool(slotIdx);
             const blocked = twBlockedClubIds(slotIdx);
+
+            /* Quick picks does no filtering, so none of the funnel's counting
+               applies — and every survivor costs a projection, which is the
+               expensive part of this screen. Branch before paying for it. */
+            if (s.view === 'quick') {
+                el.innerHTML = '<div class="twf">' +
+                    twfRenderHead(slotIdx, sold, gws, base.length, base.length, base.length) +
+                    twfRenderQuick(slot, base, gws, pos, slotIdx, blocked) + '</div>';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
             const clubSet = new Set(s.clubs);
 
             // Player filters first, so a club row can report how many of its
@@ -467,17 +540,30 @@
                 <span class="twf-count-arrow">→</span>
                 <span class="twf-count final${nFinal < nClubs ? ' cut' : ''}" data-tooltip="After the player filters">${nFinal}</span>`;
 
+            /* Two ways to answer the same question, chosen up front rather than
+               inferred. The funnel's own steps and counts describe filtering,
+               so they only appear once there is filtering to describe. */
+            const views = `<div class="twf-views" role="tablist">
+                <button class="twf-view${s.view === 'quick' ? ' active' : ''}" role="tab" aria-selected="${s.view === 'quick'}"
+                    onclick="twfSetView('quick')"
+                    data-tooltip="The best replacements we can find for ${escHTML(sold.name)}, ranked, with nothing to fill in.">⚡ Quick picks</button>
+                <button class="twf-view${s.view === 'custom' ? ' active' : ''}" role="tab" aria-selected="${s.view === 'custom'}"
+                    onclick="twfSetView('custom')"
+                    data-tooltip="Narrow by fixture run, minutes, form, price, ownership and set pieces, then pick from what survives.">🛠️ Custom search</button>
+            </div>`;
+
             return `<div class="twf-head">
                 <div class="twf-head-top">
                     <span class="twf-head-title">Replacements for <strong>${escHTML(sold.name)}</strong></span>
                     <span class="twf-budget" ${reserved > 0 ? `data-tooltip="${escHTML(`£${reserved.toFixed(1)}m of the bank is held back so your other open slots can still be filled.`)}"` : ''}>£${budget.toFixed(1)}m${reserved > 0 ? `<em>£${reserved.toFixed(1)}m reserved</em>` : ''}</span>
                 </div>
                 <div class="twf-head-bot">
-                    <div class="twf-steps">
+                    ${views}
+                    ${s.view === 'custom' ? `<div class="twf-steps">
                         <button class="twf-step${s.step === 1 ? ' active' : ''}" onclick="twfSetStep(1)">1 · Narrow</button>
                         <button class="twf-step${s.step === 2 ? ' active' : ''}" onclick="twfSetStep(2)">2 · Pick</button>
                     </div>
-                    <div class="twf-counts" data-tooltip="Players in the pool, after the clubs you chose, after the player filters.">${counts}</div>
+                    <div class="twf-counts" data-tooltip="Players in the pool, after the clubs you chose, after the player filters.">${counts}</div>` : ''}
                     <div class="twf-hzs" data-tooltip="Everything on this screen is judged over ${escHTML(span)}.">${horizons}</div>
                 </div>
             </div>`;
@@ -714,6 +800,87 @@
             return { total, perGW, comp };
         }
 
+        /* ===== Quick picks =====
+
+           Clicking Swap used to land on the funnel's first step, which asks you
+           to choose a fixture run before it will show you a single player. That
+           is the right tool when you already have an opinion and the wrong one
+           when you just want to know who the obvious replacement is. So this is
+           what a swap opens on, and the funnel is one click away for when the
+           obvious answer is not good enough.
+
+           No filters are applied and none are offered: the ranking is the whole
+           interface. What it does apply are the two things that are constraints
+           rather than preferences — what you can afford, and who you are
+           actually allowed to buy. */
+        function twfRenderQuick(slot, base, gws, pos, slotIdx, blocked) {
+            const sold = slot.soldPlayer;
+            const soldProj = twfProjection(sold, gws);
+            const budget = twSlotBudget(slotIdx);
+
+            /* A recommendation you cannot act on is not a quick answer, it is
+               another decision. Someone carrying a knock, or a fourth player
+               from a club you already have three of, belongs in the funnel
+               where the reason can be shown next to him. */
+            const eligible = base.filter(p => p.status === 'a' && !blocked.has(p.teamId));
+            const scored = eligible.map(p => {
+                const proj = twfProjection(p, gws);
+                return { p, proj, gain: Math.round((proj.total - soldProj.total) * 10) / 10 };
+            }).sort((a, b) => b.proj.total - a.proj.total);
+
+            const shown = scored.slice(0, TWF_QUICK_SHOW);
+            const setAside = base.length - eligible.length;
+
+            if (!shown.length) {
+                return `<div class="twf-body quick">
+                        <div class="twf-empty">${escHTML(twfEmptyReason(pos))}
+                            <div><button class="twf-linkbtn" onclick="twfSetView('custom')">Open the custom search</button> to see everyone, with the reason each one is out.</div>
+                        </div>
+                    </div>
+                    <div class="twf-foot"><button class="twf-back" onclick="twBackToSquad()">Squad</button></div>`;
+            }
+
+            const cards = shown.map((x, i) =>
+                twfCardHTML(x, i, sold, soldProj, gws, pos, budget, false)).join('');
+
+            /* The list is ranked by projection, so if the top of it is still
+               behind the player being sold then nothing affordable is an
+               upgrade — which is the answer to a question this screen is
+               otherwise not able to give: whether to make the transfer at all.
+               Left unsaid, six red numbers read as a broken market. */
+            const bestGain = shown[0].gain;
+            const noUpgrade = bestGain <= 0
+                ? `<div class="twf-noupgrade">Nothing you can afford projects better than <strong>${escHTML(sold.name)}</strong> over these gameweeks — the closest is ${bestGain === 0 ? 'level with him' : `${Math.abs(bestGain).toFixed(1)} behind`}. This is a transfer worth not making unless you need the money elsewhere.</div>`
+                : '';
+
+            // Never a silent cap: say what was left out and why, so the list
+            // does not read as "these are the only players who exist".
+            const notes = [];
+            if (scored.length > shown.length) {
+                notes.push(`Showing the ${shown.length} best of ${scored.length} you can afford.`);
+            }
+            if (setAside > 0) {
+                notes.push(`${setAside} ${setAside === 1 ? 'player is' : 'players are'} set aside as injured, doubtful, or a fourth from a club you already have three of.`);
+            }
+
+            return `<div class="twf-body quick">
+                <div class="twf-out" data-tooltip="Every card below is priced against this player over the same gameweeks.">
+                    <span class="twf-out-l">Selling</span>
+                    <span class="twf-out-name">${escHTML(sold.name)}</span>
+                    <span class="twf-out-sub">${escHTML(sold.team)} · £${(sold.sellPrice || sold.price).toFixed(1)}m</span>
+                    <span class="twf-out-xp">${soldProj.total.toFixed(1)}<i>xP</i></span>
+                </div>
+                ${noUpgrade}
+                ${cards}
+                ${notes.length ? `<div class="twf-trimmed">${notes.map(n => escHTML(n)).join(' ')}
+                    <button class="twf-linkbtn" onclick="twfSetView('custom')">Search properly</button></div>` : ''}
+            </div>
+            <div class="twf-foot">
+                <button class="twf-back" onclick="twfSetView('custom')">🛠️ Custom search</button>
+                <button class="twf-back" onclick="twBackToSquad()">Squad</button>
+            </div>`;
+        }
+
         function twfRenderPick(slot, survivors, gws, pos, slotIdx, blocked) {
             const s = twfState();
             const sold = slot.soldPlayer;
@@ -917,8 +1084,20 @@
             twfRerender();
         }
 
+        /* Switching view lands you on the funnel's first step rather than
+           wherever you last left it, so "Custom search" always opens on the
+           filters it is offering to run. */
+        function twfSetView(view) {
+            const s = twfState();
+            s.view = view;
+            if (view === 'custom' && s.step !== 2) s.step = 1;
+            twfViewPrefs.view = view;
+            twfRerender();
+        }
+
         function twfSetHorizon(h) {
             twfState().horizon = h;
+            twfViewPrefs.horizon = h;
             twfRerender();
         }
 
@@ -960,13 +1139,16 @@
 
         function twfSetSort(sort) {
             twfState().sort = sort;
+            twfViewPrefs.sort = sort;
             twfRerender();
         }
 
         function twfResetFilters() {
             const s = twfState();
             const keep = { step: s.step, horizon: s.horizon, sort: s.sort };
-            transferState.funnel = Object.assign(twfDefaultFilters(), keep);
+            // In place: the filters may belong to a slot rather than to
+            // transferState, and reassigning there would reset the wrong one.
+            Object.assign(s, twfDefaultFilters(), keep);
             twfRerender();
         }
 
