@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=99">
-    <link rel="stylesheet" href="styles/v2-design.css?v=99">
+    <link rel="stylesheet" href="styles/common.css?v=100">
+    <link rel="stylesheet" href="styles/v2-design.css?v=100">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -831,6 +831,47 @@
             margin-bottom: 20px;
             text-align: left;
         }
+
+        /* ===== Readiness bar (scripts/readiness.js) =====
+           Spans both columns because it is about the squad, not about either
+           half of it. The clock lives here rather than only in the hero above:
+           "two hours left" and "three things outstanding" are one thought, and
+           splitting them across two panels made the countdown decorative. */
+        .rd-bar {
+            grid-column: 1 / -1;
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+            padding: 14px 16px; border-radius: 12px;
+            background: var(--surface-1); border: 1px solid var(--border-default);
+            border-left: 3px solid var(--text-muted);
+        }
+        .rd-bar.ready { border-left-color: var(--color-success); }
+        .rd-bar.warn { border-left-color: var(--color-warning); }
+        .rd-bar.urgent { border-left-color: var(--color-error); }
+
+        .rd-bar-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .rd-headline {
+            font-family: var(--font-display, inherit);
+            font-size: 15px; font-weight: 700; color: var(--text-primary);
+        }
+        .rd-sub { font-size: 11.5px; color: var(--text-muted); }
+
+        .rd-meter {
+            flex: 1 1 120px; min-width: 90px; height: 5px; border-radius: 999px;
+            background: var(--surface-3, var(--surface-2)); overflow: hidden;
+        }
+        .rd-meter-fill { display: block; height: 100%; border-radius: 999px; background: var(--text-muted); transition: width .3s ease; }
+        .rd-bar.ready .rd-meter-fill { background: var(--color-success); }
+        .rd-bar.warn .rd-meter-fill { background: var(--color-warning); }
+        .rd-bar.urgent .rd-meter-fill { background: var(--color-error); }
+
+        .rd-clock {
+            font-family: var(--font-mono, monospace); font-size: 12px; font-weight: 700;
+            color: var(--text-secondary); white-space: nowrap;
+        }
+        .rd-clock.soon { color: var(--color-warning); }
+        .rd-clock.closed { color: var(--text-muted); }
+
+        @media (prefers-reduced-motion: reduce) { .rd-meter-fill { transition: none; } }
         .v2-attn-col {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
@@ -3915,16 +3956,17 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=99"></script>
-    <script src="scripts/price-watch.js?v=99"></script>
-    <script src="scripts/xp-engine.js?v=99"></script>
-    <script src="scripts/odds-panel.js?v=99"></script>
-    <script src="scripts/live-gw.js?v=99"></script>
-    <script src="scripts/matchday.js?v=99"></script>
-    <script src="scripts/market-panel.js?v=99"></script>
-    <script src="scripts/transfer-engine.js?v=99"></script>
-    <script src="scripts/common.js?v=99"></script>
-    <script src="scripts/sidebar-nav.js?v=99"></script>
+    <script src="scripts/error-monitor.js?v=100"></script>
+    <script src="scripts/price-watch.js?v=100"></script>
+    <script src="scripts/xp-engine.js?v=100"></script>
+    <script src="scripts/odds-panel.js?v=100"></script>
+    <script src="scripts/live-gw.js?v=100"></script>
+    <script src="scripts/matchday.js?v=100"></script>
+    <script src="scripts/market-panel.js?v=100"></script>
+    <script src="scripts/readiness.js?v=100"></script>
+    <script src="scripts/transfer-engine.js?v=100"></script>
+    <script src="scripts/common.js?v=100"></script>
+    <script src="scripts/sidebar-nav.js?v=100"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4726,171 +4768,27 @@
             </div>`;
         }
 
+        /* The two columns of the readiness panel.
+
+           The checks themselves moved to scripts/readiness.js — they are the
+           same checks with the same wording, but they now always run and report
+           clear or not, rather than only appending a row when something is
+           wrong. That is what lets the bar above the columns count them, and it
+           is what makes "nothing needs you" a state this panel can express
+           instead of two empty columns that look like a failed load. */
         function renderAttentionGrid({ transferRec, squad, analysisResults, captainRec,
-                                       freeTransfers, bank, deadlineTime, currentGW }) {
+                                       freeTransfers, maxFreeTransfers, bank, chips,
+                                       deadlineTime, currentGW }) {
             const esc = t => String(t == null ? '' : t)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-            const xiItems = [];
-            squad.filter(p => p.pickPosition <= 11).forEach(p => {
-                if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                    xiItems.push({ name: p.name, reason: p.news || 'Unavailable — find a replacement', severity: 'sell', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
-                } else if (p.status === 'd') {
-                    const chance = p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance)` : '';
-                    xiItems.push({ name: p.name, reason: (p.news || 'Doubtful') + chance, severity: 'monitor', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
-                }
+            const built = rdBuild({
+                squad, analysisResults, transferRec, captainRec,
+                freeTransfers, maxFreeTransfers, bank, chips
             });
-            /* Rotation risk. The PRD calls expected minutes the most critical
-               variable in the model and it was the one number never shown: a
-               player can be fully fit, carry no news, and still be a coin flip to
-               start. Nothing else on this page catches that — the status flags
-               only fire for injuries and doubts.
-
-               Only flagged for players with a real record behind them, since a
-               low start probability off one appearance is the sample talking. */
-            if (typeof expectedMinutesModel === 'function') {
-                squad.filter(p => p.pickPosition <= 11 && p.status === 'a').forEach(p => {
-                    let m;
-                    try { m = expectedMinutesModel(p); } catch (e) { return; }
-                    if (!m || m.pStart >= 0.65) return;
-                    /* The old guard here also required 60+ minutes, which excluded
-                       precisely the players this is meant to catch: a substitute or
-                       an unused squad member sitting in your XI is the rotation risk.
-                       Measured against the current pool, nobody could trigger it at
-                       all — everyone who played started, so every start probability
-                       sat between 0.80 and 0.95. */
-                    const pct = Math.round(m.pStart * 100);
-                    xiItems.push({
-                        name: p.name,
-                        reason: `${pct}% likely to start, around ${Math.round(m.expMins)} minutes — an auto-sub may be needed`,
-                        severity: pct < 40 ? 'sell' : 'monitor',
-                        href: `fpl-my-team-analysis.html#squad?player=${p.id}`
-                    });
-                });
-            }
-
-            /* Two failure modes that cost points silently, both named in FPL's own
-               guidance on auto-substitutions and the vice-captaincy. Neither shows
-               up as an injury flag, so nothing else on this page catches them. */
-            const benchAll = squad.filter(p => p.pickPosition > 11).sort((a, b) => a.pickPosition - b.pickPosition);
-            const outfieldSubs = benchAll.filter(p => p.position !== 1);
-            const startsPct = p => {
-                if (typeof expectedMinutesModel !== 'function') return null;
-                try { return Math.round(expectedMinutesModel(p).pStart * 100); } catch (e) { return null; }
-            };
-
-            // The vice only matters when the captain plays nothing at all, but that
-            // is exactly when it matters most — a doubtful vice voids the biggest
-            // call of the week.
-            const viceP = squad.find(p => p.isViceCaptain);
-            if (viceP) {
-                const vp = startsPct(viceP);
-                if (viceP.status !== 'a' || (vp != null && vp < 60)) {
-                    xiItems.push({
-                        name: viceP.name,
-                        reason: viceP.status !== 'a'
-                            ? 'Your vice-captain is carrying a fitness flag — if your captain blanks, the armband may pass to nobody'
-                            : `Your vice-captain is only ${vp}% likely to start — the armband passes to him only if your captain plays no minutes`,
-                        severity: 'monitor',
-                        href: `fpl-my-team-analysis.html#squad?player=${viceP.id}`
-                    });
-                }
-            }
-
-            // An auto-sub only fires for a bench player who actually played, so the
-            // first outfield substitute is the one that has to be a real footballer.
-            if (outfieldSubs.length) {
-                const first = outfieldSubs[0];
-                const fp = startsPct(first);
-                if (first.status !== 'a' || (fp != null && fp < 45)) {
-                    xiItems.push({
-                        name: first.name,
-                        reason: `First on your bench but ${first.status !== 'a' ? 'flagged' : `only ${fp}% likely to play`} — an auto-sub cannot use a player who did not feature`,
-                        severity: 'monitor',
-                        href: 'fpl-my-team-analysis.html#lineup'
-                    });
-                }
-                // Playing three at the back with no defender in reserve means a
-                // defensive blank cannot legally be substituted at all.
-                const startDef = squad.filter(p => p.pickPosition <= 11 && p.position === 2).length;
-                const benchDef = outfieldSubs.filter(p => p.position === 2).length;
-                if (startDef <= 3 && benchDef === 0) {
-                    xiItems.push({
-                        name: 'No defensive cover',
-                        reason: `You start ${startDef} defenders with none on the bench — if one blanks, no auto-sub can legally replace him`,
-                        severity: 'monitor',
-                        href: 'fpl-my-team-analysis.html#lineup'
-                    });
-                }
-            }
-
-            const currentCaptain = squad.find(p => p.isCaptain);
-            if (captainRec && currentCaptain && captainRec.name !== currentCaptain.name) {
-                // The one alert that performs its own action: the link moves the
-                // armband rather than dropping the manager on a tab to do it by hand.
-                const recPlayer = squad.find(x => x.name === captainRec.name);
-                xiItems.push({
-                    name: currentCaptain.name,
-                    reason: `${captainRec.name} projects ${captainRec.xP} against ${captainRec.opponent} — the highest in your XI`,
-                    severity: 'monitor',
-                    href: recPlayer ? `fpl-my-team-analysis.html#squad?captain=${recPlayer.id}` : undefined
-                });
-            }
-
-            const txItems = [];
-
-            /* The recommended move leads the column, because it is the only row
-               here that proposes a fix rather than reporting a symptom. It carries
-               the gain, the hit if there is one, and a deep link that arrives at
-               the planner with the move already loaded. */
-            if (transferRec && transferRec.best && transferRec.best.n > 0) {
-                const b = transferRec.best;
-                const span = `GW${transferRec.gws[0]}\u2013GW${transferRec.gws[transferRec.gws.length - 1]}`;
-                const moves = b.moves || [];
-                const names = moves.map(m => `${m.out.name} \u2192 ${m.in.name}`).join(', ');
-                const cost = b.cost > 0 ? `, after a \u2212${b.cost} hit` : ' on a free transfer';
-                const href = 'fpl-my-team-analysis.html#transfers?'
-                    + moves.map(m => `out=${m.out.id}&in=${m.in.id}`).join('&');
-                txItems.push({
-                    name: names,
-                    reason: `+${b.net.toFixed(1)} xP across ${span}${cost}`,
-                    severity: 'move',
-                    href
-                });
-            } else if (transferRec && transferRec.best && transferRec.best.n === 0) {
-                txItems.push({
-                    name: 'Hold',
-                    reason: 'No move clears its margin over the next five gameweeks',
-                    severity: 'hold',
-                    href: 'fpl-my-team-analysis.html#transfers'
-                });
-            }
-
-            /* Price movement used to be interleaved here. It has its own panel
-               now — see scripts/market-panel.js — because a rise and a fall were
-               rendered as the same amber dot, which made the one piece of news
-               that is unambiguously good for a manager look identical to the one
-               that is bad. Direction is the whole point of a price move. */
-
-            /* A Sell verdict and the recommended move above it are answers to two
-               different questions — "is this player a problem" and "what single
-               change adds most points" — and they do not always land on the same
-               name. Left unexplained that reads as the page arguing with itself,
-               so each Sell row now says where it stands relative to the move. */
-            const recOutIds = new Set(((transferRec && transferRec.best && transferRec.best.moves) || []).map(m => m.out.id));
-            const recBlocked = transferRec && transferRec.best && transferRec.best.n === 0;
-            squad.forEach((p, i) => {
-                const a = analysisResults[i];
-                if (!a || a.verdict !== 'sell') return;
-                const concern = a.topConcern || 'Rated Sell';
-                const reason = recOutIds.has(p.id)
-                    ? `${concern} — the move above replaces him`
-                    : recBlocked
-                        ? `${concern}, but no replacement clears the margin yet — holding is still the better play`
-                        : `${concern} — not in the recommended move, which gains more elsewhere this week`;
-                txItems.push({ name: p.name, reason, severity: 'sell', href: `fpl-my-team-analysis.html#squad?player=${p.id}` });
-            });
+            const xiItems = rdRows(built.checks, 'xi');
+            const txItems = rdRows(built.checks, 'tx');
             const summaryCtx = { squad, analysisResults, freeTransfers, bank, deadlineTime };
 
             function renderCol(items, iconName, title, emptyText, linkBase, summaryKind) {
@@ -4925,7 +4823,8 @@
                 </div>`;
             }
 
-            const html = renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup', 'xi')
+            const html = rdSummaryHTML(built.summary, deadlineTime)
+                       + renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup', 'xi')
                        + renderCol(txItems, 'repeat', 'Transfers', 'No urgent transfer actions right now', 'fpl-my-team-analysis.html#transfers', 'tx');
             document.getElementById('v2AttentionGrid').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -5732,11 +5631,19 @@
                    fails soft. */
                 let transferRec = null;
                 let freeTransfers = 1;   // hoisted: the Transfers column reports it too
+                /* Also hoisted, for the readiness checks. A free transfer is only
+                   waste at the cap, and a chip only expires if it is unused — so
+                   both checks need the ceiling and the chip history, not just the
+                   count. Defaults are the season's opening position. */
+                let maxFreeTransfers = 5;
+                let chips = [];
                 try {
                     try {
                         const hRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`);
                         const hist = await hRes.json();
                         const maxFT = (bootData.game_settings?.max_extra_free_transfers ?? 4) + 1;
+                        maxFreeTransfers = maxFT;
+                        chips = hist.chips || [];
                         freeTransfers = twDeriveFreeTransfers(hist.current, hist.chips, maxFT);
                     } catch (e) { /* fall back to one, the season's opening position */ }
 
@@ -5784,7 +5691,7 @@
                 if (typeof mkRenderInto === 'function') mkRenderInto(mine);
 
                 renderAttentionGrid({ transferRec, squad, analysisResults, captainRec,
-                    freeTransfers, bank, deadlineTime, currentGW });
+                    freeTransfers, maxFreeTransfers, bank, chips, deadlineTime, currentGW });
                 renderPitchView({ squad, analysisResults });
                 renderPriceTicker(allPlayers, squad);
                 renderGameweekFeed({ squad, allPlayers });
