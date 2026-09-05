@@ -586,6 +586,10 @@
         /* Drawn, not typed: the arrow glyph rendered at a different weight and
            in a different colour on every platform, and could take neither the
            button's colour nor either theme. */
+        const DP_BENCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M12 3v18"/><path d="M8 7l4-4 4 4"/><path d="M8 17l4 4 4-4"/></svg>';
+
         const DP_SWAP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
             'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M16 3h5v5"/><path d="M21 3l-7 7"/>' +
@@ -1658,6 +1662,7 @@
             const transferBadge = player.isTransferIn ? '<span class="draft-transfer-badge">IN</span>' : '';
 
             row += `<td><div class="planner-player">
+                ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
                 <div>
                     ${captain}${statusIcon}<span class="planner-player-name" onclick="openDraftTransferPanel(${player.id})">${escHTML(player.name)}</span>${transferBadge}
                     <div><span class="planner-player-team">${escHTML(player.team)}</span> <span class="planner-player-price">£${player.price.toFixed(1)}m</span></div>
@@ -1691,23 +1696,23 @@
                 if (gwFixtures.length > 1) {
                     row += `<td class="planner-fdr${focus}"><div class="planner-fdr-cell-stack">`;
                     gwFixtures.forEach(fix => {
-                        row += `<div class="planner-fdr-cell fdr-${fix.difficulty || 3}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
+                        row += `<div class="planner-fdr-cell v2-fdr-${fix.difficulty || 3}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
                     });
                     row += `</div></td>`;
                 } else if (gwFixtures.length === 1) {
                     const fix = gwFixtures[0];
-                    row += `<td class="planner-fdr${focus}"><div class="planner-fdr-cell fdr-${fix.difficulty || 3}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div></td>`;
+                    row += `<td class="planner-fdr${focus}"><div class="planner-fdr-cell v2-fdr-${fix.difficulty || 3}"><span class="fdr-opp">${escHTML(fix.opponent || '?')}</span><span class="fdr-ha">${fix.isHome ? 'H' : 'A'}</span></div></td>`;
                 } else {
                     row += `<td class="planner-fdr${focus}"><div class="planner-fdr-cell" style="background:var(--surface-3);color:var(--text-muted);">-</div></td>`;
                 }
             });
 
             const isSwapSource = draftSwapSource === player.id;
-            row += `<td><button class="planner-swap-btn ${isSwapSource ? 'swap-active' : ''}" onclick="handleDraftPitchClick(${player.id})" data-tooltip="Swap ${escHTML(player.name)} between the XI and the bench">↕</button></td>`;
+            row += `<td><button class="planner-swap-btn ${isSwapSource ? 'swap-active' : ''}" onclick="handleDraftPitchClick(${player.id})" data-tooltip="Swap ${escHTML(player.name)} between the XI and the bench">${DP_BENCH_ICON}</button></td>`;
 
             // Bigger, labelled actions — these were 22px circles.
             row += `<td class="dp-actions"><div class="dp-act-row">`;
-            row += `<button class="dp-act" onclick="openDraftTransferPanel(${player.id})" data-tooltip="Transfer ${escHTML(player.name)} out">↔</button>`;
+            row += `<button class="dp-act" onclick="openDraftTransferPanel(${player.id})" data-tooltip="Transfer ${escHTML(player.name)} out">${DP_SWAP_ICON}</button>`;
             if (!player.onBench) {
                 row += `<button class="dp-act ${player.isCaptain ? 'is-cap' : ''}" onclick="setDraftCaptain(${player.id})" data-tooltip="Make ${escHTML(player.name)} captain — their points are doubled">C</button>`;
                 row += `<button class="dp-act ${player.isVice ? 'is-vice' : ''}" onclick="setDraftViceCaptain(${player.id})" data-tooltip="Make ${escHTML(player.name)} vice-captain — takes the armband if the captain does not play">V</button>`;

@@ -2191,10 +2191,20 @@
             const venueClass = isHome ? 'h2h-venue-home' : 'h2h-venue-away';
             const venueText = isHome ? 'HOME' : 'AWAY';
             html += `<div class="h2h-header">
-                <div class="h2h-header-teams">⚔️ ${escHTML(team.short_name || team.name)} vs ${escHTML(oppTeam?.short_name || nextFix.opponent)}</div>
+                <div class="h2h-header-teams">
+                    <span class="h2h-side">
+                        ${typeof v2CrestHTML === 'function' ? v2CrestHTML({ teamId: tid, team: team.short_name }) : ''}
+                        <b>${escHTML(team.short_name || team.name)}</b>
+                    </span>
+                    <span class="h2h-vs-mark">v</span>
+                    <span class="h2h-side h2h-side-away">
+                        <b>${escHTML(oppTeam?.short_name || nextFix.opponent)}</b>
+                        ${typeof v2CrestHTML === 'function' ? v2CrestHTML({ teamId: oppId, team: oppTeam?.short_name || nextFix.opponent }) : ''}
+                    </span>
+                </div>
                 <div class="h2h-header-meta">
                     <span class="h2h-venue ${venueClass}">${venueText}</span>
-                    <span class="planner-fdr-cell fdr-${nextFix.difficulty}" style="padding:2px 6px;font-size:0.6rem;"><abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> ${nextFix.difficulty}</span>
+                    <span class="planner-fdr-cell v2-fdr-${nextFix.difficulty}" style="padding:2px 6px;font-size:0.6rem;"><abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> ${nextFix.difficulty}</span>
                 </div>
             </div>`;
 
