@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=148">
-    <link rel="stylesheet" href="styles/v2-design.css?v=148">
+    <link rel="stylesheet" href="styles/common.css?v=149">
+    <link rel="stylesheet" href="styles/v2-design.css?v=149">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -955,36 +955,53 @@
             background: var(--surface-1); border: 1px solid var(--border-default);
             border-left: 3px solid var(--text-muted);
         }
-        /* The whole bar is the control. It used to be an inert div reporting
-           "7 of 9 clear" over a panel that showed neither the nine nor which
-           two failed — the columns below render rows, and rows are not checks. */
+        /* The bar's header: headline, meter, clock. The checks themselves are
+           in the lanes below it and are always on screen. */
         .rd-bar-head {
             display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-            padding: 14px 16px; cursor: pointer; list-style: none;
-            border-radius: 12px;
+            padding: 14px 16px; border-radius: 12px 12px 0 0;
         }
-        .rd-bar-head::-webkit-details-marker { display: none; }
-        .rd-bar[data-empty] .rd-bar-head { cursor: default; }
-        .rd-bar-head:hover .rd-expand { color: var(--text-secondary); border-color: var(--text-muted); }
-        .rd-expand {
-            padding: 3px 10px; border-radius: 999px; white-space: nowrap;
-            border: 1px solid var(--border-default); color: var(--text-muted);
-            font-size: 10.5px; font-weight: 700; letter-spacing: .03em;
-            transition: color .15s ease, border-color .15s ease;
+        .rd-bar[data-empty] .rd-bar-head { border-radius: 12px; }
+
+        /* Two lanes: what still needs you, and what has been checked off. They
+           are side by side rather than one list behind a toggle, so the count in
+           the bar above always has the things it counts underneath it. */
+        .rd-lanes {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+            border-top: 1px solid var(--border-subtle);
         }
-        .rd-expand::after { content: ' ▾'; }
-        .rd-bar[open] .rd-expand::after { content: ' ▴'; }
+        .rd-lanes:has(.rd-lane:only-child) { grid-template-columns: 1fr; }
+        .rd-lane { padding: 12px 16px 14px; min-width: 0; }
+        .rd-lane + .rd-lane { border-left: 1px solid var(--border-subtle); }
+        .rd-lane-head {
+            margin: 0 0 6px; display: flex; align-items: center; gap: 7px;
+            font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+        }
+        .rd-lane-head::before {
+            content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+        }
+        .rd-lane.needs .rd-lane-head { color: var(--color-warning); }
+        .rd-lane.needs.urgent .rd-lane-head { color: var(--color-error); }
+        .rd-lane.done .rd-lane-head { color: var(--color-success); }
+        .rd-lane-n {
+            font-family: var(--font-mono, monospace); font-size: 10.5px; font-weight: 800;
+            padding: 1px 7px; border-radius: 999px; color: inherit;
+            background: color-mix(in srgb, currentColor 14%, transparent);
+        }
+        .rd-lane.needs { background: color-mix(in srgb, var(--color-warning) 4%, transparent); }
+        .rd-lane.needs.urgent { background: color-mix(in srgb, var(--color-error) 4%, transparent); }
+        .rd-lane.done { background: color-mix(in srgb, var(--color-success) 3%, transparent); }
 
         .rd-list {
-            margin: 0; padding: 4px 16px 14px; list-style: none;
+            margin: 0; padding: 0; list-style: none;
             display: flex; flex-direction: column; gap: 1px;
         }
         .rd-check {
             display: grid; grid-template-columns: 18px 1fr; gap: 4px 8px;
-            align-items: baseline; padding: 7px 0;
-            border-top: 1px solid var(--border-subtle);
+            align-items: baseline; padding: 6px 0;
             font-size: 12.5px; color: var(--text-secondary);
         }
+        .rd-check + .rd-check { border-top: 1px solid var(--border-subtle); }
         .rd-mark { font-size: 11px; line-height: 1.4; text-align: center; }
         .rd-check.clear .rd-mark { color: var(--color-success); }
         .rd-check.warn .rd-mark { color: var(--color-warning); }
@@ -1032,6 +1049,11 @@
         .rd-clock.closed { color: var(--text-muted); }
 
         @media (prefers-reduced-motion: reduce) { .rd-meter-fill { transition: none; } }
+
+        @media (max-width: 640px) {
+            .rd-lanes { grid-template-columns: 1fr; }
+            .rd-lane + .rd-lane { border-left: none; border-top: 1px solid var(--border-subtle); }
+        }
 
         /* The alerts offer. Spans both columns and stays quiet — it is an offer,
            not a call to action, and it sits below the checks because that is the
@@ -1661,11 +1683,37 @@
             background: transparent;
             padding: 13px 18px;
         }
+        /* Price movement becomes the panel's last row, flat like the stats
+           above it and stacked rather than side by side — the aside is about a
+           third of the page, and two colour-washed columns inside it left the
+           names with nowhere to go but an ellipsis. */
+        .v2-info-panel .v2-market { margin-bottom: 0; border-top: 1px solid var(--border-subtle); }
+        .v2-info-panel .mk-panel {
+            border: none; border-radius: 0; background: transparent; padding: 13px 18px 15px;
+        }
+        .v2-info-panel .mk-head { margin-bottom: 8px; }
+        .v2-info-panel .mk-title { font-size: 13px; }
+        .v2-info-panel .mk-net { font-size: 15px; }
+        .v2-info-panel .mk-cols { grid-template-columns: 1fr; gap: 8px; }
+
         /* Quick Actions as a full-width row of cards */
         .v2-qa-cards {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 12px;
+        }
+        /* At the top of the page the row is a header strip, not a section: no
+           heading of its own, and shallow enough that it does not push the
+           pitch and the deadline below the fold on a laptop. */
+        .v2-qa-top { margin-bottom: 16px; }
+        .v2-qa-top .v2-qa-card { padding: 10px 13px; }
+        .v2-qa-top .v2-qa-icon { width: 30px; height: 30px; }
+        .v2-qa-top .v2-qa-icon .icon { width: 15px; height: 15px; }
+        .v2-qa-top .v2-qa-desc { font-size: 10.5px; }
+        @media (max-width: 767px) {
+            .v2-qa-top .v2-qa-cards { grid-template-columns: 1fr 1fr; }
+            .v2-qa-top .v2-qa-desc, .v2-qa-top .v2-qa-arrow { display: none; }
+            .v2-qa-top .v2-qa-card:last-child { grid-column: 1 / -1; }
         }
 
         @media (max-width: 900px) {
@@ -3889,34 +3937,12 @@
                     <!-- What happened while you were away (scripts/notifications.js) -->
                     <div class="nt-centre" id="ntCentre"></div>
                 </div>
-                <!-- Top row: Squad Snapshot (left) + unified info panel (right) -->
-                <div class="v2-top-row">
-                    <div class="v2-pitch-wrap" id="v2PitchWrap"></div>
-                    <aside class="v2-info-panel">
-                        <div class="v2-deadline-hero" id="v2DeadlineHero"></div>
-                        <div class="v2-status-stack" id="v2StatusStack"></div>
-                    </aside>
-                </div>
-
-                <!-- This gameweek's matches, live while they are being played -->
-                <section class="v2-matchday" id="v2Matchday" style="display:none;"></section>
-
-                <!-- Price movement in your own squad, direction first -->
-                <section class="v2-market" id="v2Market" style="display:none;"></section>
-
-                <!-- A few headlines from the same feeds the News page reads,
-                     with a way through to the rest of them. -->
-                <section class="v2-news" id="v2News" style="display:none;"></section>
-
-                <!-- Needs Your Attention: Starting XI | Transfers -->
-                <div class="v2-attention-grid" id="v2AttentionGrid"></div>
-
-                <!-- This week's read: the Scout's Desk debrief plus news, own players first -->
-                <div class="v2-feed" id="v2Feed" style="display:none;"></div>
-
-                <!-- Quick Actions (full-width row) -->
-                <div class="v2-quick-actions">
-                    <div class="v2-section-label">Quick Actions</div>
+                <!-- Quick Actions. At the top, directly under the greeting:
+                     they are the three things a manager comes here to do, and
+                     at the foot of the page they were below a pitch, a matchday
+                     list, the readiness checks and the news — reachable only by
+                     scrolling past everything they are shortcuts for. -->
+                <nav class="v2-quick-actions v2-qa-top" aria-label="Quick actions">
                     <div class="v2-qa-cards">
                         <a href="fpl-my-team-analysis.html#lineup" class="v2-qa-card">
                             <div class="v2-qa-icon"><i data-lucide="wand-2" class="icon"></i></div>
@@ -3934,7 +3960,35 @@
                             <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
                         </a>
                     </div>
+                </nav>
+                <!-- Top row: Squad Snapshot (left) + unified info panel (right) -->
+                <div class="v2-top-row">
+                    <div class="v2-pitch-wrap" id="v2PitchWrap"></div>
+                    <aside class="v2-info-panel">
+                        <div class="v2-deadline-hero" id="v2DeadlineHero"></div>
+                        <div class="v2-status-stack" id="v2StatusStack"></div>
+                        <!-- Price movement in your own squad, direction first.
+                             It reads as the last row of this panel rather than a
+                             band of its own further down: it is another fact
+                             about your squad before the deadline, the same kind
+                             as the rank and the bank above it. -->
+                        <section class="v2-market" id="v2Market" style="display:none;"></section>
+                    </aside>
                 </div>
+
+                <!-- This gameweek's matches, live while they are being played -->
+                <section class="v2-matchday" id="v2Matchday" style="display:none;"></section>
+
+                <!-- A few headlines from the same feeds the News page reads,
+                     with a way through to the rest of them. -->
+                <section class="v2-news" id="v2News" style="display:none;"></section>
+
+                <!-- Needs Your Attention: Starting XI | Transfers -->
+                <div class="v2-attention-grid" id="v2AttentionGrid"></div>
+
+                <!-- This week's read: the Scout's Desk debrief plus news, own players first -->
+                <div class="v2-feed" id="v2Feed" style="display:none;"></div>
+
                 <section class="headlines-widget hidden" id="headlinesWidget">
                     <div class="headlines-header">
                         <div class="headlines-title"><i data-lucide="newspaper" class="icon"></i> FPL News Hub</div>
@@ -4370,20 +4424,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=148"></script>
-    <script src="scripts/price-watch.js?v=148"></script>
-    <script src="scripts/xp-engine.js?v=148"></script>
-    <script src="scripts/odds-panel.js?v=148"></script>
-    <script src="scripts/live-gw.js?v=148"></script>
-    <script src="scripts/matchday.js?v=148"></script>
-    <script src="scripts/market-panel.js?v=148"></script>
-    <script src="scripts/eo-layer.js?v=148"></script>
-    <script src="scripts/readiness.js?v=148"></script>
-    <script src="scripts/push-alerts.js?v=148"></script>
-    <script src="scripts/notifications.js?v=148"></script>
-    <script src="scripts/transfer-engine.js?v=148"></script>
-    <script src="scripts/common.js?v=148"></script>
-    <script src="scripts/sidebar-nav.js?v=148"></script>
+    <script src="scripts/error-monitor.js?v=149"></script>
+    <script src="scripts/price-watch.js?v=149"></script>
+    <script src="scripts/xp-engine.js?v=149"></script>
+    <script src="scripts/odds-panel.js?v=149"></script>
+    <script src="scripts/live-gw.js?v=149"></script>
+    <script src="scripts/matchday.js?v=149"></script>
+    <script src="scripts/market-panel.js?v=149"></script>
+    <script src="scripts/eo-layer.js?v=149"></script>
+    <script src="scripts/readiness.js?v=149"></script>
+    <script src="scripts/push-alerts.js?v=149"></script>
+    <script src="scripts/notifications.js?v=149"></script>
+    <script src="scripts/transfer-engine.js?v=149"></script>
+    <script src="scripts/common.js?v=149"></script>
+    <script src="scripts/sidebar-nav.js?v=149"></script>
     <script>
         initIcons();
         loadFooter();

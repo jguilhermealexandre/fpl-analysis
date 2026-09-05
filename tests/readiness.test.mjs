@@ -256,12 +256,15 @@ test('the model runs without the minutes engine', () => {
     assert.ok(built.summary.total > 0);
 });
 
-test('the bar can be opened to show every check, passing ones included', () => {
+test('every check is on screen, split into what needs you and what is clear', () => {
     /* The defect this fixes: the bar reported "7 of 9 clear" over a panel that
        showed neither the nine nor which two failed. The columns render rows,
        and rows are not checks — one check can produce several, and the seven
        that pass produce none at all, so the count referred to something that
-       was nowhere on the page. */
+       was nowhere on the page.
+
+       The checks are no longer behind a toggle, and they are no longer one
+       interleaved list: the two the headline is about are in their own lane. */
     const rd = load();
     const squad = cleanSquad();
     squad[0].status = 'i';
@@ -269,8 +272,9 @@ test('the bar can be opened to show every check, passing ones included', () => {
     const built = rd.rdBuild(settled({ squad }));
     const html = rd.rdSummaryHTML(built.summary, null, Date.now(), built.checks);
 
-    assert.match(html, /<details/, 'the bar is a control, not an inert div');
-    assert.match(html, /rd-expand/, 'and says so');
+    assert.doesNotMatch(html, /<details/, 'nothing to open — the checks are simply there');
+    assert.match(html, /rd-lane needs urgent/, 'the outstanding ones have their own lane');
+    assert.match(html, /rd-lane done/, 'and so do the ones that passed');
 
     // Every declared check appears by name, whatever its state.
     for (const c of evalIn(rd, 'RD_CHECKS')) {
@@ -279,6 +283,10 @@ test('the bar can be opened to show every check, passing ones included', () => {
     const clear = (html.match(/rd-check clear/g) || []).length;
     assert.equal(clear, built.summary.clear, 'the passing checks are shown, not just counted');
     assert.match(html, /rd-check urgent/, 'and the failing one is marked apart');
+
+    // The lane counts are the summary's own numbers, not a second tally.
+    assert.match(html, new RegExp(`rd-lane-n">${built.summary.outstanding}<`));
+    assert.match(html, new RegExp(`rd-lane-n">${built.summary.clear}<`));
 });
 
 test('a failing check carries its own detail and link', () => {
@@ -302,6 +310,7 @@ test('a ready squad still lists what was checked', () => {
     assert.match(html, /Ready for the deadline/);
     assert.equal((html.match(/rd-check clear/g) || []).length, built.checks.length);
     assert.doesNotMatch(html, /rd-item/, 'with no detail rows, because nothing failed');
+    assert.doesNotMatch(html, /rd-lane needs/, 'and no empty lane for the problems there are none of');
 });
 
 test('the bar renders without checks for callers that pass none', () => {
@@ -310,6 +319,6 @@ test('the bar renders without checks for callers that pass none', () => {
     const built = rd.rdBuild(settled());
     const html = rd.rdSummaryHTML(built.summary, null);
     assert.match(html, /rd-bar/);
-    assert.match(html, /data-empty/, 'flagged as having nothing to expand');
-    assert.doesNotMatch(html, /rd-expand/, 'and offers no control that would open nothing');
+    assert.match(html, /data-empty/, 'flagged as carrying no lanes');
+    assert.doesNotMatch(html, /rd-lanes/, 'so the header keeps its own rounded corners');
 });

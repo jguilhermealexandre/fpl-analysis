@@ -332,13 +332,25 @@
             { label: 'Form vs Season Avg', x: 'form', y: 'ppg' },
         ];
 
+        /* The four position colours the rest of the app already uses — the same
+           values as --position-gk/def/mid/fwd in styles/common.css, which drive
+           the coloured edge on every player row and pitch card. They were a
+           second, lighter palette here, so the same forward was red on the pitch
+           and pink on the chart and neither told you it was the other.
+
+           Chart.js cannot read a CSS custom property, so the hex is repeated
+           rather than referenced; keep the two in step. */
         const SQ_POSITION_COLORS = {
-            1: { bg: 'rgba(251, 191, 36, 0.8)', border: '#fbbf24' },
-            2: { bg: 'rgba(52, 211, 153, 0.8)', border: '#34d399' },
-            3: { bg: 'rgba(96, 165, 250, 0.8)', border: '#60a5fa' },
-            4: { bg: 'rgba(248, 113, 113, 0.8)', border: '#f87171' },
+            1: { bg: 'rgba(217, 119, 6, 0.8)',  border: '#D97706' },
+            2: { bg: 'rgba(5, 150, 105, 0.8)',  border: '#059669' },
+            3: { bg: 'rgba(37, 99, 235, 0.8)',  border: '#2563EB' },
+            4: { bg: 'rgba(220, 38, 38, 0.8)',  border: '#DC2626' },
         };
-        const SQ_POSITION_STYLES = { 1: 'circle', 2: 'rect', 3: 'triangle', 4: 'rectRot' };
+        /* One shape for all four. Square, triangle and diamond were a second
+           encoding of the same fact the colour already carries, and at a 7px
+           radius the triangle and the diamond are not tellable apart anyway —
+           so the shapes read as meaning something they did not. */
+        const SQ_POINT_STYLE = 'circle';
 
         // Shared stat catalog for the X/Y metric pickers — any pair is "available for
         // free" since this only ever plots the ~15 squad players (cheap either way).
@@ -695,7 +707,7 @@
                 })),
                 backgroundColor: SQ_POSITION_COLORS[pos].bg,
                 borderColor: SQ_POSITION_COLORS[pos].border,
-                pointStyle: SQ_POSITION_STYLES[pos],
+                pointStyle: SQ_POINT_STYLE,
                 pointRadius: 7,
                 pointHoverRadius: 11,
             }));

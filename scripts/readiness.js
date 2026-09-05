@@ -326,20 +326,22 @@
                 }
             }
 
-            /* The count is only meaningful if the things being counted can be
-               seen. Without this the bar claims "7 of 9 clear" over a panel that
-               shows neither the nine nor which two failed — the columns below
-               render rows, and rows are not checks: one check can produce
-               several, and the seven that pass produce none at all.
+            /* The count is only useful if the things counted are on screen, so
+               they always are. This used to be a <details> toggle over a single
+               interleaved list: the bar claimed "7 of 9 clear" and you had to
+               open it and then read nine rows to find the two that were not.
+               Two lanes answer both halves without a click — what needs you on
+               the left, what was checked and passed on the right — and the
+               colour is the same green and amber the marks already used.
 
                Showing the passing ones is the more valuable half. "Ready" is
                only worth anything if you can see what was actually looked at,
                and a manager who can read "vice-captain can take the armband —
-               clear" has been told something the empty state never could. */
-            const list = checks && checks.length ? rdChecklistHTML(checks) : '';
+               clear" has been told something an empty state never could. */
+            const lanes = checks && checks.length ? rdLanesHTML(checks) : '';
 
-            return `<details class="rd-bar ${tone}"${list ? '' : ' data-empty="1"'}>
-                <summary class="rd-bar-head">
+            return `<div class="rd-bar ${tone}"${lanes ? '' : ' data-empty="1"'}>
+                <div class="rd-bar-head">
                     <div class="rd-bar-main">
                         <span class="rd-headline">${esc(headline)}</span>
                         <span class="rd-sub">${esc(sub)}</span>
@@ -348,10 +350,9 @@
                         <span class="rd-meter-fill" style="width:${pct}%"></span>
                     </div>
                     ${clock}
-                    ${list ? `<span class="rd-expand">${esc(`All ${s.total} checks`)}</span>` : ''}
-                </summary>
-                ${list}
-            </details>`;
+                </div>
+                ${lanes}
+            </div>`;
         }
 
         /* Every check, passing ones included, in the order they were run.
@@ -360,15 +361,15 @@
            name rather than in a column further down that has to be matched up
            by eye. A passing one is a single line: there is nothing to say about
            it beyond that it was looked at, which is the entire point. */
-        function rdChecklistHTML(checks) {
+        function rdLanesHTML(checks) {
             const esc = typeof escHTML === 'function' ? escHTML : (s => String(s == null ? '' : s));
-            const mark = { clear: '✓', warn: '●', urgent: '▲' };
+            const mark = { clear: '\u2713', warn: '\u25CF', urgent: '\u25B2' };
 
-            const rows = checks.map(c => {
+            const row = c => {
                 const detail = c.rows.map(r => {
                     const body = `<span class="rd-i-name">${esc(r.name)}</span><span class="rd-i-why">${esc(r.reason)}</span>`;
                     return r.href
-                        ? `<a class="rd-item" href="${esc(r.href)}">${body}<span class="rd-i-go">→</span></a>`
+                        ? `<a class="rd-item" href="${esc(r.href)}">${body}<span class="rd-i-go">\u2192</span></a>`
                         : `<span class="rd-item">${body}</span>`;
                 }).join('');
                 return `<li class="rd-check ${c.state}">
@@ -377,7 +378,20 @@
                     <span class="sr-only">${esc(c.state === 'clear' ? 'clear' : c.state === 'urgent' ? 'needs attention urgently' : 'worth watching')}</span>
                     ${detail ? `<span class="rd-items">${detail}</span>` : ''}
                 </li>`;
-            }).join('');
+            };
 
-            return `<ul class="rd-list">${rows}</ul>`;
+            const open = checks.filter(c => c.state !== 'clear');
+            const done = checks.filter(c => c.state === 'clear');
+
+            const lane = (cls, title, items) => items.length
+                ? `<section class="rd-lane ${cls}">
+                    <h4 class="rd-lane-head">${esc(title)}<span class="rd-lane-n">${items.length}</span></h4>
+                    <ul class="rd-list">${items.map(row).join('')}</ul>
+                </section>`
+                : '';
+
+            return `<div class="rd-lanes">
+                ${lane(open.some(c => c.state === 'urgent') ? 'needs urgent' : 'needs', 'Needs a look', open)}
+                ${lane('done', 'Clear', done)}
+            </div>`;
         }
