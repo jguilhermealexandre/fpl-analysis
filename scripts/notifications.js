@@ -244,12 +244,24 @@
             return `${days} day${days === 1 ? '' : 's'} ago`;
         }
 
+        /* Drawn rather than typed. The emoji rendered as a different bell on
+           every platform — full colour on one, flat outline on another — and
+           could not take the page's own text colour in either theme. */
+        const NT_BELL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M6.5 15V10a5.5 5.5 0 0 1 11 0v5"/>' +
+            '<path d="M4.5 15h15"/><path d="M10 18h4"/></svg>';
+
         function ntBellHTML(unread) {
             const n = unread || 0;
+            /* The dot says only whether there is anything, which is the whole
+               question the bell answers — the count that used to sit here is
+               one tap away in the panel, and stays in the label for anyone
+               reading this with a screen reader. */
             return `<button type="button" class="nt-bell${n ? ' has-new' : ''}" onclick="ntTogglePanel()"
                 aria-label="${n ? `${n} new since your last visit` : 'Nothing new'}" aria-expanded="false">
-                <span class="nt-bell-icon" aria-hidden="true">🔔</span>
-                ${n ? `<span class="nt-badge">${n > 9 ? '9+' : n}</span>` : ''}
+                <span class="nt-bell-icon">${NT_BELL_ICON}</span>
+                ${n ? '<span class="nt-dot" aria-hidden="true"></span>' : ''}
             </button>`;
         }
 
@@ -316,8 +328,8 @@
             const before = ntLoad();
             drop.innerHTML = ntPanelHTML(before.events, before.lastSeen);
             ntMarkSeen();
-            const badge = document.querySelector('.nt-badge');
-            if (badge) badge.remove();
+            const dot = document.querySelector('.nt-dot');
+            if (dot) dot.remove();
             if (bell) bell.classList.remove('has-new');
         }
 

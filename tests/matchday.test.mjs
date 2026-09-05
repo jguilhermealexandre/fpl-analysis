@@ -9,7 +9,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadScript, browserStubs } from './helpers/load.mjs';
 
-const md = loadScript('scripts/matchday.js', browserStubs({ escHTML: s => String(s ?? '') }));
+const md = loadScript('scripts/matchday.js', browserStubs({
+    escHTML: s => String(s ?? ''),
+    // Both come from common.js, which the browser always loads first.
+    v2Icon: name => `<svg data-icon="${name}"></svg>`
+}));
 const { mdGameweekState, mdCountdown, mdExpandLiveRow } = md;
 
 const HOUR = 3600000, DAY = 86400000;

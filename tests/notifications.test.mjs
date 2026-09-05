@@ -224,12 +224,20 @@ test('names in events are escaped', () => {
     assert.ok(html.includes('&lt;img'));
 });
 
-test('the bell only carries a badge when there is something behind it', () => {
+test('the bell only carries a dot when there is something behind it', () => {
     const nt = load();
-    assert.doesNotMatch(nt.ntBellHTML(0), /nt-badge/);
+    assert.doesNotMatch(nt.ntBellHTML(0), /nt-dot/);
     assert.match(nt.ntBellHTML(0), /Nothing new/);
-    assert.match(nt.ntBellHTML(3), /nt-badge">3</);
-    assert.match(nt.ntBellHTML(14), /9\+/, 'a two-digit badge would not fit and does not need to');
+    assert.match(nt.ntBellHTML(3), /nt-dot/);
+    assert.match(nt.ntBellHTML(14), /nt-dot/);
+});
+
+/* The dot is binary, so the number it replaced has to survive somewhere: the
+   panel lists the events, and the label is what a screen reader reads out. */
+test('the count the dot no longer shows is still in the bell label', () => {
+    const nt = load();
+    assert.match(nt.ntBellHTML(3), /3 new since your last visit/);
+    assert.match(nt.ntBellHTML(14), /14 new since your last visit/);
 });
 
 test('a finished player is not described as still having time', () => {

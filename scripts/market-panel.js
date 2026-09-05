@@ -120,7 +120,7 @@
             const m = movers;
             if (!m || !m.total) {
                 return `<div class="mk-panel">
-                    <div class="mk-head"><span class="mk-title">Your market</span>
+                    <div class="mk-head"><span class="mk-title">${v2Icon('trend')}Your market</span>
                         <span class="mk-sub">Nothing in your squad is near a price change.</span></div>
                 </div>`;
             }
@@ -133,7 +133,7 @@
 
             return `<div class="mk-panel">
                 <div class="mk-head">
-                    <span class="mk-title">Your market</span>
+                    <span class="mk-title">${v2Icon('trend')}Your market</span>
                     ${m.due
                         ? `<span class="mk-net ${netCls}" data-tooltip="${escHTML(
                             `${m.due} of your players ${m.due === 1 ? 'has' : 'have'} a full meter, so ${m.due === 1 ? 'it changes' : 'they change'} at the next daily update. That is a net ${netTxt} to your squad value. Players merely closing in are not counted here — most of them do not move tonight.`)}">

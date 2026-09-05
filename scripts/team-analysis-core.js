@@ -1203,7 +1203,7 @@
 
             if (pending) {
                 return `<div class="eo-panel">
-                    <div class="eo-head"><span class="eo-title">Against your league</span></div>
+                    <div class="eo-head"><span class="eo-title">${v2Icon('users')}Against your league</span></div>
                     ${picker}
                     <p class="eo-note">Working out what your league owns — one look at each manager's team. This is kept until the next deadline, so it only happens once.</p>
                 </div>`;
@@ -1211,7 +1211,7 @@
 
             return `<div class="eo-panel">
                 <div class="eo-head">
-                    <span class="eo-title">Against the ${escHTML(load.label.toLowerCase())}</span>
+                    <span class="eo-title">${v2Icon('users')}Against the ${escHTML(load.label.toLowerCase())}</span>
                     <span class="eo-load" data-tooltip="The average share of this tier carried by each of your starters, counting your captain twice. Higher means your team looks more like theirs.">
                         ${load.perStarter}%<em>per starter</em>
                     </span>

@@ -142,6 +142,44 @@ function computeIsPreseason(bootData, fixturesData) {
     return bootData.events.every(e => !e.finished);
 }
 
+// ===== SECTION ICONS =====
+/* One little outline icon in front of each panel heading, drawn from one
+   place so the set stays a set.
+ *
+ * Inline SVG rather than lucide's <i data-lucide>, because these headings sit
+ * inside panels that re-render on a ticker — a placeholder would need
+ * createIcons() run again after every pass, and the one that got missed would
+ * be an empty <i> rather than a wrong icon, which is harder to notice.
+ *
+ * The house style, matched to lucide so these sit beside the static
+ * data-lucide icons elsewhere on the page without looking imported: 24x24
+ * box, no fill, 1.8 stroke, round caps and joins, and currentColor so the
+ * heading's own colour reaches the icon in both themes.
+ */
+const V2_ICON_PATHS = {
+    // Matchday — a ball.
+    ball: '<circle cx="12" cy="12" r="10"/><path d="m12 7 4.2 3.1-1.6 5H9.4l-1.6-5z"/>'
+        + '<path d="M12 2v5"/><path d="m2.6 9.4 5.2.6"/><path d="m21.4 9.4-5.2.6"/>'
+        + '<path d="m6.8 20.4 2.6-5.3"/><path d="m17.2 20.4-2.6-5.3"/>',
+    // Prices — a line going up.
+    trend: '<path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/>',
+    // Rivals — people.
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
+        + '<path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    // The squad — a shirt.
+    shirt: '<path d="M20.4 3.5 16 2a4 4 0 0 1-8 0L3.6 3.5a2 2 0 0 0-1.3 2.2l.6 3.5a1 1 0 0 0 1 .8H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.1a1 1 0 0 0 1-.8l.6-3.5a2 2 0 0 0-1.3-2.2z"/>',
+    // What happened while you were away.
+    activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'
+};
+
+function v2Icon(name) {
+    const paths = V2_ICON_PATHS[name];
+    if (!paths) return '';
+    return '<svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+        + ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + paths + '</svg>';
+}
+
 // ===== API PROXY =====
 const WORKER_URL = 'https://fpl-proxy.jguilhermealexandre.workers.dev';
 const DEMO_TEAM_ID = '0'; // reserved sentinel — real FPL entry IDs start at 1
@@ -510,7 +548,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=109')
+    fetch('footer.html?v=110')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

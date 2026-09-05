@@ -12,7 +12,15 @@ import vm from 'node:vm';
 // price-watch owns the classification; market-panel reads it. Both are classic
 // scripts, so they share one context the way the browser gives them one.
 function load() {
-    const ctx = { console, escHTML: s => String(s == null ? '' : s), document: { getElementById: () => null } };
+    // escHTML and v2Icon both live in common.js, which the browser loads before
+    // this pair on every page that uses them. The sandbox has no common.js, so
+    // they are stubbed here for the same reason and in the same way.
+    const ctx = {
+        console,
+        escHTML: s => String(s == null ? '' : s),
+        v2Icon: name => `<svg data-icon="${name}"></svg>`,
+        document: { getElementById: () => null }
+    };
     ctx.window = ctx; ctx.globalThis = ctx;
     vm.createContext(ctx);
     for (const f of ['scripts/price-watch.js', 'scripts/market-panel.js']) {

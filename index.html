@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=109">
-    <link rel="stylesheet" href="styles/v2-design.css?v=109">
+    <link rel="stylesheet" href="styles/common.css?v=110">
+    <link rel="stylesheet" href="styles/v2-design.css?v=110">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -981,17 +981,22 @@
         .nt-bell {
             position: relative; width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
             display: inline-flex; align-items: center; justify-content: center;
-            border: 1px solid var(--border-default); background: var(--surface-1);
-            font-size: 15px; line-height: 1;
-            transition: border-color .15s ease, background .15s ease;
+            border: 1px solid transparent; background: transparent;
+            color: var(--text-secondary); line-height: 1; padding: 0;
+            transition: color .15s ease, background .15s ease;
         }
-        .nt-bell:hover { border-color: var(--color-primary); }
-        .nt-bell.has-new { border-color: var(--color-primary); }
-        .nt-badge {
-            position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px; padding: 0 4px;
-            border-radius: 999px; background: var(--color-error); color: #fff;
-            font-family: var(--font-mono); font-size: 10px; font-weight: 800;
-            display: flex; align-items: center; justify-content: center;
+        .nt-bell:hover { background: var(--surface-2); color: var(--text-primary); }
+        .nt-bell-icon { display: inline-flex; }
+        .nt-bell-icon svg { width: 20px; height: 20px; }
+        /* The state is the dot and nothing else. The bell used to also take a
+           green ring when there was something new, which said "good" about a
+           channel that carries injuries and price falls just as often. */
+        .nt-dot {
+            position: absolute; top: 5px; right: 5px; width: 9px; height: 9px;
+            border-radius: 50%; background: var(--color-error);
+            /* Ringed in the surface behind it so the dot stays a separate
+               shape where it overlaps the bell's outline. */
+            box-shadow: 0 0 0 2px var(--surface-1);
         }
 
         .nt-drop {
@@ -4109,20 +4114,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=109"></script>
-    <script src="scripts/price-watch.js?v=109"></script>
-    <script src="scripts/xp-engine.js?v=109"></script>
-    <script src="scripts/odds-panel.js?v=109"></script>
-    <script src="scripts/live-gw.js?v=109"></script>
-    <script src="scripts/matchday.js?v=109"></script>
-    <script src="scripts/market-panel.js?v=109"></script>
-    <script src="scripts/eo-layer.js?v=109"></script>
-    <script src="scripts/readiness.js?v=109"></script>
-    <script src="scripts/push-alerts.js?v=109"></script>
-    <script src="scripts/notifications.js?v=109"></script>
-    <script src="scripts/transfer-engine.js?v=109"></script>
-    <script src="scripts/common.js?v=109"></script>
-    <script src="scripts/sidebar-nav.js?v=109"></script>
+    <script src="scripts/error-monitor.js?v=110"></script>
+    <script src="scripts/price-watch.js?v=110"></script>
+    <script src="scripts/xp-engine.js?v=110"></script>
+    <script src="scripts/odds-panel.js?v=110"></script>
+    <script src="scripts/live-gw.js?v=110"></script>
+    <script src="scripts/matchday.js?v=110"></script>
+    <script src="scripts/market-panel.js?v=110"></script>
+    <script src="scripts/eo-layer.js?v=110"></script>
+    <script src="scripts/readiness.js?v=110"></script>
+    <script src="scripts/push-alerts.js?v=110"></script>
+    <script src="scripts/notifications.js?v=110"></script>
+    <script src="scripts/transfer-engine.js?v=110"></script>
+    <script src="scripts/common.js?v=110"></script>
+    <script src="scripts/sidebar-nav.js?v=110"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5145,7 +5150,7 @@
                below carries the navigation instead. */
             wrap.innerHTML = `
                 <div class="v2-pitch-header">
-                    <span class="v2-pitch-title">Squad Snapshot</span>
+                    <span class="v2-pitch-title"><i data-lucide="shirt" class="v2-sec-icon"></i>Squad Snapshot</span>
                     <span class="v2-pitch-head-right">
                         ${xiXpLabel ? `<span class="v2-pitch-xitotal" title="Sum of your starting XI's projected points">${xiXpLabel}</span>` : ''}
                         <span class="v2-pitch-formation">${formationStr}</span>

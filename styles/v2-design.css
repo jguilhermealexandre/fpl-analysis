@@ -1295,3 +1295,29 @@ html.v2-theme body {
         padding-left: 0;
     }
 }
+
+/* ----- Section icons -----
+   One small outline mark in front of each panel heading. The set is drawn in
+   v2Icon() in common.js; this is only how it sits and how big it is.
+
+   stroke-width is set here rather than left to each source, because these
+   arrive two ways — inline from v2Icon() on panels that re-render, and from
+   lucide on the static ones — and lucide's own default is 2. Normalising it
+   in CSS is what keeps a heading rendered by JS and one written in HTML from
+   drifting a quarter-pixel apart. */
+.v2-main-content :is(.md-title, .mk-title, .eo-title, .v2-pitch-title, .v2-feed-title) {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.v2-sec-icon,
+.v2-main-content :is(.md-title, .mk-title, .eo-title, .v2-pitch-title, .v2-feed-title) > svg {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+    stroke-width: 1.8;
+    /* The accent carries "this is a section", the same job the emoji does in
+       the reference. It is the one place green appears without meaning good. */
+    color: var(--color-primary);
+}
