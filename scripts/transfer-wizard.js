@@ -1040,6 +1040,16 @@
                 rows += `</div>`;
             });
 
+            /* How the squad this plan would leave you with sits against the
+               tier you are competing against. Here rather than on Squad
+               Analysis because the only thing you can do about being too
+               template is a transfer, and it reads the pending squad — so the
+               numbers move as you stage moves rather than describing a team you
+               have already stopped looking at. */
+            const eoStrip = typeof renderSquadEO === 'function'
+                ? renderSquadEO(typeof twBuildPendingSquad === 'function' ? twBuildPendingSquad() : null)
+                : '';
+
             el.innerHTML = `<div class="twc-panel">
                 <div class="twc-panel-head">
                     <span class="twc-panel-title">👥 Your squad</span>
@@ -1048,6 +1058,7 @@
                         : `<span class="twc-panel-hint">Hit 🔄 Swap on anyone to replace them</span>`}
                 </div>
                 <div class="twc-panel-body">${rows}</div>
+                ${eoStrip}
             </div>`;
         }
 

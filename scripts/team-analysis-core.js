@@ -1091,10 +1091,12 @@
         // ===== RENDERING =====
         /* Where this squad sits against the field it is competing with.
 
-           Ownership is a squad-level property, which is why it belongs here
-           rather than beside any one transfer: the question is not whether a
-           player is popular but whether the eleven you field look like everyone
-           else's eleven. A squad that mirrors the top 10k moves with them and
+           Rendered by the Transfer Wizard rather than by Squad Analysis. It is a
+           squad-level fact, so Squad Analysis looks like the right home — but
+           the only thing you can do about being too template is make a transfer,
+           and every row here is either a player to buy or one to keep. Sitting
+           next to the planner it also updates as moves are staged, which is the
+           difference between a diagnosis and a control. A squad that mirrors the top 10k moves with them and
            can only win slowly; one that does not swings both ways.
 
            The gaps are the actionable half. A player the top 10k own and you do
@@ -1105,12 +1107,17 @@
 
            Renders nothing at all when the weekly sample is missing. A partial
            answer here would be read as a complete one. */
-        function renderSquadEO() {
+        function renderSquadEO(squad) {
             if (typeof eoReady !== 'function' || !eoReady()) return '';
-            const load = eoSquadLoad(selectedPlayers);
+            /* Defaults to the squad you own, but the Transfer Wizard passes the
+               one its pending moves would leave you with — which is the whole
+               reason this belongs there rather than on a page where it can only
+               ever describe a squad you cannot change from that screen. */
+            const sq = squad && squad.length ? squad : selectedPlayers;
+            const load = eoSquadLoad(sq);
             if (!load) return '';
 
-            const owned = new Set(selectedPlayers.map(p => p.id));
+            const owned = new Set(sq.map(p => p.id));
             const byId = {};
             (allPlayers || []).forEach(p => { byId[p.id] = p; });
 
@@ -1121,7 +1128,7 @@
                 .sort((a, b) => b.v.eo - a.v.eo)
                 .slice(0, 4);
 
-            const mine = selectedPlayers
+            const mine = sq
                 .filter(p => p.pickPosition == null || p.pickPosition <= 11)
                 .map(p => ({ p, v: eoFor(p.id) }))
                 .filter(x => x.v)
@@ -1219,7 +1226,6 @@
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
             html += renderSquadTickers();
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
-            html += renderSquadEO();
             html += renderSquadFilterBar();
             html += renderSquadChartWidget();
             html += `<div id="sq-table-wrap">${renderSquadTable()}</div>`;
