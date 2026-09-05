@@ -804,11 +804,84 @@
 }
 .my-team-analysis-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 20px; }
 /* Squad overview: health left, pitch centre, manager stats right. */
-.team-overview { display: grid; grid-template-columns: minmax(220px, 0.9fr) minmax(0, 2fr) minmax(200px, 0.9fr); gap: 16px; align-items: start; margin-bottom: 20px; animation: fadeInUp 0.5s ease; }
+/* Two columns, not three. The health column that used to sit on the left has
+   moved into the strip above and the status card on the right, which lets the
+   pitch run at the width it has on the dashboard instead of being squeezed
+   into a middle third. */
+.team-overview { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(280px, 1fr); gap: 16px; align-items: start; margin-bottom: 20px; animation: fadeInUp 0.5s ease; }
+.sq-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* ----- The four figures, across the top -----
+   When the deadline is, how the squad rates, where you rank, what you can
+   spend. They were spread between a ring in one column and rows two panels
+   away in another, so "how am I doing" meant reading three places. */
+.sq-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.sq-kpi {
+    padding: 14px 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: var(--v2-card-shadow, none);
+    min-width: 0;
+}
+.sq-kpi-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.4px;
+    text-transform: uppercase; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sq-kpi-value {
+    margin-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 26px; font-weight: 800; letter-spacing: -1px; line-height: 1.1;
+    color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sq-kpi-sub { margin-top: 4px; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sq-kpi.urgent .sq-kpi-value { color: var(--verdict-sell); }
+.sq-kpi.passed .sq-kpi-value { color: var(--text-muted); }
+
+@media (max-width: 1100px) {
+    .sq-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+    .sq-kpis { grid-template-columns: 1fr; }
+}
+
+/* ----- Squad status, beside the pitch ----- */
+.sq-status-card {
+    padding: 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: var(--v2-card-shadow, none);
+}
+.sq-status-head {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 650; letter-spacing: -0.2px;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+.sq-status-head svg { width: 16px; height: 16px; color: var(--color-primary); }
+.sq-status-card .health-breakdown { text-align: left; margin: 0; }
+.sq-status-card .health-verdict-counts { justify-content: flex-start; }
+/* Review is the one button in this box now, so it leads rather than defers. */
+.sq-status-card .gwr-open {
+    background: var(--color-primary-muted);
+    border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+    color: var(--color-primary-text);
+    font-size: 13px;
+    padding: 10px 12px;
+}
+.sq-status-card .gwr-open:hover { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
 .team-overview > .sq-snapshot { min-width: 0; }
-@media (max-width: 1100px) and (min-width: 901px) {
-    .team-overview { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-    .team-overview > .sq-snapshot { grid-column: 1 / -1; order: -1; }
+@media (max-width: 900px) {
+    .team-overview { grid-template-columns: 1fr; }
 }
 .health-ring-container { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
 .health-panel-title { align-self: stretch; margin: -16px -16px 8px; padding: 18px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 17px; font-weight: 600; text-align: left; }

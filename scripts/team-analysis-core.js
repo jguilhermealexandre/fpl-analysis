@@ -1632,8 +1632,83 @@
             return (pulse || market) ? `<div class="sq-tickers">${pulse}${market}</div>` : '';
         }
 
+        /* The four figures a manager checks first, as a strip across the top:
+           when the deadline is, how the squad is rated, where they rank, and
+           what they have to spend. They were spread between a ring in the left
+           column and rows two panels away in the right one, so answering "how
+           am I doing" meant reading three places.
+
+           Putting them here also frees the left column entirely, which is what
+           lets the pitch run at the width it has on the dashboard rather than
+           being squeezed into a middle third. */
+        function renderSquadKpiStrip(health, healthText, healthColor) {
+            const d = buildManagerPanelData();
+            const box = (label, value, sub, subClass) => `<div class="sq-kpi">
+                <div class="sq-kpi-label">${label}</div>
+                <div class="sq-kpi-value">${value}</div>
+                ${sub ? `<div class="sq-kpi-sub ${subClass || ''}">${sub}</div>` : ''}
+            </div>`;
+
+            /* Same id and inner class the countdown ticker already writes into,
+               so it needs no changes — and the manager card below drops its own
+               copy, because two elements cannot share the id it looks up. */
+            const deadline = d && d.deadline
+                ? `<div class="sq-kpi" id="mgrDeadline" data-deadline="${escHTML(d.deadline)}" data-gw="${d.deadlineGW}">
+                       <div class="sq-kpi-label">GW${d.deadlineGW} deadline</div>
+                       <div class="sq-kpi-value mgr-deadline-value">—</div>
+                       <div class="sq-kpi-sub">until the squad locks</div>
+                   </div>`
+                : box('Deadline', '—', 'no upcoming gameweek');
+
+            const rank = d
+                ? box('Overall rank', fmtRank(d.overallRank), renderRankDelta(d.rankDelta) || 'no change yet')
+                : box('Overall rank', '—', '');
+
+            const money = d
+                ? box('Squad · Bank', `£${d.squadValue.toFixed(1)}m`, `£${d.bank.toFixed(1)}m in the bank`)
+                : box('Squad · Bank', '—', '');
+
+            const healthBox = `<div class="sq-kpi">
+                <div class="sq-kpi-label">Squad health</div>
+                <div class="sq-kpi-value" style="color:${healthColor};">${health}</div>
+                <div class="sq-kpi-sub">${escHTML(healthText)}</div>
+            </div>`;
+
+            return `<div class="sq-kpis">${deadline}${healthBox}${rank}${money}</div>`;
+        }
+
+        /* What the squad needs from you, in one box beside the pitch: the
+           counts that read the health score, then the moves, then the way into
+           the gameweek that has just been played. */
+        function renderSquadStatusCard(sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
+            const reviewGW = typeof gwReviewTarget === 'function' ? gwReviewTarget() : null;
+            return `<div class="sq-status-card">
+                <div class="sq-status-head">${typeof v2Icon === 'function' ? v2Icon('activity') : ''}Squad status</div>
+
+                <div class="health-breakdown">${healthBreakdown && healthBreakdown.length
+                    ? healthBreakdown.map(b => `${b.count} ${escHTML(b.label)}`).join(' · ')
+                    : 'No injuries or fixture red flags'}</div>
+
+                <div class="health-verdict-counts">
+                    ${sells.length ? `<span class="hv-count sell">● ${sells.length} Sell</span>` : ''}
+                    ${monitors.length ? `<span class="hv-count monitor">● ${monitors.length} Monitor</span>` : ''}
+                    ${stars.length ? `<span class="hv-count star">★ ${stars.length} Star</span>` : ''}
+                    <span class="hv-count hold">● ${holds.length} Hold</span>
+                </div>
+
+                <div class="health-actions">
+                    <div class="insight-moves">
+                        <div class="insight-moves-head">Do this week</div>
+                        ${renderSuggestedMoves(suggestedMoves || [])}
+                    </div>
+                    ${reviewGW
+                        ? `<button class="gwr-open" onclick="openGameweekReview()" data-tooltip="How your squad actually did in GW${reviewGW} — the armband, the bench, who delivered, and how it compares with the field.">📊 Review Gameweek ${reviewGW}</button>`
+                        : ''}
+                </div>
+            </div>`;
+        }
+
         function renderTeamOverview(health, sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
-            const circumference = 2 * Math.PI * 54;
             /* One set of bands, not two. The colour used to break at 75/50 while the
                wording broke at 85/70/55/40, so a squad on 72 was labelled "Good
                Shape" and drawn in warning orange at the same time, and one on 52
@@ -1643,57 +1718,13 @@
             const healthColor = health >= 70 ? 'var(--verdict-hold)' : health >= 55 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
 
             return `
+            ${renderSquadKpiStrip(health, healthText, healthColor)}
             <div class="team-overview">
-                <div class="health-ring-container">
-                    <div class="health-ring">
-                        <svg viewBox="0 0 120 120">
-                            <circle class="health-ring-track" cx="60" cy="60" r="54"/>
-                            <circle class="health-ring-fill" id="healthRingFill" cx="60" cy="60" r="54"
-                                stroke="${healthColor}" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"
-                                style="transform:rotate(-90deg);transform-origin:center;"/>
-                            <text x="60" y="57" text-anchor="middle" fill="${healthColor}" font-size="34" font-weight="800" font-family="var(--font-mono)" letter-spacing="-1">${health}</text>
-                            <text x="60" y="74" text-anchor="middle" fill="var(--text-muted)" font-size="9" font-weight="700" letter-spacing="1.2">HEALTH</text>
-                        </svg>
-                    </div>
-                    <div class="health-sublabel">${healthText}</div>
-                    ${healthBreakdown && healthBreakdown.length
-                        ? `<div class="health-breakdown">${healthBreakdown.map(b => `${b.count} ${escHTML(b.label)}`).join(' · ')}</div>`
-                        : `<div class="health-breakdown">No injuries or fixture red flags</div>`}
-
-                    <!-- The verdict counts describe the score above them, so they
-                         sit with it. They used to be last in the column, under the
-                         actions, which put two unrelated ideas either side of the
-                         thing they each belong to. -->
-                    <div class="health-verdict-counts">
-                        ${sells.length ? `<span class="hv-count sell">● ${sells.length} Sell</span>` : ''}
-                        ${monitors.length ? `<span class="hv-count monitor">● ${monitors.length} Monitor</span>` : ''}
-                        ${stars.length ? `<span class="hv-count star">★ ${stars.length} Star</span>` : ''}
-                        <span class="hv-count hold">● ${holds.length} Hold</span>
-                    </div>
-
-                    <!-- Everything above is the squad's state; everything below is
-                         something to do about it. The panel was one flat column of
-                         seven items with no grouping, which is why nothing in it
-                         looked more important than anything else. -->
-                    <div class="health-actions">
-                        <div class="insight-moves">
-                            <div class="insight-moves-head">Do this week</div>
-                            ${renderSuggestedMoves(suggestedMoves || [])}
-                        </div>
-                        ${(() => {
-                            // Once the current round has started there is a second
-                            // question worth answering — what just happened — and it
-                            // gets its own report rather than crowding this column.
-                            // Secondary to the moves above it, and styled that way.
-                            const reviewGW = typeof gwReviewTarget === 'function' ? gwReviewTarget() : null;
-                            return reviewGW
-                                ? `<button class="gwr-open" onclick="openGameweekReview()" data-tooltip="How your squad actually did in GW${reviewGW} — the armband, the bench, who delivered, and how it compares with the field.">📊 Review Gameweek ${reviewGW}</button>`
-                                : '';
-                        })()}
-                    </div>
-                </div>
                 ${renderSnapshotBody()}
-                ${renderManagerCard()}
+                <aside class="sq-side">
+                    ${renderSquadStatusCard(sells, monitors, holds, stars, healthBreakdown, suggestedMoves)}
+                    ${renderManagerCard()}
+                </aside>
             </div>`;
         }
 
@@ -1875,11 +1906,6 @@
                     <span>${escHTML(d.name)}</span>
                     <span class="mgr-gw">GW${d.gw}${d.gwLive ? ' · <span class="mgr-livedot">LIVE</span>' : ''}</span>
                 </div>
-
-                ${d.deadline ? `<div class="mgr-deadline" id="mgrDeadline" data-deadline="${escHTML(d.deadline)}" data-gw="${d.deadlineGW}">
-                    <span class="mgr-deadline-label">⏳ GW${d.deadlineGW} deadline</span>
-                    <span class="mgr-deadline-value">—</span>
-                </div>` : ''}
 
                 <div class="mgr-row">
                     <span class="mgr-label">Overall rank</span>
