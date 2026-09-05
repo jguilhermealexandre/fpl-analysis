@@ -210,20 +210,38 @@
         function tlRenderPicker() {
             if (typeof allPlayers === 'undefined' || !allPlayers.length) return '';
             if (tlTrial) return '';
-            const esc = typeof escHTML === 'function' ? escHTML : (s => String(s == null ? '' : s));
-            const owned = new Set((selectedPlayers || []).map(p => p.id));
-            const options = allPlayers
-                .filter(p => !owned.has(p.id) && p.status === 'a')
-                .sort((a, b) => (b.ownership || 0) - (a.ownership || 0))
-                .slice(0, 260)
-                .map(p => `<option value="${esc(p.name)} — ${esc(p.team)} £${p.price.toFixed(1)}m" data-id="${p.id}"></option>`)
-                .join('');
+            /* The datalist ships empty. A browser shows every option it holds
+               the moment the field is focused, so pre-loading 260 players meant
+               clicking the box dropped the entire league over the page before a
+               key was pressed. Options are built from what has been typed
+               instead, which is also 260 fewer nodes on every render. */
             return `<div class="tl-picker">
                 <label class="tl-picker-l" for="tlPick">Try a player</label>
                 <input id="tlPick" class="tl-picker-in" list="tlPlayers" placeholder="Search a player you do not own…"
-                    onchange="tlPickFromInput(this)" autocomplete="off">
-                <datalist id="tlPlayers">${options}</datalist>
+                    oninput="tlSuggest(this)" onchange="tlPickFromInput(this)" autocomplete="off">
+                <datalist id="tlPlayers"></datalist>
             </div>`;
+        }
+
+        /* Fills the datalist with what the typed text actually matches.
+           Two characters is the threshold: one letter matches a couple of
+           hundred players, which is the behaviour being fixed. */
+        function tlSuggest(el) {
+            const list = document.getElementById('tlPlayers');
+            if (!list) return;
+            const q = String((el && el.value) || '').trim().toLowerCase();
+            if (q.length < 2) { list.innerHTML = ''; return; }
+
+            const esc = typeof escHTML === 'function' ? escHTML : (s => String(s == null ? '' : s));
+            const owned = new Set((selectedPlayers || []).map(p => p.id));
+            const pool = typeof allPlayers !== 'undefined' ? allPlayers : [];
+            list.innerHTML = pool
+                .filter(p => !owned.has(p.id) && p.status === 'a'
+                    && ((p.name || '').toLowerCase().includes(q) || (p.team || '').toLowerCase().includes(q)))
+                .sort((a, b) => (b.ownership || 0) - (a.ownership || 0))
+                .slice(0, 10)
+                .map(p => `<option value="${esc(p.name)} — ${esc(p.team)} £${p.price.toFixed(1)}m" data-id="${p.id}"></option>`)
+                .join('');
         }
 
         // Resolves what was typed back to a player. Matches the rendered label

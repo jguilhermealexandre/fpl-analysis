@@ -319,11 +319,7 @@
                 <div class="pcard-ids">
                     <span class="pcard-avatar">
                         <b class="pcard-initials" aria-hidden="true">${escHTML(pcardInitials(p.name))}</b>
-                        ${p.code != null
-                            ? `<img class="pcard-face" alt="" loading="lazy" onerror="this.remove()"
-                                 onload="this.parentNode.classList.add('has-photo')"
-                                 src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png">`
-                            : ''}
+                        ${typeof playerPhotoHTML === 'function' ? playerPhotoHTML(p.code, 'pcard-face') : ''}
                     </span>
                     <div class="pcard-crest">
                         ${badge ? `<img src="${badge}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}

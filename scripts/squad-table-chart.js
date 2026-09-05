@@ -235,16 +235,12 @@
                 pills.push(`<span class="team-form-badge ${cls}" data-tooltip="${escHTML(teamName)} — ${record} in ${span}. ${scoring}${trend}">${icon} ${label}</span>`);
             }
 
-            // ---- fixture swing ----
-            const swing = fixtureSwingData[player.teamId];
-            if (swing) {
-                // swing.direction compares the next three fixtures against the
-                // three after them, so it flags the turn before it arrives.
-                const easier = swing.direction === 'improving';
-                const size = Math.abs(parseFloat(swing.futureFdr) - parseFloat(swing.currentFdr));
-                const scale = size >= 1.2 ? 'a big shift' : size >= 0.7 ? 'a clear shift' : 'a slight shift';
-                pills.push(`<span class="swing-badge ${swing.direction}" data-tooltip="${escHTML(teamName)}'s fixtures ${easier ? 'ease off' : 'get harder'} from GW${swing.swingGW}: average difficulty ${easier ? 'falls' : 'rises'} from ${swing.currentFdr} across the next three to ${swing.futureFdr} in the three after — ${scale}.${easier ? ' Worth buying into before it turns.' : ' Worth planning an exit.'}">${easier ? '📈' : '📉'} ${easier ? 'Easier' : 'Harder'} GW${swing.swingGW}+</span>`);
-            }
+            /* The "Easier GW5+" pill was removed from this row. It described the
+               same fixtures the row already draws as five coloured chips beside
+               it, so it restated in words what the colours say — and it was the
+               longest thing in a cell that has to stay narrow. fixtureSwingData
+               still feeds the Fixture Swings view, which is where a claim about
+               a run turning belongs. */
 
             if (!pills.length) return '';
             return `<span class="team-context" data-tooltip="How ${escHTML(teamName)} are doing — club context, not this player's own form">${pills.join('')}</span>`;

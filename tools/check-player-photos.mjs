@@ -26,9 +26,12 @@ import fs from 'node:fs';
 
 const BOOT = 'data/bootstrap-static.json';
 const CANDIDATES = [
-    { name: 'current (110x140)', url: c => `https://resources.premierleague.com/premierleague/photos/players/110x140/p${c}.png` },
-    { name: 'current (250x250)', url: c => `https://resources.premierleague.com/premierleague/photos/players/250x250/p${c}.png` },
-    { name: 'season-scoped 25',  url: c => `https://resources.premierleague.com/premierleague25/photos/players/250x250/p${c}.png` }
+    // What the site serves today, and what the code asks for first.
+    { name: 'premierleague25 (110x140)', url: c => `https://resources.premierleague.com/premierleague25/photos/players/110x140/${c}.png` },
+    { name: 'premierleague25 (250x250)', url: c => `https://resources.premierleague.com/premierleague25/photos/players/250x250/${c}.png` },
+    // The older library, kept as the fallback: still answers for players the
+    // new one has not had to republish. Note the "p" before the number.
+    { name: 'legacy (110x140, p-prefixed)', url: c => `https://resources.premierleague.com/premierleague/photos/players/110x140/p${c}.png` }
 ];
 
 const args = process.argv.slice(2);

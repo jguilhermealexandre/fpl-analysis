@@ -20,3 +20,16 @@
 # and search engines should be told so.
 /fpl-transfer-wizard.html   /fpl-my-team-analysis.html   301
 /fpl-transfer-wizard        /fpl-my-team-analysis.html   301
+
+# The dashboard is index.html in its signed-in state, and index.html rewrites
+# its own URL to /dashboard so a browser tab and a bookmark say which of the
+# two pages you are looking at. That URL has to survive a refresh, so it is
+# served in place rather than redirected — a 301 to / would undo the rename on
+# every reload. Same 200-rewrite shape as /squad-analysis above, and for the
+# same reason: the clean URL is the one people end up sharing.
+#
+# Someone opening /dashboard without a saved Team ID gets the landing page,
+# which is the correct thing to show them; the page puts the URL back to / as
+# soon as a team is cleared.
+/dashboard      /index.html   200
+/dashboard/*    /index.html   200

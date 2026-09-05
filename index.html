@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=118">
-    <link rel="stylesheet" href="styles/v2-design.css?v=118">
+    <link rel="stylesheet" href="styles/common.css?v=120">
+    <link rel="stylesheet" href="styles/v2-design.css?v=120">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3636,10 +3636,28 @@
  */
 (function () {
     try {
-        if (localStorage.getItem('fpl_team_id')) {
-            document.documentElement.classList.add('has-team');
+        if (!localStorage.getItem('fpl_team_id')) return;
+        document.documentElement.classList.add('has-team');
+
+        /* The static <title> and the / URL describe the landing page, which is
+           correct for everyone who is not signed in — crawlers included, since
+           they never are. For a manager with a saved team this is a dashboard,
+           and saying so is what makes a browser tab and a bookmark legible.
+           Both are changed here rather than in markup so the served document
+           stays the indexable one.
+
+           replaceState, not pushState: /dashboard is the same page in a
+           different state, not somewhere you navigated to, and Back should
+           leave the site rather than walk through states of it. Only from the
+           site root, so a deep link is never rewritten, and the query and hash
+           are carried across — /squad-analysis#transfers?out=..&in=.. relies
+           on the fragment surviving. */
+        document.title = 'EasyFPL \u2014 Dashboard';
+        var path = location.pathname;
+        if (path === '/' || path === '/index.html') {
+            history.replaceState(null, '', '/dashboard' + location.search + location.hash);
         }
-    } catch (e) { /* private mode — the landing page is the safe default */ }
+    } catch (e) { /* private mode, or history blocked — the landing page is the safe default */ }
 })();
 </script>
 
@@ -4279,20 +4297,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=118"></script>
-    <script src="scripts/price-watch.js?v=118"></script>
-    <script src="scripts/xp-engine.js?v=118"></script>
-    <script src="scripts/odds-panel.js?v=118"></script>
-    <script src="scripts/live-gw.js?v=118"></script>
-    <script src="scripts/matchday.js?v=118"></script>
-    <script src="scripts/market-panel.js?v=118"></script>
-    <script src="scripts/eo-layer.js?v=118"></script>
-    <script src="scripts/readiness.js?v=118"></script>
-    <script src="scripts/push-alerts.js?v=118"></script>
-    <script src="scripts/notifications.js?v=118"></script>
-    <script src="scripts/transfer-engine.js?v=118"></script>
-    <script src="scripts/common.js?v=118"></script>
-    <script src="scripts/sidebar-nav.js?v=118"></script>
+    <script src="scripts/error-monitor.js?v=120"></script>
+    <script src="scripts/price-watch.js?v=120"></script>
+    <script src="scripts/xp-engine.js?v=120"></script>
+    <script src="scripts/odds-panel.js?v=120"></script>
+    <script src="scripts/live-gw.js?v=120"></script>
+    <script src="scripts/matchday.js?v=120"></script>
+    <script src="scripts/market-panel.js?v=120"></script>
+    <script src="scripts/eo-layer.js?v=120"></script>
+    <script src="scripts/readiness.js?v=120"></script>
+    <script src="scripts/push-alerts.js?v=120"></script>
+    <script src="scripts/notifications.js?v=120"></script>
+    <script src="scripts/transfer-engine.js?v=120"></script>
+    <script src="scripts/common.js?v=120"></script>
+    <script src="scripts/sidebar-nav.js?v=120"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4326,6 +4344,10 @@
                it was set for, and a cleared ID would leave an empty dashboard
                with no way back to the form. */
             document.documentElement.classList.remove('has-team');
+            document.title = 'EasyFPL \u2014 Free FPL Analysis Tools';
+            if (location.pathname === '/dashboard') {
+                try { history.replaceState(null, '', '/'); } catch (e) { /* not fatal */ }
+            }
             document.getElementById('onboardingCard').classList.remove('hidden');
             document.getElementById('tickerBar').classList.add('hidden');
             document.getElementById('newsStrip').classList.add('hidden');
@@ -4368,6 +4390,14 @@
         }
 
         function activateTeamPage(teamId) {
+            /* Mirrors the pre-paint block at the top of <body> for the manager
+               who arrives at the landing page and enters an ID: same class,
+               same title, same URL, without a reload. */
+            document.documentElement.classList.add('has-team');
+            document.title = 'EasyFPL \u2014 Dashboard';
+            if (location.pathname === '/' || location.pathname === '/index.html') {
+                try { history.replaceState(null, '', '/dashboard' + location.search + location.hash); } catch (e) { /* not fatal */ }
+            }
             const errEl = document.getElementById('onboardingError');
             if (errEl) errEl.classList.add('hidden');
             document.getElementById('onboardingCard').classList.add('hidden');
@@ -5292,12 +5322,7 @@
                              while. Removing the <img> on error uncovers them, so
                              every card carries a face-shaped mark either way. -->
                         <b class="v2-pitch-token-initials" aria-hidden="true">${esc(initialsOf(p.name))}</b>
-                        ${p.code != null
-                            ? `<img class="v2-pitch-token-face"
-                                 src="https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png"
-                                 alt="" loading="lazy" onerror="this.remove()"
-                                 onload="this.parentNode.classList.add('has-photo')">`
-                            : ''}
+                        ${typeof playerPhotoHTML === 'function' ? playerPhotoHTML(p.code, 'v2-pitch-token-face') : ''}
                     </span>
                     <div class="v2-pitch-token-crest${ringClass}">
                         ${p.teamCode != null

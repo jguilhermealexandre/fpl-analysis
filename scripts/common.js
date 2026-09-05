@@ -142,6 +142,50 @@ function computeIsPreseason(bootData, fixturesData) {
     return bootData.events.every(e => !e.finished);
 }
 
+// ===== PLAYER PHOTOS =====
+/* The club's headshot for a player, addressed the way premierleague.com
+ * addresses it today.
+ *
+ * The path moved and the filename changed with it. What the site serves now is
+ *   /premierleague25/photos/players/110x140/219168.png
+ * where the older library was
+ *   /premierleague/photos/players/110x140/p219168.png
+ * — a season-scoped directory, and no "p" in front of the number. Reading the
+ * old one is why a transferred player still wore his previous club's kit (that
+ * library is no longer being reshot) and why anyone signed since it froze —
+ * Cherki among them — had no photo at all.
+ *
+ * Both are tried, newest first, because the old library still answers for
+ * players the new one has not needed to republish. A player neither can serve
+ * removes the image, which uncovers the initials underneath it.
+ *
+ * The season segment is the one thing here with a shelf life: when the league
+ * rolls to premierleague26, this constant is the only edit.
+ */
+const PLAYER_PHOTO_BASE = 'https://resources.premierleague.com';
+const PLAYER_PHOTO_SEASON = 'premierleague25';
+
+function playerPhotoSrc(code) {
+    return `${PLAYER_PHOTO_BASE}/${PLAYER_PHOTO_SEASON}/photos/players/110x140/${code}.png`;
+}
+
+function playerPhotoLegacySrc(code) {
+    return `${PLAYER_PHOTO_BASE}/premierleague/photos/players/110x140/p${code}.png`;
+}
+
+/* Renders the <img> with its own fallback chain. Inline handlers rather than a
+ * listener because these cards are rebuilt by innerHTML on every render, and a
+ * listener would have to be reattached each time — the CSP already allows
+ * inline handlers, and the rest of the codebase uses them. */
+function playerPhotoHTML(code, className) {
+    if (code == null) return '';
+    return `<img class="${className}" alt="" loading="lazy"
+        src="${playerPhotoSrc(code)}"
+        data-photo-fallback="${playerPhotoLegacySrc(code)}"
+        onload="this.parentNode.classList.add('has-photo')"
+        onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else { this.remove(); }">`;
+}
+
 // ===== DISMISSING PANELS =====
 /* Click away to close, for every overlay on the site.
  *
@@ -648,7 +692,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=118')
+    fetch('footer.html?v=120')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
