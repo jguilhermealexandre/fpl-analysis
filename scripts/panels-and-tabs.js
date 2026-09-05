@@ -1200,7 +1200,7 @@
             if (player.freekicksOrder === 1) duty.push({ txt: 'Direct free kicks', tone: '' });
             if (player.cornersOrder === 1) duty.push({ txt: 'Corners', tone: '' });
 
-            return `<div class="detail-section rtp-section" data-accent="routes" data-wide>
+            return `<div class="detail-section rtp-section" data-accent="routes">
                 <div class="detail-section-title">Routes to points</div>
                 <div class="rtp-head">
                     <span class="rtp-total">${total.toFixed(1)}<small>projected next match</small></span>
@@ -1532,14 +1532,24 @@
                 </div>`;
             }
 
-            html += `<div class="detail-section" data-accent="verdict" data-wide>
+            /* The conclusion, next to the argument that reached it. The rating
+               is a meter rather than "Sell Rating: 0/100" in grey text — it was
+               the one number on this card you had to stop and parse, and it is
+               a percentage of a fixed scale, which is what a bar is for. */
+            const sellTone = sellRating >= 65 ? 'var(--verdict-sell)'
+                : sellRating >= 35 ? 'var(--verdict-monitor)' : 'var(--verdict-hold)';
+            html += `<div class="detail-section pd-verdict" data-accent="verdict">
                 <div class="detail-section-title">\u2696\ufe0f Verdict</div>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-                    <div class="verdict-chip ${verdict}" style="font-size:13px;padding:6px 14px;">${chipLabel}</div>
-                    <div style="font-size:14px;color:var(--text-secondary);flex:1;">${escHTML(verdictReason)}</div>
+                <div class="pd-verdict-top">
+                    <span class="pd-verdict-chip ${verdict}">${chipLabel}</span>
                 </div>
-                ${showRecommendation && recommendation ? `<div style="font-size:12px;color:var(--text-secondary);padding:8px 12px;background:rgba(167,139,250,0.06);border-radius:6px;margin-bottom:6px;border-left:3px solid var(--verdict-${verdict});"><strong>Recommendation:</strong> ${escHTML(recommendation)}</div>` : ''}
-                <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100</div>
+                <div class="pd-verdict-why" style="margin-bottom:10px;">${escHTML(verdictReason)}</div>
+                ${showRecommendation && recommendation ? `<div class="pd-verdict-rec"><strong>Do this:</strong> ${escHTML(recommendation)}</div>` : ''}
+                <div class="pd-sell-rate" title="How strongly the model rates this player as a sell, out of 100.">
+                    <span class="pd-sell-rate-label">Sell rating</span>
+                    <span class="pd-sell-rate-bar"><i style="width:${Math.max(0, Math.min(100, sellRating))}%;background:${sellTone}"></i></span>
+                    <span class="pd-sell-rate-num" style="color:${sellTone}">${sellRating}</span>
+                </div>
             </div>`;
 
             html += `<div class="detail-section" data-accent="stats">
@@ -1556,7 +1566,7 @@
 
             html += `<div class="detail-section" data-accent="season">
                 <div class="detail-section-title">\ud83d\udcc8 Season Numbers <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                <div class="pdm-metrics">
                     ${player.position >= 3 ? `
                         <div class="metric-box"><div class="metric-label">Goals</div><div class="metric-value neutral">${player.goals}</div></div>
                         <div class="metric-box"><div class="metric-label">Assists</div><div class="metric-value neutral">${player.assists}</div></div>
@@ -1566,11 +1576,9 @@
                     `}
                     <div class="metric-box"><div class="metric-label">Bonus</div><div class="metric-value neutral">${player.bonus}</div></div>
                     <div class="metric-box"><div class="metric-label">ICT</div><div class="metric-value neutral">${player.ictIndex.toFixed(0)}</div></div>
-                </div>
-                <div style="margin-top:8px;display:flex;gap:8px;">
-                    <div class="metric-box" style="flex:1;"><div class="metric-label">Ownership</div><div class="metric-value neutral">${player.ownership.toFixed(1)}%</div></div>
-                    <div class="metric-box" style="flex:1;"><div class="metric-label">Net Transfers</div><div class="metric-value ${(player.netTransfers||0) > 0 ? 'good' : (player.netTransfers||0) < -5000 ? 'bad' : 'neutral'}">${(player.netTransfers||0) > 0 ? '+' : ''}${((player.netTransfers||0) / 1000).toFixed(1)}k</div></div>
-                    <div class="metric-box" style="flex:1;"><div class="metric-label">EP Next</div><div class="metric-value ${player.epNext >= 5 ? 'good' : 'neutral'}">${player.epNext.toFixed(1)}</div></div>
+                    <div class="metric-box"><div class="metric-label">Ownership</div><div class="metric-value neutral">${player.ownership.toFixed(1)}%</div></div>
+                    <div class="metric-box"><div class="metric-label">Net Transfers</div><div class="metric-value ${(player.netTransfers||0) > 0 ? 'good' : (player.netTransfers||0) < -5000 ? 'bad' : 'neutral'}">${(player.netTransfers||0) > 0 ? '+' : ''}${((player.netTransfers||0) / 1000).toFixed(1)}k</div></div>
+                    <div class="metric-box"><div class="metric-label">EP Next</div><div class="metric-value ${player.epNext >= 5 ? 'good' : 'neutral'}">${player.epNext.toFixed(1)}</div></div>
                 </div>
             </div>`;
 

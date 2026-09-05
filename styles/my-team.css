@@ -6579,15 +6579,23 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    its children into this grid so the band titles span it and the sections
    themselves sit side by side, without the builder having to know it is being
    laid out differently here. */
+/* Six columns, so a section can take a half (3), a third (2) or the lot.
+   Two across was the only shape available and it put the report over the
+   verdict — the two halves of the same summary — as two stacked bands, and
+   then left Routes to Points alone on a row of its own under a pair of stat
+   cards that had nothing to do with it. */
 .pdm-body {
     overflow-y: auto;
     padding: 18px 22px 24px;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 14px;
     align-items: start;
     align-content: start;
 }
+.pdm-body .detail-section { grid-column: span 3; }
+.pdm-body .detail-section[data-span="2"] { grid-column: span 2; }
+.pdm-body .detail-section[data-span="4"] { grid-column: span 4; }
 .pdm-body .pd-group { display: contents; }
 .pdm-body .pd-group-title {
     grid-column: 1 / -1;
@@ -6634,14 +6642,90 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .pdm-body .detail-section[data-accent="team"]        { --pdm-accent: #2563EB; }
 
 /* The ones that are wider than they are tall, or that carry a paragraph. */
-.pdm-body .detail-section[data-wide],
-.pdm-body .pd-report { grid-column: 1 / -1; }
+.pdm-body .detail-section[data-wide] { grid-column: 1 / -1; }
 
 .pdm-body .detail-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.pdm-body[data-single] { grid-template-columns: minmax(0, 1fr); }
+
+/* ===== The summary row: what it says, and what it concludes =====
+   The report is the argument and the verdict is the answer to it, so they sit
+   as a pair rather than one under the other. */
+.pdm-body .pd-report { grid-column: span 4; }
+.pdm-body .pd-verdict { grid-column: span 2; }
+.pdm-body .pd-report-text { font-size: 13px; line-height: 1.62; color: var(--text-secondary); }
+
+/* The verdict as a conclusion rather than a row of controls: the rating first
+   and large, the reason under it, then what to do about it. */
+.pdm-body .pd-verdict-top { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.pdm-body .pd-verdict-chip {
+    padding: 5px 13px; border-radius: 999px;
+    font-size: 13px; font-weight: 800; letter-spacing: .03em; white-space: nowrap;
+}
+.pdm-body .pd-verdict-chip.star { background: var(--verdict-star-bg, #EDE9FE); color: var(--verdict-star, #7C3AED); }
+.pdm-body .pd-verdict-chip.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
+.pdm-body .pd-verdict-chip.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
+.pdm-body .pd-verdict-chip.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
+.pdm-body .pd-verdict-why { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
+.pdm-body .pd-verdict-rec {
+    font-size: 12px; line-height: 1.5; color: var(--text-secondary);
+    padding: 9px 11px; border-radius: 9px; margin-bottom: 10px;
+    background: var(--surface-2);
+    border-left: 3px solid var(--pdm-accent, var(--color-primary));
+}
+/* The sell rating as the meter it is. "Sell Rating: 0/100" as a line of grey
+   text was the one number on this card you had to stop and parse. */
+.pdm-body .pd-sell-rate { display: flex; align-items: center; gap: 8px; }
+.pdm-body .pd-sell-rate-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-muted); white-space: nowrap;
+}
+.pdm-body .pd-sell-rate-bar {
+    flex: 1; height: 5px; border-radius: 999px; background: var(--surface-3, var(--surface-2)); overflow: hidden;
+}
+.pdm-body .pd-sell-rate-bar i { display: block; height: 100%; border-radius: 999px; }
+.pdm-body .pd-sell-rate-num { font-family: var(--font-mono); font-size: 12px; font-weight: 800; }
+
+/* ===== The three stat columns =====
+   Key Statistics, Season Numbers and Routes to Points are three readings of
+   the same player and belong on one row. At a third of a 1080px modal each
+   column is still ~330px, so nothing has to shrink to fit. */
+.pdm-body .detail-section[data-accent="stats"],
+.pdm-body .detail-section[data-accent="season"],
+.pdm-body .detail-section[data-accent="routes"] { grid-column: span 2; }
+.pdm-body .detail-section[data-accent="season"] .pdm-metrics {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px;
+}
+.pdm-body .metric-box {
+    background: var(--surface-2); border-radius: 9px; padding: 9px 8px; text-align: center;
+}
+.pdm-body .metric-label { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; margin-bottom: 3px; }
+.pdm-body .metric-value { font-size: 17px; font-weight: 800; }
+.pdm-body .detail-stat-value { font-size: 19px; }
+
+/* In a third-width column the routes keys read better stacked than wrapped:
+   a legend of five entries across ~330px would break mid-label. */
+.pdm-body .rtp-keys { flex-direction: column; gap: 4px; }
+.pdm-body .rtp-key { width: 100%; }
+.pdm-body .rtp-key b { margin-left: auto; }
+.pdm-body .rtp-total { font-size: 30px; }
+
+@media (max-width: 1000px) {
+    .pdm-body .pd-report, .pdm-body .pd-verdict { grid-column: 1 / -1; }
+    .pdm-body .detail-section,
+    .pdm-body .detail-section[data-span="2"],
+    .pdm-body .detail-section[data-accent="stats"],
+    .pdm-body .detail-section[data-accent="season"],
+    .pdm-body .detail-section[data-accent="routes"] { grid-column: span 3; }
+}
 
 @media (max-width: 860px) {
     .pdm-body { grid-template-columns: minmax(0, 1fr); }
+    .pdm-body .detail-section,
+    .pdm-body .detail-section[data-span="2"],
+    .pdm-body .detail-section[data-span="4"],
+    .pdm-body .pd-report, .pdm-body .pd-verdict,
+    .pdm-body .detail-section[data-accent="stats"],
+    .pdm-body .detail-section[data-accent="season"],
+    .pdm-body .detail-section[data-accent="routes"] { grid-column: 1 / -1; }
     .pdm-hero { grid-template-columns: auto minmax(0, 1fr); min-height: 148px; padding: 0 18px; }
     .pdm-hero-photo { height: 148px; width: 120px; }
     .pdm-hero-face { height: 148px; }
