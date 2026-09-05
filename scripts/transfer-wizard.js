@@ -1789,38 +1789,86 @@
         }
 
         // ===== TRANSFER MARKET =====
-        // FPL applies price changes once a night, at roughly 01:30 UTC. The exact
-        // minute is not published and does drift, so everything built on this is
-        // labelled as an estimate rather than a countdown to a known event.
-        const PRICE_LOCK_UTC_HOUR = 1;
-        const PRICE_LOCK_UTC_MIN = 30;
+        /* When FPL changes prices.
+
+           It moved for 2026/27. The Premier League's own announcement of the
+           Price Change Predictor says the tool indicates who will rise and fall
+           "each day at 00:00 UK time"; this used to be hard-coded at 01:30 UTC,
+           which is now up to an hour and a half late and, through British
+           Summer Time, on the wrong day entirely.
+
+           UK time rather than UTC, so it cannot be a constant: midnight in
+           London is 23:00 UTC in summer and 00:00 UTC in winter. */
+        const PRICE_LOCK_TZ = 'Europe/London';
 
         // A player's distance to a price change, as a signed percentage: +100 means
         // on track to rise, -100 on track to drop. This is the same transfer-velocity
         // model behind the pitch badge (net transfers over the current owner base),
         // scaled so the thresholds land at ±100 — NOT FPL's own published figure,
         // which does not exist publicly.
+        /* How far along the meter a player is, from FPL's own figure.
+
+           This used to be a model: net transfers over the owner base, times
+           five hundred, clamped. It was written before the game published
+           anything, and it was left in place after it did — so this page and
+           the dashboard answered the same question from different numbers and
+           disagreed in public. Ballard sat at −92.5 on the game's meter and
+           −11.5 on the model, so the dashboard called him a near-certain drop
+           while this page said no squad player was close to one.
+
+           The model was not merely miscalibrated, it was noise. Dividing net
+           transfers by a tiny owner base saturates the clamp on a handful of
+           moves: Matusiwa, three in and two out at 0.0% ownership, scored a
+           maximum +100 rise while the game's meter had him at −90.3.
+
+           price_change_percent is what the official Price Change Predictor is
+           built on, so there is nothing left to model. One number, read the
+           same way here as in scripts/price-watch.js. */
         function priceThresholdPct(p) {
-            const raw = getTransferPressure(p) * 500;
-            return Math.max(-100, Math.min(100, raw));
+            const v = p && p.priceProgress;
+            return typeof v === 'number' && isFinite(v) ? v : 0;
         }
 
+        /* The same tiers price-watch.js uses, so the two panels cannot describe
+           one player differently. Anything past the line is due tonight; PW_CLOSE
+           short of it is a watch item and deliberately not a forecast. */
         function thresholdState(pct) {
-            if (pct >= 90) return { cls: 'rise-imminent', text: 'Rises tonight', short: 'Rising' };
-            if (pct >= 50) return { cls: 'rise', text: 'Climbing', short: 'Climbing' };
-            if (pct <= -80) return { cls: 'drop-imminent', text: 'Drops tonight', short: 'Dropping' };
-            if (pct <= -50) return { cls: 'drop', text: 'Sliding', short: 'Sliding' };
+            const due = typeof PW_DUE === 'number' ? PW_DUE : 100;
+            const close = typeof PW_CLOSE === 'number' ? PW_CLOSE : 80;
+            if (pct >= due) return { cls: 'rise-imminent', text: 'Rises tonight', short: 'Rising' };
+            if (pct >= close) return { cls: 'rise', text: 'Climbing', short: 'Climbing' };
+            if (pct <= -due) return { cls: 'drop-imminent', text: 'Drops tonight', short: 'Dropping' };
+            if (pct <= -close) return { cls: 'drop', text: 'Sliding', short: 'Sliding' };
             return { cls: 'stable', text: 'Safe', short: 'Safe' };
         }
 
-        const THRESHOLD_TIP = "Projected from net transfers measured against the player's current owner base. FPL does not publish its price-change threshold, so this is a model of it, not the real number.";
+        const THRESHOLD_TIP = "FPL's own progress meter towards a price change. At 100% the change happens at the next daily update; below that it is how far along he is, not a forecast that he gets there.";
 
-        function nextPriceLock() {
-            const now = new Date();
-            const lock = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
-                PRICE_LOCK_UTC_HOUR, PRICE_LOCK_UTC_MIN, 0));
-            if (lock.getTime() <= now.getTime()) lock.setUTCDate(lock.getUTCDate() + 1);
-            return lock;
+        // How far London is ahead of UTC at a given instant, in milliseconds.
+        function londonOffsetMs(at) {
+            const parts = {};
+            new Intl.DateTimeFormat('en-GB', {
+                timeZone: PRICE_LOCK_TZ, hour12: false,
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }).formatToParts(at).forEach(x => { if (x.type !== 'literal') parts[x.type] = x.value; });
+            const hour = Number(parts.hour) === 24 ? 0 : Number(parts.hour);
+            const asIfUTC = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+                hour, Number(parts.minute), Number(parts.second));
+            return asIfUTC - Math.floor(at.getTime() / 1000) * 1000;
+        }
+
+        /* The next midnight in London, as a real instant.
+
+           The offset is recomputed at the target rather than reused from now,
+           so the one night a year the clocks change does not move the deadline
+           by an hour. */
+        function nextPriceLock(now) {
+            const at = now != null ? new Date(now) : new Date();
+            const wall = new Date(at.getTime() + londonOffsetMs(at));
+            const nextMidnightWall = Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate()) + 86400000;
+            const firstGuess = new Date(nextMidnightWall - londonOffsetMs(at));
+            return new Date(nextMidnightWall - londonOffsetMs(firstGuess));
         }
 
         // One timer, cleared and restarted on every render, stopping itself once the
@@ -1962,20 +2010,28 @@
 
             // ─── Portfolio header: when the market closes, and what it costs you ───
             const squadPlayers = playersWithPressure.filter(p => squadIds.has(p.id));
-            const atRisk = squadPlayers.filter(p => p.threshold <= -80);
-            const rising = squadPlayers.filter(p => p.threshold >= 90);
+            /* Was -80 and +90, two arbitrary numbers that matched neither each
+               other nor the dashboard. Both now sit on the line itself: a player
+               is "on track" when the game's meter says he goes tonight. */
+            const dueAt = typeof PW_DUE === 'number' ? PW_DUE : 100;
+            const atRisk = squadPlayers.filter(p => p.threshold <= -dueAt);
+            const rising = squadPlayers.filter(p => p.threshold >= dueAt);
+            const closingToDrop = squadPlayers.filter(p =>
+                p.threshold > -dueAt && p.threshold <= -(typeof PW_CLOSE === 'number' ? PW_CLOSE : 80));
             const exposure = atRisk.length * 0.1;
 
             html += `<div class="tm-portfolio">
-                <div class="tm-lock" data-tooltip="FPL changes prices once a night, at roughly 01:30 UTC. The exact minute is not published and drifts, so treat this as an estimate.">
+                <div class="tm-lock" data-tooltip="FPL changes prices once a night, at 00:00 UK time. The exact minute is not published and drifts by a few, so treat this as close rather than exact.">
                     <span class="tm-lock-label">⏱️ Market closes in</span>
                     <span class="tm-lock-value" id="tmLockValue">—</span>
-                    <span class="tm-lock-note">est. 01:30 UTC</span>
+                    <span class="tm-lock-note">00:00 UK</span>
                 </div>
                 <div class="tm-exposure">
                     ${atRisk.length
                         ? `<span class="tm-exp-risk" data-tooltip="${escHTML(atRisk.map(p => p.name).join(', '))}">🚨 <strong>${atRisk.length}</strong> squad ${atRisk.length === 1 ? 'player' : 'players'} on track to drop <span class="tm-exp-money">−£${exposure.toFixed(1)}m</span></span>`
-                        : `<span class="tm-exp-safe">✅ No squad player is close to dropping tonight</span>`}
+                        : closingToDrop.length
+                            ? `<span class="tm-exp-watch" data-tooltip="${escHTML(closingToDrop.map(p => `${p.name} ${Math.round(Math.abs(p.threshold))}%`).join(', '))}">👀 <strong>${closingToDrop.length}</strong> closing in on a drop, ${closingToDrop.length === 1 ? 'but not there' : 'but none there'} yet</span>`
+                            : `<span class="tm-exp-safe">✅ No squad player is close to dropping tonight</span>`}
                     ${rising.length ? `<span class="tm-exp-gain" data-tooltip="${escHTML(rising.map(p => p.name).join(', '))}">📈 <strong>${rising.length}</strong> on track to rise</span>` : ''}
                 </div>
             </div>`;
