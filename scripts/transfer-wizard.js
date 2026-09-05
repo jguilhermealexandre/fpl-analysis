@@ -597,6 +597,30 @@
                 ? `<span class="twr-cost">−${best.cost} for the hit, on ${ft} free transfer${ft === 1 ? '' : 's'}${ftEst}</span>`
                 : `<span class="twr-free">within your ${ft} free transfer${ft === 1 ? '' : 's'}${ftEst}</span>`;
 
+            /* The reasoning behind each move, from transfer-rationale.js.
+
+               Two things the one-line reason cannot carry: how the edge is
+               spread across 3/5/8 gameweeks — a move that is strong at three
+               and flat at eight is renting a fixture run, not buying a player —
+               and whether the incoming player is nailed. Both are already
+               computed; they simply never reached the card.
+
+               The bank rolls: FPL applies transfers in sequence, so the money
+               left after the first move is what the second one has to spend.
+               Passing the opening bank to every move would tell the manager he
+               can afford a second upgrade he has already spent the money on.
+
+               Only the first is open. The rest are one click away, because
+               three of these stacked is a wall of text in a panel whose job is
+               to give an answer. */
+            let twrBank = getTWBank();
+            const detailFor = (m) => {
+                if (typeof trRationale !== 'function') return '';
+                const rat = trRationale(m, { bank: twrBank });
+                twrBank = Math.round((twrBank + ((m.out.sellPrice || m.out.price) - m.in.price)) * 10) / 10;
+                return rat ? trRenderCard(rat, { header: false }) : '';
+            };
+
             return `
                 <div class="twr-verdict act">
                     <div class="twr-verdict-icon">${best.n === 1 ? '🔁' : '⚡'}</div>
@@ -609,7 +633,9 @@
                     </div>
                 </div>
                 <div class="twr-moves">
-                    ${best.moves.map(m => `
+                    ${best.moves.map((m, i) => {
+                        const detail = detailFor(m);
+                        return `
                         <div class="twr-move-card">
                             <div class="twr-move">
                                 <span class="twr-out">${escHTML(m.out.name)}<small>£${(m.out.sellPrice || m.out.price).toFixed(1)}m · ${m.outXP.toFixed(1)} xP</small></span>
@@ -618,7 +644,12 @@
                                 <span class="twr-gain pos">+${m.gain.toFixed(1)}<small>to your XI</small></span>
                             </div>
                             <p class="twr-why">${escHTML(twMoveReason(m, gws))}</p>
-                        </div>`).join('')}
+                            ${detail ? `<details class="twr-detail"${i === 0 ? ' open' : ''}>
+                                <summary>The case for it</summary>
+                                ${detail}
+                            </details>` : ''}
+                        </div>`;
+                    }).join('')}
                 </div>
                 <button class="twr-apply" onclick="twApplyRecommendation()">Load these into the transfer planner</button>
                 ${sampleNote}`;

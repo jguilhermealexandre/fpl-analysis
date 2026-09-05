@@ -5016,6 +5016,85 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twr-gain.neg { color: var(--color-error); }
 .twr-why { margin: 7px 0 0; font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
 
+/* ===== The case for a move (scripts/transfer-rationale.js) =====
+   Folded into the recommendation card behind a disclosure. The panel's job is
+   to give an answer, so the evidence is one click away rather than three
+   screens of it stacked above the Apply button.
+
+   Fixture chips set no background of their own — the global .fdr-1….fdr-5
+   rules in common.css supply it, and a background here would win on source
+   order and flatten every strip to one colour. */
+.twr-detail { margin-top: 9px; border-top: 1px solid var(--border-subtle); }
+.twr-detail > summary {
+    padding: 7px 0 0; cursor: pointer; list-style: none;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-muted); transition: color .15s ease;
+}
+.twr-detail > summary::-webkit-details-marker { display: none; }
+.twr-detail > summary::after { content: ' ▾'; font-size: 9px; }
+.twr-detail[open] > summary::after { content: ' ▴'; }
+.twr-detail > summary:hover { color: var(--text-secondary); }
+
+.tr-card { display: flex; flex-direction: column; gap: 9px; padding-top: 9px; }
+
+.tr-move { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tr-move .tr-out, .tr-move .tr-in { display: flex; flex-direction: column; font-size: 13px; font-weight: 700; }
+.tr-move .tr-out { color: var(--color-error); }
+.tr-move .tr-in { color: var(--color-success); }
+.tr-move small { font-size: 10px; font-weight: 500; color: var(--text-muted); margin-top: 1px; }
+.tr-arrow { color: var(--text-muted); }
+
+/* Three horizons side by side, because they routinely disagree and the
+   disagreement is the point. Five leads: it is what the recommender decides on. */
+.tr-horizons { display: flex; gap: 6px; }
+.tr-h {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 6px 4px; border-radius: var(--radius-sm);
+    background: var(--surface-1); border: 1px solid var(--border-subtle); cursor: help;
+}
+.tr-h.lead { border-color: var(--border-default); background: var(--surface-3, var(--surface-1)); }
+.tr-h-n { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.tr-h-v { font-family: var(--font-mono); font-size: 14px; font-weight: 800; color: var(--text-secondary); }
+.tr-h-v.up { color: var(--color-success); }
+.tr-h-v.down { color: var(--color-error); }
+
+.tr-shape { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--text-secondary); }
+
+.tr-row { display: flex; gap: 10px; align-items: flex-start; font-size: 11.5px; line-height: 1.5; }
+.tr-label {
+    flex: 0 0 62px; padding-top: 1px;
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-muted);
+}
+.tr-vals { flex: 1; min-width: 0; color: var(--text-secondary); }
+.tr-vals.bad { color: var(--color-error); }
+
+.tr-strips { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.tr-side { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.tr-side em {
+    flex: 0 0 22px; font-style: normal;
+    font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);
+}
+.tr-fx {
+    min-width: 30px; padding: 2px 4px; border-radius: 3px; text-align: center;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .02em; cursor: help;
+}
+.tr-fx.blank { background: var(--surface-1); border: 1px dashed var(--border-default); color: var(--text-muted); }
+.tr-fx.dbl { outline: 1px solid var(--color-success); outline-offset: 1px; }
+.tr-swing { margin-left: 4px; font-size: 9.5px; font-weight: 700; cursor: help; }
+.tr-swing.up { color: var(--color-success); }
+.tr-swing.down { color: var(--color-warning); }
+
+.tr-risk { font-weight: 700; cursor: help; }
+.tr-risk.good { color: var(--color-success); }
+.tr-risk.ok { color: var(--color-warning); }
+.tr-risk.bad { color: var(--color-error); }
+
+@media (max-width: 560px) {
+    .tr-row { flex-direction: column; gap: 3px; }
+    .tr-label { flex: none; }
+}
+
 .twr-nearest { margin-top: 10px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-2); }
 .twr-nearest-l { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
 .twr-nearest .twr-move { margin-top: 6px; }
