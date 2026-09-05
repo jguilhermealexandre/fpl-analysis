@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=114">
-    <link rel="stylesheet" href="styles/v2-design.css?v=114">
+    <link rel="stylesheet" href="styles/common.css?v=115">
+    <link rel="stylesheet" href="styles/v2-design.css?v=115">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -29,16 +29,44 @@
             min-height: 600px;
         }
 
-        .hero-banner.hero-logged-in {
+        /* Painted immediately for a returning manager — see the has-team
+           script at the top of <body>. Every selector here is the CSS half of
+           what activateTeamPage() does, so the two agree by construction:
+           whichever gets there first, the result is the same page. */
+        html.has-team #heroGeneric,
+        html.has-team #heroMockup,
+        html.has-team #onboardingCard,
+        html.has-team #welcomeBanner,
+        html.has-team #howItWorks,
+        html.has-team #trustBar,
+        html.has-team #featureWizard,
+        html.has-team #featureMyTeam,
+        html.has-team #featurePlayers,
+        html.has-team #featureTeams,
+        html.has-team #featureRivals,
+        html.has-team #testimonials,
+        html.has-team #closingCta {
+            display: none !important;
+        }
+        html.has-team #heroPersonalized {
+            display: block !important;
+        }
+
+        .hero-banner.hero-logged-in,
+        html.has-team .hero-banner {
             background: transparent;
             min-height: auto;
         }
         .hero-banner.hero-logged-in::before,
         .hero-banner.hero-logged-in::after,
-        .hero-banner.hero-logged-in .hero-glow-left {
+        .hero-banner.hero-logged-in .hero-glow-left,
+        html.has-team .hero-banner::before,
+        html.has-team .hero-banner::after,
+        html.has-team .hero-banner .hero-glow-left {
             display: none;
         }
-        [data-theme="dark"] .hero-banner.hero-logged-in {
+        [data-theme="dark"] .hero-banner.hero-logged-in,
+        [data-theme="dark"] html.has-team .hero-banner {
             background: transparent;
         }
 
@@ -1470,6 +1498,49 @@
         .v2-league-prompt-dismiss .icon { width: 14px; height: 14px; }
 
         /* --- Unified top row: Squad Snapshot (left) + info panel (right) --- */
+        /* ===== Reserved space for the top row =====
+           #v2PitchWrap, #v2DeadlineHero and #v2StatusStack ship as empty divs
+           and are filled by JS once the manager's picks and the projection
+           engine are both ready. Until then they hold no height at all, so the
+           panels below them — the matchday list first, which renders from
+           committed JSON in one hop and so almost always wins the race — paint
+           near the top of the page and are then shoved down by roughly 600px
+           when the pitch finally lands. That is the "wrong order" in the load:
+           not that matchday arrives early, but that nothing is holding the
+           place of what arrives late.
+
+           The pitch's height tracks its own width (the field is aspect-ratio
+           driven), and measured at three viewports the whole wrap comes out at
+           ~1.03x its width on desktop and ~0.9x in the single-column layout —
+           so the space is reserved as a ratio, which stays correct at every
+           width, rather than as a pixel guess that is only right at one.
+
+           :empty is what scopes it: the moment real content lands the selector
+           stops matching and the reservation is gone. */
+        #v2PitchWrap:empty,
+        #v2DeadlineHero:empty,
+        #v2StatusStack:empty {
+            border-radius: var(--radius-xl);
+            background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            opacity: 0.5;
+        }
+        #v2PitchWrap:empty { aspect-ratio: 1 / 1.03; }
+        #v2DeadlineHero:empty { min-height: 162px; }
+        #v2StatusStack:empty { min-height: 326px; }
+
+        @media (max-width: 900px) {
+            #v2PitchWrap:empty { aspect-ratio: 1 / 0.9; }
+            #v2DeadlineHero:empty { min-height: 132px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #v2PitchWrap:empty,
+            #v2DeadlineHero:empty,
+            #v2StatusStack:empty { animation: none; }
+        }
+
         .v2-top-row {
             display: grid;
             grid-template-columns: 1.7fr 1fr;
@@ -3542,6 +3613,30 @@
     </style>
 </head>
 <body>
+<script>
+/* Which of this page's two states to paint, decided before anything is drawn.
+ *
+ * index.html ships as the marketing landing page and is converted into the
+ * dashboard by activateTeamPage(), which runs only after the manager's team
+ * has been fetched. On a warm cache that is a second or more, and for the
+ * whole of it a logged-in manager is looking at the hero, "How It Works" and
+ * a form asking for the Team ID they entered weeks ago — then the page
+ * replaces itself. A screen recording of a reload is mostly that.
+ *
+ * Whether they have a team is answerable synchronously from localStorage, and
+ * that is the only thing this decides: the class flips the page to its
+ * dashboard shell now, and the fetch fills the shell in when it arrives.
+ * Mirrors initTheme() in common.js, which prevents the same flash for the
+ * light/dark choice, and fails to the landing page if storage is unreadable.
+ */
+(function () {
+    try {
+        if (localStorage.getItem('fpl_team_id')) {
+            document.documentElement.classList.add('has-team');
+        }
+    } catch (e) { /* private mode — the landing page is the safe default */ }
+})();
+</script>
 
     <!-- Fixed outage toast, visible regardless of scroll position (see .fpl-toast CSS) -->
     <div class="fpl-toast hidden" id="fplOutageToast" role="alert">
@@ -4179,20 +4274,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=114"></script>
-    <script src="scripts/price-watch.js?v=114"></script>
-    <script src="scripts/xp-engine.js?v=114"></script>
-    <script src="scripts/odds-panel.js?v=114"></script>
-    <script src="scripts/live-gw.js?v=114"></script>
-    <script src="scripts/matchday.js?v=114"></script>
-    <script src="scripts/market-panel.js?v=114"></script>
-    <script src="scripts/eo-layer.js?v=114"></script>
-    <script src="scripts/readiness.js?v=114"></script>
-    <script src="scripts/push-alerts.js?v=114"></script>
-    <script src="scripts/notifications.js?v=114"></script>
-    <script src="scripts/transfer-engine.js?v=114"></script>
-    <script src="scripts/common.js?v=114"></script>
-    <script src="scripts/sidebar-nav.js?v=114"></script>
+    <script src="scripts/error-monitor.js?v=115"></script>
+    <script src="scripts/price-watch.js?v=115"></script>
+    <script src="scripts/xp-engine.js?v=115"></script>
+    <script src="scripts/odds-panel.js?v=115"></script>
+    <script src="scripts/live-gw.js?v=115"></script>
+    <script src="scripts/matchday.js?v=115"></script>
+    <script src="scripts/market-panel.js?v=115"></script>
+    <script src="scripts/eo-layer.js?v=115"></script>
+    <script src="scripts/readiness.js?v=115"></script>
+    <script src="scripts/push-alerts.js?v=115"></script>
+    <script src="scripts/notifications.js?v=115"></script>
+    <script src="scripts/transfer-engine.js?v=115"></script>
+    <script src="scripts/common.js?v=115"></script>
+    <script src="scripts/sidebar-nav.js?v=115"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4221,6 +4316,11 @@
         }
 
         function onTeamIdCleared() {
+            /* Releases the has-team gate set before first paint. Without this
+               the CSS that hides the marketing sections would outlive the team
+               it was set for, and a cleared ID would leave an empty dashboard
+               with no way back to the form. */
+            document.documentElement.classList.remove('has-team');
             document.getElementById('onboardingCard').classList.remove('hidden');
             document.getElementById('tickerBar').classList.add('hidden');
             document.getElementById('newsStrip').classList.add('hidden');
