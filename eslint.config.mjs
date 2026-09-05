@@ -689,6 +689,7 @@ export default [
                 momentumChart: 'writable',
                 momentumMetric: 'writable',
                 momentumQuadrantPlugin: 'writable',
+                mountSquadChartModal: 'writable',
                 myPicks: 'writable',
                 myProjectedRank: 'writable',
                 myStarters: 'writable',

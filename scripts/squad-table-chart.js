@@ -562,11 +562,39 @@
             sqChartResizeObserver.observe(wrap);
         }
 
+        /* The modal is mounted on <body> rather than inside #teamDisplay.
+
+           position:fixed resolves against the viewport only when no ancestor
+           has a transform, filter or perspective — any of those makes that
+           ancestor the containing block instead. #teamDisplay's content sits
+           inside .v2-enter-block, whose entrance animation animates transform,
+           so the modal was being centred inside the page's content column and
+           moved with it as you scrolled rather than staying in the middle of
+           the screen.
+
+           Blurring .main-content on open makes it worse still: filter creates
+           exactly the same containing block, and a modal inside the element
+           being blurred would blur itself. On <body> it is clear of both. */
+        function mountSquadChartModal() {
+            let host = document.getElementById('sqChartModalHost');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'sqChartModalHost';
+                document.body.appendChild(host);
+            }
+            host.innerHTML = renderSquadChartWidget();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
         function toggleSquadChart() {
             sqChartExpanded = !sqChartExpanded;
             localStorage.setItem('fpl_charts_expanded', sqChartExpanded ? '1' : '0');
             const modal = document.getElementById('sqChartModal');
             if (modal) modal.classList.toggle('open', sqChartExpanded);
+            // The page behind is blurred rather than the overlay carrying a
+            // backdrop-filter, so the blur covers the content and not the
+            // modal sitting over it.
+            document.body.classList.toggle('sq-chart-blur', sqChartExpanded);
             if (sqChartExpanded) ensureSquadChart();
         }
 

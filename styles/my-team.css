@@ -808,8 +808,16 @@
    moved into the strip above and the status card on the right, which lets the
    pitch run at the width it has on the dashboard instead of being squeezed
    into a middle third. */
-.team-overview { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(280px, 1fr); gap: 16px; align-items: start; margin-bottom: 20px; animation: fadeInUp 0.5s ease; }
+/* align-items: stretch, not start: the right-hand column used to size to its
+   own content, so the manager card ended wherever it happened to end and the
+   two columns finished at different heights on every squad. Stretched, the
+   grid gives both columns the same height and the boxes line up top and
+   bottom whatever is in them. */
+.team-overview { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(280px, 1fr); gap: 16px; align-items: stretch; margin-bottom: 20px; animation: fadeInUp 0.5s ease; }
 .sq-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* The manager card takes up whatever height is left, so the column's bottom
+   edge meets the pitch's rather than floating above it. */
+.sq-side > .manager-info { flex: 1; }
 
 /* ----- The squad panel's own header ----- */
 .sq-panel-head {
@@ -901,8 +909,10 @@
     position: fixed; inset: 0; z-index: 220;
     display: flex; align-items: center; justify-content: center;
     padding: 24px;
+    /* No wash and no backdrop-filter here — the page itself is blurred
+       instead (body.sq-chart-blur below), so the blur covers the content
+       rather than being a sheet of frosting between you and the modal. */
     background: transparent;
-    backdrop-filter: blur(0px);
     opacity: 0;
     visibility: hidden;
     /* pointer-events:none is not optional here. Laying the overlay out so it
@@ -910,14 +920,28 @@
        without this it wins every hit test, and nothing underneath can be
        clicked or dragged at all. */
     pointer-events: none;
-    transition: opacity 200ms ease, backdrop-filter 240ms ease, visibility 0s linear 240ms;
+    transition: opacity 200ms ease, visibility 0s linear 240ms;
 }
 .sq-chart-modal.modal-overlay.open {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    backdrop-filter: blur(10px);
-    transition: opacity 200ms ease, backdrop-filter 240ms ease, visibility 0s;
+    transition: opacity 200ms ease, visibility 0s;
+}
+
+/* The page behind the modal. Only .main-content is blurred — the sidebar is
+   navigation and stays legible — and it animates so the page settles out of
+   focus rather than snapping. */
+body.sq-chart-blur .main-content {
+    filter: blur(7px);
+    transition: filter 240ms ease;
+    pointer-events: none;
+}
+
+.main-content { transition: filter 240ms ease; }
+
+@media (prefers-reduced-motion: reduce) {
+    body.sq-chart-blur .main-content, .main-content { transition: none; }
 }
 
 /* The panel rises a little and settles, rather than appearing at full size. */

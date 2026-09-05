@@ -1334,10 +1334,12 @@
             html += renderSquadFilterBar();
             html += `<div id="sq-table-wrap">${renderSquadTable()}</div>`;
             html += `</div>`;
-            html += renderSquadChartWidget();
 
             if (sqChartInstance) { sqChartInstance.destroy(); sqChartInstance = null; }
             document.getElementById('teamDisplay').innerHTML = html;
+            /* The chart modal is mounted on <body>, not inside this markup —
+               see mountSquadChartModal() for why it cannot live here. */
+            if (typeof mountSquadChartModal === 'function') mountSquadChartModal();
             if (typeof lucide !== 'undefined') lucide.createIcons();
             startDeadlineCountdown();
             // Observer-driven, same as toggleSquadChart(): the freshly-inserted
