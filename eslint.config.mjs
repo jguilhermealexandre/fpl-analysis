@@ -1006,6 +1006,7 @@ export default [
                 renderTemplateXI: 'writable',
                 renderThreatMatrix: 'writable',
                 renderTmRow: 'writable',
+                renderTmWatchLegend: 'writable',
                 renderTmWatchRow: 'writable',
                 renderToxicList: 'writable',
                 renderTransferMarket: 'writable',

@@ -1844,6 +1844,22 @@
 
         const THRESHOLD_TIP = "FPL's own progress meter towards a price change. At 100% the change happens at the next daily update; below that it is how far along he is, not a forecast that he gets there.";
 
+        /* The heading for the meter column, said once above the list.
+
+           It used to be a tooltip on every row — the same four lines of text
+           attached to thirty cells, so wherever the cursor rested you got the
+           identical explanation and the column itself was never labelled. One
+           header names the column and carries the note; the rows underneath say
+           nothing but their own number. */
+        function renderTmWatchLegend() {
+            return `<div class="tm-watch-legend" aria-hidden="true">
+                <span>Player</span>
+                <span class="tm-watch-legend-thr" data-tooltip="${escHTML(THRESHOLD_TIP)}">
+                    Progress to a price change<i>?</i>
+                </span>
+            </div>`;
+        }
+
         // How far London is ahead of UTC at a given instant, in milliseconds.
         function londonOffsetMs(at) {
             const parts = {};
@@ -2059,6 +2075,7 @@
                         <span class="tm-section-count blue">${ordered.length}</span>
                     </div>
                     <div class="tm-watch-note">Ordered by how close each player is to a price change, not alphabetically — the ones that need a decision tonight sit at the top.</div>
+                    ${renderTmWatchLegend()}
                     <div class="tm-watch">${ordered.map(p => renderTmWatchRow(p)).join('')}</div>
                 </div>`;
             }
@@ -2100,7 +2117,7 @@
                     <button class="tm-pos-btn ${tmPriceFilter === 'budget' ? 'active' : ''}" onclick="tmFilterPrice('budget')">Budget &lt;£5m</button>
                 </div>
                 ${display.length
-                    ? `<div class="tm-watch">${display.map(p => renderTmWatchRow(p, true)).join('')}</div>`
+                    ? `${renderTmWatchLegend()}<div class="tm-watch">${display.map(p => renderTmWatchRow(p, true)).join('')}</div>`
                     : `<div class="tm-market-empty">No players match this filter right now.</div>`}
                 ${active.list.length > 8 ? `<div style="text-align:center;margin-top:10px;">
                     <button class="tm-view-all-btn" onclick="tmToggleViewAll('${active.key === 'fallers' ? 'falling' : 'rising'}')">${showAll ? 'Show top 8' : `View all ${active.list.length} →`}</button>
@@ -2153,7 +2170,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="tm-watch-thr" data-tooltip="${escHTML(THRESHOLD_TIP)}">
+                <div class="tm-watch-thr">
                     <div class="tm-thr-head">
                         <span class="tm-thr-pct ${st.cls}">${pct > 0 ? '+' : ''}${Math.round(pct)}%</span>
                         <span class="tm-thr-state ${st.cls}">${st.text}</span>

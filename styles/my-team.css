@@ -2992,19 +2992,48 @@ tr.planner-swap-ineligible { opacity: 0.35; }
    The hover lifts instead of darkening — the row goes white and gains a soft
    shadow, so the one under the cursor rises out of the list rather than being
    shaded into it. */
-.sq-position-group .sq-row {
+/* The price-watch rows on Transfers are the same kind of list of the same kind
+   of thing, so they take the same surface rather than being white cards with a
+   hairline. They are listed here together so the two cannot drift apart again:
+   they were a tinted borderless row on one page and a bordered white one on the
+   other, which read as two different components. */
+.sq-position-group .sq-row,
+/* The column heading for the price meter. It names a column that had no name
+   and gives the explanation one home, instead of the same tooltip repeating on
+   every row of the list. */
+.tm-watch-legend {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(150px, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 0 10px 5px;
+    margin-left: 3px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+.tm-watch-legend-thr { display: inline-flex; align-items: center; gap: 5px; cursor: help; }
+.tm-watch-legend-thr i {
+    font-style: normal; width: 12px; height: 12px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-3, var(--surface-2)); color: var(--text-secondary);
+    font-size: 8.5px; font-weight: 800; letter-spacing: 0;
+}
+
+.tm-watch-row {
     background: color-mix(in srgb, var(--surface-2) 34%, var(--surface-1));
     border-color: transparent;
     transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
-.sq-position-group .sq-row:hover {
+.sq-position-group .sq-row:hover,
+.tm-watch-row:hover {
     background: var(--surface-1);
     box-shadow: 0 2px 10px rgba(16, 24, 40, 0.09);
     transform: translateY(-1px);
 }
 
-[data-theme="dark"] .sq-position-group .sq-row:hover {
+[data-theme="dark"] .sq-position-group .sq-row:hover,
+[data-theme="dark"] .tm-watch-row:hover {
     background: var(--surface-2);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
@@ -4638,10 +4667,11 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     align-items: center;
     gap: 12px;
     padding: 7px 10px;
-    border: 1px solid var(--border-subtle);
+    /* The left edge stays: it is the position colour and the rise/drop marker,
+       which carry meaning. The other three sides do not. */
+    border: 1px solid transparent;
     border-left: 3px solid transparent;
-    border-radius: var(--radius-lg);
-    background: var(--surface-1);
+    border-radius: var(--radius-md);
 }
 
 .tm-watch-row.rise-imminent { border-left-color: var(--verdict-hold); }
