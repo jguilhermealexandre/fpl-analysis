@@ -254,6 +254,25 @@
             </span>`;
         }
 
+        /* The panel heading's icon. Inline because the panel re-renders on a
+           ticker and a lucide placeholder would need createIcons() run again
+           on every pass. */
+        const MD_BALL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<circle cx="12" cy="12" r="10"/><path d="m12 7 4.2 3.1-1.6 5H9.4l-1.6-5z"/>' +
+            '<path d="M12 2v5"/><path d="m2.6 9.4 5.2.6"/><path d="m21.4 9.4-5.2.6"/>' +
+            '<path d="m6.8 20.4 2.6-5.3"/><path d="m17.2 20.4-2.6-5.3"/></svg>';
+
+        /* Team crest. The squad and fixture views already load these, so the
+           badge is warm in the browser cache by the time a match card renders.
+           alt is empty on purpose: the short name sits beside it, and a screen
+           reader announcing "Hull City crest, HUL" reads the team twice. */
+        function mdCrest(team) {
+            if (!team || team.code == null) return '';
+            return `<img class="md-crest" width="22" height="22" loading="lazy" alt=""
+                src="https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png">`;
+        }
+
         function mdMatchCard(f, now) {
             const teams = mdCtx.teams || {};
             const st = mdFixtureStatus(f, now);
@@ -281,11 +300,11 @@
                     ${mine.length && mdLiveById ? `<span class="md-mine-total" data-tooltip="Points your players in this match have scored so far, with the armband counted.">${mineTotal}<em>pts</em></span>` : ''}
                 </div>
                 <div class="md-score">
-                    <span class="md-team h">${escHTML(home.short_name || '?')}</span>
+                    <span class="md-team h">${mdCrest(home)}<b>${escHTML(home.short_name || '?')}</b></span>
                     ${scored
                         ? `<span class="md-goals">${f.team_h_score}<i>–</i>${f.team_a_score}</span>`
                         : '<span class="md-goals pre">v</span>'}
-                    <span class="md-team a">${escHTML(away.short_name || '?')}</span>
+                    <span class="md-team a"><b>${escHTML(away.short_name || '?')}</b>${mdCrest(away)}</span>
                 </div>
                 <div class="md-players">${chips}</div>
             </div>`;
@@ -326,7 +345,7 @@
 
             return `<div class="md-panel">
                 <div class="md-head">
-                    <span class="md-title">Gameweek ${gw}</span>
+                    <span class="md-title">${MD_BALL_ICON}Gameweek ${gw}</span>
                     ${head}
                     ${mdLiveById ? `<span class="md-total" data-tooltip="Your starting eleven's points so far this gameweek, armband included. Bench excluded unless Bench Boost is active.">${total}<em>pts</em></span>` : ''}
                 </div>

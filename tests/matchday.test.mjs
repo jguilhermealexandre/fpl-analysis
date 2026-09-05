@@ -153,3 +153,27 @@ test('both live shapes normalise to one', () => {
     }
     assert.equal(mdExpandLiveRow(null), null);
 });
+
+/* The crest.
+
+   Two things worth pinning. The badge URL is built from `code`, not `id` —
+   they are different numbers on every team, and using the wrong one returns a
+   200 with someone else's badge rather than an error anyone would notice. And
+   a team with no code has to render nothing at all: an <img> with an
+   unresolvable src is a broken-image glyph in the middle of the score line. */
+const { mdCrest } = md;
+
+test('the crest is built from the team code, not the team id', () => {
+    const html = mdCrest({ id: 7, code: 43, short_name: 'MCI' });
+    assert.match(html, /badges\/50\/t43\.png/);
+    assert.doesNotMatch(html, /t7\.png/);
+});
+
+test('a team with no code renders no image rather than a broken one', () => {
+    assert.equal(mdCrest({ id: 7, short_name: 'MCI' }), '');
+    assert.equal(mdCrest(null), '');
+});
+
+test('the crest is decorative — the short name beside it carries the team', () => {
+    assert.match(mdCrest({ code: 43 }), /alt=""/);
+});

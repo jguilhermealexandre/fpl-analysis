@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=105">
-    <link rel="stylesheet" href="styles/v2-design.css?v=105">
+    <link rel="stylesheet" href="styles/common.css?v=106">
+    <link rel="stylesheet" href="styles/v2-design.css?v=106">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -708,9 +708,12 @@
            looking at; between rounds it is empty and the section reads as a
            plain fixture list. */
         .v2-matchday { margin-bottom: 20px; text-align: left; }
-        .md-panel { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-xl); padding: 16px; }
-        .md-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-        .md-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-primary); }
+        .md-panel { background: var(--surface-1); border: 1px solid var(--v2-card-border); border-radius: var(--v2-card-radius); box-shadow: var(--v2-card-shadow); padding: 18px 18px 20px; }
+        .md-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+        .md-title { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 17px; font-weight: 650; letter-spacing: -0.2px; color: var(--text-primary); }
+        /* Inline SVG rather than a lucide placeholder: the panel re-renders on
+           every tick and createIcons() would have to be re-run each time. */
+        .md-title svg { width: 17px; height: 17px; color: var(--color-primary); flex-shrink: 0; }
         .md-h-live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: #DC2626; letter-spacing: .02em; }
         .md-h-note { font-size: 11px; color: var(--text-muted); }
         .md-total { margin-left: auto; font-family: var(--font-mono); font-size: 20px; font-weight: 800; color: var(--color-primary); cursor: help; }
@@ -722,17 +725,24 @@
         @keyframes mdPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.75); } }
         @media (prefers-reduced-motion: reduce) { .md-dot { animation: none; } }
 
-        .md-group + .md-group { margin-top: 14px; }
-        .md-group-l { font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 7px; }
-        .md-group.live .md-group-l { color: #DC2626; }
-        .md-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 8px; }
+        .md-group + .md-group { margin-top: 18px; }
+        .md-group-l { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 9px; }
+        .md-group.live .md-group-l { display: inline-flex; align-items: center; gap: 5px; color: #DC2626; }
+        .md-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 10px; }
 
-        .md-match { padding: 9px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-2); transition: border-color 140ms ease; }
-        .md-match.is-live { border-color: rgba(220, 38, 38, .38); background: color-mix(in srgb, #DC2626 5%, var(--surface-1)); }
-        .md-match.is-done { opacity: .82; }
-        /* A match none of your players are in is context, not a decision. */
-        .md-match.is-dim { opacity: .5; }
-        .md-match-head { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+        /* Every match is the same white card. What differs between them is
+           carried by the status pill and the points, not by tinting the whole
+           surface — twelve cards in four different washes was the single
+           biggest source of noise in this panel. */
+        .md-match { padding: 12px 13px 11px; border: 1px solid var(--v2-card-border); border-radius: 14px; background: var(--surface-1); box-shadow: var(--v2-card-shadow); transition: border-color 140ms ease, box-shadow 140ms ease; }
+        .md-match.is-live { border-color: rgba(220, 38, 38, .30); }
+        /* A match none of your players are in is context, not a decision: it
+           recedes by losing contrast, not by going translucent over whatever
+           happens to sit behind it. */
+        .md-match.is-dim { box-shadow: none; background: transparent; border-color: var(--border-subtle); }
+        .md-match.is-dim .md-team, .md-match.is-dim .md-goals { color: var(--text-muted); }
+        .md-match.is-dim .md-crest { filter: grayscale(1); opacity: .55; }
+        .md-match-head { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; }
         .md-status { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 6px; border-radius: var(--radius-full); background: var(--surface-3); color: var(--text-muted); }
         .md-status.live { background: rgba(220, 38, 38, .13); color: #DC2626; }
         .md-status.soon { background: rgba(245, 158, 11, .15); color: #B45309; }
@@ -740,16 +750,18 @@
         .md-mine-total { margin-left: auto; font-family: var(--font-mono); font-size: 13px; font-weight: 800; color: var(--color-primary); cursor: help; }
         .md-mine-total em { font-style: normal; font-size: 8px; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
 
-        .md-score { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-        .md-team { font-size: 12px; font-weight: 700; color: var(--text-primary); flex: 1; }
-        .md-team.a { text-align: right; }
-        .md-goals { font-family: var(--font-mono); font-size: 17px; font-weight: 800; color: var(--text-primary); }
-        .md-goals i { font-style: normal; color: var(--text-muted); margin: 0 2px; font-size: 13px; }
-        .md-goals.pre { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+        .md-score { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .md-team { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+        .md-team.a { justify-content: flex-end; }
+        .md-team b { font-weight: 700; }
+        .md-crest { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+        .md-goals { font-family: var(--font-mono); font-size: 19px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); white-space: nowrap; }
+        .md-goals i { font-style: normal; color: var(--text-muted); margin: 0 3px; font-size: 14px; }
+        .md-goals.pre { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 0; }
 
-        .md-players { display: flex; flex-wrap: wrap; gap: 4px; }
-        .md-none { font-size: 9px; color: var(--text-muted); }
-        .md-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: var(--radius-full); background: var(--surface-1); border: 1px solid var(--border-subtle); font-size: 10px; cursor: help; }
+        .md-players { display: flex; flex-wrap: wrap; gap: 5px; }
+        .md-none { font-size: 10px; color: var(--text-muted); }
+        .md-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid transparent; font-size: 10.5px; cursor: help; }
         .md-chip.on { border-color: rgba(16, 185, 129, .4); }
         .md-chip.bench { opacity: .6; border-style: dashed; }
         .md-chip-name { font-weight: 600; color: var(--text-primary); }
@@ -4097,20 +4109,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=105"></script>
-    <script src="scripts/price-watch.js?v=105"></script>
-    <script src="scripts/xp-engine.js?v=105"></script>
-    <script src="scripts/odds-panel.js?v=105"></script>
-    <script src="scripts/live-gw.js?v=105"></script>
-    <script src="scripts/matchday.js?v=105"></script>
-    <script src="scripts/market-panel.js?v=105"></script>
-    <script src="scripts/eo-layer.js?v=105"></script>
-    <script src="scripts/readiness.js?v=105"></script>
-    <script src="scripts/push-alerts.js?v=105"></script>
-    <script src="scripts/notifications.js?v=105"></script>
-    <script src="scripts/transfer-engine.js?v=105"></script>
-    <script src="scripts/common.js?v=105"></script>
-    <script src="scripts/sidebar-nav.js?v=105"></script>
+    <script src="scripts/error-monitor.js?v=106"></script>
+    <script src="scripts/price-watch.js?v=106"></script>
+    <script src="scripts/xp-engine.js?v=106"></script>
+    <script src="scripts/odds-panel.js?v=106"></script>
+    <script src="scripts/live-gw.js?v=106"></script>
+    <script src="scripts/matchday.js?v=106"></script>
+    <script src="scripts/market-panel.js?v=106"></script>
+    <script src="scripts/eo-layer.js?v=106"></script>
+    <script src="scripts/readiness.js?v=106"></script>
+    <script src="scripts/push-alerts.js?v=106"></script>
+    <script src="scripts/notifications.js?v=106"></script>
+    <script src="scripts/transfer-engine.js?v=106"></script>
+    <script src="scripts/common.js?v=106"></script>
+    <script src="scripts/sidebar-nav.js?v=106"></script>
     <script>
         initIcons();
         loadFooter();

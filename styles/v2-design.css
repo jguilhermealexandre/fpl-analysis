@@ -914,3 +914,318 @@ html.v2-theme body {
 
     .v2-nav-item { min-height: 44px; }
 }
+
+/* ============================================================
+   CLEAN SURFACE PASS
+
+   The dashboard had accumulated three habits that read as noise rather
+   than information: a green wash behind every page, page titles at 104px
+   in 10%-opacity green (a decorative ghost, not a heading), and cards that
+   each announced themselves with a different coloured edge.
+
+   The fix is to spend contrast where it carries meaning. The page ground
+   goes flat and neutral so a white card is legible as a card; headings go
+   solid and small so they read as labels; the accent green is reserved for
+   state that matters — the active nav item, a sorted column, a positive
+   number. Nothing here changes what any colour *means*: FDR scales,
+   position colours and verdict pills are untouched.
+
+   Everything is scoped to .v2-main-content or .v2-theme, so the one page
+   that is not a dashboard — the logged-out landing on index.html — keeps
+   its own look via the explicit exception below.
+   ============================================================ */
+
+:root {
+    /* The ground a card sits on. Neutral, not tinted: a green wash under a
+       white card leaves too little separation to see the card's edge. */
+    --v2-ground: #F5F6F8;
+    --v2-card-border: rgba(17, 24, 39, 0.07);
+    --v2-card-radius: 16px;
+    /* Two shadows doing separate jobs: a 1px contact shadow that defines the
+       edge, and a wide, very soft ambient one that lifts the card off the
+       ground without a visible grey halo. */
+    --v2-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04),
+                      0 10px 28px -14px rgba(16, 24, 40, 0.12);
+}
+
+[data-theme="dark"] {
+    --v2-ground: #12161B;
+    --v2-card-border: rgba(255, 255, 255, 0.07);
+    --v2-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.30),
+                      0 10px 28px -14px rgba(0, 0, 0, 0.55);
+}
+
+/* ----- Page ground ----- */
+
+.v2-main-content {
+    background: var(--v2-ground);
+}
+
+[data-theme="dark"] .v2-main-content {
+    background: var(--v2-ground);
+}
+
+/* The logged-out landing is not a dashboard page and is out of scope for
+   this pass. It is the only place a .hero-banner appears without
+   .hero-logged-in, so that absence identifies it without a new flag for
+   index.html's state toggle to keep in sync. */
+.v2-main-content:has(.hero-banner:not(.hero-logged-in)) {
+    background: linear-gradient(160deg, #DDEFE4 0%, #F1FAF5 48%, #FFFFFF 100%);
+}
+
+[data-theme="dark"] .v2-main-content:has(.hero-banner:not(.hero-logged-in)) {
+    background: linear-gradient(160deg, #15191F 0%, #17201D 52%, #18241F 100%);
+}
+
+/* ----- Headings -----
+   The old title was clamp(56px, 7.5vw, 104px) in --color-primary-muted,
+   which is green at 10% alpha — a watermark you read past rather than
+   with. At 32px solid it is a heading again, and the ~70px of vertical
+   space it gives back is the single largest source of the reference
+   layouts' calm. */
+:root {
+    --v2-page-title-size: clamp(26px, 2.4vw, 32px);
+    --v2-page-title-spacing: -0.5px;
+    --v2-page-title-top: 32px;
+}
+
+@media (max-width: 768px) {
+    :root {
+        --v2-page-title-size: 24px;
+        --v2-page-title-top: 24px;
+    }
+}
+
+.v2-theme .v2-page-heading {
+    line-height: 1.25 !important;
+    font-weight: 650 !important;
+    color: var(--text-primary) !important;
+}
+
+/* Lucide icons in a heading were sized against the old 104px title. */
+.v2-theme .v2-page-heading .icon,
+.v2-theme .v2-page-heading [data-lucide] {
+    width: 22px;
+    height: 22px;
+    vertical-align: -3px;
+    color: var(--color-primary);
+}
+
+/* Section headings inside a page: one step down from the page title, and
+   the same size wherever they appear. Several pages had these at 22-28px,
+   close enough to the page title to compete with it. */
+.v2-main-content main h2,
+.v2-main-content .section-title,
+.v2-main-content .card-title {
+    font-size: 17px;
+    font-weight: 650;
+    letter-spacing: -0.2px;
+    line-height: 1.35;
+    color: var(--text-primary);
+}
+
+/* ----- Cards -----
+   One surface treatment, applied to the containers that were already
+   carrying a card-like look with slightly different values each. */
+.v2-main-content .hss-card,
+.v2-main-content .hero-squad-panel,
+.v2-main-content .hero-deadline-banner,
+.v2-main-content .rec-card,
+.v2-main-content .rec-card-v2,
+.v2-main-content .route-card,
+.v2-main-content .chart-card,
+.v2-main-content .stats-container,
+.v2-main-content .soft-card,
+.v2-main-content .pp-card,
+.v2-main-content .price-card,
+.v2-main-content .rising-card,
+.v2-main-content .swing-card,
+.v2-main-content .tm-summary-card,
+.v2-main-content .fx-split-card,
+.v2-main-content .teams-grid > * {
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border);
+    border-radius: var(--v2-card-radius);
+    box-shadow: var(--v2-card-shadow);
+}
+
+/* ----- Tables -----
+   The bones were already right — 14px padding, small caps headers. What
+   made them look busy was a filled grey header band and a 2px rule under
+   it. A flat header on the card surface, one hairline, and a tinted hover
+   row is enough structure to track a row across twenty columns. */
+.v2-main-content .data-table thead th,
+.v2-main-content table:not(.matrix-table) thead th {
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-default);
+    color: var(--text-muted);
+    font-size: 10.5px;
+    letter-spacing: 0.6px;
+    padding: 13px 16px;
+}
+
+.v2-main-content .data-table thead th:hover,
+.v2-main-content table:not(.matrix-table) thead th:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+
+.v2-main-content .data-table td,
+.v2-main-content table:not(.matrix-table) td {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+/* The hover tint is the accent at 5% rather than a grey step: it reads as
+   "this row is live" instead of "this row is disabled". */
+.v2-main-content .data-table tbody tr:hover,
+.v2-main-content table:not(.matrix-table) tbody tr:hover {
+    background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+
+.v2-main-content .data-table tbody tr:hover td.col-player {
+    background: color-mix(in srgb, var(--color-primary) 5%, var(--surface-1));
+}
+
+/* The frozen identity column sat on --surface-2, a visibly different grey
+   from the rows it belongs to. */
+.v2-main-content .data-table th.col-player {
+    background: var(--surface-1);
+}
+
+/* The last row's hairline doubles up with the card edge below it. */
+.v2-main-content .data-table tbody tr:last-child td,
+.v2-main-content table:not(.matrix-table) tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ============================================================
+   DASHBOARD FOOTER
+
+   The four-column footer is a landing-page component: it exists to
+   introduce the site to someone who has just arrived. Inside the dashboard
+   it earns none of that height. The Tools column is a second copy of the
+   sidebar the manager is already looking at, and the brand block introduces
+   a product they are demonstrably already using. Three things survive
+   because they still do work anywhere: where the data comes from, the two
+   link groups that are *not* in the sidebar, and the legal + freshness line.
+
+   It also stops being a dark slab. On a light dashboard #111827 was the
+   heaviest element on the page and it sat under content it had nothing to
+   do with; a hairline and the page ground put it in the same design as
+   everything above it.
+
+   Scoped away from the logged-out landing on index.html by the same
+   hero-banner test used for the page ground above, so that page keeps the
+   full footer it was designed with. Every rule carries the same prefix
+   rather than being undone afterwards, so there is one description of the
+   dashboard footer rather than two that have to agree.
+   ============================================================ */
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .site-footer {
+    background: transparent;
+    border-top: 1px solid var(--border-default);
+    color: var(--text-muted);
+    margin-top: 36px;
+    /* loadFooter() appends to <body>, outside .v2-main-content, so the
+       footer does not inherit the main column's offset and would otherwise
+       run underneath the fixed sidebar. */
+    margin-left: var(--v2-sidebar-w);
+}
+
+.v2-sidebar-collapsed .site-footer {
+    margin-left: var(--v2-sidebar-w-collapsed);
+}
+
+/* One row instead of a grid: badge on the left, link groups trailing right. */
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-top {
+    max-width: 1440px;
+    padding: 16px var(--v2-page-gutter);
+    display: flex;
+    align-items: center;
+    gap: 12px 28px;
+    flex-wrap: wrap;
+}
+
+/* The Learn/Company groups run inline — title, then its links as a row. */
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col {
+    display: flex;
+    align-items: center;
+    gap: 8px 14px;
+    flex-wrap: wrap;
+    margin: 0;
+}
+
+/* After .footer-col, not before: the two carry equal specificity, so the
+   one that hides has to be the one the cascade reaches last. */
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--tools,
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-brand-name,
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-tagline {
+    display: none;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--learn {
+    margin-left: auto;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col-title {
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    opacity: 0.75;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links {
+    display: flex;
+    /* common.css stacks these into a column for the tall landing footer. */
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: 0;
+    list-style: none;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links li {
+    margin: 0;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links a,
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links a:hover,
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail:hover {
+    color: var(--color-primary);
+}
+
+/* The API badge keeps its pill, at the size of the row it now sits in. */
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-api-badge {
+    margin: 0;
+    padding: 5px 12px;
+    font-size: 11.5px;
+    color: var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-bottom {
+    max-width: 1440px;
+    padding: 12px var(--v2-page-gutter) 16px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+    .v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .site-footer {
+        margin-left: var(--v2-sidebar-w-collapsed);
+    }
+
+    .v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--learn {
+        margin-left: 0;
+    }
+}
