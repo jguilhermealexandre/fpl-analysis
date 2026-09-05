@@ -389,14 +389,24 @@
         }
 
         function renderSquadFilterBar() {
-            const positions = [{ v: 'all', l: 'All' }, { v: 1, l: 'GK' }, { v: 2, l: 'DEF' }, { v: 3, l: 'MID' }, { v: 4, l: 'FWD' }];
-            return `<div class="sq-filter-bar">
+            /* Each position pill wears its own colour — the same --position-*
+               tokens as the row edges and the pitch — so hovering or selecting
+               DEF is green wherever you are on the site. "All" is not a
+               position, so it stays the brand's own green. */
+            const positions = [
+                { v: 'all', l: 'All', c: '' },
+                { v: 1, l: 'GK', c: 'pos-gk' },
+                { v: 2, l: 'DEF', c: 'pos-def' },
+                { v: 3, l: 'MID', c: 'pos-mid' },
+                { v: 4, l: 'FWD', c: 'pos-fwd' }
+            ];
+            /* Max £ was removed. It filtered a fifteen-player squad you already
+               own, where price is a column you can read — it answered a
+               question the market views are for, not this one. */
+            return `<div class="sq-panel-head">
+                <span class="sq-panel-title">${typeof v2Icon === 'function' ? v2Icon('shirt') : ''}Your squad</span>
                 <div class="sq-filter-pills">
-                    ${positions.map(p => `<button class="sq-filter-pill ${squadFilterPos === p.v ? 'active' : ''}" onclick="setSquadFilterPos('${p.v}')">${p.l}</button>`).join('')}
-                </div>
-                <div class="sq-filter-price">
-                    <label for="sq-filter-price-input">Max £</label>
-                    <input type="number" id="sq-filter-price-input" step="0.5" min="4" max="15" placeholder="Any" value="${squadFilterMaxPrice ?? ''}" oninput="setSquadFilterMaxPrice(this.value)">
+                    ${positions.map(p => `<button class="sq-filter-pill ${p.c} ${squadFilterPos === p.v ? 'active' : ''}" onclick="setSquadFilterPos('${p.v}')">${p.l}</button>`).join('')}
                 </div>
                 <button class="sq-chart-open" onclick="toggleSquadChart()" data-tooltip="Plot any two metrics against each other for your squad or the whole league">
                     <i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i> Visual analysis

@@ -811,6 +811,47 @@
 .team-overview { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(280px, 1fr); gap: 16px; align-items: start; margin-bottom: 20px; animation: fadeInUp 0.5s ease; }
 .sq-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
+/* ----- The squad panel's own header ----- */
+.sq-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.sq-panel-title {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-display);
+    font-size: 17px; font-weight: 650; letter-spacing: -0.2px;
+    color: var(--text-primary);
+}
+.sq-panel-title svg { width: 17px; height: 17px; color: var(--color-primary); }
+/* Pills centred between the title and the chart button. */
+.sq-panel-head .sq-filter-pills { margin: 0 auto; }
+
+/* Each position filter in its own colour, hover and active alike — the same
+   tokens as the row edges and the pitch, so "green means defender" holds
+   everywhere. "All" is not a position, so it keeps the brand green. */
+.sq-filter-pill.pos-gk  { --v2-pos-color: var(--position-gk); }
+.sq-filter-pill.pos-def { --v2-pos-color: var(--position-def); }
+.sq-filter-pill.pos-mid { --v2-pos-color: var(--position-mid); }
+.sq-filter-pill.pos-fwd { --v2-pos-color: var(--position-fwd); }
+
+.sq-filter-pill[class*="pos-"] { border-color: var(--v2-pos-color); color: var(--v2-pos-color); }
+.sq-filter-pill[class*="pos-"]:hover {
+    background: color-mix(in srgb, var(--v2-pos-color) 14%, transparent);
+    color: var(--v2-pos-color);
+}
+.sq-filter-pill[class*="pos-"].active {
+    background: var(--v2-pos-color);
+    border-color: var(--v2-pos-color);
+    color: #fff;
+}
+
+/* The trial picker now lives in the right-hand column. */
+.sq-status-card .tl-picker { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.sq-status-card .tl-picker-in { width: 100%; }
+
 /* ----- Visual Analysis, as a modal ----- */
 .sq-chart-open {
     display: inline-flex; align-items: center; gap: 6px;
@@ -877,6 +918,26 @@
     box-shadow: var(--v2-card-shadow, none);
     min-width: 0;
 }
+/* The health box carries its ring beside the number: a score with no scale
+   behind it reads as an arbitrary figure. Laid out as a row so the box keeps
+   the same height as the other three. */
+.sq-kpi-health { display: flex; align-items: center; gap: 12px; }
+.sq-kpi-health > div { min-width: 0; flex: 1; }
+.sq-kpi-ring { width: 56px; height: 56px; flex-shrink: 0; }
+
+/* The projected XI score, moved out of the pitch's toolbar — it is a
+   squad-level figure and belongs with the squad-level figures. */
+.sq-status-score {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 10px; margin-bottom: 10px;
+    border-radius: var(--radius-md);
+    background: var(--color-primary-muted);
+    cursor: help;
+}
+.sq-status-score-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--color-primary-text); }
+.sq-status-score-value { margin-left: auto; font-family: var(--font-mono); font-size: 18px; font-weight: 800; color: var(--color-primary-text); }
+.sq-status-score-value em { font-style: normal; font-size: 10px; font-weight: 600; opacity: 0.7; margin-left: 3px; }
+
 .sq-kpi-label {
     font-size: 11px; font-weight: 600; letter-spacing: 0.4px;
     text-transform: uppercase; color: var(--text-muted);
@@ -1629,11 +1690,46 @@
 
 /* ===== PITCH: FIELD, MARKINGS, DUGOUT ===== */
 .pitch-field {
+    /* The positioning context for .sq-pitch-controls, which sit in its corner. */
+    position: relative;
     border-radius: var(--radius-lg);
     overflow: hidden;
     border: 1px solid var(--border-default);
     background: var(--surface-1);
 }
+/* Three icon controls in the corner of the field. On the grass rather than
+   above it, because a toolbar spent a full row of the panel on two words and
+   a toggle. Each is 34px — over the 30px thumb minimum — and names itself on
+   hover through the shared tooltip, with an aria-label carrying the same
+   words for anyone not hovering. */
+.sq-pitch-controls {
+    position: absolute;
+    top: 10px; left: 10px;
+    z-index: 6;
+    display: flex;
+    gap: 6px;
+}
+
+.sq-pc {
+    width: 34px; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.88);
+    color: #17301F;
+    cursor: pointer;
+    padding: 0;
+    backdrop-filter: blur(3px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    transition: background 140ms ease, transform 140ms ease, border-color 140ms ease;
+}
+
+.sq-pc svg { width: 16px; height: 16px; }
+.sq-pc:hover { background: #fff; transform: translateY(-1px); }
+.sq-pc.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.sq-pc-go { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.sq-pc-go:hover { background: var(--color-primary-hover); }
+
 .pitch-grass {
     position: relative;
     width: 100%;

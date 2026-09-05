@@ -120,20 +120,34 @@
 
             return `
             <div class="sq-snapshot" id="sq-snapshot-body">
-                <div class="sq-snapshot-toolbar">
-                    <button class="btn btn-primary sq-optimize-btn" onclick="runAutoOptimize()" data-tooltip="Picks the XI that projects best across your next 3 gameweeks, not just this one — the captain and the points gain shown are still for this gameweek alone.">✨ Auto-Optimize Lineup</button>
-                    <div class="gw-toggle" role="group" aria-label="Which gameweek to show">
-                        <button class="gw-toggle-btn ${snapshotViewMode === 'current' ? 'active' : ''}"
-                            onclick="setSnapshotViewMode('current')"
-                            data-tooltip="Points scored in Gameweek ${currentGW}, live while matches are on">📊 GW${currentGW} actual</button>
-                        <button class="gw-toggle-btn ${snapshotViewMode === 'next' ? 'active' : ''}"
-                            onclick="setSnapshotViewMode('next')"
-                            data-tooltip="Projected points and the fixture coming up — what to plan against">🔮 Next GW</button>
-                    </div>
-                    <div class="sq-snapshot-score">${snapshotViewMode === 'next' ? 'Projected' : 'Projected'} Starting XI Score: <strong>${projectedScore}</strong> pts</div>
+                <div class="pitch-field">
+                <!-- Three controls, on the pitch rather than above it. As a
+                     toolbar they took a full row across the top of the panel for
+                     two words and a toggle; as icons in the corner of the field
+                     they cost nothing, and each names itself on hover. The full
+                     explanation of Auto-optimise now lives in the help panel,
+                     which is where someone looks when they want more than a
+                     label. -->
+                <div class="sq-pitch-controls" role="group" aria-label="Pitch controls">
+                    <button class="sq-pc ${snapshotViewMode === 'current' ? 'active' : ''}"
+                        onclick="setSnapshotViewMode('current')"
+                        aria-label="Show Gameweek ${currentGW}"
+                        data-tooltip="Current GW${currentGW} — points scored, live while matches are on">
+                        <i data-lucide="activity"></i>
+                    </button>
+                    <button class="sq-pc ${snapshotViewMode === 'next' ? 'active' : ''}"
+                        onclick="setSnapshotViewMode('next')"
+                        aria-label="Show Gameweek ${currentGW + 1}"
+                        data-tooltip="Next GW${currentGW + 1} — projected points and the fixture coming up">
+                        <i data-lucide="telescope"></i>
+                    </button>
+                    <button class="sq-pc sq-pc-go" onclick="runAutoOptimize()"
+                        aria-label="Auto-optimise lineup"
+                        data-tooltip="Auto-optimise — the best legal XI across your next 3 gameweeks">
+                        <i data-lucide="wand-sparkles"></i>
+                    </button>
                 </div>
                 ${snapshotOptimizeSummary ? `<div class="sq-optimize-summary">✨ ${snapshotOptimizeSummary}</div>` : ''}
-                <div class="pitch-field">
                     <div class="pitch-grass">
                         <div class="pitch-markings" aria-hidden="true">
                             <span class="pm-halfway"></span>

@@ -1321,10 +1321,10 @@
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
             html += renderSquadTickers();
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
-            /* A trial sits directly under the two numbers it moves, so the
-               before and after are read in the same glance. */
+            /* A trial sits under the numbers it moves, so before and after are
+               read in one glance. The picker that starts one has moved into the
+               right-hand column — see renderSquadStatusCard(). */
             if (typeof tlRenderInto === 'function') html += tlRenderInto();
-            if (typeof tlRenderPicker === 'function') html += tlRenderPicker();
             /* Filters, the chart button and every position group in one panel.
                They were three stacked boxes with four more inside the last of
                them, so the squad read as seven cards rather than one table with
@@ -1675,10 +1675,25 @@
                 ? box('Squad · Bank', `£${d.squadValue.toFixed(1)}m`, `£${d.bank.toFixed(1)}m in the bank`)
                 : box('Squad · Bank', '—', '');
 
-            const healthBox = `<div class="sq-kpi">
-                <div class="sq-kpi-label">Squad health</div>
-                <div class="sq-kpi-value" style="color:${healthColor};">${health}</div>
-                <div class="sq-kpi-sub">${escHTML(healthText)}</div>
+            /* The ring is back — the number alone said how healthy, but not how
+               healthy out of what, and a score with no scale behind it reads as
+               an arbitrary figure. It sits beside the label rather than above
+               a caption, so the box keeps the strip's height. */
+            const circumference = 2 * Math.PI * 26;
+            const healthBox = `<div class="sq-kpi sq-kpi-health">
+                <div>
+                    <div class="sq-kpi-label">Squad health</div>
+                    <div class="sq-kpi-value" style="color:${healthColor};">${health}</div>
+                    <div class="sq-kpi-sub">${escHTML(healthText)}</div>
+                </div>
+                <svg class="sq-kpi-ring" viewBox="0 0 60 60" aria-hidden="true">
+                    <circle cx="30" cy="30" r="26" fill="none" stroke="var(--surface-3)" stroke-width="6"/>
+                    <circle cx="30" cy="30" r="26" fill="none" stroke="${healthColor}" stroke-width="6"
+                        stroke-linecap="round"
+                        stroke-dasharray="${circumference}"
+                        stroke-dashoffset="${circumference * (1 - Math.max(0, Math.min(100, health)) / 100)}"
+                        transform="rotate(-90 30 30)"/>
+                </svg>
             </div>`;
 
             return `<div class="sq-kpis">${deadline}${healthBox}${rank}${money}</div>`;
@@ -1689,8 +1704,18 @@
            the gameweek that has just been played. */
         function renderSquadStatusCard(sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
             const reviewGW = typeof gwReviewTarget === 'function' ? gwReviewTarget() : null;
+            /* computeProjectedXIScore() is the same pure function the pitch uses,
+               called rather than read back off the pitch's markup — the card is
+               built before the pitch is in the document, so a DOM read here
+               would be null on the first render and one gameweek stale after. */
+            const projected = typeof computeProjectedXIScore === 'function' ? computeProjectedXIScore() : null;
             return `<div class="sq-status-card">
                 <div class="sq-status-head">${typeof v2Icon === 'function' ? v2Icon('activity') : ''}Squad status</div>
+
+                ${projected != null ? `<div class="sq-status-score" data-tooltip="Projected points for your starting eleven over the gameweek the pitch is showing.">
+                    <span class="sq-status-score-label">Projected XI</span>
+                    <span class="sq-status-score-value">${escHTML(String(projected))}<em>pts</em></span>
+                </div>` : ''}
 
                 <div class="health-breakdown">${healthBreakdown && healthBreakdown.length
                     ? healthBreakdown.map(b => `${b.count} ${escHTML(b.label)}`).join(' · ')
@@ -1702,6 +1727,8 @@
                     ${stars.length ? `<span class="hv-count star">★ ${stars.length} Star</span>` : ''}
                     <span class="hv-count hold">● ${holds.length} Hold</span>
                 </div>
+
+                ${typeof tlRenderPicker === 'function' ? tlRenderPicker() : ''}
 
                 <div class="health-actions">
                     <div class="insight-moves">
