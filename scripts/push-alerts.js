@@ -229,16 +229,40 @@
                     <span class="pn-text">Alerts are blocked for this site in your browser settings.</span>
                 </div>`;
             }
+            /* What will actually be sent, listed before it is agreed to.
+
+               PN_ALERTS carried a label and a description for each alert from
+               the start and neither ever reached the screen — the offer said
+               "team news and a deadline nudge" and left the rest to trust. This
+               is the one permission on the site that cannot be asked for twice,
+               so being vague about it is expensive: a manager who does not know
+               what he is agreeing to is a manager who says no, permanently. */
+            const list = (on) => `<ul class="pn-list">${PN_ALERTS.map(a => `
+                <li class="pn-item${(on && prefs[a.id] === false) ? ' off' : ''}">
+                    <span class="pn-item-l">${esc(a.label)}</span>
+                    <span class="pn-item-d">${esc(a.detail)}</span>
+                </li>`).join('')}</ul>`;
+
+            const prefs = pnStoredPrefs();
+
             if (state === 'on') {
-                return `<div class="pn-offer on">
-                    <span class="pn-text">Alerts are on for your squad.</span>
-                    <button type="button" class="pn-btn ghost" onclick="pnToggleFromUI(false)">Turn off</button>
-                </div>`;
+                return `<details class="pn-offer on">
+                    <summary class="pn-sum">
+                        <span class="pn-text">Alerts are on for your squad.</span>
+                        <span class="pn-more">What you get</span>
+                    </summary>
+                    ${list(true)}
+                    <button type="button" class="pn-btn ghost" onclick="pnToggleFromUI(false)">Turn off alerts</button>
+                </details>`;
             }
-            return `<div class="pn-offer">
-                <span class="pn-text">Get told when something in your squad needs you — team news, and a nudge two hours before the deadline.</span>
+            return `<details class="pn-offer">
+                <summary class="pn-sum">
+                    <span class="pn-text">Get told when something in your squad needs you, even when the site is closed.</span>
+                    <span class="pn-more">What you get</span>
+                </summary>
+                ${list(false)}
                 <button type="button" class="pn-btn" onclick="pnToggleFromUI(true)">Turn on alerts</button>
-            </div>`;
+            </details>`;
         }
 
         // Bound to the buttons above. Re-renders in place so the control always

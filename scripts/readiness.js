@@ -295,7 +295,7 @@
            hours" is not useful unless you also know whether two hours is enough.
            Together they answer the actual question, which is whether you can
            stop thinking about it. */
-        function rdSummaryHTML(summary, deadlineTime, now) {
+        function rdSummaryHTML(summary, deadlineTime, now, checks) {
             const esc = typeof escHTML === 'function' ? escHTML : (s => String(s == null ? '' : s));
             const s = summary;
             const pct = s.total ? Math.round((s.clear / s.total) * 100) : 0;
@@ -326,14 +326,58 @@
                 }
             }
 
-            return `<div class="rd-bar ${tone}">
-                <div class="rd-bar-main">
-                    <span class="rd-headline">${esc(headline)}</span>
-                    <span class="rd-sub">${esc(sub)}</span>
-                </div>
-                <div class="rd-meter" role="img" aria-label="${esc(`${s.clear} of ${s.total} checks clear`)}">
-                    <span class="rd-meter-fill" style="width:${pct}%"></span>
-                </div>
-                ${clock}
-            </div>`;
+            /* The count is only meaningful if the things being counted can be
+               seen. Without this the bar claims "7 of 9 clear" over a panel that
+               shows neither the nine nor which two failed — the columns below
+               render rows, and rows are not checks: one check can produce
+               several, and the seven that pass produce none at all.
+
+               Showing the passing ones is the more valuable half. "Ready" is
+               only worth anything if you can see what was actually looked at,
+               and a manager who can read "vice-captain can take the armband —
+               clear" has been told something the empty state never could. */
+            const list = checks && checks.length ? rdChecklistHTML(checks) : '';
+
+            return `<details class="rd-bar ${tone}"${list ? '' : ' data-empty="1"'}>
+                <summary class="rd-bar-head">
+                    <div class="rd-bar-main">
+                        <span class="rd-headline">${esc(headline)}</span>
+                        <span class="rd-sub">${esc(sub)}</span>
+                    </div>
+                    <div class="rd-meter" role="img" aria-label="${esc(`${s.clear} of ${s.total} checks clear`)}">
+                        <span class="rd-meter-fill" style="width:${pct}%"></span>
+                    </div>
+                    ${clock}
+                    ${list ? `<span class="rd-expand">${esc(`All ${s.total} checks`)}</span>` : ''}
+                </summary>
+                ${list}
+            </details>`;
+        }
+
+        /* Every check, passing ones included, in the order they were run.
+
+           A failing check carries its own rows so the detail is next to the
+           name rather than in a column further down that has to be matched up
+           by eye. A passing one is a single line: there is nothing to say about
+           it beyond that it was looked at, which is the entire point. */
+        function rdChecklistHTML(checks) {
+            const esc = typeof escHTML === 'function' ? escHTML : (s => String(s == null ? '' : s));
+            const mark = { clear: '✓', warn: '●', urgent: '▲' };
+
+            const rows = checks.map(c => {
+                const detail = c.rows.map(r => {
+                    const body = `<span class="rd-i-name">${esc(r.name)}</span><span class="rd-i-why">${esc(r.reason)}</span>`;
+                    return r.href
+                        ? `<a class="rd-item" href="${esc(r.href)}">${body}<span class="rd-i-go">→</span></a>`
+                        : `<span class="rd-item">${body}</span>`;
+                }).join('');
+                return `<li class="rd-check ${c.state}">
+                    <span class="rd-mark" aria-hidden="true">${mark[c.state]}</span>
+                    <span class="rd-label">${esc(c.label)}</span>
+                    <span class="sr-only">${esc(c.state === 'clear' ? 'clear' : c.state === 'urgent' ? 'needs attention urgently' : 'worth watching')}</span>
+                    ${detail ? `<span class="rd-items">${detail}</span>` : ''}
+                </li>`;
+            }).join('');
+
+            return `<ul class="rd-list">${rows}</ul>`;
         }

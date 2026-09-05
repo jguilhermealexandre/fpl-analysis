@@ -202,3 +202,29 @@ test('every alert offered says what it will send', async () => {
     assert.equal(defaults.price, false, 'the noisiest one is off until asked for');
     assert.equal(defaults.deadline, true);
 });
+
+test('the offer lists what will be sent before it is agreed to', () => {
+    /* PN_ALERTS carried a label and a description from the start and neither
+       ever reached the screen. This permission cannot be asked for twice, so a
+       manager who cannot see what he is agreeing to is one who says no
+       permanently. */
+    const pn = load();
+    const alerts = evalIn(pn, 'PN_ALERTS');
+    const html = pn.pnRenderToggle('available');
+    for (const a of alerts) {
+        assert.ok(html.includes(a.label), `"${a.label}" is offered by name`);
+        assert.ok(html.includes(a.detail), `and says what it sends`);
+    }
+    assert.match(html, /<details/, 'expandable rather than a wall of text');
+    assert.match(html, /Turn on alerts/);
+});
+
+test('an alert left switched off is shown as off, not hidden', () => {
+    // Hiding it would make the list a description of the feature rather than
+    // of what this manager is actually getting.
+    const pn = load({ permission: 'granted', subscription: { endpoint: 'https://push.example/abc' } });
+    pn.localStorage.setItem('easyfpl_push', JSON.stringify({ teamId: '1', prefs: { deadline: true, 'squad-news': true, price: false } }));
+    const html = pn.pnRenderToggle('on');
+    assert.match(html, /pn-item off/, 'the one that is off is marked');
+    assert.match(html, /Price moves on your squad/, 'and still named');
+});

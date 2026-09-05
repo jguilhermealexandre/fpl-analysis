@@ -255,3 +255,61 @@ test('the model runs without the minutes engine', () => {
         'no model means no claim, rather than a guess');
     assert.ok(built.summary.total > 0);
 });
+
+test('the bar can be opened to show every check, passing ones included', () => {
+    /* The defect this fixes: the bar reported "7 of 9 clear" over a panel that
+       showed neither the nine nor which two failed. The columns render rows,
+       and rows are not checks — one check can produce several, and the seven
+       that pass produce none at all, so the count referred to something that
+       was nowhere on the page. */
+    const rd = load();
+    const squad = cleanSquad();
+    squad[0].status = 'i';
+    squad[0].news = 'Hamstring';
+    const built = rd.rdBuild(settled({ squad }));
+    const html = rd.rdSummaryHTML(built.summary, null, Date.now(), built.checks);
+
+    assert.match(html, /<details/, 'the bar is a control, not an inert div');
+    assert.match(html, /rd-expand/, 'and says so');
+
+    // Every declared check appears by name, whatever its state.
+    for (const c of evalIn(rd, 'RD_CHECKS')) {
+        assert.ok(html.includes(c.label), `"${c.label}" is on screen`);
+    }
+    const clear = (html.match(/rd-check clear/g) || []).length;
+    assert.equal(clear, built.summary.clear, 'the passing checks are shown, not just counted');
+    assert.match(html, /rd-check urgent/, 'and the failing one is marked apart');
+});
+
+test('a failing check carries its own detail and link', () => {
+    // Otherwise the name has to be matched by eye against a column further down.
+    const rd = load();
+    const squad = cleanSquad();
+    squad[0].status = 'i';
+    squad[0].news = 'Hamstring';
+    const built = rd.rdBuild(settled({ squad }));
+    const html = rd.rdSummaryHTML(built.summary, null, Date.now(), built.checks);
+    assert.match(html, /Hamstring/, 'the reason travels with the check');
+    assert.match(html, /href="fpl-my-team-analysis\.html#squad\?player=1"/, 'and so does the way to fix it');
+});
+
+test('a ready squad still lists what was checked', () => {
+    /* "Ready" is only worth anything if you can see what was actually looked
+       at. Nine green lines is the evidence for the claim in the headline. */
+    const rd = load();
+    const built = rd.rdBuild(settled());
+    const html = rd.rdSummaryHTML(built.summary, null, Date.now(), built.checks);
+    assert.match(html, /Ready for the deadline/);
+    assert.equal((html.match(/rd-check clear/g) || []).length, built.checks.length);
+    assert.doesNotMatch(html, /rd-item/, 'with no detail rows, because nothing failed');
+});
+
+test('the bar renders without checks for callers that pass none', () => {
+    // The signature grew; anything still calling it the old way must not break.
+    const rd = load();
+    const built = rd.rdBuild(settled());
+    const html = rd.rdSummaryHTML(built.summary, null);
+    assert.match(html, /rd-bar/);
+    assert.match(html, /data-empty/, 'flagged as having nothing to expand');
+    assert.doesNotMatch(html, /rd-expand/, 'and offers no control that would open nothing');
+});

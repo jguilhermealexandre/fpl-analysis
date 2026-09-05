@@ -759,6 +759,7 @@ export default [
                 rankingsSort: 'writable',
                 rateStat: 'writable',
                 rdBuild: 'writable',
+                rdChecklistHTML: 'writable',
                 rdChipDeadline: 'writable',
                 rdChipLabel: 'writable',
                 rdRows: 'writable',

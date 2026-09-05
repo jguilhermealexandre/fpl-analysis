@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=100">
-    <link rel="stylesheet" href="styles/v2-design.css?v=100">
+    <link rel="stylesheet" href="styles/common.css?v=101">
+    <link rel="stylesheet" href="styles/v2-design.css?v=101">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -839,11 +839,59 @@
            splitting them across two panels made the countdown decorative. */
         .rd-bar {
             grid-column: 1 / -1;
-            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-            padding: 14px 16px; border-radius: 12px;
+            padding: 0; border-radius: 12px;
             background: var(--surface-1); border: 1px solid var(--border-default);
             border-left: 3px solid var(--text-muted);
         }
+        /* The whole bar is the control. It used to be an inert div reporting
+           "7 of 9 clear" over a panel that showed neither the nine nor which
+           two failed — the columns below render rows, and rows are not checks. */
+        .rd-bar-head {
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+            padding: 14px 16px; cursor: pointer; list-style: none;
+            border-radius: 12px;
+        }
+        .rd-bar-head::-webkit-details-marker { display: none; }
+        .rd-bar[data-empty] .rd-bar-head { cursor: default; }
+        .rd-bar-head:hover .rd-expand { color: var(--text-secondary); border-color: var(--text-muted); }
+        .rd-expand {
+            padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+            border: 1px solid var(--border-default); color: var(--text-muted);
+            font-size: 10.5px; font-weight: 700; letter-spacing: .03em;
+            transition: color .15s ease, border-color .15s ease;
+        }
+        .rd-expand::after { content: ' ▾'; }
+        .rd-bar[open] .rd-expand::after { content: ' ▴'; }
+
+        .rd-list {
+            margin: 0; padding: 4px 16px 14px; list-style: none;
+            display: flex; flex-direction: column; gap: 1px;
+        }
+        .rd-check {
+            display: grid; grid-template-columns: 18px 1fr; gap: 4px 8px;
+            align-items: baseline; padding: 7px 0;
+            border-top: 1px solid var(--border-subtle);
+            font-size: 12.5px; color: var(--text-secondary);
+        }
+        .rd-mark { font-size: 11px; line-height: 1.4; text-align: center; }
+        .rd-check.clear .rd-mark { color: var(--color-success); }
+        .rd-check.warn .rd-mark { color: var(--color-warning); }
+        .rd-check.urgent .rd-mark { color: var(--color-error); }
+        /* A passing check is quieter than a failing one: it is there to show
+           what was looked at, not to be read one by one. */
+        .rd-check.clear .rd-label { color: var(--text-muted); }
+        .rd-check.urgent .rd-label, .rd-check.warn .rd-label { color: var(--text-primary); font-weight: 600; }
+
+        .rd-items { grid-column: 2; display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
+        .rd-item {
+            display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+            padding: 6px 9px; border-radius: 6px; text-decoration: none;
+            background: var(--surface-2); color: var(--text-secondary); font-size: 11.5px;
+        }
+        a.rd-item:hover { background: var(--surface-3, var(--surface-2)); }
+        .rd-i-name { font-weight: 700; color: var(--text-primary); }
+        .rd-i-why { flex: 1; min-width: 140px; color: var(--text-muted); line-height: 1.45; }
+        .rd-i-go { color: var(--text-muted); }
         .rd-bar.ready { border-left-color: var(--color-success); }
         .rd-bar.warn { border-left-color: var(--color-warning); }
         .rd-bar.urgent { border-left-color: var(--color-error); }
@@ -892,6 +940,27 @@
         }
         .pn-btn:hover { filter: brightness(1.08); }
         .pn-btn.ghost { background: transparent; color: var(--text-secondary); border-color: var(--border-default); }
+
+        /* What will be sent, listed before it is agreed to. The permission
+           cannot be asked for twice, so vagueness here is expensive. */
+        .pn-sum { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; cursor: pointer; list-style: none; }
+        .pn-sum::-webkit-details-marker { display: none; }
+        .pn-more {
+            padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+            border: 1px solid var(--border-default); color: var(--text-muted);
+            font-size: 10.5px; font-weight: 700;
+        }
+        .pn-more::after { content: ' ▾'; }
+        .pn-offer[open] .pn-more::after { content: ' ▴'; }
+        .pn-offer[open] { display: block; }
+        .pn-offer[open] .pn-btn { margin-top: 10px; }
+
+        .pn-list { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+        .pn-item { display: flex; flex-direction: column; gap: 1px; padding-left: 14px; position: relative; }
+        .pn-item::before { content: '•'; position: absolute; left: 0; color: var(--color-success); }
+        .pn-item.off::before { content: '○'; color: var(--text-muted); }
+        .pn-item-l { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+        .pn-item-d { font-size: 11px; line-height: 1.45; color: var(--text-muted); }
         .v2-attn-col {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
@@ -3976,19 +4045,19 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=100"></script>
-    <script src="scripts/price-watch.js?v=100"></script>
-    <script src="scripts/xp-engine.js?v=100"></script>
-    <script src="scripts/odds-panel.js?v=100"></script>
-    <script src="scripts/live-gw.js?v=100"></script>
-    <script src="scripts/matchday.js?v=100"></script>
-    <script src="scripts/market-panel.js?v=100"></script>
-    <script src="scripts/eo-layer.js?v=100"></script>
-    <script src="scripts/readiness.js?v=100"></script>
-    <script src="scripts/push-alerts.js?v=100"></script>
-    <script src="scripts/transfer-engine.js?v=100"></script>
-    <script src="scripts/common.js?v=100"></script>
-    <script src="scripts/sidebar-nav.js?v=100"></script>
+    <script src="scripts/error-monitor.js?v=101"></script>
+    <script src="scripts/price-watch.js?v=101"></script>
+    <script src="scripts/xp-engine.js?v=101"></script>
+    <script src="scripts/odds-panel.js?v=101"></script>
+    <script src="scripts/live-gw.js?v=101"></script>
+    <script src="scripts/matchday.js?v=101"></script>
+    <script src="scripts/market-panel.js?v=101"></script>
+    <script src="scripts/eo-layer.js?v=101"></script>
+    <script src="scripts/readiness.js?v=101"></script>
+    <script src="scripts/push-alerts.js?v=101"></script>
+    <script src="scripts/transfer-engine.js?v=101"></script>
+    <script src="scripts/common.js?v=101"></script>
+    <script src="scripts/sidebar-nav.js?v=101"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4845,7 +4914,7 @@
                 </div>`;
             }
 
-            const html = rdSummaryHTML(built.summary, deadlineTime)
+            const html = rdSummaryHTML(built.summary, deadlineTime, Date.now(), built.checks)
                        + renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup', 'xi')
                        + renderCol(txItems, 'repeat', 'Transfers', 'No urgent transfer actions right now', 'fpl-my-team-analysis.html#transfers', 'tx')
                        /* The alerts offer goes last, under the checks rather
