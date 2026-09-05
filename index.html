@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=151">
-    <link rel="stylesheet" href="styles/v2-design.css?v=151">
+    <link rel="stylesheet" href="styles/common.css?v=152">
+    <link rel="stylesheet" href="styles/v2-design.css?v=152">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1068,16 +1068,36 @@
             border-left: none; border-radius: 0;
             background: transparent;
         }
+        /* The head is one line here, not three: the headline and its count on
+           the left, the clock on the right, and the meter under them. */
         .v2-info-panel .rd-bar-head {
-            gap: 8px 12px; padding: 13px 18px 10px; border-radius: 0;
+            gap: 4px 10px; padding: 11px 16px 9px; border-radius: 0;
         }
-        .v2-info-panel .rd-bar-main { flex: 1 1 100%; }
-        .v2-info-panel .rd-headline { font-size: 14px; }
-        .v2-info-panel .rd-meter { flex: 1 1 auto; }
+        .v2-info-panel .rd-bar-main {
+            flex: 1 1 auto; flex-direction: row; align-items: baseline; gap: 7px; flex-wrap: wrap;
+        }
+        .v2-info-panel .rd-headline { font-size: 13.5px; }
+        .v2-info-panel .rd-sub { font-size: 11px; }
+        .v2-info-panel .rd-meter { flex: 1 1 100%; order: 3; }
         .v2-info-panel .rd-clock { font-size: 11px; }
+        /* The lanes stack here rather than sitting side by side, which is the
+           shorter of the two in this width: half a 418px column is 190px, and a
+           check's reason then wraps to four lines where at full width it takes
+           two. The chips in the Clear lane wrap across the whole panel for the
+           same reason. */
         .v2-info-panel .rd-lanes { grid-template-columns: 1fr; border-top: none; }
-        .v2-info-panel .rd-lane { padding: 10px 18px 12px; background: transparent; }
+        .v2-info-panel .rd-lane { padding: 8px 16px 10px; background: transparent; }
         .v2-info-panel .rd-lane + .rd-lane { border-left: none; border-top: 1px solid var(--border-subtle); }
+        .v2-info-panel .rd-check { padding: 4px 0; }
+        .v2-info-panel .rd-items { margin-top: 2px; }
+        .v2-info-panel .rd-item { padding: 4px 8px; font-size: 11px; gap: 6px; flex-wrap: nowrap; }
+        /* One line each. The full reason is a click away on the squad page, and
+           two of these wrapping to four lines apiece is what pushed this panel
+           past the bottom of the pitch beside it. */
+        .v2-info-panel .rd-i-why {
+            min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .v2-info-panel .rd-lane.done .rd-check { padding: 2px 8px; font-size: 10px; }
         .v2-info-panel .rd-check { font-size: 12px; padding: 5px 0; }
 
         /* The clear lane, as labels rather than rows. */
@@ -1262,7 +1282,16 @@
             border-radius: var(--radius-xl);
             box-shadow: var(--shadow-sm);
             padding: 16px 18px 18px;
+            /* A column, so that when the row is taller than the pitch needs to
+               be — the panel beside it sets the height — the extra goes to the
+               grass rather than leaving white space under the bench. The rows
+               inside the pitch are positioned by percentage, so a taller pitch
+               simply spreads them. */
+            display: flex;
+            flex-direction: column;
         }
+        .v2-pitch-stage { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+        .v2-pitch-stage > .v2-pitch { flex: 1 1 auto; }
         .v2-pitch-header {
             display: flex;
             align-items: center;
@@ -1453,52 +1482,27 @@
             border: 2px solid transparent;
             box-shadow: 0 2px 6px rgba(0,0,0,0.16);
         }
-        /* Same treatment as .pcard-crest on the squad page: the club's short
-           name sits behind the badge at z-index -1, so a badge that 404s — a
-           promoted club the endpoint has no code for yet — leaves the club
-           named rather than a hole in the card. */
-        .v2-pitch-token-ids {
-            display: flex; align-items: center; justify-content: center; gap: 3px;
-            margin-bottom: 1px;
+        /* The identity mark is v2IdentityHTML's portrait form (v2-design.css);
+           only its size and the verdict ring are set here. */
+        /* A share of the card rather than a fixed size: the cards are 17% of the
+           pitch, so on a tablet they come down to ~64px and a 44px head on one
+           of those is nearly the whole card. */
+        .v2-pitch-token .v2-pid-portrait { --v2-pid-face: 58%; --v2-pid-crest: 19px; margin-bottom: 2px; }
+        /* A sell or a monitor verdict rings the face. This class was being
+           written onto the markup with no rule anywhere to match it, so the
+           ring the card claimed to carry has never once been drawn — the glyph
+           beside the name was doing the work alone. */
+        .v2-pitch-token.verdict-ring-sell .v2-pid-avatar { box-shadow: 0 0 0 2px #DC2626, 0 2px 5px rgba(0,0,0,0.18); }
+        .v2-pitch-token.verdict-ring-monitor .v2-pid-avatar { box-shadow: 0 0 0 2px #D97706, 0 2px 5px rgba(0,0,0,0.18); }
+        /* Availability and verdict sit in the corner opposite the armband. */
+        .v2-pitch-token-flags {
+            position: absolute; top: 2px; left: 3px; z-index: 3;
+            display: flex; align-items: center; gap: 2px; line-height: 1;
         }
-        /* The club photos are 110x140 cut-outs on transparency, framed head and
-           shoulders — so a circle crops to the face with the top of the frame
-           kept, rather than centring on the chest. The tinted disc behind means
-           a transparent cut-out has something to sit on. */
-        .v2-pitch-token-avatar {
-            position: relative;
-            width: 30px; height: 30px; border-radius: 50%;
-            background: rgba(15,23,42,0.06);
+        /* Who they play and what it is worth, on one line. */
+        .v2-pitch-token-foot {
             display: flex; align-items: center; justify-content: center;
-            overflow: hidden; flex-shrink: 0;
-        }
-        .v2-pitch-token-initials {
-            font-size: 11px; font-weight: 700; letter-spacing: 0;
-            color: rgba(15,23,42,0.45);
-        }
-        /* The photos are cut-outs on transparency, so a two- or three-letter
-           set of initials shows through the empty space around the head rather
-           than being covered by it. They are for the case where no photo
-           arrives, so once one does they come out entirely. */
-        .v2-pitch-token-avatar.has-photo .v2-pitch-token-initials { display: none; }
-        .v2-pitch-token-face {
-            position: absolute; inset: 0;
-            width: 100%; height: 100%;
-            object-fit: cover; object-position: 50% 12%;
-        }
-        .v2-pitch-token-crest {
-            position: relative;
-            width: 20px; height: 20px;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-        .v2-pitch-token-crest img {
-            position: relative; z-index: 1;
-            width: 20px; height: 20px; object-fit: contain;
-        }
-        .v2-pitch-token-crest-fallback {
-            position: absolute; z-index: 0;
-            font-size: 8.5px; font-weight: 700; color: var(--text-muted);
+            gap: 3px; flex-wrap: wrap; max-width: 100%;
         }
         /* The armband belongs to the card, not to the crest it used to be
            nested in — in there it sat beneath the club badge, which paints at
@@ -1554,10 +1558,9 @@
             overflow-x: auto;
         }
         .v2-pitch-bench-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; align-self: center; flex-shrink: 0; margin-right: 2px; }
-        .v2-pitch-bench .v2-pitch-token-crest { width: 16px; height: 16px; }
-        .v2-pitch-bench .v2-pitch-token-crest img { width: 16px; height: 16px; }
-        .v2-pitch-bench .v2-pitch-token-avatar { width: 24px; height: 24px; }
-        .v2-pitch-bench .v2-pitch-token-initials { font-size: 9px; }
+        /* The bench is a strip of reserves, not a lineup, so its faces stay
+           smaller than the ones on the grass. */
+        .v2-pitch-bench .v2-pid-portrait { --v2-pid-face: 34px; --v2-pid-crest: 16px; }
         .v2-pitch-bench .v2-pitch-token {
             flex-shrink: 0; width: auto; min-width: 74px; padding: 7px 8px 6px;
             background: var(--surface-1);
@@ -1682,7 +1685,11 @@
             gap: 16px;
             margin-bottom: 20px;
             text-align: left;
-            align-items: start;
+            /* Both columns end level. The panel's blocks are paired into
+               columns so it lands close to the pitch's own height on its own;
+               stretch closes whatever is left, in whichever direction, rather
+               than leaving one of them hanging beside a gap. */
+            align-items: stretch;
         }
         .v2-info-panel {
             background: var(--surface-1);
@@ -1703,24 +1710,45 @@
         }
         .v2-info-panel .v2-dlh-countdown { font-size: 30px; }
         .v2-info-panel .v2-dlh-bottom { margin-top: 2px; }
-        /* Stats become flat divided rows inside the panel */
-        .v2-info-panel .v2-status-stack { gap: 0; }
+        /* Stats in two columns, not four stacked rows.
+           This panel sits beside the pitch and used to run about 470px past the
+           bottom of it, because every block in it was one full-width row after
+           another — four stat rows, then two price columns stacked, then two
+           readiness lanes stacked. None of them needed the whole width. Paired
+           up, the column ends near the pitch does, which is the only place it
+           can end without leaving a hole beside the lineup.
+
+           The 1px gap over a coloured background is what draws the dividing
+           lines, so a row that is absent (no mini-league yet) takes its divider
+           with it instead of leaving a stray rule. */
+        .v2-info-panel .v2-status-stack {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: var(--border-subtle);
+            border-top: 1px solid var(--border-subtle);
+        }
+        /* The slot is a wrapper, not a cell: display:contents lets the card
+           inside it be the grid item, and an empty slot occupies nothing. */
+        .v2-info-panel #v2LeagueSlot { display: contents; }
         .v2-info-panel .v2-stat-card,
         .v2-info-panel .v2-league-card {
             border: none;
             border-radius: 0;
             box-shadow: none;
-            background: transparent;
-            border-top: 1px solid var(--border-subtle);
-            padding: 13px 18px;
+            background: var(--surface-1);
+            padding: 12px 16px;
+            min-width: 0;
         }
-        .v2-info-panel .v2-stat-card--minor { padding: 11px 18px; }
+        .v2-info-panel .v2-stat-card--minor { padding: 12px 16px; }
+        .v2-info-panel .v2-stat-value { font-size: 22px; }
+        .v2-info-panel .v2-stat-card .v2-stat-delta { align-self: flex-end; }
         .v2-info-panel #v2LeagueSlot .v2-league-prompt {
+            grid-column: 1 / -1;
             border: none;
-            border-top: 1px solid var(--border-subtle);
             border-radius: 0;
-            background: transparent;
-            padding: 13px 18px;
+            background: var(--surface-1);
+            padding: 13px 16px;
         }
         /* Price movement becomes the panel's last row, flat like the stats
            above it and stacked rather than side by side — the aside is about a
@@ -1733,7 +1761,11 @@
         .v2-info-panel .mk-head { margin-bottom: 8px; }
         .v2-info-panel .mk-title { font-size: 13px; }
         .v2-info-panel .mk-net { font-size: 15px; }
-        .v2-info-panel .mk-cols { grid-template-columns: 1fr; gap: 8px; }
+        .v2-info-panel .mk-cols { grid-template-columns: 1fr 1fr; gap: 8px; }
+        .v2-info-panel .mk-col { padding: 8px 8px 9px; }
+        .v2-info-panel .mk-row { grid-template-columns: 10px 1fr; grid-template-areas: 'arrow name' 'arrow price' 'meter meter'; gap: 1px 5px; padding: 4px 4px; }
+        .v2-info-panel .mk-price { justify-self: start; }
+        .v2-info-panel .mk-tag { display: none; }
 
         /* Quick Actions as a full-width row of cards */
         .v2-qa-cards {
@@ -2939,108 +2971,11 @@
         }
 
         /* ===== TICKER SUB-NAV BAR ===== */
-        .ticker-bar {
-            position: sticky;
-            top: 0; /* was 56px, sized for the old .top-nav bar — sidebar layout has none */
-            z-index: 99;
-            background: var(--surface-1);
-            border-bottom: 1px solid var(--border-default);
-            overflow: hidden;
-            height: 56px;
-            display: flex;
-            align-items: center;
-        }
-        .ticker-bar.hidden { display: none !important; }
-        .ticker-track {
-            display: flex;
-            width: max-content;
-            animation: ticker-scroll 40s linear infinite;
-        }
-        .ticker-bar:hover .ticker-track {
-            animation-play-state: paused;
-        }
-        .ticker-content {
-            display: flex;
-            align-items: center;
-            gap: 0;
-            white-space: nowrap;
-            padding-right: 0;
-        }
-        .ticker-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 0 20px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-        .ticker-item .icon {
             width: 13px;
             height: 13px;
         }
-        .ticker-sep {
-            color: var(--border-emphasis);
-            font-size: 10px;
-            padding: 0;
-            user-select: none;
-        }
-        .ticker-stat-value {
-            font-family: var(--font-display);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .ticker-flag {
-            color: #B45309;
-            font-weight: 600;
-            background: rgba(245, 158, 11, 0.12);
-            padding: 2px 8px;
-            border-radius: var(--radius-full);
-        }
-        .ticker-flag .icon {
-            color: #B45309;
-        }
-        .ticker-flag--critical {
-            color: #B91C1C;
-            background: rgba(239, 68, 68, 0.12);
-            padding: 2px 8px;
-            border-radius: var(--radius-full);
-        }
-        .ticker-flag--critical .icon {
-            color: #B91C1C;
-        }
-        .ticker-manager {
-            font-weight: 600;
-            color: var(--text-primary);
-            font-family: var(--font-display);
-        }
-        .ticker-gw {
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--color-primary-text);
-            background: var(--color-primary-muted);
-            padding: 1px 7px;
-            border-radius: var(--radius-full);
-        }
-        .ticker-loading {
-            display: flex;
-            align-items: center;
-            gap: var(--space-2);
-            padding: 0 var(--space-4);
-            font-size: 12px;
-            color: var(--text-muted);
-            width: 100%;
-            justify-content: center;
-        }
-        @keyframes ticker-scroll {
-            from { transform: translateX(0); }
-            to { transform: translateX(-50%); }
-        }
         @media (max-width: 768px) {
-            .ticker-bar { height: 56px; top: 0; }
-            .ticker-item { font-size: 11px; padding: 0 14px; }
-        }
-
+    
         /* ===== FEATURE SHOWCASE SECTIONS ===== */
         .feature-showcase {
             padding: 80px 24px;
@@ -3825,14 +3760,11 @@
     <div class="v2-main-content">
 
     <!-- Ticker Sub-Nav (shown when team is loaded) -->
-    <div class="ticker-bar hidden" id="tickerBar">
-        <div class="ticker-loading" id="tickerLoading">
-            <div class="spinner spinner-sm"></div>
-            Loading squad...
-        </div>
-        <div class="ticker-track" id="tickerTrack" style="display:none;"></div>
-    </div>
-
+    <!-- The manager strip that used to scroll here is gone. It was a marquee of
+         rank, total points, gameweek points and bank — every one of which is a
+         card in the panel beside the pitch, stated once and standing still. Two
+         copies of the same four numbers, one of them moving, and the moving one
+         came first. -->
     <!-- News Strip (shown when team is loaded) -->
     <div class="news-strip hidden" id="newsStrip">
         <div class="news-strip-track" id="newsStripTrack"></div>
@@ -4469,20 +4401,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=151"></script>
-    <script src="scripts/price-watch.js?v=151"></script>
-    <script src="scripts/xp-engine.js?v=151"></script>
-    <script src="scripts/odds-panel.js?v=151"></script>
-    <script src="scripts/live-gw.js?v=151"></script>
-    <script src="scripts/matchday.js?v=151"></script>
-    <script src="scripts/market-panel.js?v=151"></script>
-    <script src="scripts/eo-layer.js?v=151"></script>
-    <script src="scripts/readiness.js?v=151"></script>
-    <script src="scripts/push-alerts.js?v=151"></script>
-    <script src="scripts/notifications.js?v=151"></script>
-    <script src="scripts/transfer-engine.js?v=151"></script>
-    <script src="scripts/common.js?v=151"></script>
-    <script src="scripts/sidebar-nav.js?v=151"></script>
+    <script src="scripts/error-monitor.js?v=152"></script>
+    <script src="scripts/price-watch.js?v=152"></script>
+    <script src="scripts/xp-engine.js?v=152"></script>
+    <script src="scripts/odds-panel.js?v=152"></script>
+    <script src="scripts/live-gw.js?v=152"></script>
+    <script src="scripts/matchday.js?v=152"></script>
+    <script src="scripts/market-panel.js?v=152"></script>
+    <script src="scripts/eo-layer.js?v=152"></script>
+    <script src="scripts/readiness.js?v=152"></script>
+    <script src="scripts/push-alerts.js?v=152"></script>
+    <script src="scripts/notifications.js?v=152"></script>
+    <script src="scripts/transfer-engine.js?v=152"></script>
+    <script src="scripts/common.js?v=152"></script>
+    <script src="scripts/sidebar-nav.js?v=152"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4521,7 +4453,6 @@
                 try { history.replaceState(null, '', '/'); } catch (e) { /* not fatal */ }
             }
             document.getElementById('onboardingCard').classList.remove('hidden');
-            document.getElementById('tickerBar').classList.add('hidden');
             document.getElementById('newsStrip').classList.add('hidden');
             document.getElementById('headlinesWidget').classList.add('hidden');
             // Swap hero: show generic, hide personalized
@@ -4858,58 +4789,6 @@
         }
 
         // ===== TICKER RENDERING =====
-        function renderTicker(managerName, currentGW, rank, totalPoints, gwPoints, bank, flaggedPlayers) {
-            const tickerBar = document.getElementById('tickerBar');
-            const tickerTrack = document.getElementById('tickerTrack');
-            const tickerLoading = document.getElementById('tickerLoading');
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-            let items = '';
-            items += `<span class="ticker-item"><span class="ticker-manager">${esc(managerName)}</span></span>`;
-            items += `<span class="ticker-sep">\u2022</span>`;
-            items += `<span class="ticker-item"><span class="ticker-gw">GW${currentGW}</span></span>`;
-            items += `<span class="ticker-sep">\u2022</span>`;
-            items += `<span class="ticker-item">Rank <span class="ticker-stat-value">${rank}</span></span>`;
-            items += `<span class="ticker-sep">\u2022</span>`;
-            items += `<span class="ticker-item">Total <span class="ticker-stat-value">${totalPoints}</span></span>`;
-            items += `<span class="ticker-sep">\u2022</span>`;
-            items += `<span class="ticker-item">GW <span class="ticker-stat-value">${gwPoints}</span></span>`;
-            items += `<span class="ticker-sep">\u2022</span>`;
-            items += `<span class="ticker-item"><abbr title="In The Bank — remaining transfer budget">ITB</abbr> <span class="ticker-stat-value">\u00A3${bank}m</span></span>`;
-
-            if (flaggedPlayers.length > 0) {
-                items += `<span class="ticker-sep">\u2022</span>`;
-                items += `<span class="ticker-item ticker-flag"><i data-lucide="alert-triangle" class="icon"></i> ${flaggedPlayers.length} flagged</span>`;
-                flaggedPlayers.forEach(p => {
-                    items += `<span class="ticker-sep">\u2022</span>`;
-                    const critClass = p.verdict === 'sell' ? 'ticker-flag--critical' : 'ticker-flag';
-                    const icon = p.verdict === 'sell' ? 'alert-circle' : 'alert-triangle';
-                    items += `<span class="ticker-item ${critClass}"><i data-lucide="${icon}" class="icon"></i> ${esc(p.name)} \u2014 ${esc(p.topConcern || 'Monitor')}</span>`;
-                });
-            } else {
-                items += `<span class="ticker-sep">\u2022</span>`;
-                items += `<span class="ticker-item" style="color:var(--color-success);font-weight:600;"><i data-lucide="check-circle" class="icon" style="color:var(--color-success);"></i> Squad all clear</span>`;
-            }
-
-            const contentHtml = `<span class="ticker-content">${items}</span>`;
-            tickerTrack.innerHTML = contentHtml + contentHtml; // duplicate for seamless loop
-            tickerLoading.style.display = 'none';
-            tickerTrack.style.display = 'flex';
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-
-            // Auto-calculate speed based on content width
-            requestAnimationFrame(() => {
-                const contentEl = tickerTrack.querySelector('.ticker-content');
-                if (contentEl) {
-                    const w = contentEl.offsetWidth;
-                    const duration = Math.max(20, w / 55); // ~55px/sec
-                    tickerTrack.style.animationDuration = duration + 's';
-                }
-            });
-        }
-
         // ===== STATUS STRIP: deadline hero + GW points / rank / league / value =====
         function renderStatusStrip({ live, teamName, currentGW, rank, totalPoints, gwPoints, gwRank, bank, squadValue, rankDelta,
                                      pointsDiff, deadlineTime, deadlineGW, avgFDR, captainRec, leagueInfo }) {
@@ -5416,12 +5295,6 @@
 
             /* "B.Fernandes" -> BF, "Haaland" -> H. FPL's web_name is already the
                short display name, so its own punctuation is the word boundary. */
-            const initialsOf = name => String(name || '')
-                .split(/[\s.'’-]+/)
-                .filter(Boolean)
-                .slice(0, 2)
-                .map(w => w[0].toUpperCase())
-                .join('');
 
             const starters = squad.filter(p => p.pickPosition <= 11).sort((a, b) => a.pickPosition - b.pickPosition);
             const bench = squad.filter(p => p.pickPosition >= 12).sort((a, b) => a.pickPosition - b.pickPosition);
@@ -5487,39 +5360,33 @@
                 const tip = xp != null
                     ? `${esc(p.name)} — ${xp.toFixed(1)} projected points against ${oppTxt}${minsTxt}${isBestCap ? '. Highest projection in your XI.' : ''}`
                     : `${esc(p.name)} — ${posLabel}${minsTxt}`;
-                return `<div class="v2-pitch-token" title="${tip}">
-                  <div class="v2-pitch-token-ids">
-                    <span class="v2-pitch-token-avatar">
-                        <!-- The initials sit underneath and are only ever seen
-                             when the photo is missing: the club publishes a shot
-                             per player code and a new signing has none for a
-                             while. Removing the <img> on error uncovers them, so
-                             every card carries a face-shaped mark either way. -->
-                        <b class="v2-pitch-token-initials" aria-hidden="true">${esc(initialsOf(p.name))}</b>
-                        ${typeof playerPhotoHTML === 'function' ? playerPhotoHTML(p.code, 'v2-pitch-token-face') : ''}
-                    </span>
-                    <div class="v2-pitch-token-crest${ringClass}">
-                        ${p.teamCode != null
-                            ? `<img src="https://resources.premierleague.com/premierleague/badges/50/t${p.teamCode}.png"
-                                 alt="" loading="lazy" onerror="this.style.display='none'">`
-                            : ''}
-                        <span class="v2-pitch-token-crest-fallback">${esc(p.team)}</span>
-                    </div>
-                  </div>
+                /* The face is the card. It used to be a 30px disc sharing a
+                   row with a 20px club badge, so the pair of them was narrower
+                   than the name underneath and the photo — the one thing here
+                   you can recognise without reading — was the smallest thing on
+                   the card. v2IdentityHTML's portrait form makes it the whole
+                   width and hangs the crest off its lower corner; the opponent
+                   and the projection then share one line to pay for the height.
+                   The verdict ring moves with it, from the badge to the face. */
+                return `<div class="v2-pitch-token${ringClass}" title="${tip}">
+                  <div class="v2-pitch-token-flags">${verdictMark}${statusIcon}</div>
+                  ${typeof v2IdentityHTML === 'function'
+                      ? v2IdentityHTML(p, 'v2-pid-portrait', xp != null
+                          ? `<span class="v2-pid-num">${xp.toFixed(1)}<span class="u">xP</span></span>`
+                          : `<span class="v2-pid-num">${posLabel}</span>`)
+                      : ''}
                   ${badge}
                     <span class="v2-pitch-token-name">${esc(p.name)}${isBestCap ? '<span class="v2-pitch-token-star" title="Highest projected points in your XI">★</span>' : ''}</span>
-                    <span class="v2-pitch-token-opp">${oppTxt}</span>
-                    ${xp != null
-                        ? `<span class="v2-pitch-token-xp">${xp.toFixed(1)}<span class="u">xP</span>${
-                            /* Always shown. It varies for real now the model reads
-                               minutes continuously, and amber marks a genuine
-                               rotation risk rather than a full start cut short. */
-                            mins != null
-                                ? `<span class="v2-pitch-token-mins${mins.pStart < 0.65 ? ' risk' : ''}">${Math.round(mins.expMins)}'</span>`
-                                : ''
-                          }</span>`
-                        : `<span class="v2-pitch-token-pos">${posLabel}</span>`}
-                    ${verdictMark}${statusIcon}
+                    <span class="v2-pitch-token-opp">${oppTxt}${
+                        /* Expected minutes ride with the fixture now that the
+                           projection has moved onto the portrait. They belong
+                           together either way: both are about the match, and an
+                           xP built on a 40% chance of starting means something
+                           different to the same number from a nailed-on one. */
+                        mins != null
+                            ? `<span class="v2-pitch-token-mins${mins.pStart < 0.65 ? ' risk' : ''}">${Math.round(mins.expMins)}'</span>`
+                            : ''
+                      }</span>
                 </div>`;
             }
 
@@ -5946,13 +5813,6 @@
         // ===== LOAD TICKER (main data loader) =====
         let deadlineInterval = null;
         async function loadTicker(teamId) {
-            const tickerBar = document.getElementById('tickerBar');
-            const tickerLoading = document.getElementById('tickerLoading');
-            const tickerTrack = document.getElementById('tickerTrack');
-
-            tickerBar.classList.remove('hidden');
-            tickerLoading.style.display = 'flex';
-            tickerTrack.style.display = 'none';
             const outageToast = document.getElementById('fplOutageToast');
             if (outageToast) outageToast.classList.add('hidden');
 
@@ -6222,16 +6082,6 @@
                         captainRec = { name: p.name, form: p.form, opponent: oppName, xP: score.toFixed(1) };
                     }
                 });
-
-                renderTicker(
-                    `${managerData.player_first_name} ${managerData.player_last_name}`,
-                    currentGW,
-                    rankRaw ? rankRaw.toLocaleString() : '-',
-                    totalPointsRaw ? totalPointsRaw.toLocaleString() : '-',
-                    gwPoints,
-                    bank.toFixed(1),
-                    flagged
-                );
 
                 // --- Mini-league card data (free from managerData.leagues.classic) ---
                 let leagueInfo = null;

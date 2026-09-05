@@ -1914,7 +1914,7 @@ body.v2-blurred .main-content {
 .pcard { cursor: grab; }
 .pcard:active { cursor: grabbing; }
 .pcard img { -webkit-user-drag: none; user-select: none; pointer-events: none; }
-.pcard .pcard-name, .pcard .pcard-fixture, .pcard .pcard-pts { user-select: none; }
+.pcard .pcard-name, .pcard .pcard-fixture, .pcard .v2-pid-num { user-select: none; }
 
 /* The copy that follows the cursor during a pointer drag. pointer-events:none
    is what lets elementFromPoint see the card underneath it. */
@@ -1945,9 +1945,10 @@ body.v2-blurred .main-content {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    width: 86px;
-    /* 4px sides let the points value and its FT/LIVE note run into the edge. */
-    padding: 14px 8px 8px;
+    /* Wider than it was, because the fixture and the points now share a line
+       and both have to fit on it before it wraps. */
+    width: 96px;
+    padding: 13px 7px 8px;
     border-radius: var(--radius-md);
     background: rgba(255,255,255,0.94);
     border: 2px solid transparent;
@@ -1970,31 +1971,44 @@ body.v2-blurred .main-content {
 .pcard-bench { background: rgba(255,255,255,0.98); }
 
 .pcard-cv { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; z-index: 3; }
-/* Face beside the badge, as on the dashboard's pitch. The initials sit under
-   the photo and are only ever seen when the club has published none for that
-   player yet, so every card carries a face-shaped mark either way. */
-.pcard-ids { display: flex; align-items: center; justify-content: center; gap: 3px; }
-.pcard-avatar {
-    position: relative; width: 30px; height: 30px; border-radius: 50%;
-    background: rgba(15,23,42,0.06); overflow: hidden; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
+
+/* The face is the card.
+   It used to be a 30px disc sharing a row with a 20px club badge, so the two
+   marks together were narrower than the player's name underneath them and the
+   photo — the one thing on the card you can recognise without reading — was
+   the smallest thing on it. The shared portrait form (v2-pid-portrait in
+   v2-design.css) makes it 46px and hangs the crest off its lower corner, and
+   the fixture and the points move onto one line to pay for the height. */
+.pcard .v2-pid-portrait { margin-bottom: 1px; }
+
+/* Availability and price movement move to the opposite corner from the
+   armband. They were stacked on the crest, which is now a 21px disc. */
+.pcard-flags {
+    position: absolute; top: 3px; left: 3px; z-index: 3;
+    display: flex; align-items: center; gap: 2px;
 }
-.pcard-initials { font-size: 11px; font-weight: 700; color: rgba(15,23,42,0.45); }
-/* Cut-outs on transparency: the letters would otherwise read through the empty
-   space around the head. They exist for the no-photo case only. */
-.pcard-avatar.has-photo .pcard-initials { display: none; }
-.pcard-face { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
-.pcard-crest { position: relative; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.pcard-crest img { width: 20px; height: 20px; object-fit: contain; }
-.pcard-crest-fallback { position: absolute; font-size: 9px; font-weight: 700; color: var(--text-muted); z-index: -1; }
 .pcard-name { font-size: 11px; font-weight: 600; color: #17301F; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* One line under the name: who they play, and when — or FT/LIVE once it has
+   started. Wraps rather than squeezing on a narrow pitch. */
+.pcard-foot {
+    display: flex; align-items: center; justify-content: center;
+    gap: 3px; flex-wrap: wrap; max-width: 100%;
+}
 .pcard-fixture { font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
 .pcard-fixture em { font-style: normal; opacity: 0.75; }
-.pcard-pts { display: flex; flex-direction: column; align-items: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; line-height: 1.2; }
-.pcard-pts.xp { color: #4B5563; }
-.pcard-pts.live { color: var(--color-error); }
-.pcard-pts.final { color: var(--color-success); }
-.pcard-pts-note { font-family: var(--font-body); font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; opacity: 0.75; }
+/* The state the pill's colour is showing, said in words as well. A live score
+   and a projection are different claims and red-green alone cannot carry that. */
+.pcard-when {
+    font-size: 8.5px; font-weight: 700; letter-spacing: .02em;
+    color: rgba(15,23,42,0.5); white-space: nowrap;
+}
+.pcard-when.live { color: var(--color-error); }
+.pcard-when.final { color: var(--color-success); }
+/* The score pill on the portrait's corner, coloured by the same three states.
+   Specific enough to beat .v2-pid-num's own colour. */
+.pcard .v2-pid-num.xp { color: #4B5563; }
+.pcard .v2-pid-num.live { color: var(--color-error); }
+.pcard .v2-pid-num.final { color: var(--color-success); }
 
 /* Swap affordances — valid destinations glow green, invalid ones dim out. */
 .pcard.swap-selected { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-muted), 0 6px 14px rgba(0,0,0,0.22); }
@@ -2002,7 +2016,10 @@ body.v2-blurred .main-content {
 .pcard.swap-blocked { opacity: 0.35; cursor: not-allowed; }
 
 @media (max-width: 900px) {
-    .pcard { width: 68px; padding-top: 15px; }
+    /* Narrow enough that the fixture and the points cannot share a line, so
+       .pcard-foot wraps and the portrait comes down a little to pay for it. */
+    .pcard { width: 74px; padding-top: 14px; }
+    .pcard .v2-pid-portrait { --v2-pid-face: 38px; --v2-pid-crest: 18px; }
     .pcard-name { font-size: 10px; }
     .pm-circle { width: 72px; height: 72px; }
 }

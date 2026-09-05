@@ -303,9 +303,21 @@ function v2CrestHTML(player) {
         + `</span>`;
 }
 
-/* Both together, as one row — the shape every card and list item uses. */
-function v2IdentityHTML(player) {
-    return `<span class="v2-pid">${v2AvatarHTML(player)}${v2CrestHTML(player)}</span>`;
+/* Both together — the shape every card and list item uses.
+ *
+ * `variant` picks the arrangement: nothing for a row, where the mark is small
+ * and sits beside the name, or 'v2-pid-portrait' for a pitch card, where the
+ * face is the subject and the crest becomes a disc on its lower corner. Same
+ * markup either way; the stylesheet does the rest.
+ *
+ * `extra` is anything the portrait should carry on its other corner — in
+ * practice a .v2-pid-num pill with the player's projection or score. It goes
+ * inside the mark rather than beside it so it can be positioned against the
+ * face without either of them needing a wrapper of its own. */
+function v2IdentityHTML(player, variant, extra) {
+    return `<span class="v2-pid${variant ? ' ' + variant : ''}">`
+        + v2AvatarHTML(player) + v2CrestHTML(player) + (extra || '')
+        + `</span>`;
 }
 
 /* ===== CLUB COLOURS =====
@@ -891,7 +903,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=151')
+    fetch('footer.html?v=152')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

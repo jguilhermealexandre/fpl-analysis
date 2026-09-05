@@ -191,14 +191,6 @@
 
         /* Same rule the dashboard's pitch uses: web_name is already the short
            display name, so its own punctuation is the word boundary. */
-        function pcardInitials(name) {
-            return String(name || '')
-                .split(/[\s.'\u2019-]+/)
-                .filter(Boolean)
-                .slice(0, 2)
-                .map(w => w[0].toUpperCase())
-                .join('');
-        }
 
         function teamBadgeUrl(teamId) {
             const code = teams[teamId]?.code;
@@ -242,13 +234,20 @@
             };
         }
 
+        /* What to put on the card's score pill, and what to say beside it.
+           `value` and `unit` are kept apart because the pill sets them in two
+           different sizes — the number is the thing you scan across an XI, the
+           unit is only there so 8.7 and 14 are not read as the same kind of
+           quantity. `note` is the context that does not fit on the pill: the
+           kick-off, or FT/LIVE, which colour alone must not be left to say. */
         function getPlayerGwState(player) {
             // Planning mode always shows the projection, whatever the clock says.
             if (snapshotViewMode === 'next') {
                 const nf = (player.fixtures || [])[0];
                 return {
                     cls: 'xp',
-                    value: `${predictedGWPoints(player).toFixed(1)} xP`,
+                    value: predictedGWPoints(player).toFixed(1),
+                    unit: 'xP',
                     note: nf ? `GW${nf.event}` : 'Blank'
                 };
             }
@@ -257,7 +256,7 @@
                 f.event === currentGW && (f.team_h === player.teamId || f.team_a === player.teamId));
 
             if (!fixtures.length) {
-                return { cls: 'xp', value: `${predictedGWPoints(player).toFixed(1)} xP`, note: 'Blank GW' };
+                return { cls: 'xp', value: predictedGWPoints(player).toFixed(1), unit: 'xP', note: 'Blank GW' };
             }
 
             const anyStarted = fixtures.some(f => f.started);
@@ -270,7 +269,7 @@
                     const time = ko.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     note = sameDay ? `Today ${time}` : ko.toLocaleDateString([], { weekday: 'short' }) + ` ${time}`;
                 }
-                return { cls: 'xp', value: `${predictedGWPoints(player).toFixed(1)} xP`, note };
+                return { cls: 'xp', value: predictedGWPoints(player).toFixed(1), unit: 'xP', note };
             }
 
             // Match started — report what he's actually scored where we have it.
@@ -280,7 +279,8 @@
             const allDone = fixtures.every(f => f.finished_provisional);
             return {
                 cls: allDone ? 'final' : 'live',
-                value: pts != null ? `${pts} Pts` : '— Pts',
+                value: pts != null ? String(pts) : '\u2014',
+                unit: 'pts',
                 note: allDone ? 'FT' : 'LIVE'
             };
         }
@@ -315,7 +315,6 @@
                 }
             }
 
-            const badge = teamBadgeUrl(p.teamId);
             return `<div class="pcard ${a.verdict} ${isBench ? 'pcard-bench' : ''} ${swapClass} ${injured ? 'pcard-injured' : ''}"
                     data-player-id="${p.id}"
                     draggable="true"
@@ -332,21 +331,16 @@
                     <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make ${escHTML(p.name)} captain">Set C</button>
                     <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make ${escHTML(p.name)} vice-captain">Set V</button>
                 </div>
-                <div class="pcard-ids">
-                    <span class="pcard-avatar">
-                        <b class="pcard-initials" aria-hidden="true">${escHTML(pcardInitials(p.name))}</b>
-                        ${typeof playerPhotoHTML === 'function' ? playerPhotoHTML(p.code, 'pcard-face') : ''}
-                    </span>
-                    <div class="pcard-crest">
-                        ${badge ? `<img src="${badge}" alt="" loading="lazy" draggable="false" onerror="this.style.display='none'">` : ''}
-                        <span class="pcard-crest-fallback">${escHTML(p.team)}</span>
-                        ${injuryBadge(p)}
-                        ${marketBadge(p)}
-                    </div>
-                </div>
+                <div class="pcard-flags">${injuryBadge(p)}${marketBadge(p)}</div>
+                ${typeof v2IdentityHTML === 'function'
+                    ? v2IdentityHTML(p, 'v2-pid-portrait',
+                        `<span class="v2-pid-num ${gw.cls}">${escHTML(gw.value)}<span class="u">${escHTML(gw.unit)}</span></span>`)
+                    : ''}
                 <div class="pcard-name">${escHTML(p.name)}</div>
-                ${fixtureTag}
-                <div class="pcard-pts ${gw.cls}">${escHTML(gw.value)}${gw.note ? `<span class="pcard-pts-note">${escHTML(gw.note)}</span>` : ''}</div>
+                <div class="pcard-foot">
+                    ${fixtureTag}
+                    ${gw.note ? `<span class="pcard-when ${gw.cls}">${escHTML(gw.note)}</span>` : ''}
+                </div>
             </div>`;
         }
 

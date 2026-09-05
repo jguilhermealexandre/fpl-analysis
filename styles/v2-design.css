@@ -675,28 +675,18 @@ html.v2-theme body {
     margin-left: var(--v2-sidebar-w);
     min-height: 100vh;
     background: linear-gradient(160deg, #DDEFE4 0%, #F1FAF5 48%, #FFFFFF 100%);
-    border-radius: 32px 0 0 32px;
     background-clip: padding-box;
 }
 [data-theme="dark"] .v2-main-content {
     background: linear-gradient(160deg, #15191F 0%, #17201D 52%, #18241F 100%);
 }
 
-/* The first sub-navigation/marquee follows the shell's curved top edge rather
-   than painting a square corner over it. */
-.v2-main-content > :is(.tabs-container, .ticker-bar, .news-strip, .price-ticker-bar):first-child {
-    border-top-left-radius: 32px;
-}
-
-@media (max-width: 768px) {
-    .v2-main-content {
-        border-radius: 24px 0 0 24px;
-    }
-
-    .v2-main-content > :is(.tabs-container, .ticker-bar, .news-strip, .price-ticker-bar):first-child {
-        border-top-left-radius: 24px;
-    }
-}
+/* The shell used to be a rounded card with a 32px curve down its left edge,
+   and the first marquee or tab strip inside it had to be given the same curve
+   so it did not paint a square corner over one. It made the top-left of every
+   dashboard page a notch — one rounded corner on a page that is otherwise all
+   square edges, and the only place the gradient behind showed through. Square
+   now, and there is nothing for a child to match. */
 
 /* User-controlled desktop icon rail. */
 .v2-sidebar-collapsed .v2-sidebar {
@@ -1371,7 +1361,12 @@ html.v2-theme body {
    in common.js.
    ============================================================ */
 
+/* Two sizes are driven from here rather than being restated at every call
+   site: a row wants the mark small and beside the name, a pitch card wants the
+   face to be the card. Contexts override the two variables, nothing else. */
 .v2-pid {
+    --v2-pid-face: 30px;
+    --v2-pid-crest: 18px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -1380,7 +1375,7 @@ html.v2-theme body {
 
 .v2-pid-avatar {
     position: relative;
-    width: 30px; height: 30px;
+    width: var(--v2-pid-face); height: var(--v2-pid-face);
     border-radius: 50%;
     background: rgba(15, 23, 42, 0.06);
     overflow: hidden;
@@ -1410,14 +1405,14 @@ html.v2-theme body {
 
 .v2-pid-crest {
     position: relative;
-    width: 18px; height: 18px;
+    width: var(--v2-pid-crest); height: var(--v2-pid-crest);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
 }
 
 .v2-pid-crest img {
     position: relative; z-index: 1;
-    width: 18px; height: 18px;
+    width: 100%; height: 100%;
     object-fit: contain;
 }
 
@@ -1425,6 +1420,76 @@ html.v2-theme body {
     position: absolute; z-index: 0;
     font-size: 7.5px; font-weight: 700;
     color: var(--text-muted);
+}
+
+/* ===== The portrait form =====
+   On a pitch card the face is the subject, not a bullet beside the name — so
+   the mark grows and the crest stops taking half the row: it becomes a small
+   disc overlapping the portrait's lower-right, the way a club badge sits on a
+   shirt. The card gets its whole width back for the face and the name, and
+   "who, and for whom" is still one glance.
+
+   Applied by context, since the markup is the same v2IdentityHTML() everywhere.
+   The initials underneath are unchanged and still carry the no-photo case. */
+.v2-pid-portrait {
+    --v2-pid-face: 46px;
+    --v2-pid-crest: 21px;
+    position: relative;
+    display: block;
+    /* Width plus a square ratio rather than width and height, so --v2-pid-face
+       may be a percentage: the dashboard's cards are a percentage of the pitch
+       and the face has to track them, or a tablet gets a 44px head on a 64px
+       card. */
+    width: var(--v2-pid-face);
+    aspect-ratio: 1;
+    margin: 0 auto;
+}
+.v2-pid-portrait .v2-pid-avatar {
+    width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.07);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+.v2-pid-portrait .v2-pid-initials { font-size: 14px; }
+.v2-pid-portrait .v2-pid-crest {
+    position: absolute;
+    right: calc(var(--v2-pid-crest) * -0.19);
+    bottom: calc(var(--v2-pid-crest) * -0.09);
+    z-index: 2;
+    border-radius: 50%;
+    background: #fff;
+    padding: 2px;
+    box-sizing: content-box;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+.v2-pid-portrait .v2-pid-crest-fallback { font-size: calc(var(--v2-pid-crest) * 0.42); }
+
+/* The other corner. A pitch card has one number worth scanning — what this
+   player is projected to score, or what he actually scored — and below the
+   name it was competing with the fixture for a line neither of them fitted on.
+   As a pill on the portrait's lower-left it mirrors the crest, reads at a
+   glance across a whole XI, and gives the row back. Cards opt in by putting
+   their points element inside .v2-pid-portrait. */
+.v2-pid-portrait .v2-pid-num {
+    position: absolute;
+    left: -5px;
+    bottom: -2px;
+    z-index: 2;
+    display: inline-flex; align-items: baseline; gap: 1px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+    font-family: var(--font-mono, monospace);
+    font-size: 10px;
+    font-weight: 800; line-height: 1.4;
+    color: #0F172A;
+    white-space: nowrap;
+}
+.v2-pid-portrait .v2-pid-num .u {
+    font-family: var(--font-body, inherit);
+    font-size: 0.62em; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .02em;
+    opacity: .62;
 }
 
 /* ----- Position as an edge, not a label -----
