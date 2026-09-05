@@ -249,6 +249,64 @@ function v2IdentityHTML(player) {
     return `<span class="v2-pid">${v2AvatarHTML(player)}${v2CrestHTML(player)}</span>`;
 }
 
+/* ===== CLUB COLOURS =====
+ * Keyed by the Premier League's own team code — the number in the badge URL —
+ * and not by the FPL team id. The id is just alphabetical position in this
+ * season's twenty, so it is reassigned every August: last season's 13 was
+ * Leicester and this season's is Leeds, and a map keyed on it would quietly
+ * dress one club in another's colours the day the new bootstrap lands.
+ *
+ * [shirt, ink] — the shirt colour and something legible on top of it. Chosen
+ * for contrast against the shirt rather than for being the club's own second
+ * colour, since white-on-Everton-blue is readable and Everton's white is not
+ * the point.
+ */
+const CLUB_COLOURS = {
+    1:  ['#DA291C', '#FFFFFF'],  // Man Utd
+    2:  ['#1D428A', '#FFFFFF'],  // Leeds
+    3:  ['#EF0107', '#FFFFFF'],  // Arsenal
+    4:  ['#241F20', '#FFFFFF'],  // Newcastle
+    6:  ['#132257', '#FFFFFF'],  // Spurs
+    7:  ['#670E36', '#95BFE5'],  // Aston Villa
+    8:  ['#034694', '#FFFFFF'],  // Chelsea
+    9:  ['#5FB3E4', '#10233A'],  // Coventry
+    11: ['#003399', '#FFFFFF'],  // Everton
+    14: ['#C8102E', '#FFFFFF'],  // Liverpool
+    17: ['#DD0000', '#FFFFFF'],  // Nott'm Forest
+    31: ['#1B458F', '#FFFFFF'],  // Crystal Palace
+    36: ['#0057B8', '#FFFFFF'],  // Brighton
+    40: ['#3A64A3', '#FFFFFF'],  // Ipswich
+    43: ['#6CABDD', '#0B1B3C'],  // Man City
+    54: ['#1B1B1B', '#FFFFFF'],  // Fulham
+    56: ['#EB172B', '#FFFFFF'],  // Sunderland
+    88: ['#F18A00', '#1F1F1F'],  // Hull
+    91: ['#DA291C', '#FFFFFF'],  // Bournemouth
+    94: ['#E30613', '#FFFFFF']   // Brentford
+};
+const CLUB_COLOURS_FALLBACK = ['#37003C', '#FFFFFF'];   // the league's own purple
+
+/* { shirt, ink } for a player's club, or the league purple for one we have no
+   entry for — a newly promoted side is a wrong colour at worst, never an
+   unreadable card. */
+function clubColours(player) {
+    const code = v2TeamCode(player && player.teamId, player && player.teamCode);
+    const pair = (code != null && CLUB_COLOURS[code]) || CLUB_COLOURS_FALLBACK;
+    return { shirt: pair[0], ink: pair[1] };
+}
+
+/* The 250px portrait. The 110x140 one every row uses is a thumbnail, and at
+   the size a hero card wants it is visibly soft. Same fallback chain. */
+function playerPhotoLargeHTML(code, className) {
+    if (code == null) return '';
+    const big = `${PLAYER_PHOTO_BASE}/${PLAYER_PHOTO_SEASON}/photos/players/250x250/${code}.png`;
+    return `<img class="${className}" alt="" loading="lazy" draggable="false"
+        src="${big}"
+        data-photo-fallback="${playerPhotoSrc(code)}"
+        data-photo-fallback2="${playerPhotoLegacySrc(code)}"
+        onload="this.parentNode.classList.add('has-photo')"
+        onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else if (this.dataset.photoFallback2) { this.src = this.dataset.photoFallback2; delete this.dataset.photoFallback2; } else { this.remove(); }">`;
+}
+
 /* The class that paints a position colour down a row's leading edge, replacing
    a GK/DEF/MID/FWD label that costs a column and says the same thing. */
 function v2PosEdgeClass(position) {
@@ -774,7 +832,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=149')
+    fetch('footer.html?v=150')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

@@ -218,29 +218,20 @@
            fixture swing still drives the Fixture Swings view. */
 
 
-        // Which squad rows currently have their inline detail expanded. A player
-        // id set rather than a single value — several can be open side by side,
-        // e.g. comparing your captain candidates without losing either's detail.
-        let expandedSquadRows = new Set();
+        /* The profile opens over the page rather than between two rows.
 
-        // Only for arriving from somewhere that isn't already looking at the row —
-        // a dashboard deep link, say, where the player may be scrolled off-screen.
-        // A manual click is already looking straight at the row it just expanded,
-        // so toggleSquadRowDetail() below deliberately does NOT call this — jumping
-        // the page under someone's cursor mid-click reads as a bug, not a feature.
+           It used to expand in place, which meant the row you had just clicked
+           was pushed off the top of the screen by its own detail, and comparing
+           two players meant scrolling past a full profile to reach the second
+           one. openPlayerModal() lives in panels-and-tabs.js with the profile
+           builder; these two are kept as the names the rest of the page and the
+           dashboard deep links already call. */
         function expandSquadRow(playerId) {
-            expandedSquadRows.add(playerId);
-            rerenderSquadFilteredViews();
-            requestAnimationFrame(() => {
-                const el = document.getElementById(`sq-row-detail-${playerId}`);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            });
+            toggleSquadRowDetail(playerId);
         }
 
         function toggleSquadRowDetail(playerId) {
-            if (expandedSquadRows.has(playerId)) expandedSquadRows.delete(playerId);
-            else expandedSquadRows.add(playerId);
-            rerenderSquadFilteredViews();
+            if (typeof openPlayerModal === 'function') openPlayerModal(playerId);
         }
 
         function renderSquadRow(analysis) {
@@ -256,12 +247,11 @@
             const hazardIcon = `<span class="sq-hazard-slot">${verdict === 'sell'
                 ? '<i data-lucide="alert-triangle" class="sq-hazard-icon" title="Flagged: high sell rating"></i>'
                 : ''}</span>`;
-            const isOpen = expandedSquadRows.has(player.id);
 
             const row = `
             <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''} ${typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(player.position) : ''}" data-player-id="${player.id}" data-compare-row>
                 <input type="checkbox" class="compare-checkbox sq-compare-checkbox" data-player-id="${player.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${player.id})">
-                <div class="sq-row-clickable" onclick="toggleSquadRowDetail(${player.id})" title="${isOpen ? 'Hide' : 'View'} player profile">
+                <div class="sq-row-clickable" onclick="toggleSquadRowDetail(${player.id})" title="View ${escHTML(player.name)}'s profile">
                     <div class="sq-row-main">
                         ${hazardIcon}
                         ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
@@ -279,16 +269,12 @@
                 <button class="sq-transfer-btn" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
                     <i data-lucide="repeat" style="width:14px;height:14px;"></i>
                 </button>
-                <button class="sq-expand-btn ${isOpen ? 'open' : ''}" onclick="event.stopPropagation(); toggleSquadRowDetail(${player.id})" title="${isOpen ? 'Collapse' : 'Expand'} full player detail" aria-label="${isOpen ? 'Collapse' : 'Expand'} full player detail" aria-expanded="${isOpen}">
-                    <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                <button class="sq-expand-btn" onclick="event.stopPropagation(); toggleSquadRowDetail(${player.id})" title="Open full player profile" aria-label="Open ${escHTML(player.name)}'s full profile">
+                    <i data-lucide="maximize-2" style="width:15px;height:15px;"></i>
                 </button>
             </div>`;
 
-            const detail = isOpen
-                ? `<div class="sq-row-detail" id="sq-row-detail-${player.id}">${buildPlayerDetailHTML(player.id)}</div>`
-                : '';
-
-            return row + detail;
+            return row;
         }
 
         function renderPositionGroup(pos, items) {
@@ -468,7 +454,7 @@
                are the class names initOverlayDismiss() already watches, so
                clicking away and pressing Escape work without a line of extra
                script here. */
-            return `<div class="modal-overlay sq-chart-modal ${sqChartExpanded ? 'open' : ''}" id="sqChartModal">
+            return `<div class="modal-overlay v2-modal sq-chart-modal ${sqChartExpanded ? 'open' : ''}" id="sqChartModal">
                 <div class="modal-container">
                     <div class="sq-chart-modal-head">
                         <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i>
@@ -606,7 +592,7 @@
             // The page behind is blurred rather than the overlay carrying a
             // backdrop-filter, so the blur covers the content and not the
             // modal sitting over it.
-            document.body.classList.toggle('sq-chart-blur', sqChartExpanded);
+            document.body.classList.toggle('v2-blurred', sqChartExpanded);
             if (sqChartExpanded) ensureSquadChart();
         }
 

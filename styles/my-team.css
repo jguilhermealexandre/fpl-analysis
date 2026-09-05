@@ -905,12 +905,12 @@
    toggling display jumps straight to the end (the same reason the drawers
    never slid). visibility carries the delay on the way out so the fade has
    time to finish. */
-.sq-chart-modal.modal-overlay {
+.v2-modal.modal-overlay {
     position: fixed; inset: 0; z-index: 220;
     display: flex; align-items: center; justify-content: center;
     padding: 24px;
     /* No wash and no backdrop-filter here — the page itself is blurred
-       instead (body.sq-chart-blur below), so the blur covers the content
+       instead (body.v2-blurred below), so the blur covers the content
        rather than being a sheet of frosting between you and the modal. */
     background: transparent;
     opacity: 0;
@@ -922,7 +922,7 @@
     pointer-events: none;
     transition: opacity 200ms ease, visibility 0s linear 240ms;
 }
-.sq-chart-modal.modal-overlay.open {
+.v2-modal.modal-overlay.open {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
@@ -932,7 +932,7 @@
 /* The page behind the modal. Only .main-content is blurred — the sidebar is
    navigation and stays legible — and it animates so the page settles out of
    focus rather than snapping. */
-body.sq-chart-blur .main-content {
+body.v2-blurred .main-content {
     filter: blur(7px);
     transition: filter 240ms ease;
     pointer-events: none;
@@ -941,19 +941,19 @@ body.sq-chart-blur .main-content {
 .main-content { transition: filter 240ms ease; }
 
 @media (prefers-reduced-motion: reduce) {
-    body.sq-chart-blur .main-content, .main-content { transition: none; }
+    body.v2-blurred .main-content, .main-content { transition: none; }
 }
 
 /* The panel rises a little and settles, rather than appearing at full size. */
-.sq-chart-modal .modal-container {
+.v2-modal .modal-container {
     transform: translateY(10px) scale(0.985);
     transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.sq-chart-modal.open .modal-container { transform: none; }
+.v2-modal.open .modal-container { transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
-    .sq-chart-modal.modal-overlay,
-    .sq-chart-modal .modal-container { transition: none; }
+    .v2-modal.modal-overlay,
+    .v2-modal .modal-container { transition: none; }
 }
 .sq-chart-modal .modal-container {
     width: 100%; max-width: 1040px; max-height: 88vh;
@@ -3576,20 +3576,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 }
 
 .sq-expand-btn:hover { color: var(--color-primary); }
-.sq-expand-btn.open { transform: rotate(180deg); color: var(--color-primary); }
-
-.sq-row-detail {
-    background: var(--surface-1);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    padding: 16px;
-    animation: sq-row-detail-in 0.18s ease;
-}
-
-@keyframes sq-row-detail-in {
-    from { opacity: 0; transform: translateY(-6px); }
-    to { opacity: 1; transform: none; }
-}
 
 .pd-header {
     display: flex;
@@ -3734,7 +3720,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .fsw-chip { width: 100%; box-sizing: border-box; }
 
 @media (max-width: 900px) {
-    .sq-row-detail { padding: 12px; }
     .fsw-rows { flex-direction: column; align-items: stretch; }
     .fsw-arrow { transform: rotate(90deg); align-self: center; }
 }
@@ -6444,4 +6429,203 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     margin-left: 6px; padding: 1px 6px; border-radius: 3px; cursor: help;
     background: var(--color-wizard, var(--color-primary)); color: #fff;
     font-size: 8.5px; font-weight: 800; letter-spacing: .06em; vertical-align: middle;
+}
+
+/* ============================================
+   PLAYER PROFILE MODAL (scripts/panels-and-tabs.js)
+
+   The profile used to unroll inside the squad table, which pushed the row you
+   clicked off the top of the screen with its own detail. It is a modal now,
+   over the blurred page, reusing .v2-modal above for the shell.
+   ============================================ */
+
+.pdm-modal .modal-container {
+    width: 100%; max-width: 1080px; max-height: 90vh;
+    display: flex; flex-direction: column;
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+    overflow: hidden;
+    position: relative;
+}
+.pdm-close {
+    position: absolute; top: 14px; right: 14px; z-index: 3;
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255, 255, 255, .35);
+    background: rgba(0, 0, 0, .22); color: #fff;
+    font-size: 20px; line-height: 1; cursor: pointer;
+    transition: background .15s ease, transform .15s ease;
+}
+.pdm-close:hover { background: rgba(0, 0, 0, .4); transform: scale(1.06); }
+
+/* ===== The hero =====
+   The Premier League's own card: the club's shirt colour, a cut-out portrait
+   at the left edge, given name light over family name heavy, and the badge,
+   number and position on one line under it. The diagonals are two overlaid
+   gradients rather than an image, so it costs nothing and works for a club
+   whose crest we have never seen. */
+.pdm-hero {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0 22px;
+    min-height: 176px;
+    padding: 0 26px;
+    background: var(--club, #37003C);
+    color: var(--club-ink, #fff);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.pdm-hero-shape {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+        linear-gradient(108deg, rgba(255, 255, 255, .10) 0 32%, transparent 32.4% 44%,
+                        rgba(255, 255, 255, .07) 44.4% 61%, transparent 61.4%),
+        radial-gradient(120% 150% at 88% 0%, rgba(255, 255, 255, .16), transparent 62%),
+        linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, .22));
+}
+.pdm-hero-photo {
+    position: relative; z-index: 1;
+    align-self: end; height: 176px; width: 178px;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+/* The portrait fails for a player the photo endpoint has never had — the
+   <img> removes itself — and a 178px hole where a face was is worse than no
+   face at all, so the column collapses with it. */
+.pdm-hero-photo:empty { width: 0; }
+.pdm-hero-face {
+    height: 176px; width: auto; max-width: none;
+    object-fit: contain; object-position: bottom;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .3));
+}
+.pdm-hero-text {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 26px 0 24px; min-width: 0;
+}
+.pdm-hero-first {
+    font-family: var(--font-display, inherit);
+    font-size: 25px; font-weight: 300; line-height: 1.1;
+    letter-spacing: -.01em; opacity: .92;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pdm-hero-last {
+    font-family: var(--font-display, inherit);
+    font-size: 40px; font-weight: 800; line-height: 1.02;
+    letter-spacing: -.02em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pdm-hero-meta {
+    display: flex; align-items: center; gap: 8px; margin-top: 9px;
+    font-size: 13.5px; font-weight: 600; opacity: .95;
+}
+.pdm-hero-meta em { font-style: normal; opacity: .55; }
+.pdm-hero-crest { width: 22px; height: 22px; object-fit: contain; }
+
+.pdm-hero-side {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+    padding: 26px 0 24px; text-align: right;
+}
+.pdm-hero-chip {
+    padding: 3px 11px; border-radius: 999px; margin-bottom: 4px;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .06em;
+    background: rgba(255, 255, 255, .95); color: #111;
+}
+.pdm-hero-chip.v-sell { background: #DC2626; color: #fff; }
+.pdm-hero-chip.v-monitor { background: #F59E0B; color: #1F1F1F; }
+.pdm-hero-chip.v-star, .pdm-hero-chip.v-hold { background: rgba(255, 255, 255, .95); color: #111; }
+.pdm-hero-price {
+    font-family: var(--font-mono, monospace);
+    font-size: 24px; font-weight: 800; line-height: 1.1;
+}
+.pdm-hero-own { font-size: 11.5px; opacity: .8; }
+
+/* ===== The sheet =====
+   Two columns of cards rather than one column of sections. .pd-group is a
+   wrapper the builder emits around a run of sections; display:contents lifts
+   its children into this grid so the band titles span it and the sections
+   themselves sit side by side, without the builder having to know it is being
+   laid out differently here. */
+.pdm-body {
+    overflow-y: auto;
+    padding: 18px 22px 24px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: start;
+    align-content: start;
+}
+.pdm-body .pd-group { display: contents; }
+.pdm-body .pd-group-title {
+    grid-column: 1 / -1;
+    margin: 8px 0 0;
+    padding-bottom: 7px;
+    border-bottom: 2px solid var(--border-emphasis);
+    font-family: var(--font-display, inherit);
+    font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.pdm-body > .pd-group:first-child .pd-group-title,
+.pdm-body .pd-group:first-of-type .pd-group-title { margin-top: 0; }
+
+/* Every section is a card of its own, with a colour down its title. The
+   accents are set by the builder rather than guessed from the heading text. */
+.pdm-body .detail-section {
+    margin: 0;
+    padding: 13px 15px 14px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-emphasis);
+    border-radius: 12px;
+    min-width: 0;
+}
+.pdm-body .detail-section-title {
+    display: flex; align-items: center; gap: 7px;
+    margin: 0 0 10px;
+    font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--pdm-accent, var(--text-secondary));
+}
+.pdm-body .detail-section-title::before {
+    content: ''; width: 3px; height: 13px; border-radius: 2px;
+    background: var(--pdm-accent, var(--text-muted)); flex-shrink: 0;
+}
+.pdm-body .detail-section[data-accent="report"]      { --pdm-accent: #8B5CF6; }
+.pdm-body .detail-section[data-accent="verdict"]     { --pdm-accent: var(--color-primary); }
+.pdm-body .detail-section[data-accent="stats"]       { --pdm-accent: #2563EB; }
+.pdm-body .detail-section[data-accent="season"]      { --pdm-accent: #0EA5E9; }
+.pdm-body .detail-section[data-accent="routes"]      { --pdm-accent: #14B8A6; }
+.pdm-body .detail-section[data-accent="price"]       { --pdm-accent: #F59E0B; }
+.pdm-body .detail-section[data-accent="concerns"]    { --pdm-accent: #DC2626; }
+.pdm-body .detail-section[data-accent="positives"]   { --pdm-accent: #059669; }
+.pdm-body .detail-section[data-accent="fixtures"]    { --pdm-accent: #64748B; }
+.pdm-body .detail-section[data-accent="swap"]        { --pdm-accent: var(--color-primary); }
+.pdm-body .detail-section[data-accent="team"]        { --pdm-accent: #2563EB; }
+
+/* The ones that are wider than they are tall, or that carry a paragraph. */
+.pdm-body .detail-section[data-wide],
+.pdm-body .pd-report { grid-column: 1 / -1; }
+
+.pdm-body .detail-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pdm-body[data-single] { grid-template-columns: minmax(0, 1fr); }
+
+@media (max-width: 860px) {
+    .pdm-body { grid-template-columns: minmax(0, 1fr); }
+    .pdm-hero { grid-template-columns: auto minmax(0, 1fr); min-height: 148px; padding: 0 18px; }
+    .pdm-hero-photo { height: 148px; width: 120px; }
+    .pdm-hero-face { height: 148px; }
+    .pdm-hero-last { font-size: 30px; }
+    .pdm-hero-first { font-size: 19px; }
+    .pdm-hero-side { grid-column: 2; flex-direction: row; align-items: center; gap: 10px; padding-top: 0; }
+    .pdm-hero-price { font-size: 18px; }
+    .pdm-hero-own { display: none; }
+}
+@media (max-width: 560px) {
+    .pdm-hero { grid-template-columns: auto minmax(0, 1fr); }
+    .pdm-hero-photo { height: 122px; width: 92px; }
+    .pdm-hero-face { height: 122px; }
+    .pdm-hero { min-height: 122px; }
+    .pdm-hero-last { font-size: 24px; }
 }

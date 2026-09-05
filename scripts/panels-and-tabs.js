@@ -1200,7 +1200,7 @@
             if (player.freekicksOrder === 1) duty.push({ txt: 'Direct free kicks', tone: '' });
             if (player.cornersOrder === 1) duty.push({ txt: 'Corners', tone: '' });
 
-            return `<div class="detail-section rtp-section">
+            return `<div class="detail-section rtp-section" data-accent="routes" data-wide>
                 <div class="detail-section-title">Routes to points</div>
                 <div class="rtp-head">
                     <span class="rtp-total">${total.toFixed(1)}<small>projected next match</small></span>
@@ -1339,7 +1339,7 @@
                 </div>`;
             }).join('');
 
-            return `<div class="detail-section">
+            return `<div class="detail-section" data-accent="team" data-wide>
                 <div class="detail-section-title">\u2694\ufe0f Opponent Form \u2014 Next ${upcoming.length}</div>
                 <div class="opp-cards">${cards}</div>
             </div>`;
@@ -1373,7 +1373,7 @@
                 body = `<div class="pw-row"><span class="pw-badge flat">Stable</span><span class="pw-text">No meaningful price-change signal right now.</span></div>`;
             }
 
-            return `<div class="detail-section">
+            return `<div class="detail-section" data-accent="price">
                 <div class="detail-section-title">\ud83d\udcb7 Price Watch</div>
                 ${body}
             </div>`;
@@ -1472,7 +1472,7 @@
         // stats, season numbers, routes to points, price watch, concerns/
         // positives, upcoming fixtures, team context (incl. fixture swing) and
         // opponent form. Shared by the Squad Analysis inline detail card
-        // (buildPlayerDetailHTML below) and the Transfer Wizard's head-to-head
+        // (renderPlayerModal above) and the Transfer Wizard's head-to-head
         // compare, so a buy candidate gets exactly the same depth as one of
         // your own XI. `opts`:
         //   header         show the name/team/price strip (default true)
@@ -1514,6 +1514,9 @@
                 </div>`;
             }
 
+            // ===== PLAYER =====
+            html += `<div class="pd-group"><div class="pd-group-title">\ud83d\udc64 Player</div>`;
+
             if (showReport) {
                 // Every other number on this card is season-to-date or a projection,
                 // so what the player actually did in the round just played had
@@ -1522,17 +1525,15 @@
                 const gwLine = typeof gwPlayerReportLine === 'function' && typeof gwReviewTarget === 'function'
                     ? gwPlayerReportLine(player, gwReviewTarget())
                     : '';
-                html += `<div class="detail-section pd-report">
+                html += `<div class="detail-section pd-report" data-accent="report">
                     <div class="detail-section-title">\ud83e\udde0 AI Report</div>
                     ${gwLine}
                     <div class="pd-report-text">${escHTML(buildPlayerNarrativeReport(player, analysis, context))}</div>
                 </div>`;
             }
 
-            // ===== PLAYER =====
-            html += `<div class="pd-group"><div class="pd-group-title">\ud83d\udc64 Player</div>`;
-
-            html += `<div class="detail-section">
+            html += `<div class="detail-section" data-accent="verdict" data-wide>
+                <div class="detail-section-title">\u2696\ufe0f Verdict</div>
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
                     <div class="verdict-chip ${verdict}" style="font-size:13px;padding:6px 14px;">${chipLabel}</div>
                     <div style="font-size:14px;color:var(--text-secondary);flex:1;">${escHTML(verdictReason)}</div>
@@ -1541,7 +1542,7 @@
                 <div style="font-size:11px;color:var(--text-muted);">Sell Rating: ${sellRating}/100</div>
             </div>`;
 
-            html += `<div class="detail-section">
+            html += `<div class="detail-section" data-accent="stats">
                 <div class="detail-section-title">\ud83d\udcca Key Statistics <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div class="detail-stats-grid">
                     ${renderDetailStat('Form', player.form.toFixed(1), player.form / 10, player.form >= 5 ? 'var(--verdict-hold)' : player.form < 3 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${posConfig.short} median: ${posConfig.formMedian}`)}
@@ -1553,7 +1554,7 @@
                 </div>
             </div>`;
 
-            html += `<div class="detail-section">
+            html += `<div class="detail-section" data-accent="season">
                 <div class="detail-section-title">\ud83d\udcc8 Season Numbers <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                     ${player.position >= 3 ? `
@@ -1577,7 +1578,7 @@
             html += renderPriceWatchSection(player);
 
             if (concerns.length > 0) {
-                html += `<div class="detail-section">
+                html += `<div class="detail-section" data-accent="concerns">
                     <div class="detail-section-title">\u26a0\ufe0f Concerns (${concerns.length})</div>
                     ${concerns.map(c => `<div class="insight-item ${c.type}">
                         ${c.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(c.title)}</div>` : ''}
@@ -1587,7 +1588,7 @@
             }
 
             if (positives.length > 0) {
-                html += `<div class="detail-section">
+                html += `<div class="detail-section" data-accent="positives">
                     <div class="detail-section-title">\u2705 Positives (${positives.length})</div>
                     ${positives.map(p => `<div class="insight-item positive">
                         ${p.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(p.title)}</div>` : ''}
@@ -1597,7 +1598,7 @@
             }
 
             if (fixtures.length > 0) {
-                html += `<div class="detail-section">
+                html += `<div class="detail-section" data-accent="fixtures" data-wide>
                     <div class="detail-section-title">\ud83d\udcc5 Upcoming Fixtures</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         ${fixtures.map(f => `
@@ -1614,7 +1615,7 @@
                 const replacements = findReplacements(player, 5);
                 if (replacements.length > 0) {
                     const best = replacements[0];
-                    html += `<div class="detail-section">
+                    html += `<div class="detail-section" data-accent="swap">
                         <div class="detail-section-title">\ud83d\udd04 Best Replacement Comparison</div>
                         <table class="comparison-table">
                             <tr><th></th><th>Current</th><th>Replacement</th></tr>
@@ -1628,7 +1629,7 @@
                     </div>`;
 
                     if (replacements.length > 1) {
-                        html += `<div class="detail-section">
+                        html += `<div class="detail-section" data-accent="swap">
                             <div class="detail-section-title">Other Options</div>
                             ${replacements.slice(1).map((r, i) => `
                                 <div class="replacement-card">
@@ -1656,7 +1657,8 @@
                 const swingInfo = fixtureSwingData[player.teamId];
                 const swingHtml = renderFixtureSwingDetail(swingInfo);
                 html += `<div class="pd-group"><div class="pd-group-title">\ud83c\udfe2 Team \u2014 ${escHTML(player.team)}</div>
-                <div class="detail-section">
+                <div class="detail-section" data-accent="team" data-wide>
+                    <div class="detail-section-title">\ud83d\udcc9 Club form and season</div>
                     <div class="detail-stats-grid">
                         ${renderDetailStat('Attack', detailTA.attackPower.toString(), detailTA.attackPower / 100, detailTA.attackPower >= 60 ? 'var(--verdict-hold)' : detailTA.attackPower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgGoals.toFixed(1)} goals/game`)}
                         ${renderDetailStat('Defence', detailTA.defensePower.toString(), detailTA.defensePower / 100, detailTA.defensePower >= 60 ? 'var(--verdict-hold)' : detailTA.defensePower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgConceded.toFixed(1)} conceded/game`)}
@@ -1689,13 +1691,125 @@
             return html;
         }
 
-        // Thin wrapper kept for the Squad Analysis inline row \u2014 everything the
-        // old right-side panel showed, at the defaults (full header, AI report,
-        // recommendation and replacement suggestions all on).
-        function buildPlayerDetailHTML(playerId) {
-            const analysis = analysisResults.find(a => a.player.id === playerId);
-            if (!analysis) return '';
-            return buildPlayerFullProfileHTML(analysis.player, analysis);
+        /* ===== PLAYER MODAL =====
+
+           The squad row used to expand in place. Everything the profile has to
+           say — the report, six stat cards, season numbers, routes to points,
+           the price meter, concerns, positives, fixtures, the team and the
+           opponents — unrolled between two rows of the table, so the row you
+           clicked was pushed off the top of the screen by its own detail and
+           the thing you were comparing it against was a scroll away. Every
+           section was also full width and one-per-line, which is what made it
+           read as a transcript rather than a profile.
+
+           So: a modal, over a blurred page, laid out as a sheet of cards. The
+           class names are the ones initOverlayDismiss() already watches, which
+           is where click-away and Escape come from.
+
+           The hero is the Premier League's own player card: the club's shirt
+           colour behind a cut-out portrait, given name light above family name
+           heavy, and the badge, squad number and position on one line beneath.
+           It is the one part of this page that is meant to be looked at rather
+           than read. */
+        let pdmPlayerId = null;
+
+        function pdmHost() {
+            let host = document.getElementById('pdmHost');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'pdmHost';
+                document.body.appendChild(host);
+            }
+            return host;
+        }
+
+        /* Given name light, family name heavy — the split the PL card makes.
+           web_name is the one the game itself shows, so it is what the family
+           name falls back to when the full name is a single word. */
+        function pdmNameParts(player) {
+            const full = String(player.fullName || player.name || '').trim();
+            const bits = full.split(/\s+/);
+            if (bits.length < 2) return { first: '', last: full };
+            return { first: bits.slice(0, -1).join(' '), last: bits[bits.length - 1] };
+        }
+
+        function pdmHeroHTML(player, analysis) {
+            const { shirt, ink } = typeof clubColours === 'function'
+                ? clubColours(player) : { shirt: '#37003C', ink: '#FFFFFF' };
+            const { first, last } = pdmNameParts(player);
+            const pos = POSITION_CONFIG[player.position] || POSITION_CONFIG[3];
+            const code = typeof v2TeamCode === 'function'
+                ? v2TeamCode(player.teamId, player.teamCode) : null;
+            const shirtNo = player.squadNumber != null ? player.squadNumber : null;
+            /* player.team is the three-letter short name, which is what a table
+               column wants and not what a card does. The full one is on the
+               teams map when the page has it. */
+            let clubName = player.team;
+            try {
+                if (typeof teams !== 'undefined' && teams && teams[player.teamId] && teams[player.teamId].name) {
+                    clubName = teams[player.teamId].name;
+                }
+            } catch (e) { /* no teams map here */ }
+            const verdict = analysis && analysis.verdict;
+            const chip = { star: '★ STAR', hold: 'HOLD', monitor: 'WATCH', sell: 'SELL' }[verdict] || '';
+
+            return `<div class="pdm-hero" style="--club:${shirt};--club-ink:${ink};">
+                <div class="pdm-hero-shape" aria-hidden="true"></div>
+                <div class="pdm-hero-photo">
+                    ${typeof playerPhotoLargeHTML === 'function' ? playerPhotoLargeHTML(player.code, 'pdm-hero-face') : ''}
+                </div>
+                <div class="pdm-hero-text">
+                    ${first ? `<span class="pdm-hero-first">${escHTML(first)}</span>` : ''}
+                    <span class="pdm-hero-last">${escHTML(last)}</span>
+                    <span class="pdm-hero-meta">
+                        ${code != null ? `<img class="pdm-hero-crest" src="https://resources.premierleague.com/premierleague/badges/50/t${code}.png" alt="" draggable="false" onerror="this.remove()">` : ''}
+                        <span>${escHTML(clubName)}</span>
+                        <em>•</em>
+                        ${shirtNo != null ? `<span>${shirtNo}</span>` : ''}
+                        <span>${pos.name}</span>
+                    </span>
+                </div>
+                <div class="pdm-hero-side">
+                    ${chip ? `<span class="pdm-hero-chip v-${verdict}">${chip}</span>` : ''}
+                    <span class="pdm-hero-price">£${player.price.toFixed(1)}m</span>
+                    <span class="pdm-hero-own">${player.ownership.toFixed(1)}% owned</span>
+                </div>
+            </div>`;
+        }
+
+        function renderPlayerModal() {
+            const host = pdmHost();
+            const analysis = pdmPlayerId != null
+                ? (analysisResults || []).find(a => a.player.id === pdmPlayerId) : null;
+            if (!analysis) { host.innerHTML = ''; return; }
+            const player = analysis.player;
+
+            host.innerHTML = `<div class="modal-overlay v2-modal pdm-modal open" id="pdmModal">
+                <div class="modal-container" role="dialog" aria-modal="true" aria-label="${escHTML(player.name)} profile">
+                    ${pdmHeroHTML(player, analysis)}
+                    <button class="modal-close pdm-close" onclick="closePlayerModal()" aria-label="Close">&times;</button>
+                    <div class="pdm-body">
+                        ${buildPlayerFullProfileHTML(player, analysis, { header: false })}
+                    </div>
+                </div>
+            </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function openPlayerModal(playerId) {
+            pdmPlayerId = playerId;
+            renderPlayerModal();
+            document.body.classList.add('v2-blurred');
+        }
+
+        function closePlayerModal() {
+            pdmPlayerId = null;
+            const modal = document.getElementById('pdmModal');
+            if (modal) modal.classList.remove('open');
+            document.body.classList.remove('v2-blurred');
+            /* Emptied only after the fade, so the close animates rather than
+               the card vanishing mid-transition. */
+            setTimeout(() => { if (pdmPlayerId == null) pdmHost().innerHTML = ''; }, 260);
         }
 
         function renderDetailStat(label, value, barPct, color, context) {
