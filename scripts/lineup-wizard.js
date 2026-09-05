@@ -853,17 +853,19 @@
         }
 
         // ── STEP 3: Captain & Summary ──
+        /* The same card the squad and dashboard pitches use: face, club badge,
+           armband in the corner. The position was a coloured ring around a
+           jersey number; on a pitch the row a player is standing in already
+           says his position, and the badge says more than the number did. */
         function renderLWSummaryPitchPlayer(p) {
-            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const posColors = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
-            const bg = { 1: 'rgba(217,119,6,0.2)', 2: 'rgba(5,150,105,0.2)', 3: 'rgba(37,99,235,0.2)', 4: 'rgba(220,38,38,0.2)' };
             const isCap = lineupState.captain === p.id;
             const isVC = lineupState.viceCaptain === p.id;
+            const ident = { name: p.web_name, code: p.code, teamId: p.team || p.teamId, team: p.teamShort || p.team_short_name || '' };
 
-            return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:90px;position:relative;">
-                ${isCap ? '<div style="position:absolute;top:-6px;right:-2px;font-size:12px;"><i data-lucide="crown" style="width:12px;height:12px;color:#F59E0B;"></i></div>' : ''}
-                ${isVC ? '<div style="position:absolute;top:-6px;right:-2px;font-size:10px;color:#9CA3AF;font-weight:700;">VC</div>' : ''}
-                <div class="lw-pitch-node" style="background:${bg[p.pos]};border:2px solid ${posColors[p.pos]};color:${posColors[p.pos]};${isCap ? 'box-shadow:0 0 8px rgba(245,158,11,0.5);' : ''}">${jerseyNumberLabel(p)}</div>
+            return `<div class="lw-pitch-player${isCap ? ' is-captain' : ''}">
+                ${isCap ? '<span class="lw-pitch-arm">C</span>' : ''}
+                ${isVC ? '<span class="lw-pitch-arm vice">V</span>' : ''}
+                ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
                 <div class="lw-pitch-name">${escHTML(p.web_name)}</div>
             </div>`;
         }

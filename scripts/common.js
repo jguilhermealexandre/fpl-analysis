@@ -186,6 +186,70 @@ function playerPhotoHTML(code, className) {
         onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else { this.remove(); }">`;
 }
 
+// ===== PLAYER IDENTITY =====
+/* Face, club badge and position colour — the three marks that say who a row
+ * or a card is about, drawn once here and used by the dashboard pitch, the
+ * squad pitch, the draft planner, the lineup wizard and both transfer views.
+ *
+ * Written to be called from anywhere: the club code is looked up through the
+ * page's `teams` map when there is one, and everything degrades rather than
+ * throwing when there is not. The initials sit under the photo and surface
+ * only when the league has published none for that player.
+ */
+const V2_POS_CLASS = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
+
+function v2TeamCode(teamId, fallbackCode) {
+    if (fallbackCode != null) return fallbackCode;
+    try {
+        if (typeof teams !== 'undefined' && teams && teams[teamId]) return teams[teamId].code;
+    } catch (e) { /* no teams map on this page */ }
+    return null;
+}
+
+function v2Initials(name) {
+    return String(name || '')
+        .split(/[\s.'\u2019-]+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(w => w[0].toUpperCase())
+        .join('');
+}
+
+/* The avatar on its own — a photo over its initials. */
+function v2AvatarHTML(player) {
+    const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
+    return `<span class="v2-pid-avatar">`
+        + `<b class="v2-pid-initials" aria-hidden="true">${esc(v2Initials(player && player.name))}</b>`
+        + (player && player.code != null && typeof playerPhotoHTML === 'function'
+            ? playerPhotoHTML(player.code, 'v2-pid-face') : '')
+        + `</span>`;
+}
+
+/* The club badge, with its short name behind it for a club the badge endpoint
+   does not know yet. */
+function v2CrestHTML(player) {
+    const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
+    const code = v2TeamCode(player && player.teamId, player && player.teamCode);
+    return `<span class="v2-pid-crest">`
+        + `<span class="v2-pid-crest-fallback">${esc((player && player.team) || '')}</span>`
+        + (code != null
+            ? `<img src="https://resources.premierleague.com/premierleague/badges/50/t${code}.png"
+                 alt="" loading="lazy" onerror="this.remove()">`
+            : '')
+        + `</span>`;
+}
+
+/* Both together, as one row — the shape every card and list item uses. */
+function v2IdentityHTML(player) {
+    return `<span class="v2-pid">${v2AvatarHTML(player)}${v2CrestHTML(player)}</span>`;
+}
+
+/* The class that paints a position colour down a row's leading edge, replacing
+   a GK/DEF/MID/FWD label that costs a column and says the same thing. */
+function v2PosEdgeClass(position) {
+    return `v2-pos-edge pos-${V2_POS_CLASS[position] || 'mid'}`;
+}
+
 // ===== DISMISSING PANELS =====
 /* Click away to close, for every overlay on the site.
  *
@@ -692,7 +756,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=123')
+    fetch('footer.html?v=124')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

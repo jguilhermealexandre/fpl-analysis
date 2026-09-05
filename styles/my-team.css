@@ -1107,6 +1107,54 @@
 .tm-pos-btn:hover { background: var(--surface-2); color: var(--text-primary); }
 .tm-pos-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); box-shadow: 0 2px 8px rgba(16,185,129,0.25); }
 
+/* Each position filter wears its own colour: an outline at rest, filled when
+   it is the one selected. The same --position-* tokens the rows' left edges
+   and the pitch use, so "green means defender" holds across the page. */
+.tm-pos-btn.pos-gk  { --v2-pos-color: var(--position-gk); }
+.tm-pos-btn.pos-def { --v2-pos-color: var(--position-def); }
+.tm-pos-btn.pos-mid { --v2-pos-color: var(--position-mid); }
+.tm-pos-btn.pos-fwd { --v2-pos-color: var(--position-fwd); }
+
+.tm-pos-btn[class*="pos-"] {
+    border-color: var(--v2-pos-color);
+    color: var(--v2-pos-color);
+}
+
+.tm-pos-btn[class*="pos-"]:hover {
+    background: color-mix(in srgb, var(--v2-pos-color) 12%, transparent);
+    color: var(--v2-pos-color);
+}
+
+.tm-pos-btn[class*="pos-"].active {
+    background: var(--v2-pos-color);
+    border-color: var(--v2-pos-color);
+    color: #fff;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--v2-pos-color) 35%, transparent);
+}
+
+/* ----- Two columns -----
+   Your squad on the left, the market on the right. Stacked, the market list
+   began a full screen below the squad list, so the comparison this page is
+   for — is anything out there moving faster than what I own — meant scrolling
+   between its two halves. */
+.tm-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.tm-columns > .tm-section { margin-bottom: 0; }
+
+@media (max-width: 1100px) {
+    .tm-columns { grid-template-columns: 1fr; gap: 0; }
+    .tm-columns > .tm-section { margin-bottom: 24px; }
+}
+
+/* The row's leading edge carries the position, so it needs the room the
+   removed pill used to take, and a little inset for the stripe. */
+.tm-watch-row.v2-pos-edge { padding-left: 12px; }
+
 /* Bento Grid: Rising + Falling side-by-side */
 .tm-bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
 .tm-bento-panel { background: var(--surface-0); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 12px; overflow: hidden; }
@@ -1622,13 +1670,33 @@
 .lw-pitch { background: linear-gradient(180deg,#1a472a 0%,#1d5031 20%,#1a472a 40%,#1d5031 60%,#1a472a 80%,#1d5031 100%); border-radius: 12px; padding: 24px 16px; margin-bottom: 20px; border: 2px solid rgba(74,222,128,0.2); }
 .lw-pitch-row { display: flex; justify-content: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .lw-pitch-row:last-child { margin-bottom: 0; }
-.lw-pitch-player { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 72px; max-width: 90px; cursor: pointer; transition: all 0.15s; padding: 4px; border-radius: 8px; }
-.lw-pitch-player:hover { background: rgba(255,255,255,0.08); }
+.lw-pitch-player {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    min-width: 68px; max-width: 86px;
+    cursor: pointer; transition: transform .15s, box-shadow .15s;
+    padding: 8px 6px 6px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.94);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.16);
+}
+.lw-pitch-player:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.22); }
+.lw-pitch-player.is-captain { box-shadow: 0 0 0 2px var(--color-captain), 0 2px 6px rgba(0,0,0,0.16); }
+.lw-pitch-player .v2-pid-avatar { width: 28px; height: 28px; }
+.lw-pitch-arm {
+    position: absolute; z-index: 3; top: -5px; right: -5px;
+    width: 16px; height: 16px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800;
+    background: var(--color-captain); color: #1a1a1a;
+    border: 2px solid #fff;
+}
+.lw-pitch-arm.vice { background: var(--surface-3); color: var(--text-secondary); }
 .lw-pitch-player.swap-source { background: rgba(96,165,250,0.25); box-shadow: 0 0 0 2px #60A5FA; border-radius: 8px; }
 .lw-pitch-player.swap-target { background: rgba(245,158,11,0.2); box-shadow: 0 0 0 2px #F59E0B; border-radius: 8px; }
 .lw-pitch-player.bench { opacity: 0.6; }
 .lw-pitch-node { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
-.lw-pitch-name { font-size: 10px; font-weight: 600; text-align: center; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+.lw-pitch-name { font-size: 10.5px; font-weight: 600; text-align: center; color: #17301F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 76px; }
 .lw-pitch-score { font-size: 10px; font-weight: 600; font-family: var(--font-mono); padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,0.3); }
 .lw-bench-section { background: var(--surface-1); border-radius: 12px; padding: 16px; border: 1px solid var(--border-default); margin-bottom: 20px; }
 .lw-bench-header { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; text-align: center; }
@@ -1874,15 +1942,33 @@
 .planner-pitch-row.planner-bench-row { background: rgba(0,0,0,0.35); margin: 10px -12px -12px; padding: 10px 12px 8px; border-radius: 0 0 var(--radius-lg) var(--radius-lg); gap: 8px; position: relative; }
 .planner-bench-tag { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--surface-2); color: var(--text-muted); padding: 2px 10px; border-radius: 10px; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--border-default); }
 
-.planner-pitch-player { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; transition: all 0.2s; min-width: 58px; max-width: 72px; padding: 4px 2px; border-radius: var(--radius-md); border: 2px solid transparent; }
-.planner-pitch-player:hover { transform: translateY(-2px); background: rgba(255,255,255,0.05); }
+/* The same white card the squad page's pitch uses, rather than a dark disc on
+   a dark field — so the planner reads as the same product as the pitch it is
+   planning against. */
+.planner-pitch-player {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    cursor: pointer; transition: transform .2s, box-shadow .2s;
+    min-width: 62px; max-width: 78px;
+    padding: 8px 6px 6px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.94);
+    border: 2px solid transparent;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.16);
+}
+.planner-pitch-player:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.22); }
+.planner-pitch-player .v2-pid-avatar { width: 26px; height: 26px; }
+.planner-pitch-player .v2-pid-crest,
+.planner-pitch-player .v2-pid-crest img { width: 16px; height: 16px; }
+.planner-pitch-player .planner-pitch-player-name { color: #17301F; text-shadow: none; }
+.planner-pitch-vice { background: var(--surface-3) !important; color: var(--text-secondary) !important; }
 .planner-pitch-player-node { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; color: white; border: 3px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); position: relative; transition: all 0.3s; }
 .planner-pitch-player-node.pos-gk { border-color: var(--position-gk); }
 .planner-pitch-player-node.pos-def { border-color: var(--position-def); }
 .planner-pitch-player-node.pos-mid { border-color: var(--position-mid); }
 .planner-pitch-player-node.pos-fwd { border-color: var(--position-fwd); }
 .planner-pitch-player-name { font-size: 9px; color: rgba(255,255,255,0.85); font-weight: 600; text-align: center; max-width: 68px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.7); line-height: 1.1; }
-.planner-pitch-captain { position: absolute; top: -4px; right: -4px; width: 15px; height: 15px; background: var(--color-captain); border-radius: 50%; font-size: 8px; font-weight: 600; color: #1a1a1a; display: flex; align-items: center; justify-content: center; border: 1.5px solid rgba(0,0,0,0.3); }
+.planner-pitch-captain { position: absolute; z-index: 3; top: -5px; right: -5px; width: 16px; height: 16px; background: var(--color-captain); border-radius: 50%; font-size: 8px; font-weight: 600; color: #1a1a1a; display: flex; align-items: center; justify-content: center; border: 1.5px solid rgba(0,0,0,0.3); }
 .planner-pitch-injured { opacity: 0.45; }
 
 /* FDR chip below player node on pitch */
@@ -4781,10 +4867,17 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twc-group { margin-bottom: 8px; }
 .twc-group-head { display: flex; align-items: center; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 3px 4px; }
 
-.twc-row { display: grid; grid-template-columns: 34px minmax(0,1fr) auto auto auto; align-items: center; gap: 7px; padding: 6px 7px; border-radius: var(--radius-md); }
+/* First column was a 34px text pill spelling the position; it is the face and
+   club badge now, with the position carried by the row's coloured leading
+   edge — the same tokens the pitch and the filter pills use. */
+.twc-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto auto; align-items: center; gap: 8px; padding: 6px 7px 6px 12px; border-radius: var(--radius-md); }
+.twc-row .v2-pid-avatar { width: 26px; height: 26px; }
+.twc-row .v2-pid-crest, .twc-row .v2-pid-crest img { width: 15px; height: 15px; }
+.twc-swap-icon { width: 13px; height: 13px; flex-shrink: 0; }
+.twc-swap { display: inline-flex; align-items: center; gap: 5px; }
 .twc-row:nth-child(even) { background: var(--surface-2); }
 .twc-row.is-sold { opacity: .45; }
-.twc-row.is-pending { box-shadow: inset 2px 0 0 var(--color-primary); }
+.twc-row.is-pending { box-shadow: 0 0 0 1px var(--color-primary); }
 .twc-row.sell-mode { cursor: pointer; }
 .twc-row.sell-mode:hover { background: color-mix(in srgb, var(--verdict-sell) 10%, transparent); }
 

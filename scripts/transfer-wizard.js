@@ -61,6 +61,15 @@
         }
 
         // Clean sheet probability model (ported from lineup wizard)
+        /* Drawn rather than typed. The 🔄 emoji rendered as a different glyph
+           at a different weight on every platform — full colour on one, a thin
+           outline on another — and could take neither the button's text colour
+           nor either theme. */
+        const TW_SWAP_ICON = '<svg class="twc-swap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M16 3h5v5"/><path d="M21 3l-7 7"/>' +
+            '<path d="M8 21H3v-5"/><path d="M3 21l7-7"/></svg>';
+
         function getCleanSheetProb(teamId, opponentId, isHome) {
             const tp = teamAnalysis[teamId], op = teamAnalysis[opponentId];
             if (!tp || !op) return 0.25;
@@ -1018,14 +1027,17 @@
                     // Three fixtures at a glance is the context that decides a sale.
                     const fx = (teamFixtures[p.teamId] || p.fixtures || []).slice(0, 3);
                     const blocks = fx.length
-                        ? fx.map(f => `<span class="twc-fdr fdr-${f.difficulty || 3}" data-tooltip="${f.isHome ? 'Home to' : 'Away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3}">${escHTML((f.opponent || '?').slice(0, 3))}</span>`).join('')
+                        ? fx.map(f => `<span class="twc-fdr v2-fdr-${f.difficulty || 3}" data-tooltip="${f.isHome ? 'Home to' : 'Away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3}">${escHTML((f.opponent || '?').slice(0, 3))}</span>`).join('')
                         : '<span class="twc-fdr twc-fdr-none">—</span>';
                     const status = p.status === 'i' || p.status === 'u' || p.status === 's' ? '<span class="twc-flag out">OUT</span>'
                         : p.status === 'd' ? `<span class="twc-flag doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}">?</span>` : '';
 
-                    rows += `<div class="twc-row ${sold ? 'is-sold' : ''} ${pending ? 'is-pending' : ''} ${transferState.sellMode ? 'sell-mode' : ''}"
+                    const twPosEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
+                    const twIdent = { name: p.name, code: p.code, teamId: p.teamId, team: p.team };
+
+                    rows += `<div class="twc-row ${twPosEdge} ${sold ? 'is-sold' : ''} ${pending ? 'is-pending' : ''} ${transferState.sellMode ? 'sell-mode' : ''}"
                         ${transferState.sellMode && !sold ? `onclick="twPickOutPlayer(${p.id})"` : ''}>
-                        <span class="twc-pos ${['', 'gk', 'def', 'mid', 'fwd'][p.position]}">${['', 'GK', 'DEF', 'MID', 'FWD'][p.position]}</span>
+                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(twIdent) : ''}
                         <div class="twc-who">
                             <div class="twc-name">${escHTML(p.name)}${status}</div>
                             <div class="twc-sub">${escHTML(p.team)} · £${(p.sellPrice || p.price).toFixed(1)}m</div>
@@ -1034,7 +1046,7 @@
                         <div class="twc-xp" data-tooltip="Projected points across GW${twRun[0]}\u2013GW${twRun[twRun.length - 1]} \u2014 the same three fixtures shown beside it.">${xp.toFixed(1)}<span class="twc-xp-u">xP${twRun.length}</span></div>
                         ${sold ? `<span class="twc-swapped">Swapped</span>`
                             : `<button class="twc-swap ${pending ? 'active' : ''}" onclick="event.stopPropagation();twSwapPlayer(${p.id})"
-                                data-tooltip="${pending ? 'Find a replacement for ' + escHTML(p.name) : 'Sell ' + escHTML(p.name) + ' and open the market for their position'}">🔄 ${pending ? 'Find' : 'Swap'}</button>`}
+                                data-tooltip="${pending ? 'Find a replacement for ' + escHTML(p.name) : 'Sell ' + escHTML(p.name) + ' and open the market for their position'}">${TW_SWAP_ICON}${pending ? 'Find' : 'Swap'}</button>`}
                     </div>`;
                 });
                 rows += `</div>`;
@@ -1055,7 +1067,7 @@
                     <span class="twc-panel-title">👥 Your squad</span>
                     ${transferState.sellMode
                         ? `<span class="twc-panel-hint" data-tooltip="Set by the plan selector above. Switch to Single to go back to one swap at a time.">Click any player to add them to the plan</span>`
-                        : `<span class="twc-panel-hint">Hit 🔄 Swap on anyone to replace them</span>`}
+                        : `<span class="twc-panel-hint">Hit Swap on anyone to replace them</span>`}
                 </div>
                 <div class="twc-panel-body">${rows}</div>
                 ${eoStrip}
@@ -1090,7 +1102,7 @@
             if (mode === 'market' && transferState.activeSlot >= 0) return renderTWMarket(el);
             if (mode === 'summary') return twRenderSummaryPanel(el);
             el.innerHTML = `<div class="twc-panel"><div class="twc-panel-head"><span class="twc-panel-title">🛒 Market</span></div>
-                <div class="twc-idle">Hit <strong>🔄 Swap</strong> on any player and their replacements appear here, already filtered to their position and what you can afford.</div></div>`;
+                <div class="twc-idle">Hit <strong>Swap</strong> on any player and their replacements appear here, already filtered to their position and what you can afford.</div></div>`;
         }
 
         /* The market pane.
@@ -1968,6 +1980,13 @@
                 </div>
             </div>`;
 
+            /* Two columns from here: your own squad on the left, the market on
+               the right. Stacked, the market list sat a full screen below the
+               squad list, so the comparison the page exists for — is anyone out
+               there moving faster than what I already own — needed scrolling
+               between the two halves of it. */
+            html += `<div class="tm-columns">`;
+
             // ─── Squad first, ordered by how close each is to a change ───
             if (squadPlayers.length > 0) {
                 // Closest to a change first; on a tie the one dropping outranks the
@@ -2011,10 +2030,10 @@
                 </div>
                 <div class="tm-pos-filter">
                     <button class="tm-pos-btn ${tmPosFilter === 'all' && tmPriceFilter === 'all' ? 'active' : ''}" onclick="tmFilterPos('all')">All</button>
-                    <button class="tm-pos-btn ${tmPosFilter === '1' ? 'active' : ''}" onclick="tmFilterPos('1')">GK</button>
-                    <button class="tm-pos-btn ${tmPosFilter === '2' ? 'active' : ''}" onclick="tmFilterPos('2')">DEF</button>
-                    <button class="tm-pos-btn ${tmPosFilter === '3' ? 'active' : ''}" onclick="tmFilterPos('3')">MID</button>
-                    <button class="tm-pos-btn ${tmPosFilter === '4' ? 'active' : ''}" onclick="tmFilterPos('4')">FWD</button>
+                    <button class="tm-pos-btn pos-gk ${tmPosFilter === '1' ? 'active' : ''}" onclick="tmFilterPos('1')">GK</button>
+                    <button class="tm-pos-btn pos-def ${tmPosFilter === '2' ? 'active' : ''}" onclick="tmFilterPos('2')">DEF</button>
+                    <button class="tm-pos-btn pos-mid ${tmPosFilter === '3' ? 'active' : ''}" onclick="tmFilterPos('3')">MID</button>
+                    <button class="tm-pos-btn pos-fwd ${tmPosFilter === '4' ? 'active' : ''}" onclick="tmFilterPos('4')">FWD</button>
                     <span style="width:1px;background:var(--border-default);margin:2px 4px;"></span>
                     <button class="tm-pos-btn ${tmPriceFilter === 'premium' ? 'active' : ''}" onclick="tmFilterPrice('premium')">Premium £10m+</button>
                     <button class="tm-pos-btn ${tmPriceFilter === 'budget' ? 'active' : ''}" onclick="tmFilterPrice('budget')">Budget &lt;£5m</button>
@@ -2025,8 +2044,10 @@
                 ${active.list.length > 8 ? `<div style="text-align:center;margin-top:10px;">
                     <button class="tm-view-all-btn" onclick="tmToggleViewAll('${active.key === 'fallers' ? 'falling' : 'rising'}')">${showAll ? 'Show top 8' : `View all ${active.list.length} →`}</button>
                 </div>` : ''}
-                <div class="tm-watch-note">Your own players are listed above rather than repeated here.</div>
+                <div class="tm-watch-note">Your own players are in the column beside this one rather than repeated here.</div>
             </div>`;
+
+            html += `</div>`;   // .tm-columns
 
             container.innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -2048,16 +2069,24 @@
                 <div class="tm-thr-fill ${st.cls}" style="width:${mag}%"></div>
             </div>`;
 
-            return `<div class="tm-watch-row ${st.cls}">
+            /* The position was a text pill on every row, a column's worth of
+               width spent on four letters. It is the coloured edge down the
+               left of the row now — same --position-* tokens as the pitch, so
+               the two agree — and the club is its badge rather than three
+               letters in a circle. */
+            const posEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
+            const ident = { name: p.name, code: p.code, teamId: p.teamId, team: p.teamShort };
+
+            return `<div class="tm-watch-row ${st.cls} ${posEdge}">
                 <div class="tm-watch-player">
-                    <div class="tm-player-avatar ${p.posClass}">${escHTML(p.teamShort)}</div>
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
                     <div class="tm-player-info">
                         <div class="tm-player-name-row">
                             <span class="tm-player-name">${escHTML(p.name)}</span>
                             ${inSquad ? '<span class="tm-badge in-squad">SQUAD</span>' : ''}
                         </div>
                         <div class="tm-player-sub">
-                            <span class="tm-pos-pill ${p.posClass}">${p.posName}</span>
+                            <span class="tm-team-name">${escHTML(p.teamShort)}</span>
                             <span class="tm-team-name">£${p.price.toFixed(1)}m</span>
                             <span class="tm-team-name" data-tooltip="Net transfers this gameweek across all FPL managers.">${escHTML(netStr)}</span>
                         </div>

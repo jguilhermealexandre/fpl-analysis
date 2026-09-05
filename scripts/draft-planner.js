@@ -1856,23 +1856,24 @@
                     const fixtures = teamFixtures6[p.teamId] || [];
                     const gwFixtures = fixtures.filter(f => f.event === compareGW);
                     const injured = p.status === 'i' || p.status === 'u';
-                    let node = `<div class="planner-pitch-player" title="${escHTML(p.name)} — ${escHTML(p.team)}">`;
-                    node += `<div class="planner-pitch-player-node ${posClass} ${injured ? 'planner-pitch-injured' : ''}" style="position:relative;">`;
-                    node += jerseyNumberLabel(p);
+                    /* Same card as the squad page's pitch — face, badge, the
+                       armband in the corner — with this view's own data (the
+                       compare-gameweek fixture chips) left untouched below. */
+                    let node = `<div class="planner-pitch-player ${posClass} ${injured ? 'planner-pitch-injured' : ''}" title="${escHTML(p.name)} — ${escHTML(p.team)}">`;
                     if (p.isCaptain) node += `<span class="planner-pitch-captain">C</span>`;
-                    if (p.isVice) node += `<span class="planner-pitch-captain" style="background:var(--text-muted);color:white;">V</span>`;
+                    else if (p.isVice) node += `<span class="planner-pitch-captain planner-pitch-vice">V</span>`;
                     if (p.isTransferIn) node += `<span class="draft-pitch-new-badge">NEW</span>`;
-                    node += `</div>`;
+                    node += typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p) : '';
                     if (gwFixtures.length > 1) {
                         node += `<div class="planner-fdr-stack">`;
                         gwFixtures.forEach(fix => {
-                            const fdrClass = `fdr-${fix.difficulty || 3}`;
+                            const fdrClass = `v2-fdr-${fix.difficulty || 3}`;
                             node += `<div class="planner-fdr-chip ${fdrClass}">${escHTML(fix.opponent || '?')}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
                         });
                         node += `</div>`;
                     } else if (gwFixtures.length === 1) {
                         const fix = gwFixtures[0];
-                        const fdrClass = `fdr-${fix.difficulty || 3}`;
+                        const fdrClass = `v2-fdr-${fix.difficulty || 3}`;
                         node += `<div class="planner-fdr-chip ${fdrClass}">${escHTML(fix.opponent || '?')}<span class="fdr-chip-ha">${fix.isHome ? 'H' : 'A'}</span></div>`;
                     }
                     node += `<div class="planner-pitch-player-name">${escHTML(p.name)}</div>`;

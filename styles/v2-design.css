@@ -1359,3 +1359,103 @@ html.v2-theme body {
         transition: none;
     }
 }
+
+/* ============================================================
+   PLAYER IDENTITY — face, badge, position edge
+
+   One set of marks, used by the dashboard pitch, the squad pitch, the draft
+   planner, the lineup wizard and both transfer views. Drawn by v2IdentityHTML()
+   in common.js.
+   ============================================================ */
+
+.v2-pid {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.v2-pid-avatar {
+    position: relative;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+
+[data-theme="dark"] .v2-pid-avatar { background: rgba(255, 255, 255, 0.07); }
+
+.v2-pid-initials {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+/* The club photos are cut-outs on transparency framed head-and-shoulders, so
+   the circle crops high rather than centring on the chest. */
+.v2-pid-face {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 50% 12%;
+}
+
+/* Only ever seen when no photo arrives — see .has-photo, set on load. */
+.v2-pid-avatar.has-photo .v2-pid-initials { display: none; }
+
+.v2-pid-crest {
+    position: relative;
+    width: 18px; height: 18px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+
+.v2-pid-crest img {
+    position: relative; z-index: 1;
+    width: 18px; height: 18px;
+    object-fit: contain;
+}
+
+.v2-pid-crest-fallback {
+    position: absolute; z-index: 0;
+    font-size: 7.5px; font-weight: 700;
+    color: var(--text-muted);
+}
+
+/* ----- Position as an edge, not a label -----
+   GK/DEF/MID/FWD as text costs a column on every row and repeats what a
+   colour can say in three pixels. The colours are the site's existing
+   --position-* tokens, so the edge, the pitch and the charts agree. */
+.v2-pos-edge {
+    position: relative;
+}
+
+.v2-pos-edge::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    border-radius: 3px 0 0 3px;
+    background: var(--v2-pos-color, var(--position-mid));
+}
+
+.v2-pos-edge.pos-gk  { --v2-pos-color: var(--position-gk); }
+.v2-pos-edge.pos-def { --v2-pos-color: var(--position-def); }
+.v2-pos-edge.pos-mid { --v2-pos-color: var(--position-mid); }
+.v2-pos-edge.pos-fwd { --v2-pos-color: var(--position-fwd); }
+
+/* ----- Fixture difficulty, one ramp everywhere -----
+   The same five steps the squad table uses: dark green, light green, grey,
+   orange, dark red. It moves in lightness as well as hue, so it survives
+   being printed in black and white, and the two ends — the ones that change
+   a decision — are the two darkest chips in any row. */
+.v2-fdr-1 { background: #15803D !important; color: #FFFFFF !important; }
+.v2-fdr-2 { background: #86EFAC !important; color: #0B2E13 !important; }
+.v2-fdr-3 { background: #E5E7EB !important; color: #4B5563 !important; }
+.v2-fdr-4 { background: #F97316 !important; color: #FFFFFF !important; }
+.v2-fdr-5 { background: #B91C1C !important; color: #FFFFFF !important; }
+
+[data-theme="dark"] .v2-fdr-2 { background: #4ADE80 !important; color: #08240F !important; }
+[data-theme="dark"] .v2-fdr-3 { background: #3A424D !important; color: #D5DAE2 !important; }
