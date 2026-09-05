@@ -67,6 +67,21 @@
             const cap = lineupState.xi.filter(p => p.pos !== 1).sort((a, b) => b.gwScore - a.gwScore);
             lineupState.captain = cap[0]?.id || null;
             lineupState.viceCaptain = cap[1]?.id || null;
+            lineupState.undo = null;
+
+            /* A lineup you worked out last night beats one the solver has just
+               invented, so a saved arrangement wins over the fresh solve — but
+               only if it is for this team and this gameweek, and only if every
+               player in it is still in the squad. lsLoad and lsApply enforce
+               both; anything else falls through to what was just solved. */
+            (() => {
+                if (typeof lsLoad !== 'function' || typeof currentGW === 'undefined') return;
+                let teamId = null;
+                try { teamId = localStorage.getItem('fpl_team_id'); } catch (e) { return; }
+                if (!teamId) return;
+                const saved = lsLoad(teamId, currentGW);
+                if (saved) lsApply(lineupState, saved);
+            })();
 
             renderLineupCommandCenter();
         }
@@ -112,6 +127,8 @@
                                 <span class="lw-cc-stat-l">Projected</span><span class="lw-cc-stat-v accent" id="lwTotal">${lwTotalXP().toFixed(1)}</span></span>
                         </div>
                         <button class="rc-btn" onclick="resetLineupToOptimal()" data-tooltip="${optimiseTip}">✨ Auto-optimise</button>
+                        ${lineupState.undo ? `<button class="rc-btn" onclick="lwUndoOptimise()"
+                            data-tooltip="Put back the eleven, bench order and armband you had before Auto-optimise ran.">↩︎ Undo</button>` : ''}
                     </div>
                     ${lineupState.optimizeReport ? `<div class="sq-optimize-summary">✨ ${buildOptimizeSummary(lineupState.optimizeReport, 'openLineupOptimizeReport()')}</div>` : ''}
                     <div class="lw-cc-body">
@@ -461,6 +478,7 @@
             if (lineupState.excluded.has(lineupState.captain) || !lineupState.xi.some(p => p.id === lineupState.captain)) {
                 lineupState.captain = cap[0]?.id || null;
             }
+            lwRemember();
             renderLineupCommandCenter();
         }
 
@@ -548,6 +566,41 @@
             return `${counts[2]}-${counts[3]}-${counts[4]}`;
         }
 
+
+        /* Every change to the eleven goes through here.
+
+           Called after each action rather than on a timer, so what is stored is
+           always a decision a manager made rather than a half-finished drag. The
+           gameweek is part of the key, so this expires by simply not matching
+           once the round rolls over — see scripts/lineup-store.js. */
+        function lwRemember() {
+            if (typeof lsArrangement !== 'function') return;
+            const teamId = (() => { try { return localStorage.getItem('fpl_team_id'); } catch (e) { return null; } })();
+            if (!teamId || typeof currentGW === 'undefined') return;
+            lsSave(teamId, currentGW, lsArrangement(lineupState));
+        }
+
+        /* Put back whatever Auto-optimise replaced.
+
+           The snapshot is taken inside resetLineupToOptimal, which was already
+           recording the same shape for its report — it just threw it away
+           afterwards. */
+        function lwUndoOptimise() {
+            if (!lineupState.undo || typeof lsApply !== 'function') return;
+            if (!lsApply(lineupState, lineupState.undo)) {
+                if (typeof updateStatus === 'function') {
+                    updateStatus('That lineup no longer fits your squad, so it cannot be restored', 'error');
+                }
+                lineupState.undo = null;
+                return;
+            }
+            lineupState.undo = null;
+            lineupState.optimizeReport = null;
+            lwRemember();
+            renderLineupCommandCenter();
+            if (typeof updateStatus === 'function') updateStatus('Lineup restored', 'success');
+        }
+
         function resetLineupToOptimal() {
             // Deliberately does NOT recompute lwScore from the heuristic: the cards
             // display lwScore as projected points, so overwriting it with the 0-100
@@ -565,6 +618,9 @@
             // to be recorded before solveLWLineup() overwrites it.
             const beforeFormation = lineupState.formation;
             const beforeBenchIds = lineupState.bench.map(p => p.id);
+            // The same shape the report is built from, kept so it can be put
+            // back rather than only described.
+            const restorable = typeof lsArrangement === 'function' ? lsArrangement(lineupState) : null;
 
             solveLWLineup();
             // Captaincy pays out for this gameweek alone, so it's picked on gwScore
@@ -621,6 +677,13 @@
                 promoted: finalXI.filter(p => !beforeXI.has(p.id))
             };
 
+            /* Offered only when the solve actually moved something. An undo
+               button for a no-op is a button that appears to have failed. */
+            const after = typeof lsArrangement === 'function' ? lsArrangement(lineupState) : null;
+            lineupState.undo = (restorable && after && typeof lsSame === 'function' && !lsSame(restorable, after))
+                ? restorable : null;
+
+            lwRemember();
             renderLineupCommandCenter();
         }
 
@@ -1146,6 +1209,9 @@
         // Repaints the pitch, the header figures and the intel pane together, so a
         // swap can never leave the projected total describing the previous lineup.
         function refreshLWView() {
+            // Every in-place change ends here — a swap, an armband, a vice — so
+            // this is where a decision becomes something that survives a reload.
+            lwRemember();
             const pitch = document.getElementById('lwPitchPane');
             if (pitch) pitch.innerHTML = renderLWPitch();
             const f = document.getElementById('lwFormation');
