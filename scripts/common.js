@@ -377,7 +377,10 @@ const V2_ICON_PATHS = {
     // The squad — a shirt.
     shirt: '<path d="M20.4 3.5 16 2a4 4 0 0 1-8 0L3.6 3.5a2 2 0 0 0-1.3 2.2l.6 3.5a1 1 0 0 0 1 .8H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.1a1 1 0 0 0 1-.8l.6-3.5a2 2 0 0 0-1.3-2.2z"/>',
     // What happened while you were away.
-    activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'
+    activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+    // Headlines.
+    news: '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9h4"/>'
+        + '<path d="M18 6h-8"/><path d="M15 10h-5"/>'
 };
 
 function v2Icon(name) {
@@ -756,7 +759,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=129')
+    fetch('footer.html?v=130')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

@@ -14,7 +14,7 @@ try {
 }
 
 function loadSidebarNav() {
-    return fetch('sidebar-nav.html?v=129')
+    return fetch('sidebar-nav.html?v=130')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -127,6 +127,7 @@ function initV2PageEntrance() {
         '.hero-personalized > .v2-matchday',
         '.hero-personalized > .v2-market',
         '.hero-personalized > .v2-feed',
+        '.hero-personalized > .v2-news',
         'main.main-content > .v2-page-hint',
         'main.main-content > .tab-content:not(.hidden) > *',
         'main.main-content > *:not(.header-row):not(.loading-overlay):not(.tab-content):not(#content-area)',
