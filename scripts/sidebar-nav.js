@@ -14,7 +14,7 @@ try {
 }
 
 function loadSidebarNav() {
-    return fetch('sidebar-nav.html?v=116')
+    return fetch('sidebar-nav.html?v=117')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -120,6 +120,13 @@ function initV2PageEntrance() {
         '.hero-personalized > .v2-attention-grid',
         '.hero-personalized > .v2-quick-actions',
         '.hero-personalized > .headlines-widget',
+        /* The dashboard's own panels. Each ships display:none and is revealed
+           by its renderer once its data lands, so none of them was ever in
+           this list and none of them animated — they simply appeared, which
+           is why the dashboard felt unlike every other page. */
+        '.hero-personalized > .v2-matchday',
+        '.hero-personalized > .v2-market',
+        '.hero-personalized > .v2-feed',
         'main.main-content > .v2-page-hint',
         'main.main-content > .tab-content:not(.hidden) > *',
         'main.main-content > *:not(.header-row):not(.loading-overlay):not(.tab-content):not(#content-area)',
@@ -138,6 +145,7 @@ function initV2PageEntrance() {
         return element instanceof HTMLElement &&
             element !== heading &&
             !element.classList.contains('hidden') &&
+            element.style.display !== 'none' &&
             !element.classList.contains('skeleton-container') &&
             !element.closest('.modal-overlay, .loading-overlay');
     }
@@ -163,11 +171,21 @@ function initV2PageEntrance() {
     // Animate those real panels when they arrive, using the same visual rhythm.
     const observer = new MutationObserver(mutations => {
         const addedBlocks = [];
-        mutations.forEach(mutation => mutation.addedNodes.forEach(node => {
-            if (!(node instanceof HTMLElement)) return;
-            if (node.matches(selectorList)) addedBlocks.push(node);
-            addedBlocks.push(...node.querySelectorAll(selectorList));
-        }));
+        mutations.forEach(mutation => {
+            /* An empty panel filled by innerHTML reports its children as the
+               addition; the block that should animate is the container they
+               landed in. Reading the target as well as the added nodes covers
+               both shapes with one rule. */
+            if (mutation.target instanceof HTMLElement) {
+                const host = mutation.target.closest(selectorList);
+                if (host) addedBlocks.push(host);
+            }
+            mutation.addedNodes.forEach(node => {
+                if (!(node instanceof HTMLElement)) return;
+                if (node.matches(selectorList)) addedBlocks.push(node);
+                addedBlocks.push(...node.querySelectorAll(selectorList));
+            });
+        });
         if (addedBlocks.length) registerBlocks(addedBlocks, true);
     });
     observer.observe(document.querySelector('.v2-main-content') || document.body, {
