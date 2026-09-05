@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=110">
-    <link rel="stylesheet" href="styles/v2-design.css?v=110">
+    <link rel="stylesheet" href="styles/common.css?v=111">
+    <link rel="stylesheet" href="styles/v2-design.css?v=111">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1169,35 +1169,30 @@
 
         /* --- the snapshot as a gateway into the full analysis --- */
         .v2-pitch-stage { position: relative; }
-        .v2-pitch-gateway {
-            position: absolute; inset: 0; z-index: 3;
-            display: flex; align-items: flex-start; justify-content: flex-end;
-            padding: 10px; border-radius: var(--radius-lg);
-            text-decoration: none; opacity: 0;
-            transition: opacity 180ms ease, box-shadow 180ms ease;
-            box-shadow: 0 0 0 0 transparent;
+        /* The way through to the squad page used to be a full-bleed link over
+           the pitch, invisible until hover, which put a dark wash and a
+           floating pill across the lineup every time the cursor crossed it —
+           and told a first-time visitor nothing, since an affordance that only
+           exists on hover does not exist on a touch screen at all. It sits in
+           the header now, always visible, at every width, which also retires
+           the separate mobile-only button that existed because the overlay
+           could not be used there. */
+        .v2-pitch-more {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 12px; font-weight: 600; color: var(--color-primary);
+            text-decoration: none; white-space: nowrap;
+            padding: 3px 4px; border-radius: var(--radius-sm);
+            transition: opacity 140ms ease;
         }
-        .v2-pitch-gateway:hover, .v2-pitch-gateway:focus-visible {
-            opacity: 1;
-            background: linear-gradient(180deg, rgba(15,23,42,0.30), rgba(15,23,42,0.06) 45%, transparent);
-            box-shadow: 0 8px 26px rgba(15, 23, 42, 0.20);
-        }
-        .v2-pitch-gateway:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-        .v2-pitch-gateway-hint {
-            display: inline-flex; align-items: center; gap: 6px;
-            background: var(--color-primary); color: #fff;
-            font-size: 12px; font-weight: 650;
-            padding: 6px 12px; border-radius: var(--radius-full);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.22);
-        }
-        .v2-pitch-gateway-hint .icon { width: 14px; height: 14px; }
-        /* Desktop gets the overlay; the explicit button is the mobile affordance. */
-        .v2-pitch-cta { display: none; }
+        .v2-pitch-more:hover { opacity: 0.75; }
+        .v2-pitch-more:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+        .v2-pitch-more .icon { width: 14px; height: 14px; }
 
         /* --- per-player detail --- */
         .v2-pitch-token-opp {
-            font-size: 9.5px; font-weight: 600; color: rgba(15,23,42,0.72);
-            line-height: 1.1; letter-spacing: -0.1px;
+            font-size: 9px; font-weight: 600; color: rgba(15,23,42,0.72);
+            line-height: 1.3; letter-spacing: -0.1px;
+            background: rgba(15,23,42,0.06); border-radius: 4px; padding: 1px 5px;
         }
         .v2-pitch-token-xp {
             font-family: var(--font-mono); font-size: 11px; font-weight: 700;
@@ -1222,24 +1217,17 @@
         .v2-pitch-bench .v2-pitch-token-opp, .v2-pitch-bench .v2-pitch-token-xp { display: none; }
 
         @media (max-width: 767px) {
-            /* A full-bleed link over a tall element turns a scroll drag into a tap.
-               Hand navigation to the button instead. */
-            .v2-pitch-gateway { display: none; }
-            .v2-pitch-cta {
-                display: flex; align-items: center; justify-content: center; gap: 8px;
-                margin-top: 10px; min-height: 44px; padding: 0 16px;
-                border-radius: var(--radius-lg); text-decoration: none;
-                background: var(--color-primary); color: #fff;
-                font-size: 14px; font-weight: 650;
-            }
-            .v2-pitch-cta .icon { width: 16px; height: 16px; }
+            /* The header can carry the title, the two chips and the link on a
+               desktop row; on a phone it wraps rather than squeezing them. */
+            .v2-pitch-header { flex-wrap: wrap; gap: 6px 10px; }
+            .v2-pitch-more { min-height: 44px; }
         }
         .v2-pitch {
             position: relative;
             width: 100%;
-            aspect-ratio: 16 / 11.5;
-            border-radius: var(--radius-lg);
-            background: repeating-linear-gradient(0deg, #CFEBD0 0, #CFEBD0 12.5%, #C4E5C6 12.5%, #C4E5C6 25%);
+            aspect-ratio: 16 / 12.5;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            background: repeating-linear-gradient(0deg, #57ab5a 0, #57ab5a 12.5%, #4e9e51 12.5%, #4e9e51 25%);
             overflow: hidden;
             border: none;
         }
@@ -1247,14 +1235,14 @@
             content: '';
             position: absolute;
             left: 6%; right: 6%; top: 50%;
-            border-top: 2px solid rgba(255,255,255,0.35);
+            border-top: 2px solid rgba(255,255,255,0.22);
         }
         .v2-pitch::after {
             content: '';
             position: absolute;
             left: 50%; top: 50%;
             width: 15%; aspect-ratio: 1;
-            border: 2px solid rgba(255,255,255,0.35);
+            border: 2px solid rgba(255,255,255,0.22);
             border-radius: 50%;
             transform: translate(-50%, -50%);
         }
@@ -1262,7 +1250,7 @@
             position: absolute;
             left: 27%; width: 46%;
             height: 13%;
-            border: 2px solid rgba(255,255,255,0.35);
+            border: 2px solid rgba(255,255,255,0.22);
             border-top: none;
         }
         .v2-pitch-box.top { top: 0; border-top: none; border-bottom: 2px solid rgba(255,255,255,0.35); border-top-width: 0; transform: rotate(180deg); }
@@ -1273,27 +1261,43 @@
             display: flex;
             justify-content: space-evenly;
             align-items: center;
+            /* top is the row's centre line, not its top edge: a card is twice
+               the height of the circle this pitch used to place, and hanging
+               it below the line put the keeper through the touchline. */
+            transform: translateY(-50%);
         }
+        /* The same card the squad page's pitch uses (.pcard in my-team.css),
+           so the snapshot and the view it links to are recognisably the same
+           object. Values are taken from there rather than approximated: a
+           near-white fill so the grass reads through as a tint, a transparent
+           2px border reserved for state, and the shadow that lifts it off a
+           saturated pitch without haloing. */
         .v2-pitch-token {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
-            width: 15%;
-            max-width: 96px;
+            gap: 2px;
+            width: 17%;
+            max-width: 92px;
+            padding: 9px 6px 7px;
+            border-radius: var(--radius-md);
+            background: rgba(255,255,255,0.94);
+            border: 2px solid transparent;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.16);
         }
         .v2-pitch-token-circle {
-            width: 33px;
-            height: 33px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: 10px;
             font-weight: 600;
             color: #fff;
             border: none;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.18);
             position: relative;
         }
         .v2-pitch-token-badge {
@@ -1311,7 +1315,7 @@
             border: 1.5px solid #fff;
         }
         .v2-pitch-token-name {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #17301F;
             text-shadow: none;
@@ -1331,17 +1335,22 @@
         }
         .v2-pitch-bench .v2-pitch-token-pos { display: none; }
         .v2-pitch-token-status { color: #FCA5A5; }
+        /* The squad page keeps the bench on the same surface as the pitch, as a
+           dugout rather than four circles floating below it. */
         .v2-pitch-bench {
-            margin-top: 10px;
+            margin-top: 0;
             display: flex;
+            align-items: center;
             gap: 8px;
-            padding-top: 10px;
-            border-top: 1px dashed var(--border-default);
+            padding: 10px;
+            border-top: none;
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+            background: var(--surface-2);
             overflow-x: auto;
         }
         .v2-pitch-bench-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; align-self: center; flex-shrink: 0; margin-right: 2px; }
-        .v2-pitch-bench .v2-pitch-token-circle { width: 28px; height: 28px; font-size: 9px; }
-        .v2-pitch-bench .v2-pitch-token { flex-shrink: 0; width: auto; }
+        .v2-pitch-bench .v2-pitch-token-circle { width: 20px; height: 20px; font-size: 9px; }
+        .v2-pitch-bench .v2-pitch-token { flex-shrink: 0; width: auto; min-width: 74px; padding: 7px 8px 6px; }
         .v2-pitch-bench .v2-pitch-token-name { color: var(--text-secondary); text-shadow: none; font-size: 11px; }
 
         .v2-quick-actions {
@@ -4114,20 +4123,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=110"></script>
-    <script src="scripts/price-watch.js?v=110"></script>
-    <script src="scripts/xp-engine.js?v=110"></script>
-    <script src="scripts/odds-panel.js?v=110"></script>
-    <script src="scripts/live-gw.js?v=110"></script>
-    <script src="scripts/matchday.js?v=110"></script>
-    <script src="scripts/market-panel.js?v=110"></script>
-    <script src="scripts/eo-layer.js?v=110"></script>
-    <script src="scripts/readiness.js?v=110"></script>
-    <script src="scripts/push-alerts.js?v=110"></script>
-    <script src="scripts/notifications.js?v=110"></script>
-    <script src="scripts/transfer-engine.js?v=110"></script>
-    <script src="scripts/common.js?v=110"></script>
-    <script src="scripts/sidebar-nav.js?v=110"></script>
+    <script src="scripts/error-monitor.js?v=111"></script>
+    <script src="scripts/price-watch.js?v=111"></script>
+    <script src="scripts/xp-engine.js?v=111"></script>
+    <script src="scripts/odds-panel.js?v=111"></script>
+    <script src="scripts/live-gw.js?v=111"></script>
+    <script src="scripts/matchday.js?v=111"></script>
+    <script src="scripts/market-panel.js?v=111"></script>
+    <script src="scripts/eo-layer.js?v=111"></script>
+    <script src="scripts/readiness.js?v=111"></script>
+    <script src="scripts/push-alerts.js?v=111"></script>
+    <script src="scripts/notifications.js?v=111"></script>
+    <script src="scripts/transfer-engine.js?v=111"></script>
+    <script src="scripts/common.js?v=111"></script>
+    <script src="scripts/sidebar-nav.js?v=111"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5124,7 +5133,7 @@
             }
 
             // Rows top-to-bottom: forwards, midfielders, defenders, goalkeeper (attack up top, keeper near own goal)
-            const rowTops = [14, 38, 62, 86];
+            const rowTops = [15, 38, 61, 84];   // centre lines, see .v2-pitch-row
             const rowOrder = [4, 3, 2, 1];
             let pitchHtml = '';
             rowOrder.forEach((pos, idx) => {
@@ -5154,19 +5163,13 @@
                     <span class="v2-pitch-head-right">
                         ${xiXpLabel ? `<span class="v2-pitch-xitotal" title="Sum of your starting XI's projected points">${xiXpLabel}</span>` : ''}
                         <span class="v2-pitch-formation">${formationStr}</span>
+                        <a class="v2-pitch-more" href="fpl-my-team-analysis.html">Full squad analysis <i data-lucide="arrow-right" class="icon"></i></a>
                     </span>
                 </div>
                 <div class="v2-pitch-stage">
-                    <a class="v2-pitch-gateway" href="fpl-my-team-analysis.html"
-                       aria-label="Open the full squad analysis">
-                        <span class="v2-pitch-gateway-hint">Full squad analysis <i data-lucide="arrow-right" class="icon"></i></span>
-                    </a>
                     <div class="v2-pitch">${pitchHtml}</div>
                     <div class="v2-pitch-bench">${benchHtml}</div>
-                </div>
-                <a class="v2-pitch-cta" href="fpl-my-team-analysis.html">
-                    <i data-lucide="line-chart" class="icon"></i> Analyse full squad
-                </a>`;
+                </div>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
