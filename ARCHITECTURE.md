@@ -99,6 +99,15 @@ and calling it from a top-level function is what took the dashboard down once.
 disagreed on `position` vs `pos`. `normalisePlayerShape()` keeps both present
 and equal. New mappings should call it.
 
+**Linting.** `npm run lint` is a gate, not a report, and the run is clean. Two
+things make that possible and are worth not undoing. `no-redeclare` runs with
+`builtinGlobals: false`, because the generated globals block is built from the
+same declarations the rule would otherwise object to — the genuine hazard, two
+files declaring one name on a page, is `check:globals`'s job and it knows which
+scripts a page loads. And `tools/scan-globals.mjs` has to find every declarator
+in `let a = 1, b = 2;`, not just the first: missing them cost seventy no-undef
+reports across six files and hid the real ones.
+
 **Errors.** `scripts/error-monitor.js` loads first on every page and captures
 window errors, unhandled rejections and `reportError(err, context)`. The log
 lives in `localStorage`; `fplErrorLog()` in the console dumps it. Nothing is
@@ -134,8 +143,6 @@ delete a file, remove it from there and bump `CACHE_NAME`.
 - **~14.6k lines of JS inside HTML.** Not lintable or testable until extracted.
   `fpl-players-analysis.html` alone holds 5,369 lines. Extract page by page,
   smallest first; the CI guards are already in place to catch what moves.
-- **ESLint is reporting-only** in CI, because it could not be run locally when
-  introduced. Flip `continue-on-error` off once a clean run is confirmed.
 - **`git log` is ~65% automated data commits.** `npm run log` filters them.
 - **`.git` is ~220 MB**, growing a few MB a day from data commits. Fine for
   months; wants a decision eventually.

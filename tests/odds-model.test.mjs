@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     devig, poissonPmf, solveTotalGoals, solveSupremacy,
-    homeWinProbability, drawProbability, deriveMatch
+    homeWinProbability, deriveMatch
 } from '../tools/odds-model.mjs';
 
 const close = (a, b, tol, msg) => assert.ok(Math.abs(a - b) < tol, `${msg}: ${a} vs ${b}`);

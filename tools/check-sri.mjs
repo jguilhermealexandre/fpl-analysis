@@ -11,7 +11,6 @@
    failure is news about the outside world rather than about the commit. */
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { pages } from './page-scripts.mjs';
 
 const targets = new Map();
 

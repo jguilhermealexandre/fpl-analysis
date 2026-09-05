@@ -27,6 +27,10 @@ export default [
                 ...globals.browser,
                 Chart: 'readonly',
                 lucide: 'readonly',
+                // scouts-desk.js is loaded both as a classic script and by
+                // build-articles.js through require(), so it guards on
+                // `typeof module` to export in one case and not the other.
+                module: 'readonly',
 /* GENERATED-GLOBALS-START */
                 AVAILABLE_COLS: 'writable',
                 BOOTSTRAP_URL: 'writable',
@@ -183,6 +187,7 @@ export default [
                 allPlayers: 'writable',
                 allPlayersById: 'writable',
                 allTeamsData: 'writable',
+                analysisResults: 'writable',
                 analyzePlayer: 'writable',
                 analyzePlayerForTicker: 'writable',
                 analyzeRivals: 'writable',
@@ -286,6 +291,7 @@ export default [
                 closeSettings: 'writable',
                 colValue: 'writable',
                 compareList: 'writable',
+                compositionChart: 'writable',
                 computeCrowdRow: 'writable',
                 computeHardestTeams: 'writable',
                 computeHeatScales: 'writable',
@@ -332,6 +338,7 @@ export default [
                 diffToFdrBucket: 'writable',
                 dismissLeaguePrompt: 'writable',
                 dismissWelcomeBanner: 'writable',
+                divergenceChart: 'writable',
                 draftAutoOptimizeAllGWs: 'writable',
                 draftAutoOptimizeLineup: 'writable',
                 draftAutoSuggestAllGWs: 'writable',
@@ -566,6 +573,7 @@ export default [
                 lwPointsSources: 'writable',
                 lwSourcesBar: 'writable',
                 lwTotalXP: 'writable',
+                managerData: 'writable',
                 managerHistory: 'writable',
                 managerPicks: 'writable',
                 managers: 'writable',
@@ -665,6 +673,7 @@ export default [
                 performDraftSwap: 'writable',
                 performSnapshotSwap: 'writable',
                 pickTeamOfTheWeek: 'writable',
+                picksData: 'writable',
                 planTransferFromPanel: 'writable',
                 playerAnalyses: 'writable',
                 playerFixtureMetric: 'writable',
@@ -917,6 +926,7 @@ export default [
                 sdEvent: 'writable',
                 sdFdrCell: 'writable',
                 sdFixtureStrip: 'writable',
+                sdFixtures: 'writable',
                 sdFormatDate: 'writable',
                 sdGenFixtureHorizon: 'writable',
                 sdGenGameweekDebrief: 'writable',
@@ -927,6 +937,7 @@ export default [
                 sdGenTacticalPlaybook: 'writable',
                 sdGenUnderTheHood: 'writable',
                 sdGenerate: 'writable',
+                sdHistory: 'writable',
                 sdLastRound: 'writable',
                 sdMarkdown: 'writable',
                 sdNextGw: 'writable',
@@ -961,6 +972,7 @@ export default [
                 seasonTooYoungNotice: 'writable',
                 selectAllColumns: 'writable',
                 selectDraftReplacement: 'writable',
+                selectedPlayers: 'writable',
                 setCalendarColor: 'writable',
                 setCalendarView: 'writable',
                 setDraftCaptain: 'writable',
@@ -1246,6 +1258,21 @@ export default [
         },
         rules: {
             'no-undef': 'error',
+            /* no-redeclare defaults to builtinGlobals: true, which flags any
+               declaration whose name is also a configured global. The block
+               above is GENERATED FROM those very declarations, so the rule fired
+               on almost every one of them — 878 reports, not one of them a
+               defect, drowning the seventy that were real.
+
+               In a classic-script site a file declaring `escHTML` while
+               `escHTML` is also a shared global is not a redeclaration, it is
+               the definition. The hazard the rule exists for — two DIFFERENT
+               files declaring the same top-level name on one page — is caught by
+               npm run check:globals, and caught better, because that tool knows
+               which scripts a page actually loads and ESLint cannot.
+
+               Left on for genuine same-scope duplicates, which it still finds. */
+            'no-redeclare': ['error', { builtinGlobals: false }],
             'no-dupe-keys': 'error',
             'no-dupe-args': 'error',
             'no-func-assign': 'error',

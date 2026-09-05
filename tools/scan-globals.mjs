@@ -139,6 +139,31 @@ export function braceBalance(src) {
     return depth;
 }
 
+/* The names after the first in `let a = 1, b = [], c;`.
+
+   Reads only: the caller keeps its own position, so nothing here can disturb the
+   brace depth the surrounding walk depends on. Strings, templates, comments and
+   regexes are already gone, so a bracket is the only thing that can hide a
+   comma. Stops at the statement's end, or at the close of the block containing
+   it, or after a bounded look-ahead — a run-on cannot make it wander. */
+function declaratorTail(s, from) {
+    const out = [];
+    let depth = 0, j = from;
+    const end = Math.min(s.length, from + 4000);
+    while (j < end) {
+        const ch = s[j];
+        if (ch === '(' || ch === '[' || ch === '{') depth++;
+        else if (ch === ')' || ch === ']' || ch === '}') { if (depth === 0) break; depth--; }
+        else if (ch === ';') break;
+        else if (ch === ',' && depth === 0) {
+            const nm = /^\s*([A-Za-z_$][\w$]*)\s*(?=[=,;])/.exec(s.slice(j + 1, j + 80));
+            if (nm) { out.push(nm[1]); j += nm[0].length; }
+        }
+        j++;
+    }
+    return out;
+}
+
 export function topLevelNames(src) {
     const s = stripNoise(src);
     const names = new Set();
@@ -152,7 +177,26 @@ export function topLevelNames(src) {
         let m = /^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/.exec(s.slice(i, i + 120));
         if (m) { names.add(m[1]); i += m[0].length - 1; continue; }
         m = /^(?:const|let|var)\s+([A-Za-z_$][\w$]*)/.exec(s.slice(i, i + 120));
-        if (m) { names.add(m[1]); i += m[0].length - 1; }
+        if (m) {
+            names.add(m[1]);
+            /* One statement can declare several names — team-analysis-core.js
+               opens with `let currentGW = 1, selectedPlayers = [], managerData =
+               null, picksData = null, analysisResults = [];` — and taking only
+               the first is why selectedPlayers, picksData and analysisResults
+               were missing from the globals list, at a cost of seventy no-undef
+               reports across six files.
+
+               `i` deliberately does NOT move past the initialiser. An earlier
+               version of this consumed the whole statement so it could scan for
+               commas, which meant the outer loop never counted the braces inside
+               it — and on any initialiser long enough to hit the scan limit the
+               depth counter came out short, read the inside of a function as
+               top level, and collected local variables as globals. Advancing by
+               the keyword alone leaves the outer walk to do the brace counting
+               it is responsible for. */
+            for (const extra of declaratorTail(s, i + m[0].length)) names.add(extra);
+            i += m[0].length - 1;
+        }
     }
     return names;
 }

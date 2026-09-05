@@ -2143,7 +2143,7 @@
                 // Attacking assessment
                 if (oppDef < 40) {
                     tags.push('<span class="h2h-verdict-tag attacking">ATTACKING</span>');
-                    lines.push(`Opponent\'s ${isHome ? 'away' : 'home'} defence is weak (${oppDef}). Target attackers and captain picks.`);
+                    lines.push(`Opponent's ${isHome ? 'away' : 'home'} defence is weak (${oppDef}). Target attackers and captain picks.`);
                 } else if (oppDef < 55 && myAtk > 55) {
                     tags.push('<span class="h2h-verdict-tag attacking">ATTACKING</span>');
                     lines.push(`Good attacking fixture. Your ${isHome ? 'home' : 'away'} attack (${myAtk}) should find opportunities.`);
@@ -2152,7 +2152,7 @@
                 // Defensive assessment
                 if (oppAtk < 40) {
                     tags.push('<span class="h2h-verdict-tag defending">CLEAN SHEET</span>');
-                    lines.push(`High clean sheet potential — opponent\'s ${isHome ? 'away' : 'home'} attack is poor (${oppAtk}).`);
+                    lines.push(`High clean sheet potential — opponent's ${isHome ? 'away' : 'home'} attack is poor (${oppAtk}).`);
                 } else if (oppAtk > 65) {
                     lines.push(`Opponent has strong ${isHome ? 'away' : 'home'} attack (${oppAtk}). Clean sheet unlikely.`);
                 }

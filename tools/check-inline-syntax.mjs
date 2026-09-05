@@ -5,7 +5,6 @@
    extracted, this is the only automated guard on them — and a syntax error in
    an inline block takes the whole page down, silently, with no build step to
    catch it first. */
-import fs from 'node:fs';
 import vm from 'node:vm';
 import { pages } from './page-scripts.mjs';
 

@@ -49,7 +49,7 @@ const TEAM_ALIASES = {
 };
 
 function parseCsv(text) {
-    const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+    const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
     if (!lines.length) return [];
     const split = (line) => {
         const out = [];
@@ -225,7 +225,7 @@ async function main() {
         return;
     }
     let existingCalib = null;
-    try { existingCalib = JSON.parse(fs.readFileSync(calibPath, 'utf8')); } catch (e) { existingCalib = null; }
+    try { existingCalib = JSON.parse(fs.readFileSync(calibPath, 'utf8')); } catch { existingCalib = null; }
     const nextCalib = appendRound(existingCalib, output.metadata.lastUpdated, calibRows);
     fs.writeFileSync(calibPath, JSON.stringify(nextCalib, null, 1) + '\n');
     const stats = nextCalib.metadata.overall || summarise(calibRows);

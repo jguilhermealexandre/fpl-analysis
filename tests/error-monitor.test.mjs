@@ -29,14 +29,14 @@ test('a throwing render loop produces one record, not hundreds', () => {
 
 test('nothing leaves the browser unless an endpoint is configured', () => {
     const sent = [];
-    const ctx = boot({ navigator: { userAgent: 'x', sendBeacon: (u, b) => (sent.push(u), true) } });
+    const ctx = boot({ navigator: { userAgent: 'x', sendBeacon: (u) => (sent.push(u), true) } });
     throwAt(ctx, 'boom');
     assert.equal(sent.length, 0);
 });
 
 test('with an endpoint, only the first occurrence is forwarded', () => {
     const sent = [];
-    const ctx = boot({ navigator: { userAgent: 'x', sendBeacon: (u, b) => (sent.push(u), true) } });
+    const ctx = boot({ navigator: { userAgent: 'x', sendBeacon: (u) => (sent.push(u), true) } });
     ctx.FPL_ERROR_ENDPOINT = 'https://collector/x';
     throwAt(ctx, 'repeated', 7);
     throwAt(ctx, 'repeated', 7);

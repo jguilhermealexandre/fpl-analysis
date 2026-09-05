@@ -42,14 +42,14 @@ jobs:
       - name: Asset version stamped everywhere
         run: node tools/check-versions.mjs
 
-      # ESLint could not be run locally when it was introduced (no Node on the
-      # authoring machine), so this reports rather than blocks for now. Flip
-      # continue-on-error off once a clean run is confirmed — the rules in
-      # eslint.config.mjs are correctness-only, so the list should be short and
-      # every entry should be a real defect.
-      - name: ESLint (reporting only for now)
-        continue-on-error: true
-        run: npx eslint scripts tools
+      # Now a gate. It reported rather than blocked because it could not be run
+      # locally when it was introduced, and by the time it could it had 957
+      # problems — 878 of them no-redeclare firing on the generated globals
+      # block, which is generated from the very declarations it was objecting
+      # to. With that turned off and the seventy real no-undefs fixed, the run
+      # is clean, so there is nothing left for a warning-only mode to hide.
+      - name: ESLint
+        run: npx eslint scripts tools tests
 
       # The generated globals block must match the code it was generated from,
       # or no-undef starts lying in both directions.
