@@ -2081,6 +2081,11 @@
             const display = showAll ? active.list.slice(0, 50) : active.list.slice(0, 8);
 
             html += `<div class="tm-section">
+                <div class="tm-section-header market-header">
+                    <h2><i data-lucide="trending-up" style="width:16px;height:16px;display:inline;"></i> The wider market</h2>
+                    <span class="tm-section-count green">${active.list.length}</span>
+                </div>
+                <div class="tm-watch-note">Players you do not own, sorted by how close each is to a price change. Pick a list, then narrow it by position or price.</div>
                 <div class="tm-market-tabs">
                     ${tabs.map(t => `<button class="tm-market-tab ${t.key === active.key ? 'active' : ''}" onclick="tmSetMarketTab('${t.key}')">${t.label} <span class="tm-market-tab-n">${t.list.length}</span></button>`).join('')}
                 </div>

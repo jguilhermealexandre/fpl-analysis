@@ -1144,7 +1144,33 @@
     align-items: start;
 }
 
-.tm-columns > .tm-section { margin-bottom: 0; }
+/* Each column is a panel with its own name, icon and controls, rather than
+   two loose stacks of rows sharing a page. The right-hand one had no heading
+   at all — it opened straight onto its tabs, so nothing said what the list
+   was or why it sat beside your squad. */
+.tm-columns > .tm-section {
+    margin-bottom: 0;
+    padding: 14px;
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    box-shadow: var(--v2-card-shadow, none);
+}
+
+/* Inside a panel the header is the panel's own title, so it drops the second
+   border and background it used to need when it floated on the page. */
+.tm-columns > .tm-section > .tm-section-header {
+    background: transparent;
+    border: none;
+    border-left: 3px solid var(--color-info);
+    border-radius: 0;
+    padding: 0 0 0 10px;
+    margin-bottom: 6px;
+}
+
+.tm-columns > .tm-section > .tm-section-header.market-header { border-left-color: var(--color-primary); }
+
+.tm-columns > .tm-section > .tm-watch-note { margin-bottom: 10px; }
 
 @media (max-width: 1100px) {
     .tm-columns { grid-template-columns: 1fr; gap: 0; }
@@ -4361,6 +4387,14 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 }
 
 .dp-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+/* Face and club badge, the same pair the squad and dashboard pitches carry.
+   Everything the card already showed — name, club and price, the gameweek's
+   fixture chips, this week's xP and the run total — is untouched below it. */
+.dp-card .v2-pid { align-self: center; margin-bottom: 1px; }
+.dp-card .v2-pid-avatar { width: 26px; height: 26px; }
+.dp-card .v2-pid-crest, .dp-card .v2-pid-crest img { width: 15px; height: 15px; }
+.dp-transfer svg { width: 11px; height: 11px; }
 .dp-card.pos-gk { border-top-color: #f59e0b; }
 .dp-card.pos-def { border-top-color: #10b981; }
 .dp-card.pos-mid { border-top-color: #3b82f6; }

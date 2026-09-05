@@ -583,6 +583,14 @@
         }
 
         // ===== DRAFT SWAP & CAPTAINCY =====
+        /* Drawn, not typed: the arrow glyph rendered at a different weight and
+           in a different colour on every platform, and could take neither the
+           button's colour nor either theme. */
+        const DP_SWAP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M16 3h5v5"/><path d="M21 3l-7 7"/>' +
+            '<path d="M8 21H3v-5"/><path d="M3 21l7-7"/></svg>';
+
         function draftCanSwap(sourceId, targetId) {
             const gw = getActiveDraft().selectedGW;
             const lineup = getDraftSquad(gw);
@@ -1501,7 +1509,7 @@
                 else if (draftSwapSource !== null) swapClass = draftCanSwap(draftSwapSource, p.id) ? 'swap-target' : 'swap-ineligible';
 
                 const fixtureChips = gwFixtures.length
-                    ? gwFixtures.map(f => `<span class="dp-fix fdr-${f.difficulty || 3}" data-tooltip="GW${gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3} (${FDR_WORD[f.difficulty || 3] || 'Average'})">${escHTML(f.opponent || '?')} <span class="dp-fix-ha">${f.isHome ? 'H' : 'A'}</span></span>`).join('')
+                    ? gwFixtures.map(f => `<span class="dp-fix v2-fdr-${f.difficulty || 3}" data-tooltip="GW${gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3} (${FDR_WORD[f.difficulty || 3] || 'Average'})">${escHTML(f.opponent || '?')} <span class="dp-fix-ha">${f.isHome ? 'H' : 'A'}</span></span>`).join('')
                     : `<span class="dp-fix dp-fix-blank" data-tooltip="${escHTML(p.team)} have no fixture in GW${gw} — this player scores nothing.">Blank</span>`;
 
                 let badges = '';
@@ -1517,7 +1525,8 @@
 
                 return `<div class="dp-card ${posClass} ${swapClass} ${injured ? 'is-out' : ''}" onclick="handleDraftPitchClick(${p.id})">
                     <div class="dp-badges">${badges}</div>
-                    <button class="dp-transfer" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" data-tooltip="Transfer ${escHTML(p.name)} out for GW${gw}">↔</button>
+                    <button class="dp-transfer" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" data-tooltip="Transfer ${escHTML(p.name)} out for GW${gw}">${DP_SWAP_ICON}</button>
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p) : ''}
                     <div class="dp-name">${escHTML(p.name)}</div>
                     <div class="dp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
                     <div class="dp-fixtures">${fixtureChips}</div>

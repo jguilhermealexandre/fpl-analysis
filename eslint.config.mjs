@@ -57,6 +57,7 @@ export default [
                 DEFAULT_SETTINGS: 'writable',
                 DEMO_LEAGUE_ID: 'writable',
                 DEMO_TEAM_ID: 'writable',
+                DP_SWAP_ICON: 'writable',
                 DRAFT_CHIP_NAME: 'writable',
                 DRAFT_CHIP_SHORT: 'writable',
                 DRAFT_CHIP_STANDOUT: 'writable',
