@@ -961,6 +961,56 @@
         .pn-item.off::before { content: '○'; color: var(--text-muted); }
         .pn-item-l { font-size: 12px; font-weight: 700; color: var(--text-primary); }
         .pn-item-d { font-size: 11px; line-height: 1.45; color: var(--text-muted); }
+
+        /* ===== Activity feed (scripts/notifications.js) =====
+           Beside the gameweek badge, because the two things that answer "where
+           are we now" belong together. */
+        .nt-centre { position: relative; margin-left: auto; }
+        .nt-bell {
+            position: relative; width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            border: 1px solid var(--border-default); background: var(--surface-1);
+            font-size: 15px; line-height: 1;
+            transition: border-color .15s ease, background .15s ease;
+        }
+        .nt-bell:hover { border-color: var(--color-primary); }
+        .nt-bell.has-new { border-color: var(--color-primary); }
+        .nt-badge {
+            position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px; padding: 0 4px;
+            border-radius: 999px; background: var(--color-error); color: #fff;
+            font-family: var(--font-mono); font-size: 10px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .nt-drop {
+            position: absolute; top: 42px; right: 0; z-index: 60; width: min(380px, calc(100vw - 32px));
+            border-radius: 12px; border: 1px solid var(--border-default);
+            background: var(--surface-1); box-shadow: 0 12px 32px rgba(0,0,0,.28);
+            max-height: 70vh; overflow-y: auto; text-align: left;
+        }
+        .nt-drop[hidden] { display: none; }
+        .nt-head {
+            padding: 12px 14px; border-bottom: 1px solid var(--border-subtle);
+            font-size: 12.5px; font-weight: 700; color: var(--text-primary);
+        }
+        .nt-empty { margin: 0; padding: 14px; font-size: 12px; line-height: 1.55; color: var(--text-muted); }
+        .nt-group { display: flex; flex-direction: column; }
+        .nt-group-l {
+            padding: 9px 14px 5px; font-size: 9.5px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted);
+        }
+        .nt-row {
+            display: grid; grid-template-columns: 1fr auto; gap: 1px 10px;
+            padding: 9px 14px; text-decoration: none;
+            border-left: 2px solid transparent; border-top: 1px solid var(--border-subtle);
+        }
+        .nt-row:hover { background: var(--surface-2); }
+        .nt-row.good { border-left-color: var(--color-success); }
+        .nt-row.bad { border-left-color: var(--color-error); }
+        .nt-row.info { border-left-color: var(--border-default); }
+        .nt-row-title { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+        .nt-row-body { grid-column: 1; font-size: 11.5px; line-height: 1.45; color: var(--text-muted); }
+        .nt-row-when { grid-row: 1; grid-column: 2; font-size: 10px; color: var(--text-muted); white-space: nowrap; }
         .v2-attn-col {
             background: var(--surface-1);
             border: 1px solid var(--border-default);
@@ -3567,6 +3617,8 @@
                 <div class="hero-greeting">
                     <div class="hero-greeting-text v2-page-heading" id="heroTeamName">My Team</div>
                     <div class="hero-greeting-gw" id="heroGwBadge">GW1</div>
+                    <!-- What happened while you were away (scripts/notifications.js) -->
+                    <div class="nt-centre" id="ntCentre"></div>
                 </div>
                 <!-- Top row: Squad Snapshot (left) + unified info panel (right) -->
                 <div class="v2-top-row">
@@ -4055,6 +4107,7 @@
     <script src="scripts/eo-layer.js?v=101"></script>
     <script src="scripts/readiness.js?v=101"></script>
     <script src="scripts/push-alerts.js?v=101"></script>
+    <script src="scripts/notifications.js?v=101"></script>
     <script src="scripts/transfer-engine.js?v=101"></script>
     <script src="scripts/common.js?v=101"></script>
     <script src="scripts/sidebar-nav.js?v=101"></script>
@@ -5793,6 +5846,23 @@
 
                 renderAttentionGrid({ transferRec, squad, analysisResults, captainRec,
                     freeTransfers, maxFreeTransfers, bank, chips, deadlineTime, currentGW });
+
+                /* What changed since the last visit. Runs after the squad is
+                   real, because every event it can produce is a fact about one
+                   of these fifteen players — and it writes its snapshot on the
+                   way out, so the comparison next time is against what was
+                   actually on screen this time. */
+                if (typeof ntRenderInto === 'function') {
+                    let phase = null;
+                    try {
+                        if (typeof mdCtx !== 'undefined' && mdCtx && typeof mdGameweekState === 'function') {
+                            phase = mdGameweekState(mdCtx.events, mdCtx.fixtures).phase;
+                        }
+                    } catch (e) { /* the feed is worth having without the phase */ }
+                    const liveRows = (typeof eventLiveData !== 'undefined' && eventLiveData
+                        && eventLiveData.event === currentGW) ? (eventLiveData.elements || {}) : {};
+                    ntRenderInto({ squad, live: liveRows, phase, gw: currentGW });
+                }
                 renderPitchView({ squad, analysisResults });
                 renderPriceTicker(allPlayers, squad);
                 renderGameweekFeed({ squad, allPlayers });
