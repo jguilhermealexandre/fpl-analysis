@@ -204,47 +204,19 @@
            each pill to make that explicit; three "BHA"s in one square inch cost
            more than the ambiguity did, so the grouping and the tooltips carry it
            instead. Every tooltip names the club in its first three words. */
-        function renderTeamBadges(player) {
-            const ta = teamAnalysis[player.teamId];
-            const teamName = (teams[player.teamId] && teams[player.teamId].name) || player.team;
-            const pills = [];
+        /* renderTeamBadges() was removed with the last of its pills.
+           It rendered two badges onto every squad row: "Easier GW5+", which
+           restated the five fixture chips beside it, and "🔥 In form" /
+           "⚖️ Average" / "❄️ Cold", which described the club rather than the
+           player — so on a given weekend fourteen of fifteen rows carried the
+           same verdict, and a badge that says the same thing on nearly every
+           row is not telling you anything.
 
-            // ---- form ----
-            // Only badge a team once it has actually played; with no completed
-            // matches there is no form, and defaulting to a verdict made every
-            // yet-to-play side look like it was struggling.
-            if (ta && ta.matchesPlayed > 0) {
-                const n = ta.matchesPlayed;
-                const span = n === 1 ? 'their opening match' : `their last ${Math.min(n, 5)}`;
-                const plural = (v, one, many) => `${v} ${v === 1 ? one : (many || one + 's')}`;
-                const record = `${plural(ta.wins, 'win')}, ${plural(ta.draws, 'draw')} and ${plural(ta.losses, 'loss', 'losses')}`;
-                const scoring = `Scoring ${(ta.avgGoals || 0).toFixed(1)} and conceding ${(ta.avgConceded || 0).toFixed(1)} a game.`;
-                // xgTrendDelta is recent expected goals per game minus the season
-                // rate, so it says which way the underlying numbers are moving —
-                // but it needs a few matches behind it to mean anything.
-                const d = ta.xgTrendDelta || 0;
-                const trend = n >= 4 && Math.abs(d) >= 0.15
-                    ? ` Expected goals are trending ${d > 0 ? 'up' : 'down'} (${d > 0 ? '+' : ''}${d.toFixed(2)} a game on their season rate).`
-                    : '';
+           With both gone the function could only ever return an empty string,
+           so it is gone too rather than left computing a tooltip nothing
+           renders. Club form is still the subject of Teams Analysis, and the
+           fixture swing still drives the Fixture Swings view. */
 
-                let cls, icon, label;
-                if (ta.formRating >= 55) { cls = 'good'; icon = '🔥'; label = 'In form'; }
-                else if (ta.formRating < 40) { cls = 'bad'; icon = '❄️'; label = 'Cold'; }
-                else { cls = 'warning'; icon = '⚖️'; label = 'Average'; }
-
-                pills.push(`<span class="team-form-badge ${cls}" data-tooltip="${escHTML(teamName)} — ${record} in ${span}. ${scoring}${trend}">${icon} ${label}</span>`);
-            }
-
-            /* The "Easier GW5+" pill was removed from this row. It described the
-               same fixtures the row already draws as five coloured chips beside
-               it, so it restated in words what the colours say — and it was the
-               longest thing in a cell that has to stay narrow. fixtureSwingData
-               still feeds the Fixture Swings view, which is where a claim about
-               a run turning belongs. */
-
-            if (!pills.length) return '';
-            return `<span class="team-context" data-tooltip="How ${escHTML(teamName)} are doing — club context, not this player's own form">${pills.join('')}</span>`;
-        }
 
         // Which squad rows currently have their inline detail expanded. A player
         // id set rather than a single value — several can be open side by side,
@@ -287,15 +259,15 @@
             const isOpen = expandedSquadRows.has(player.id);
 
             const row = `
-            <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''}" data-player-id="${player.id}" data-compare-row>
+            <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''} ${typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(player.position) : ''}" data-player-id="${player.id}" data-compare-row>
                 <input type="checkbox" class="compare-checkbox sq-compare-checkbox" data-player-id="${player.id}" onclick="event.stopPropagation()" onchange="onCompareCheckboxChange(${player.id})">
                 <div class="sq-row-clickable" onclick="toggleSquadRowDetail(${player.id})" title="${isOpen ? 'Hide' : 'View'} player profile">
                     <div class="sq-row-main">
                         ${hazardIcon}
-                        <span class="position-badge ${POSITION_CONFIG[player.position].class}">${POSITION_CONFIG[player.position].short}</span>
+                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
                         <div class="sq-row-name-block">
                             <div class="sq-row-name">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}${typeof tlBadge === 'function' ? tlBadge(player) : ''}</div>
-                            <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${priceChangeBadge(player)} ${renderTeamBadges(player)}</div>
+                            <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${priceChangeBadge(player)}</div>
                         </div>
                     </div>
                     <div class="sq-row-stats">

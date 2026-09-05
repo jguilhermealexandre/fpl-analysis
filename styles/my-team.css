@@ -2541,20 +2541,44 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     gap: var(--space-6);
 }
 
+/* The section is the card, the rows are the tint — not the other way round.
+   Rows were white on the page's grey ground with the position headings
+   floating unbounded between them, so nothing said where one group ended and
+   the next began; fifteen white slabs on grey read as one long list with
+   captions dropped into it. Giving each position a white panel and tinting
+   the rows inside it draws the group, and costs no extra ink. */
 .sq-position-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: var(--v2-card-shadow, none);
+}
+
+/* Inside a panel the rows carry the tint. --surface-2 against the panel's
+   --surface-1 is the same one-step separation the reference uses, and it
+   leaves the row's position edge as the only saturated colour on it. */
+.sq-position-group .sq-row {
+    background: var(--surface-2);
+    border-color: transparent;
+}
+
+.sq-position-group .sq-row:hover {
+    background: color-mix(in srgb, var(--color-primary) 6%, var(--surface-2));
 }
 
 .sq-position-header {
     font-family: var(--font-display);
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 4px 2px;
+    letter-spacing: 0.7px;
+    padding: 0 2px 2px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -2742,6 +2766,15 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     font-weight: 600;
     color: var(--text-primary);
 }
+
+/* The squad row's identity column and its lettered position edge, matching
+   the transfer lists and the wizard. The GK/DEF/MID/FWD pill it replaces cost
+   a fixed 34px on every row and said what three pixels of colour and one
+   letter now say. */
+.sq-row.v2-pos-edge { padding-left: 24px; }
+.sq-row .v2-pid-avatar { width: 28px; height: 28px; }
+.sq-row .v2-pid-crest, .sq-row .v2-pid-crest img { width: 16px; height: 16px; }
+.sq-row-main { display: flex; align-items: center; gap: 9px; min-width: 0; }
 
 .sq-row-fixtures {
     display: flex;

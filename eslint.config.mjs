@@ -981,7 +981,6 @@ export default [
                 renderTableHeader: 'writable',
                 renderTargetableCalendar: 'writable',
                 renderTeamAnalysis: 'writable',
-                renderTeamBadges: 'writable',
                 renderTeamContextCard: 'writable',
                 renderTeamOverview: 'writable',
                 renderTeamStatBlock: 'writable',
