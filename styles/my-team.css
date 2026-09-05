@@ -4587,14 +4587,52 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* ===== Transfer Command Centre ===== */
 .twc-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px 11px; border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); margin-bottom: 8px; }
 
-.twc-wc {
-    padding: 6px 12px; border-radius: 999px;
-    border: 1px solid var(--border-default); background: var(--surface-2);
-    color: var(--text-secondary); font-size: 11px; font-weight: 700; cursor: pointer;
-    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+/* Single · Multi · Wildcard · Free Hit. Replaced a "Play wildcard" button here
+   and a separate "Sell mode" toggle over the squad panel — two independent
+   on-states describing overlapping things, when sell mode is what you always
+   want on a wildcard. One selector, one answer to "what am I doing".
+
+   The two chips read as commitments rather than filters, so they take the
+   accent colour; the two ordinary plans stay quiet. */
+.twc-strats { display: inline-flex; border: 1px solid var(--border-default); border-radius: 999px; overflow: hidden; }
+.twc-strat {
+    padding: 6px 13px; border: none; background: transparent; cursor: pointer;
+    font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: .01em;
+    color: var(--text-muted); white-space: nowrap;
+    transition: background 140ms ease, color 140ms ease;
 }
-.twc-wc:hover { border-color: var(--color-primary); }
-.twc-wc.on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.twc-strat:hover { color: var(--text-secondary); }
+.twc-strat.active { background: var(--surface-3, var(--surface-2)); color: var(--text-primary); }
+.twc-strat:nth-child(3).active,
+.twc-strat:nth-child(4).active { background: var(--color-wizard, var(--color-primary)); color: #fff; }
+
+.twc-panel-hint { margin-left: auto; font-size: 10.5px; color: var(--text-muted); }
+
+/* Squad-wide totals, shown on a wildcard or free hit only. Rebuilding fifteen
+   players is a different question from swapping one, and the per-move deltas
+   above cannot answer it. */
+.twc-bal {
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.twc-bal-cell {
+    flex: 1 1 96px; display: flex; flex-direction: column; gap: 2px; cursor: help;
+    padding: 6px 8px; border-radius: var(--radius-sm);
+    background: var(--surface-1); border: 1px solid var(--border-subtle);
+}
+.twc-bal-l { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.twc-bal-v { font-family: var(--font-mono); font-size: 13px; font-weight: 800; color: var(--text-primary); }
+.twc-bal-v.up { color: var(--color-success); }
+.twc-bal-v.down { color: var(--color-error); }
+.twc-bal-warn {
+    flex: 1 1 100%; padding: 6px 8px; border-radius: var(--radius-sm); cursor: help;
+    background: var(--color-warning-muted, var(--surface-2));
+    border: 1px solid var(--color-warning);
+    font-size: 10.5px; font-weight: 600; color: var(--text-secondary);
+}
+
+/* The horizon on a Free Hit is a fact about the chip, not a choice. */
+.twf-hz.locked { cursor: help; background: var(--color-wizard, var(--color-info)); border-color: var(--color-wizard, var(--color-info)); color: #fff; }
 
 .twc-stat { display: flex; flex-direction: column; gap: 1px; padding: 0 8px; }
 .twc-stat-l { font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }

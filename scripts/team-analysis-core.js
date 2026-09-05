@@ -632,7 +632,7 @@
                 lineupRendered = false;
                 draftTabRendered = false;
                 newsRendered = false;
-                transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, previewPlayer: null, funnel: null };
+                transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, previewPlayer: null, funnel: null, strategy: 'single', wildcard: false, sellMode: false };
                 document.getElementById('tabBar').classList.add('visible');
                 if (window._pendingTab) {
                     const pending = window._pendingTab;

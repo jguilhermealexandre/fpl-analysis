@@ -464,7 +464,7 @@
             // funnel holds every market filter. It is deliberately created once here
             // and never reset when moving between slots: filling eight slots on a
             // wildcard should not mean re-picking the same six clubs eight times.
-            transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, previewPlayer: null, wildcard: false, sellMode: false, funnel: twfDefaultFilters() };
+            transferState = { pending: [], activeSlot: -1, mode: 'squad', candidateCache: {}, previewPlayer: null, strategy: 'single', wildcard: false, sellMode: false, funnel: twfDefaultFilters() };
             const container = document.getElementById('transferDisplay');
 
             // Two panes side by side rather than one panel switching between squad,
@@ -496,14 +496,54 @@
         // Wildcard makes every transfer free, so the cap becomes the squad itself.
         function twMaxTransfers() { return transferState.wildcard ? 15 : 5; }
 
-        function twToggleWildcard() {
-            transferState.wildcard = !transferState.wildcard;
+        /* ===== How you are transferring =====
+
+           There used to be two independent toggles in two different panels —
+           "🃏 Play wildcard" in the header and "🗑️ Sell mode" above the squad —
+           each with its own on-state, describing overlapping things. Sell mode
+           is what you always want on a wildcard, and a wildcard badge sitting
+           next to a "1 free transfer" counter is two claims about the same
+           week. Four named plans replace both, so the screen has one answer to
+           "what am I doing" instead of a combination to work out.
+
+           The two old booleans are still what the rest of the file reads, and
+           are derived here rather than set anywhere else. */
+        const TW_STRATEGIES = [
+            { id: 'single', label: 'Single', tip: 'One transfer at a time, with hits counted against your free transfers.' },
+            { id: 'multi', label: 'Multi', tip: 'Click several players to sell at once and pool their money. Hits still count.' },
+            { id: 'wildcard', label: 'Wildcard', tip: 'Unlimited transfers, no points hits. Judged over the next five gameweeks, because you keep the squad.' },
+            { id: 'freehit', label: 'Free Hit', tip: 'Unlimited transfers for one gameweek only — the squad reverts afterwards, so everything is judged over that single week.' }
+        ];
+
+        function twSetStrategy(strategy) {
+            if (!TW_STRATEGIES.some(x => x.id === strategy)) return;
+            transferState.strategy = strategy;
+            // Both chips waive hits and lift the transfer limit; only the
+            // horizon tells them apart.
+            transferState.wildcard = strategy === 'wildcard' || strategy === 'freehit';
+            transferState.sellMode = strategy !== 'single';
+            /* A Free Hit squad is judged over the one gameweek you keep it, so
+               a horizon chosen under another plan cannot carry into it — five
+               gameweeks of fixtures are irrelevant to a team you give back on
+               Sunday. Clearing each slot's filters re-seeds them at the right
+               window on the next read. */
+            transferState.pending.forEach(s => { s.funnel = null; });
             renderTWAll();
         }
 
+        // The window a strategy reasons over. Everything else is a five-gameweek
+        // commitment; a Free Hit is a one-week rental.
+        function twStrategyHorizon() {
+            return transferState.strategy === 'freehit' ? 1 : 5;
+        }
+
+        // Kept so anything still holding the old entry points keeps working.
+        function twToggleWildcard() {
+            twSetStrategy(transferState.strategy === 'wildcard' ? 'single' : 'wildcard');
+        }
+
         function twToggleSellMode() {
-            transferState.sellMode = !transferState.sellMode;
-            renderTWAll();
+            twSetStrategy(transferState.sellMode ? 'single' : 'multi');
         }
 
         // Sell every player in a position (or the whole squad) in one action. Pooling
@@ -833,6 +873,7 @@
             const itb = getTWLiveITB();
             const hit = getTWHitCost();
             const wc = transferState.wildcard;
+            const strategy = transferState.strategy || 'single';
             const ft = twFreeTransfers();
             const count = transferState.pending.length;
             const filled = transferState.pending.filter(s => s.replacement).length;
@@ -872,6 +913,38 @@
             }).join('');
 
             const netGain = planGain - hit;
+
+            /* On a chip the per-move deltas stop being the question — you are
+               rebuilding a squad against one budget, and eight rows of "+1.4"
+               do not tell you whether the eleven that actually play got better,
+               or whether the thing is even legal. Only shown for the chips: on
+               a single transfer the move card already says all of this, and a
+               strip of squad totals beside one swap is noise. */
+            let balance = '';
+            if (wc && filled > 0 && typeof solveQuickLineup === 'function') {
+                const b = twSquadBalance();
+                const xiD = b.xiXP - b.oldXiXP;
+                const valD = b.value - b.oldValue;
+                const cell = (label, value, cls, tip) =>
+                    `<div class="twc-bal-cell" data-tooltip="${escHTML(tip)}">
+                        <span class="twc-bal-l">${label}</span>
+                        <span class="twc-bal-v ${cls}">${value}</span>
+                    </div>`;
+                balance = `<div class="twc-bal">
+                    ${cell('Starting XI', `${xiD >= 0 ? '+' : ''}${xiD.toFixed(1)} xP`,
+                        xiD > 0.3 ? 'up' : xiD < -0.3 ? 'down' : '',
+                        `Your best legal eleven from the new squad projects ${b.xiXP.toFixed(1)} points next gameweek, against ${b.oldXiXP.toFixed(1)} from the eleven you would field now.`)}
+                    ${cell('Bench', `${b.benchXP.toFixed(1)} xP`, '',
+                        'What the four players outside that eleven project next gameweek. A bench that scores is cover; a bench that does not is dead money.')}
+                    ${cell('Squad value', `£${b.value.toFixed(1)}m`, valD > 0.05 ? 'up' : valD < -0.05 ? 'down' : '',
+                        `${valD >= 0 ? 'Up' : 'Down'} £${Math.abs(valD).toFixed(1)}m on the squad you have now.`)}
+                    ${cell('In the bank', `£${itb.toFixed(1)}m`, itb < 0 ? 'down' : '',
+                        itb < 0 ? 'This plan spends more than you have.' : 'Left over once every transfer in the plan is made.')}
+                    ${!b.legal ? `<div class="twc-bal-warn" data-tooltip="A squad must be 2 goalkeepers, 5 defenders, 5 midfielders and 3 forwards.">Not a legal squad yet — ${b.counts[1]}/2 GK, ${b.counts[2]}/5 DEF, ${b.counts[3]}/5 MID, ${b.counts[4]}/3 FWD</div>` : ''}
+                    ${b.overStacked.length ? `<div class="twc-bal-warn" data-tooltip="No more than three players from any one club.">Four or more from ${escHTML(b.overStacked.join(', '))}</div>` : ''}
+                </div>`;
+            }
+
             const cart = `<div class="twc-plan-head">
                     <span class="twc-plan-title">Your plan</span>
                     <span class="twc-plan-sum ${netGain > 0.3 ? 'up' : netGain < -0.3 ? 'down' : 'flat'}"
@@ -880,14 +953,16 @@
                     </span>
                     ${openCount ? `<button class="twc-plan-fill" onclick="twFillAllSlots()" data-tooltip="Pick the best affordable replacement for every open slot, sharing the bank across them.">✨ Fill ${openCount} open slot${openCount === 1 ? '' : 's'}</button>` : ''}
                 </div>
+                ${balance}
                 <div class="twc-plan-rows">${rows}</div>`;
 
             el.innerHTML = `
                 <div class="twc-head">
-                    <button class="twc-wc ${wc ? 'on' : ''}" onclick="twToggleWildcard()" aria-pressed="${wc}"
-                        data-tooltip="${wc ? 'Wildcard on — every transfer is free and the limit is your whole squad. Click to turn it off.' : 'Plan a wildcard: unlimited transfers, no points hits.'}">
-                        🃏 ${wc ? 'Wildcard on' : 'Play wildcard'}
-                    </button>
+                    <div class="twc-strats" role="tablist" aria-label="Transfer strategy">
+                        ${TW_STRATEGIES.map(x => `<button class="twc-strat${strategy === x.id ? ' active' : ''}" role="tab"
+                            aria-selected="${strategy === x.id}" onclick="twSetStrategy('${x.id}')"
+                            data-tooltip="${escHTML(x.tip)}">${x.label}</button>`).join('')}
+                    </div>
                     <div class="twc-stat">
                         <span class="twc-stat-l">Transfers</span>
                         <span class="twc-stat-v">${count}${wc ? ` <span class="twc-unl">of 15 · unlimited</span>` : ` / ${ft} free`}</span>
@@ -968,8 +1043,9 @@
             el.innerHTML = `<div class="twc-panel">
                 <div class="twc-panel-head">
                     <span class="twc-panel-title">👥 Your squad</span>
-                    <button class="twc-mini ${transferState.sellMode ? 'on' : ''}" onclick="twToggleSellMode()"
-                        data-tooltip="${transferState.sellMode ? 'Back to single swaps' : 'Click players to sell several at once and pool their money — useful on a wildcard'}">🗑️ ${transferState.sellMode ? 'Sell mode on' : 'Sell mode'}</button>
+                    ${transferState.sellMode
+                        ? `<span class="twc-panel-hint" data-tooltip="Set by the plan selector above. Switch to Single to go back to one swap at a time.">Click any player to add them to the plan</span>`
+                        : `<span class="twc-panel-hint">Hit 🔄 Swap on anyone to replace them</span>`}
                 </div>
                 <div class="twc-panel-body">${rows}</div>
             </div>`;
@@ -1274,16 +1350,26 @@
             if (el) el.classList.remove('show');
         }
 
-        function renderTWPreviewModal() {
-            const squad = twBuildPendingSquad();
-            const gws = twPlanGWs(1);
-            const gw = gws[0] || currentGW;
+        /* The shape of the squad these transfers would leave you with.
 
-            // Pick the best legal eleven from the new squad so the projection is what
-            // you would actually field, not the sum of all fifteen. Selection runs on
-            // the next-3-GW total rather than this single fixture — a squad remade by
-            // several transfers should be judged on the run it sets up, not on which
-            // gets lucky with this week's fixture alone.
+           On a wildcard the individual "+2.1 vs the man he replaces" stops
+           being the question. You are rebuilding fifteen players against one
+           budget, and what matters is whether the eleven that actually play got
+           better, whether the bench can cover, and whether the thing is still
+           legal. Those are squad facts, and until now they lived only inside
+           the preview modal — two clicks away from the screen where the squad
+           was being built.
+
+           Shared with that modal rather than recomputed, so the rail and the
+           preview can never quote different numbers for the same squad. */
+        function twSquadBalance() {
+            const squad = twBuildPendingSquad();
+
+            // Pick the best legal eleven from the new squad so the projection is
+            // what you would actually field, not the sum of all fifteen.
+            // Selection runs on the next-3-GW total rather than this single
+            // fixture — a squad remade by several transfers should be judged on
+            // the run it sets up, not on which gets lucky this week.
             const pool = squad.map(p => ({ ...p, pos: p.position,
                 lwScore: typeof xpNext3 === 'function' ? xpNext3(p) : predictedGWPoints(p) }));
             const solved = typeof solveQuickLineup === 'function' ? solveQuickLineup(pool) : null;
@@ -1291,21 +1377,38 @@
             const xi = squad.filter(p => xiIds.has(p.id));
             const bench = squad.filter(p => !xiIds.has(p.id));
 
-            const newValue = squad.reduce((s, p) => s + p.price, 0);
-            const oldValue = selectedPlayers.reduce((s, p) => s + p.price, 0);
-            const newXP = xi.reduce((s, p) => s + predictedGWPoints(p), 0);
-            const oldXI = selectedPlayers.filter(p => !p.onBench);
-            const oldXP = oldXI.reduce((s, p) => s + predictedGWPoints(p), 0);
-            const hit = getTWHitCost();
-            const xpDelta = newXP - oldXP - hit;
-
-            const byTeam = {};
-            squad.forEach(p => { byTeam[p.teamId] = (byTeam[p.teamId] || 0) + 1; });
-            const overStacked = Object.keys(byTeam).filter(t => byTeam[t] > 3).map(t => teams[t]?.short_name || '?');
-
             const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
             squad.forEach(p => { counts[p.position] = (counts[p.position] || 0) + 1; });
-            const squadLegal = counts[1] === 2 && counts[2] === 5 && counts[3] === 5 && counts[4] === 3;
+            const byTeam = {};
+            squad.forEach(p => { byTeam[p.teamId] = (byTeam[p.teamId] || 0) + 1; });
+            const oldXI = selectedPlayers.filter(p => !p.onBench);
+
+            return {
+                squad, xi, bench, counts,
+                // The shape that eleven actually plays, for the preview modal.
+                formation: solved && solved.formation ? solved.formation : null,
+                value: squad.reduce((s, p) => s + p.price, 0),
+                oldValue: selectedPlayers.reduce((s, p) => s + p.price, 0),
+                xiXP: xi.reduce((s, p) => s + predictedGWPoints(p), 0),
+                oldXiXP: oldXI.reduce((s, p) => s + predictedGWPoints(p), 0),
+                benchXP: bench.reduce((s, p) => s + predictedGWPoints(p), 0),
+                overStacked: Object.keys(byTeam).filter(t => byTeam[t] > 3).map(t => teams[t]?.short_name || '?'),
+                legal: counts[1] === 2 && counts[2] === 5 && counts[3] === 5 && counts[4] === 3
+            };
+        }
+
+        function renderTWPreviewModal() {
+            const gws = twPlanGWs(1);
+            const gw = gws[0] || currentGW;
+
+            const bal = twSquadBalance();
+            const { squad, xi, bench, counts } = bal;
+            const newValue = bal.value, oldValue = bal.oldValue;
+            const newXP = bal.xiXP, oldXP = bal.oldXiXP;
+            const overStacked = bal.overStacked;
+            const squadLegal = bal.legal;
+            const hit = getTWHitCost();
+            const xpDelta = newXP - oldXP - hit;
 
             const card = p => `<div class="twp-card ${p.isIncoming ? 'in' : ''}">
                 <div class="twp-card-name">${escHTML(p.name)}${p.isIncoming ? '<span class="twp-in">IN</span>' : ''}</div>
@@ -1316,7 +1419,7 @@
 
             return `<div class="detail-section">
                 <div class="twp-stats">
-                    <div class="twp-stat"><div class="twp-stat-v">${(solved?.formation) || '—'}</div><div class="twp-stat-l" data-tooltip="The best legal shape this squad can field.">Formation</div></div>
+                    <div class="twp-stat"><div class="twp-stat-v">${bal.formation || '—'}</div><div class="twp-stat-l" data-tooltip="The best legal shape this squad can field.">Formation</div></div>
                     <div class="twp-stat"><div class="twp-stat-v">£${newValue.toFixed(1)}m</div><div class="twp-stat-l" data-tooltip="Squad value after these transfers. Was £${oldValue.toFixed(1)}m.">Squad value</div></div>
                     <div class="twp-stat"><div class="twp-stat-v">£${getTWLiveITB().toFixed(1)}m</div><div class="twp-stat-l" data-tooltip="Money left over once every pending transfer is paid for.">Bank left</div></div>
                     <div class="twp-stat"><div class="twp-stat-v ${xpDelta > 0 ? 'good' : xpDelta < 0 ? 'bad' : ''}">${xpDelta > 0 ? '+' : ''}${xpDelta.toFixed(1)}</div>

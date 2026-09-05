@@ -133,7 +133,16 @@
             const base = prev
                 ? Object.assign({}, prev, { step: 1, search: '' })
                 : twfDefaultFilters();
-            return Object.assign(base, twfViewPrefs);
+            const seeded = Object.assign(base, twfViewPrefs);
+            /* A Free Hit squad is given back after one gameweek, so judging it
+               over five is judging fixtures you will never own. The strategy
+               overrides the remembered horizon rather than the other way
+               round — this is a fact about the chip, not a preference. */
+            if (typeof twStrategyHorizon === 'function') {
+                const forced = twStrategyHorizon();
+                if (forced === 1) seeded.horizon = 1;
+            }
+            return seeded;
         }
 
         // The gameweeks the whole screen is reasoning over. One horizon drives
@@ -528,9 +537,16 @@
             const reserved = twReservedFor(slotIdx);
             const span = gws.length ? `GW${gws[0]}–GW${gws[gws.length - 1]}` : 'no upcoming gameweeks';
 
-            const horizons = TWF_HORIZONS.map(h =>
-                `<button class="twf-hz${h === s.horizon ? ' active' : ''}" onclick="twfSetHorizon(${h})"
-                    data-tooltip="Judge every club and player over the next ${h} gameweeks.">${h} GW</button>`).join('');
+            /* On a Free Hit the window is not a preference — the squad goes
+               back after one gameweek, so a three-to-eight selector would be
+               offering to judge fixtures you will never own. Show what it is
+               fixed to, and why, rather than a row of buttons that lie. */
+            const fixedToOneWeek = typeof twStrategyHorizon === 'function' && twStrategyHorizon() === 1;
+            const horizons = fixedToOneWeek
+                ? `<span class="twf-hz active locked" data-tooltip="A Free Hit squad is handed back after this gameweek, so every club and player here is judged over that one week rather than a five-gameweek run.">1 GW · Free Hit</span>`
+                : TWF_HORIZONS.map(h =>
+                    `<button class="twf-hz${h === s.horizon ? ' active' : ''}" onclick="twfSetHorizon(${h})"
+                        data-tooltip="Judge every club and player over the next ${h} gameweeks.">${h} GW</button>`).join('');
 
             // The count only ever narrows, so showing all three stages makes it
             // obvious which half of the funnel is doing the cutting.
