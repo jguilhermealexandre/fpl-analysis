@@ -139,8 +139,12 @@ test('the shipped table matches the shape the layer expects', () => {
     const eo = load(real);
     assert.equal(eo.eoReady(), true, 'the committed file loads');
 
+    /* Against the layer's own list rather than a copy of it, so a tier added
+       to the sampler and forgotten in the accessor — or the reverse — fails
+       here instead of rendering an empty panel. */
     const tiers = real.metadata.tiers.map(t => t.id);
-    assert.deepEqual([...tiers], ['top1k', 'top10k']);
+    assert.deepEqual([...tiers], [...vm.runInContext('EO_TIERS', eo)],
+        'the shipped tiers are exactly the ones the layer knows about');
     for (const t of real.metadata.tiers) {
         assert.ok(t.sampled >= 100, `${t.id} sampled ${t.sampled} managers`);
     }
@@ -165,4 +169,83 @@ test('the shipped table matches the shape the layer expects', () => {
                 `${id} ${t}: eo ${v.eo} exceeds what ${v.own}% owning and ${v.cap}% captaining can produce`);
         }
     }
+});
+
+/* ===== Your mini-league =====
+
+   The one tier that cannot be shipped, because it is different for every
+   person who opens the page — and the one that decides most people's season,
+   since nobody is really competing with the top 10k. It is sampled in the
+   browser and held apart from the committed table, which is the source of the
+   failures worth pinning: it must be available when the file is not, and
+   absent when it has not been sampled, whatever the file says. */
+
+test('the league tier is answered from its own data, not the shipped file', () => {
+    const eo = load(table);
+    assert.equal(eo.eoFor('355', 'league'), null, 'not sampled yet, so no answer');
+
+    eo.eoSetLeague({
+        leagueId: 12345, gw: 4, label: 'Work league', sampled: 20,
+        players: { '355': { eo: 190, own: 95, cap: 95 }, '7': { eo: 5, own: 5, cap: 0 } }
+    });
+    assert.equal(eo.eoFor('355', 'league').eo, 190, 'the league is far more on him than the top 10k');
+    assert.equal(eo.eoFor('355', 'top10k').eo, 148, 'and the shipped tiers are untouched');
+    assert.equal(eo.eoTierLabel('league'), 'Work league', 'named after the league itself');
+    assert.equal(eo.eoResolution('league'), 5, 'twenty managers means five-point steps');
+});
+
+test('a player nobody in the league owns is below resolution, not zero', () => {
+    // Twenty managers cannot express less than 5%, so a flat 0 would be a
+    // stronger claim than the sample supports.
+    const eo = load(table);
+    eo.eoSetLeague({ leagueId: 1, gw: 4, label: 'L', sampled: 20, players: { '355': { eo: 100, own: 100, cap: 0 } } });
+    const unseen = eo.eoFor('401', 'league');
+    assert.equal(unseen.below, true);
+    assert.equal(eo.eoText(unseen), 'under 5%');
+});
+
+test('the league tier works even with no shipped table at all', () => {
+    /* It is sampled live, so it does not depend on the weekly job having run.
+       Reading it through the same accessor must not fall foul of the guard
+       that protects the committed tiers. */
+    const eo = load(null);
+    assert.equal(eo.eoReady(), false, 'no shipped file');
+    eo.eoSetLeague({ leagueId: 9, gw: 4, label: 'L', sampled: 12, players: { '355': { eo: 80, own: 80, cap: 0 } } });
+    assert.equal(eo.eoFor('355', 'league').eo, 80);
+    assert.equal(eo.eoFor('355', 'top10k'), null, 'while the shipped tiers stay unavailable');
+});
+
+test('eoLeagueReady is specific about which league and gameweek', () => {
+    // A league sampled for GW3 says nothing about GW4 — every manager may have
+    // transferred since, which is exactly what a deadline is.
+    const eo = load(table);
+    eo.eoSetLeague({ leagueId: 77, gw: 4, label: 'L', sampled: 20, players: {} });
+    assert.equal(eo.eoLeagueReady(77, 4), true);
+    assert.equal(eo.eoLeagueReady(77, 5), false, 'a new gameweek needs a new sample');
+    assert.equal(eo.eoLeagueReady(78, 4), false, 'and so does a different league');
+    assert.equal(eo.eoLeagueReady(), true, 'asking loosely is allowed');
+});
+
+test('a malformed league sample is refused', () => {
+    const eo = load(table);
+    eo.eoSetLeague({ leagueId: 1, gw: 4, sampled: 20, players: { '355': { eo: 10, own: 10, cap: 0 } } });
+    assert.equal(eo.eoLeagueReady(), true);
+    for (const bad of [null, undefined, {}, { leagueId: 1 }]) {
+        assert.equal(eo.eoSetLeague(bad), null, `refused: ${JSON.stringify(bad)}`);
+        assert.equal(eo.eoLeagueReady(), false);
+    }
+});
+
+test('a squad load can be taken against the league', () => {
+    const eo = load(table);
+    eo.eoSetLeague({
+        leagueId: 1, gw: 4, label: 'L', sampled: 20,
+        players: { '355': { eo: 190, own: 95, cap: 95 }, '99': { eo: 40, own: 40, cap: 0 } }
+    });
+    const load1 = eo.eoSquadLoad([
+        { id: 355, pickPosition: 1, isCaptain: true },
+        { id: 99, pickPosition: 2 }
+    ], 'league');
+    assert.equal(load1.total, 190 * 2 + 40, 'captain still counts twice');
+    assert.equal(load1.label, 'L');
 });

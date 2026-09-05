@@ -1107,6 +1107,45 @@
 
            Renders nothing at all when the weekly sample is missing. A partial
            answer here would be read as a complete one. */
+        /* Which field the panel is measuring against. Held here rather than in
+           eo-layer because it is a view preference, not a fact about the data —
+           the layer answers for any tier it is asked about. */
+        let eoViewTier = 'top10k';
+
+        function eoSetViewTier(tier) {
+            eoViewTier = tier;
+            /* The league is the one tier that has to be fetched. Sampling is
+               deferred to the click rather than done on load, because it costs
+               a request per member of the league and most visits never ask. */
+            if (tier === 'league' && typeof eoSampleLeague === 'function'
+                && !eoLeagueReady(null, typeof currentGW !== 'undefined' ? currentGW : null)) {
+                const info = eoPickLeague();
+                if (info) {
+                    eoSampleLeague(info.id, currentGW, info.name)
+                        .then(() => { if (typeof renderTWSquadPane === 'function') renderTWSquadPane(); })
+                        .catch(() => {});
+                }
+            }
+            if (typeof renderTWSquadPane === 'function') renderTWSquadPane();
+        }
+
+        /* The league worth comparing against.
+
+           A manager is usually in several: an overall one with millions in it,
+           some regional ones, and the handful that actually matter. The
+           smallest classic league with more than a few people in it is almost
+           always the one with their friends in it, and that is the field they
+           care about. */
+        function eoPickLeague() {
+            const all = (typeof managerData !== 'undefined' && managerData
+                && managerData.leagues && managerData.leagues.classic) || [];
+            const real = all.filter(l => l.id && (l.rank_count == null || l.rank_count >= 4)
+                && (l.rank_count == null || l.rank_count <= 5000));
+            if (!real.length) return null;
+            real.sort((a, b) => (a.rank_count || 1e9) - (b.rank_count || 1e9));
+            return { id: real[0].id, name: real[0].name };
+        }
+
         function renderSquadEO(squad) {
             if (typeof eoReady !== 'function' || !eoReady()) return '';
             /* Defaults to the squad you own, but the Transfer Wizard passes the
@@ -1114,23 +1153,28 @@
                reason this belongs there rather than on a page where it can only
                ever describe a squad you cannot change from that screen. */
             const sq = squad && squad.length ? squad : selectedPlayers;
-            const load = eoSquadLoad(sq);
-            if (!load) return '';
+            const tier = eoViewTier;
+            const pending = tier === 'league' && !eoLeagueReady();
+            const load = pending ? null : eoSquadLoad(sq, tier);
+            if (!load && !pending) return '';
 
             const owned = new Set(sq.map(p => p.id));
             const byId = {};
             (allPlayers || []).forEach(p => { byId[p.id] = p; });
 
-            const gaps = Object.keys(eoMeta() ? eoData.players : {})
+            const universe = tier === 'league'
+                ? (eoLeagueData ? eoLeagueData.players : {})
+                : (eoMeta() ? eoData.players : {});
+            const gaps = Object.keys(universe)
                 .filter(id => !owned.has(Number(id)) && byId[id])
-                .map(id => ({ p: byId[id], v: eoFor(id) }))
+                .map(id => ({ p: byId[id], v: eoFor(id, tier) }))
                 .filter(x => x.v && x.v.eo >= 25)
                 .sort((a, b) => b.v.eo - a.v.eo)
                 .slice(0, 4);
 
             const mine = sq
                 .filter(p => p.pickPosition == null || p.pickPosition <= 11)
-                .map(p => ({ p, v: eoFor(p.id) }))
+                .map(p => ({ p, v: eoFor(p.id, tier) }))
                 .filter(x => x.v)
                 .sort((a, b) => a.v.eo - b.v.eo)
                 .slice(0, 3);
@@ -1141,6 +1185,30 @@
                         : `${v.own}% own him and ${v.cap}% captain him, so he carries ${v.eo}% of the field.`)}"
                  >${escHTML(name)}<b>${escHTML(eoText(v))}</b></span>`;
 
+            /* Four fields, because they disagree and the disagreement is the
+               point: Isak carries 119% of the top 1k and 83% of the top 100k,
+               while Calafiori runs the other way. Your own league is last
+               because it is the one that decides your season and the one that
+               has to be fetched. */
+            const tiers = [
+                { id: 'top1k', label: 'Top 1k' },
+                { id: 'top10k', label: 'Top 10k' },
+                { id: 'top100k', label: 'Top 100k' },
+                { id: 'league', label: 'My league' }
+            ];
+            const picker = `<div class="eo-tiers" role="tablist">${tiers.map(t =>
+                `<button class="eo-tier${tier === t.id ? ' active' : ''}" role="tab"
+                    aria-selected="${tier === t.id}" onclick="eoSetViewTier('${t.id}')"
+                    >${escHTML(t.label)}</button>`).join('')}</div>`;
+
+            if (pending) {
+                return `<div class="eo-panel">
+                    <div class="eo-head"><span class="eo-title">Against your league</span></div>
+                    ${picker}
+                    <p class="eo-note">Working out what your league owns — one look at each manager's team. This is kept until the next deadline, so it only happens once.</p>
+                </div>`;
+            }
+
             return `<div class="eo-panel">
                 <div class="eo-head">
                     <span class="eo-title">Against the ${escHTML(load.label.toLowerCase())}</span>
@@ -1148,6 +1216,7 @@
                         ${load.perStarter}%<em>per starter</em>
                     </span>
                 </div>
+                ${picker}
                 ${gaps.length ? `<div class="eo-row">
                     <span class="eo-row-l" data-tooltip="Players this tier owns that you do not. Every week one of them returns, you lose ground without having done anything wrong.">Not owned</span>
                     <span class="eo-chips">${gaps.map(x => chip(x.p.name, x.v, 'gap')).join('')}</span>
@@ -1156,7 +1225,10 @@
                     <span class="eo-row-l" data-tooltip="Your starters carrying least of this tier. These are what gain you rank when they return and cost you nothing when they blank.">Your differentials</span>
                     <span class="eo-chips">${mine.map(x => chip(x.p.name, x.v, 'diff')).join('')}</span>
                 </div>` : ''}
-                <p class="eo-note">Sampled from ${load.counted ? escHTML(String(eoMeta().tiers.find(t => t.id === load.tier).sampled)) : '?'} managers in GW${escHTML(String(eoMeta().event))}. Effective ownership counts starters and doubles captains, so it sits below plain ownership for anyone the field benches.</p>
+                <p class="eo-note">Sampled from ${escHTML(String(
+                    tier === 'league' ? (eoLeagueData ? eoLeagueData.sampled : '?')
+                        : (eoMeta().tiers.find(t => t.id === tier) || {}).sampled || '?'))} managers in GW${escHTML(String(
+                    tier === 'league' ? (eoLeagueData ? eoLeagueData.gw : '?') : eoMeta().event))}. Effective ownership counts starters and doubles captains, so it sits below plain ownership for anyone the field benches.</p>
             </div>`;
         }
 

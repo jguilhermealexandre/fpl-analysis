@@ -45,7 +45,13 @@ const UA = 'easyfpl-eo-bot (+https://easyfpl.com)';
    ownership, which the bootstrap already gives us for nothing. */
 const TIERS = [
     { id: 'top1k', label: 'Top 1k', rankTo: 1000, pages: 20 },
-    { id: 'top10k', label: 'Top 10k', rankTo: 10000, pages: 200 }
+    { id: 'top10k', label: 'Top 10k', rankTo: 10000, pages: 200 },
+    /* The band most people are actually somewhere inside. Wide enough that
+       effective ownership starts converging on plain ownership, which is
+       exactly why it is worth showing next to the sharper tiers: the gap
+       between what the top 1k own and what the top 100k own is the shape of
+       the template forming. */
+    { id: 'top100k', label: 'Top 100k', rankTo: 100000, pages: 2000 }
 ];
 
 // Below this a tier is not published at all rather than published thin.
