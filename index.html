@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=111">
-    <link rel="stylesheet" href="styles/v2-design.css?v=111">
+    <link rel="stylesheet" href="styles/common.css?v=112">
+    <link rel="stylesheet" href="styles/v2-design.css?v=112">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1178,13 +1178,19 @@
            the separate mobile-only button that existed because the overlay
            could not be used there. */
         .v2-pitch-more {
-            display: inline-flex; align-items: center; gap: 5px;
-            font-size: 12px; font-weight: 600; color: var(--color-primary);
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 12px; font-weight: 650; color: var(--color-primary-text);
             text-decoration: none; white-space: nowrap;
-            padding: 3px 4px; border-radius: var(--radius-sm);
-            transition: opacity 140ms ease;
+            padding: 6px 12px; border-radius: var(--radius-full);
+            background: var(--color-primary-muted);
+            border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+            transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
         }
-        .v2-pitch-more:hover { opacity: 0.75; }
+        .v2-pitch-more:hover {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: #fff;
+        }
         .v2-pitch-more:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
         .v2-pitch-more .icon { width: 14px; height: 14px; }
 
@@ -1226,7 +1232,7 @@
             position: relative;
             width: 100%;
             aspect-ratio: 16 / 12.5;
-            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            border-radius: var(--radius-lg);
             background: repeating-linear-gradient(0deg, #57ab5a 0, #57ab5a 12.5%, #4e9e51 12.5%, #4e9e51 25%);
             overflow: hidden;
             border: none;
@@ -1286,19 +1292,22 @@
             border: 2px solid transparent;
             box-shadow: 0 2px 6px rgba(0,0,0,0.16);
         }
-        .v2-pitch-token-circle {
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: 600;
-            color: #fff;
-            border: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+        /* Same treatment as .pcard-crest on the squad page: the club's short
+           name sits behind the badge at z-index -1, so a badge that 404s — a
+           promoted club the endpoint has no code for yet — leaves the club
+           named rather than a hole in the card. */
+        .v2-pitch-token-crest {
             position: relative;
+            width: 26px; height: 26px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .v2-pitch-token-crest img {
+            position: relative; z-index: 1;
+            width: 26px; height: 26px; object-fit: contain;
+        }
+        .v2-pitch-token-crest-fallback {
+            position: absolute; z-index: 0;
+            font-size: 8.5px; font-weight: 700; color: var(--text-muted);
         }
         .v2-pitch-token-badge {
             position: absolute;
@@ -1335,22 +1344,28 @@
         }
         .v2-pitch-bench .v2-pitch-token-pos { display: none; }
         .v2-pitch-token-status { color: #FCA5A5; }
-        /* The squad page keeps the bench on the same surface as the pitch, as a
-           dugout rather than four circles floating below it. */
+        /* The bench keeps the dugout's shape — one row of the same cards, not
+           four circles floating below the pitch — but sits on the panel rather
+           than on a grey band of its own. */
         .v2-pitch-bench {
             margin-top: 0;
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 10px;
+            padding: 10px 2px 0;
             border-top: none;
-            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-            background: var(--surface-2);
+            background: transparent;
             overflow-x: auto;
         }
         .v2-pitch-bench-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; align-self: center; flex-shrink: 0; margin-right: 2px; }
-        .v2-pitch-bench .v2-pitch-token-circle { width: 20px; height: 20px; font-size: 9px; }
-        .v2-pitch-bench .v2-pitch-token { flex-shrink: 0; width: auto; min-width: 74px; padding: 7px 8px 6px; }
+        .v2-pitch-bench .v2-pitch-token-crest { width: 22px; height: 22px; }
+        .v2-pitch-bench .v2-pitch-token-crest img { width: 22px; height: 22px; }
+        .v2-pitch-bench .v2-pitch-token {
+            flex-shrink: 0; width: auto; min-width: 74px; padding: 7px 8px 6px;
+            background: var(--surface-1);
+            border-color: var(--v2-card-border);
+            box-shadow: none;
+        }
         .v2-pitch-bench .v2-pitch-token-name { color: var(--text-secondary); text-shadow: none; font-size: 11px; }
 
         .v2-quick-actions {
@@ -4123,20 +4138,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=111"></script>
-    <script src="scripts/price-watch.js?v=111"></script>
-    <script src="scripts/xp-engine.js?v=111"></script>
-    <script src="scripts/odds-panel.js?v=111"></script>
-    <script src="scripts/live-gw.js?v=111"></script>
-    <script src="scripts/matchday.js?v=111"></script>
-    <script src="scripts/market-panel.js?v=111"></script>
-    <script src="scripts/eo-layer.js?v=111"></script>
-    <script src="scripts/readiness.js?v=111"></script>
-    <script src="scripts/push-alerts.js?v=111"></script>
-    <script src="scripts/notifications.js?v=111"></script>
-    <script src="scripts/transfer-engine.js?v=111"></script>
-    <script src="scripts/common.js?v=111"></script>
-    <script src="scripts/sidebar-nav.js?v=111"></script>
+    <script src="scripts/error-monitor.js?v=112"></script>
+    <script src="scripts/price-watch.js?v=112"></script>
+    <script src="scripts/xp-engine.js?v=112"></script>
+    <script src="scripts/odds-panel.js?v=112"></script>
+    <script src="scripts/live-gw.js?v=112"></script>
+    <script src="scripts/matchday.js?v=112"></script>
+    <script src="scripts/market-panel.js?v=112"></script>
+    <script src="scripts/eo-layer.js?v=112"></script>
+    <script src="scripts/readiness.js?v=112"></script>
+    <script src="scripts/push-alerts.js?v=112"></script>
+    <script src="scripts/notifications.js?v=112"></script>
+    <script src="scripts/transfer-engine.js?v=112"></script>
+    <script src="scripts/common.js?v=112"></script>
+    <script src="scripts/sidebar-nav.js?v=112"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5046,7 +5061,6 @@
             const esc = t => String(t == null ? '' : t)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-            const posColorVar = { 1: 'var(--position-gk)', 2: 'var(--position-def)', 3: 'var(--position-mid)', 4: 'var(--position-fwd)' };
             const verdictMap = {};
             analysisResults.forEach((a, i) => { if (squad[i]) verdictMap[squad[i].id] = a; });
 
@@ -5115,7 +5129,14 @@
                     ? `${esc(p.name)} — ${xp.toFixed(1)} projected points against ${oppTxt}${minsTxt}${isBestCap ? '. Highest projection in your XI.' : ''}`
                     : `${esc(p.name)} — ${posLabel}${minsTxt}`;
                 return `<div class="v2-pitch-token" title="${tip}">
-                    <div class="v2-pitch-token-circle${ringClass}" style="background:${posColorVar[p.position] || 'var(--position-mid)'};">${p.squadNumber ?? '—'}${badge}</div>
+                    <div class="v2-pitch-token-crest${ringClass}">
+                        ${p.teamCode != null
+                            ? `<img src="https://resources.premierleague.com/premierleague/badges/50/t${p.teamCode}.png"
+                                 alt="" loading="lazy" onerror="this.style.display='none'">`
+                            : ''}
+                        <span class="v2-pitch-token-crest-fallback">${esc(p.team)}</span>
+                        ${badge}
+                    </div>
                     <span class="v2-pitch-token-name">${esc(p.name)}${isBestCap ? '<span class="v2-pitch-token-star" title="Highest projected points in your XI">★</span>' : ''}</span>
                     <span class="v2-pitch-token-opp">${oppTxt}</span>
                     ${xp != null
@@ -5506,6 +5527,10 @@
                     id: p.id, code: p.code, name: p.web_name, teamId: p.team,
                     squadNumber: p.squad_number,
                     team: teams[p.team]?.short_name || 'N/A',
+                    /* The badge endpoint is keyed on the club's code, which is a
+                       different number from its id. Resolved here because this is
+                       where the teams map is in scope. */
+                    teamCode: teams[p.team]?.code ?? null,
                     position: p.element_type, price: p.now_cost / 10,
                     form: parseFloat(p.form) || 0, points: p.total_points,
                     ppg: parseFloat(p.points_per_game) || 0,
