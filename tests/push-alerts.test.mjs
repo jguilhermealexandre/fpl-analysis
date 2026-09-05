@@ -7,9 +7,8 @@
    and reporting "on" when the subscription is gone means a manager stops
    hearing from us and cannot tell why.
 
-   The encryption in workers/push is not covered here. It cannot be tested
-   without a live push service; see that README for the check to run against a
-   real deploy. */
+   The encryption lives in workers/push and is covered by tests/webpush.test.mjs
+   instead, against RFC 8291's own worked example. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

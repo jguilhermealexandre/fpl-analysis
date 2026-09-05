@@ -163,7 +163,7 @@ async function runSchedule(env) {
                             title: 'News on your squad', body, url: '/index.html'
                         })) sent++;
                     }
-                } catch (e) { /* one bad squad must not stop the pass */ }
+                } catch { /* one bad squad must not stop the pass */ }
             }
 
             // The deadline nudge, sent once per gameweek.

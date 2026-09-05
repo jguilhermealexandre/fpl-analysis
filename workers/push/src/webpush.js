@@ -8,20 +8,25 @@
      RFC 8291 (Message Encryption) — aes128gcm, keyed by ECDH against the
                                      subscriber's public key.
 
-   WARNING. Everything in this file either works completely or fails silently:
-   a push service returns 201 Created for a correctly formed request whose
-   payload the browser cannot decrypt, and the only symptom is a notification
-   that never arrives. It cannot be verified without a live subscription and a
-   real push service, so it has not been — see the README for the one-command
-   check to run after deploying, and do that before trusting it. */
+   Everything here either works completely or fails silently: a push service
+   returns 201 Created for a correctly formed request whose payload the browser
+   cannot decrypt, and the only symptom is a notification that never arrives.
+   That failure mode is why tests/webpush.test.mjs runs this against RFC 8291's
+   own worked example — same keys, same salt, byte-for-byte the same output —
+   rather than against a round trip with itself, which would agree with any
+   misreading both halves happened to share.
 
-const b64urlToBytes = (s) => {
+   What the vector cannot prove is that a real push service accepts the request
+   and a real browser wakes up for it. The README's step 6 covers that, and is
+   still worth running once after deploying. */
+
+export const b64urlToBytes = (s) => {
     const padded = (s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
     const raw = atob(padded);
     return Uint8Array.from(raw, c => c.charCodeAt(0));
 };
 
-const bytesToB64url = (bytes) => {
+export const bytesToB64url = (bytes) => {
     let s = '';
     for (const b of new Uint8Array(bytes)) s += String.fromCharCode(b);
     return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -37,7 +42,7 @@ const concat = (...arrays) => {
 
 const utf8 = (s) => new TextEncoder().encode(s);
 
-async function hkdf(salt, ikm, info, length) {
+export async function hkdf(salt, ikm, info, length) {
     const key = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
     const bits = await crypto.subtle.deriveBits(
         { name: 'HKDF', hash: 'SHA-256', salt, info }, key, length * 8);
@@ -59,7 +64,7 @@ async function importVapidKey(publicKeyB64, privateKeyB64) {
     }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
 }
 
-async function vapidHeader(endpoint, publicKey, privateKey, subject) {
+export async function vapidHeader(endpoint, publicKey, privateKey, subject) {
     const aud = new URL(endpoint).origin;
     const header = bytesToB64url(utf8(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
     const body = bytesToB64url(utf8(JSON.stringify({
@@ -80,11 +85,16 @@ async function vapidHeader(endpoint, publicKey, privateKey, subject) {
    The body layout is salt(16) ‖ record size(4) ‖ key id length(1) ‖ the
    sender's public key(65) ‖ ciphertext, and the plaintext carries a single
    0x02 delimiter byte before encryption to mark the last record. */
-async function encrypt(payload, p256dhB64, authB64) {
+export async function encrypt(payload, p256dhB64, authB64, pinned) {
     const uaPublic = b64urlToBytes(p256dhB64);
     const authSecret = b64urlToBytes(authB64);
 
-    const ephemeral = await crypto.subtle.generateKey(
+    /* `pinned` supplies the salt and ephemeral key that are otherwise random.
+       It exists so this can be run against RFC 8291's own worked example, which
+       is the only way to catch a misreading of the spec that both halves of a
+       round trip would share. Never passed in production — sendPush does not
+       accept it, so there is no path from a request to a fixed nonce. */
+    const ephemeral = (pinned && pinned.ephemeral) || await crypto.subtle.generateKey(
         { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
     const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
 
@@ -100,7 +110,7 @@ async function encrypt(payload, p256dhB64, authB64) {
         concat(utf8('WebPush: info\0'), uaPublic, asPublic),
         32);
 
-    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const salt = (pinned && pinned.salt) || crypto.getRandomValues(new Uint8Array(16));
     const cek = await hkdf(salt, prk, utf8('Content-Encoding: aes128gcm\0'), 16);
     const nonce = await hkdf(salt, prk, utf8('Content-Encoding: nonce\0'), 12);
 

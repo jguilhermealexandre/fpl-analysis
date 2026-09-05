@@ -1359,5 +1359,28 @@ export default [
         files: ['tools/**/*.mjs', 'tests/**/*.mjs', 'scripts/build-articles.js'],
         languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } },
         rules: { 'no-undef': 'error' }
+    },
+    /* Cloudflare Workers. Neither browser nor Node: no window and no document,
+       but Web Crypto, fetch and the URL parser are all present. Listed
+       explicitly rather than reusing globals.browser, so that a Worker reaching
+       for something only a page has — localStorage, document — is an error
+       here instead of a runtime failure nobody sees until it is deployed. */
+    {
+        files: ['workers/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module',
+            globals: {
+                crypto: 'readonly', fetch: 'readonly', console: 'readonly',
+                Response: 'readonly', Request: 'readonly', Headers: 'readonly',
+                URL: 'readonly', URLSearchParams: 'readonly',
+                TextEncoder: 'readonly', TextDecoder: 'readonly',
+                atob: 'readonly', btoa: 'readonly',
+                caches: 'readonly', addEventListener: 'readonly',
+                setTimeout: 'readonly', clearTimeout: 'readonly',
+                AbortSignal: 'readonly', AbortController: 'readonly'
+            }
+        },
+        rules: { 'no-undef': 'error', 'no-unused-vars': 'error' }
     }
 ];

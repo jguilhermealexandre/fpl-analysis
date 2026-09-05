@@ -9,15 +9,26 @@ unavoidable reasons: a push message has to be signed with a private key that
 cannot go anywhere near a browser, and something has to be awake to send it
 when nobody has the page open.
 
-## What is not verified
+## What is verified, and what is not
 
-`src/webpush.js` implements RFC 8291 message encryption and RFC 8292 VAPID
-against Web Crypto. It has never been run against a live push service, and its
-failure mode is silent — a push service returns `201 Created` for a correctly
-formed request whose payload the browser cannot decrypt, and the only symptom
-is a notification that never arrives.
+The cryptography is verified. `tests/webpush.test.mjs` runs `src/webpush.js`
+against **RFC 8291's own worked example** — the specification's keys, its salt,
+its plaintext, and a byte-for-byte comparison with the body it says must come
+out. That is deliberately not a round trip against itself: two halves written
+from the same misreading agree perfectly with each other and with nothing else.
+The VAPID header is checked by verifying its signature with the key it
+advertises, and the key-generation command in step 1 below is checked to
+produce keys this code can actually import.
 
-**Run the check in step 6 before trusting it.**
+This matters because the failure mode is silent: a push service returns
+`201 Created` for a correctly formed request whose payload the browser cannot
+decrypt, and the only symptom is a notification that never arrives.
+
+What remains unverified is the delivery path — that a real push service accepts
+the request headers, that the route and KV bindings are wired up, and that a
+device wakes for it. Those fail loudly rather than silently (a non-2xx status,
+or a 404 from the route), but **step 6 is still worth running once** after the
+first deploy.
 
 ## Setup
 
