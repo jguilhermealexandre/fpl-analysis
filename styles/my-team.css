@@ -1212,7 +1212,11 @@ body.v2-blurred .main-content {
 .sq-optimize-btn { font-size: 13px; padding: 9px 16px; border-radius: var(--radius-md); border: none; cursor: pointer; font-weight: 600; }
 .sq-snapshot-score { font-size: 13px; color: var(--text-secondary); font-family: var(--font-mono); }
 .sq-snapshot-score strong { color: var(--text-primary); font-size: 15px; }
-.sq-optimize-summary { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-myteam); background: var(--color-myteam-muted, rgba(99,102,241,0.08)); border: 1px solid var(--color-myteam); border-radius: var(--radius-md); padding: 8px 12px; }
+/* Green, not the page's rose accent. This strip says "optimised, +2.3 xP" —
+   a result that went your way — and it was painted in exactly the red the Sell
+   verdict uses a few inches below it, which made a success read as a warning
+   every time the optimiser ran. */
+.sq-optimize-summary { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-primary); background: var(--verdict-hold-bg); border: 1px solid var(--verdict-hold); border-radius: var(--radius-md); padding: 8px 12px; }
 
 /* ===== The transient message =====
    Bottom centre, over the page, out of the way of the pitch it is talking
@@ -1806,29 +1810,74 @@ body.v2-blurred .main-content {
 .hv-count.hold { color: var(--verdict-hold); }
 
 /* ===== HELP / ONBOARDING OVERLAY ===== */
-.help-panel { max-width: 460px; }
+.help-panel { max-width: 540px; }
+.help-intro { font-size: 12px; line-height: 1.6; color: var(--text-secondary); margin: 0 0 4px; }
+/* The guide covers a page with four distinct areas, and a flat list of twenty
+   steps is a page nobody finishes. The headings let a manager skip to the part
+   they are actually stuck on. */
+.help-section-title {
+    font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-muted); margin: 18px 0 2px; padding-top: 12px;
+    border-top: 1px solid var(--border-default);
+}
+.help-section-title:first-of-type { margin-top: 12px; }
 .help-step { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
 .help-step:last-child { border-bottom: none; }
 .help-step-icon { font-size: 18px; line-height: 1.2; flex-shrink: 0; width: 24px; text-align: center; }
 .help-step-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
 .help-step-text { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
 
+/* The verdict key, in the one place a manager goes when a colour is a mystery.
+   Same swatch shape as .pitch-legend under the pitch, so the two read as one
+   notation rather than two explanations of it. */
+.help-legend { display: flex; flex-direction: column; gap: 7px; margin-top: 9px; }
+.help-legend-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 11.5px; line-height: 1.5; color: var(--text-secondary);
+}
+.help-legend-item i {
+    width: 3px; align-self: stretch; min-height: 15px; border-radius: 2px;
+    background: currentColor; flex-shrink: 0; margin-top: 1px;
+}
+.help-legend-item strong { color: var(--text-primary); }
+.help-legend-item.star i { color: var(--verdict-star); }
+.help-legend-item.hold i { color: var(--verdict-hold); }
+.help-legend-item.monitor i { color: var(--verdict-monitor); }
+.help-legend-item.sell i { color: var(--verdict-sell); }
+
 /* ===== AUTO-OPTIMIZE SUMMARY + REPORT ===== */
 .sq-optimize-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .opt-summary-text { flex: 1; min-width: 0; }
-.opt-report-btn {
+/* Opening a report is an informational action, so it is drawn in the
+   informational colour. It used to be --color-myteam, the page's rose brand
+   accent, which on a small pill next to a squad full of red Sell flags read as
+   a destructive button rather than "read more about this". */
+.opt-report-btn, .opt-revert-btn {
     flex-shrink: 0;
     padding: 4px 12px;
     border-radius: var(--radius-full);
-    border: 1px solid var(--color-myteam);
+    border: 1px solid var(--color-info);
     background: var(--surface-1);
-    color: var(--color-myteam);
+    color: var(--color-info);
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 150ms ease, color 150ms ease;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
-.opt-report-btn:hover { background: var(--color-myteam); color: #fff; }
+.opt-report-btn:hover { background: var(--color-info); color: #fff; }
+/* Quieter than the report button beside it. Undo is the escape hatch, wanted
+   by the minority who disagree with the solve — offering it as loudly as the
+   report would invite a manager to undo an improvement by reflex. */
+.opt-revert-btn {
+    border-color: var(--border-emphasis); color: var(--text-secondary);
+    display: inline-flex; align-items: center; gap: 5px;
+}
+.opt-revert-btn:hover { border-color: var(--text-secondary); background: var(--surface-2); color: var(--text-primary); }
+/* The toast paints every icon inside it in the primary accent, which is right
+   for its own sparkle and wrong for a button that is deliberately the quiet
+   one — the glyph has to travel with the button's colour, not the toast's. */
+.sq-toast .opt-revert-btn { flex-shrink: 0; }
+.sq-toast .opt-revert-btn .v2-sec-icon { color: currentColor; width: 13px; height: 13px; }
 
 .opt-report-panel { max-width: 520px; }
 .opt-gw-badge {
@@ -1911,6 +1960,12 @@ body.v2-blurred .main-content {
    means "the model picked this". */
 .sq-pc-go { background: var(--verdict-star); border-color: var(--verdict-star); color: #fff; }
 .sq-pc-go:hover { background: color-mix(in srgb, var(--verdict-star) 82%, #000); }
+/* The way back from the wand beside it, and deliberately the plain control
+   rather than a second coloured one. Undo is the escape hatch, wanted by the
+   minority who disagree with the solve; drawn as loudly as Auto-optimise it
+   would invite undoing an improvement by reflex. */
+.sq-pc-undo { color: var(--text-secondary); }
+.sq-pc-undo:hover { background: #fff; color: #17301F; }
 
 .pitch-grass {
     position: relative;
@@ -1992,15 +2047,42 @@ body.v2-blurred .main-content {
 }
 .pcard:active { cursor: grabbing; }
 .pcard:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.22); }
-/* Verdict shows as a left accent so it can't fight the team crest for attention. */
-/* Sell and Monitor keep their edge: red and amber on a player card read as
-   warnings without needing a key. Star did not — a purple line is the one
-   colour here that means nothing on sight, and it is the only off-palette
-   colour left on the pitch. The verdict is still carried where it is actually
-   labelled: the counts under the health ring and the verdict chip in the
-   squad table. */
+/* Verdict shows as a left accent so it can't fight the team crest for attention.
+
+   All four verdicts are marked, not just the two warnings. The purple Star edge
+   was dropped once because nothing on the page said what purple meant — the
+   answer to that is a key, not fewer colours, so .pitch-legend under the dugout
+   now names all four and the help overlay repeats them. With a key the full set
+   is worth more than the pair: "everything here is fine" is only readable if
+   fine has a colour too, and a pitch where three cards are marked and eleven are
+   blank cannot distinguish a good squad from an unrated one. */
 .pcard.sell { border-left-color: var(--verdict-sell); }
 .pcard.monitor { border-left-color: var(--verdict-monitor); }
+.pcard.star { border-left-color: var(--verdict-star); }
+.pcard.hold { border-left-color: var(--verdict-hold); }
+
+/* The key. Sits under the dugout rather than in the toolbar: it is reference
+   material, wanted once and then never again, so it belongs below the thing it
+   explains instead of above it competing with the controls. */
+.pitch-legend {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
+    padding: 9px 12px 2px;
+}
+.pitch-legend-title {
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-muted); margin-right: 2px;
+}
+.pitch-legend-item {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 600; color: var(--text-secondary); cursor: help;
+}
+.pitch-legend-item i {
+    width: 3px; height: 12px; border-radius: 2px; background: currentColor; flex-shrink: 0;
+}
+.pitch-legend-item.star i { color: var(--verdict-star); }
+.pitch-legend-item.hold i { color: var(--verdict-hold); }
+.pitch-legend-item.monitor i { color: var(--verdict-monitor); }
+.pitch-legend-item.sell i { color: var(--verdict-sell); }
 .pcard.pcard-injured { opacity: 0.62; }
 .pcard-bench { background: rgba(255,255,255,0.98); }
 
@@ -3450,6 +3532,26 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     background: var(--verdict-monitor-bg);
 }
 
+/* Star and Hold complete the key the pitch cards use, deliberately quieter
+   than the two above: an edge and no tint. The flagged rows are the ones you
+   are meant to stop at, and tinting all fifteen would leave nothing to stop
+   at — but an unmarked row is ambiguous between "rated fine" and "not rated",
+   which is the whole reason for marking them at all. */
+/* Star and Hold are marked by the dot in the hazard slot, not down the leading
+   edge: that edge carries the position's initial now, and an inset shadow there
+   renders underneath it. Sell and Monitor keep their tint above — those are the
+   rows you are meant to stop at, and tinting all fifteen would leave nothing to
+   stop at. */
+.sq-verdict-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: currentColor; margin: 0 auto; cursor: help;
+}
+.sq-verdict-dot.star { color: var(--verdict-star); }
+.sq-verdict-dot.monitor { color: var(--verdict-monitor); }
+/* Hold is the default state, so its dot is the quietest thing that still
+   reads as "rated, and fine" rather than as an empty slot. */
+.sq-verdict-dot.hold { color: color-mix(in srgb, var(--verdict-hold) 60%, transparent); }
+
 /* The BENCH tag says a player is benched. Fading the row said it a second
    time, at the cost of every number in it — an xP, a form figure and five
    fixture chips all lost contrast, on rows you read precisely to decide
@@ -4825,6 +4927,26 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 .sq-ticker-row .tm-ticker { flex: 1; min-width: 0; margin-bottom: 0; padding: 5px 0; }
 
+/* --- MARKET strip: which way the money is moving, in colour ---
+   A price meter has exactly two directions and both are worth spotting from
+   across the room, so green and red carry the whole item rather than just its
+   percentage. Only this strip is coloured: see renderSquadTicker's `kind`. */
+.tm-tick-note { font-size: 10px; font-weight: 600; opacity: .85; }
+.sq-ticker-market .tm-tick.up .tm-tick-name,
+.sq-ticker-market .tm-tick.up .tm-tick-note { color: var(--verdict-hold); }
+.sq-ticker-market .tm-tick.down .tm-tick-name,
+.sq-ticker-market .tm-tick.down .tm-tick-note { color: var(--verdict-sell); }
+/* Past the line it is not a direction any more, it is tonight. A tinted pill
+   separates "heading that way" from "gets there at the next update", which the
+   colour alone cannot say. */
+.sq-ticker-market .tm-tick.near { padding: 1px 9px; border-radius: 999px; }
+.sq-ticker-market .tm-tick.up.near {
+    background: var(--verdict-hold-bg); box-shadow: inset 0 0 0 1px var(--verdict-hold);
+}
+.sq-ticker-market .tm-tick.down.near {
+    background: var(--verdict-sell-bg); box-shadow: inset 0 0 0 1px var(--verdict-sell);
+}
+
 /* ===== GW Draft: timeline, stat chips, chip pills, pitch cards ===== */
 .draft-timeline { margin-bottom: 12px; }
 
@@ -6134,6 +6256,13 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .gwr-row-detail { flex: 1; color: var(--text-secondary); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gwr-row-pts { flex-shrink: 0; font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--text-primary); }
 .gwr-row-pts em { font-style: normal; font-size: 9px; color: var(--text-muted); margin-left: 2px; }
+/* A benched player's score is real but did not reach your total. Showing it
+   greyed says both things at once; printing a zero, as this used to, said
+   neither. */
+.gwr-row-pts.uncounted { color: var(--text-muted); }
+/* The strong left edge belongs to the eleven. A bench row that scored nothing
+   is not a failure the way a starter blanking is, so it stays unmarked. */
+.gwr-row.bench.blank { border-left-color: transparent; }
 .gwr-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .gwr-chip { padding: 3px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border-default);
     font-size: 10px; color: var(--text-muted); }

@@ -240,13 +240,23 @@
             const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
             const fixtureChips = fixtures.slice(0, 5).map(f =>
                 `<div class="fixture-chip fdr-${f.difficulty}" data-tooltip="GW${f.event}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent)} — FDR ${f.difficulty} (${FDR_WORDS[f.difficulty] || 'Average'})"><span class="fixture-team">${escHTML(f.opponent)}</span></div>`).join('');
-            const rowFlagClass = verdict === 'sell' ? 'sq-row-sell' : verdict === 'monitor' ? 'sq-row-monitor' : '';
-            // Always emit the slot, even when there's no hazard — a conditionally
-            // present icon would shift the badge/name right on flagged rows only,
-            // leaving player names unaligned down the column.
+            const rowFlagClass = `sq-row-${verdict}`;
+            /* The verdict, in the slot that already exists to keep the names
+               aligned. It held a warning triangle for Sell and nothing at all
+               for the other three, so a row was ambiguous between "rated fine"
+               and "not rated" — and fifteen unmarked rows cannot tell a good
+               squad from an unanalysed one.
+
+               A mark here rather than down the leading edge, which is where a
+               verdict would naturally go and where this page used to put one:
+               that edge now carries the position's initial, so a coloured bar
+               there would sit underneath it and never be seen. Sell keeps its
+               triangle — shape as well as colour, which is the same reason the
+               pitch cards flag it with a glyph — and the other three take a dot
+               in the verdict's colour. */
             const hazardIcon = `<span class="sq-hazard-slot">${verdict === 'sell'
                 ? '<i data-lucide="alert-triangle" class="sq-hazard-icon" title="Flagged: high sell rating"></i>'
-                : ''}</span>`;
+                : `<span class="sq-verdict-dot ${verdict}" data-tooltip="${escHTML(verdictTip(verdict))}"></span>`}</span>`;
 
             const row = `
             <div class="sq-row ${rowFlagClass} ${player.onBench ? 'sq-row-bench' : ''} ${typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(player.position) : ''}" data-player-id="${player.id}" data-compare-row>

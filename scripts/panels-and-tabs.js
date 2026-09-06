@@ -1593,14 +1593,80 @@
                about to move — and the three of them fit on one row. */
             html += renderPriceWatchSection(player);
 
+            /* What he has actually returned, alongside the rates that predict it.
+
+               Every tile above this point is either forward-looking (FDR) or a
+               per-90 rate, so the plainest question anyone asks about a player \u2014
+               how many has he scored? \u2014 could only be answered by scrolling past
+               the whole card to Season Numbers. Position picks the two that
+               matter: a defender is owned for clean sheets and a forward for
+               goals, and showing all four to both is how a stat grid turns into
+               a wall nobody reads. */
+            const appearances = Math.max(player.starts || 0, 1);
+            /* His own starts, not gameweeks elapsed. A clean sheet needs 60
+               minutes, so the games he did not start were never chances at one \u2014
+               dividing by the calendar punishes a player for the weeks he was
+               injured and reports a rate he never had. */
+            const csPct = Math.round(((player.cleanSheets || 0) / appearances) * 100);
+            const goals = player.goals || 0, assists = player.assists || 0;
+            const startsNote = `${player.starts || 0} start${(player.starts || 0) === 1 ? '' : 's'}`;
+            /* Returns against expected is the difference between a player who is
+               finishing well and one who is getting into the right places. They
+               are the same number this week and different ones by October, and
+               only the second kind is worth buying. Skipped while the expected
+               figure is too small to divide a season on. */
+            const vsExpected = (actual, expected, mark) => {
+                if (!(expected > 0.5)) return `${expected.toFixed(1)} x${mark}`;
+                const d = actual - expected;
+                return `${expected.toFixed(1)} x${mark} \u00b7 ${Math.abs(d) < 1 ? 'about par'
+                    : d > 0 ? `${d.toFixed(1)} above` : `${Math.abs(d).toFixed(1)} below`}`;
+            };
+            const band = (v, good, bad) => v >= good ? 'var(--verdict-hold)'
+                : v <= bad ? 'var(--verdict-sell)' : 'var(--verdict-monitor)';
+
+            let returnStats;
+            if (player.position === 1) {
+                const savesPer90 = player.minutes > 0 ? ((player.saves || 0) / player.minutes) * 90 : 0;
+                returnStats =
+                    renderDetailStat('Clean Sheets', String(player.cleanSheets || 0), csPct / 100,
+                        band(csPct, 35, 19), `${csPct}% of ${startsNote} \u00b7 4 pts each`) +
+                    renderDetailStat('Saves', String(player.saves || 0), Math.min((player.saves || 0) / 70, 1),
+                        'var(--color-info)', `${savesPer90.toFixed(1)} per 90 \u00b7 every 3 is a point`);
+            } else if (player.position === 2) {
+                returnStats =
+                    renderDetailStat('Clean Sheets', String(player.cleanSheets || 0), csPct / 100,
+                        band(csPct, 35, 19), `${csPct}% of ${startsNote} \u00b7 4 pts each`) +
+                    renderDetailStat('Goals + Assists', String(goals + assists), Math.min((goals + assists) / 8, 1),
+                        (goals + assists) >= 4 ? 'var(--verdict-hold)' : 'var(--text-primary)',
+                        `${goals}G ${assists}A \u00b7 a defender's goal is worth 6`);
+            } else {
+                const goalPts = player.position === 4 ? 4 : 5;
+                returnStats =
+                    renderDetailStat('Goals', String(goals), Math.min(goals / 12, 1),
+                        goals >= 6 ? 'var(--verdict-hold)' : goals <= 1 ? 'var(--verdict-sell)' : 'var(--text-primary)',
+                        `${vsExpected(goals, player.xG || 0, 'G')} \u00b7 ${goalPts} pts each`) +
+                    renderDetailStat('Assists', String(assists), Math.min(assists / 8, 1),
+                        assists >= 4 ? 'var(--verdict-hold)' : 'var(--text-primary)',
+                        `${vsExpected(assists, player.xA || 0, 'A')} \u00b7 3 pts each`);
+            }
+
             html += `<div class="detail-section" data-accent="stats">
                 <div class="detail-section-title">\ud83d\udcca Key Statistics <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div class="detail-stats-grid">
                     ${renderDetailStat('Form', player.form.toFixed(1), player.form / 10, player.form >= 5 ? 'var(--verdict-hold)' : player.form < 3 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${posConfig.short} median: ${posConfig.formMedian}`)}
                     ${renderDetailStat('Pts/Game', player.ppg.toFixed(1), player.ppg / 10, player.ppg >= 5 ? 'var(--verdict-hold)' : player.ppg < 3 ? 'var(--verdict-sell)' : 'var(--text-primary)', `Total: ${player.points} pts`)}
-                    ${renderDetailStat('Mins/Game', minsPerGame.toFixed(0), minsPerGame / 90, minsPerGame >= 80 ? 'var(--verdict-hold)' : minsPerGame < 60 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${player.starts} starts in ${gamesPlayed} GWs`)}
+                    ${/* "Mins/Game" over a denominator of gameweeks elapsed, which is
+                          not the same thing: a player who starts every match he is fit
+                          for still reads 63 after missing four rounds injured, and 63
+                          in an amber tile says "rotation risk" about someone who has
+                          never been rotated. The number is the useful one — what he
+                          has actually given you per week is exactly what you are
+                          buying — so the label is what changes, and the context spells
+                          the division out rather than leaving it to be guessed. */''}
+                    ${renderDetailStat('Mins/GW', minsPerGame.toFixed(0), minsPerGame / 90, minsPerGame >= 80 ? 'var(--verdict-hold)' : minsPerGame < 60 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${player.minutes} mins over ${gamesPlayed} gameweeks · ${player.starts} start${player.starts === 1 ? '' : 's'}`)}
                     ${renderDetailStat('FDR', (player.avgFDR || 3).toFixed(1), 1 - ((player.avgFDR || 3) - 1) / 4, (player.avgFDR || 3) <= 2.8 ? 'var(--verdict-hold)' : (player.avgFDR || 3) >= 3.5 ? 'var(--verdict-sell)' : 'var(--text-primary)', 'Next 5 weighted avg')}
-                    ${player.position >= 3 ? renderDetailStat('xGI/90', xGIPer90.toFixed(2), xGIPer90, xGIPer90 >= 0.5 ? 'var(--verdict-hold)' : xGIPer90 < 0.25 ? 'var(--verdict-sell)' : 'var(--text-primary)', `${player.goals}G ${player.assists}A (${player.xG.toFixed(1)}xG ${player.xA.toFixed(1)}xA)`) : ''}
+                    ${player.position >= 3 ? renderDetailStat('xGI/90', xGIPer90.toFixed(2), xGIPer90, xGIPer90 >= 0.5 ? 'var(--verdict-hold)' : xGIPer90 < 0.25 ? 'var(--verdict-sell)' : 'var(--text-primary)', 'Expected goals + assists per 90') : ''}
+                    ${returnStats}
                     ${renderDetailStat('Value', (player.ppm || 0).toFixed(1) + '/\u00a3m', Math.min((player.ppm || 0) / 30, 1), 'var(--color-info)', `Sell: \u00a3${(player.sellPrice || player.price).toFixed(1)}m`)}
                 </div>
             </div>`;
@@ -1704,14 +1770,40 @@
             if (detailTA) {
                 const swingInfo = fixtureSwingData[player.teamId];
                 const swingHtml = renderFixtureSwingDetail(swingInfo);
+                /* Lead with the football, keep the rating as the bar.
+
+                   These four tiles used to read "68", "55", "62", "71" \u2014 a
+                   0-100 score with the real quantity demoted to the caption
+                   underneath. Nobody knows what a defence of 55 is. Everybody
+                   knows what 1.4 conceded a game is, and what W3 D1 L1 is.
+                   The ratings are still here doing the job they are good at,
+                   which is filling the bar and colouring it: they are
+                   comparable across clubs in a way that raw goals are not.
+
+                   Windows differ and are labelled rather than blurred: form
+                   comes off the last 5, goals and clean sheets off the last 10,
+                   FDR off the next 5. */
+                const teamCsPct = Math.round((detailTA.csRate || 0) * 100);
+                const ratingBand = (v, good, bad) => v >= good ? 'var(--verdict-hold)'
+                    : v < bad ? 'var(--verdict-sell)' : 'var(--verdict-monitor)';
+                const last10 = Math.min(detailTA.matchesPlayed || 0, 10);
+                const last5 = Math.min(detailTA.matchesPlayed || 0, 5);
                 html += `<div class="pd-group"><div class="pd-group-title">\ud83c\udfe2 Team \u2014 ${escHTML(player.team)}</div>
                 <div class="detail-section" data-accent="team" data-wide>
                     <div class="detail-section-title">\ud83d\udcc9 Club form and season</div>
                     <div class="detail-stats-grid">
-                        ${renderDetailStat('Attack', detailTA.attackPower.toString(), detailTA.attackPower / 100, detailTA.attackPower >= 60 ? 'var(--verdict-hold)' : detailTA.attackPower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgGoals.toFixed(1)} goals/game`)}
-                        ${renderDetailStat('Defence', detailTA.defensePower.toString(), detailTA.defensePower / 100, detailTA.defensePower >= 60 ? 'var(--verdict-hold)' : detailTA.defensePower < 40 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${detailTA.avgConceded.toFixed(1)} conceded/game`)}
-                        ${renderDetailStat('Form', detailTA.formRating.toString(), detailTA.formRating / 100, detailTA.formRating >= 60 ? 'var(--verdict-hold)' : detailTA.formRating < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `W${detailTA.wins} D${detailTA.draws} L${detailTA.losses} last 5`)}
-                        ${renderDetailStat('Fixtures', detailTA.fixtureScore.toString(), detailTA.fixtureScore / 100, detailTA.fixtureScore >= 60 ? 'var(--verdict-hold)' : detailTA.fixtureScore < 35 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `Avg FDR ${detailTA.avgFdr.toFixed(1)}`)}
+                        ${renderDetailStat('Goals scored', detailTA.avgGoals.toFixed(1), detailTA.attackPower / 100,
+                            ratingBand(detailTA.attackPower, 60, 40),
+                            `per game over the last ${last10} \u00b7 attack rated ${detailTA.attackPower}/100`)}
+                        ${renderDetailStat('Clean sheets', `${teamCsPct}%`, detailTA.defensePower / 100,
+                            ratingBand(detailTA.defensePower, 60, 40),
+                            `${detailTA.avgConceded.toFixed(1)} conceded/game over the last ${last10} \u00b7 defence rated ${detailTA.defensePower}/100`)}
+                        ${renderDetailStat('Results', `W${detailTA.wins} D${detailTA.draws} L${detailTA.losses}`, detailTA.formRating / 100,
+                            ratingBand(detailTA.formRating, 60, 35),
+                            `last ${last5} matches \u00b7 form rated ${detailTA.formRating}/100`)}
+                        ${renderDetailStat('Fixtures', detailTA.avgFdr.toFixed(1), detailTA.fixtureScore / 100,
+                            ratingBand(detailTA.fixtureScore, 60, 35),
+                            `average FDR over the next 5 \u00b7 1 is easiest, 5 hardest`)}
                     </div>
                     ${detailSS ? `
                     <div style="margin-top:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">

@@ -1634,13 +1634,23 @@
             const risers = scored.filter(x => x.pct > 0).sort((a, b) => b.pct - a.pct);
             const fallers = scored.filter(x => x.pct < 0).sort((a, b) => a.pct - b.pct);
 
+            /* Direction decides the colour, distance decides how loudly it is
+               said. Every part of this used to live inside one `text` string,
+               which is why the strip rendered in flat body copy: the up/down
+               colour rules key off .tm-tick-pct, and nothing was ever emitting
+               one. The tiers come from thresholdState() rather than a number
+               invented here, so this strip and the Price Watch panel cannot
+               describe the same player two different ways. */
             const line = x => {
                 const rising = x.pct > 0;
-                const near = Math.abs(x.pct) >= 90;
+                const state = typeof thresholdState === 'function' ? thresholdState(x.pct) : null;
+                const imminent = !!state && state.cls.indexOf('imminent') > -1;
                 return {
-                    cls: rising ? 'up' : 'down',
+                    cls: `${rising ? 'up' : 'down'}${imminent ? ' near' : ''}`,
                     icon: rising ? '📈' : '📉',
-                    text: `${x.p.name} ${rising ? '+' : ''}${Math.round(x.pct)}%${near ? (rising ? ' — rises tonight' : ' — drops tonight') : ''}`
+                    text: x.p.name,
+                    pct: `${rising ? '+' : '−'}${Math.abs(Math.round(x.pct))}%`,
+                    note: state ? state.text : ''
                 };
             };
 
@@ -1655,17 +1665,24 @@
             return out;
         }
 
-        function renderSquadTicker(label, items, tip) {
+        /* `kind` tags the row so a strip can colour itself. Only the market one
+           does: there, up and down mean money moving one way or the other and
+           the colour IS the message. The squad strip's up/down are whole
+           sentences, and painting those green and red would make a paragraph of
+           it while saying nothing the wording does not already. */
+        function renderSquadTicker(label, items, tip, kind) {
             if (!items.length) return '';
             const one = it => `<span class="tm-tick ${it.cls}">
                 <span class="tm-tick-arrow">${it.icon}</span>
                 <span class="tm-tick-name">${escHTML(it.text)}</span>
+                ${it.pct ? `<span class="tm-tick-pct">${escHTML(it.pct)}</span>` : ''}
+                ${it.note ? `<span class="tm-tick-note">${escHTML(it.note)}</span>` : ''}
             </span>`;
             // The run is rendered twice and the track shifted by exactly half, so the
             // wrap-around is invisible. Content scrolls right to left.
             const run = items.map(one).join('<span class="tm-tick-sep">•</span>');
             const secs = (items.length * SQ_TICKER_SEC_PER_ITEM).toFixed(1);
-            return `<div class="sq-ticker-row">
+            return `<div class="sq-ticker-row${kind ? ` sq-ticker-${kind}` : ''}">
                 <span class="sq-ticker-label" data-tooltip="${escHTML(tip)}">${escHTML(label)}</span>
                 <div class="tm-ticker">
                     <div class="tm-ticker-track" style="animation-duration:${secs}s">${run}<span class="tm-tick-sep">•</span>${run}<span class="tm-tick-sep">•</span></div>
@@ -1677,7 +1694,8 @@
             const pulse = renderSquadTicker('SQUAD', buildSquadPulse(),
                 'The most significant things going right and wrong across your squad this gameweek — availability, form and fixture swings.');
             const market = renderSquadTicker('MARKET', buildSquadMarketPulse(),
-                "How close your players are to a price change, projected from net transfers against each player's owner base. FPL does not publish its real threshold.");
+                "How close your players are to a price change, on FPL's own progress meter. Green is climbing towards a rise, red is sliding towards a drop; a highlighted item is past the line and changes at tonight's update.",
+                'market');
             return (pulse || market) ? `<div class="sq-tickers">${pulse}${market}</div>` : '';
         }
 

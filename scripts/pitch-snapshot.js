@@ -31,6 +31,7 @@
             snapshotSwapSource = null;
             snapshotOptimizeSummary = '';
             snapshotOptimizeReport = null;
+            snapshotOptimizeUndo = null;
             snapshotInitialized = false;
         }
 
@@ -146,6 +147,17 @@
                         data-tooltip="Auto-optimise — the best legal XI across your next 3 gameweeks">
                         <i data-lucide="wand-2"></i>
                     </button>
+                    <!-- Auto-optimise applies its result rather than previewing
+                         it, so the way back has to live somewhere. The toast
+                         carries one too, but a toast is gone in nine seconds and
+                         an undo that expires is not an undo — this is the one
+                         that lasts. Appears only when the solve moved something,
+                         and goes as soon as it is used or overtaken. -->
+                    ${snapshotOptimizeUndo ? `<button class="sq-pc sq-pc-undo" onclick="revertAutoOptimize()"
+                        aria-label="Revert Auto-optimise"
+                        data-tooltip="Revert — put back the eleven, bench order and armband you had before Auto-optimise ran">
+                        <i data-lucide="undo-2"></i>
+                    </button>` : ''}
                 </div>
                     <div class="pitch-grass">
                         <div class="pitch-markings" aria-hidden="true">
@@ -184,7 +196,38 @@
                             }).join('')}
                         </div>
                     </div>
+                    ${renderVerdictLegend()}
                 </div>
+            </div>`;
+        }
+
+        /* What the coloured edge on each card means.
+
+           The edge is the only place the verdict appears on the pitch, and a
+           colour with no key is decoration. Wording matches the thresholds in
+           analyzePlayer() — Sell at a sell rating of 55, Monitor at 38, Star
+           below 20 with the form and minutes to back it — so the key and the
+           model cannot drift apart. */
+        const VERDICT_LEGEND = [
+            { cls: 'star', label: 'Star', tip: 'Cornerstone of the squad: a low sell rating backed by form well above the positional median and near-guaranteed minutes. Captain material.' },
+            { cls: 'hold', label: 'Hold', tip: 'Nothing wrong here. Not flagged for a move, and not doing enough to be called a standout either.' },
+            { cls: 'monitor', label: 'Monitor', tip: 'Some concerns — a sell rating of 38 or more. Worth watching over the next couple of rounds rather than acting on today.' },
+            { cls: 'sell', label: 'Sell', tip: 'A sell rating of 55 or more: several signals against him at once. The transfer panel on his row lists replacements.' }
+        ];
+
+        /* One wording for a verdict, wherever it is explained — the pitch key
+           below, the dot on a squad row, the help panel. Three copies of a
+           definition is three chances for the page to disagree with itself. */
+        function verdictTip(verdict) {
+            const v = VERDICT_LEGEND.find(x => x.cls === verdict);
+            return v ? v.tip : '';
+        }
+
+        function renderVerdictLegend() {
+            return `<div class="pitch-legend">
+                <span class="pitch-legend-title">Verdict</span>
+                ${VERDICT_LEGEND.map(v =>
+                    `<span class="pitch-legend-item ${v.cls}" data-tooltip="${escHTML(v.tip)}"><i></i>${escHTML(v.label)}</span>`).join('')}
             </div>`;
         }
 
@@ -427,6 +470,10 @@
             snapshotSwapSource = null;
             snapshotOptimizeSummary = '';
             snapshotOptimizeReport = null;
+            // Dropped with the summary, not kept alongside it: once the manager
+            // has moved someone by hand, "revert" would quietly throw that away
+            // too, and an undo that removes more than it says is worse than none.
+            snapshotOptimizeUndo = null;
             reconcileArmbands();
             syncSnapshotToSquad();
             renderTeamAnalysis();
@@ -651,6 +698,14 @@
         // rather than just asserting a conclusion.
         let snapshotOptimizeReport = null;
 
+        /* The lineup as it stood before Auto-Optimize ran, so it can be put back
+           rather than only described. Auto-Optimize applies its result straight
+           to the squad — there is no preview step to decline — so without this
+           the only way out of a solve the manager disagreed with was to rebuild
+           the eleven by hand. Null whenever there is nothing to undo: before the
+           first run, after a run that changed nothing, and after any manual swap. */
+        let snapshotOptimizeUndo = null;
+
         function describeFormation(players) {
             const n = pos => players.filter(p => p.position === pos).length;
             return `${n(2)}-${n(3)}-${n(4)}`;
@@ -671,6 +726,11 @@
 
             const beforeViceId = snapshotViceId;
             const beforeBenchOrder = [...snapshotBenchOrder];
+            /* Pick order too. syncSnapshotToSquad only rewrites the bench slots,
+               so the eleven keep whatever numbers they had — and the squad table
+               sorts on those. Without this the rows would come back in the
+               optimizer's order underneath the manager's own lineup. */
+            const beforePickPositions = new Map(selectedPlayers.map(p => [p.id, p.pickPosition]));
 
             // Rank by expected points across the next 3 gameweeks rather than this
             // single fixture — a player having one big week sandwiched between two
@@ -766,7 +826,22 @@
                 promoted: keptOriginal ? [] : result.xi.filter(p => !beforeXI.has(p.id))
             };
 
-            snapshotOptimizeSummary = buildOptimizeSummary(snapshotOptimizeReport);
+            /* Offered only when the solve actually moved something. An undo
+               button for a no-op is a button that appears to have failed —
+               the same rule the Lineup Wizard's undo follows. */
+            const sameIds = (a, b) => [...a].sort().join(',') === [...b].sort().join(',');
+            const changed = !keptOriginal && (
+                snapshotCaptainId !== beforeCaptainId ||
+                snapshotViceId !== beforeViceId ||
+                snapshotBenchOrder.join(',') !== beforeBenchOrder.join(',') ||
+                !sameIds(snapshotXI, beforeXI));
+            snapshotOptimizeUndo = changed
+                ? { xi: beforeXI, benchOrder: beforeBenchOrder, captainId: beforeCaptainId,
+                    viceId: beforeViceId, pickPositions: beforePickPositions }
+                : null;
+
+            snapshotOptimizeSummary = buildOptimizeSummary(snapshotOptimizeReport, null,
+                snapshotOptimizeUndo ? 'revertAutoOptimize()' : null);
             if (snapshotOptimizeSummary && typeof sqToast === 'function') {
                 sqToast(`${v2Icon ? v2Icon('sparkle') : ''}${snapshotOptimizeSummary}`);
             }
@@ -782,13 +857,45 @@
                 : `Lineup optimized (${result.formation})`, 'success');
         }
 
+        // Put back the eleven, bench order, armband and pick order the manager
+        // had before Auto-Optimize ran. Nothing here can fail: the squad is the
+        // same fifteen players either way, so the arrangement being restored was
+        // legal when it was recorded and is still legal now.
+        function revertAutoOptimize() {
+            if (!snapshotOptimizeUndo) return;
+            const u = snapshotOptimizeUndo;
+            snapshotXI = new Set(u.xi);
+            snapshotBenchOrder = [...u.benchOrder];
+            snapshotCaptainId = u.captainId;
+            snapshotViceId = u.viceId;
+            snapshotSwapSource = null;
+            selectedPlayers.forEach(p => {
+                const was = u.pickPositions.get(p.id);
+                if (was != null) p.pickPosition = was;
+            });
+            snapshotOptimizeUndo = null;
+            snapshotOptimizeSummary = '';
+            snapshotOptimizeReport = null;
+            // The toast is still offering the report for a solve that no longer
+            // exists, and its own Revert button, so it goes with it.
+            if (typeof sqToastHide === 'function') sqToastHide();
+            syncSnapshotToSquad();
+            renderTeamAnalysis();
+            updateStatus('Lineup restored to how you had it', 'success');
+        }
+
         // Leads with the number that answers "was this worth doing?", then names the
         // decisions, then offers the detail behind them — rather than asserting one
         // reason for one player and leaving the rest unexplained.
         // `openCall` is the onclick target for "View Full Report" — defaults to
         // the Squad Analysis opener; GW Draft passes its own so the button opens
         // the report for the gameweek this summary actually describes.
-        function buildOptimizeSummary(report, openCall) {
+        // `revertCall` is the onclick target for the undo button, and its
+        // presence is what decides whether one is offered at all. Only Squad
+        // Analysis passes it: the Lineup Wizard carries its own undo in the
+        // command-centre header, and GW Draft's optimiser writes into a saved
+        // plan the manager edits directly.
+        function buildOptimizeSummary(report, openCall, revertCall) {
             if (!report) return '';
             const gain = report.gain;
             // Squad Analysis's optimizer has a safety net that never leaves this
@@ -817,6 +924,9 @@
             }
 
             return `<span class="opt-summary-text">${headline}. ${bits.join(' ')}</span>
+                ${revertCall ? `<button class="opt-revert-btn" onclick="${revertCall}"
+                    data-tooltip="Put back the eleven, bench order and armband you had before Auto-optimise ran."
+                    >${typeof v2Icon === 'function' ? v2Icon('refresh') : ''}Revert</button>` : ''}
                 <button class="opt-report-btn" onclick="${openCall || 'openOptimizeReport()'}">${typeof v2Icon === 'function' ? v2Icon('report') : ''}View full report</button>`;
         }
 

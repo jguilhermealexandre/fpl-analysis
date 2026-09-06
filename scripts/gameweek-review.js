@@ -210,9 +210,19 @@
                 };
             }).filter(Boolean);
 
-            const xi = entries.filter(e => e.multiplier > 0);
-            const bench = entries.filter(e => e.multiplier === 0);
+            /* Split on where the player was picked, not on whether he ended up
+               counting. Multiplier was doing that job, and it is a different
+               question: a starter withdrawn by an auto-sub has a multiplier of
+               zero and was never on your bench, while the substitute who
+               replaced him has a multiplier of one and was. So the bench listed
+               your ghosted starters, "The bench" hid the players who actually
+               came off it, and `autoSubbed` below — filtering a
+               multiplier === 0 list for multiplier > 0 — could never match
+               anything, which is why no auto-substitution was ever reported. */
+            const xi = entries.filter(e => e.started);
+            const bench = entries.filter(e => !e.started);
             const captain = entries.find(e => e.isCaptain) || null;
+            const benchBoost = picksData.active_chip === 'bboost';
 
             // What the armband could have returned instead. Only counts players who
             // actually started for you — second-guessing against your own bench is a
@@ -229,7 +239,7 @@
 
             return {
                 gw, ev, complete: done === fixtures.length, done, total: fixtures.length,
-                points, avg, highest: ev.highest_score ?? null, hit,
+                points, avg, highest: ev.highest_score ?? null, hit, benchBoost,
                 transfers: thisRow.event_transfers || 0,
                 benchPoints: thisRow.points_on_bench || 0,
                 overallRank: thisRow.overall_rank ?? null,
@@ -309,7 +319,18 @@
 
             const total = r.benchPoints;
             let tone, verdict, lesson;
-            if (!misses.length) {
+            if (r.benchBoost) {
+                /* Bench Boost pays every bench player, so there is no such thing
+                   as a point left behind and nothing here to second-guess. The
+                   question becomes whether the chip was worth playing, which is
+                   about the size of the return, not the order of the four. */
+                const scored = r.bench.reduce((s, e) => s + e.raw, 0);
+                tone = scored >= 15 ? 'good' : scored >= 8 ? 'mixed' : 'bad';
+                verdict = `Bench Boost turned your bench into <strong>${scored}</strong> extra point${scored === 1 ? '' : 's'}.`;
+                lesson = scored >= 15
+                    ? 'A good week to have spent it — that is the return the chip is played for.'
+                    : 'A thin return for a chip you only get once. Bench Boost wants a round where all four have fixtures and all four are expected to start.';
+            } else if (!misses.length) {
                 tone = 'good';
                 verdict = total > 0
                     ? `Nothing was misplaced. The ${total} point${total === 1 ? '' : 's'} on your bench came from players who could not have replaced a starter in the same position.`
@@ -420,17 +441,33 @@
             }
 
             // ---------- who delivered ----------
-            const row = e => {
+            /* `scored` is what a player contributed to your total; `raw` is what
+               he scored. For the eleven those are the same number (doubled for
+               the captain), so the distinction never mattered — until the same
+               renderer was pointed at the bench, where the contribution is zero
+               by definition of being benched, and every substitute was reported
+               as having scored nothing whatever he did on the day. On the bench
+               the honest number is the raw one, marked as not having counted. */
+            const row = (e, opts) => {
+                const onBench = !!(opts && opts.bench);
+                const counted = e.multiplier > 0;
+                const shown = onBench ? e.raw : e.scored;
                 const s = e.stats;
                 const phrases = s ? gwStatPhrases(e.player, s) : [];
-                const cls = e.scored >= 10 ? 'haul' : e.scored >= 6 ? 'good' : e.scored <= 1 ? 'blank' : '';
-                return `<div class="gwr-row ${cls}">
+                const cls = shown >= 10 ? 'haul' : shown >= 6 ? 'good' : shown <= 1 ? 'blank' : '';
+                // A bench player who came on has his points in your total after
+                // all, so only the ones that genuinely did not count are greyed.
+                const ptsCls = onBench && !counted ? ' uncounted' : '';
+                const suffix = e.multiplier > 1 ? `<em>×${e.multiplier}</em>`
+                    : onBench && counted ? '<em>came on</em>'
+                    : onBench ? '<em>not counted</em>' : '';
+                return `<div class="gwr-row ${cls}${onBench && !counted ? ' bench' : ''}">
                     <span class="position-badge ${POSITION_CONFIG[e.player.position].class}">${POSITION_CONFIG[e.player.position].short}</span>
                     <span class="gwr-row-name">${e.isCaptain ? '👑 ' : e.isVice ? '🅥 ' : ''}${escHTML(e.player.name)}</span>
                     <span class="gwr-row-opp">${s && s.fixtures.length ? s.fixtures.map(f => `${escHTML(f.name)}${f.home ? ' (H)' : ' (A)'}`).join(', ') : '—'}</span>
                     <span class="gwr-row-mins">${s ? s.minutes : 0}'</span>
                     <span class="gwr-row-detail">${phrases.length ? escHTML(phrases.join(', ')) : (s && s.minutes ? 'no returns' : e.played ? 'did not play' : 'yet to play')}</span>
-                    <span class="gwr-row-pts">${e.scored}${e.multiplier > 1 ? `<em>×${e.multiplier}</em>` : ''}</span>
+                    <span class="gwr-row-pts${ptsCls}">${shown}${suffix}</span>
                 </div>`;
             };
 
@@ -447,20 +484,26 @@
             };
             const deliveredHtml = `
                 ${best ? `<div class="opt-why">Your best return was <strong>${escHTML(best.player.name)}</strong> on ${best.scored}${worst && worst.player.id !== best.player.id ? `, and the quietest starter who actually played was <strong>${escHTML(worst.player.name)}</strong> on ${worst.scored}` : ''}.</div>` : ''}
-                <div class="gwr-rows">${r.ranked.map(row).join('')}</div>
+                <!-- Called through an arrow rather than passed to map directly:
+                     map hands the index in as the second argument, which is now
+                     the options bag. -->
+                <div class="gwr-rows">${r.ranked.map(e => row(e)).join('')}</div>
                 ${gwrVerdictBlock('Did the eleven justify itself?', selV)}`;
 
             // ---------- bench ----------
             const benchV = gwBenchVerdict(r);
             const autoSubbed = r.bench.filter(e => e.multiplier > 0);
+            const benchScored = r.bench.reduce((s, e) => s + e.raw, 0);
             const benchHtml = `
                 <div class="opt-why">
-                    ${r.benchPoints > 0
-                        ? `You left <strong>${r.benchPoints}</strong> point${r.benchPoints === 1 ? '' : 's'} on the bench.`
-                        : 'Nothing was wasted on the bench.'}
+                    ${r.benchBoost
+                        ? `Bench Boost was active, so all <strong>${benchScored}</strong> point${benchScored === 1 ? '' : 's'} your bench scored counted towards your total.`
+                        : r.benchPoints > 0
+                            ? `You left <strong>${r.benchPoints}</strong> point${r.benchPoints === 1 ? '' : 's'} on the bench.`
+                            : 'Nothing was wasted on the bench.'}
                     ${autoSubbed.length ? ` ${autoSubbed.length} auto-substitution${autoSubbed.length === 1 ? '' : 's'} came on for you.` : ''}
                 </div>
-                <div class="gwr-rows">${r.benchRanked.map(row).join('')}</div>
+                <div class="gwr-rows">${r.benchRanked.map(e => row(e, { bench: true })).join('')}</div>
                 ${benchV.misses.length ? `<div class="gwr-misses">${benchV.misses.map(m =>
                     `<div class="gwr-miss"><strong>${escHTML(m.benched.player.name)}</strong> (${m.benched.raw}) outscored <strong>${escHTML(m.starter.player.name)}</strong> (${m.starter.raw}) in the same position — a swap worth <strong>${m.swing}</strong>.</div>`).join('')}</div>` : ''}
                 ${gwrVerdictBlock('Was the bench right?', benchV)}`;
