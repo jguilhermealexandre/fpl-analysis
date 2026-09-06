@@ -1367,22 +1367,45 @@
                 : null;
             const mom = typeof priceMomentum === 'function' ? priceMomentum(player) : null;
 
+            /* The meter, drawn. This is a percentage of a fixed scale — how far
+               along a price change this player is — and it was a coloured word
+               and a sentence, which is the one shape a percentage should never
+               take. The bar is the reading; the words underneath say what it
+               means and, for the "closing in" tier, that it is a position and
+               not a forecast. */
+            const meter = (pct, dir, label, detail) => {
+                const width = Math.max(3, Math.min(100, Math.abs(pct)));
+                return `<div class="pw-meter ${dir}">
+                    <div class="pw-meter-head">
+                        <span class="pw-meter-pct">${Math.round(Math.abs(pct))}<em>%</em></span>
+                        <span class="pw-meter-label">${escHTML(label)}</span>
+                    </div>
+                    <div class="pw-meter-track"><i style="width:${width}%"></i></div>
+                    <div class="pw-meter-detail">${escHTML(detail)}</div>
+                </div>`;
+            };
+
             let body;
             if (locked) {
-                body = `<div class="pw-row"><span class="pw-badge locked">\ud83d\udd12 Locked</span><span class="pw-text">Price changes are locked for this player right now.</span></div>`;
+                body = `<div class="pw-meter locked">
+                    <div class="pw-meter-head"><span class="pw-meter-label">Locked</span></div>
+                    <div class="pw-meter-track"><i style="width:0%"></i></div>
+                    <div class="pw-meter-detail">Price changes are locked for this player right now.</div>
+                </div>`;
             } else if (pw) {
-                const dirWord = pw.dir === 'rise' ? 'Rise' : 'Fall';
-                body = `<div class="pw-row">
-                    <span class="pw-badge ${pw.dir} ${pw.tier}">${pw.tier === 'due' ? `${dirWord} due` : `${Math.round(Math.abs(pw.progress))}% to ${dirWord.toLowerCase()}`}</span>
-                    <span class="pw-text">${escHTML(pwDetail(pw))}</span>
-                </div>`;
+                const dirWord = pw.dir === 'rise' ? 'rise' : 'fall';
+                body = meter(pw.progress, pw.dir,
+                    pw.tier === 'due' ? `${dirWord} due tonight` : `to a ${dirWord}`,
+                    pwDetail(pw));
             } else if (mom) {
-                body = `<div class="pw-row">
-                    <span class="pw-badge ${mom.rising ? 'rise' : 'fall'} soft">${escHTML(mom.label)}</span>
-                    <span class="pw-text">Net ${mom.net > 0 ? '+' : '\u2212'}${Math.abs(mom.net).toLocaleString()} transfers this gameweek \u2014 early momentum, not yet close to a change.</span>
-                </div>`;
+                body = meter(0, mom.rising ? 'rise' : 'fall', mom.label,
+                    `Net ${mom.net > 0 ? '+' : '\u2212'}${Math.abs(mom.net).toLocaleString()} transfers this gameweek \u2014 early momentum, not yet close to a change.`);
             } else {
-                body = `<div class="pw-row"><span class="pw-badge flat">Stable</span><span class="pw-text">No meaningful price-change signal right now.</span></div>`;
+                body = `<div class="pw-meter flat">
+                    <div class="pw-meter-head"><span class="pw-meter-pct">0<em>%</em></span><span class="pw-meter-label">stable</span></div>
+                    <div class="pw-meter-track"><i style="width:3%"></i></div>
+                    <div class="pw-meter-detail">No meaningful price-change signal right now.</div>
+                </div>`;
             }
 
             return `<div class="detail-section" data-accent="price">
@@ -1818,7 +1841,43 @@
                     </div>
                 </div>
             </div>`;
+            pdmLayoutBands(host);
             if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        /* ===== The masonry band =====
+
+           The three readings were grid items with explicit columns, which meant
+           the positives — placed in the third column — started on the grid's
+           next row, and that row's height was set by the tallest thing on it.
+           So a short list of positives sat beside a column and a half of white
+           space. CSS grid cannot pack that way (masonry rows are not shipped
+           broadly enough to rely on), so the band is three real columns and each
+           one is a stack: the blocks in it sit directly under one another.
+
+           Which section goes in which column is fixed rather than measured. The
+           two stat cards are the tall ones and take a column each; everything
+           that reads as commentary — the routes, the positives, the concerns —
+           stacks in the third. */
+        const PDM_BANDS = [['stats'], ['season'], ['routes', 'concerns', 'positives']];
+
+        function pdmLayoutBands(host) {
+            const body = host.querySelector('.pdm-body');
+            if (!body) return;
+            const pick = a => body.querySelector(`.detail-section[data-accent="${a}"]`);
+            const anchorEl = pick('stats') || pick('season') || pick('routes');
+            if (!anchorEl || !anchorEl.parentNode) return;
+
+            const wrap = document.createElement('div');
+            wrap.className = 'pdm-bands';
+            anchorEl.parentNode.insertBefore(wrap, anchorEl);
+
+            PDM_BANDS.forEach(keys => {
+                const col = document.createElement('div');
+                col.className = 'pdm-col';
+                keys.forEach(k => { const el = pick(k); if (el) col.appendChild(el); });
+                if (col.children.length) wrap.appendChild(col);
+            });
         }
 
         function openPlayerModal(playerId) {

@@ -6791,26 +6791,62 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .pdm-body .pd-sell-rate-bar i { display: block; height: 100%; border-radius: 999px; }
 .pdm-body .pd-sell-rate-num { font-family: var(--font-mono); font-size: 12px; font-weight: 800; }
 
-/* ===== The three stat columns =====
-   Key Statistics, Season Numbers and Routes to Points are three readings of
-   the same player and belong on one row. At a third of a 1080px modal each
-   column is still ~330px, so nothing has to shrink to fit.
+/* ===== The three readings, packed =====
+   Three real columns rather than grid cells, because the blocks in the third
+   have to sit directly under one another. As grid items the positives started
+   on the grid's next row and that row was as tall as the tallest card on it, so
+   a four-line list sat beside a column and a half of white space. Grid cannot
+   pack that way — masonry rows are not shipped widely enough to rely on — so
+   pdmLayoutBands() moves the sections into these columns and each is a stack. */
+.pdm-bands {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    align-items: start;
+}
+.pdm-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.pdm-col > .detail-section { grid-column: auto; }
 
-   The first two stretch to the row's height rather than sitting at their own,
-   so the band has a flat bottom edge; Season Numbers was the short one and left
-   a gap under it the width of a third of the card. */
-.pdm-body .detail-section[data-accent="stats"] { grid-column: 1 / 5; align-self: stretch; }
-.pdm-body .detail-section[data-accent="season"] { grid-column: 5 / 9; align-self: stretch; }
-.pdm-body .detail-section[data-accent="routes"] { grid-column: 9 / 13; }
-/* Under Routes, in the same column, rather than starting a new full-width row. */
-.pdm-body .detail-section[data-accent="positives"],
-.pdm-body .detail-section[data-accent="concerns"] { grid-column: 9 / 13; }
-
-/* Season Numbers fills the height it is given: the boxes grow rather than the
-   card carrying dead space under them. */
-.pdm-body .detail-section[data-accent="season"] { display: flex; flex-direction: column; }
-.pdm-body .detail-section[data-accent="season"] .pdm-metrics { flex: 1; grid-auto-rows: 1fr; }
 .pdm-body .metric-box { display: flex; flex-direction: column; justify-content: center; }
+
+/* ===== Positives and concerns, compact =====
+   Each was a bold title on its own line over a paragraph, inside a bordered
+   block, which for four short observations was three times the height they
+   need. Title and text run together on one line and wrap only when they must,
+   and the coloured edge does the labelling. */
+.pdm-body .insight-item {
+    padding: 6px 0 6px 10px;
+    margin: 0;
+    border-left: 3px solid var(--pdm-accent, var(--color-primary));
+    border-radius: 0;
+    background: transparent;
+    font-size: 12px; line-height: 1.5;
+}
+.pdm-body .insight-item + .insight-item { margin-top: 8px; }
+.pdm-body .insight-item > div:first-child {
+    display: inline; margin: 0 4px 0 0;
+    font-size: 12px; font-weight: 700; color: var(--text-primary);
+}
+.pdm-body .insight-item > div:first-child::after { content: ' —'; color: var(--text-muted); }
+.pdm-body .insight-text { display: inline; color: var(--text-secondary); }
+
+/* ===== The price meter =====
+   A percentage of a fixed scale, drawn as one. */
+.pw-meter-head { display: flex; align-items: baseline; gap: 7px; margin-bottom: 7px; }
+.pw-meter-pct { font-family: var(--font-mono); font-size: 24px; font-weight: 800; line-height: 1; color: var(--text-primary); }
+.pw-meter-pct em { font-style: normal; font-size: 13px; font-weight: 700; color: var(--text-muted); margin-left: 1px; }
+.pw-meter-label { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-muted); }
+.pw-meter-track {
+    height: 8px; border-radius: 999px; overflow: hidden;
+    background: var(--surface-3, var(--surface-2));
+}
+.pw-meter-track i { display: block; height: 100%; border-radius: 999px; background: var(--text-muted); }
+.pw-meter.rise .pw-meter-track i { background: var(--color-success); }
+.pw-meter.rise .pw-meter-pct { color: var(--color-success); }
+.pw-meter.fall .pw-meter-track i { background: var(--color-error); }
+.pw-meter.fall .pw-meter-pct { color: var(--color-error); }
+.pw-meter-detail { margin-top: 8px; font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); }
 .pdm-body .detail-section[data-accent="season"] .pdm-metrics {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px;
 }
@@ -6834,11 +6870,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     .pdm-body .detail-section[data-accent="price"] { grid-column: 1 / -1; }
     .pdm-body .detail-section,
     .pdm-body .detail-section[data-span="2"],
-    .pdm-body .detail-section[data-accent="stats"],
-    .pdm-body .detail-section[data-accent="season"],
-    .pdm-body .detail-section[data-accent="routes"],
-    .pdm-body .detail-section[data-accent="positives"],
-    .pdm-body .detail-section[data-accent="concerns"] { grid-column: span 6; align-self: start; }
+    .pdm-bands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 860px) {
@@ -6847,12 +6879,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     .pdm-body .detail-section[data-span="2"],
     .pdm-body .detail-section[data-span="4"],
     .pdm-body .pd-report, .pdm-body .pd-verdict,
-    .pdm-body .detail-section[data-accent="stats"],
-    .pdm-body .detail-section[data-accent="season"],
-    .pdm-body .detail-section[data-accent="routes"],
-    .pdm-body .detail-section[data-accent="positives"],
-    .pdm-body .detail-section[data-accent="concerns"],
-    .pdm-body .detail-section[data-accent="price"] { grid-column: 1 / -1; align-self: start; }
+    .pdm-body .detail-section[data-accent="price"] { grid-column: 1 / -1; }
+    .pdm-bands { grid-template-columns: minmax(0, 1fr); }
     .pdm-hero { grid-template-columns: auto minmax(0, 1fr); min-height: 148px; padding: 0 18px; }
     .pdm-hero-photo { height: 148px; width: 120px; }
     .pdm-hero-face { height: 148px; }
