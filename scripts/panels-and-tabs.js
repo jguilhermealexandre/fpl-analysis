@@ -822,11 +822,21 @@
             }
             const feeds = [
                 { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport', badge: 'bbc' },
+                /* Two Premier League URLs on purpose. The site moved its news
+                   under /en/, and which of the two still serves RSS is not
+                   something this file can know — a feed that 404s is skipped by
+                   the loop below, and if both answer, the de-duplication by link
+                   further down drops the repeat. */
                 { url: 'https://www.premierleague.com/news.rss', source: 'Premier League', badge: 'pl' },
+                { url: 'https://www.premierleague.com/en/news.rss', source: 'Premier League', badge: 'pl' },
                 { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', badge: 'sky' },
                 { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian', badge: 'guardian' }
             ];
             const items = [];
+            /* One story, once. Two of the feeds are the same publisher at two
+               URLs, and a publisher that syndicates to another can put the same
+               link in both — a duplicated card reads as a duplicated story. */
+            const seenLinks = new Set();
             for (const feed of feeds) {
                 try {
                     const rssUrl = encodeURIComponent(feed.url);
@@ -842,6 +852,8 @@
                         const textToCheck = ((article.title || '') + ' ' + rawDesc).toLowerCase();
                         const isPL = plTeams.some(t => textToCheck.includes(t)) || plKeywords.some(k => textToCheck.includes(k));
                         if (!isPL) return;
+                        if (article.link && seenLinks.has(article.link)) return;
+                        if (article.link) seenLinks.add(article.link);
                         items.push({
                             category: 'external', categoryLabel: feed.source,
                             headline: article.title,

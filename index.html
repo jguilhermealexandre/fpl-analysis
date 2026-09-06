@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=158">
-    <link rel="stylesheet" href="styles/v2-design.css?v=158">
+    <link rel="stylesheet" href="styles/common.css?v=159">
+    <link rel="stylesheet" href="styles/v2-design.css?v=159">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -2290,11 +2290,11 @@
             line-height: 1.3;
         }
 
-        .hsp-fdr.fdr-1 { background: rgba(74,222,128,0.22); color: #059669; }
-        .hsp-fdr.fdr-2 { background: rgba(134,239,172,0.22); color: #059669; }
-        .hsp-fdr.fdr-3 { background: rgba(156,163,175,0.18); color: #6B7280; }
-        .hsp-fdr.fdr-4 { background: rgba(251,146,60,0.22); color: #C2410C; }
-        .hsp-fdr.fdr-5 { background: rgba(239,68,68,0.22); color: #DC2626; }
+        .hsp-fdr.fdr-1 { background: var(--fdr-1); color: var(--fdr-1-ink); }
+        .hsp-fdr.fdr-2 { background: var(--fdr-2); color: var(--fdr-2-ink); }
+        .hsp-fdr.fdr-3 { background: var(--fdr-3); color: var(--fdr-3-ink); }
+        .hsp-fdr.fdr-4 { background: var(--fdr-4); color: var(--fdr-4-ink); }
+        .hsp-fdr.fdr-5 { background: var(--fdr-5); color: var(--fdr-5-ink); }
 
         .hsp-captain {
             font-size: 10px;
@@ -2443,11 +2443,11 @@
             min-width: 28px;
         }
 
-        .hip-fdr-chip.fdr-1 { background: rgba(74,222,128,0.22); color: #059669; }
-        .hip-fdr-chip.fdr-2 { background: rgba(134,239,172,0.22); color: #059669; }
-        .hip-fdr-chip.fdr-3 { background: rgba(156,163,175,0.18); color: #6B7280; }
-        .hip-fdr-chip.fdr-4 { background: rgba(251,146,60,0.22); color: #C2410C; }
-        .hip-fdr-chip.fdr-5 { background: rgba(239,68,68,0.22); color: #DC2626; }
+        .hip-fdr-chip.fdr-1 { background: var(--fdr-1); color: var(--fdr-1-ink); }
+        .hip-fdr-chip.fdr-2 { background: var(--fdr-2); color: var(--fdr-2-ink); }
+        .hip-fdr-chip.fdr-3 { background: var(--fdr-3); color: var(--fdr-3-ink); }
+        .hip-fdr-chip.fdr-4 { background: var(--fdr-4); color: var(--fdr-4-ink); }
+        .hip-fdr-chip.fdr-5 { background: var(--fdr-5); color: var(--fdr-5-ink); }
 
         /* --- Quick Actions (kept) --- */
         .hero-quick-actions {
@@ -4358,20 +4358,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=158"></script>
-    <script src="scripts/price-watch.js?v=158"></script>
-    <script src="scripts/xp-engine.js?v=158"></script>
-    <script src="scripts/odds-panel.js?v=158"></script>
-    <script src="scripts/live-gw.js?v=158"></script>
-    <script src="scripts/matchday.js?v=158"></script>
-    <script src="scripts/market-panel.js?v=158"></script>
-    <script src="scripts/eo-layer.js?v=158"></script>
-    <script src="scripts/readiness.js?v=158"></script>
-    <script src="scripts/push-alerts.js?v=158"></script>
-    <script src="scripts/notifications.js?v=158"></script>
-    <script src="scripts/transfer-engine.js?v=158"></script>
-    <script src="scripts/common.js?v=158"></script>
-    <script src="scripts/sidebar-nav.js?v=158"></script>
+    <script src="scripts/error-monitor.js?v=159"></script>
+    <script src="scripts/price-watch.js?v=159"></script>
+    <script src="scripts/xp-engine.js?v=159"></script>
+    <script src="scripts/odds-panel.js?v=159"></script>
+    <script src="scripts/live-gw.js?v=159"></script>
+    <script src="scripts/matchday.js?v=159"></script>
+    <script src="scripts/market-panel.js?v=159"></script>
+    <script src="scripts/eo-layer.js?v=159"></script>
+    <script src="scripts/readiness.js?v=159"></script>
+    <script src="scripts/push-alerts.js?v=159"></script>
+    <script src="scripts/notifications.js?v=159"></script>
+    <script src="scripts/transfer-engine.js?v=159"></script>
+    <script src="scripts/common.js?v=159"></script>
+    <script src="scripts/sidebar-nav.js?v=159"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5306,7 +5306,13 @@
             }
             const feeds = [
                 { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport', badge: 'bbc' },
+                /* Two Premier League URLs on purpose. The site moved its news
+                   under /en/, and which of the two still serves RSS is not
+                   something this file can know — a feed that 404s is skipped by
+                   the loop below, and if both answer, the de-duplication by link
+                   further down drops the repeat. */
                 { url: 'https://www.premierleague.com/news.rss', source: 'Premier League', badge: 'pl' },
+                { url: 'https://www.premierleague.com/en/news.rss', source: 'Premier League', badge: 'pl' },
                 { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', badge: 'sky' },
                 { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian', badge: 'guardian' }
             ];
@@ -5314,6 +5320,10 @@
             const plKeywords = ['premier league','fpl','gameweek','epl','prem','pl table','top four','relegation','var ','offside','penalty','clean sheet'];
             const oneDayAgo = now - 24 * 60 * 60 * 1000;
             const items = [];
+            /* One story, once. Two of the feeds are the same publisher at two
+               URLs, and a publisher that syndicates to another can put the same
+               link in both — a duplicated card reads as a duplicated story. */
+            const seenLinks = new Set();
             for (const feed of feeds) {
                 try {
                     const rssUrl = encodeURIComponent(feed.url);
@@ -5328,6 +5338,8 @@
                         const textToCheck = ((article.title || '') + ' ' + rawDesc).toLowerCase();
                         const isPL = plTeams.some(t => textToCheck.includes(t)) || plKeywords.some(k => textToCheck.includes(k));
                         if (!isPL) return;
+                        if (article.link && seenLinks.has(article.link)) return;
+                        if (article.link) seenLinks.add(article.link);
                         items.push({
                             cat: 'external',
                             text: `${article.title} — ${feed.source}`,

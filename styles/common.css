@@ -39,12 +39,30 @@
     --position-mid: #2563EB;
     --position-fwd: #DC2626;
 
-    /* FDR scale */
-    --fdr-1: #10B981;
-    --fdr-2: #6EE7B7;
-    --fdr-3: #9CA3AF;
+    /* ===== FDR scale — one ramp for the whole site =====
+       These are the five steps the squad table uses, and they are now the only
+       definition of them. There were three sets: this one, a lighter one that
+       styles/teams.css redefined at :root for every Teams page, and the
+       .v2-fdr-* rules that the squad table and the pitches actually draw. So
+       the same fixture was a different colour depending on which page you
+       happened to be reading it on, which is the one thing a difficulty scale
+       cannot afford.
+
+       The ramp moves in lightness as well as hue, so it survives being printed
+       in black and white, and the two ends — the ones that change a decision —
+       are the two darkest chips in any row. Each step carries the ink that is
+       legible on it: white text on the light green step is not, and several
+       consumers were hard-coding #fff over all five. */
+    --fdr-1: #15803D;
+    --fdr-2: #86EFAC;
+    --fdr-3: #E5E7EB;
     --fdr-4: #F97316;
-    --fdr-5: #EF4444;
+    --fdr-5: #B91C1C;
+    --fdr-1-ink: #FFFFFF;
+    --fdr-2-ink: #0B2E13;
+    --fdr-3-ink: #4B5563;
+    --fdr-4-ink: #FFFFFF;
+    --fdr-5-ink: #FFFFFF;
 
     /* Verdict colors */
     --verdict-sell: #EF4444;
@@ -334,6 +352,23 @@ body {
 
 .input-mono {
     font-family: var(--font-mono);
+}
+
+/* ===== PAGE HEADING ROW =====
+   The strip that carries a page's <h1>. It lived in styles/my-team.css, which
+   the Teams and Rivals pages do not load — so on those the class matched
+   nothing and the heading sat flush against the content underneath it, while
+   My Team had 16px and the dashboard 24px. Three pages, three rhythms, from one
+   class name that only two of them could see.
+
+   24px, which is what the dashboard uses and is the one to copy. */
+.header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
 }
 
 .input-group {
@@ -973,26 +1008,32 @@ body {
 }
 
 /* ===== FDR BADGE COLORS ===== */
-.fdr-1 { background: var(--fdr-1); color: #fff; }
-.fdr-2 { background: var(--fdr-2); color: #065F46; }
-.fdr-3 { background: var(--fdr-3); color: #fff; }
-.fdr-4 { background: var(--fdr-4); color: #fff; }
-.fdr-5 { background: var(--fdr-5); color: #fff; }
+.fdr-1 { background: var(--fdr-1); color: var(--fdr-1-ink); }
+.fdr-2 { background: var(--fdr-2); color: var(--fdr-2-ink); }
+.fdr-3 { background: var(--fdr-3); color: var(--fdr-3-ink); }
+.fdr-4 { background: var(--fdr-4); color: var(--fdr-4-ink); }
+.fdr-5 { background: var(--fdr-5); color: var(--fdr-5-ink); }
 
 /* ===== POSITION BADGES ===== */
 .pos-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-.pos-badge.gk { background: rgba(252, 211, 77, 0.2); color: #FCD34D; }
-.pos-badge.def { background: rgba(52, 211, 153, 0.2); color: #34D399; }
-.pos-badge.mid { background: rgba(96, 165, 250, 0.2); color: #60A5FA; }
-.pos-badge.fwd { background: rgba(248, 113, 113, 0.2); color: #F87171; }
+/* The four position colours, from the tokens above rather than a second set of
+   literals — these were the old Teams palette, so a GK badge here was amber on
+   one page and yellow on another. */
+.pos-badge.gk { background: color-mix(in srgb, var(--position-gk) 14%, transparent); color: var(--position-gk); }
+.pos-badge.def { background: color-mix(in srgb, var(--position-def) 14%, transparent); color: var(--position-def); }
+.pos-badge.mid { background: color-mix(in srgb, var(--position-mid) 14%, transparent); color: var(--position-mid); }
+.pos-badge.fwd { background: color-mix(in srgb, var(--position-fwd) 14%, transparent); color: var(--position-fwd); }
 
 /* ===== FIXTURE CHIPS ===== */
 .fixture-chip { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-.fixture-chip.fdr-1 { background: rgba(74, 222, 128, 0.2); color: var(--fdr-1); }
-.fixture-chip.fdr-2 { background: rgba(134, 239, 172, 0.2); color: var(--fdr-2); }
-.fixture-chip.fdr-3 { background: rgba(156, 163, 175, 0.15); color: var(--fdr-3); }
-.fixture-chip.fdr-4 { background: rgba(251, 146, 60, 0.2); color: var(--fdr-4); }
-.fixture-chip.fdr-5 { background: rgba(239, 68, 68, 0.2); color: var(--fdr-5); }
+/* Solid, like the squad table's chips, rather than a 20% wash of a colour that
+   the wash then also had to supply the text in. A tinted chip and a solid one
+   for the same difficulty were the most visible half of the disagreement. */
+.fixture-chip.fdr-1 { background: var(--fdr-1); color: var(--fdr-1-ink); }
+.fixture-chip.fdr-2 { background: var(--fdr-2); color: var(--fdr-2-ink); }
+.fixture-chip.fdr-3 { background: var(--fdr-3); color: var(--fdr-3-ink); }
+.fixture-chip.fdr-4 { background: var(--fdr-4); color: var(--fdr-4-ink); }
+.fixture-chip.fdr-5 { background: var(--fdr-5); color: var(--fdr-5-ink); }
 
 /* ===== UTILITIES ===== */
 .hidden {

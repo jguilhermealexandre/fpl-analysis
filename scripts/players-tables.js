@@ -297,10 +297,10 @@ function createTable(position, analyses) {
             <div class="compact-toolbar-row">
                 <div class="position-filter-pills">
                     <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'ALL' ? 'active' : ''}" onclick="setPositionFilter('ALL')">All</button>
-                    <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'GK' ? 'active' : ''}" onclick="setPositionFilter('GK')">GK</button>
-                    <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'DEF' ? 'active' : ''}" onclick="setPositionFilter('DEF')">DEF</button>
-                    <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'MID' ? 'active' : ''}" onclick="setPositionFilter('MID')">MID</button>
-                    <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'FWD' ? 'active' : ''}" onclick="setPositionFilter('FWD')">FWD</button>
+                    <button class="pos-filter-pill pos-gk ${tableState.ALL.positionFilter === 'GK' ? 'active' : ''}" onclick="setPositionFilter('GK')">GK</button>
+                    <button class="pos-filter-pill pos-def ${tableState.ALL.positionFilter === 'DEF' ? 'active' : ''}" onclick="setPositionFilter('DEF')">DEF</button>
+                    <button class="pos-filter-pill pos-mid ${tableState.ALL.positionFilter === 'MID' ? 'active' : ''}" onclick="setPositionFilter('MID')">MID</button>
+                    <button class="pos-filter-pill pos-fwd ${tableState.ALL.positionFilter === 'FWD' ? 'active' : ''}" onclick="setPositionFilter('FWD')">FWD</button>
                 </div>
                 <div class="compact-divider"></div>
                 <div class="search-box compact-search">
