@@ -147,7 +147,6 @@
                         <i data-lucide="wand-2"></i>
                     </button>
                 </div>
-                ${snapshotOptimizeSummary ? `<div class="sq-optimize-summary">✨ ${snapshotOptimizeSummary}</div>` : ''}
                     <div class="pitch-grass">
                         <div class="pitch-markings" aria-hidden="true">
                             <span class="pm-halfway"></span>
@@ -332,14 +331,12 @@
                     <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make ${escHTML(p.name)} vice-captain">Set V</button>
                 </div>
                 <div class="pcard-flags">${injuryBadge(p)}${marketBadge(p)}</div>
-                ${typeof v2IdentityHTML === 'function'
-                    ? v2IdentityHTML(p, 'v2-pid-portrait',
-                        `<span class="v2-pid-num ${gw.cls}">${escHTML(gw.value)}<span class="u">${escHTML(gw.unit)}</span></span>`)
-                    : ''}
+                ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p, 'v2-pid-pitch') : ''}
                 <div class="pcard-name">${escHTML(p.name)}</div>
-                <div class="pcard-foot">
-                    ${fixtureTag}
-                    ${gw.note ? `<span class="pcard-when ${gw.cls}">${escHTML(gw.note)}</span>` : ''}
+                ${fixtureTag}
+                <div class="pcard-score ${gw.cls}">
+                    <b>${escHTML(gw.value)}</b><span class="pcard-score-u">${escHTML(gw.unit)}</span>
+                    <span class="pcard-when">${escHTML(gw.note || '')}</span>
                 </div>
             </div>`;
         }
@@ -770,6 +767,9 @@
             };
 
             snapshotOptimizeSummary = buildOptimizeSummary(snapshotOptimizeReport);
+            if (snapshotOptimizeSummary && typeof sqToast === 'function') {
+                sqToast(`${v2Icon ? v2Icon('sparkle') : ''}${snapshotOptimizeSummary}`);
+            }
 
             // Auto-Optimize applies a lineup rather than previewing one, so push it
             // back onto the squad itself and re-render. Without this the insight
@@ -817,7 +817,7 @@
             }
 
             return `<span class="opt-summary-text">${headline}. ${bits.join(' ')}</span>
-                <button class="opt-report-btn" onclick="${openCall || 'openOptimizeReport()'}">📊 View Full Report</button>`;
+                <button class="opt-report-btn" onclick="${openCall || 'openOptimizeReport()'}">${typeof v2Icon === 'function' ? v2Icon('report') : ''}View full report</button>`;
         }
 
         // ===== OPTIMIZATION REPORT MODAL =====

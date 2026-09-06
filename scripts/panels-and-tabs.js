@@ -1564,6 +1564,12 @@
                 </div>
             </div>`;
 
+            /* Price Watch rides with the summary rather than sitting below the
+               stat columns. It is the third short thing this card has to say —
+               what the model thinks, what it concludes, and whether the price is
+               about to move — and the three of them fit on one row. */
+            html += renderPriceWatchSection(player);
+
             html += `<div class="detail-section" data-accent="stats">
                 <div class="detail-section-title">\ud83d\udcca Key Statistics <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div class="detail-stats-grid">
@@ -1595,7 +1601,6 @@
             </div>`;
 
             html += renderRoutesToPoints(player);
-            html += renderPriceWatchSection(player);
 
             if (concerns.length > 0) {
                 html += `<div class="detail-section" data-accent="concerns">

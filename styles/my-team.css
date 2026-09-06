@@ -1214,6 +1214,43 @@ body.v2-blurred .main-content {
 .sq-snapshot-score strong { color: var(--text-primary); font-size: 15px; }
 .sq-optimize-summary { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-myteam); background: var(--color-myteam-muted, rgba(99,102,241,0.08)); border: 1px solid var(--color-myteam); border-radius: var(--radius-md); padding: 8px 12px; }
 
+/* ===== The transient message =====
+   Bottom centre, over the page, out of the way of the pitch it is talking
+   about. Green, because everything it reports is something that went right —
+   it used to be a permanent bar in --color-myteam, which is rose. */
+.sq-toast {
+    position: fixed;
+    left: 50%; bottom: 26px;
+    transform: translate(-50%, 12px);
+    z-index: 300;
+    display: flex; align-items: center; gap: 10px;
+    max-width: min(560px, calc(100vw - 32px));
+    padding: 11px 12px 11px 15px;
+    border-radius: 999px;
+    background: var(--surface-1);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+    box-shadow: 0 10px 30px rgba(16, 24, 40, .18);
+    font-size: 12.5px; line-height: 1.45; color: var(--text-primary);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 200ms ease, transform 240ms cubic-bezier(.22,1,.36,1), visibility 0s linear 240ms;
+}
+.sq-toast.show {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transform: translate(-50%, 0);
+    transition: opacity 200ms ease, transform 240ms cubic-bezier(.22,1,.36,1), visibility 0s;
+}
+.sq-toast.tone-good { border-color: color-mix(in srgb, var(--color-primary) 45%, transparent); }
+.sq-toast-body { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sq-toast .v2-sec-icon { width: 16px; height: 16px; color: var(--color-primary); flex-shrink: 0; }
+.sq-toast-x {
+    flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+    border: none; background: transparent; color: var(--text-muted);
+    font-size: 17px; line-height: 1; cursor: pointer;
+}
+.sq-toast-x:hover { background: var(--surface-2); color: var(--text-primary); }
+.sq-toast .opt-report-btn { flex-shrink: 0; }
+@media (prefers-reduced-motion: reduce) { .sq-toast { transition: opacity 200ms ease, visibility 0s; } }
+
 .snapshot-player { position: relative; padding-top: 20px; }
 .snapshot-cv-toggles { position: absolute; top: -2px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; z-index: 3; }
 .cv-toggle { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.4); color: rgba(255,255,255,0.6); font-size: 8px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
@@ -1943,11 +1980,9 @@ body.v2-blurred .main-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    /* Wider than it was, because the fixture and the points now share a line
-       and both have to fit on it before it wraps. */
-    width: 96px;
-    padding: 13px 7px 8px;
+    gap: 3px;
+    width: 118px;
+    padding: 14px 8px 9px;
     border-radius: var(--radius-md);
     background: rgba(255,255,255,0.94);
     border: 2px solid transparent;
@@ -1971,14 +2006,11 @@ body.v2-blurred .main-content {
 
 .pcard-cv { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; z-index: 3; }
 
-/* The face is the card.
-   It used to be a 30px disc sharing a row with a 20px club badge, so the two
-   marks together were narrower than the player's name underneath them and the
-   photo — the one thing on the card you can recognise without reading — was
-   the smallest thing on it. The shared portrait form (v2-pid-portrait in
-   v2-design.css) makes it 46px and hangs the crest off its lower corner, and
-   the fixture and the points move onto one line to pay for the height. */
-.pcard .v2-pid-portrait { margin-bottom: 1px; }
+/* Face and badge side by side, and the number on its own line under them.
+   The card is wider and everything on it is bigger: at 96px the name had to
+   ellipse on half the squad and the score was 11px sitting half over a photo,
+   which is the wrong thing to have made small on a pitch. */
+.pcard .v2-pid-pitch { margin-bottom: 2px; }
 
 /* Availability and price movement move to the opposite corner from the
    armband. They were stacked on the crest, which is now a 21px disc. */
@@ -1986,28 +2018,39 @@ body.v2-blurred .main-content {
     position: absolute; top: 3px; left: 3px; z-index: 3;
     display: flex; align-items: center; gap: 2px;
 }
-.pcard-name { font-size: 11px; font-weight: 600; color: #17301F; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* One line under the name: who they play, and when — or FT/LIVE once it has
-   started. Wraps rather than squeezing on a narrow pitch. */
-.pcard-foot {
-    display: flex; align-items: center; justify-content: center;
-    gap: 3px; flex-wrap: wrap; max-width: 100%;
-}
-.pcard-fixture { font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.pcard-name { font-size: 12.5px; font-weight: 700; color: #17301F; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pcard-fixture { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
 .pcard-fixture em { font-style: normal; opacity: 0.75; }
-/* The state the pill's colour is showing, said in words as well. A live score
-   and a projection are different claims and red-green alone cannot carry that. */
-.pcard-when {
-    font-size: 8.5px; font-weight: 700; letter-spacing: .02em;
-    color: rgba(15,23,42,0.5); white-space: nowrap;
+
+/* ===== The number =====
+   Its own line, in the card's own ink rather than a colour. Green on white was
+   doing two jobs at once — saying "this is the score" and being the only green
+   on a white card — and it read as a status rather than a figure. The state it
+   is in (a projection, a live total, a final one) is said in the small label
+   beside it, which is where a state belongs.
+
+   Fixed height on purpose. The three states put different strings here — "8.7
+   xP GW4" against "9 pts FT" — and with the row free to size itself the cards
+   changed height when you switched between the gameweek's points and the
+   projection, so the whole pitch shifted under you. */
+.pcard-score {
+    display: flex; align-items: baseline; justify-content: center; gap: 3px;
+    min-height: 20px;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    white-space: nowrap;
 }
-.pcard-when.live { color: var(--color-error); }
-.pcard-when.final { color: var(--color-success); }
-/* The score pill on the portrait's corner, coloured by the same three states.
-   Specific enough to beat .v2-pid-num's own colour. */
-.pcard .v2-pid-num.xp { color: #4B5563; }
-.pcard .v2-pid-num.live { color: var(--color-error); }
-.pcard .v2-pid-num.final { color: var(--color-success); }
+.pcard-score b { font-size: 16px; font-weight: 800; line-height: 1.1; }
+.pcard-score-u { font-size: 9.5px; font-weight: 700; color: var(--text-muted); }
+.pcard-when {
+    font-family: var(--font-body);
+    font-size: 8.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+/* Only the two live states take a colour, and only on the label — the figure
+   itself stays black so it reads as a number in every mode. */
+.pcard-score.live .pcard-when { color: var(--color-error); }
+.pcard-score.final .pcard-when { color: var(--color-success); }
 
 /* Swap affordances — valid destinations glow green, invalid ones dim out. */
 .pcard.swap-selected { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-muted), 0 6px 14px rgba(0,0,0,0.22); }
@@ -2015,11 +2058,10 @@ body.v2-blurred .main-content {
 .pcard.swap-blocked { opacity: 0.35; cursor: not-allowed; }
 
 @media (max-width: 900px) {
-    /* Narrow enough that the fixture and the points cannot share a line, so
-       .pcard-foot wraps and the portrait comes down a little to pay for it. */
-    .pcard { width: 74px; padding-top: 14px; }
-    .pcard .v2-pid-portrait { --v2-pid-face: 38px; --v2-pid-crest: 18px; }
-    .pcard-name { font-size: 10px; }
+    .pcard { width: 90px; padding-top: 13px; }
+    .pcard .v2-pid-pitch { --v2-pid-face: 30px; --v2-pid-crest: 19px; gap: 4px; }
+    .pcard-name { font-size: 11px; }
+    .pcard-score b { font-size: 14px; }
     .pm-circle { width: 72px; height: 72px; }
 }
 
@@ -3998,6 +4040,18 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .mgr-chip.used { color: var(--text-muted); background: transparent; opacity: .5; text-decoration: line-through; }
 .mgr-chip.active { color: var(--verdict-star); border-color: var(--verdict-star); background: color-mix(in srgb, var(--verdict-star) 12%, transparent); text-decoration: none; opacity: 1; }
 .mgr-chips-count { font-weight: 700; color: var(--text-muted); cursor: help; }
+/* The line icons that replaced the emoji in this panel. An emoji is a picture
+   from a different set on every platform and at a size nothing else here uses;
+   these are the same stroke and weight as the section marks. */
+.mgr-label .v2-sec-icon,
+.mgr-chips-head .v2-sec-icon,
+.mgr-progress-head .v2-sec-icon {
+    width: 14px; height: 14px; margin-right: 7px;
+    vertical-align: -2px; color: var(--text-muted);
+}
+.gwr-open .v2-sec-icon { width: 15px; height: 15px; margin-right: 7px; vertical-align: -3px; }
+.mgr-chip .v2-sec-icon { width: 12px; height: 12px; margin-right: 5px; vertical-align: -2px; }
+.opt-report-btn .v2-sec-icon { width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; }
 
 .mgr-progress { padding: 11px 18px 14px; border-top: 1px solid var(--border-subtle); }
 .mgr-progress-head { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
@@ -6628,18 +6682,26 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    verdict — the two halves of the same summary — as two stacked bands, and
    then left Routes to Points alone on a row of its own under a pair of stat
    cards that had nothing to do with it. */
+/* Twelve columns, so the two bands at the top can be laid out explicitly.
+
+   Band one is what the card concludes — the report, the verdict and whether the
+   price is about to move — on one row. Band two is the three readings, in three
+   equal columns, with the positives and concerns stacked under the third rather
+   than starting a row of their own; that is what makes the top of the card read
+   as one tidy block instead of a stack of half-width cards with ragged gaps
+   between them. Everything below it stays full width. */
 .pdm-body {
     overflow-y: auto;
     padding: 18px 22px 24px;
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 14px;
     align-items: start;
     align-content: start;
 }
-.pdm-body .detail-section { grid-column: span 3; }
-.pdm-body .detail-section[data-span="2"] { grid-column: span 2; }
-.pdm-body .detail-section[data-span="4"] { grid-column: span 4; }
+.pdm-body .detail-section { grid-column: span 6; }
+.pdm-body .detail-section[data-span="2"] { grid-column: span 4; }
+.pdm-body .detail-section[data-span="4"] { grid-column: span 8; }
 .pdm-body .pd-group { display: contents; }
 .pdm-body .pd-group-title {
     grid-column: 1 / -1;
@@ -6693,8 +6755,9 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* ===== The summary row: what it says, and what it concludes =====
    The report is the argument and the verdict is the answer to it, so they sit
    as a pair rather than one under the other. */
-.pdm-body .pd-report { grid-column: span 4; }
-.pdm-body .pd-verdict { grid-column: span 2; }
+.pdm-body .pd-report { grid-column: 1 / 6; }
+.pdm-body .pd-verdict { grid-column: 6 / 10; }
+.pdm-body .detail-section[data-accent="price"] { grid-column: 10 / 13; }
 .pdm-body .pd-report-text { font-size: 13px; line-height: 1.62; color: var(--text-secondary); }
 
 /* The verdict as a conclusion rather than a row of controls: the rating first
@@ -6731,10 +6794,23 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* ===== The three stat columns =====
    Key Statistics, Season Numbers and Routes to Points are three readings of
    the same player and belong on one row. At a third of a 1080px modal each
-   column is still ~330px, so nothing has to shrink to fit. */
-.pdm-body .detail-section[data-accent="stats"],
-.pdm-body .detail-section[data-accent="season"],
-.pdm-body .detail-section[data-accent="routes"] { grid-column: span 2; }
+   column is still ~330px, so nothing has to shrink to fit.
+
+   The first two stretch to the row's height rather than sitting at their own,
+   so the band has a flat bottom edge; Season Numbers was the short one and left
+   a gap under it the width of a third of the card. */
+.pdm-body .detail-section[data-accent="stats"] { grid-column: 1 / 5; align-self: stretch; }
+.pdm-body .detail-section[data-accent="season"] { grid-column: 5 / 9; align-self: stretch; }
+.pdm-body .detail-section[data-accent="routes"] { grid-column: 9 / 13; }
+/* Under Routes, in the same column, rather than starting a new full-width row. */
+.pdm-body .detail-section[data-accent="positives"],
+.pdm-body .detail-section[data-accent="concerns"] { grid-column: 9 / 13; }
+
+/* Season Numbers fills the height it is given: the boxes grow rather than the
+   card carrying dead space under them. */
+.pdm-body .detail-section[data-accent="season"] { display: flex; flex-direction: column; }
+.pdm-body .detail-section[data-accent="season"] .pdm-metrics { flex: 1; grid-auto-rows: 1fr; }
+.pdm-body .metric-box { display: flex; flex-direction: column; justify-content: center; }
 .pdm-body .detail-section[data-accent="season"] .pdm-metrics {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px;
 }
@@ -6753,12 +6829,16 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .pdm-body .rtp-total { font-size: 30px; }
 
 @media (max-width: 1000px) {
-    .pdm-body .pd-report, .pdm-body .pd-verdict { grid-column: 1 / -1; }
+    .pdm-body .pd-report,
+    .pdm-body .pd-verdict,
+    .pdm-body .detail-section[data-accent="price"] { grid-column: 1 / -1; }
     .pdm-body .detail-section,
     .pdm-body .detail-section[data-span="2"],
     .pdm-body .detail-section[data-accent="stats"],
     .pdm-body .detail-section[data-accent="season"],
-    .pdm-body .detail-section[data-accent="routes"] { grid-column: span 3; }
+    .pdm-body .detail-section[data-accent="routes"],
+    .pdm-body .detail-section[data-accent="positives"],
+    .pdm-body .detail-section[data-accent="concerns"] { grid-column: span 6; align-self: start; }
 }
 
 @media (max-width: 860px) {
@@ -6769,7 +6849,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     .pdm-body .pd-report, .pdm-body .pd-verdict,
     .pdm-body .detail-section[data-accent="stats"],
     .pdm-body .detail-section[data-accent="season"],
-    .pdm-body .detail-section[data-accent="routes"] { grid-column: 1 / -1; }
+    .pdm-body .detail-section[data-accent="routes"],
+    .pdm-body .detail-section[data-accent="positives"],
+    .pdm-body .detail-section[data-accent="concerns"],
+    .pdm-body .detail-section[data-accent="price"] { grid-column: 1 / -1; align-self: start; }
     .pdm-hero { grid-template-columns: auto minmax(0, 1fr); min-height: 148px; padding: 0 18px; }
     .pdm-hero-photo { height: 148px; width: 120px; }
     .pdm-hero-face { height: 148px; }

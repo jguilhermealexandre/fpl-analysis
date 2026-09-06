@@ -117,6 +117,46 @@
             status.className = 'status ' + type;
         }
 
+        /* ===== A message that goes away =====
+
+           Auto-optimise reported itself as a permanent bar above the pitch, in
+           --color-myteam, which is rose — so the one control on this page that
+           only ever improves your XI announced itself in the colour everything
+           else uses for a problem, and then stayed there until the next render.
+
+           A toast instead: it appears, it can be read, it leaves. It holds
+           while the pointer is on it, because the optimise message carries a
+           link through to the full report and a message you have to race is
+           worse than no message. */
+        let sqToastTimer = null;
+
+        function sqToast(html, tone = 'good', ms = 9000) {
+            let el = document.getElementById('sqToast');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'sqToast';
+                el.className = 'sq-toast';
+                el.addEventListener('mouseenter', () => clearTimeout(sqToastTimer));
+                el.addEventListener('mouseleave', () => { sqToastTimer = setTimeout(sqToastHide, 2500); });
+                document.body.appendChild(el);
+            }
+            el.className = `sq-toast tone-${tone}`;
+            el.innerHTML = `<span class="sq-toast-body">${html}</span>`
+                + `<button class="sq-toast-x" onclick="sqToastHide()" aria-label="Dismiss">&times;</button>`;
+            // Two frames: the element has to exist un-shown before the class
+            // that animates it lands, or there is no state to move from.
+            requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            clearTimeout(sqToastTimer);
+            sqToastTimer = setTimeout(sqToastHide, ms);
+        }
+
+        function sqToastHide() {
+            clearTimeout(sqToastTimer);
+            const el = document.getElementById('sqToast');
+            if (el) el.classList.remove('show');
+        }
+
         function showLoading(show, text) {
             document.getElementById('loadingOverlay').classList.toggle('show', show);
             if (text) document.getElementById('loadingText').textContent = text;
@@ -1767,7 +1807,7 @@
                         ${renderSuggestedMoves(suggestedMoves || [])}
                     </div>
                     ${reviewGW
-                        ? `<button class="gwr-open" onclick="openGameweekReview()" data-tooltip="How your squad actually did in GW${reviewGW} — the armband, the bench, who delivered, and how it compares with the field.">📊 Review Gameweek ${reviewGW}</button>`
+                        ? `<button class="gwr-open" onclick="openGameweekReview()" data-tooltip="How your squad actually did in GW${reviewGW} — the armband, the bench, who delivered, and how it compares with the field.">${v2Icon('report')}Review Gameweek ${reviewGW}</button>`
                         : ''}
                 </div>
             </div>`;
@@ -1799,7 +1839,16 @@
         // Every figure the panel shows is derived here so the render stays dumb and
         // each derivation can be checked on its own.
         const CHIP_LABELS = { wildcard: 'Wildcard', freehit: 'Free Hit', bboost: 'Bench Boost', '3xc': 'Triple Captain' };
-        const CHIP_ICONS  = { wildcard: '🃏', freehit: '🎲', bboost: '🪑', '3xc': '👑' };
+        /* One line mark per chip, in the same stroke as every other icon in this
+           panel. They were emoji — a playing card, a die, a chair and a crown —
+           which is four pictures from a set the rest of the page does not use,
+           drawn differently on every platform.
+
+           Names, not markup. This file is loaded before scripts/common.js, so
+           calling v2Icon() while this object is being built runs before the
+           function exists — it is resolved at render time instead. */
+        const CHIP_ICON_NAMES = { wildcard: 'chip', freehit: 'refresh', bboost: 'boost', '3xc': 'crown' };
+        const chipIcon = name => (typeof v2Icon === 'function' ? v2Icon(CHIP_ICON_NAMES[name] || 'chip') : '');
 
         // FPL never exposes how many free transfers you hold, so it has to be
         // replayed from the transfer history: +1 per gameweek, capped, minus the
@@ -1830,7 +1879,7 @@
                 if (seen[def.name]) return;
                 seen[def.name] = true;
                 const spent = used.some(u => u.name === def.name && u.event >= def.start_event && u.event <= def.stop_event);
-                out.push({ name: def.name, label: CHIP_LABELS[def.name] || def.name, icon: CHIP_ICONS[def.name] || '🎫', available: !spent });
+                out.push({ name: def.name, label: CHIP_LABELS[def.name] || def.name, icon: chipIcon(def.name), available: !spent });
             });
             return out;
         }
@@ -1986,12 +2035,12 @@
                 </div>
 
                 <div class="mgr-row mgr-money">
-                    <span class="mgr-label">💰 Squad · Bank</span>
+                    <span class="mgr-label">${v2Icon('wallet')}Squad · Bank</span>
                     <span class="mgr-value">£${d.squadValue.toFixed(1)}m <span class="mgr-sep">·</span> £${d.bank.toFixed(1)}m</span>
                 </div>
 
                 <div class="mgr-row">
-                    <span class="mgr-label">🎟️ Free transfers${d.freeTransfersExact ? '' : '<span class="mgr-est" title="Estimated: FPL does not publish your free-transfer count, so it is replayed from your transfer history.">est</span>'}</span>
+                    <span class="mgr-label">${v2Icon('ticket')}Free transfers${d.freeTransfersExact ? '' : '<span class="mgr-est" title="Estimated: FPL does not publish your free-transfer count, so it is replayed from your transfer history.">est</span>'}</span>
                     <span class="mgr-value">${d.freeTransfers}<span class="mgr-sub">${escHTML(ftNote)}</span></span>
                 </div>
 
@@ -2000,7 +2049,7 @@
                          line of its own underneath: "4 of 4 still available" was
                          a whole row to say a number the chips beside it already
                          spell out one by one. -->
-                    <div class="mgr-chips-head">🃏 ${activeLabel ? `Active: <strong>${escHTML(activeLabel)}</strong>` : 'No chip active'}${d.chips.length ? ` <span class="mgr-chips-count" title="${chipsAvail.length} of ${d.chips.length} chips still available">(${chipsAvail.length}/${d.chips.length})</span>` : ''}</div>
+                    <div class="mgr-chips-head">${v2Icon('chip')}${activeLabel ? `Active: <strong>${escHTML(activeLabel)}</strong>` : 'No chip active'}${d.chips.length ? ` <span class="mgr-chips-count" title="${chipsAvail.length} of ${d.chips.length} chips still available">(${chipsAvail.length}/${d.chips.length})</span>` : ''}</div>
                     <div class="mgr-chips-list">
                         ${d.chips.length ? d.chips.map(ch => `<span class="mgr-chip ${ch.available ? 'avail' : 'used'} ${d.activeChip === ch.name ? 'active' : ''}"
                             title="${escHTML(ch.label)} — ${d.activeChip === ch.name ? 'active this gameweek' : ch.available ? 'available' : 'already used'}">
@@ -2011,7 +2060,7 @@
 
                 ${p.total ? `<div class="mgr-progress">
                     <div class="mgr-progress-head">
-                        <span>⏱️ ${p.played}/${p.total} played</span>
+                        <span>${v2Icon('progress')}${p.played}/${p.total} played</span>
                         <span class="mgr-progress-right">${p.live ? `<span class="mgr-livedot">${p.live} live</span> · ` : ''}${p.toPlay} to play${p.blank ? ` · ${p.blank} blank` : ''}</span>
                     </div>
                     <div class="mgr-progress-bar"><div class="mgr-progress-fill" style="width:${progressPct}%"></div></div>

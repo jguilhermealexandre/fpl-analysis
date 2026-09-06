@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=159">
-    <link rel="stylesheet" href="styles/v2-design.css?v=159">
+    <link rel="stylesheet" href="styles/common.css?v=160">
+    <link rel="stylesheet" href="styles/v2-design.css?v=160">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1396,7 +1396,7 @@
 
         /* --- per-player detail --- */
         .v2-pitch-token-opp {
-            font-size: 9px; font-weight: 600; color: rgba(15,23,42,0.72);
+            font-size: 10px; font-weight: 700; color: rgba(15,23,42,0.72);
             line-height: 1.3; letter-spacing: -0.1px;
             background: rgba(15,23,42,0.06); border-radius: 4px; padding: 1px 5px;
         }
@@ -1484,9 +1484,9 @@
             flex-direction: column;
             align-items: center;
             gap: 2px;
-            width: 17%;
-            max-width: 92px;
-            padding: 9px 6px 7px;
+            width: 19%;
+            max-width: 112px;
+            padding: 10px 7px 8px;
             border-radius: var(--radius-md);
             background: rgba(255,255,255,0.94);
             border: 2px solid transparent;
@@ -1494,16 +1494,23 @@
         }
         /* The identity mark is v2IdentityHTML's portrait form (v2-design.css);
            only its size and the verdict ring are set here. */
-        /* A share of the card rather than a fixed size: the cards are 17% of the
-           pitch, so on a tablet they come down to ~64px and a 44px head on one
-           of those is nearly the whole card. */
-        .v2-pitch-token .v2-pid-portrait { --v2-pid-face: 58%; --v2-pid-crest: 19px; margin-bottom: 2px; }
+        .v2-pitch-token .v2-pid-pitch { --v2-pid-face: 34px; --v2-pid-crest: 22px; gap: 5px; margin-bottom: 2px; }
+        /* The projection, on its own line and in the card's own ink. It was a
+           pill on the corner of the photo at 10px — the smallest type on a card
+           whose whole job is to show that number. */
+        .v2-pitch-token-score {
+            display: flex; align-items: baseline; justify-content: center; gap: 3px;
+            font-family: var(--font-mono); color: #0F172A; line-height: 1.15;
+        }
+        .v2-pitch-token-score b { font-size: 16px; font-weight: 800; }
+        .v2-pitch-token-score .u { font-size: 9.5px; font-weight: 700; color: rgba(15,23,42,0.55); }
+        .v2-pitch-token-score b.pos { font-size: 12px; color: rgba(15,23,42,0.6); }
         /* A sell or a monitor verdict rings the face. This class was being
            written onto the markup with no rule anywhere to match it, so the
            ring the card claimed to carry has never once been drawn — the glyph
            beside the name was doing the work alone. */
-        .v2-pitch-token.verdict-ring-sell .v2-pid-avatar { box-shadow: 0 0 0 2px #DC2626, 0 2px 5px rgba(0,0,0,0.18); }
-        .v2-pitch-token.verdict-ring-monitor .v2-pid-avatar { box-shadow: 0 0 0 2px #D97706, 0 2px 5px rgba(0,0,0,0.18); }
+        .v2-pitch-token.verdict-ring-sell .v2-pid-avatar { box-shadow: 0 0 0 2px #DC2626, 0 1px 4px rgba(0,0,0,0.16); }
+        .v2-pitch-token.verdict-ring-monitor .v2-pid-avatar { box-shadow: 0 0 0 2px #D97706, 0 1px 4px rgba(0,0,0,0.16); }
         /* Availability and verdict sit in the corner opposite the armband. */
         .v2-pitch-token-flags {
             position: absolute; top: 2px; left: 3px; z-index: 3;
@@ -1534,8 +1541,8 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.18);
         }
         .v2-pitch-token-name {
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 12.5px;
+            font-weight: 700;
             color: #17301F;
             text-shadow: none;
             white-space: nowrap;
@@ -1570,7 +1577,7 @@
         .v2-pitch-bench-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; align-self: center; flex-shrink: 0; margin-right: 2px; }
         /* The bench is a strip of reserves, not a lineup, so its faces stay
            smaller than the ones on the grass. */
-        .v2-pitch-bench .v2-pid-portrait { --v2-pid-face: 34px; --v2-pid-crest: 16px; }
+        .v2-pitch-bench .v2-pid-pitch { --v2-pid-face: 26px; --v2-pid-crest: 17px; gap: 4px; }
         .v2-pitch-bench .v2-pitch-token {
             flex-shrink: 0; width: auto; min-width: 74px; padding: 7px 8px 6px;
             background: var(--surface-1);
@@ -1646,6 +1653,38 @@
         .v2-league-prompt-dismiss .icon { width: 14px; height: 14px; }
 
         /* --- Unified top row: Squad Snapshot (left) + info panel (right) --- */
+        /* ===== From the Scout's Desk ===== */
+        .v2-desk { margin-top: 24px; text-align: left; }
+        .v2-desk-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+        .v2-desk-all {
+            margin-left: auto; font-size: 11.5px; font-weight: 600;
+            color: var(--color-primary-text); text-decoration: none; white-space: nowrap;
+        }
+        .v2-desk-all:hover { text-decoration: underline; }
+        .v2-desk-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
+        }
+        .v2-desk-card {
+            display: flex; flex-direction: column; gap: 5px;
+            padding: 15px 17px;
+            border: 1px solid var(--border-default); border-radius: 14px;
+            background: var(--surface-1);
+            text-decoration: none;
+            transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+        }
+        .v2-desk-card:hover {
+            border-color: var(--color-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(16, 24, 40, .08);
+        }
+        .v2-desk-kicker {
+            font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--color-primary-text);
+        }
+        .v2-desk-title { font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
+        .v2-desk-dek { font-size: 12px; line-height: 1.55; color: var(--text-secondary); }
+        .v2-desk-meta { margin-top: 3px; font-size: 10.5px; color: var(--text-muted); }
+
         /* ===== Reserved space for the top row =====
            #v2PitchWrap, #v2DeadlineHero and #v2StatusStack ship as empty divs
            and are filled by JS once the manager's picks and the projection
@@ -1783,18 +1822,11 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 12px;
         }
-        /* At the top of the page the row is a header strip, not a section: no
-           heading of its own, and shallow enough that it does not push the
-           pitch and the deadline below the fold on a laptop. */
-        .v2-qa-top { margin-bottom: 16px; }
-        .v2-qa-top .v2-qa-card { padding: 10px 13px; }
-        .v2-qa-top .v2-qa-icon { width: 30px; height: 30px; }
-        .v2-qa-top .v2-qa-icon .icon { width: 15px; height: 15px; }
-        .v2-qa-top .v2-qa-desc { font-size: 10.5px; }
+        /* At the foot of the page, under everything it is a shortcut out of. */
+        .v2-qa-foot { margin: 24px 0 20px; }
+        .v2-qa-foot .v2-qa-card { padding: 13px 15px; }
         @media (max-width: 767px) {
-            .v2-qa-top .v2-qa-cards { grid-template-columns: 1fr 1fr; }
-            .v2-qa-top .v2-qa-desc, .v2-qa-top .v2-qa-arrow { display: none; }
-            .v2-qa-top .v2-qa-card:last-child { grid-column: 1 / -1; }
+            .v2-qa-foot .v2-qa-cards { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 900px) {
@@ -3862,30 +3894,6 @@
                     <!-- What happened while you were away (scripts/notifications.js) -->
                     <div class="nt-centre" id="ntCentre"></div>
                 </div>
-                <!-- Quick Actions. At the top, directly under the greeting:
-                     they are the three things a manager comes here to do, and
-                     at the foot of the page they were below a pitch, a matchday
-                     list, the readiness checks and the news — reachable only by
-                     scrolling past everything they are shortcuts for. -->
-                <nav class="v2-quick-actions v2-qa-top" aria-label="Quick actions">
-                    <div class="v2-qa-cards">
-                        <a href="fpl-my-team-analysis.html#lineup" class="v2-qa-card">
-                            <div class="v2-qa-icon"><i data-lucide="wand-2" class="icon"></i></div>
-                            <div class="v2-qa-text"><span class="v2-qa-title">Review Lineup</span><span class="v2-qa-desc">Optimize your starting XI</span></div>
-                            <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
-                        </a>
-                        <a href="fpl-my-team-analysis.html#transfers" class="v2-qa-card">
-                            <div class="v2-qa-icon"><i data-lucide="repeat" class="icon"></i></div>
-                            <div class="v2-qa-text"><span class="v2-qa-title">See Transfers</span><span class="v2-qa-desc">Price changes &amp; suggestions</span></div>
-                            <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
-                        </a>
-                        <a href="fpl-my-team-analysis.html#draft" class="v2-qa-card">
-                            <div class="v2-qa-icon"><i data-lucide="clipboard-list" class="icon"></i></div>
-                            <div class="v2-qa-text"><span class="v2-qa-title">Plan Next 6 GWs</span><span class="v2-qa-desc">GW Draft planner</span></div>
-                            <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
-                        </a>
-                    </div>
-                </nav>
                 <!-- Top row: info panel (left, narrow) + Squad Snapshot (right).
                      The panel leads because it is the answer to "where do I
                      stand" — deadline, rank, market, readiness — and the pitch
@@ -3923,6 +3931,34 @@
                 <!-- Needs Your Attention: Starting XI | Transfers -->
                 <div class="v2-attention-grid" id="v2AttentionGrid"></div>
 
+                <!-- The Scout's Desk, at the foot of the page. Written for the
+                     round just played, and the one thing on the site that is
+                     reading rather than a number. -->
+                <section class="v2-desk" id="v2Desk" style="display:none;"></section>
+
+                <!-- Quick Actions, last. They are shortcuts into the three tools, and
+                     they sit under the reading rather than above it: the panels
+                     above answer "where do I stand", and these are what you do
+                     about it once you have read them. -->
+                <nav class="v2-quick-actions v2-qa-foot" aria-label="Quick actions">
+                    <div class="v2-qa-cards">
+                        <a href="fpl-my-team-analysis.html#lineup" class="v2-qa-card">
+                            <div class="v2-qa-icon"><i data-lucide="wand-2" class="icon"></i></div>
+                            <div class="v2-qa-text"><span class="v2-qa-title">Review Lineup</span><span class="v2-qa-desc">Optimize your starting XI</span></div>
+                            <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
+                        </a>
+                        <a href="fpl-my-team-analysis.html#transfers" class="v2-qa-card">
+                            <div class="v2-qa-icon"><i data-lucide="repeat" class="icon"></i></div>
+                            <div class="v2-qa-text"><span class="v2-qa-title">See Transfers</span><span class="v2-qa-desc">Price changes &amp; suggestions</span></div>
+                            <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
+                        </a>
+                        <a href="fpl-my-team-analysis.html#draft" class="v2-qa-card">
+                            <div class="v2-qa-icon"><i data-lucide="clipboard-list" class="icon"></i></div>
+                            <div class="v2-qa-text"><span class="v2-qa-title">Plan Next 6 GWs</span><span class="v2-qa-desc">GW Draft planner</span></div>
+                            <i data-lucide="arrow-right" class="v2-qa-arrow"></i>
+                        </a>
+                    </div>
+                </nav>
                 <section class="headlines-widget hidden" id="headlinesWidget">
                     <div class="headlines-header">
                         <div class="headlines-title"><i data-lucide="newspaper" class="icon"></i> FPL News Hub</div>
@@ -4358,20 +4394,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=159"></script>
-    <script src="scripts/price-watch.js?v=159"></script>
-    <script src="scripts/xp-engine.js?v=159"></script>
-    <script src="scripts/odds-panel.js?v=159"></script>
-    <script src="scripts/live-gw.js?v=159"></script>
-    <script src="scripts/matchday.js?v=159"></script>
-    <script src="scripts/market-panel.js?v=159"></script>
-    <script src="scripts/eo-layer.js?v=159"></script>
-    <script src="scripts/readiness.js?v=159"></script>
-    <script src="scripts/push-alerts.js?v=159"></script>
-    <script src="scripts/notifications.js?v=159"></script>
-    <script src="scripts/transfer-engine.js?v=159"></script>
-    <script src="scripts/common.js?v=159"></script>
-    <script src="scripts/sidebar-nav.js?v=159"></script>
+    <script src="scripts/error-monitor.js?v=160"></script>
+    <script src="scripts/price-watch.js?v=160"></script>
+    <script src="scripts/xp-engine.js?v=160"></script>
+    <script src="scripts/odds-panel.js?v=160"></script>
+    <script src="scripts/live-gw.js?v=160"></script>
+    <script src="scripts/matchday.js?v=160"></script>
+    <script src="scripts/market-panel.js?v=160"></script>
+    <script src="scripts/eo-layer.js?v=160"></script>
+    <script src="scripts/readiness.js?v=160"></script>
+    <script src="scripts/push-alerts.js?v=160"></script>
+    <script src="scripts/notifications.js?v=160"></script>
+    <script src="scripts/transfer-engine.js?v=160"></script>
+    <script src="scripts/common.js?v=160"></script>
+    <script src="scripts/sidebar-nav.js?v=160"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4953,6 +4989,50 @@
            of that side of the team — what the eleven projects, who has the
            armband, what is in the bank, when the deadline is — and keeps the
            alerts underneath. */
+        /* The latest Scout's Desk pieces.
+
+           Three cards from the same archive the Scout's Desk page reads, newest
+           first, with the gameweek debrief pulled to the front when there is one
+           — it is written for the round just played and is the most relevant
+           thing on the site the morning after a gameweek. The archive is
+           optional: a missing index is a section that does not render, not an
+           error, because nothing else on this page depends on it. */
+        async function renderDeskFeed() {
+            const el = document.getElementById('v2Desk');
+            if (!el) return;
+            const esc = t => String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+            let idx = [];
+            try {
+                // The same five-minute buster this page's other data fetches use.
+                idx = await fetch('data/articles/index.json?v=' + Math.floor(Date.now() / 300000))
+                    .then(r => r.ok ? r.json() : []);
+            } catch (e) { return; }
+            if (!Array.isArray(idx) || !idx.length) return;
+
+            const debriefFirst = [...idx].sort((a, b) => {
+                const d = (b.category === 'Gameweek Debrief') - (a.category === 'Gameweek Debrief');
+                return d || (b.gw || 0) - (a.gw || 0);
+            }).slice(0, 3);
+
+            el.innerHTML = `
+                <div class="v2-desk-head">
+                    <span class="v2-section-label">${typeof v2Icon === 'function' ? v2Icon('news') : ''}From the Scout's Desk</span>
+                    <a class="v2-desk-all" href="fpl-scouts-desk.html">All articles \u2192</a>
+                </div>
+                <div class="v2-desk-grid">
+                    ${debriefFirst.map(a => `<a class="v2-desk-card" href="articles/${encodeURIComponent(a.slug)}.html">
+                        <span class="v2-desk-kicker">${esc(a.category || 'Scout\u2019s Desk')}${a.gw ? ` \u00b7 GW${a.gw}` : ''}</span>
+                        <span class="v2-desk-title">${esc(a.title)}</span>
+                        <span class="v2-desk-dek">${esc(a.dek || '')}</span>
+                        <span class="v2-desk-meta">${a.readTime ? `${a.readTime} min read` : ''}${a.words ? ` \u00b7 ${Number(a.words).toLocaleString()} words` : ''}</span>
+                    </a>`).join('')}
+                </div>`;
+            el.style.display = '';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
         function renderAttentionSummary(kind, ctx) {
             const esc = t => String(t == null ? '' : t)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -5224,19 +5304,18 @@
                    row with a 20px club badge, so the pair of them was narrower
                    than the name underneath and the photo — the one thing here
                    you can recognise without reading — was the smallest thing on
-                   the card. v2IdentityHTML's portrait form makes it the whole
-                   width and hangs the crest off its lower corner; the opponent
-                   and the projection then share one line to pay for the height.
-                   The verdict ring moves with it, from the badge to the face. */
+                   the card. Face and badge sit side by side at a size worth
+                   looking at, and the projection gets a line of its own beneath
+                   rather than a pill half over the photo: it and the fixture
+                   are the two things you actually read across an XI. */
                 return `<div class="v2-pitch-token${ringClass}" title="${tip}">
                   <div class="v2-pitch-token-flags">${verdictMark}${statusIcon}</div>
-                  ${typeof v2IdentityHTML === 'function'
-                      ? v2IdentityHTML(p, 'v2-pid-portrait', xp != null
-                          ? `<span class="v2-pid-num">${xp.toFixed(1)}<span class="u">xP</span></span>`
-                          : `<span class="v2-pid-num">${posLabel}</span>`)
-                      : ''}
+                  ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p, 'v2-pid-pitch') : ''}
                   ${badge}
                     <span class="v2-pitch-token-name">${esc(p.name)}${isBestCap ? '<span class="v2-pitch-token-star" title="Highest projected points in your XI">★</span>' : ''}</span>
+                    <span class="v2-pitch-token-score">${xp != null
+                        ? `<b>${xp.toFixed(1)}</b><span class="u">xP</span>`
+                        : `<b class="pos">${posLabel}</b>`}</span>
                     <span class="v2-pitch-token-opp">${oppTxt}${
                         /* Expected minutes ride with the fixture now that the
                            projection has moved onto the portrait. They belong
@@ -6093,6 +6172,8 @@
 
                 renderAttentionGrid({ transferRec, squad, analysisResults, captainRec,
                     freeTransfers, maxFreeTransfers, bank, chips, deadlineTime, currentGW });
+
+                renderDeskFeed();
 
                 /* What changed since the last visit. Runs after the squad is
                    real, because every event it can produce is a fact about one
