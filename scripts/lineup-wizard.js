@@ -176,13 +176,21 @@
             const cls = ['dp-card', posClass, out ? 'is-out' : '', selected ? 'lw-picked' : '',
                 isSwapSrc ? 'swap-selected' : '', isSwapTgt ? 'swap-target' : ''].filter(Boolean).join(' ');
 
+            /* The card the dashboard, the squad pitch and the draft all draw:
+               the face at full width with the club crest on its lower-right and
+               this gameweek's projection on its lower-left. This pitch was the
+               last one still showing a name over a line of text with no face on
+               it at all. */
+            const lwIdent = { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team };
             return `<div class="${cls}" onclick="handleLWSwapClick(${p.id})">
                 <div class="dp-badges">${badges}</div>
                 <button class="dp-transfer" onclick="handleLWInfoBtnClick(${p.id}, event)" data-tooltip="View ${escHTML(p.web_name)}'s detail — click a second player to compare them">ℹ️</button>
+                ${typeof v2IdentityHTML === 'function'
+                    ? v2IdentityHTML(lwIdent, 'v2-pid-portrait',
+                        `<span class="v2-pid-num" data-tooltip="Projected points for ${escHTML(p.web_name)} this gameweek.">${xp.toFixed(1)}<span class="u">xP</span></span>`)
+                    : ''}
                 <div class="dp-name">${escHTML(p.web_name)}</div>
-                <div class="dp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
                 <div class="dp-fixtures">${fixChip}</div>
-                <div class="dp-xp" data-tooltip="Projected points for ${escHTML(p.web_name)} this gameweek.">${xp.toFixed(1)}<span class="dp-xp-u">xP</span></div>
                 ${lwRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${lwRun[0]}\u2013GW${lwRun[lwRun.length - 1]} combined \u2014 this is what Auto-optimise ranks the XI on, so a steady run beats one flukey week.">${lwRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${lwRun.length}</span></div>` : ''}
             </div>`;
         }

@@ -1527,14 +1527,21 @@
                 if (injured) badges += `<span class="dp-badge out" data-tooltip="${escHTML(p.news || 'Unavailable')}">OUT</span>`;
                 else if (doubtful) badges += `<span class="dp-badge doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}${p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance of playing)` : ''}">?</span>`;
 
+                /* Same card as the dashboard and squad pitches: the face fills
+                   the width, the crest sits on its lower-right and the
+                   gameweek's projection on its lower-left, so the three pitches
+                   are one component rather than three that resemble each other.
+                   The run total stays below — it is what the draft is for, and
+                   it is the one thing the other pitches have no equivalent of. */
                 return `<div class="dp-card ${posClass} ${swapClass} ${injured ? 'is-out' : ''}" onclick="handleDraftPitchClick(${p.id})">
                     <div class="dp-badges">${badges}</div>
                     <button class="dp-transfer" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" data-tooltip="Transfer ${escHTML(p.name)} out for GW${gw}">${DP_SWAP_ICON}</button>
-                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p) : ''}
+                    ${typeof v2IdentityHTML === 'function'
+                        ? v2IdentityHTML(p, 'v2-pid-portrait',
+                            `<span class="v2-pid-num" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates.">${xp.toFixed(1)}<span class="u">xP</span></span>`)
+                        : ''}
                     <div class="dp-name">${escHTML(p.name)}</div>
-                    <div class="dp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
                     <div class="dp-fixtures">${fixtureChips}</div>
-                    <div class="dp-xp" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates.">${xp.toFixed(1)}<span class="dp-xp-u">xP</span></div>
                     ${dpRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${dpRun[0]}\u2013GW${dpRun[dpRun.length - 1]} combined, so a soft run and a hard one stop looking alike. One gameweek tells you who plays; a run tells you who is worth owning.">${dpRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${dpRun.length}</span></div>` : ''}
                 </div>`;
             };

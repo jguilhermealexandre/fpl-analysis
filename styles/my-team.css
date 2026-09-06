@@ -4953,12 +4953,11 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 .dp-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 
-/* Face and club badge, the same pair the squad and dashboard pitches carry.
-   Everything the card already showed — name, club and price, the gameweek's
-   fixture chips, this week's xP and the run total — is untouched below it. */
-.dp-card .v2-pid { align-self: center; margin-bottom: 1px; }
-.dp-card .v2-pid-avatar { width: 26px; height: 26px; }
-.dp-card .v2-pid-crest, .dp-card .v2-pid-crest img { width: 15px; height: 15px; }
+/* The portrait, as on the dashboard and squad pitches: the face at the card's
+   full width, the crest on its lower-right, the gameweek's projection on its
+   lower-left. Sized as a share of the card so the draft's 116px node and the
+   lineup wizard's narrower one both get a face in proportion. */
+.dp-card .v2-pid-portrait { --v2-pid-face: 46%; --v2-pid-crest: 19px; margin-bottom: 2px; }
 .dp-transfer svg { width: 11px; height: 11px; }
 .dp-card.pos-gk { border-top-color: #f59e0b; }
 .dp-card.pos-def { border-top-color: #10b981; }
@@ -5248,7 +5247,23 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .dpc-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 
 /* ===== Lineup Command Centre ===== */
-.lw-cc-head { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+/* The command centre is a box.
+   It had a heading, a formation and projection pair, and an Auto-optimise
+   button, all sitting loose on the page background with the pitch below them —
+   so the one screen on this page that is a single tool read as four unrelated
+   things stacked up. Everything it owns is inside it now. */
+.lw-cc {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    padding: 16px 18px 18px;
+}
+.lw-cc-head {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px;
+    margin-bottom: 14px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+}
 .lw-cc-title { font-size: 17px; font-weight: 700; font-family: var(--font-display); color: var(--text-primary); }
 .lw-cc-gw { font-size: 11px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
 .lw-cc-stats { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
