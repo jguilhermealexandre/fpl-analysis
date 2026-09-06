@@ -2853,6 +2853,69 @@
 .tsb-value.good { color: var(--color-success); }
 .tsb-sample { font-size: 9.5px; color: var(--text-muted); text-align: right; margin-top: -4px; margin-bottom: 4px; }
 
+/* ===== EXPECTED AGAINST ACTUAL =====
+   Green where the outcome beat the expectation, amber where it fell short,
+   neutral where the gap is inside the noise. The colour is about the gap, not
+   about the level: a side scoring 1.1 a game from 0.9 xG is green here and
+   still a poor attack, which is the point — this row is asking whether they are
+   converting, and the row above already said how much they create. */
+.tsb-conversion { display: flex; flex-direction: column; gap: 3px; margin: 6px 0 2px; }
+.xgva-row {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+    padding: 4px 8px; border-radius: var(--radius-sm);
+    background: var(--surface-2); cursor: help;
+}
+.xgva-label { font-size: 10px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+.xgva-pair {
+    display: inline-flex; align-items: baseline; gap: 5px; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums;
+}
+.xgva-exp, .xgva-act { display: inline-flex; align-items: baseline; gap: 3px; font-size: 12.5px; font-weight: 700; }
+.xgva-exp { color: var(--text-muted); }
+.xgva-act { color: var(--text-primary); }
+.xgva-exp em, .xgva-act em { font-style: normal; font-size: 8.5px; font-weight: 600; opacity: .7; }
+.xgva-arrow { color: var(--text-muted); font-size: 10px; }
+.xgva-diff {
+    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 800;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.xgva-row.over .xgva-diff { color: var(--color-success); }
+.xgva-row.under .xgva-diff { color: var(--color-warning); }
+.xgva-row.level .xgva-diff { color: var(--text-muted); }
+.xgva-row.over { box-shadow: inset 2px 0 0 var(--color-success); }
+.xgva-row.under { box-shadow: inset 2px 0 0 var(--color-warning); }
+
+/* ===== LAST FIVE, EXPECTED AGAINST ACTUAL ===== */
+.l5-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.l5-table th {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); text-align: center; padding: 4px 6px;
+    border-bottom: 1px solid var(--border-default); cursor: help;
+}
+.l5-table th:first-child, .l5-table th:nth-child(2) { text-align: left; }
+.l5-table td { padding: 5px 6px; border-bottom: 1px solid var(--border-subtle); font-size: 11.5px; }
+.l5-table tfoot td { border-bottom: none; border-top: 1px solid var(--border-default); font-weight: 700; }
+.l5-gw { color: var(--text-muted); font-size: 10.5px; white-space: nowrap; }
+.l5-opp { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+.l5-ha { font-size: 9px; color: var(--text-muted); margin-left: 4px; }
+/* Actual over expected, stacked — the number that happened on top, the number
+   that was deserved underneath it. */
+.l5-cell { text-align: center; }
+.l5-act { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 800; line-height: 1.1; }
+.l5-exp { display: block; font-size: 9.5px; color: var(--text-muted); line-height: 1.2; }
+.l5-cell.over .l5-act { color: var(--color-success); }
+.l5-cell.under .l5-act { color: var(--color-warning); }
+.l5-cell.level .l5-act { color: var(--text-primary); }
+.l5-res { text-align: center; font-weight: 800; font-size: 11.5px; white-space: nowrap; }
+.l5-res.w { color: var(--color-success); }
+.l5-res.l { color: var(--color-error); }
+.l5-res.d { color: var(--text-muted); }
+.l5-summary { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.l5-note { font-size: 10px; line-height: 1.5; color: var(--text-muted); margin: 8px 0 0; }
+
+/* The unit that turns a bare figure into a quantity. */
+.report-bar-unit { display: block; font-style: normal; font-size: 8.5px; font-weight: 600; color: var(--text-muted); }
+
 /* Rank with a form direction beside it */
 .rank-wrap { display: flex; align-items: center; gap: 5px; }
 .rank-trend { font-size: 11px; font-weight: 800; line-height: 1; }

@@ -17,12 +17,12 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=162">
-    <link rel="stylesheet" href="styles/teams.css?v=162">
-    <link rel="stylesheet" href="styles/v2-design.css?v=162">
-    <script src="scripts/error-monitor.js?v=162"></script>
-    <script src="scripts/common.js?v=162"></script>
-    <script src="scripts/sidebar-nav.js?v=162"></script>
+    <link rel="stylesheet" href="styles/common.css?v=163">
+    <link rel="stylesheet" href="styles/teams.css?v=163">
+    <link rel="stylesheet" href="styles/v2-design.css?v=163">
+    <script src="scripts/error-monitor.js?v=163"></script>
+    <script src="scripts/common.js?v=163"></script>
+    <script src="scripts/sidebar-nav.js?v=163"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -369,6 +369,51 @@
                 && (f.finished || f.finished_provisional || f.started);
         }
 
+        /* The same per-gameweek series, split by where the match was played.
+           perGw already records wasHome for every round, so a venue-specific xG
+           and xGC come out of it for free — and a venue split built from what a
+           side actually created and conceded at home says more than one built
+           from goals alone. Null for either venue with nothing played there. */
+        function getTeamVenueXg(teamId) {
+            const data = window.teamXgData && window.teamXgData[teamId];
+            if (!data || !data.hasPerGwData) return null;
+            const acc = { home: { n: 0, xG: 0, xGC: 0, goals: 0, conceded: 0 },
+                          away: { n: 0, xG: 0, xGC: 0, goals: 0, conceded: 0 } };
+            Object.keys(data.perGw).forEach(gw => {
+                const d = data.perGw[gw];
+                if (d.wasHome === null || d.wasHome === undefined) return;
+                const side = d.wasHome ? acc.home : acc.away;
+                side.n++; side.xG += d.xG; side.xGC += d.xGC_90min;
+                side.goals += d.goals; side.conceded += d.conceded;
+            });
+            const rate = s => s.n ? {
+                games: s.n, xGpg: s.xG / s.n, xGCpg: s.xGC / s.n,
+                gpg: s.goals / s.n, gapg: s.conceded / s.n,
+                totalXg: s.xG, totalGoals: s.goals, totalXgc: s.xGC, totalConceded: s.conceded
+            } : null;
+            return { home: rate(acc.home), away: rate(acc.away) };
+        }
+
+        /* The last N gameweeks one row at a time, rather than averaged into one
+           figure — what a side created and what it took, what it allowed and
+           what it let in, match by match. An average hides the shape: two
+           blanks and a five is not the same team as three twos. */
+        function getTeamRecentMatches(teamId, count = 5) {
+            const data = window.teamXgData && window.teamXgData[teamId];
+            if (!data || !data.hasPerGwData) return [];
+            return Object.keys(data.perGw).map(Number).sort((a, b) => a - b).slice(-count)
+                .map(gw => {
+                    const d = data.perGw[gw];
+                    return {
+                        gw,
+                        isHome: !!d.wasHome,
+                        opponentId: d.oppTeam,
+                        xG: d.xG, goals: d.goals,
+                        xGC: d.xGC_90min, conceded: d.conceded
+                    };
+                }).reverse();   // most recent first
+        }
+
         // Helper: get team season xG averages
         function getTeamSeasonXg(teamId) {
             const data = window.teamXgData[teamId];
@@ -568,104 +613,112 @@
             const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));  // 900-1400 → 0-1
             const fplDefNorm = Math.min(1, Math.max(0, (fplDefenseStrength - 900) / 500));
 
-            // ===== ATTACK POWER (0-100) — xG-informed + recency-weighted =====
-            // Three components blended:
-            //   35% Season xG rate (sustainable quality)
-            //   35% Last 6 actual goals/game (recent output)
-            //   30% FPL strength rating (expert assessment)
-            let attackPower;
-            if (hasRealXg && recent6Xg) {
-                const recentXgRate = Math.min(1, recent6Xg.xGpg / 2.0);    // 0-2.0 xG/g → 0-1  (recent form, not season)
-                const recent6Rate = Math.min(1, recent6Xg.gpg / 2.0);      // 0-2.0 G/g → 0-1
-                attackPower = Math.round((
-                    recentXgRate * 0.35 +
-                    recent6Rate * 0.35 +
-                    fplAttNorm * 0.30
-                ) * 100);
-            } else {
-                // Fallback: same 3-component structure, using actual goals in place of xG
-                const seasonGoalRate = Math.min(1, avgGoals / 2.0);                  // 0-2.0 G/g → 0-1
-                const avgXG = xGHistory.length > 0 ? xGHistory.reduce((a, b) => a + b, 0) / gamesPlayed : avgGoals;
-                const estimatedXgRate = Math.min(1, avgXG / 2.0);                    // 0-2.0 xG/g → 0-1
-                attackPower = Math.round((
-                    estimatedXgRate * 0.35 +
-                    seasonGoalRate * 0.35 +
-                    fplAttNorm * 0.30
-                ) * 100);
-            }
-            attackPower = Math.min(100, Math.max(0, attackPower));
+            // Stands in for measured xG when the per-gameweek series is missing:
+            // whatever xG history there is, else the goals actually scored.
+            const avgXGEstimate = xGHistory.length > 0
+                ? xGHistory.reduce((a, b) => a + b, 0) / gamesPlayed
+                : avgGoals;
 
-            // ===== DEFENSE POWER (0-100) — xGC-informed + recency-weighted =====
-            // Three components:
-            //   35% Season xGC rate inverted (sustainable defensive quality)
-            //   35% Last 6 actual GA/game inverted (recent defensive form)
-            //   30% FPL defense strength (expert assessment)
-            let defensePower;
-            if (hasRealXg && recent6Xg) {
-                const recentXgcRate = Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0)));   // 0 xGC/g → 1.0, 2.0 → 0  (recent form)
-                const recent6DefRate = Math.min(1, Math.max(0, 1 - (recent6Xg.gapg / 2.0)));    // 0 GA/g → 1.0, 2.0 → 0
-                defensePower = Math.round((
-                    recentXgcRate * 0.35 +
-                    recent6DefRate * 0.35 +
-                    fplDefNorm * 0.30
-                ) * 100);
-            } else {
-                // Fallback: same 3-component structure, using actual GA in place of xGC
-                const seasonGaRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.0)));       // 0 GA/g → 1.0, 2.0 → 0
-                // Recent 5-game GA rate for recency component (mirrors xGC path)
-                const recentConceded = pastFixtures.slice(-5).reduce((sum, f) => {
-                    const isH = f.team_h === teamId;
-                    return sum + (isH ? (f.team_a_score || 0) : (f.team_h_score || 0));
-                }, 0);
-                const recentGames = Math.min(5, pastFixtures.length) || 1;
-                const recentGaRate = Math.min(1, Math.max(0, 1 - ((recentConceded / recentGames) / 2.0)));
-                defensePower = Math.round((
-                    seasonGaRate * 0.35 +
-                    recentGaRate * 0.35 +
-                    fplDefNorm * 0.30
-                ) * 100);
-            }
-            defensePower = Math.min(100, Math.max(0, defensePower));
+            /* ===== TEAM STRENGTH, IN GOALS PER GAME =====
 
-            // ===== HOME/AWAY ATTACK POWER — same structure as overall, venue-specific =====
-            // Uses venue-specific goals + venue-specific FPL strength + xG blend
+               This used to be two 0-100 indices, attack power and defence power.
+               An index has no unit and nothing to check it against: 68 is not a
+               quantity you can hold against what a side has actually done, and
+               squashing everything onto 0-100 hid the two numbers that decide an
+               FPL week — how many goals a team is expected to score, and how
+               many it is expected to concede.
+
+               Same three ingredients as the index had, and broadly the same
+               ranking, but averaged in the unit they are measured in instead of
+               each being normalised to 0-1 first: expected goals over the recent
+               window, actual goals over the same window, and FPL's own strength
+               rating mapped onto the same goals-per-game scale.
+
+               The one real change is the weighting, which was fixed at 35/35/30.
+               Two matches into a season a measured rate is noise, and FPL's
+               rating is a prior rather than an observation — so the prior
+               carries most of the answer until there is a sample worth
+               preferring, and hands over as the games accumulate. */
+            const LEAGUE_GPG = 1.42;                    // a league-average side, either way
+            const GPG_FLOOR = 0.55, GPG_CEIL = 2.45;    // the range a Premier League season spans
+            const clampGpg = v => Math.min(GPG_CEIL, Math.max(GPG_FLOOR, Number.isFinite(v) ? v : LEAGUE_GPG));
+            // FPL publishes strength on a ~900-1400 scale. Mapped onto goals per
+            // game so it can be averaged with the measured rates rather than
+            // living on a scale of its own.
+            const toGpg = norm => GPG_FLOOR + norm * (GPG_CEIL - GPG_FLOOR);
+
             const fplAttHomeNorm = Math.min(1, Math.max(0, (team.strength_attack_home - 900) / 500));
             const fplAttAwayNorm = Math.min(1, Math.max(0, (team.strength_attack_away - 900) / 500));
-            
-            const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.35 +
-                (hasRealXg && recent6Xg ? Math.min(1, recent6Xg.xGpg / 2.0) * 0.35 : Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.35) +
-                fplAttHomeNorm * 0.30
-            ) * 100))) : attackPower;
-
-            const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.35 +
-                (hasRealXg && recent6Xg ? Math.min(1, recent6Xg.xGpg / 2.0) * 0.35 : Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.35) +
-                fplAttAwayNorm * 0.30
-            ) * 100))) : attackPower;
-
-            // ===== HOME/AWAY DEFENSE POWER — same structure as overall, venue-specific + xGC =====
             const fplDefHomeNorm = Math.min(1, Math.max(0, (team.strength_defence_home - 900) / 500));
             const fplDefAwayNorm = Math.min(1, Math.max(0, (team.strength_defence_away - 900) / 500));
-            
-            const homeGaConcededRate = homeStats.games > 0 ? Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.0))) : 0.5;
-            const awayGaConcededRate = awayStats.games > 0 ? Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.0))) : 0.5;
-            
-            // xGC component: use recent xGC if available, otherwise fall back to GA-based rate
-            const xgcHomeComponent = hasRealXg && recent6Xg ? Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0))) : homeGaConcededRate;
-            const xgcAwayComponent = hasRealXg && recent6Xg ? Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0))) : awayGaConcededRate;
-            
-            const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                homeGaConcededRate * 0.35 +
-                xgcHomeComponent * 0.35 +
-                fplDefHomeNorm * 0.30
-            ) * 100))) : defensePower;
 
-            const defensePowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                awayGaConcededRate * 0.35 +
-                xgcAwayComponent * 0.35 +
-                fplDefAwayNorm * 0.30
-            ) * 100))) : defensePower;
+            /* FPL does not always publish these. Right now every strength field
+               in bootstrap-static is 0 for all twenty clubs, and a 0 does not
+               clamp to "average" — it clamps to the bottom of the scale, which
+               for a defence is inverted into the TOP of the expected-conceded
+               range. Every side would be modelled as conceding 2.45 a game and
+               scoring 0.55, which is both wrong and wrong asymmetrically.
+
+               When the rating is missing there is no prior to shrink toward
+               except the league itself, so that is what is used. */
+            const fplHasStrength = fplAttackStrength > 0 && fplDefenseStrength > 0;
+            const priorAtt = fplHasStrength ? toGpg(fplAttNorm) : LEAGUE_GPG;
+            const priorDef = fplHasStrength ? toGpg(1 - fplDefNorm) : LEAGUE_GPG;
+            const priorAttHome = fplHasStrength && team.strength_attack_home > 0 ? toGpg(fplAttHomeNorm) : LEAGUE_GPG;
+            const priorAttAway = fplHasStrength && team.strength_attack_away > 0 ? toGpg(fplAttAwayNorm) : LEAGUE_GPG;
+            const priorDefHome = fplHasStrength && team.strength_defence_home > 0 ? toGpg(1 - fplDefHomeNorm) : LEAGUE_GPG;
+            const priorDefAway = fplHasStrength && team.strength_defence_away > 0 ? toGpg(1 - fplDefAwayNorm) : LEAGUE_GPG;
+
+            const measuredGames = (hasRealXg && recent6Xg) ? recent6Xg.games : gamesPlayed;
+            const sample = Math.min(1, (measuredGames || 0) / 6);
+            const wFpl = 0.30 + (1 - sample) * 0.55;    // .85 with nothing played, .30 by six games
+            const wXg = (1 - wFpl) * 0.6;               // expectation leads
+            const wReal = (1 - wFpl) * 0.4;             // outcome follows
+
+            const attXgSrc = (hasRealXg && recent6Xg) ? recent6Xg.xGpg : avgXGEstimate;
+            const attRealSrc = (hasRealXg && recent6Xg) ? recent6Xg.gpg : avgGoals;
+            const defXgSrc = (hasRealXg && recent6Xg) ? recent6Xg.xGCpg : avgConceded;
+            const defRealSrc = (hasRealXg && recent6Xg) ? recent6Xg.gapg : avgConceded;
+
+            /* Read them as the numbers they are: xgFor is the goals a side is
+               expected to score in a game, xgAgainst the goals it is expected to
+               concede. Higher xgFor is a better attack; LOWER xgAgainst is a
+               better defence, which is the one place the direction flips. */
+            const xgFor = clampGpg(
+                (Number.isFinite(attXgSrc) ? attXgSrc : LEAGUE_GPG) * wXg +
+                (Number.isFinite(attRealSrc) ? attRealSrc : LEAGUE_GPG) * wReal +
+                priorAtt * wFpl);
+            // A high FPL defence rating means a good defence, so it maps to a LOW
+            // expected-conceded figure — hence 1 - norm.
+            const xgAgainst = clampGpg(
+                (Number.isFinite(defXgSrc) ? defXgSrc : LEAGUE_GPG) * wXg +
+                (Number.isFinite(defRealSrc) ? defRealSrc : LEAGUE_GPG) * wReal +
+                priorDef * wFpl);
+
+            /* Venue splits, same idea on a smaller sample — so the prior hands
+               over more slowly. Venue xG comes from the per-gameweek series where
+               there is one, since perGw records which matches were at home;
+               otherwise the venue's actual goals stand in. */
+            const venueXg = typeof getTeamVenueXg === 'function' ? getTeamVenueXg(teamId) : null;
+            const venueStrength = (st, vXg, priorFor, priorAgainst) => {
+                if (!st || !st.games) return { xgFor, xgAgainst };
+                const s = Math.min(1, st.games / 4);
+                const wF = 0.30 + (1 - s) * 0.55;
+                const attMeasured = vXg && Number.isFinite(vXg.xGpg)
+                    ? vXg.xGpg * 0.6 + (st.goals / st.games) * 0.4
+                    : st.goals / st.games;
+                const defMeasured = vXg && Number.isFinite(vXg.xGCpg)
+                    ? vXg.xGCpg * 0.6 + (st.conceded / st.games) * 0.4
+                    : st.conceded / st.games;
+                return {
+                    xgFor: clampGpg(attMeasured * (1 - wF) + priorFor * wF),
+                    xgAgainst: clampGpg(defMeasured * (1 - wF) + priorAgainst * wF)
+                };
+            };
+            const homeStrength = venueStrength(homeStats, venueXg && venueXg.home, priorAttHome, priorDefHome);
+            const awayStrength = venueStrength(awayStats, venueXg && venueXg.away, priorAttAway, priorDefAway);
+            const xgForHome = homeStrength.xgFor, xgAgainstHome = homeStrength.xgAgainst;
+            const xgForAway = awayStrength.xgFor, xgAgainstAway = awayStrength.xgAgainst;
 
             // FIXTURE SCORE (0-100) - Pure fixture opportunity
             // DGW bonus: extra fixtures beyond 5 are valuable for FPL
@@ -713,18 +766,14 @@
                 xgcPerformance = 'balanced-def';
             }
 
-            // ===== WEIGHTED FORM RATING (0-100) =====
-            const weights = [5, 4, 3, 2, 1];
+            /* ===== RECENT FORM =====
+               A recency-weighted 0-100 form rating used to be built here out of
+               a weighted points base, a goal-difference bonus and a streak
+               bonus. Nothing reads it any more: form is reported as points per
+               game (last5Ppg) and as the unbeaten run below, both of which are
+               countable. The goal difference it computed is still worth having,
+               since the run and the goal swing are what the prose talks about. */
             const reversedResults = [...pastResults].reverse();
-            let weightedPts = 0;
-            let weightSum = 0;
-            reversedResults.slice(0, 5).forEach((r, i) => {
-                const pts = r.result === 'W' ? 3 : r.result === 'D' ? 1 : 0;
-                weightedPts += pts * weights[i];
-                weightSum += weights[i];
-            });
-            const maxWeightedPts = 3 * weightSum;
-            const weightedFormBase = weightSum > 0 ? (weightedPts / maxWeightedPts) * 70 : 35;
 
             const recentGD = pastFixtures.slice(-5).reduce((sum, f) => {
                 const isH = f.team_h === teamId;
@@ -732,17 +781,14 @@
                 const conceded = isH ? (f.team_a_score || 0) : (f.team_h_score || 0);
                 return sum + (scored - conceded);
             }, 0);
-            const gdBonus = Math.min(10, Math.max(-10, recentGD * 2));
 
-            let streakBonus = 0;
+            // Matches unbeaten, counting back from the most recent.
+            let unbeatenRun = 0;
             for (let i = 0; i < reversedResults.length; i++) {
-                if (reversedResults[i]?.result === 'W') streakBonus += 3;
-                else if (reversedResults[i]?.result === 'D') streakBonus += 1;
+                if (reversedResults[i]?.result === 'W' || reversedResults[i]?.result === 'D') unbeatenRun++;
                 else break;
             }
-            streakBonus = Math.min(15, streakBonus);
 
-            const formRating = Math.round(Math.min(100, Math.max(0, weightedFormBase + gdBonus + streakBonus)));
 
             // ===== FIXTURE SWING =====
             let fixtureSwing = 'stable';
@@ -753,33 +799,34 @@
                 else if (last2 > first2 + 0.5) fixtureSwing = 'worsening';
             }
 
-            // ===== VENUE DEPENDENCY ANALYSIS =====
-            const attackHomeDiff = attackPowerHome - attackPowerAway;
-            const defenseHomeDiff = defensePowerHome - defensePowerAway;
+            /* ===== VENUE DEPENDENCY =====
+               In goals per game now, so the thresholds are quantities too: a
+               third of a goal a game better at home either way is a real home
+               advantage, and the old 15-and-10 points of a 0-100 index were
+               about that. Attack counts up and defence counts down, so the
+               defensive half is negated to put both on "higher = better at
+               home". */
+            const attackHomeDiff = xgForHome - xgForAway;
+            const defenseHomeDiff = xgAgainstAway - xgAgainstHome;
             const avgHomeDiff = (attackHomeDiff + defenseHomeDiff) / 2;
-            
+
             let venueLabel = 'balanced';
             let venueEmoji = '<i data-lucide="scale" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>';
-            if (avgHomeDiff > 15) {
+            if (avgHomeDiff > 0.30) {
                 venueLabel = 'home-fortress';
                 venueEmoji = '<i data-lucide="home" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>';
-            } else if (avgHomeDiff < -10) {
+            } else if (avgHomeDiff < -0.20) {
                 venueLabel = 'road-warrior';
                 venueEmoji = '<i data-lucide="map" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>';
             }
-            
+
+            // What their next five actually ask of them: the venue split weighted
+            // by how many of those fixtures are at home.
             const homeWeight = homeFixtureCount / 5;
             const awayWeight = awayFixtureCount / 5;
-            
-            const weightedAttack = Math.round(
-                (attackPowerHome * homeWeight) + (attackPowerAway * awayWeight)
-            );
-            const weightedDefense = Math.round(
-                (defensePowerHome * homeWeight) + (defensePowerAway * awayWeight)
-            );
-            
-            const relevantAttack = weightedAttack;
-            const relevantDefense = weightedDefense;
+
+            const weightedXgFor = (xgForHome * homeWeight) + (xgForAway * awayWeight);
+            const weightedXgAgainst = (xgAgainstHome * homeWeight) + (xgAgainstAway * awayWeight);
 
             // ===== xG TREND (recency direction) =====
             let xgTrend = 'stable';
@@ -805,20 +852,30 @@
                 shortName: team.short_name,
                 badgeUrl: `https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png`,
                 
-                // Core metrics (xG-informed + recency-weighted)
-                attackPower,
-                defensePower,
-                attackPowerHome,
-                attackPowerAway,
-                defensePowerHome,
-                defensePowerAway,
-                
-                // Weighted metrics (based on upcoming fixtures)
-                weightedAttack,
-                weightedDefense,
-                relevantAttack,
-                relevantDefense,
-                
+                /* Core strength, in goals per game rather than a 0-100 index.
+                   xgFor is what they are expected to score, xgAgainst what they
+                   are expected to concede — so a lower xgAgainst is a better
+                   defence, which is the one field on this object where smaller
+                   is better. */
+                xgFor,
+                xgAgainst,
+                xgForHome,
+                xgForAway,
+                xgAgainstHome,
+                xgAgainstAway,
+                venueXg,
+                /* Net expected goals a game — what a side is expected to win the
+                   match by. One number for overall strength, and the one the
+                   rankings sort on when neither end is being asked about. */
+                netXg: xgFor - xgAgainst,
+                /* Form as points won, not as a 0-100 rating of them. Over the
+                   same last-five window as the W/D/L beside it. */
+                last5Ppg: gamesPlayed ? ((wins * 3) + draws) / gamesPlayed : 0,
+
+                // Weighted by how many of the next five are at home
+                weightedXgFor,
+                weightedXgAgainst,
+
                 // Venue dependency
                 venueLabel,
                 venueEmoji,
@@ -828,10 +885,12 @@
                 // Fixture opportunity (SEPARATE)
                 fixtureScore,
                 avgFdr: avgFdr.toFixed(1),
+                // The same figure unrounded and as a number — avgFdr is a string,
+                // so sorting on it compares "2.4" against "10" as text.
+                avgFdrNum: avgFdr,
                 avgCSChance,
                 
                 // Form & results
-                formRating,
                 wins, draws, losses,
                 
                 // Stats
@@ -871,9 +930,8 @@
                 xGHistory,
                 fixtureSwing,
                 
-                // Legacy (for backward compatibility)
-                attackRating: attackPower,
-                defenseRating: defensePower
+                // Last five matches, one row each, for the report's xG-vs-actual table
+                recentMatches: typeof getTeamRecentMatches === 'function' ? getTeamRecentMatches(teamId, 5) : []
             };
         }
 
@@ -892,11 +950,23 @@
 
             switch (currentView) {
                 case 'rankings': {
-                    const sortKey = rankingsSort === 'attack' ? 'attackPower' :
-                                    rankingsSort === 'defense' ? 'defensePower' :
-                                    rankingsSort === 'fixtures' ? 'fixtureScore' : 'formRating';
+                    /* Every sort is now on a real quantity, and two of the four
+                       are better when smaller — a defence is rated by the goals
+                       it is expected to concede, and a fixture run by its FDR.
+                       So the direction travels with the key rather than being
+                       assumed descending. */
+                    const SORTS = {
+                        attack:   { key: 'xgFor',      asc: false },
+                        defense:  { key: 'xgAgainst',  asc: true  },
+                        fixtures: { key: 'avgFdrNum',  asc: true  },
+                        form:     { key: 'last5Ppg',   asc: false }
+                    };
+                    const sortSpec = SORTS[rankingsSort] || SORTS.form;
                     const highlightMode = rankingsSort === 'defense' ? 'defense' : rankingsSort === 'fixtures' ? 'fixture' : rankingsSort === 'form' ? 'form' : 'attack';
-                    const sorted = [...allTeamsData].sort((a, b) => b[sortKey] - a[sortKey]);
+                    const sorted = [...allTeamsData].sort((a, b) => {
+                        const av = a[sortSpec.key] ?? 0, bv = b[sortSpec.key] ?? 0;
+                        return sortSpec.asc ? av - bv : bv - av;
+                    });
                     const pillsHtml = `
                         <div class="rankings-toolbar">
                             <span class="rankings-label">Sort by:</span>
@@ -1052,11 +1122,57 @@
                     </div>`).join('')}
                 </div>`;
 
+            /* The two comparisons that say whether the rates above are being
+               converted. Per game, so they can be read against the xG/game and
+               xGC/game directly above them rather than needing a season total
+               held in your head. */
+            const conversion = xg && xg.games ? `
+                <div class="tsb-conversion">
+                    ${renderXgVsActual('Scoring', xg.xGpg, xg.gpg, { per: true, expectedLabel: 'xG', actualLabel: 'scored' })}
+                    ${renderXgVsActual('Conceding', xg.xGCpg, xg.gapg, { per: true, lowerIsBetter: true, expectedLabel: 'xGC', actualLabel: 'let in' })}
+                </div>` : '';
+
             return `<div class="team-stat-block">
                 ${col('Attack', attack, 'atk', !!hl.highlightATK)}
                 ${col('Defence', defence, 'def', !!hl.highlightDEF)}
             </div>
+            ${conversion}
             ${games ? `<div class="tsb-sample">Season to date · ${games} game${games === 1 ? '' : 's'}</div>` : ''}`;
+        }
+
+        /* Expected against actual, as one row.
+
+           An xG figure on its own is only half a sentence. 12.4 xG means one
+           thing beside 17 goals and the opposite beside 7, and the gap is the
+           part that predicts: a side scoring well above its xG is riding
+           finishing that usually regresses, one below it is creating chances it
+           has not taken yet. The same reading works on the defensive side with
+           the signs flipped, which is what `lowerIsBetter` is for. */
+        function renderXgVsActual(label, expected, actual, opts) {
+            const o = opts || {};
+            if (!Number.isFinite(expected) || !Number.isFinite(actual)) return '';
+            const diff = actual - expected;
+            const unit = o.per ? '/game' : '';
+            // Under- and over-performing are only worth colouring once the gap is
+            // bigger than the noise. A tenth of a goal a game, or two over a season.
+            const meaningful = Math.abs(diff) >= (o.threshold != null ? o.threshold : (o.per ? 0.15 : 2));
+            const good = o.lowerIsBetter ? diff < 0 : diff > 0;
+            const cls = !meaningful ? 'level' : good ? 'over' : 'under';
+            const dp = o.per ? 2 : 1;
+            const word = !meaningful ? 'about level with'
+                : o.lowerIsBetter
+                    ? (diff < 0 ? 'better than' : 'worse than')
+                    : (diff > 0 ? 'above' : 'below');
+            return `<div class="xgva-row ${cls}" data-tooltip="${escHTML(
+                `${o.actualLabel || 'Actual'} ${actual.toFixed(dp)}${unit} against ${expected.toFixed(dp)}${unit} expected — ${word} expectation by ${Math.abs(diff).toFixed(dp)}.`)}">
+                <span class="xgva-label">${escHTML(label)}</span>
+                <span class="xgva-pair">
+                    <span class="xgva-exp">${expected.toFixed(dp)}<em>${escHTML(o.expectedLabel || 'expected')}</em></span>
+                    <span class="xgva-arrow">→</span>
+                    <span class="xgva-act">${actual.toFixed(dp)}<em>${escHTML(o.actualLabel || 'actual')}</em></span>
+                </span>
+                <span class="xgva-diff">${diff > 0 ? '+' : diff < 0 ? '−' : ''}${Math.abs(diff).toFixed(dp)}</span>
+            </div>`;
         }
 
         // Whether recent expected-goal output is running above or below the
@@ -1253,8 +1369,12 @@
             // one runs away with the ranking. Note the `??` rather than `||`:
             // these ratings are genuinely 0-100 and the worst team in the league
             // can score 0, which `||` would silently rewrite to an average 50.
-            const defWeak = 100 - (team.defensePower ?? 50);            // structural quality
-            const formWeak = 100 - (team.formRating ?? 50);             // are they losing right now
+            /* Both were "100 minus a 0-100 rating". Now both come off the
+               quantity itself: expected goals conceded against a league-average
+               1.42, and points won against a league-average 1.35 a game. Each
+               maps onto the same 0-100 attackability scale the caller expects. */
+            const defWeak = Math.max(0, Math.min(100, ((team.xgAgainst ?? 1.42) - 0.55) / 1.90 * 100));
+            const formWeak = Math.max(0, Math.min(100, (1 - ((team.last5Ppg ?? 1.35) / 3)) * 100));
             const leak = Math.min(100, (conceded / 2.5) * 100);         // goals actually shipped
             const csDrought = Math.max(0, 100 - csRate * 250);          // 40% CS rate scores 0
 
@@ -1333,7 +1453,8 @@
                 // A side can be solid at home and a free hit on the road. Averaging
                 // that away is how "they concede a lot" ends up pointed at the
                 // wrong fixture.
-                const venueGap = (t.defensePowerHome ?? 50) - (t.defensePowerAway ?? 50);
+                // Positive = leakier at home. In goals conceded, so it reads directly.
+                const venueGap = (t.xgAgainstHome ?? 1.42) - (t.xgAgainstAway ?? 1.42);
                 const venueNote = venueGap > 12 ? `Much softer away from home`
                     : venueGap < -12 ? `Much softer at home`
                     : null;
@@ -1367,7 +1488,7 @@
                     <div class="soft-metrics">
                         <span class="soft-metric" data-tooltip="Goals conceded per game across ${games} matches."><em>${parseFloat(t.avgConceded).toFixed(2)}</em>conceded/gm</span>
                         <span class="soft-metric" data-tooltip="Share of matches they have kept a clean sheet in."><em>${csRate}%</em>clean sheets</span>
-                        <span class="soft-metric" data-tooltip="Defensive rating out of 100 — higher is a better defence."><em>${t.defensePower}</em>defence</span>
+                        <span class="soft-metric" data-tooltip="Goals this defence is expected to concede in a game. A league-average side is around 1.4, so anything above that is leaking."><em>${(t.xgAgainst ?? 0).toFixed(2)}</em>xGC/game</span>
                         <span class="soft-form">${form}</span>
                     </div>
                     ${(venueNote || trendNote) ? `<div class="soft-note">${[venueNote, trendNote].filter(Boolean).join(' · ')}</div>` : ''}
@@ -1675,40 +1796,59 @@
             renderCurrentView();
         }
 
-        // Convert 0-100 power rating to 1-5 FDR scale
         // Uses percentile-based bucketing: ranks all teams and assigns quintiles
         // so each FDR level gets ~4 teams, giving an even distribution
-        function powerToFdr(power) {
-            // Build sorted power array from all teams' relevant data
-            // This gets called per-fixture, so we cache the thresholds
-            if (!powerToFdr._thresholds || powerToFdr._cacheKey !== allTeamsData.length) {
-                const powers = allTeamsData.map(t => {
-                    // Average of attack and defense power as overall strength indicator
-                    return (t.attackPower + t.defensePower) / 2;
-                }).sort((a, b) => a - b);
-                
-                if (powers.length >= 5) {
-                    const q = powers.length;
-                    // Quintile boundaries: bottom 20% = FDR 1, next 20% = FDR 2, etc.
-                    powerToFdr._thresholds = [
-                        powers[Math.floor(q * 0.2)],   // below this = FDR 1 (weakest)
-                        powers[Math.floor(q * 0.4)],   // below this = FDR 2
-                        powers[Math.floor(q * 0.6)],   // below this = FDR 3
-                        powers[Math.floor(q * 0.8)]    // below this = FDR 4, above = FDR 5
-                    ];
-                } else {
-                    // Fallback for when team data isn't loaded yet
-                    powerToFdr._thresholds = [28, 40, 55, 68];
-                }
-                powerToFdr._cacheKey = allTeamsData.length;
+        /* Fixture difficulty from expected goals rather than from an index.
+
+           The scale is unchanged — 1 to 5, quintiles of the league, four teams
+           to a band, so a colour on the calendar means what it always meant.
+           What changed is the quantity being ranked. Difficulty used to come
+           off the average of two 0-100 powers, which is one ordering doing two
+           jobs; it now comes off the opponent's expected goals conceded when
+           the question is about scoring, and their expected goals scored when
+           it is about keeping a clean sheet. Those are genuinely different
+           orderings, which is what lets a fixture be kind to your forwards and
+           cruel to your defenders at the same time. */
+        function leagueQuintiles(key) {
+            const cacheKey = `${key}:${allTeamsData.length}`;
+            leagueQuintiles._cache = leagueQuintiles._cache || {};
+            if (!(cacheKey in leagueQuintiles._cache)) {
+                const vals = allTeamsData.map(t => t[key])
+                    .filter(v => Number.isFinite(v)).sort((a, b) => a - b);
+                leagueQuintiles._cache[cacheKey] = vals.length >= 5
+                    ? [0.2, 0.4, 0.6, 0.8].map(p => vals[Math.floor(vals.length * p)])
+                    : null;
             }
-            
-            const t = powerToFdr._thresholds;
-            if (power <= t[0]) return 1;
-            if (power <= t[1]) return 2;
-            if (power <= t[2]) return 3;
-            if (power <= t[3]) return 4;
-            return 5;
+            return leagueQuintiles._cache[cacheKey];
+        }
+
+        // Which fifth of the league a value sits in, 1 (lowest) to 5 (highest).
+        function leagueBand(value, cuts) {
+            if (!cuts || !Number.isFinite(value)) return 3;
+            let band = 1;
+            for (let i = 0; i < cuts.length; i++) if (value > cuts[i]) band = i + 2;
+            return Math.min(5, band);
+        }
+
+        /* How hard this opponent is to SCORE against — read off their expected
+           goals conceded. A tight defence concedes few, so a low xgAgainst is a
+           high difficulty and the band inverts. */
+        function attackFdrVs(oppXgAgainst) {
+            return 6 - leagueBand(oppXgAgainst, leagueQuintiles('xgAgainst'));
+        }
+
+        /* How hard they are to keep OUT — their expected goals scored. More
+           expected goals is straightforwardly harder, so this one does not. */
+        function defenceFdrVs(oppXgFor) {
+            return leagueBand(oppXgFor, leagueQuintiles('xgFor'));
+        }
+
+        // One number for "how hard is this fixture overall", which is both of
+        // the above at once: a side that scores freely and concedes little is
+        // hard whichever end of the pitch you own.
+        function overallFdrVs(oppXgFor, oppXgAgainst) {
+            return Math.max(1, Math.min(5,
+                Math.round((attackFdrVs(oppXgAgainst) + defenceFdrVs(oppXgFor)) / 2)));
         }
 
         // Get the effective FDR for a fixture based on the current calendar color mode
@@ -1740,30 +1880,32 @@
                         // Calculate CS probability and attack/defense ratings for home team
                         const csChance = calculateCSChance(homeTeam, awayTeam, true);
                         
-                        // BTTS likelihood - both teams likely to score
-                        const homeAtt = homeTeam?.attackPower || 50;
-                        const awayAtt = awayTeam?.attackPower || 50;
-                        const homeDef = homeTeam?.defensePower || 50;
-                        const awayDef = awayTeam?.defensePower || 50;
-                        const bttsLikely = (homeAtt > 50 && awayAtt > 50 && homeDef < 60 && awayDef < 60);
+                        /* Both sides likely to score: each attack expected to
+                           beat the other defence, in goals rather than index
+                           points. 1.4 is a league-average game either way. */
+                        const homeAtt = homeTeam?.xgFor ?? 1.42;
+                        const awayAtt = awayTeam?.xgFor ?? 1.42;
+                        const homeDef = homeTeam?.xgAgainst ?? 1.42;
+                        const awayDef = awayTeam?.xgAgainst ?? 1.42;
+                        const bttsLikely = (homeAtt > 1.30 && awayAtt > 1.30 && homeDef > 1.10 && awayDef > 1.10);
                         
                         // Venue-adjusted opponent strengths:
                         // Home team faces the AWAY version of the opponent
-                        const oppDefPowerVenueAdj = awayTeam?.defensePowerAway || awayTeam?.defensePower || 50;
-                        const oppAttPowerVenueAdj = awayTeam?.attackPowerAway || awayTeam?.attackPower || 50;
+                        const oppXgAgainst = awayTeam?.xgAgainstAway ?? awayTeam?.xgAgainst ?? 1.42;
+                        const oppXgFor = awayTeam?.xgForAway ?? awayTeam?.xgFor ?? 1.42;
                         
                         fixtureMap[f.team_h][f.event].push({
                             opponent: awayTeam?.shortName || '???',
                             opponentId: f.team_a,
                             isHome: true,
                             fdr: f.team_h_difficulty || 3,
-                            attackFdr: powerToFdr(oppDefPowerVenueAdj),   // Attackers care about opponent DEFENSE
-                            defenseFdr: powerToFdr(oppAttPowerVenueAdj),  // Defenders care about opponent ATTACK
+                            attackFdr: attackFdrVs(oppXgAgainst),   // Attackers care about the opponent's DEFENCE
+                            defenseFdr: defenceFdrVs(oppXgFor),     // Defenders care about the opponent's ATTACK
                             finished: f.finished,
                             gw: f.event,
                             csChance,
-                            oppDefensePower: oppDefPowerVenueAdj,
-                            oppAttackPower: oppAttPowerVenueAdj,
+                            oppXgAgainst,
+                            oppXgFor,
                             bttsLikely
                         });
                     }
@@ -1774,30 +1916,32 @@
                         // Calculate CS probability and attack/defense ratings for away team
                         const csChance = calculateCSChance(awayTeam, homeTeam, false);
                         
-                        // BTTS likelihood - both teams likely to score
-                        const homeAtt = homeTeam?.attackPower || 50;
-                        const awayAtt = awayTeam?.attackPower || 50;
-                        const homeDef = homeTeam?.defensePower || 50;
-                        const awayDef = awayTeam?.defensePower || 50;
-                        const bttsLikely = (homeAtt > 50 && awayAtt > 50 && homeDef < 60 && awayDef < 60);
+                        /* Both sides likely to score: each attack expected to
+                           beat the other defence, in goals rather than index
+                           points. 1.4 is a league-average game either way. */
+                        const homeAtt = homeTeam?.xgFor ?? 1.42;
+                        const awayAtt = awayTeam?.xgFor ?? 1.42;
+                        const homeDef = homeTeam?.xgAgainst ?? 1.42;
+                        const awayDef = awayTeam?.xgAgainst ?? 1.42;
+                        const bttsLikely = (homeAtt > 1.30 && awayAtt > 1.30 && homeDef > 1.10 && awayDef > 1.10);
                         
                         // Venue-adjusted opponent strengths:
                         // Away team faces the HOME version of the opponent
-                        const oppDefPowerVenueAdj = homeTeam?.defensePowerHome || homeTeam?.defensePower || 50;
-                        const oppAttPowerVenueAdj = homeTeam?.attackPowerHome || homeTeam?.attackPower || 50;
+                        const oppXgAgainst = homeTeam?.xgAgainstHome ?? homeTeam?.xgAgainst ?? 1.42;
+                        const oppXgFor = homeTeam?.xgForHome ?? homeTeam?.xgFor ?? 1.42;
                         
                         fixtureMap[f.team_a][f.event].push({
                             opponent: homeTeam?.shortName || '???',
                             opponentId: f.team_h,
                             isHome: false,
                             fdr: f.team_a_difficulty || 3,
-                            attackFdr: powerToFdr(oppDefPowerVenueAdj),   // Attackers care about opponent DEFENSE
-                            defenseFdr: powerToFdr(oppAttPowerVenueAdj),  // Defenders care about opponent ATTACK
+                            attackFdr: attackFdrVs(oppXgAgainst),   // Attackers care about the opponent's DEFENCE
+                            defenseFdr: defenceFdrVs(oppXgFor),     // Defenders care about the opponent's ATTACK
                             finished: f.finished,
                             gw: f.event,
                             csChance,
-                            oppDefensePower: oppDefPowerVenueAdj,
-                            oppAttackPower: oppAttPowerVenueAdj,
+                            oppXgAgainst,
+                            oppXgFor,
                             bttsLikely
                         });
                     }
@@ -1810,9 +1954,16 @@
         function calculateCSChance(team, opponent, isHome) {
             if (!team || !opponent) return 30;
             
-            // Get relevant defense/attack powers based on venue
-            const teamDef = isHome ? (team.defensePowerHome || team.defensePower) : (team.defensePowerAway || team.defensePower);
-            const oppAtt = isHome ? (opponent.attackPowerAway || opponent.attackPower) : (opponent.attackPowerHome || opponent.attackPower);
+            /* In goals per game. Converted to the 0-100 footing the arithmetic
+               below still works on: a defence expected to concede nothing rates
+               100, one expected to concede the 2.45 top of the range rates 0,
+               and an attack scales the other way. */
+            const asRating = (gpg, higherIsBetter) => {
+                const t = Math.max(0, Math.min(1, ((gpg ?? 1.42) - 0.55) / 1.90));
+                return (higherIsBetter ? t : 1 - t) * 100;
+            };
+            const teamDef = asRating(isHome ? (team.xgAgainstHome ?? team.xgAgainst) : (team.xgAgainstAway ?? team.xgAgainst), false);
+            const oppAtt = asRating(isHome ? (opponent.xgForAway ?? opponent.xgFor) : (opponent.xgForHome ?? opponent.xgFor), true);
             
             // Base CS probability (home teams ~35%, away ~25%)
             const baseCS = isHome ? 35 : 25;
@@ -1904,14 +2055,20 @@
             const atkFdr = `Att FDR: ${fixture.attackFdr || '?'}`;
             const defFdr = `Def FDR: ${fixture.defenseFdr || '?'}`;
             const cs = `CS: ${fixture.csChance || '?'}%`;
-            const oppDef = `Opp Def: ${fixture.oppDefensePower || '?'}`;
-            const oppAtt = `Opp Att: ${fixture.oppAttackPower || '?'}`;
+            // The opponent's expected goals, both ways, in the units the rest of
+            // the page now speaks. These read oppDefensePower/oppAttackPower until
+            // the fixture map stopped carrying them, at which point every tooltip
+            // in the calendar said "Opp Def: undefined".
+            const oppXgA = Number.isFinite(fixture.oppXgAgainst) ? fixture.oppXgAgainst.toFixed(2) : '?';
+            const oppXgF = Number.isFinite(fixture.oppXgFor) ? fixture.oppXgFor.toFixed(2) : '?';
+            const oppDef = `Opp xGC: ${oppXgA}`;
+            const oppAtt = `Opp xG: ${oppXgF}`;
             const btts = fixture.bttsLikely ? 'BTTS Likely' : '';
             
             if (calendarColorMode === 'attack') {
-                return `${base}\nAttack FDR: ${fixture.attackFdr} (Opp Def: ${fixture.oppDefensePower})\nStd FDR: ${fixture.fdr} | ${cs}${btts ? '\n' + btts : ''}`;
+                return `${base}\nAttack FDR: ${fixture.attackFdr} (opponent concedes ${oppXgA} xG a game)\nStd FDR: ${fixture.fdr} | ${cs}${btts ? '\n' + btts : ''}`;
             } else if (calendarColorMode === 'defense') {
-                return `${base}\nDefense FDR: ${fixture.defenseFdr} (Opp Att: ${fixture.oppAttackPower})\nStd FDR: ${fixture.fdr} | ${cs}${btts ? '\n' + btts : ''}`;
+                return `${base}\nDefense FDR: ${fixture.defenseFdr} (opponent scores ${oppXgF} xG a game)\nStd FDR: ${fixture.fdr} | ${cs}${btts ? '\n' + btts : ''}`;
             }
             return `${base}\n${fdr} | ${atkFdr} | ${defFdr}\n${cs} | ${oppDef} | ${oppAtt}${btts ? '\n' + btts : ''}`;
         }
@@ -2040,8 +2197,8 @@
                     last5: createEmptyStatBucket(),
                     last10: createEmptyStatBucket(),
                     form: [],
-                    attackStrength: (team.attackPowerHome + team.attackPowerAway) / 2,
-                    defenseStrength: (team.defensePowerHome + team.defensePowerAway) / 2
+                    attackStrength: (team.xgForHome + team.xgForAway) / 2,
+                    defenseStrength: (team.xgAgainstHome + team.xgAgainstAway) / 2
                 };
             });
 
@@ -3200,7 +3357,7 @@
                     <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="scout-badge" onerror="this.style.display='none'">
                     <div>
                         <div class="scout-team-name">${escHTML(team.name)}</div>
-                        <div class="scout-team-sub">${team.wins}W ${team.draws}D ${team.losses}L \u00B7 Form Rating: ${team.formRating.toFixed(0)}</div>
+                        <div class="scout-team-sub">${team.wins}W ${team.draws}D ${team.losses}L \u00B7 ${(team.last5Ppg ?? 0).toFixed(2)} pts/game</div>
                     </div>
                 </div>
                 <div class="scout-stat-grid">
@@ -3286,9 +3443,9 @@
                             easyCount,
                             hardCount,
                             score,
-                            attackPower: team.attackPower,
-                            defensePower: team.defensePower,
-                            formRating: team.formRating
+                            xgFor: team.xgFor,
+                            xgAgainst: team.xgAgainst,
+                            last5Ppg: team.last5Ppg
                         });
                     }
                 }
@@ -3447,9 +3604,9 @@
                         homeCountNext,
                         homeCountCurrent,
                         longSwing,
-                        attackPower: team.attackPower,
-                        defensePower: team.defensePower,
-                        formRating: team.formRating,
+                        xgFor: team.xgFor,
+                        xgAgainst: team.xgAgainst,
+                        last5Ppg: team.last5Ppg,
                         allFutureFixtures: getFixtures(futureGWs.slice(0, 10))
                     });
                 }
@@ -3538,18 +3695,31 @@
                 <button class="modal-close" onclick="closeModal()" aria-label="Close modal">✕</button>
             `;
 
-            // Power overview
-            const powerBars = [
-                { label: 'Attack', value: team.attackPower, color: 'var(--color-error)' },
-                { label: 'Defence', value: team.defensePower, color: 'var(--color-info)' },
-                { label: 'Fixtures', value: team.fixtureScore, color: 'var(--color-success)' },
-                { label: 'Form', value: team.formRating, color: 'var(--color-warning)' }
+            /* Four quantities, each with its own unit, where there used to be
+               four 0-100 indices. The bar still shows where they sit in the
+               league — that is what a bar is good at — but the number beside it
+               is now the thing being measured, and two of the four are better
+               when they are smaller. */
+            const barPct = (v, lo, hi) => Math.max(2, Math.min(100, ((v - lo) / (hi - lo)) * 100));
+            const glanceBars = [
+                { label: 'xG for', value: (team.xgFor ?? 0).toFixed(2), unit: 'a game',
+                  pct: barPct(team.xgFor ?? 1.42, 0.55, 2.45), good: (team.xgFor ?? 0) >= 1.7, bad: (team.xgFor ?? 0) < 1.1,
+                  color: 'var(--color-error)', tip: 'Goals this side is expected to score in a game. A league-average attack is about 1.4.' },
+                { label: 'xG against', value: (team.xgAgainst ?? 0).toFixed(2), unit: 'a game',
+                  pct: barPct(2.45 - (team.xgAgainst ?? 1.42), 0, 1.90), good: (team.xgAgainst ?? 9) <= 1.15, bad: (team.xgAgainst ?? 0) > 1.65,
+                  color: 'var(--color-info)', tip: 'Goals this side is expected to concede in a game. Lower is better — the bar is filled for a good defence, not a leaky one.' },
+                { label: 'Fixtures', value: (team.avgFdrNum ?? 3).toFixed(1), unit: 'avg FDR next 5',
+                  pct: barPct(5 - (team.avgFdrNum ?? 3), 0, 4), good: (team.avgFdrNum ?? 5) <= 2.6, bad: (team.avgFdrNum ?? 0) >= 3.6,
+                  color: 'var(--color-success)', tip: 'Average fixture difficulty over the next five. 1 is the easiest fixture, 5 the hardest.' },
+                { label: 'Form', value: (team.last5Ppg ?? 0).toFixed(2), unit: `pts a game (last ${gp})`,
+                  pct: barPct(team.last5Ppg ?? 0, 0, 3), good: (team.last5Ppg ?? 0) >= 2, bad: (team.last5Ppg ?? 0) < 1,
+                  color: 'var(--color-warning)', tip: 'Points per game across the same window as the record above.' }
             ].map(m => {
-                const cls = m.value >= 60 ? 'good' : m.value < 40 ? 'bad' : '';
-                return `<div class="report-bar-row">
+                const cls = m.good ? 'good' : m.bad ? 'bad' : '';
+                return `<div class="report-bar-row" data-tooltip="${escHTML(m.tip)}">
                     <div class="report-bar-label">${m.label}</div>
-                    <div class="report-bar"><div class="report-bar-fill" style="width:${m.value}%;background:${m.color}"></div></div>
-                    <div class="report-bar-value ${cls}">${m.value}</div>
+                    <div class="report-bar"><div class="report-bar-fill" style="width:${m.pct}%;background:${m.color}"></div></div>
+                    <div class="report-bar-value ${cls}">${m.value}<em class="report-bar-unit">${escHTML(m.unit)}</em></div>
                 </div>`;
             }).join('');
 
@@ -3596,8 +3766,8 @@
                 <div class="report-venue-split">
                     <div class="report-venue-card">
                         <div class="report-venue-title"><i data-lucide="home" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Home</div>
-                        <div class="report-venue-stat"><span>Attack</span><span>${team.attackPowerHome}</span></div>
-                        <div class="report-venue-stat"><span>Defence</span><span>${team.defensePowerHome}</span></div>
+                        <div class="report-venue-stat"><span>xG for</span><span>${(team.xgForHome ?? 0).toFixed(2)}</span></div>
+                        <div class="report-venue-stat"><span>xG against</span><span>${(team.xgAgainstHome ?? 0).toFixed(2)}</span></div>
                         <div class="report-venue-stat"><span>Avg Goals</span><span>${hs.avgGoals !== undefined ? hs.avgGoals.toFixed(2) : team.avgGoals}</span></div>
                         <div class="report-venue-stat"><span>Avg Conceded</span><span>${hs.avgConceded !== undefined ? hs.avgConceded.toFixed(2) : '-'}</span></div>
                         <div class="report-venue-stat"><span>Record</span><span>${hs.games ? `${hs.wins}W of ${hs.games}` : '—'}</span></div>
@@ -3605,8 +3775,8 @@
                     </div>
                     <div class="report-venue-card">
                         <div class="report-venue-title"><i data-lucide="plane" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Away</div>
-                        <div class="report-venue-stat"><span>Attack</span><span>${team.attackPowerAway}</span></div>
-                        <div class="report-venue-stat"><span>Defence</span><span>${team.defensePowerAway}</span></div>
+                        <div class="report-venue-stat"><span>xG for</span><span>${(team.xgForAway ?? 0).toFixed(2)}</span></div>
+                        <div class="report-venue-stat"><span>xG against</span><span>${(team.xgAgainstAway ?? 0).toFixed(2)}</span></div>
                         <div class="report-venue-stat"><span>Avg Goals</span><span>${as.avgGoals !== undefined ? as.avgGoals.toFixed(2) : '-'}</span></div>
                         <div class="report-venue-stat"><span>Avg Conceded</span><span>${as.avgConceded !== undefined ? as.avgConceded.toFixed(2) : '-'}</span></div>
                         <div class="report-venue-stat"><span>Record</span><span>${as.games ? `${as.wins}W of ${as.games}` : '—'}</span></div>
@@ -3649,6 +3819,61 @@
                     </div>
                 `;
             }
+
+            /* ===== THE LAST FIVE, MATCH BY MATCH =====
+
+               Season averages say what a side usually does; this says what it
+               has just done, and shows the expectation beside the outcome in
+               both directions. A run of games where the xG is fine and the goals
+               are not is a different problem from one where neither is, and no
+               average distinguishes them. */
+            const recent = team.recentMatches || [];
+            const recentRows = recent.map(m => {
+                const opp = allTeamsData.find(t => t.id === m.opponentId);
+                const gd = m.goals - m.xG, cd = m.conceded - m.xGC;
+                const cell = (exp, act, lowerIsBetter) => {
+                    const d = act - exp;
+                    const cls = Math.abs(d) < 0.5 ? 'level' : (lowerIsBetter ? d < 0 : d > 0) ? 'over' : 'under';
+                    return `<td class="l5-cell ${cls}"><span class="l5-act">${act}</span><span class="l5-exp">${exp.toFixed(2)}</span></td>`;
+                };
+                return `<tr>
+                    <td class="l5-gw">GW${m.gw}</td>
+                    <td class="l5-opp">${escHTML(opp ? opp.shortName : '???')}<span class="l5-ha">${m.isHome ? 'H' : 'A'}</span></td>
+                    ${cell(m.xG, m.goals, false)}
+                    ${cell(m.xGC, m.conceded, true)}
+                    <td class="l5-res ${m.goals > m.conceded ? 'w' : m.goals < m.conceded ? 'l' : 'd'}">${m.goals}-${m.conceded}</td>
+                </tr>`;
+            }).join('');
+            const l5Tot = recent.reduce((a, m) => ({
+                xG: a.xG + m.xG, goals: a.goals + m.goals,
+                xGC: a.xGC + m.xGC, conceded: a.conceded + m.conceded
+            }), { xG: 0, goals: 0, xGC: 0, conceded: 0 });
+            const lastFiveSection = !recentRows ? '' : `
+                <div class="modal-section">
+                    <div class="modal-section-title">Last ${recent.length} — expected against actual</div>
+                    <table class="l5-table">
+                        <thead><tr>
+                            <th>GW</th><th>Opp</th>
+                            <th data-tooltip="Goals scored, with the expected goals that produced them underneath.">Scored / xG</th>
+                            <th data-tooltip="Goals conceded, with the expected goals conceded underneath.">Let in / xGC</th>
+                            <th>Score</th>
+                        </tr></thead>
+                        <tbody>${recentRows}</tbody>
+                        <tfoot><tr>
+                            <td colspan="2" class="l5-gw">Total</td>
+                            <td class="l5-cell ${Math.abs(l5Tot.goals - l5Tot.xG) < 1.5 ? 'level' : l5Tot.goals > l5Tot.xG ? 'over' : 'under'}">
+                                <span class="l5-act">${l5Tot.goals}</span><span class="l5-exp">${l5Tot.xG.toFixed(2)}</span></td>
+                            <td class="l5-cell ${Math.abs(l5Tot.conceded - l5Tot.xGC) < 1.5 ? 'level' : l5Tot.conceded < l5Tot.xGC ? 'over' : 'under'}">
+                                <span class="l5-act">${l5Tot.conceded}</span><span class="l5-exp">${l5Tot.xGC.toFixed(2)}</span></td>
+                            <td></td>
+                        </tr></tfoot>
+                    </table>
+                    <div class="l5-summary">
+                        ${renderXgVsActual('Scored', l5Tot.xG, l5Tot.goals, { threshold: 1.5, expectedLabel: 'xG', actualLabel: 'goals' })}
+                        ${renderXgVsActual('Conceded', l5Tot.xGC, l5Tot.conceded, { threshold: 1.5, lowerIsBetter: true, expectedLabel: 'xGC', actualLabel: 'goals' })}
+                    </div>
+                    <p class="l5-note">Green means the outcome beat the expectation — goals above xG, or fewer conceded than xGC. Finishing and goalkeeping swing these; the expected column is the one that tends to persist.</p>
+                </div>`;
 
             // Recent form
             const formStrip = team.pastResults.slice(0, 5).map(r => {
@@ -3698,18 +3923,19 @@
                 <p class="fx-split-note">Attack and defence difficulty are rated separately — a fixture can suit one and punish the other.</p>` : '';
 
             // ===== Where they rank across the league =====
-            const rAtt = teamRankOf(team, 'attackPower', true);
-            const rDef = teamRankOf(team, 'defensePower', true);
-            const rForm = teamRankOf(team, 'formRating', true);
-            const rFix = teamRankOf(team, 'fixtureScore', true);
+            const rAtt = teamRankOf(team, 'xgFor', true);
+            // Fewer expected goals conceded is a better defence, so this one ranks upward from the bottom.
+            const rDef = teamRankOf(team, 'xgAgainst', false);
+            const rForm = teamRankOf(team, 'last5Ppg', true);
+            const rFix = teamRankOf(team, 'avgFdrNum', false);
             const rConc = teamRankOf(team, 'avgConceded', false);
             const rankSection = `
                 <div class="modal-section">
                     <div class="modal-section-title">Where They Rank</div>
                     <div class="report-ranks">
-                        ${teamRankPill('Attack', rAtt, `${team.attackPower}/100 attacking rating — ${rAtt ? teamOrdinal(rAtt.rank) + ' of ' + rAtt.total : ''}.`)}
-                        ${teamRankPill('Defence', rDef, `${team.defensePower}/100 defensive rating — ${rDef ? teamOrdinal(rDef.rank) + ' of ' + rDef.total : ''}.`)}
-                        ${teamRankPill('Form', rForm, `${team.formRating}/100 weighted recent form — ${rForm ? teamOrdinal(rForm.rank) + ' of ' + rForm.total : ''}.`)}
+                        ${teamRankPill('Attack', rAtt, `${(team.xgFor ?? 0).toFixed(2)} expected goals a game — ${rAtt ? teamOrdinal(rAtt.rank) + ' of ' + rAtt.total : ''}.`)}
+                        ${teamRankPill('Defence', rDef, `${(team.xgAgainst ?? 0).toFixed(2)} expected goals conceded a game — ${rDef ? teamOrdinal(rDef.rank) + ' tightest of ' + rDef.total : ''}.`)}
+                        ${teamRankPill('Form', rForm, `${(team.last5Ppg ?? 0).toFixed(2)} points a game — ${rForm ? teamOrdinal(rForm.rank) + ' of ' + rForm.total : ''}.`)}
                         ${teamRankPill('Fixtures', rFix, `Next five fixtures, ${rFix ? teamOrdinal(rFix.rank) + ' kindest of ' + rFix.total : ''}.`)}
                         ${teamRankPill('Tightest', rConc, `${parseFloat(team.avgConceded).toFixed(2)} conceded per game — ${rConc ? teamOrdinal(rConc.rank) + ' tightest of ' + rConc.total : ''}.`)}
                     </div>
@@ -3729,8 +3955,8 @@
                                     ? `A hard team to score against right now. Their opponents' attackers are a tougher sell, and their own defensive assets carry more value.`
                                     : `Middling — neither a free hit nor a wall. Fixture and venue matter more than the defence itself here.`}
                             ${team.xgcTrend === 'worsening' ? ' They are conceding more than their season rate lately.' : team.xgcTrend === 'improving' ? ' They have been tightening up lately, so the raw record overstates how soft they are.' : ''}
-                            ${Math.abs((team.defensePowerHome ?? 50) - (team.defensePowerAway ?? 50)) > 12
-                                ? ` Notably ${(team.defensePowerHome ?? 50) > (team.defensePowerAway ?? 50) ? 'softer away from home' : 'softer at home'}.`
+                            ${Math.abs((team.xgAgainstHome ?? 1.42) - (team.xgAgainstAway ?? 1.42)) > 0.25
+                                ? ` Notably ${(team.xgAgainstHome ?? 1.42) < (team.xgAgainstAway ?? 1.42) ? 'softer away from home' : 'softer at home'}.`
                                 : ''}
                         </div>
                     </div>
@@ -3769,12 +3995,13 @@
 
             // Build verdict
             const verdictParts = [];
-            if (team.attackPower >= 65) verdictParts.push(`Strong attacking side (${team.attackPower}/100).`);
-            else if (team.attackPower < 40) verdictParts.push(`Weak in attack (${team.attackPower}/100).`);
-            if (team.defensePower >= 65) verdictParts.push(`Solid defence (${team.defensePower}/100) — target clean sheet players.`);
-            else if (team.defensePower < 40) verdictParts.push(`Leaky defence (${team.defensePower}/100) — avoid defensive assets.`);
-            if (team.fixtureScore >= 65) verdictParts.push(`Favourable upcoming fixtures.`);
-            else if (team.fixtureScore < 35) verdictParts.push(`Tough fixture run ahead.`);
+            const vXgF = team.xgFor ?? 1.42, vXgA = team.xgAgainst ?? 1.42;
+            if (vXgF >= 1.75) verdictParts.push(`Strong attacking side — ${vXgF.toFixed(2)} expected goals a game.`);
+            else if (vXgF < 1.10) verdictParts.push(`Weak in attack — ${vXgF.toFixed(2)} expected goals a game.`);
+            if (vXgA <= 1.10) verdictParts.push(`Solid defence — ${vXgA.toFixed(2)} expected goals conceded a game, so target clean sheet players.`);
+            else if (vXgA > 1.70) verdictParts.push(`Leaky defence — ${vXgA.toFixed(2)} expected goals conceded a game, so avoid defensive assets.`);
+            if ((team.avgFdrNum ?? 3) <= 2.6) verdictParts.push(`Favourable upcoming fixtures.`);
+            else if ((team.avgFdrNum ?? 3) >= 3.6) verdictParts.push(`Tough fixture run ahead.`);
             if (team.venueLabel) verdictParts.push(`${team.venueEmoji || ''} ${team.venueLabel}.`);
             const xgDiffVal = parseFloat(team.xgDiff);
             if (xgDiffVal > 3) verdictParts.push(`Overperforming xG — regression risk.`);
@@ -3783,8 +4010,8 @@
 
             const body = `
                 <div class="modal-section">
-                    <div class="modal-section-title">Power Overview</div>
-                    ${powerBars}
+                    <div class="modal-section-title">At a Glance</div>
+                    ${glanceBars}
                 </div>
                 ${rankSection}
                 <div class="modal-section">
@@ -3797,6 +4024,7 @@
                     ${venueSplit}
                 </div>
                 ${xgSection}
+                ${lastFiveSection}
                 <div class="modal-section">
                     <div class="modal-section-title">Recent Form <span class="modal-window">oldest to latest</span></div>
                     <div class="report-form-strip">${formStrip}</div>
@@ -3873,21 +4101,21 @@
                             <div class="modal-stat-sub">FDR ≥ 4</div>
                         </div>
                         <div class="modal-stat">
-                            <div class="modal-stat-label">Form</div>
-                            <div class="modal-stat-value ${run.formRating >= 60 ? 'good' : run.formRating < 40 ? 'bad' : 'warn'}">${run.formRating}</div>
-                            <div class="modal-stat-sub">rating</div>
+                            <div class="modal-stat-label" data-tooltip="Points per game over the recent window.">Form (pts/g)</div>
+                            <div class="modal-stat-value ${run.last5Ppg >= 2 ? 'good' : run.last5Ppg < 1 ? 'bad' : 'warn'}">${(run.last5Ppg ?? 0).toFixed(2)}</div>
+                            <div class="modal-stat-sub">pts/game</div>
                         </div>
                     </div>
                     <div class="modal-stat-grid">
                         <div class="modal-stat">
-                            <div class="modal-stat-label">Attack</div>
-                            <div class="modal-stat-value ${run.attackPower >= 60 ? 'good' : run.attackPower < 40 ? 'bad' : ''}">${run.attackPower}</div>
-                            <div class="modal-stat-sub">power</div>
+                            <div class="modal-stat-label" data-tooltip="Expected goals a game.">xG for</div>
+                            <div class="modal-stat-value ${run.xgFor >= 1.7 ? 'good' : run.xgFor < 1.1 ? 'bad' : ''}">${(run.xgFor ?? 0).toFixed(2)}</div>
+                            <div class="modal-stat-sub">xG/game</div>
                         </div>
                         <div class="modal-stat">
-                            <div class="modal-stat-label">Defense</div>
-                            <div class="modal-stat-value ${run.defensePower >= 60 ? 'good' : run.defensePower < 40 ? 'bad' : ''}">${run.defensePower}</div>
-                            <div class="modal-stat-sub">power</div>
+                            <div class="modal-stat-label" data-tooltip="Expected goals conceded a game — lower is better.">xG against</div>
+                            <div class="modal-stat-value ${run.xgAgainst <= 1.15 ? 'good' : run.xgAgainst > 1.65 ? 'bad' : ''}">${(run.xgAgainst ?? 0).toFixed(2)}</div>
+                            <div class="modal-stat-sub">xGC/game</div>
                         </div>
                         <div class="modal-stat">
                             <div class="modal-stat-label">Home %</div>
@@ -3939,10 +4167,10 @@
                         ${run.easyCount >= run.length * 0.7 ? `${run.easyCount} of ${run.length} fixtures are FDR ≤ 2 — this is a dominant green stretch. ` : ''}
                         ${run.hardCount > 0 ? `There ${run.hardCount === 1 ? 'is 1 tougher fixture' : `are ${run.hardCount} tougher fixtures`} mixed in, but the overall average is still strong. ` : 'No difficult fixtures (FDR ≥ 4) in this entire stretch. '}
                         ${run.homeCount >= Math.ceil(run.length * 0.6) ? 'Heavy home schedule adds extra attacking value. ' : ''}
-                        ${run.attackPower >= 60 ? `${escHTML(run.teamName)} have strong attacking output — their forwards and midfielders are premium targets here. ` : ''}
-                        ${run.defensePower >= 60 ? 'Solid defensive record too — their defenders offer clean sheet potential. ' : ''}
+                        ${run.xgFor >= 1.7 ? `${escHTML(run.teamName)} have strong attacking output — their forwards and midfielders are premium targets here. ` : ''}
+                        ${run.xgAgainst <= 1.15 ? 'Solid defensive record too — their defenders offer clean sheet potential. ' : ''}
                         ${run.length >= 5 ? `At ${run.length} gameweeks, this patch is long enough to plan multiple transfers around. ` : ''}
-                        ${run.formRating >= 60 ? 'Currently in good form, which adds confidence to this pick. ' : run.formRating < 35 ? 'Form is poor though — monitor whether they can turn it around before committing. ' : ''}
+                        ${run.last5Ppg >= 2 ? 'Currently in good form, which adds confidence to this pick. ' : run.last5Ppg < 0.9 ? 'Form is poor though — monitor whether they can turn it around before committing. ' : ''}
                     </div>
                 </div>
             `;
@@ -3990,19 +4218,19 @@
                     </div>
                     <div class="modal-stat-grid">
                         <div class="modal-stat">
-                            <div class="modal-stat-label">Attack</div>
-                            <div class="modal-stat-value ${s.attackPower >= 60 ? 'good' : s.attackPower < 40 ? 'bad' : ''}">${s.attackPower}</div>
-                            <div class="modal-stat-sub">power</div>
+                            <div class="modal-stat-label" data-tooltip="Expected goals a game.">xG for</div>
+                            <div class="modal-stat-value ${s.xgFor >= 1.7 ? 'good' : s.xgFor < 1.1 ? 'bad' : ''}">${(s.xgFor ?? 0).toFixed(2)}</div>
+                            <div class="modal-stat-sub">xG/game</div>
                         </div>
                         <div class="modal-stat">
-                            <div class="modal-stat-label">Defense</div>
-                            <div class="modal-stat-value ${s.defensePower >= 60 ? 'good' : s.defensePower < 40 ? 'bad' : ''}">${s.defensePower}</div>
-                            <div class="modal-stat-sub">power</div>
+                            <div class="modal-stat-label" data-tooltip="Expected goals conceded a game — lower is better.">xG against</div>
+                            <div class="modal-stat-value ${s.xgAgainst <= 1.15 ? 'good' : s.xgAgainst > 1.65 ? 'bad' : ''}">${(s.xgAgainst ?? 0).toFixed(2)}</div>
+                            <div class="modal-stat-sub">xGC/game</div>
                         </div>
                         <div class="modal-stat">
-                            <div class="modal-stat-label">Form</div>
-                            <div class="modal-stat-value ${s.formRating >= 60 ? 'good' : s.formRating < 40 ? 'bad' : 'warn'}">${s.formRating}</div>
-                            <div class="modal-stat-sub">rating</div>
+                            <div class="modal-stat-label" data-tooltip="Points per game over the recent window.">Form (pts/g)</div>
+                            <div class="modal-stat-value ${s.last5Ppg >= 2 ? 'good' : s.last5Ppg < 1 ? 'bad' : 'warn'}">${(s.last5Ppg ?? 0).toFixed(2)}</div>
+                            <div class="modal-stat-sub">pts/game</div>
                         </div>
                     </div>
                 </div>
@@ -4077,13 +4305,13 @@
                             `Average FDR drops from ${s.currentFdr} to ${s.futureFdr}. ` +
                             (parseFloat(s.futureFdr) <= 2.5 ? 'The upcoming run looks very favourable — consider bringing in their assets ahead of the swing. ' : 'Worth monitoring for transfer planning. ') +
                             (s.homeCountNext >= 2 ? `${s.homeCountNext} of the next 3 are at home, adding further value. ` : '') +
-                            (s.attackPower >= 55 ? 'Their attacking numbers support investment in forwards/midfielders. ' : '')
+                            (s.xgFor >= 1.55 ? 'Their attacking numbers support investment in forwards/midfielders. ' : '')
                         :
                             `<strong style="color: var(--color-error)">${escHTML(s.teamName)}'s fixtures get considerably harder from GW${s.swingGW}.</strong> ` +
                             `Average FDR rises from ${s.currentFdr} to ${s.futureFdr}. ` +
                             (parseFloat(s.futureFdr) >= 4.0 ? 'This is a tough run — strongly consider selling their assets before the swing hits. ' : 'Keep an eye on this and prepare alternatives. ') +
                             (s.homeCountNext <= 1 ? 'Heavy away schedule makes it even tougher. ' : '') +
-                            (s.defensePower < 50 ? 'Their defensive weaknesses could be badly exposed in this stretch. ' : '')
+                            (s.xgAgainst > 1.45 ? 'Their defensive weaknesses could be badly exposed in this stretch. ' : '')
                         }
                     </div>
                 </div>
