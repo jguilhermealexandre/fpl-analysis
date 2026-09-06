@@ -1366,6 +1366,16 @@
             color: var(--color-primary); background: var(--color-primary-muted);
             padding: 2px 8px; border-radius: var(--radius-full);
         }
+        /* Same green as the settled cards below it, so the pill and the pitch
+           are visibly reporting the same kind of number. */
+        .v2-pitch-xitotal.actual {
+            color: #14532D; background: rgba(220,252,231,0.94);
+            box-shadow: inset 0 0 0 1px rgba(22,101,52,0.30);
+        }
+        .v2-pitch-xitotal.actual.live {
+            color: #7C2D12; background: rgba(254,243,199,0.94);
+            box-shadow: inset 0 0 0 1px rgba(180,83,9,0.32);
+        }
 
         /* --- the snapshot as a gateway into the full analysis --- */
         .v2-pitch-stage { position: relative; }
@@ -1414,6 +1424,17 @@
         /* A projection built on a coin-flip start means something different to the
            same number from a nailed-on starter, so say so on the card. */
         .v2-pitch-token-mins.risk { color: #B45309; }
+        /* Dark mode reaches the pill, which sits on the panel. It does not reach
+           the cards on the pitch: those sit on grass, which is the same green in
+           either theme, and their ink is set light-on-dark regardless. */
+        [data-theme="dark"] .v2-pitch-xitotal.actual {
+            color: #86EFAC; background: rgba(22,101,52,0.30);
+            box-shadow: inset 0 0 0 1px rgba(134,239,172,0.34);
+        }
+        [data-theme="dark"] .v2-pitch-xitotal.actual.live {
+            color: #FCD34D; background: rgba(180,83,9,0.32);
+            box-shadow: inset 0 0 0 1px rgba(252,211,77,0.34);
+        }
         .v2-pitch-token-star { color: #F59E0B; margin-left: 2px; }
         /* Shape + tooltip carry the verdict as well as the ring colour, so it is
            not conveyed by hue alone. */
@@ -1505,6 +1526,15 @@
         .v2-pitch-token-score b { font-size: 16px; font-weight: 800; }
         .v2-pitch-token-score .u { font-size: 9.5px; font-weight: 700; color: rgba(15,23,42,0.55); }
         .v2-pitch-token-score b.pos { font-size: 12px; color: rgba(15,23,42,0.6); }
+        /* Once his match has kicked off this stops being a forecast and becomes a
+           score, and it changes colour to say so: amber while the number can
+           still move, green once the fixture is over and it cannot. Colour and
+           not a filled chip — the score line is set in the card's own ink, and a
+           pill here would out-shout the photo it sits under. */
+        .v2-pitch-token-score.actual { color: #14532D; }
+        .v2-pitch-token-score.actual .u { color: rgba(20,83,45,0.72); }
+        .v2-pitch-token-score.actual.live { color: #7C2D12; }
+        .v2-pitch-token-score.actual.live .u { color: rgba(124,45,18,0.72); }
         /* A sell or a monitor verdict rings the face. This class was being
            written onto the markup with no rule anywhere to match it, so the
            ring the card claimed to carry has never once been drawn — the glyph
@@ -5253,7 +5283,13 @@
             return jerseyNumbers;
         }
 
-        function renderPitchView({ squad, analysisResults }) {
+        /* The snapshot answers "how is my team doing" before a deadline and
+           "how did my team do" after one, and those are different questions
+           with different numbers. Everything below the squad is what tells the
+           two apart: the gameweek being played, its fixtures, and whoever has
+           already scored in it. All optional — without them the pitch falls
+           back to the projection it has always shown. */
+        function renderPitchView({ squad, analysisResults, currentGW, fixtures, teams, eventLive, liveById }) {
             const wrap = document.getElementById('v2PitchWrap');
             if (!squad || !squad.length) { wrap.innerHTML = ''; return; }
             const esc = t => String(t == null ? '' : t)
@@ -5285,6 +5321,44 @@
             const xpById = {};
             squad.forEach(p => { xpById[p.id] = xpOf(p); });
 
+            /* What this gameweek has actually produced, for the players who have
+               produced anything yet.
+
+               Before kick-off a projection is the only number available. After
+               it, the projection is beside the point: the player has a real
+               score and real minutes, and a card still reading "4.6 xP · 72'"
+               beside a man who has played 90 and scored 2 is not a forecast, it
+               is a contradiction. Two sources, freshest first — the live
+               endpoint the status strip already fetched while matches are on,
+               then the committed event-live.json once nothing is in play and
+               that fetch no longer runs. */
+            const gwFixturesOf = p => (fixtures || []).filter(f =>
+                f.event === currentGW && (f.team_h === p.teamId || f.team_a === p.teamId));
+
+            /* event-live.json omits anyone who did not feature, so "we have data
+               for this gameweek" has to be judged on the file rather than on the
+               row: an unused substitute really did score zero, and falling back
+               to his projection would put points on the card he never had. */
+            const liveCovers = !!(eventLive && eventLive.event === currentGW && eventLive.elements);
+            function actualOf(p) {
+                const fxs = gwFixturesOf(p);
+                // A blank gameweek, or a fixture that has not kicked off: there
+                // is nothing yet, so the projection still stands.
+                if (!fxs.length || !fxs.some(f => f.started)) return null;
+                const done = fxs.every(f => f.finished_provisional);
+                if (liveById && liveById[p.id]) {
+                    const st = liveById[p.id];
+                    return { pts: st.total_points || 0, mins: st.minutes || 0, done };
+                }
+                if (liveCovers) {
+                    const e = eventLive.elements[p.id] || {};
+                    return { pts: e.pts || 0, mins: e.min || 0, done };
+                }
+                return null;
+            }
+            const actualById = {};
+            squad.forEach(p => { actualById[p.id] = actualOf(p); });
+
             // The armband marker follows the highest projection in the XI, which is
             // the question the dashboard is actually answering. The real captain is
             // still shown, so a disagreement is visible rather than hidden.
@@ -5314,19 +5388,34 @@
                 else if (verdict === 'monitor') verdictMark = '<span class="v2-pitch-token-flag monitor" title="Monitor">●</span>';
 
                 const xp = xpById[p.id];
+                const act = actualById[p.id];
+                /* p.fixtures excludes anything already finished, so its head is
+                   the fixture coming up — right for a projection and wrong for
+                   a score. A card reporting what a player did has to name the
+                   opponent he did it against. */
                 const fx = (p.fixtures || [])[0];
-                const oppTxt = fx ? `${esc(fx.opponent || '?')}${fx.isHome ? ' (H)' : ' (A)'}` : 'Blank';
-                const isBestCap = p.id === bestCapId;
+                const oppTxt = act
+                    ? gwFixturesOf(p).map(f => {
+                        const home = f.team_h === p.teamId;
+                        return `${esc((teams || {})[home ? f.team_a : f.team_h]?.short_name || '?')}${home ? ' (H)' : ' (A)'}`;
+                      }).join(' · ')
+                    : (fx ? `${esc(fx.opponent || '?')}${fx.isHome ? ' (H)' : ' (A)'}` : 'Blank');
+                // The star marks who to captain, which is a question about the
+                // next match — so it goes away once the card is reporting the
+                // last one instead of predicting anything.
+                const isBestCap = p.id === bestCapId && !act;
                 const posLabel = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position] || '';
                 // Expected minutes belongs next to the projection it scales: an xP
                 // built on a 40% chance of starting means something different to
                 // the same number from a nailed-on starter.
                 let mins = null, minsTxt = '';
-                if (typeof expectedMinutesModel === 'function') {
+                if (!act && typeof expectedMinutesModel === 'function') {
                     try { mins = expectedMinutesModel(p); } catch (e) { mins = null; }
                     if (mins) minsTxt = ` · ${Math.round(mins.pStart * 100)}% to start, ~${Math.round(mins.expMins)} mins`;
                 }
-                const tip = xp != null
+                const tip = act
+                    ? `${esc(p.name)} — ${act.pts} point${act.pts === 1 ? '' : 's'} in ${act.mins} minute${act.mins === 1 ? '' : 's'} against ${oppTxt}, GW${currentGW}${act.done ? '' : ' (still in play)'}`
+                    : xp != null
                     ? `${esc(p.name)} — ${xp.toFixed(1)} projected points against ${oppTxt}${minsTxt}${isBestCap ? '. Highest projection in your XI.' : ''}`
                     : `${esc(p.name)} — ${posLabel}${minsTxt}`;
                 /* The face is the card. It used to be a 30px disc sharing a
@@ -5342,7 +5431,9 @@
                   ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p, 'v2-pid-pitch') : ''}
                   ${badge}
                     <span class="v2-pitch-token-name">${esc(p.name)}${isBestCap ? '<span class="v2-pitch-token-star" title="Highest projected points in your XI">★</span>' : ''}</span>
-                    <span class="v2-pitch-token-score">${xp != null
+                    <span class="v2-pitch-token-score${act ? ` actual${act.done ? '' : ' live'}` : ''}">${act
+                        ? `<b>${act.pts}</b><span class="u">pts</span>`
+                        : xp != null
                         ? `<b>${xp.toFixed(1)}</b><span class="u">xP</span>`
                         : `<b class="pos">${posLabel}</b>`}</span>
                     <span class="v2-pitch-token-opp">${oppTxt}${
@@ -5350,8 +5441,14 @@
                            projection has moved onto the portrait. They belong
                            together either way: both are about the match, and an
                            xP built on a 40% chance of starting means something
-                           different to the same number from a nailed-on one. */
-                        mins != null
+                           different to the same number from a nailed-on one.
+
+                           Once his match is under way they stop being expected
+                           and become the minutes he has played, which is the
+                           same swap the score above makes for the same reason. */
+                        act
+                            ? `<span class="v2-pitch-token-mins">${act.mins}'</span>`
+                            : mins != null
                             ? `<span class="v2-pitch-token-mins${mins.pStart < 0.65 ? ' risk' : ''}">${Math.round(mins.expMins)}'</span>`
                             : ''
                       }</span>
@@ -5371,9 +5468,30 @@
             let benchHtml = '<span class="v2-pitch-bench-label">Bench</span>';
             bench.forEach(p => { benchHtml += pitchToken(p); });
 
-            const xiXp = squad.filter(p => p.pickPosition <= 11)
-                .reduce((t, p) => t + (xpById[p.id] || 0), 0);
-            const xiXpLabel = xiXp > 0 ? `${xiXp.toFixed(1)} xP` : '';
+            /* The pill over the pitch has to be the same kind of number as the
+               cards under it. It stays a projection until every starter has
+               kicked off — a half-played XI is the one case where a total of
+               either kind misleads, and the live score in the status strip
+               above already covers that moment — and then becomes the score.
+
+               Multipliers, so it agrees with the total FPL is showing this
+               manager. Auto-subs are the game's to apply and are not replayed
+               here, so a starter who blanked still counts as the zero he
+               scored until the bench formally replaces him. */
+            const xiPlayers = squad.filter(p => p.pickPosition <= 11);
+            const xiXp = xiPlayers.reduce((t, p) => t + (xpById[p.id] || 0), 0);
+            const xiAllStarted = xiPlayers.length > 0 && xiPlayers.every(p => actualById[p.id]);
+            const xiSettled = xiAllStarted && xiPlayers.every(p => actualById[p.id].done);
+            const xiActualPts = xiAllStarted
+                ? xiPlayers.reduce((t, p) => t + actualById[p.id].pts * (p.multiplier || 1), 0)
+                : 0;
+            const xiXpLabel = xiAllStarted
+                ? `${xiActualPts} pts`
+                : (xiXp > 0 ? `${xiXp.toFixed(1)} xP` : '');
+            const xiTotalClass = xiAllStarted ? ` actual${xiSettled ? '' : ' live'}` : '';
+            const xiTotalTip = xiAllStarted
+                ? `What your starting XI has scored in GW${currentGW}, captain included${xiSettled ? '' : ' — matches are still in play'}. Auto-substitutions are not applied here.`
+                : "Sum of your starting XI's projected points";
 
             /* The whole snapshot is the way into the deep analysis. It is an <a>
                rather than a click handler so it behaves like a link: keyboard
@@ -5387,7 +5505,7 @@
                 <div class="v2-pitch-header">
                     <span class="v2-pitch-title"><i data-lucide="shirt" class="v2-sec-icon"></i>Squad Snapshot</span>
                     <span class="v2-pitch-head-right">
-                        ${xiXpLabel ? `<span class="v2-pitch-xitotal" title="Sum of your starting XI's projected points">${xiXpLabel}</span>` : ''}
+                        ${xiXpLabel ? `<span class="v2-pitch-xitotal${xiTotalClass}" title="${esc(xiTotalTip)}">${xiXpLabel}</span>` : ''}
                         <span class="v2-pitch-formation">${formationStr}</span>
                         <a class="v2-pitch-more" href="fpl-my-team-analysis.html">Full squad analysis <i data-lucide="arrow-right" class="icon"></i></a>
                     </span>
@@ -6136,7 +6254,13 @@
                     leagueInfo
                 });
                 if (leagueInfo) loadLeagueGap(leagueInfo.id, teamId, totalPointsRaw);
-                renderPitchView({ squad, analysisResults });
+                /* liveByIdRaw is only fetched while matches are actually in
+                   play; eventLiveData is the committed copy that survives the
+                   rest of the week, which is what lets the pitch still show a
+                   finished round's scores on the Thursday after it. */
+                renderPitchView({ squad, analysisResults, currentGW,
+                    fixtures: fixturesData, teams,
+                    eventLive: eventLiveData, liveById: liveByIdRaw });
 
                 /* This gameweek's matches, and the gameweek badge that names them.
 
