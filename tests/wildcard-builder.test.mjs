@@ -198,7 +198,12 @@ test('three plans come back, each legal and carrying exactly the premiums it pro
     const r = ctx.wcBuildPlans({ budget: 100.0, horizon: 6 });
     audit(ctx, r, 100.0, 'base');
 
-    assert.deepEqual(r.plans.map(p => p.id), ['spread', 'single', 'double']);
+    /* Spread into this realm before comparing. r.plans was built inside the vm,
+       so .map() on it returns an array carrying the SANDBOX's Array.prototype,
+       and deepStrictEqual compares prototypes — it rejects a structurally
+       identical array as "not reference-equal". tests/helpers/load.mjs warns
+       about exactly this; the spread is the fix it prescribes. */
+    assert.deepEqual([...r.plans.map(p => p.id)], ['spread', 'single', 'double']);
     assert.equal(r.horizon, 6);
     assert.equal(r.gws.length, 6);
 
