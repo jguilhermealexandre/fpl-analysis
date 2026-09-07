@@ -918,8 +918,19 @@
             if (!(budgetM > 0)) return { ok: false, reason: 'no-budget' };
 
             const weights = wcWeights(gws.length);
-            const lockIds = o.lockIds instanceof Set ? o.lockIds : new Set();
-            const banIds = o.banIds instanceof Set ? o.banIds : new Set();
+            /* A Set or a plain array of ids, either way.
+
+               `instanceof Set` was realm-bound and quietly wrong: a Set built
+               in another context — a test sandbox, a worker — is not an
+               instance of THIS realm's Set, fails the check, and falls through
+               to an empty set. "Lock this player" then becomes a silent no-op,
+               which is the worst way for an option to fail. Anything carrying a
+               has() is taken as it comes; anything else iterable is copied. */
+            const idSet = v => (v && typeof v.has === 'function')
+                ? v
+                : new Set(Array.isArray(v) ? v : []);
+            const lockIds = idSet(o.lockIds);
+            const banIds = idSet(o.banIds);
 
             // A locked player is the manager's decision and skips the
             // eligibility filter — but not the ban list, which is also theirs

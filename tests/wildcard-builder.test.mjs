@@ -9,9 +9,12 @@
    plan promised is not an opinion. Those are the assertions that catch a real
    break, and they do not have to be rewritten every time the model improves.
 
-   A note on Sets. Anything crossing into the sandbox has to be built from the
-   sandbox's own intrinsics: `new Set()` here produces this realm's Set, and the
-   `instanceof Set` guard inside wcBuildPlans would reject it. Hence ctx.Set. */
+   A note on Sets. Ids cross into the sandbox as plain ARRAYS, deliberately.
+   A Set built here belongs to this realm, and node's vm gives the sandbox its
+   own — so no Set made on this side can satisfy an `instanceof` check on that
+   side, and `ctx.Set` is not a way out either: a contextified sandbox exposes
+   what you put on it, not the realm's intrinsics. wcBuildPlans takes either
+   shape, which removes the question rather than answering it. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadScript, browserStubs } from './helpers/load.mjs';
@@ -269,7 +272,7 @@ test('a banned player is in no plan, and a locked one is in every plan that can 
     const ctx = sandbox(players);
     const top = players.filter(p => p.price >= 8).sort((a, b) => b.price - a.price);
 
-    const banned = new ctx.Set([top[0].id, top[1].id]);
+    const banned = [top[0].id, top[1].id];
     const rBan = ctx.wcBuildPlans({ budget: 100.0, horizon: 3, banIds: banned });
     audit(ctx, rBan, 100.0, 'ban');
     for (const p of rBan.plans) {
@@ -277,7 +280,7 @@ test('a banned player is in no plan, and a locked one is in every plan that can 
             `${p.id}: a banned player was selected`);
     }
 
-    const locked = new ctx.Set([top[0].id]);
+    const locked = [top[0].id];
     const rLock = ctx.wcBuildPlans({ budget: 100.0, horizon: 3, lockIds: locked });
     audit(ctx, rLock, 100.0, 'lock');
     for (const p of rLock.plans) {
