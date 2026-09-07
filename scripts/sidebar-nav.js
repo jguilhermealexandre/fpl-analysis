@@ -14,7 +14,7 @@ try {
 }
 
 function loadSidebarNav() {
-    return fetch('sidebar-nav.html?v=164')
+    return fetch('sidebar-nav.html?v=165')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
