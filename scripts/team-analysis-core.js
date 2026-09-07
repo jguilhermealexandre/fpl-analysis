@@ -1946,8 +1946,16 @@
             const nextEvent = gwEvents.find(e => e.is_next)
                 || gwEvents.find(e => e.id === currentGW + 1)
                 || null;
-            const currEvent = gwEvents.find(e => e.id === currentGW) || null;
-            const gwLive = !!(currEvent && !currEvent.finished);
+            /* In progress means matches are being played, not that FPL has
+               finished checking the round. An event's `finished` flips at the
+               data check — bonus confirmed across every match — a day or more
+               after the last whistle, so this badge read "GW3 · LIVE" all
+               Monday for a gameweek that ended on Sunday afternoon.
+               First kickoff to final whistle, and steady in between: the gap
+               between two kickoffs is still the gameweek in progress, which is
+               exactly when "3 of your XI still to play" is worth saying. */
+            const gwFixtures = (allFixtures || []).filter(f => f.event === currentGW);
+            const gwLive = gwFixtures.some(f => f.started) && !gwFixtures.every(f => f.finished_provisional);
             const deadlineGW = nextEvent ? nextEvent.id : currentGW;
 
             const ft = deriveFreeTransfers();

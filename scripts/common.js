@@ -142,6 +142,30 @@ function computeIsPreseason(bootData, fixturesData) {
     return bootData.events.every(e => !e.finished);
 }
 
+/* The same flag lag, one level down: is this MATCH in the books?
+
+   FPL keeps a fixture's `finished` false until the round's data check — every
+   match concluded and bonus confirmed — which lands a day or more after the
+   final whistle. `finished_provisional` flips at full time. GW3 2026/27 is the
+   worked example: all ten matches played by Sunday 15:30, scores in, and every
+   one of them still reporting `finished: false` on Monday morning.
+
+   Anything that splits fixtures into played and upcoming has to read the faster
+   flag, or a round that has already happened stays in the projection window —
+   fixture strips point at a match in the books, form and xG models ignore the
+   newest results, and the venue/FDR adjustments run off last weekend's opponent.
+   Anything that counts games played has to look wider still, or it divides a
+   season total by one and calls the result a per-game rate.
+
+   Was page-local to fpl-teams-analysis.html, where the divide-by-a-smaller-
+   number half of this was found first, while three other pages kept their own
+   `!f.finished` filters. One definition now, for the same reason
+   computeIsPreseason() above has one. */
+function fixturePlayed(f) {
+    return !!f && f.team_h_score !== null && f.team_h_score !== undefined
+        && (f.finished || f.finished_provisional || f.started);
+}
+
 // ===== PLAYER PHOTOS =====
 /* The club's headshot for a player, addressed the way premierleague.com
  * addresses it today.
@@ -997,7 +1021,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=163')
+    fetch('footer.html?v=164')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

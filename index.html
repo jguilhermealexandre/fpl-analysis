@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=163">
-    <link rel="stylesheet" href="styles/v2-design.css?v=163">
+    <link rel="stylesheet" href="styles/common.css?v=164">
+    <link rel="stylesheet" href="styles/v2-design.css?v=164">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -4447,20 +4447,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=163"></script>
-    <script src="scripts/price-watch.js?v=163"></script>
-    <script src="scripts/xp-engine.js?v=163"></script>
-    <script src="scripts/odds-panel.js?v=163"></script>
-    <script src="scripts/live-gw.js?v=163"></script>
-    <script src="scripts/matchday.js?v=163"></script>
-    <script src="scripts/market-panel.js?v=163"></script>
-    <script src="scripts/eo-layer.js?v=163"></script>
-    <script src="scripts/readiness.js?v=163"></script>
-    <script src="scripts/push-alerts.js?v=163"></script>
-    <script src="scripts/notifications.js?v=163"></script>
-    <script src="scripts/transfer-engine.js?v=163"></script>
-    <script src="scripts/common.js?v=163"></script>
-    <script src="scripts/sidebar-nav.js?v=163"></script>
+    <script src="scripts/error-monitor.js?v=164"></script>
+    <script src="scripts/price-watch.js?v=164"></script>
+    <script src="scripts/xp-engine.js?v=164"></script>
+    <script src="scripts/odds-panel.js?v=164"></script>
+    <script src="scripts/live-gw.js?v=164"></script>
+    <script src="scripts/matchday.js?v=164"></script>
+    <script src="scripts/market-panel.js?v=164"></script>
+    <script src="scripts/eo-layer.js?v=164"></script>
+    <script src="scripts/readiness.js?v=164"></script>
+    <script src="scripts/push-alerts.js?v=164"></script>
+    <script src="scripts/notifications.js?v=164"></script>
+    <script src="scripts/transfer-engine.js?v=164"></script>
+    <script src="scripts/common.js?v=164"></script>
+    <script src="scripts/sidebar-nav.js?v=164"></script>
     <script>
         initIcons();
         loadFooter();
@@ -4597,8 +4597,8 @@
 
         function computeTeamScores(bootTeams, fixturesData) {
             const ta = {};
-            const finishedFixtures = fixturesData.filter(f => f.finished && f.team_h_score !== null).sort((a, b) => a.event - b.event);
-            const upcomingFixtures = fixturesData.filter(f => !f.finished && f.event !== null).sort((a, b) => a.event - b.event);
+            const finishedFixtures = fixturesData.filter(fixturePlayed).sort((a, b) => a.event - b.event);
+            const upcomingFixtures = fixturesData.filter(f => !fixturePlayed(f) && f.event !== null).sort((a, b) => a.event - b.event);
 
             bootTeams.forEach(team => {
                 const teamId = team.id;
@@ -6068,8 +6068,16 @@
                 }
 
                 // --- NEW: Cumulative average manager score ---
-                const finishedEvents = bootData.events.filter(e => e.finished);
-                const avgManagerTotal = finishedEvents.reduce((s, e) => s + (e.average_entry_score || 0), 0);
+                /* Every gameweek FPL has published an average for, not every
+                   gameweek it has finished checking. `finished` flips at the
+                   round's data check, a day or more after the last whistle,
+                   while average_entry_score is live from full time — so on the
+                   Monday after GW3 this weighed a three-gameweek total against
+                   a two-gameweek average and told every manager they were 36
+                   points better off than they were. A round with no average
+                   published has nothing to add here, so the score is the test. */
+                const scoredEvents = bootData.events.filter(e => (e.average_entry_score || 0) > 0);
+                const avgManagerTotal = scoredEvents.reduce((s, e) => s + (e.average_entry_score || 0), 0);
                 const pointsDiff = totalPointsRaw - avgManagerTotal;
 
                 // --- NEW: Deadline info from next event ---

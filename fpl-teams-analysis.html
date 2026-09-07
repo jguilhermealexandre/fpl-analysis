@@ -17,12 +17,12 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=163">
-    <link rel="stylesheet" href="styles/teams.css?v=163">
-    <link rel="stylesheet" href="styles/v2-design.css?v=163">
-    <script src="scripts/error-monitor.js?v=163"></script>
-    <script src="scripts/common.js?v=163"></script>
-    <script src="scripts/sidebar-nav.js?v=163"></script>
+    <link rel="stylesheet" href="styles/common.css?v=164">
+    <link rel="stylesheet" href="styles/teams.css?v=164">
+    <link rel="stylesheet" href="styles/v2-design.css?v=164">
+    <script src="scripts/error-monitor.js?v=164"></script>
+    <script src="scripts/common.js?v=164"></script>
+    <script src="scripts/sidebar-nav.js?v=164"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -360,14 +360,9 @@
             };
         }
 
-        // The FPL API keeps `finished` false until bonus points are confirmed, so a
-        // match that has been played and scored can still report false for hours.
-        // Anything that counts games played has to look wider than that flag or it
-        // divides a season total by one and calls the result a per-game rate.
-        function fixturePlayed(f) {
-            return !!f && f.team_h_score !== null && f.team_h_score !== undefined
-                && (f.finished || f.finished_provisional || f.started);
-        }
+        // fixturePlayed() moved to scripts/common.js — three other pages were
+        // still filtering on the slow `finished` flag this was written to avoid,
+        // so it is shared rather than page-local now.
 
         /* The same per-gameweek series, split by where the match was played.
            perGw already records wasHome for every round, so a venue-specific xG
@@ -1901,7 +1896,7 @@
                             fdr: f.team_h_difficulty || 3,
                             attackFdr: attackFdrVs(oppXgAgainst),   // Attackers care about the opponent's DEFENCE
                             defenseFdr: defenceFdrVs(oppXgFor),     // Defenders care about the opponent's ATTACK
-                            finished: f.finished,
+                            finished: fixturePlayed(f),
                             gw: f.event,
                             csChance,
                             oppXgAgainst,
@@ -1937,7 +1932,7 @@
                             fdr: f.team_a_difficulty || 3,
                             attackFdr: attackFdrVs(oppXgAgainst),   // Attackers care about the opponent's DEFENCE
                             defenseFdr: defenceFdrVs(oppXgFor),     // Defenders care about the opponent's ATTACK
-                            finished: f.finished,
+                            finished: fixturePlayed(f),
                             gw: f.event,
                             csChance,
                             oppXgAgainst,

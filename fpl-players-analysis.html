@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=163">
-    <link rel="stylesheet" href="styles/players.css?v=163">
-    <link rel="stylesheet" href="styles/v2-design.css?v=163">
+    <link rel="stylesheet" href="styles/common.css?v=164">
+    <link rel="stylesheet" href="styles/players.css?v=164">
+    <link rel="stylesheet" href="styles/v2-design.css?v=164">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -604,7 +604,13 @@
         }
 
         function processFixtures(fixtures) {
-            const upcoming = fixtures.filter(f => !f.finished && f.event);
+            // fixturePlayed(), not !f.finished — see scripts/common.js. This list
+            // is every "next N fixtures" on the page: the rec cards' fixture
+            // chips, avgFDR3/5, the multi-gameweek xP window and the venue
+            // adjustment. Reading the slow flag left a round that had already
+            // been played sitting at the front of it, so the venue split was
+            // being taken from a match the player had just finished.
+            const upcoming = fixtures.filter(f => !fixturePlayed(f) && f.event);
             upcoming.forEach(f => {
                 if (!teamFixtures[f.team_h]) teamFixtures[f.team_h] = [];
                 teamFixtures[f.team_h].push({ opponent: f.team_a, isHome: true, difficulty: f.team_h_difficulty, event: f.event });
@@ -627,7 +633,7 @@
                     perGw: {}, hasPerGwData: false
                 };
             });
-            const finishedFx = fixturesData.filter(f => f.finished && f.team_h_score !== null);
+            const finishedFx = fixturesData.filter(fixturePlayed);
             finishedFx.forEach(f => {
                 if (teamXgData[f.team_h]) { teamXgData[f.team_h].seasonGames++; teamXgData[f.team_h].seasonConceded += f.team_a_score || 0; }
                 if (teamXgData[f.team_a]) { teamXgData[f.team_a].seasonGames++; teamXgData[f.team_a].seasonConceded += f.team_h_score || 0; }
@@ -728,11 +734,11 @@
                 if (!f.event) return;
                 if (fixtureMap[f.team_h]) {
                     if (!fixtureMap[f.team_h][f.event]) fixtureMap[f.team_h][f.event] = [];
-                    fixtureMap[f.team_h][f.event].push({ opponent: teams[f.team_a]?.short_name || '???', opponentId: f.team_a, fdr: f.team_h_difficulty || 3, isHome: true, finished: f.finished });
+                    fixtureMap[f.team_h][f.event].push({ opponent: teams[f.team_a]?.short_name || '???', opponentId: f.team_a, fdr: f.team_h_difficulty || 3, isHome: true, finished: fixturePlayed(f) });
                 }
                 if (fixtureMap[f.team_a]) {
                     if (!fixtureMap[f.team_a][f.event]) fixtureMap[f.team_a][f.event] = [];
-                    fixtureMap[f.team_a][f.event].push({ opponent: teams[f.team_h]?.short_name || '???', opponentId: f.team_h, fdr: f.team_a_difficulty || 3, isHome: false, finished: f.finished });
+                    fixtureMap[f.team_a][f.event].push({ opponent: teams[f.team_h]?.short_name || '???', opponentId: f.team_h, fdr: f.team_a_difficulty || 3, isHome: false, finished: fixturePlayed(f) });
                 }
             });
             fixtureSwingData = {};
@@ -771,11 +777,11 @@
             teamAnalysis = {};
 
             const finishedFixtures = fixturesData
-                .filter(f => f.finished && f.team_h_score !== null)
+                .filter(fixturePlayed)
                 .sort((a, b) => a.event - b.event);
 
             const upcomingFixtures = fixturesData
-                .filter(f => !f.finished && f.event !== null)
+                .filter(f => !fixturePlayed(f) && f.event !== null)
                 .sort((a, b) => a.event - b.event);
 
             bootTeams.forEach(team => {
@@ -3637,9 +3643,9 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=163"></script>
-    <script src="scripts/players-tables.js?v=163"></script>
-    <script src="scripts/compare-report.js?v=163"></script>
+    <script src="scripts/error-monitor.js?v=164"></script>
+    <script src="scripts/players-tables.js?v=164"></script>
+    <script src="scripts/compare-report.js?v=164"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5623,10 +5629,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=163"></script>
+    <script src="scripts/players-ai.js?v=164"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=163"></script>
-    <script src="scripts/sidebar-nav.js?v=163"></script>
+    <script src="scripts/common.js?v=164"></script>
+    <script src="scripts/sidebar-nav.js?v=164"></script>
     <script>
         loadSidebarNav();
         initIcons();
