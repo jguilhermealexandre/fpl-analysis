@@ -35,8 +35,8 @@ Consequences you have to work with:
   wizard's market funnel, `lw*` lineup wizard, `bo*` the matchday odds panel,
   `md*` the dashboard's live matchday panel and gameweek state, `mk*` the
   dashboard's price-movement panel, `dp*` draft planner, `sd*` scout's desk,
-  `gwr*` gameweek review, `opt*` the shared optimisation report. Keep using
-  them.
+  `gwr*` gameweek review, `opt*` the shared optimisation report, `wc*` the
+  wildcard builder. Keep using them.
 
 ## Data
 
@@ -125,7 +125,37 @@ npm run stamp        # after bumping asset-version.json
 
 Tests load classic scripts into a `node:vm` sandbox rather than importing them
 (`tests/helpers/load.mjs`), because there is nothing to import. That adapts the
-tests to the architecture rather than the reverse.
+tests to the architecture rather than the reverse. Note that they must be
+evaluated as **one** script: run per file, each file's top-level `let` is
+script-scoped and the others cannot see it. For the same reason state cannot be
+poked in from outside — `allPlayers` is a `let` in that scope, not a property of
+the global object — so anything driving the engine appends its own epilogue to
+the same source and reaches the bindings from a closure.
+
+## Does the model work?
+
+Separate question from "does the code work", and `npm test` only answers the
+second. `npm run backtest` answers the first by rebuilding a wildcard at a past
+gameweek from only the data that existed before it and totalling what the
+fifteen actually returned.
+
+The season it needs is in this repo's own git history: the data workflows have
+been committing `data/players-data.json` since January and it carries per-gameweek
+history, so an end-of-season snapshot is a whole season of ground truth.
+
+```
+mkdir -p /tmp/season2526
+for f in players-data.json fixtures.json bootstrap-static.json; do
+  git show e893f5c:data/$f > /tmp/season2526/$f      # 2026-05-28, GW38
+done
+npm run backtest -- --data /tmp/season2526
+npm run backtest -- --data /tmp/season2526 --mode projection
+```
+
+`--mode projection` checks the layer underneath on every player-gameweek at
+once, which is where a calibration error shows up long before a squad total
+moves. Both modes and their caveats — injuries and ownership cannot be
+reconstructed — are documented at the top of `tools/wildcard-backtest.mjs`.
 
 ## Deployment
 

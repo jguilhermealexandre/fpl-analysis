@@ -482,7 +482,7 @@
             container.innerHTML = `
                 <div class="tw-container">
                     <div id="twBudgetBar"></div>
-                    <div class="twr-panel">
+                    <div class="twr-panel" id="twRecoPanel">
                         <div class="twr-head">
                             <div>
                                 <div class="twr-title">Should I make a transfer?</div>
@@ -491,6 +491,18 @@
                             <button class="twr-run" onclick="twRunRecommendation()">Get recommendation</button>
                         </div>
                         <div id="twRecoBody"></div>
+                    </div>
+                    <!-- Swapped in for the panel above on a Wildcard or Free Hit;
+                         see wcSyncPanels(). One question on screen at a time. -->
+                    <div class="twr-panel" id="wcPanel" hidden>
+                        <div class="twr-head">
+                            <div>
+                                <div class="twr-title">Build my wildcard</div>
+                                <div class="twr-sub" id="wcSub"></div>
+                            </div>
+                            <button class="twr-run" onclick="wcRunBuilder()">Build three squads</button>
+                        </div>
+                        <div id="wcBody"></div>
                     </div>
                     <div class="twc-body">
                         <div class="twc-pane" id="twSquadPane"></div>
@@ -760,7 +772,235 @@
             return true;
         }
 
+        /* ===== The wildcard builder's screen =====
+
+           The model is in scripts/wildcard-builder.js; everything here is
+           rendering and the hand-off into the pending list.
+
+           On a wildcard the recommender above is answering the wrong question.
+           It prices one move at a time against a free-transfer count that a
+           wildcard waives, so "hold — no transfer worth making" is not merely
+           unhelpful on the week you are rebuilding fifteen players, it is
+           false. The two panels therefore swap rather than stack: pick Wildcard
+           or Free Hit and the question on screen becomes the one you are
+           actually asking. */
+
+        let wcLastResult = null;
+
+        // Show the panel that matches the plan. Called from renderTWAll, which
+        // runs on every interaction — so it only ever toggles visibility and
+        // never rewrites a body, or a result would vanish on the next click.
+        function wcSyncPanels() {
+            const wc = !!transferState.wildcard;
+            const reco = document.getElementById('twRecoPanel');
+            const panel = document.getElementById('wcPanel');
+            if (reco) reco.hidden = wc;
+            if (panel) panel.hidden = !wc;
+            const sub = document.getElementById('wcSub');
+            if (sub) {
+                sub.textContent = transferState.strategy === 'freehit'
+                    ? 'Three squads for the single gameweek you keep this one, split on how many premiums you carry — and what each choice costs against the best squad found.'
+                    : 'Three squads for the next six gameweeks, split on how many premiums you carry — and what each choice costs against the best squad found.';
+            }
+        }
+
+        function wcRunBuilder() {
+            const el = document.getElementById('wcBody');
+            if (!el) return;
+            if (typeof wcBuildPlans !== 'function') {
+                el.innerHTML = '<div class="twr-empty">The wildcard builder did not load.</div>';
+                return;
+            }
+            if (!selectedPlayers || !selectedPlayers.length) {
+                el.innerHTML = '<div class="twr-empty">Load a squad first — the budget comes from what your players are worth plus your bank.</div>';
+                return;
+            }
+            el.innerHTML = '<div class="twr-loading">Building three squads and pricing each against the best one found…</div>';
+            // Yield once so the loading line paints before the search blocks.
+            setTimeout(() => {
+                let r = null;
+                try {
+                    r = wcBuildPlans({
+                        squad: selectedPlayers,
+                        bank: getTWBank(),
+                        horizon: transferState.strategy === 'freehit' ? 1 : undefined
+                    });
+                } catch (e) {
+                    if (typeof reportError === 'function') reportError(e, 'wcRunBuilder');
+                    el.innerHTML = `<div class="twr-empty">Could not build a wildcard: ${escHTML(e.message)}</div>`;
+                    return;
+                }
+                if (!r || !r.ok) {
+                    const why = {
+                        'no-gameweeks': 'There are no upcoming gameweeks left to plan for.',
+                        'no-budget': 'Your squad and bank do not add up to a budget yet.',
+                        'thin-pool': 'Too few players have enough minutes to build a squad from.',
+                        'no-legal-squad': 'No legal fifteen fits that budget.'
+                    }[r && r.reason] || 'Something went wrong building the squads.';
+                    el.innerHTML = `<div class="twr-empty">${escHTML(why)}</div>`;
+                    return;
+                }
+                wcLastResult = r;
+                el.innerHTML = wcRenderPlans(r);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }, 30);
+        }
+
+        function wcRenderPlans(r) {
+            const span = `GW${r.gws[0]}${r.gws.length > 1 ? `–GW${r.gws[r.gws.length - 1]}` : ''}`;
+            const premiumNames = r.axes.slice(0, 3).map(p => p.name).join(', ');
+
+            /* The unconstrained best can hold three premiums, in which case no
+               plan reaches the ceiling and all three deltas are negative with
+               nothing on screen saying why. */
+            const ceilingNote = r.ceilingPremiums > 2
+                ? ` The best squad found actually carries ${r.ceilingPremiums} premiums, which is why none of the three below reaches it.`
+                : '';
+
+            /* What the backtest actually licenses this screen to claim.
+
+               tools/wildcard-backtest.mjs rebuilt a wildcard at thirteen points
+               of the 2025/26 season and totalled what the fifteen really
+               returned. The premium ladder held: the two-premium squad beat the
+               no-premium one in 11 of 13, by an average of 26.9 points against
+               the 25.9 the model predicted. So the direction and the typical
+               size are earned.
+
+               What is NOT earned is precision on any single wildcard. The gap's
+               standard deviation across those thirteen was 30 — larger than the
+               gap itself — and the size the model predicted had no relationship
+               to the size that arrived (r = -0.09). Saying "-9.1" and stopping
+               invites a manager to read it as a forecast for their six
+               gameweeks, which is the one thing the evidence says it is not. */
+            const head = `<div class="wc-intro">
+                <p>Each squad is the best the model can build while holding exactly that many premiums —
+                   anyone at £${r.premiumFloor.toFixed(1)}m or more up front, which today means ${escHTML(premiumNames)} and a few others.
+                   Scored over ${span} on what your eleven projects, plus the captain again, plus a discounted bench.${escHTML(ceilingNote)}</p>
+                <p class="twr-caveat">Backtested across the 2025/26 season, carrying two premiums beat carrying none in 11 wildcards out of 13,
+                   by an average of 27 points over six gameweeks — almost exactly what the model predicted. It went the other way in the other two.
+                   Treat the gaps below as what the choice is worth on average, not as what it will be worth for you this time.</p>
+                ${!r.distinct ? `<p class="twr-caveat">These plans came back nearly identical, which means the premium question barely matters this week — not that the model is confused.</p>` : ''}
+            </div>`;
+
+            return head + `<div class="wc-cards">${r.plans.map((p, i) => wcRenderPlanCard(p, i, r)).join('')}</div>`;
+        }
+
+        function wcRenderPlanCard(p, idx, r) {
+            const POS = ['', 'GK', 'DEF', 'MID', 'FWD'];
+            const isBest = p.deltaVsBest === 0;
+            const premiumIds = new Set(p.premiums.map(x => x.id));
+
+            const line = pos => {
+                const men = p.squad.filter(x => x.position === pos).sort((a, b) => b.price - a.price);
+                return `<div class="wc-line">
+                    <span class="wc-line-l ${POS[pos].toLowerCase()}">${POS[pos]}</span>
+                    <span class="wc-line-men">${men.map(x =>
+                        `<span class="wc-man${premiumIds.has(x.id) ? ' prem' : ''}" data-tooltip="${escHTML(`${x.name} · ${x.team} · £${x.price.toFixed(1)}m`)}">${escHTML(x.name)}<small>${x.price.toFixed(1)}</small></span>`
+                    ).join('')}</span>
+                </div>`;
+            };
+
+            const cell = (label, value, tip, cls) => `<div class="wc-metric" data-tooltip="${escHTML(tip)}">
+                <span class="wc-metric-v ${cls || ''}">${escHTML(value)}</span>
+                <span class="wc-metric-l">${escHTML(label)}</span>
+            </div>`;
+
+            // Only the players who actually change become transfers. Selling all
+            // fifteen and buying eleven of them back is the same squad and four
+            // pointless rows in the plan rail.
+            const changes = p.changes == null ? p.squad.length : p.changes;
+
+            return `<div class="wc-card${isBest ? ' best' : ''}">
+                <div class="wc-card-head">
+                    <div>
+                        <div class="wc-card-title">${escHTML(p.label)}${isBest ? '<span class="wc-best">best found</span>' : ''}</div>
+                        <div class="wc-card-note">${escHTML(p.note)}</div>
+                    </div>
+                    <div class="wc-card-score" data-tooltip="${escHTML(`Projected over the window, counting the captain and a discounted bench. The best squad found scores ${r.ceiling}.${isBest ? '' : ` Backtested over the 2025/26 season this gap was right on average — but it swung by about 30 points either way from one wildcard to the next, so read it as the long-run expectation rather than a forecast for your six gameweeks.`}`)}">
+                        <span class="wc-card-obj">${p.objective.toFixed(1)}</span>
+                        <span class="wc-card-delta ${p.deltaVsBest === 0 ? 'even' : 'down'}">${p.deltaVsBest === 0 ? 'the best found' : `${p.deltaVsBest.toFixed(1)} vs best`}</span>
+                    </div>
+                </div>
+
+                <div class="wc-metrics">
+                    ${cell('In premiums', p.premiums.length ? `${p.premiumSpendPct.toFixed(0)}%` : '—',
+                        p.premiums.length
+                            ? `£${p.premiumSpend.toFixed(1)}m of £${p.spend.toFixed(1)}m spent on ${p.premiums.map(x => x.name).join(' and ')}.`
+                            : 'No player at or above the premium price. The budget is spread across the fifteen.',
+                        p.premiumSpendPct > 30 ? 'warn' : '')}
+                    ${cell('Left in bank', `£${p.bankLeft.toFixed(1)}m`,
+                        p.bankLeft > 1.5
+                            ? `Nothing this plan is allowed to buy is worth the £${p.bankLeft.toFixed(1)}m still sitting there — with the premiums excluded, the money has nowhere useful to go.`
+                            : 'What is left once the fifteen are paid for.',
+                        p.bankLeft > 1.5 ? 'warn' : '')}
+                    ${cell('Transfers', String(changes),
+                        `${changes} of your current fifteen would change. The rest you already own and would keep.`)}
+                    ${cell('Shape', p.formation || '—', `The best legal eleven this squad fields in GW${r.gws[0]}, captaining ${p.captain ? p.captain.name : 'its best player'}.`)}
+                </div>
+
+                <div class="wc-lines">${line(1)}${line(2)}${line(3)}${line(4)}</div>
+
+                <div class="wc-gws">
+                    ${p.byGw.map(g => `<span class="wc-gw" data-tooltip="${escHTML(`Projected ${g.points} with ${g.captain} captained, in a ${g.formation}.`)}">
+                        <small>GW${g.gw}</small>${g.points.toFixed(0)}</span>`).join('')}
+                </div>
+
+                <button class="twr-apply" onclick="wcApplyPlan(${idx})"
+                    data-tooltip="Stage the ${changes} transfers this squad needs. Nothing is submitted — you review them in the plan below first.">Stage these ${changes} transfers</button>
+            </div>`;
+        }
+
+        /* Turn a plan into pending transfers.
+
+           Only the difference is staged. A plan that keeps eleven of your
+           current players is eleven players you do not transfer, and selling
+           the whole squad to buy most of it back would fill the plan rail with
+           rows that change nothing. Outgoing and incoming are paired by
+           position, which always works out: both squads are 2/5/5/3, so the
+           players leaving and arriving match position for position. */
+        function wcApplyPlan(idx) {
+            const plan = wcLastResult && wcLastResult.plans[idx];
+            if (!plan) return;
+
+            const targetIds = new Set(plan.squad.map(p => p.id));
+            const haveIds = new Set(selectedPlayers.map(p => p.id));
+            const outByPos = { 1: [], 2: [], 3: [], 4: [] };
+            const inByPos = { 1: [], 2: [], 3: [], 4: [] };
+            selectedPlayers.filter(p => !targetIds.has(p.id)).forEach(p => outByPos[p.position].push(p));
+            plan.squad.filter(p => !haveIds.has(p.id)).forEach(p => inByPos[p.position].push(p));
+
+            /* Both squads are 2/5/5/3, so the players leaving and arriving
+               match position for position and the pairing is exact. If they do
+               not — a half-loaded squad is the way that happens — the loop
+               below would quietly drop whoever it could not pair and stage a
+               plan that builds a different squad to the one on the card. Refuse
+               instead: a wrong squad staged silently is worse than no squad. */
+            const paired = [1, 2, 3, 4].every(pos => outByPos[pos].length === inByPos[pos].length);
+            if (!paired) {
+                updateStatus('That squad cannot be staged against the team currently loaded — reload your team and build again', 'error');
+                return;
+            }
+
+            const pending = [];
+            for (const pos of [1, 2, 3, 4]) {
+                outByPos[pos].forEach((out, i) => pending.push({ soldPlayer: out, replacement: inByPos[pos][i] }));
+            }
+            if (!pending.length) {
+                updateStatus('That squad is the one you already have — nothing to transfer', 'info');
+                return;
+            }
+
+            transferState.pending = pending;
+            transferState.activeSlot = -1;
+            transferState.mode = 'squad';
+            transferState.candidateCache = {};
+            transferState.previewPlayer = null;
+            renderTWAll();
+            updateStatus(`Staged ${pending.length} transfer${pending.length === 1 ? '' : 's'} from the ${plan.label.toLowerCase()} squad — review before confirming`, 'success');
+        }
+
         function renderTWAll() {
+            wcSyncPanels();
             renderTWBudgetBar();
             renderTWSquadPane();
             renderTWMarketPane();
