@@ -216,9 +216,16 @@ test('three plans come back, each legal and carrying exactly the premiums it pro
 test('the plans differ from each other, or they are one plan printed three times', () => {
     const ctx = sandbox(synthetic());
     const r = ctx.wcBuildPlans({ budget: 100.0, horizon: 6 });
-    const [a, b, c] = r.plans.map(p => new Set(p.squad.map(x => x.id)));
+    const [spread, single, double] = r.plans.map(p => new Set(p.squad.map(x => x.id)));
     const shared = (x, y) => [...x].filter(id => y.has(id)).length;
-    assert.ok(shared(a, c) < 14, `no-premium and two-premium share ${shared(a, c)}/15`);
+    /* The ends of the ladder are where the constraint bites hardest, so they
+       carry the stricter bound. But `distinct` claims every pair differs, and
+       an assertion that only ever looks at the ends cannot fail when the middle
+       plan is a copy of one of them — which is the shape this would take if the
+       premium search quietly returned the same combo twice. */
+    assert.ok(shared(spread, double) < 14, `no-premium and two-premium share ${shared(spread, double)}/15`);
+    assert.ok(shared(spread, single) < 15, 'no-premium and one-premium are the same fifteen players');
+    assert.ok(shared(single, double) < 15, 'one-premium and two-premium are the same fifteen players');
     assert.equal(r.distinct, true);
 });
 
