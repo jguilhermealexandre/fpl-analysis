@@ -106,10 +106,23 @@ Compare reports all call the same function.
 That is recent. There were four scoring systems: this one, `calculateMultiGWxPts`
 (a second projection inside `fpl-players-analysis.html`), and the pair of
 heuristic scores `calculatePositionScore` and `calculateTransferScore`, which are
-copies of each other that drifted apart. The second projection is deleted. The
-two scores still exist, but neither decides an order any more — the transfer
-candidate list ranks on `xpOver()` over `TW_HORIZON` and `calculateTransferScore`
-survives only as a tie-break and a second reading on the card.
+copies of each other that drifted apart. The second projection is deleted.
+
+Both scores are still here, and both still decide orderings, so this is one
+projection everywhere and **not yet one model**. `calculatePositionScore` sorts
+the players page's Budget, Premium and Differentials lists.
+`calculateTransferScore` no longer chooses the transfer candidate list — that
+ranks on `xpOver()` over `TW_HORIZON`, and the score survives there as a
+tie-break and a second reading on the card — but it does still sort the wizard's
+three package strategies, blended against price and ownership.
+
+What is left is not a deduplication, which is why it did not come with the rest.
+Both scores mix prediction with decision: `points / price` and a differential
+bonus are opinions about your budget and your rank welded into a forecast, and
+the tabs they order are named for exactly those opinions. Retiring them needs a
+decision layer that takes the projection and applies price, ownership and risk on
+top of it. Attempt that as a refactor and you lose the Premium and Differentials
+tabs, because expected points alone cannot answer what either of them asks.
 
 **Why the duplicate existed, and how not to recreate it.** The engine reads six
 globals the host page must define — `positionAverages`, `teamAnalysis`,
