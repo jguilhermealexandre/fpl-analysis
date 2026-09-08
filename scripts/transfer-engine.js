@@ -98,6 +98,18 @@
            promote one that falls short of the margin a transfer has to clear. */
         const TW_FLAGGED_NUDGE = 0.75;
 
+        /* The gameweeks a replacement candidate is priced over, in one place.
+
+           findTransferCandidates ranks on this run, the Replace panel prints a
+           delta over it, and buildSuggestedMoves gates on it with
+           TW_MIN_FREE_GAIN. They have to be the same weeks. Ranking over one
+           horizon and judging over another only moves a disagreement rather than
+           ending one, and a list whose order contradicts the number printed on
+           its own rows is exactly what this run exists to prevent. */
+        function twRunGWs() {
+            return typeof twPlanGWs === 'function' ? twPlanGWs(TW_HORIZON) : [];
+        }
+
         /* Free transfers, replayed from a manager's history.
 
            The official API does not publish the count, so it has to be

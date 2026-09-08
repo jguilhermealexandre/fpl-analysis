@@ -343,14 +343,42 @@
                 p.minutes >= minMinutesForCandidate()
             );
 
-            // Score each candidate
+            /* Ranked on projected points, not on the transfer score.
+
+               calculateTransferScore returns a number in units of its own, and
+               every surface that consumes this list then labels the rows with the
+               xP engine — so the order and the figure printed on it came out of
+               two different models and could contradict each other outright. The
+               players page hit the same thing and fixed it there: across 200
+               players the ratio between its two models ran from 0.0 to 23.9, which
+               put cards on screen in an order their own badge disagreed with.
+               buildSuggestedMoves in pitch-snapshot.js is worse off still — it
+               says "ranked by xP gained per transfer" and then takes [0] off a
+               list that was not, so a better candidate two rows down was never
+               even looked at.
+
+               _transferScore is still computed and still on the object. The
+               package strategies below blend it against price and ownership on its
+               own scale, and the card prints it as a second reading; here it
+               breaks ties between candidates that project identically. */
+            const runGWs = typeof twRunGWs === 'function' ? twRunGWs() : [];
+            const canProject = runGWs.length > 0
+                && typeof xpEngineReady === 'function' && xpEngineReady();
+
             candidates.forEach(c => {
                 c._transferScore = calculateTransferScore(c, c.position);
+                c._xpRun = canProject ? twXPOver(c, runGWs) : null;
                 // Get recent stats for display
                 c._recentStats = getPlayerRecentStats(c.id, 5);
             });
 
-            candidates.sort((a, b) => b._transferScore - a._transferScore);
+            /* No engine, no fixtures left to project, or the globals it reads not
+               loaded yet: fall back to the old ordering whole. Sorting everyone by
+               an identical zero would be worse than the score this replaces. */
+            candidates.sort(canProject
+                ? (a, b) => (b._xpRun - a._xpRun) || (b._transferScore - a._transferScore)
+                : (a, b) => b._transferScore - a._transferScore);
+
             return candidates.slice(0, 30); // Top 30 per slot
         }
 
