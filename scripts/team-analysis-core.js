@@ -162,30 +162,14 @@
             if (text) document.getElementById('loadingText').textContent = text;
         }
 
-        // Position-level baselines. The minutes bar has to scale with the season:
-        // a flat 200 matches nobody until GW3, which silently collapsed every
-        // position onto one hardcoded fallback — so a goalkeeper was regressed
-        // toward the same 0.30 xGI/90 baseline as a striker.
+        /* Position-level baselines, built by the engine that consumes them.
+
+           positionAverages is one of the engine's documented inputs and its
+           medPrice is the reference the price-quality prior measures against, so
+           the construction belongs next to the model rather than in the squad
+           page that happened to need it first. */
         function computePositionAverages() {
-            positionAverages = {};
-            const minMinutes = Math.min(200, Math.max(currentGW - 1, 1) * 60);
-            // Sensible per-position xGI/90 priors for when there's still no sample.
-            const FALLBACK_XGI90 = { 1: 0.01, 2: 0.08, 3: 0.28, 4: 0.45 };
-            [1, 2, 3, 4].forEach(pos => {
-                const posPlayers = allPlayers.filter(p => p.position === pos && p.minutes >= minMinutes);
-                if (posPlayers.length === 0) { positionAverages[pos] = { form: 3, ppg: 3, ppm: 15, xGIPer90: FALLBACK_XGI90[pos] }; return; }
-                const avg = (arr, fn) => arr.reduce((s, p) => s + fn(p), 0) / arr.length;
-                // Median price for this position, which is the reference point the
-                // projection's price-quality prior measures a player against.
-                const prices = posPlayers.map(p => p.price).sort((a, b) => a - b);
-                positionAverages[pos] = {
-                    form: avg(posPlayers, p => p.form),
-                    ppg: avg(posPlayers, p => p.ppg),
-                    ppm: avg(posPlayers, p => p.points / Math.max(p.price, 1)),
-                    xGIPer90: avg(posPlayers, p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0),
-                    medPrice: prices[Math.floor(prices.length / 2)] || 0
-                };
-            });
+            positionAverages = xpBuildPositionAverages(allPlayers, currentGW);
         }
 
         // ===== TEAM ANALYSIS SCORES (ported from teams-analysis) =====
@@ -529,80 +513,17 @@
                 if (playersDataRes?.metadata?.lastUpdated && window.updateDataFreshness) window.updateDataFreshness(playersDataRes.metadata.lastUpdated);
                 console.log('[Players] Players detail data:', playersDetailData ? `${(playersDetailData.players||[]).length} players with history` : 'not available');
 
-                // Build players with ALL available data
-                allPlayers = bootData.elements.map(p => ({
-                    id: p.id, code: p.code, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
-                    squadNumber: p.squad_number,
-                    team: teams[p.team]?.short_name || 'N/A', teamId: p.team,
-                    position: p.element_type, price: p.now_cost / 10,
-                    form: parseFloat(p.form) || 0, points: p.total_points,
-                    ppg: parseFloat(p.points_per_game) || 0,
-                    ownership: parseFloat(p.selected_by_percent) || 0,
-                    status: p.status, news: p.news, newsAdded: p.news_added || null,
-                    chanceNextRound: p.chance_of_playing_next_round,
-                    minutes: p.minutes, starts: p.starts || 0,
-                    goals: p.goals_scored, assists: p.assists,
-                    cleanSheets: p.clean_sheets, goalsConceded: p.goals_conceded || 0,
-                    xG: parseFloat(p.expected_goals) || 0, xA: parseFloat(p.expected_assists) || 0,
-                    xGI: parseFloat(p.expected_goal_involvements) || 0,
-                    xGC: parseFloat(p.expected_goals_conceded) || 0,
-                    ictIndex: parseFloat(p.ict_index) || 0,
-                    influence: parseFloat(p.influence) || 0,
-                    creativity: parseFloat(p.creativity) || 0,
-                    threat: parseFloat(p.threat) || 0,
-                    bonus: p.bonus, bps: p.bps,
-                    yellowCards: p.yellow_cards, redCards: p.red_cards,
-                    saves: p.saves || 0,
-                    // Defensive contribution — the 25/26 scoring route. Tackles,
-                    // clearances/blocks/interceptions and recoveries, totalled by
-                    // FPL, worth 2 points once a per-match threshold is cleared.
-                    defCon: p.defensive_contribution || 0,
-                    defCon90: parseFloat(p.defensive_contribution_per_90) || 0,
-                    /* FPL publishes its own per-90s and its own within-position
-                       ranks. Both were being recomputed from season totals in
-                       three places and the ranks were not available at all, which
-                       is why every rate on the site was shown raw — 0.32 xGI/90
-                       is elite for a defender and ordinary for a striker, and
-                       nothing could say which. rank_type is 1 = best within the
-                       position; scripts/transfer-funnel.js turns them into
-                       percentiles for its quality filter. */
-                    xG90: p.expected_goals_per_90 != null ? parseFloat(p.expected_goals_per_90) : null,
-                    xA90: p.expected_assists_per_90 != null ? parseFloat(p.expected_assists_per_90) : null,
-                    xGI90: p.expected_goal_involvements_per_90 != null ? parseFloat(p.expected_goal_involvements_per_90) : null,
-                    xGC90: p.expected_goals_conceded_per_90 != null ? parseFloat(p.expected_goals_conceded_per_90) : null,
-                    saves90: p.saves_per_90 != null ? parseFloat(p.saves_per_90) : null,
-                    starts90: p.starts_per_90 != null ? parseFloat(p.starts_per_90) : null,
-                    cs90: p.clean_sheets_per_90 != null ? parseFloat(p.clean_sheets_per_90) : null,
-                    formRankType: p.form_rank_type || null,
-                    ppgRankType: p.points_per_game_rank_type || null,
-                    ictRankType: p.ict_index_rank_type || null,
-                    threatRankType: p.threat_rank_type || null,
-                    creativityRankType: p.creativity_rank_type || null,
-                    ownershipRankType: p.selected_rank_type || null,
-                    // Set-piece duty as published, rather than inferred from a
-                    // goals-minus-xG gap. 1 = first choice.
-                    penaltiesOrder: p.penalties_order || null,
-                    cornersOrder: p.corners_and_indirect_freekicks_order || null,
-                    freekicksOrder: p.direct_freekicks_order || null,
-                    transfersIn: p.transfers_in_event || 0,
-                    transfersOut: p.transfers_out_event || 0,
-                    transfersInTotal: p.transfers_in || 0,
-                    transfersOutTotal: p.transfers_out || 0,
-                    costChangeEvent: p.cost_change_event || 0,
-                    costChangeStart: p.cost_change_start || 0,
-                    /* Official price engine: a 0->100 progress meter toward the
-                       next change, the game's own forecast of it for today/+1/+2
-                       days, and a lock before which the player cannot move.
-                       Read by scripts/price-watch.js. */
-                    priceProgress: parseFloat(p.price_change_percent) || 0,
-                    priceProjection: (p.price_change_projections || []).map(x => parseFloat(x.projected_percent) || 0),
-                    priceLockedUntil: p.price_change_locked_until || null,
-                    epNext: parseFloat(p.ep_next) || 0,
-                    dreamteamCount: p.dreamteam_count || 0,
-                    valueForm: parseFloat(p.value_form) || 0,
-                    valueSeason: parseFloat(p.value_season) || 0,
-                    fixtures: teamFixtures[p.team] || []
-                }));
+                /* Built by the projection engine rather than here.
+
+                   The shape below is the engine's input contract — every field
+                   projectPlayerPointsDetailed reads (minutes, starts, xG, xA,
+                   bonus, saves, status, chanceNextRound, penaltiesOrder, teamId)
+                   comes out of this one mapping, and until it moved, this file was
+                   the only place in the codebase that produced it. That is the
+                   real reason the projection could not be used on the players
+                   page: not the missing <script> tag, but that nothing else could
+                   build a player the engine understood. */
+                allPlayers = xpBuildPlayers(bootData.elements, teams, teamFixtures);
 
                 totalFplPlayers = bootData.total_players || 11000000;
 

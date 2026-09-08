@@ -14,9 +14,10 @@
         // ===== SQUAD TABLE (position-grouped, replaces the old Transfer Analysis /
         // Needs Attention feed / Squad Overview strip sections) =====
 
-        function computePlayerGamesPlayed(player) {
-            return isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
-        }
+        // computePlayerGamesPlayed moved to scripts/xp-engine.js. It was one of the
+        // projection's documented inputs, which made this rendering file a
+        // dependency of every xP figure on the site — including on pages that load
+        // no squad table at all.
 
         // Replacement/transfer-candidate lists filter out players who barely play — a
         // fixed 100-minute bar (previously hardcoded at every call site below) is fine

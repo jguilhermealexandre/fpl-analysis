@@ -23,7 +23,157 @@
                                not needed when a fixture is passed explicitly.
 
    Call xpEngineReady() to check the contract is satisfied before projecting.
+
+   And one dependency that is not a global: THE PLAYER OBJECT ITSELF. Every
+   function here reads a specific shape — minutes, starts, xG, xA, bonus, saves,
+   status, chanceNextRound, penaltiesOrder, teamId, position, price. That shape
+   went undocumented for as long as exactly one file produced it, which is why
+   the players page ended up with a second projection rather than this one: it
+   had bootstrap-static.json and no way to turn it into a player the engine
+   would accept. xpBuildPlayers() below is that mapping, so any page holding the
+   bootstrap feed can now satisfy the contract.
    ============================================ */
+
+        /* The position baselines every rate here is regressed toward, and the
+           median price the price-quality prior measures against.
+
+           The minutes bar has to scale with the season: a flat 200 matches nobody
+           until GW3, which silently collapsed every position onto one hardcoded
+           fallback — so a goalkeeper was regressed toward the same 0.30 xGI/90
+           baseline as a striker.
+
+           Takes the pool and the gameweek rather than reading globals, so a page
+           can build this before it has anything else the engine wants. */
+        function xpBuildPositionAverages(players, gw) {
+            const out = {};
+            const minMinutes = Math.min(200, Math.max((gw || 0) - 1, 1) * 60);
+            // Sensible per-position xGI/90 priors for when there's still no sample.
+            const FALLBACK_XGI90 = { 1: 0.01, 2: 0.08, 3: 0.28, 4: 0.45 };
+            [1, 2, 3, 4].forEach(pos => {
+                const posPlayers = (players || []).filter(p => p.position === pos && p.minutes >= minMinutes);
+                if (posPlayers.length === 0) { out[pos] = { form: 3, ppg: 3, ppm: 15, xGIPer90: FALLBACK_XGI90[pos] }; return; }
+                const avg = (arr, fn) => arr.reduce((s, p) => s + fn(p), 0) / arr.length;
+                // Median price for this position, which is the reference point the
+                // projection's price-quality prior measures a player against.
+                const prices = posPlayers.map(p => p.price).sort((a, b) => a - b);
+                out[pos] = {
+                    form: avg(posPlayers, p => p.form),
+                    ppg: avg(posPlayers, p => p.ppg),
+                    ppm: avg(posPlayers, p => p.points / Math.max(p.price, 1)),
+                    xGIPer90: avg(posPlayers, p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0),
+                    medPrice: prices[Math.floor(prices.length / 2)] || 0
+                };
+            });
+            return out;
+        }
+
+        /* How many matches a player's season totals are spread over.
+
+           Lived in squad-table-chart.js, which put a squad-page rendering file on
+           the dependency list of every projection on the site. It reads the
+           currentGW and isPreseason globals named in the contract above.
+
+           Preseason has no gameweeks to count, so it falls back to the player's
+           own starts — or to whole matches' worth of minutes when even that is
+           missing — and never returns zero, because every caller divides by it. */
+        function computePlayerGamesPlayed(player) {
+            return isPreseason
+                ? Math.max(player.starts || Math.round(player.minutes / 90), 1)
+                : Math.max(currentGW - 1, 1);
+        }
+
+        /* One player object, from one FPL `element`, in the shape this engine
+           reads. The other half of the contract documented above, and the half
+           that was never written down: every field projectPlayerPointsDetailed
+           touches originates here.
+
+           It lived inside team-analysis-core.js, which made that file the only
+           thing in the codebase able to produce a player the engine understood —
+           so a page wanting a projection had to load the entire squad-analysis
+           module or write its own model. The players page did the second, and
+           that is where calculateMultiGWxPts came from. A builder is what lets
+           any page holding bootstrap-static.json satisfy the contract instead.
+
+           teamsById supplies short names, teamFixturesByTeam the upcoming run;
+           both are optional and their absence degrades a label, not a
+           projection. */
+        function xpBuildPlayers(elements, teamsById, teamFixturesByTeam) {
+            const teamsMap = teamsById || {};
+            const fixturesMap = teamFixturesByTeam || {};
+            return (elements || []).map(p => ({
+                id: p.id, code: p.code, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
+                squadNumber: p.squad_number,
+                team: teamsMap[p.team]?.short_name || 'N/A', teamId: p.team,
+                position: p.element_type, price: p.now_cost / 10,
+                form: parseFloat(p.form) || 0, points: p.total_points,
+                ppg: parseFloat(p.points_per_game) || 0,
+                ownership: parseFloat(p.selected_by_percent) || 0,
+                status: p.status, news: p.news, newsAdded: p.news_added || null,
+                chanceNextRound: p.chance_of_playing_next_round,
+                minutes: p.minutes, starts: p.starts || 0,
+                goals: p.goals_scored, assists: p.assists,
+                cleanSheets: p.clean_sheets, goalsConceded: p.goals_conceded || 0,
+                xG: parseFloat(p.expected_goals) || 0, xA: parseFloat(p.expected_assists) || 0,
+                xGI: parseFloat(p.expected_goal_involvements) || 0,
+                xGC: parseFloat(p.expected_goals_conceded) || 0,
+                ictIndex: parseFloat(p.ict_index) || 0,
+                influence: parseFloat(p.influence) || 0,
+                creativity: parseFloat(p.creativity) || 0,
+                threat: parseFloat(p.threat) || 0,
+                bonus: p.bonus, bps: p.bps,
+                yellowCards: p.yellow_cards, redCards: p.red_cards,
+                saves: p.saves || 0,
+                // Defensive contribution — the 25/26 scoring route. Tackles,
+                // clearances/blocks/interceptions and recoveries, totalled by
+                // FPL, worth 2 points once a per-match threshold is cleared.
+                defCon: p.defensive_contribution || 0,
+                defCon90: parseFloat(p.defensive_contribution_per_90) || 0,
+                /* FPL publishes its own per-90s and its own within-position
+                   ranks. Both were being recomputed from season totals in
+                   three places and the ranks were not available at all, which
+                   is why every rate on the site was shown raw — 0.32 xGI/90
+                   is elite for a defender and ordinary for a striker, and
+                   nothing could say which. rank_type is 1 = best within the
+                   position; scripts/transfer-funnel.js turns them into
+                   percentiles for its quality filter. */
+                xG90: p.expected_goals_per_90 != null ? parseFloat(p.expected_goals_per_90) : null,
+                xA90: p.expected_assists_per_90 != null ? parseFloat(p.expected_assists_per_90) : null,
+                xGI90: p.expected_goal_involvements_per_90 != null ? parseFloat(p.expected_goal_involvements_per_90) : null,
+                xGC90: p.expected_goals_conceded_per_90 != null ? parseFloat(p.expected_goals_conceded_per_90) : null,
+                saves90: p.saves_per_90 != null ? parseFloat(p.saves_per_90) : null,
+                starts90: p.starts_per_90 != null ? parseFloat(p.starts_per_90) : null,
+                cs90: p.clean_sheets_per_90 != null ? parseFloat(p.clean_sheets_per_90) : null,
+                formRankType: p.form_rank_type || null,
+                ppgRankType: p.points_per_game_rank_type || null,
+                ictRankType: p.ict_index_rank_type || null,
+                threatRankType: p.threat_rank_type || null,
+                creativityRankType: p.creativity_rank_type || null,
+                ownershipRankType: p.selected_rank_type || null,
+                // Set-piece duty as published, rather than inferred from a
+                // goals-minus-xG gap. 1 = first choice.
+                penaltiesOrder: p.penalties_order || null,
+                cornersOrder: p.corners_and_indirect_freekicks_order || null,
+                freekicksOrder: p.direct_freekicks_order || null,
+                transfersIn: p.transfers_in_event || 0,
+                transfersOut: p.transfers_out_event || 0,
+                transfersInTotal: p.transfers_in || 0,
+                transfersOutTotal: p.transfers_out || 0,
+                costChangeEvent: p.cost_change_event || 0,
+                costChangeStart: p.cost_change_start || 0,
+                /* Official price engine: a 0->100 progress meter toward the
+                   next change, the game's own forecast of it for today/+1/+2
+                   days, and a lock before which the player cannot move.
+                   Read by scripts/price-watch.js. */
+                priceProgress: parseFloat(p.price_change_percent) || 0,
+                priceProjection: (p.price_change_projections || []).map(x => parseFloat(x.projected_percent) || 0),
+                priceLockedUntil: p.price_change_locked_until || null,
+                epNext: parseFloat(p.ep_next) || 0,
+                dreamteamCount: p.dreamteam_count || 0,
+                valueForm: parseFloat(p.value_form) || 0,
+                valueSeason: parseFloat(p.value_season) || 0,
+                fixtures: fixturesMap[p.team] || []
+            }));
+        }
 
         /* Upcoming fixtures per team, keyed by team id — the input
            projectPlayerPointsForGW reads.

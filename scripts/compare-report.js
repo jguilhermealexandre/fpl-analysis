@@ -150,30 +150,33 @@ function updateCompareBar() {
 
         /* Expected points for the next match.
 
-           Both pages that load this file already own an audited projection.
-           This used to carry a third that agreed with neither, and it regressed
-           nothing at all: every rate was the raw recency-weighted figure, so one
-           gameweek into a season a keeper's single three-bonus night read as
-           three bonus points every week where the squad model — same keeper,
-           same page — said 0.53. Compare could contradict the very card the
-           user opened it from.
+           This used to carry a projection of its own that agreed with neither
+           page, and it regressed nothing at all: every rate was the raw
+           recency-weighted figure, so one gameweek into a season a keeper's
+           single three-bonus night read as three bonus points every week where
+           the squad model — same keeper, same page — said 0.53. Compare could
+           contradict the very card the user opened it from.
 
-           So it delegates instead. Each page gets the model it already uses
-           everywhere else, and the two agree by construction rather than by
-           being kept in step by hand. */
+           So it delegates. It used to delegate to two different models depending
+           on which page asked, which was the best available answer while the
+           players page had a projection of its own; both pages now load
+           scripts/xp-engine.js, so there is one model and the only difference is
+           where the engine-shaped player is looked up. */
         function calculateExpectedPoints(p, pos) {
-            // Squad page. buildComparePlayer spreads the native player object and
-            // then overwrites .fixtures with a report-shaped copy whose entries
-            // carry `opponent` but no `opponentId` — so project the ORIGINAL, or
-            // the opponent model quietly degrades to an FDR-only estimate.
-            if (typeof predictedGWPoints === 'function' && typeof allPlayersById !== 'undefined') {
-                const native = allPlayersById[p.id];
+            /* Both lookups exist because the two pages name their engine-shaped
+               pool differently — allPlayersById is the squad page's whole roster,
+               xpPlayersById the players page's bootstrap twins.
+
+               Either way it is the NATIVE object that gets projected, never the
+               report-shaped one: buildComparePlayer spreads the original and then
+               overwrites .fixtures with entries carrying `opponent` but no
+               `opponentId`, and projecting that quietly degrades the opponent
+               model to an FDR-only estimate. */
+            if (typeof predictedGWPoints === 'function') {
+                const pool = typeof allPlayersById !== 'undefined' ? allPlayersById
+                    : (typeof xpPlayersById !== 'undefined' ? xpPlayersById : null);
+                const native = pool ? pool[p.id] : null;
                 if (native) return predictedGWPoints(native);
-            }
-            // Players page: its own model, asked for the single next gameweek.
-            if (typeof calculateMultiGWxPts === 'function') {
-                const xp = calculateMultiGWxPts(p, pos, 1);
-                if (xp != null && Number.isFinite(xp)) return xp;
             }
             // Neither could answer — a blank gameweek, or too little history to
             // project from. Fall back to what he has actually averaged, which is
