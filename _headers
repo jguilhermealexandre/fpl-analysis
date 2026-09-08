@@ -56,3 +56,28 @@
 # site.
 /data/*
   Cache-Control: public, max-age=300, s-maxage=300
+
+# Scripts and stylesheets are addressed by ?v=<asset-version.json>, so the bytes
+# behind a given URL never change: bumping the version points every page at a new
+# URL instead of changing what an old one returns. That is what makes a year safe
+# here, and it is already enforced — check:versions fails the build if any ?v= in
+# any page is left unstamped.
+#
+# Without these rules both directories inherited the same Pages default the /data
+# comment above describes, max-age=0, must-revalidate, so every repeat visit spent
+# a conditional request per file before a line of it could run.
+# fpl-my-team-analysis.html loads 22 of them.
+#
+# One consequence worth stating plainly, because it sharpens an existing risk:
+# check:versions catches a ?v= that was not stamped, but nothing detects a script
+# edited without touching asset-version.json at all. Under must-revalidate that
+# mistake was invisible — the browser revalidated and picked the change up anyway.
+# Under `immutable` a returning visitor keeps the stale file instead. The bump is
+# now load-bearing. If that trade reads as too sharp, delete `immutable` and set
+# max-age=604800: a week self-heals on its own and still removes nearly all of
+# the requests.
+/scripts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/styles/*
+  Cache-Control: public, max-age=31536000, immutable
