@@ -36,7 +36,18 @@ Consequences you have to work with:
   `md*` the dashboard's live matchday panel and gameweek state, `mk*` the
   dashboard's price-movement panel, `dp*` draft planner, `sd*` scout's desk,
   `gwr*` gameweek review, `opt*` the shared optimisation report, `wc*` the
-  wildcard builder. Keep using them.
+  wildcard builder, `pa*` the players-analysis page's own scoring helpers.
+  Keep using them.
+
+  `pa*` is the newest and worth reading as a worked example, because it exists
+  for a reason a prefix is not always the answer to. `xp-engine.js` owns
+  `priceQualityMultiplier`; the players page had one of its own by the same
+  name. They compute the identical formula from identical constants and still
+  disagree, because each takes its reference median from a different pool of
+  players. A shared name would have been a silent behaviour change on whichever
+  page lost the argument, so the page-local one became
+  `paPriceQualityMultiplier`. Prefix when two functions genuinely differ; merge
+  when they genuinely do not. Telling those apart is the work.
 
 ## Data
 
@@ -85,6 +96,45 @@ accumulates model-versus-market pairs so the model's bias can be measured
 rather than argued about — the first round found its overall level right and
 its home/away split roughly 1.8x too strong.
 
+## One projection
+
+Every xP figure on the site comes from `projectPlayerPointsDetailed()` in
+`scripts/xp-engine.js`. The pitch, the captain pick, the lineup optimiser, the
+draft, the transfer deltas, the players page's recommendation cards and both
+Compare reports all call the same function.
+
+That is recent. There were four scoring systems: this one, `calculateMultiGWxPts`
+(a second projection inside `fpl-players-analysis.html`), and the pair of
+heuristic scores `calculatePositionScore` and `calculateTransferScore`, which are
+copies of each other that drifted apart. The second projection is deleted. The
+two scores still exist, but neither decides an order any more — the transfer
+candidate list ranks on `xpOver()` over `TW_HORIZON` and `calculateTransferScore`
+survives only as a tie-break and a second reading on the card.
+
+**Why the duplicate existed, and how not to recreate it.** The engine reads six
+globals the host page must define — `positionAverages`, `teamAnalysis`,
+`currentGW`, `isPreseason`, `computePlayerGamesPlayed`, `teamFixtures6`, listed
+at the top of the file — plus a seventh dependency that went undocumented for
+much longer: **the player object's own shape**. For a long time exactly one file
+could build it, buried in `team-analysis-core.js`, so a page that wanted a
+projection had to load the whole squad module or write its own model. The players
+page wrote its own.
+
+So the mapping is a builder now, and the engine ships the builders for its own
+inputs: `xpBuildPlayers()`, `xpBuildTeamFixtures()`, `xpBuildPositionAverages()`.
+Any page holding `bootstrap-static.json` and `fixtures.json` can satisfy the
+contract in about ten lines — see the block after `computeIsPreseason` in
+`fpl-players-analysis.html`. Build `teamFixtures6` *before* the players and pass
+it in, or each player's `.fixtures` carries no `opponentId` and every projection
+degrades silently to an FDR-only estimate.
+
+One divergence is left. `teamAnalysis` still has three implementations of
+`computeTeamScores` — `team-analysis-core.js`, `index.html` and
+`fpl-players-analysis.html` — with the same field names and possibly different
+values. Same model, different inputs, so the same player can still project
+slightly differently on two pages. That is the last thing between here and one
+number everywhere.
+
 ## Conventions
 
 **Cache-busting.** One number in `asset-version.json`. Bump it, run `npm run
@@ -119,7 +169,7 @@ forwarded anywhere unless `window.FPL_ERROR_ENDPOINT` is set.
 npm install          # eslint and friends, dev-only
 npm run dev          # http://localhost:8080, honours _redirects
 npm test             # node:test, no browser needed
-npm run check        # lint + globals + versions + inline syntax
+npm run check        # lint + globals + versions + inline syntax + css + preload
 npm run stamp        # after bumping asset-version.json
 ```
 
@@ -170,8 +220,9 @@ delete a file, remove it from there and bump `CACHE_NAME`.
 
 ## Known debt
 
-- **~14.6k lines of JS inside HTML.** Not lintable or testable until extracted.
-  `fpl-players-analysis.html` alone holds 5,369 lines. Extract page by page,
+- **~14.2k lines of JS inside HTML.** Not lintable until extracted, though
+  `tests/page-smoke.test.mjs` now at least executes every line of it.
+  `fpl-players-analysis.html` alone holds 5,370 lines. Extract page by page,
   smallest first; the CI guards are already in place to catch what moves.
 - **`git log` is ~65% automated data commits.** `npm run log` filters them.
 - **`.git` is ~220 MB**, growing a few MB a day from data commits. Fine for
