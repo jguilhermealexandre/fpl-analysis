@@ -715,6 +715,12 @@ function v2AccountName() {
     try {
         if (typeof managerData !== 'undefined' && managerData && managerData.name) return managerData.name;
     } catch (e) { /* no manager on this page */ }
+    /* What the last page that did know called it. */
+    try {
+        const id = localStorage.getItem('fpl_team_id');
+        const remembered = id && localStorage.getItem('fpl_team_name_' + id);
+        if (remembered) return remembered;
+    } catch (e) { /* private mode */ }
     return 'Your team';
 }
 
@@ -722,6 +728,15 @@ function v2AccountName() {
 function v2SetTeamName(name) {
     if (typeof window === 'undefined' || !name) return;
     window.__v2TeamName = name;
+    /* Remembered against the team it belongs to, because only two of the
+       thirteen pages fetch a manager and the other eleven were showing
+       "Your team" in the sidebar next to that team's ID. Keyed by ID so
+       switching teams cannot leave the old name behind, and kept apart
+       from the name you may have typed in Settings, which still wins. */
+    try {
+        const id = localStorage.getItem('fpl_team_id');
+        if (id) localStorage.setItem('fpl_team_name_' + id, name);
+    } catch (e) { /* private mode: the name lives for this page only */ }
     v2MountAccount();
 }
 
@@ -751,7 +766,7 @@ function v2MountAccount() {
        "Demo squad · Free", which is the team named twice and the only new word
        in the second line buried at the end of it. */
     const subEl = document.getElementById('v2AccountSub');
-    if (subEl) subEl.textContent = 'ID ' + teamId;
+    if (subEl) subEl.textContent = 'ID: ' + teamId;
     const planEl = document.getElementById('v2AccountPlan');
     if (planEl) planEl.textContent = st.plan === 'premium' ? 'Premium' : 'Free';
 
@@ -920,6 +935,8 @@ function closeSettingsModal(event) {
    preferences rather than that team's. */
 function v2LogOut() {
     try {
+        const id = localStorage.getItem('fpl_team_id');
+        if (id) localStorage.removeItem('fpl_team_name_' + id);
         localStorage.removeItem('fpl_team_id');
         localStorage.removeItem('fpl_league_id');
     } catch (e) { /* private mode: nothing was stored to remove */ }
