@@ -17,12 +17,12 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=175">
-    <link rel="stylesheet" href="styles/teams.css?v=175">
-    <link rel="stylesheet" href="styles/v2-design.css?v=175">
-    <script src="scripts/error-monitor.js?v=175"></script>
-    <script src="scripts/common.js?v=175"></script>
-    <script src="scripts/sidebar-nav.js?v=175"></script>
+    <link rel="stylesheet" href="styles/common.css?v=176">
+    <link rel="stylesheet" href="styles/teams.css?v=176">
+    <link rel="stylesheet" href="styles/v2-design.css?v=176">
+    <script src="scripts/error-monitor.js?v=176"></script>
+    <script src="scripts/common.js?v=176"></script>
+    <script src="scripts/sidebar-nav.js?v=176"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -53,7 +53,7 @@
             <h1 class="page-title v2-page-heading"><i data-lucide="shield" class="icon"></i> Teams Analysis</h1>
         </div>
         <div class="v2-page-hint hidden" id="seasonNotice">Showing 2025/26 season stats — will update once GW1 is played.</div>
-        <span id="currentGW" style="display:none"></span>
+        <span id="planningGW" style="display:none"></span>
         <!-- Content Area -->
         <div id="content-area">
             <div class="teams-grid" id="teams-grid">
@@ -102,7 +102,10 @@
         let allTeamsData = [];
         let currentView = 'rankings';
         let rankingsSort = 'attack';
-        let currentGW = 1;
+        // The gameweek every horizon on this page starts from — swings, easy runs,
+        // gold mines, the calendar's "remaining" mode. Not the same thing as the
+        // round just played: see planningGameweek() in scripts/common.js.
+        let planningGW = 1;
         let isPreseason = false; // true until the season's first fixture kicks off — see computeIsPreseason() in scripts/common.js
         window.rawFixturesData = [];
         window.teamXgData = {};      // Per-GW xG/xGC aggregated by team
@@ -171,9 +174,8 @@
                 const fixturesWithStats = fixturesData.filter(f => f.stats && f.stats.length > 0);
                 console.log(`📊 Loaded ${fixturesData.length} fixtures (${fixturesWithStats.length} with detailed stats)`);
 
-                currentGW = bootstrapData.events.find(e => e.is_current)?.id ||
-                                  bootstrapData.events.find(e => e.is_next)?.id || 1;
-                document.getElementById('currentGW').textContent = `GW${currentGW}`;
+                planningGW = planningGameweek(bootstrapData, fixturesData);
+                document.getElementById('planningGW').textContent = `GW${planningGW}`;
                 isPreseason = computeIsPreseason(bootstrapData, fixturesData);
 
                 // ===== BUILD TEAM xG DATA =====
@@ -1196,7 +1198,7 @@
             Object.values(teamFixtureMap).forEach(team => {
                 Object.keys(team).forEach(gw => allGWs.add(parseInt(gw)));
             });
-            const displayGWs = Array.from(allGWs).sort((a, b) => a - b).filter(gw => gw >= currentGW);
+            const displayGWs = Array.from(allGWs).sort((a, b) => a - b).filter(gw => gw >= planningGW);
 
             // Store data globally for modal access
             window._easyRunsData = easyRuns;
@@ -1204,7 +1206,7 @@
             window._teamFixtureMap = teamFixtureMap;
 
             // Filter to future runs only — PREMIUM & GREAT tiers only (avgFdr ≤ 2.5)
-            const futureRuns = easyRuns.filter(r => r.startGW >= currentGW && (r.tier === 'premium' || r.tier === 'great'));
+            const futureRuns = easyRuns.filter(r => r.startGW >= planningGW && (r.tier === 'premium' || r.tier === 'great'));
             const improvingSwings = fixtureSwingTeams.filter(s => s.direction === 'improving');
             const worseningSwings = fixtureSwingTeams.filter(s => s.direction === 'worsening');
 
@@ -1411,14 +1413,14 @@
             Object.values(fixtureMap).forEach(team => {
                 Object.keys(team).forEach(gw => allGWs.add(parseInt(gw)));
             });
-            const displayGWs = Array.from(allGWs).sort((a, b) => a - b).filter(gw => gw >= currentGW);
+            const displayGWs = Array.from(allGWs).sort((a, b) => a - b).filter(gw => gw >= planningGW);
             window._teamFixtureMap = fixtureMap;
             container.innerHTML = renderSoftTargets(fixtureMap, displayGWs, { standalone: true });
         }
 
         function renderSoftTargets(fixtureMap, displayGWs, opts) {
             const standalone = !!(opts && opts.standalone);
-            const window5 = displayGWs.filter(gw => gw >= currentGW).slice(0, 5);
+            const window5 = displayGWs.filter(gw => gw >= planningGW).slice(0, 5);
 
             // Six, not a dozen. Twelve of twenty clubs is most of the league, and a
             // shortlist that holds most of the league is not a shortlist — if
@@ -1515,7 +1517,7 @@
 
         function renderTargetableCalendar(fixtureMap, easyRuns, allDisplayGWs) {
             // Filter to only teams with PREMIUM or GREAT easy runs (avgFdr ≤ 2.5)
-            const futureRuns = easyRuns.filter(r => r.startGW >= currentGW && (r.tier === 'premium' || r.tier === 'great'));
+            const futureRuns = easyRuns.filter(r => r.startGW >= planningGW && (r.tier === 'premium' || r.tier === 'great'));
             const teamIdsWithRuns = [...new Set(futureRuns.map(r => r.teamId))];
             
             if (teamIdsWithRuns.length === 0) {
@@ -1523,7 +1525,7 @@
             }
 
             // Use remaining GWs only
-            const displayGWs = allDisplayGWs.filter(gw => gw >= currentGW);
+            const displayGWs = allDisplayGWs.filter(gw => gw >= planningGW);
 
             // Sort teams by their best easy run score (lower = better)
             const teamsToShow = teamIdsWithRuns.map(tid => {
@@ -1614,7 +1616,7 @@
                                     <tr>
                                         <th class="team-header">Team</th>
                                         ${displayGWs.map(gw => `
-                                            <th class="gw-header ${gw === currentGW ? 'gw-current' : ''}" data-gw="${gw}">${gw}</th>
+                                            <th class="gw-header ${gw === planningGW ? 'gw-current' : ''}" data-gw="${gw}">${gw}</th>
                                         `).join('')}
                                         <th class="gw-header" style="background: var(--surface-3);">Avg</th>
                                     </tr>
@@ -1680,9 +1682,9 @@
             
             let displayGWs = allGWs;
             if (calendarViewMode === 'remaining') {
-                displayGWs = allGWs.filter(gw => gw >= currentGW);
+                displayGWs = allGWs.filter(gw => gw >= planningGW);
             } else if (calendarViewMode === 'next10') {
-                displayGWs = allGWs.filter(gw => gw >= currentGW).slice(0, 10);
+                displayGWs = allGWs.filter(gw => gw >= planningGW).slice(0, 10);
             }
 
             // Color mode descriptions
@@ -1728,7 +1730,7 @@
                                     <tr>
                                         <th class="team-header">Team</th>
                                         ${displayGWs.map(gw => `
-                                            <th class="gw-header ${gw === currentGW ? 'gw-current' : ''}" data-gw="${gw}">${gw}</th>
+                                            <th class="gw-header ${gw === planningGW ? 'gw-current' : ''}" data-gw="${gw}">${gw}</th>
                                         `).join('')}
                                         <th class="gw-header" style="background: var(--surface-3);">Avg</th>
                                     </tr>
@@ -3374,6 +3376,18 @@
             `;
         }
 
+        /* Is this team's gameweek still to be played?
+
+           planningGW alone would be enough if it were never wrong, but it is
+           derived from a clock and a feed, and a horizon that silently includes
+           a match already in the books is the failure this page shipped once
+           already. A blank gameweek is not something to plan around either.
+           `finished` on the map is fixturePlayed(), so it flips at kick-off
+           rather than waiting for FPL's data check. */
+        function unplayedGW(fx) {
+            return !!fx && fx.length > 0 && !fx[0].finished;
+        }
+
         function findEasyRuns(fixtureMap) {
             const allRuns = [];
             const MIN_WINDOW = 3;
@@ -3386,10 +3400,7 @@
                 // Get all remaining GWs with fixtures
                 const futureGWs = Object.keys(teamFixtures)
                     .map(Number)
-                    .filter(gw => {
-                        const fx = teamFixtures[gw];
-                        return gw >= currentGW && fx && fx.length > 0 && !fx[0].finished;
-                    })
+                    .filter(gw => gw >= planningGW && unplayedGW(teamFixtures[gw]))
                     .sort((a, b) => a - b);
 
                 if (futureGWs.length < MIN_WINDOW) return;
@@ -3491,7 +3502,7 @@
                 // Compare next 3 GWs vs GWs 4-6
                 const futureGWs = Object.keys(teamFixtures)
                     .map(Number)
-                    .filter(gw => gw >= currentGW)
+                    .filter(gw => gw >= planningGW && unplayedGW(teamFixtures[gw]))
                     .sort((a, b) => a - b)
                     .slice(0, 6);
 
@@ -3539,7 +3550,7 @@
 
                 const futureGWs = Object.keys(teamFixtures)
                     .map(Number)
-                    .filter(gw => gw >= currentGW)
+                    .filter(gw => gw >= planningGW && unplayedGW(teamFixtures[gw]))
                     .sort((a, b) => a - b);
 
                 if (futureGWs.length < 6) return;
@@ -3898,7 +3909,7 @@
                Nothing on this page was surfacing the distinction. */
             const fxMap = window._teamFixtureMap || {};
             const splitGWs = Object.keys(fxMap[teamId] || {}).map(Number)
-                .filter(g => g >= currentGW).sort((a, b) => a - b).slice(0, 5);
+                .filter(g => g >= planningGW).sort((a, b) => a - b).slice(0, 5);
             const splitRows = splitGWs.map(gw => (fxMap[teamId][gw] || []).map(f => `
                 <tr>
                     <td class="fx-split-gw">GW${gw}</td>
@@ -4040,7 +4051,7 @@
         }
 
         function openEasyRunModal(index) {
-            const runs = window._easyRunsData.filter(r => r.startGW >= currentGW);
+            const runs = window._easyRunsData.filter(r => r.startGW >= planningGW);
             const run = runs[index];
             if (!run) return;
 
@@ -4198,7 +4209,7 @@
                         <div class="modal-stat">
                             <div class="modal-stat-label">Current FDR</div>
                             <div class="modal-stat-value ${parseFloat(s.currentFdr) <= 2.5 ? 'good' : parseFloat(s.currentFdr) >= 3.5 ? 'bad' : 'warn'}">${s.currentFdr}</div>
-                            <div class="modal-stat-sub">GW${currentGW}–${currentGW + 2}</div>
+                            <div class="modal-stat-sub">GW${planningGW}–${planningGW + 2}</div>
                         </div>
                         <div class="modal-stat">
                             <div class="modal-stat-label">Swing</div>
@@ -4231,7 +4242,7 @@
                 </div>
 
                 <div class="modal-section">
-                    <div class="modal-section-title">Current Fixtures (GW${currentGW}–${currentGW + 2})</div>
+                    <div class="modal-section-title">Current Fixtures (GW${planningGW}–${planningGW + 2})</div>
                     ${s.currentFixtures.map(f => {
                         const effFdr = getEffectiveFdr(f);
                         const barWidth = Math.max(10, (5 - effFdr) / 4 * 100);
@@ -4273,8 +4284,8 @@
                         <div class="modal-section-title">Long-term View (Next 10 GWs)</div>
                         <div style="background: var(--surface-0); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-3);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
-                                <span style="font-size: 11px; color: var(--text-muted);">GW${currentGW}–${currentGW+4} avg</span>
-                                <span style="font-size: 11px; color: var(--text-muted);">GW${currentGW+5}–${currentGW+9} avg</span>
+                                <span style="font-size: 11px; color: var(--text-muted);">GW${planningGW}–${planningGW+4} avg</span>
+                                <span style="font-size: 11px; color: var(--text-muted);">GW${planningGW+5}–${planningGW+9} avg</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: var(--space-3); justify-content: center;">
                                 <span style="font-family: 'Space Grotesk'; font-size: 22px; font-weight: 700; color: ${parseFloat(s.longSwing.currentFdr) <= 2.8 ? 'var(--color-success)' : parseFloat(s.longSwing.currentFdr) >= 3.5 ? 'var(--color-error)' : 'var(--text-primary)'}">${s.longSwing.currentFdr}</span>
@@ -4369,7 +4380,7 @@
 
             const map = window._teamFixtureMap || {};
             const gws = Object.keys(map[teamId] || {}).map(Number)
-                .filter(g => g >= currentGW).sort((a, b) => a - b).slice(0, 5);
+                .filter(g => g >= planningGW).sort((a, b) => a - b).slice(0, 5);
             const runHtml = renderFdrRun(gws.map(gw => ({ gw, fixtures: (map[teamId] || {})[gw] || [] })));
 
             const header = `<div class="modal-team-header">
@@ -4393,14 +4404,14 @@
                         <td>${p.own.toFixed(1)}%</td>
                     </tr>`).join('')}</tbody>
                 </table>` : '<p class="assets-empty">No players with minutes recorded yet at this club.</p>'}
-                <p class="assets-note">Ranked on points scored this season so far. With ${currentGW <= 2 ? 'barely any' : 'limited'} football played, treat the order as a starting point rather than a verdict.</p>`;
+                <p class="assets-note">Ranked on points scored this season so far. With ${planningGW <= 3 ? 'barely any' : 'limited'} football played, treat the order as a starting point rather than a verdict.</p>`;
 
             openModal(header, body);
         }
 
         function renderUpcomingGoldMines(fixtureMap, displayGWs) {
             // Find teams with best upcoming 5 GWs
-            const upcoming5 = displayGWs.filter(gw => gw >= currentGW).slice(0, 5);
+            const upcoming5 = displayGWs.filter(gw => gw >= planningGW).slice(0, 5);
             
             const rankings = allTeamsData.map(team => {
                 const avgFdr = calculateAvgFDR(fixtureMap[team.id], upcoming5);

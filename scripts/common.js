@@ -166,6 +166,58 @@ function fixturePlayed(f) {
         && (f.finished || f.finished_provisional || f.started);
 }
 
+/* The same flag lag, one level up: which gameweek are we PLANNING for?
+
+   `is_current` in bootstrap-static.json answers a different question — the
+   round whose deadline passed most recently — and it keeps answering it for the
+   days between that round's last whistle and the next deadline. Anything that
+   starts a fixture horizon there is a round behind for exactly the window in
+   which managers are planning. GW3 2026/27 is the worked example: all ten
+   matches played by Sunday afternoon, and on the Wednesday Teams Analysis still
+   opened its calendar on GW3, ranked "best upcoming five" over GW3–7, and drew
+   its fixture swings by averaging GW3–5 against GW6–8 — a third of the "current"
+   window being a round whose result was already on the same page.
+
+   Derived from the clock and the fixture list instead, so no flag has to catch
+   up: the last deadline that has passed names the round we are in, and once
+   that round's matches are all played the answer is the next one. It changes at
+   the final whistle and again at the next deadline, both without a redeploy.
+
+   scripts/matchday.js asks a bigger version of this question —
+   mdGameweekState() also reports phase, deadline and live match counts for the
+   dashboard badge and match panel. This is the one number the analysis pages
+   need, and it lives here because common.js is the file every page loads.
+
+   Pure: `now` is a parameter, so any point in a season is testable. */
+function planningGameweek(bootData, fixturesData, now) {
+    const events = ((bootData && bootData.events) || [])
+        .filter(e => e && e.id != null && e.deadline_time)
+        .slice()
+        .sort((a, b) => Date.parse(a.deadline_time) - Date.parse(b.deadline_time));
+    if (!events.length) return 1;
+
+    const t = now instanceof Date ? now.getTime() : (now != null ? now : Date.now());
+    const passed = events.filter(e => Date.parse(e.deadline_time) <= t);
+    const next = events.find(e => Date.parse(e.deadline_time) > t) || null;
+
+    // Before the season's first deadline the round being planned is the first one.
+    if (!passed.length) return next ? next.id : events[0].id;
+
+    const current = passed[passed.length - 1];
+    if (!next) return current.id;   // final round of the season; nothing follows it
+
+    // Read the fast flag, for the reason fixturePlayed() above documents: a
+    // round whose last match ended an hour ago is over whether or not FPL has
+    // run its data check. Without a fixture list to consult — callers that only
+    // hold bootstrap-static — the event's own slower flag is the fallback.
+    const fx = (fixturesData || []).filter(f => f && f.event === current.id);
+    const roundOver = fx.length
+        ? fx.every(f => f.finished_provisional)
+        : !!current.finished;
+
+    return roundOver ? next.id : current.id;
+}
+
 // ===== PLAYER PHOTOS =====
 /* The club's headshot for a player, addressed the way premierleague.com
  * addresses it today.
@@ -1021,7 +1073,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=175')
+    fetch('footer.html?v=176')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

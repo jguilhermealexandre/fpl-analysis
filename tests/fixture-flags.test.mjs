@@ -20,6 +20,7 @@ import { loadFunction } from './helpers/load.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const fixturePlayed = loadFunction('scripts/common.js', 'fixturePlayed');
+const planningGameweek = loadFunction('scripts/common.js', 'planningGameweek');
 
 /* Straight off data/fixtures.json, 2026-09-07. */
 const GW3_PLAYED = { event: 3, started: true, finished: false, finished_provisional: true, team_h_score: 2, team_a_score: 2 };
@@ -42,6 +43,81 @@ test('a 0-0 in progress is played, not pending', () => {
     // null and not falsiness — `|| ` here would read every goalless match as
     // an upcoming fixture.
     assert.equal(fixturePlayed({ started: true, finished: false, finished_provisional: false, team_h_score: 0, team_a_score: 0 }), true);
+});
+
+/* ===== The same lag, one level up: which gameweek are we planning for? =====
+
+   `is_current` names the round whose deadline passed most recently, and keeps
+   naming it for the days between that round's last whistle and the next
+   deadline. Teams Analysis started every fixture horizon there, so on the
+   Wednesday after GW3 it opened its calendar on GW3, compared GW3-5 against
+   GW6-8, and offered "upcoming" fixture runs beginning with a game already
+   played. */
+
+const EVENTS = [
+    { id: 3, deadline_time: '2026-09-04T17:30:00Z', finished: true },
+    { id: 4, deadline_time: '2026-09-12T12:30:00Z', finished: false },
+    { id: 5, deadline_time: '2026-09-18T17:30:00Z', finished: false }
+];
+// Two fixtures a round is enough to exercise every transition.
+const round = (event, ...states) => states.map((s, i) => ({ event, id: event * 10 + i, ...s }));
+const PLAYED = { started: true, finished: false, finished_provisional: true };
+const PENDING = { started: false, finished: false, finished_provisional: false };
+const AT = iso => Date.parse(iso);
+
+test('between rounds the horizon starts at the gameweek being picked', () => {
+    // The reported bug, to the day: GW3 done, GW4 deadline still ahead.
+    const gw = planningGameweek({ events: EVENTS }, round(3, PLAYED, PLAYED), AT('2026-09-09T10:00:00Z'));
+    assert.equal(gw, 4);
+});
+
+test('a round still to be played is the round being planned', () => {
+    // Deadline gone, nothing kicked off — the fixtures ahead of you start here.
+    const locked = planningGameweek({ events: EVENTS }, round(3, PENDING, PENDING), AT('2026-09-04T18:00:00Z'));
+    assert.equal(locked, 3);
+    // Half the round played is still this round.
+    const live = planningGameweek({ events: EVENTS }, round(3, PLAYED, PENDING), AT('2026-09-05T18:00:00Z'));
+    assert.equal(live, 3);
+});
+
+test('the horizon moves at the final whistle, not at FPL’s data check', () => {
+    // Every fixture finished_provisional, none `finished` yet — the state the
+    // feed sits in for a day after a round ends.
+    const gw = planningGameweek({ events: EVENTS.map(e => ({ ...e, finished: false })) },
+        round(3, PLAYED, PLAYED), AT('2026-09-07T09:00:00Z'));
+    assert.equal(gw, 4);
+});
+
+test('the horizon moves again the moment the next deadline passes', () => {
+    const fixtures = round(3, PLAYED, PLAYED).concat(round(4, PENDING, PENDING));
+    const before = planningGameweek({ events: EVENTS }, fixtures, AT('2026-09-12T12:30:00Z') - 1000);
+    const after = planningGameweek({ events: EVENTS }, fixtures, AT('2026-09-12T12:30:00Z') + 1000);
+    assert.equal(before, 4);
+    assert.equal(after, 4, 'GW4 is now the round in progress, and still where the fixtures start');
+});
+
+test('before any deadline has passed the horizon is the first round ahead', () => {
+    assert.equal(planningGameweek({ events: EVENTS }, [], AT('2026-08-01T00:00:00Z')), 3,
+        'the earliest event still to come, whatever its number');
+});
+
+test('the last round of the season has nowhere to advance to', () => {
+    const finalOnly = [{ id: 38, deadline_time: '2027-05-24T14:00:00Z', finished: true }];
+    assert.equal(planningGameweek({ events: finalOnly }, round(38, PLAYED, PLAYED), AT('2027-05-25T00:00:00Z')), 38);
+});
+
+test('without a fixture list it falls back to the event flag', () => {
+    // season-vault.js and friends only fetch bootstrap-static.
+    assert.equal(planningGameweek({ events: EVENTS }, null, AT('2026-09-09T10:00:00Z')), 4);
+    assert.equal(planningGameweek({ events: EVENTS.map(e => ({ ...e, finished: false })) }, null,
+        AT('2026-09-09T10:00:00Z')), 3, 'nothing to say the round is over, so it stays put');
+});
+
+test('missing or malformed bootstrap does not throw', () => {
+    assert.equal(planningGameweek(null, null, AT('2026-09-09T10:00:00Z')), 1);
+    assert.equal(planningGameweek({ events: [] }, [], AT('2026-09-09T10:00:00Z')), 1);
+    assert.equal(planningGameweek({ events: [{ id: 4 }] }, [], AT('2026-09-09T10:00:00Z')), 1,
+        'an event with no deadline cannot be placed on the clock');
 });
 
 /* Reading `finished` directly is right when the question really is "has bonus
