@@ -35,7 +35,35 @@ const PULSE_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (compatible; EasyFPL/1.0; +https://easyfpl.pages.dev)'
 };
 
+/* The real one, read out of the site's own code.
+ *
+ * The page sets window.SDP_API = 'https://sdp-prem-prod...pulselive.com/api',
+ * and the app bundle builds its content paths as
+ *   `/content/premierleague/${type}/${language}${query}`          (contentType)
+ *   `/content/premierleague/${language}?contentTypes=…&limit=…`   (multiType)
+ * so those are what the news page itself is calling. footballapi.pulselive.com,
+ * which every guess so far went through, is 404 across the board. */
+const SDP_API = 'https://sdp-prem-prod.premier-league-prod.pulselive.com/api';
+
 const SOURCES = [
+    {
+        name: 'SDP content (multiType)',
+        url: `${SDP_API}/content/premierleague/EN?contentTypes=text&offset=0&limit=${MAX_ITEMS}&onlyRestrictedContent=false`,
+        headers: PULSE_HEADERS,
+        parse: parsePulselive
+    },
+    {
+        name: 'SDP content (contentType text)',
+        url: `${SDP_API}/content/premierleague/text/EN?limit=${MAX_ITEMS}`,
+        headers: PULSE_HEADERS,
+        parse: parsePulselive
+    },
+    {
+        name: 'SDP content (contentType news)',
+        url: `${SDP_API}/content/premierleague/news/EN?limit=${MAX_ITEMS}`,
+        headers: PULSE_HEADERS,
+        parse: parsePulselive
+    },
     {
         name: 'pulselive content API',
         url: `https://footballapi.pulselive.com/football/content/PREMIERLEAGUE/text/EN?pageSize=${MAX_ITEMS}&page=0&references=ALL&type=news`,
@@ -77,22 +105,60 @@ const SOURCES = [
 /* Pulselive's content API. An article's picture is in `imageUrl` or in a
    `leadMedia` object; its body is HTML we do not want, so only the summary
    comes across. */
+/* Pulselive's content API, in each of the shapes the bundle's own
+   transformResponse copes with: a flat `content` or `items` array, or a
+   `content[0].items` one, with each row optionally wrapped in `.response`. */
+function pulseRows(json) {
+    if (!json) return [];
+    if (Array.isArray(json.items)) return json.items;
+    if (Array.isArray(json.content)) {
+        if (json.content[0] && Array.isArray(json.content[0].items)) return json.content[0].items;
+        return json.content;
+    }
+    if (Array.isArray(json.data)) return json.data;
+    return [];
+}
+
 function parsePulselive(body) {
     let json;
     try { json = JSON.parse(body); } catch { return []; }
-    const rows = json && (json.content || json.items || json.data);
-    if (!Array.isArray(rows)) return [];
-    return rows.map(a => normalise({
-        title: a.title || a.headline,
-        link: a.id != null ? `https://www.premierleague.com/en/news/${a.id}` : a.url,
-        summary: a.subtitle || a.summary || a.description,
-        image: pulseImage(a),
-        published: a.date && (a.date.millis != null ? new Date(a.date.millis).toISOString() : a.date.label)
-            || a.publishFrom || a.publishedDate
-    })).filter(Boolean);
+    const rows = pulseRows(json);
+    if (!rows.length) return [];
+
+    // Named so a shape change shows up in the run log rather than as an empty file.
+    const sample = rows[0] && (rows[0].response || rows[0]);
+    if (sample && process.env.PL_NEWS_DEBUG !== '0') {
+        console.log(`    row keys: ${Object.keys(sample).slice(0, 25).join(', ')}`);
+    }
+
+    return rows.map(row => {
+        const a = row.response || row;
+        return normalise({
+            title: a.title || a.headline,
+            link: pulseLink(a),
+            summary: a.subtitle || a.summary || a.description,
+            image: pulseImage(a),
+            published: (a.date && (a.date.millis != null ? new Date(a.date.millis).toISOString() : a.date.label))
+                || a.publishFrom || a.publishedDate || a.lastModified
+        });
+    }).filter(Boolean);
+}
+
+/* premierleague.com routes an article as /en/news/{id}; a slug is used when the
+   payload carries one. */
+function pulseLink(a) {
+    if (typeof a.url === 'string' && /^https?:\/\//.test(a.url)) return a.url;
+    if (a.slug) return `https://www.premierleague.com/en/news/${a.id}/${a.slug}`;
+    if (a.id != null) return `https://www.premierleague.com/en/news/${a.id}`;
+    return null;
 }
 
 function pulseImage(a) {
+    // The bundle lifts these two onto `associatedImage`, so they are where the
+    // site's own cards get their picture from.
+    if (a.customContent && a.customContent.onDemandUrl) return a.customContent.onDemandUrl;
+    if (a.promoItem && a.promoItem.onDemandUrl) return a.promoItem.onDemandUrl;
+    if (a.associatedImage && a.associatedImage.onDemandUrl) return a.associatedImage.onDemandUrl;
     const media = a.leadMedia || a.imageUrl || a.image;
     if (typeof media === 'string') return media;
     if (media && typeof media === 'object') {
