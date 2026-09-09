@@ -934,15 +934,30 @@ html.v2-theme body {
     /* Two shadows doing separate jobs: a 1px contact shadow that defines the
        edge, and a wide, very soft ambient one that lifts the card off the
        ground without a visible grey halo. */
-    --v2-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04),
-                      0 10px 28px -14px rgba(16, 24, 40, 0.12);
+    /* Softened, and now the site's only shadow.
+
+       Panels were carrying one of two: this one, and --shadow-sm, which is a
+       harder, closer pair. So some sections sat on a wide soft lift, some on a
+       tight dark one, and some — where a rule had been written without either
+       — on nothing at all. Three depths on one page reads as a mistake even
+       when you cannot name it.
+
+       --shadow-sm is aliased to this below rather than replaced everywhere,
+       so the fifteen rules that ask for it keep working and get the right
+       answer. And the ambient half is lighter than it was: the complaint was
+       that the shadow was noticeable, and a card should look lifted without
+       you seeing the shadow that lifts it. */
+    --v2-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.03),
+                      0 8px 22px -16px rgba(16, 24, 40, 0.10);
+    --shadow-sm: var(--v2-card-shadow);
 }
 
 [data-theme="dark"] {
     --v2-ground: #12161B;
     --v2-card-border: rgba(255, 255, 255, 0.07);
-    --v2-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.30),
-                      0 10px 28px -14px rgba(0, 0, 0, 0.55);
+    --v2-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.26),
+                      0 8px 22px -16px rgba(0, 0, 0, 0.48);
+    --shadow-sm: var(--v2-card-shadow);
 }
 
 /* ----- Page ground ----- */
@@ -1731,7 +1746,18 @@ html.v2-theme body {
 .pdm-hero.is-compact .pdm-hero-side { padding: 12px 0 11px; }
 .pdm-hero.is-compact .pdm-hero-price { font-size: 18px; }
 .pdm-hero.is-compact .pdm-hero-own { font-size: 10px; }
-.pdm-hero.is-compact .pdm-hero-chip { font-size: 9px; padding: 2px 7px; }
+/* The rank goes to the left corner, because the star is in the right one.
+   Both were top-right and the number sat on top of the star, which is the one
+   control on the card you are meant to be able to click. .pdm-hero-side is
+   relative, so the chip is taken out of it and positioned against the hero. */
+.pdm-hero.is-compact .pdm-hero-chip,
+.pdm-hero.is-mini .pdm-hero-chip {
+    position: absolute; top: 8px; left: 12px; z-index: 2;
+    margin-bottom: 0;
+    font-size: 9px; padding: 2px 7px;
+}
+.pdm-hero.is-compact .pdm-hero-side,
+.pdm-hero.is-mini .pdm-hero-side { position: static; }
 
 /* Smaller still, for the route cards — there the chart under the header is
    the subject and the header only has to say who. */
@@ -1763,18 +1789,24 @@ html.v2-theme body {
     margin-left: 10px;
     padding: 0;
     vertical-align: middle;
-    border: 1px solid var(--border-default);
+    /* Deliberately not --border-default. Some pages redefine that token to
+       `transparent`, which gave this a transparent ring and a white fill on a
+       white page — a control you could only find by knowing it was there. A
+       button whose whole job is to be findable cannot inherit its visibility
+       from a token that is allowed to be invisible, so it carries the brand
+       green and says what it is. */
+    border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
     border-radius: 50%;
-    background: var(--surface-1);
-    color: var(--text-muted);
+    background: color-mix(in srgb, var(--color-primary) 12%, #fff);
+    color: var(--color-primary);
     cursor: pointer;
     transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 .v2-page-help svg { width: 14px; height: 14px; }
 .v2-page-help:hover {
-    color: var(--color-primary);
+    color: #fff;
     border-color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    background: var(--color-primary);
 }
 
 /* ----- One section title -----
@@ -1794,4 +1826,19 @@ html.v2-theme body {
     width: 17px; height: 17px;
     color: var(--color-primary);
     flex-shrink: 0;
+}
+
+
+/* Every section, on the same lift.
+
+   .v2-section and the panels that draw themselves with `var(--v2-card-shadow,
+   none)` were fine; the ones that had never been given a box-shadow at all sat
+   flat beside them. One shadow, everywhere a section is drawn. */
+.v2-section,
+.pa-panel,
+.chart-category.pa-panel,
+.charts-filter-panel,
+.v2-info-panel,
+.sq-panel {
+    box-shadow: var(--v2-card-shadow);
 }

@@ -297,79 +297,113 @@ function createTable(position, analyses) {
        Routes and the rest, and as the squad panel in My Team it was always
        modelled on. The controls below it are unchanged; what was missing was
        anything saying what you are looking at. */
+    /* ----- One filter bar, everything on it -----
+
+       There were two. A compact strip carried position, search, four quick
+       filters, teams, column presets and a timeframe; behind a sliders button
+       sat a second panel with price, ownership and minutes. So the filters you
+       reached for most — "under £6m", "under 5% owned" — were the ones you had
+       to go looking for, and the strip that was left was still a run of
+       fourteen controls with nothing saying which was which.
+
+       Now it is one bar in labelled groups, wrapping. Everything is visible,
+       the button that hid half of it is gone, and each group says what it
+       filters rather than leaving you to infer it from the chips. */
+    const filterGroup = (label, inner) => `
+        <div class="apf-group">
+            <span class="apf-label">${label}</span>
+            <div class="apf-controls">${inner}</div>
+        </div>`;
+
+    const f = tableState[position].filters;
+    const on = (type, value) => (f[type] === value ? ' active' : '');
+
     const toolbarHtml = position === 'ALL' ? `
-        <div class="pa-panel-head all-players-head">
-            <span class="pa-panel-title">
-                <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>
-                All players
-                <span class="pa-panel-count"><span id="headCount-${position}">${players.length}</span> in the league</span>
-            </span>
-        </div>
-        <div class="compact-toolbar" id="compactToolbar-${position}">
-            <div class="compact-toolbar-row">
+        <div class="apf-bar" id="compactToolbar-${position}">
+            ${filterGroup('Position', `
                 <div class="position-filter-pills">
                     <button class="pos-filter-pill ${tableState.ALL.positionFilter === 'ALL' ? 'active' : ''}" onclick="setPositionFilter('ALL')">All</button>
                     <button class="pos-filter-pill pos-gk ${tableState.ALL.positionFilter === 'GK' ? 'active' : ''}" onclick="setPositionFilter('GK')">GK</button>
                     <button class="pos-filter-pill pos-def ${tableState.ALL.positionFilter === 'DEF' ? 'active' : ''}" onclick="setPositionFilter('DEF')">DEF</button>
                     <button class="pos-filter-pill pos-mid ${tableState.ALL.positionFilter === 'MID' ? 'active' : ''}" onclick="setPositionFilter('MID')">MID</button>
                     <button class="pos-filter-pill pos-fwd ${tableState.ALL.positionFilter === 'FWD' ? 'active' : ''}" onclick="setPositionFilter('FWD')">FWD</button>
-                </div>
-                <div class="compact-divider"></div>
+                </div>`)}
+
+            ${filterGroup('Search', `
                 <div class="search-box compact-search">
                     <span class="search-icon"><i data-lucide="search" style="width:14px;height:14px;"></i></span>
-                    <input type="text" placeholder="Search..." id="search-${position}" 
+                    <input type="text" placeholder="Player or club..." id="search-${position}"
                         oninput="handleSearch('${position}', this.value)">
-                </div>
-                <div class="compact-divider"></div>
-                <div class="filter-pills">
-                    <button class="filter-pill compact-pill ${tableState[position].filters.form === 'hot' ? 'active' : ''}" 
-                        onclick="quickFilter('${position}', 'form', 'hot')"><i data-lucide="flame" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Hot</button>
-                    <button class="filter-pill compact-pill ${tableState[position].filters.fixtures === 'easy' ? 'active' : ''}" 
-                        onclick="quickFilter('${position}', 'fixtures', 'easy')"><i data-lucide="calendar" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Easy</button>
-                    <button class="filter-pill compact-pill ${tableState[position].filters.value === 'high' ? 'active' : ''}" 
-                        onclick="quickFilter('${position}', 'value', 'high')"><i data-lucide="coins" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Value</button>
-                    <button class="filter-pill compact-pill ${tableState[position].filters.nailed === true ? 'active' : ''}" 
-                        onclick="quickFilter('${position}', 'nailed', true)"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Nailed</button>
-                    <button class="filter-pill compact-pill ${tableState.ALL.filters.shortlist ? 'active' : ''}" id="shortlistPill-ALL"
-                        onclick="quickFilter('ALL', 'shortlist', true)"><i data-lucide="star" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> ${shortlistedPlayerIds.size > 0 ? shortlistedPlayerIds.size : ''}</button>
-                    <div class="team-filter-wrapper">
-                        <button class="team-filter-btn ${(tableState.ALL.filters.teams?.size > 0) ? 'active' : ''}" onclick="toggleTeamDropdown()" id="teamFilterBtn">
-                            <i data-lucide="shield" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i>
-                            Teams
-                            ${(tableState.ALL.filters.teams?.size > 0) ? '<span class="team-count-badge">' + tableState.ALL.filters.teams.size + '</span>' : ''}
-                        </button>
-                        <div class="team-filter-dropdown" id="teamFilterDropdown">
-                            <div class="team-filter-dropdown-header">
-                                <span class="team-filter-dropdown-title">Filter by Team</span>
-                                <button class="team-filter-clear" onclick="clearTeamFilter()">Clear all</button>
-                            </div>
-                            <div class="team-filter-grid">${teamChipsHtml}</div>
+                </div>`)}
+
+            ${filterGroup('Price', `
+                <div class="apf-range">
+                    <input type="number" placeholder="Min" step="0.5" id="priceMin-${position}"
+                        onchange="applyRangeFilter('${position}', 'price')" aria-label="Minimum price">
+                    <span class="apf-range-sep">to</span>
+                    <input type="number" placeholder="Max" step="0.5" id="priceMax-${position}"
+                        onchange="applyRangeFilter('${position}', 'price')" aria-label="Maximum price">
+                </div>`)}
+
+            ${filterGroup('Ownership', `
+                <button class="filter-pill compact-pill${on('ownership', 'low')}" onclick="setFilter('${position}', 'ownership', 'low')">Under 5%</button>
+                <button class="filter-pill compact-pill${on('ownership', 'mid')}" onclick="setFilter('${position}', 'ownership', 'mid')">5-15%</button>
+                <button class="filter-pill compact-pill${on('ownership', 'high')}" onclick="setFilter('${position}', 'ownership', 'high')">15-30%</button>
+                <button class="filter-pill compact-pill${on('ownership', 'template')}" onclick="setFilter('${position}', 'ownership', 'template')">30%+</button>`)}
+
+            ${filterGroup('Minutes', `
+                <button class="filter-pill compact-pill${on('minutes', '90')}" onclick="setFilter('${position}', 'minutes', '90')">90 avg</button>
+                <button class="filter-pill compact-pill${on('minutes', '75')}" onclick="setFilter('${position}', 'minutes', '75')">75+</button>
+                <button class="filter-pill compact-pill${on('minutes', '60')}" onclick="setFilter('${position}', 'minutes', '60')">60+</button>`)}
+
+            ${filterGroup('Quick filters', `
+                <button class="filter-pill compact-pill${on('form', 'hot')}"
+                    onclick="quickFilter('${position}', 'form', 'hot')">${typeof v2Icon === 'function' ? v2Icon('flame') : ''} Hot</button>
+                <button class="filter-pill compact-pill${on('fixtures', 'easy')}"
+                    onclick="quickFilter('${position}', 'fixtures', 'easy')">${typeof v2Icon === 'function' ? v2Icon('calendar') : ''} Easy</button>
+                <button class="filter-pill compact-pill${on('value', 'high')}"
+                    onclick="quickFilter('${position}', 'value', 'high')">${typeof v2Icon === 'function' ? v2Icon('coins') : ''} Value</button>
+                <button class="filter-pill compact-pill${f.nailed === true ? ' active' : ''}"
+                    onclick="quickFilter('${position}', 'nailed', true)">${typeof v2Icon === 'function' ? v2Icon('lock') : ''} Nailed</button>
+                <button class="filter-pill compact-pill${tableState.ALL.filters.shortlist ? ' active' : ''}" id="shortlistPill-ALL"
+                    onclick="quickFilter('ALL', 'shortlist', true)">${typeof v2Icon === 'function' ? v2Icon('star') : ''} Shortlist${shortlistedPlayerIds.size > 0 ? ' (' + shortlistedPlayerIds.size + ')' : ''}</button>
+                <div class="team-filter-wrapper">
+                    <button class="filter-pill compact-pill team-filter-btn ${(tableState.ALL.filters.teams?.size > 0) ? 'active' : ''}" onclick="toggleTeamDropdown()" id="teamFilterBtn">
+                        ${typeof v2Icon === 'function' ? v2Icon('shield') : ''} Clubs${(tableState.ALL.filters.teams?.size > 0) ? ' (' + tableState.ALL.filters.teams.size + ')' : ''}
+                    </button>
+                    <div class="team-filter-dropdown" id="teamFilterDropdown">
+                        <div class="team-filter-dropdown-header">
+                            <span class="team-filter-dropdown-title">Filter by club</span>
+                            <button class="team-filter-clear" onclick="clearTeamFilter()">Clear all</button>
                         </div>
+                        <div class="team-filter-grid">${teamChipsHtml}</div>
                     </div>
-                </div>
-                <div class="compact-divider"></div>
-                <div class="col-preset-group" id="colPresets">
-                    ${Object.entries(COLUMN_PRESETS).map(([key, pr]) =>
-                        `<button class="col-preset-btn ${key === activePreset ? 'active' : ''}" data-preset="${key}"
-                            onclick="applyColumnPreset('${key}', this)" title="Switch the visible columns">${pr.label}</button>`).join('')}
-                </div>
-                <div class="compact-divider"></div>
+                </div>`)}
+
+            ${filterGroup('Stats from', `
                 <div class="timeframe-control" id="timeframeControl">
                     <button class="timeframe-btn ${currentTimeframe === 'season' ? 'active' : ''}" onclick="setTimeframe('season')">Season</button>
                     <button class="timeframe-btn ${currentTimeframe === 'l10' ? 'active' : ''}" onclick="setTimeframe('l10')">L10</button>
                     <button class="timeframe-btn ${currentTimeframe === 'l5' ? 'active' : ''}" onclick="setTimeframe('l5')">L5</button>
                     <button class="timeframe-btn ${currentTimeframe === 'l3' ? 'active' : ''}" onclick="setTimeframe('l3')">L3</button>
+                </div>`)}
+
+            ${filterGroup('Columns', `
+                <div class="col-preset-group" id="colPresets">
+                    ${Object.entries(COLUMN_PRESETS).map(([key, pr]) =>
+                        `<button class="col-preset-btn ${key === activePreset ? 'active' : ''}" data-preset="${key}"
+                            onclick="applyColumnPreset('${key}', this)" title="Switch the visible columns">${pr.label}</button>`).join('')}
                 </div>
-                <div class="compact-spacer"></div>
-                <span class="compact-count"><span id="rowCount-${position}">${players.length}</span> players</span>
-                <button class="compact-icon-btn" onclick="toggleFilters('${position}')" id="filterBtn-${position}" title="Advanced Filters" aria-label="Toggle advanced filters"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
                 <div class="column-selector">
-                    <button class="compact-icon-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}" title="Columns" aria-label="Toggle column visibility"><i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i></button>
+                    <button class="compact-icon-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}" title="Pick columns" aria-label="Toggle column visibility"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
                     ${colDropdownHtml}
-                </div>
+                </div>`)}
+
+            <div class="apf-tail">
+                <span class="compact-count"><span id="rowCount-${position}">${players.length}</span> players</span>
+                <button class="apf-clear" onclick="clearFilters('${position}')">Clear filters</button>
             </div>
         </div>
-        ${filtersPanelHtml}
     ` : `
         <div class="table-toolbar">
             <div class="table-toolbar-top">
