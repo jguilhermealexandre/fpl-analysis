@@ -298,8 +298,45 @@ async function inspect(url, headers) {
     heads.forEach(([, t]) => console.log(`  ${t.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)}`));
 }
 
+/* Ask the app's own code where it gets its articles.
+ *
+ * The news page is a shell that imports a bundle and fetches content at
+ * runtime, so the endpoint is not in the markup — but it is in the bundle,
+ * written out as a string. Fetch that and print every API path in it, and the
+ * guessing stops. */
+async function probe(headers) {
+    const pageRes = await fetch('https://www.premierleague.com/en/news', { headers });
+    const page = await pageRes.text();
+
+    const bundleRef = /import\(["'](\/resources\/[^"']+?\.js)["']\)/.exec(page)
+        || /src=["'](\/resources\/[^"']+?\.js)["']/.exec(page);
+    if (!bundleRef) { console.log('no bundle reference found in the page'); return; }
+    const bundleUrl = 'https://www.premierleague.com' + bundleRef[1];
+    console.log(`bundle: ${bundleUrl}`);
+
+    const bRes = await fetch(bundleUrl, { headers });
+    const bundle = await bRes.text();
+    console.log(`HTTP ${bRes.status}, ${bundle.length} bytes\n`);
+
+    const show = (label, re, limit = 40) => {
+        const hits = new Set();
+        for (const m of bundle.matchAll(re)) hits.add(m[0]);
+        console.log(`--- ${label} (${hits.size}) ---`);
+        [...hits].slice(0, limit).forEach(h => console.log('  ' + h));
+        console.log('');
+    };
+
+    show('api/v2 paths', /\/api\/v[0-9]\/[a-zA-Z0-9/_{}$.-]{2,80}/g, 60);
+    show('paths mentioning content or article or news', /["'`]\/[a-zA-Z0-9/_{}$.-]*(?:content|article|news|editorial)[a-zA-Z0-9/_{}$.-]*["'`]/gi, 40);
+    show('pulselive hosts', /https?:\/\/[a-z0-9.-]*pulselive[a-z0-9.-]*/gi, 20);
+}
+
 async function main() {
     const args = process.argv.slice(2);
+    if (args.includes('--probe')) {
+        await probe(PULSE_HEADERS);
+        return;
+    }
     if (args.includes('--inspect')) {
         const src = SOURCES[SOURCES.length - 1];
         await inspect(src.url, src.headers);

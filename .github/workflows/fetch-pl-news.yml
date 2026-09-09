@@ -19,10 +19,11 @@ on:
     - cron: '20 6,11,16,21 * * *'
   workflow_dispatch:
     inputs:
-      inspect:
-        description: 'Print the news page structure instead of fetching (for writing the parser)'
-        type: boolean
-        default: false
+      mode:
+        description: 'What to run'
+        type: choice
+        options: [fetch, inspect, probe]
+        default: fetch
 
 # Writes data/ back to main, and nothing else.
 permissions:
@@ -44,17 +45,23 @@ jobs:
           node-version: '22'
 
       - name: Inspect the news page
-        if: inputs.inspect
+        if: inputs.mode == 'inspect'
         run: node tools/fetch-pl-news.mjs --inspect
 
+      # Reads the app's own bundle for the endpoint it calls, so the fetcher is
+      # written against what the site actually does rather than against a guess.
+      - name: Probe the app bundle for its API
+        if: inputs.mode == 'probe'
+        run: node tools/fetch-pl-news.mjs --probe
+
       - name: Fetch Premier League news
-        if: '!inputs.inspect'
+        if: inputs.mode == '' || inputs.mode == 'fetch'
         run: node tools/fetch-pl-news.mjs --out data/pl-news.json
 
       # A valid-JSON-but-empty result would replace a good list with nothing, so
       # the shape is checked before it is allowed anywhere near a commit.
       - name: Check what was written
-        if: '!inputs.inspect'
+        if: inputs.mode == '' || inputs.mode == 'fetch'
         run: |
           node -e '
             const fs = require("fs");
@@ -75,7 +82,7 @@ jobs:
           '
 
       - name: Commit
-        if: '!inputs.inspect'
+        if: inputs.mode == '' || inputs.mode == 'fetch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
