@@ -492,19 +492,37 @@
 
 /* Nothing you are meant to tap should be smaller than a fingertip.
    Coarse pointers only, so a mouse layout is untouched. */
+/* Deliberately not `button { min-height: 40px }`. That was the first
+   version of this rule and it was wrong: a minimum height with no
+   matching width does not make a bigger target, it makes a different
+   shape — the position filters on the players page turned into circles,
+   and the round "?" beside each page title into an ellipse. A control
+   that is 30px tall and 60px wide is already an easy tap; the ones that
+   are not are the icon-only squares, and those are named.
+
+   The 24x24 floor is what WCAG asks for and most of these already clear
+   it. Where something genuinely needs more, it is listed. */
 @media (pointer: coarse) {
-    button, .btn, [role="tab"], .tab, .tab-btn, select, .v2-nav-item {
+    /* Real buttons with words in them — nothing here is sized by its
+       own height, so growing them costs no shape. */
+    .btn, [role="tab"], .tabs .tab, .tab-btn, .v2-nav-item, .v2-flyout-item {
         min-height: 40px;
     }
-    input[type="text"], input[type="number"], input[type="search"], select, textarea {
+
+    /* Icon-only squares: both dimensions, or they go oblong. */
+    .v2-mobile-bar-btn, .modal-close, .pdm-close, .help-close, .icon-btn {
+        min-width: 40px; min-height: 40px;
+    }
+
+    /* Fields are different: the 16px is not about the target at all. Under
+       16px, iOS Safari zooms the page when the field takes focus and never
+       zooms back out, and the layout is left wider than the screen for the
+       rest of the visit. */
+    input[type="text"], input[type="number"], input[type="search"],
+    input[type="email"], select, textarea {
         min-height: 40px;
-        /* Under 16px iOS Safari zooms the page on focus and never zooms
-           back out, which leaves the layout stuck wider than the screen. */
         font-size: 16px;
     }
-    /* Icon-only buttons are square, so a min-height alone would make
-       them oblong. */
-    .v2-mobile-bar-btn, .modal-close, .icon-btn { min-width: 40px; }
 }
 
 
@@ -516,8 +534,11 @@
     img, svg, canvas, video { max-width: 100%; }
     .news-card-hero { flex-direction: column; }
     .news-card-hero .news-card-img { width: 100%; min-height: 180px; }
-    .chart-container, .chart-box { min-height: 0; }
-    canvas { height: auto !important; }
+    /* Chart.js sizes its own canvas from the container and writes the
+       result as an inline height, so the container is the thing to
+       constrain — overriding the canvas itself would fight the library
+       and, with height:auto, collapse the chart to nothing. */
+    .chart-container, .chart-box, .chart-wrap { max-height: 46vh; }
 }
 
 
@@ -556,6 +577,23 @@
     .pcard { width: 76px; padding-left: 5px; padding-right: 5px; }
     .pcard .v2-pid-pitch { --v2-pid-face: 30px; --v2-pid-crest: 18px; }
     .pcard-name { font-size: 10px; }
+}
+
+/* The grass is sized by aspect ratio — 16/12 — and the four rows are
+   placed on it by percentage. That works while the pitch is wider than
+   it is tall. At 348px across it is 261px down, the rows land 62px
+   apart, and the cards are 104px tall: every line of the team was
+   drawn through the one in front of it.
+
+   A minimum height rather than a different ratio, because it is the
+   cards that set the requirement and they do not care what shape the
+   pitch is. Above about 620px wide the ratio already gives more than
+   this and the floor never applies. */
+@media (max-width: 768px) {
+    .pitch-grass, .pitch-container, .v2-pitch { min-height: 460px; }
+}
+@media (max-width: 480px) {
+    .pitch-grass, .pitch-container, .v2-pitch { min-height: 440px; }
 }
 
 /* Without a hover there is no way to reach the four actions at all, so
@@ -662,4 +700,249 @@
 
     .segmented-btn, .rankings-pill { flex: 0 0 auto; white-space: nowrap; }
     .segmented-btn { padding-left: 12px; padding-right: 12px; font-size: 12px; }
+}
+
+
+/* ============================================================
+   14. Two-column layouts with a fixed rail
+   ============================================================ */
+
+/* A 360px rail beside a flexible column is a good desktop shape and an
+   impossible phone one: the rail alone is most of the screen and what
+   is left of the second column is a word wide. They stack. */
+@media (max-width: 900px) {
+    .report-dashboard,
+    .sd-featured { grid-template-columns: minmax(0, 1fr); }
+    .sd-featured > * { min-width: 0; }
+}
+
+/* The docs pages put a sticky contents rail beside the prose. On a
+   phone the contents come first, in the flow, and stop being sticky —
+   a sticky index above the text it indexes covers the text. */
+@media (max-width: 980px) {
+    .doc-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-6, 20px); }
+    .doc-toc, .doc-rail { position: static; max-height: none; }
+}
+
+
+/* ============================================================
+   15. The page guide
+   ============================================================ */
+
+/* The "?" drawer is a 520px panel off the right edge. On a phone that
+   is wider than the screen, so it becomes the same bottom sheet every
+   other modal does. */
+@media (max-width: 768px) {
+    .detail-overlay { align-items: flex-end; padding: 0; }
+    .detail-panel {
+        width: 100%;
+        max-width: 100%;
+        max-height: 88vh;
+        border-radius: 18px 18px 0 0;
+    }
+    .help-step { padding: 12px 14px; }
+}
+
+
+/* ============================================================
+   16. The footer
+   ============================================================ */
+
+@media (max-width: 768px) {
+    .site-footer, footer .footer-inner, .footer-grid {
+        grid-template-columns: minmax(0, 1fr);
+        text-align: left;
+    }
+    .footer-bottom { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+
+
+/* ============================================================
+   17. The dashboard
+   ============================================================ */
+
+/* The hero row is the team name beside the gameweek chip, at a 64px gap
+   and 24px of padding, sized for a 1200px column. On a phone the chip
+   ran off the edge — the name gets the line and the chip the one under
+   it. */
+@media (max-width: 768px) {
+    .hero-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 20px 0 14px;
+    }
+    .hero-greeting { flex-wrap: wrap; gap: 10px; }
+    .hero-personalized { text-align: left; }
+
+    /* Two equal columns of 175px is two columns of nothing. */
+    .v2-attention-grid { grid-template-columns: minmax(0, 1fr); }
+
+    /* The deadline card's lanes and its stat quadrants. */
+    .v2-info-panel .rd-lanes { grid-template-columns: minmax(0, 1fr); }
+    .v2-stat-quad, .v2-info-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    /* The market strip's rising/falling pair. */
+    .v2-market-cols, .mk-cols { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The price ticker is a marquee: it is meant to be wider than the screen
+   and to move. It just must not drag the page with it. */
+.price-ticker-bar, .ticker-bar, .news-strip { overflow-x: hidden; }
+
+/* The snapshot's bench tokens. */
+@media (max-width: 480px) {
+    .v2-pitch-token { min-width: 0; }
+    .v2-pitch-token-name { font-size: 9px; }
+}
+
+
+/* ============================================================
+   18. Letting the columns actually shrink
+   ============================================================ */
+
+/* Collapsing a grid to one column is only half of it. A grid item's
+   default min-width is auto, which is its min-content — so a card whose
+   longest unbreakable run is 498px keeps a 498px track no matter what
+   the template says, and the "single column" is wider than the phone.
+   Every container this file narrows gets its children told they may be
+   narrower than their contents; the contents then wrap, ellipsis or
+   scroll on their own terms, which each of them already knows how to
+   do. */
+@media (max-width: 1024px) {
+    .v2-attention-grid > *,
+    .v2-top-row > *,
+    .stats-grid > *,
+    .summary-grid > *,
+    .metrics-grid > *,
+    .v2-qa-grid > *,
+    .v2-desk-grid > *,
+    .insight-grid > *,
+    .kpi-grid > *,
+    .overview-grid > *,
+    .two-col > *,
+    .cards-grid > *,
+    .news-grid > *,
+    .report-dashboard > *,
+    .sd-featured > *,
+    .doc-layout > *,
+    .v2-info-panel .rd-lanes > *,
+    .sq-row > *,
+    .sq-row-clickable > * { min-width: 0; }
+}
+
+
+/* The stat cards put a value on the left and a badge on the right, on
+   one line that does not wrap. At a phone's width the badge was being
+   crushed against the divider and clipped in half. It drops below the
+   value instead. */
+@media (max-width: 768px) {
+    .v2-stat-card, .v2-league-card { flex-wrap: wrap; gap: 4px 8px; }
+    .v2-stat-card > *, .v2-league-card > * { min-width: 0; }
+    .v2-stat-sub { font-size: 10.5px; }
+}
+
+
+/* ============================================================
+   19. Squad Analysis
+   ============================================================ */
+
+/* The pitch actions, on a touch screen.
+
+   Making them permanently visible works on a tablet, where a card is
+   90-118px wide and four 19px circles fit above it. On a phone the card
+   is 62px and the row is 74px, so every card's actions overlapped its
+   neighbours' and the lineup disappeared under a lattice of buttons.
+
+   Below 768px they come off the pitch. Nothing is lost: the squad table
+   directly below carries the same four actions on every row, full
+   width, always visible, with the player's name and numbers beside them
+   — which is a better place to act from on a phone anyway. */
+@media (pointer: coarse) and (max-width: 768px) {
+    .pcard-cv { display: none; }
+    .pcard { margin-top: 0; }
+}
+
+/* The page's own summary cards: two columns of ~160px, into which a
+   label like "Overall Rank" does not fit, so half of them read "OV…". */
+@media (max-width: 560px) {
+    .sq-kpis,
+    .sq-summary-grid,
+    .sq-stat-cards,
+    .squad-summary { grid-template-columns: minmax(0, 1fr) !important; }
+    .sq-kpi { min-width: 0; }
+}
+@media (max-width: 768px) {
+    .sq-stat-card .sq-stat-card-label,
+    .sq-card-label { white-space: normal; overflow: visible; text-overflow: clip; }
+}
+
+/* The help "?" is a 24px circle. The coarse-pointer minimum stretched
+   it vertically into an ellipse, because a min-height with no matching
+   min-width is not a bigger target, it is a different shape. */
+@media (pointer: coarse) {
+    .v2-page-help {
+        width: 34px; height: 34px;
+        min-width: 34px; min-height: 34px;
+        font-size: 16px;
+    }
+}
+
+
+/* ============================================================
+   20. The assistant dock
+   ============================================================ */
+
+/* The chat widget is fixed to the bottom of the viewport. On a desktop
+   it sits in the corner beside the page; on a phone it is a full-width
+   bar lying over the last card of whatever you were reading. The page
+   ends above it instead. */
+@media (max-width: 768px) {
+    .ai-widget {
+        left: 10px; right: 10px;
+        width: auto;
+        max-width: none;
+    }
+    .ai-widget .ai-body { max-height: 62vh; }
+    .v2-main-content { padding-bottom: 76px; }
+}
+
+
+/* ============================================================
+   21. Charts
+   ============================================================ */
+
+/* The momentum matrix is a 65/35 split — a scatter plot beside its
+   report panel — with a 400px floor under the plot. Below 900px the
+   plot gets the width and the report follows underneath, which is the
+   order you read them in anyway. */
+@media (max-width: 900px) {
+    .momentum-grid { grid-template-columns: minmax(0, 1fr); }
+    .momentum-grid > * { min-width: 0; }
+}
+
+/* A square-ish plot on a phone is taller than the screen. These are
+   the heights that keep a scatter readable without swallowing the
+   page — and they are min-heights, so a chart that wants less still
+   gets to be smaller. */
+@media (max-width: 768px) {
+    .momentum-chart-container { min-height: 320px; max-height: 60vh; }
+}
+@media (max-width: 480px) {
+    .momentum-chart-container { min-height: 280px; }
+}
+
+
+/* The KPI value is a 32px monospace number set to ellipsis rather than
+   wrap, which is right for a rank and wrong for a countdown: "2d 14h 19m
+   44s" became "2d 14h 19…" in a three-across tablet row. It scales with
+   the column instead, and is allowed to take a second line. */
+@media (max-width: 1024px) {
+    .sq-kpi-value, .mgr-deadline-value {
+        font-size: clamp(18px, 3.2vw, 30px);
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        letter-spacing: -0.8px;
+    }
 }

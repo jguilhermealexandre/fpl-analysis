@@ -25,7 +25,27 @@ function loadSidebarNav() {
             let page = location.pathname.split('/').pop() || 'index.html';
             if (page === '' || page === 'index') page = 'index.html';
             if (!page.endsWith('.html')) page += '.html';
-            const activeItem = document.querySelector(`.v2-nav-item[data-page="${page}"]`);
+            let activeItem = document.querySelector(`.v2-nav-item[data-page="${page}"]`);
+            /* Clean URLs that are not the filename minus .html. index.html
+               rewrites its own address to /dashboard and _redirects serves
+               it there, and /squad-analysis is the squad page — so on two
+               pages, one of them the most visited, `page` was "dashboard.html"
+               and no nav item matched. Nothing looked selected.
+
+               These are the two 200-rewrites in _redirects. Any other alias
+               falls through to the link's own href, which is where the nav
+               would have taken you and so is the right thing to compare. */
+            if (!activeItem) {
+                const ALIASES = { '/dashboard': 'index.html', '/squad-analysis': 'fpl-my-team-analysis.html' };
+                const here = location.pathname.replace(/\/+$/, '') || '/';
+                const aliased = ALIASES[here];
+                activeItem = aliased
+                    ? document.querySelector(`.v2-nav-item[data-page="${aliased}"]`)
+                    : [...document.querySelectorAll('.v2-nav-item[data-page]')].find(a => {
+                        const dest = new URL(a.getAttribute('href'), location.href).pathname.replace(/\.html$/, '');
+                        return dest === here || dest.replace(/\/index$/, '') === here || here === '/';
+                    });
+            }
             if (activeItem) activeItem.classList.add('active');
 
             // Restore Team ID widget from localStorage
@@ -99,15 +119,20 @@ function initMobileNav() {
     const drawer = document.querySelector('.v2-sidebar');
     if (drawer) drawer.id = drawer.id || 'v2SidebarDrawer';
 
-    /* The bar names the page you are on. The <title> is the only string
-       every page already has, and it is written for humans; the suffix
-       after the dash is the site name, which the bar does not need. */
+    /* The bar names the page you are on, and the sidebar already holds
+       that name: the active nav item's label is exactly "Dashboard",
+       "My Team", "Players". Better than <title>, which is marketing copy
+       ("Your UnfairAdvantage in FPL") on the page that needs it most,
+       and better than the <h1>, which is often the team's name rather
+       than the page's. Both stay as fallbacks, shortest first. */
     const label = document.getElementById('v2MobileTitle');
     if (label) {
+        const nav = document.querySelector('.v2-sidebar .v2-nav-item.active > span');
         const h1 = document.querySelector('.v2-main-content h1, main h1');
+        const fromNav = nav ? nav.textContent.trim() : '';
         const fromH1 = h1 ? h1.textContent.trim().replace(/\s+/g, ' ') : '';
-        const fromTitle = (document.title || 'EasyFPL').split(/\s+[—|–|-]\s+/)[0].trim();
-        label.textContent = fromH1 && fromH1.length < 40 ? fromH1 : fromTitle;
+        const fromTitle = (document.title || 'EasyFPL').split(/\s+[—–|-]\s+/)[0].trim();
+        label.textContent = fromNav || (fromH1 && fromH1.length < 32 ? fromH1 : fromTitle);
     }
 
     document.getElementById('v2NavOpen')?.addEventListener('click', toggleMobileNav);
@@ -323,18 +348,32 @@ function initSidebarFlyout() {
         closeTimer = setTimeout(closeAll, 400);
     }
 
+    /* Hover opens the flyout, and a hover that ends closes it 400ms later.
+       On a touch screen a tap emits a synthetic mouseenter and then a
+       mouseleave, so tapping the chevron opened the section and the phantom
+       mouseleave closed it again while you were still looking at it — the
+       drawer's disclosure worked for four hundred milliseconds and then
+       undid itself.
+
+       Devices that can hover keep all of it; devices that cannot get the
+       chevron, which is a real button and does not need the mouse at all. */
+    const canHover = typeof window.matchMedia === 'function'
+        && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
     groups.forEach(group => {
-        group.addEventListener('mouseenter', () => {
-            clearTimeout(closeTimer);
-            openTimer = setTimeout(() => openFlyout(group), 150);
-        });
-        group.addEventListener('mouseleave', () => {
-            clearTimeout(openTimer);
-            scheduleClose();
-        });
+        if (canHover) {
+            group.addEventListener('mouseenter', () => {
+                clearTimeout(closeTimer);
+                openTimer = setTimeout(() => openFlyout(group), 150);
+            });
+            group.addEventListener('mouseleave', () => {
+                clearTimeout(openTimer);
+                scheduleClose();
+            });
+        }
 
         const panel = group.querySelector('.v2-flyout-panel');
-        if (panel) {
+        if (panel && canHover) {
             panel.addEventListener('mouseenter', () => clearTimeout(closeTimer));
             panel.addEventListener('mouseleave', scheduleClose);
         }

@@ -135,18 +135,18 @@
                         onclick="setSnapshotViewMode('current')"
                         aria-label="Show Gameweek ${currentGW}"
                         data-tooltip="GW${currentGW} — points scored, live while matches are on. Once the round is over, the one you have already played.">
-                        <i data-lucide="circle-play"></i>
+                        ${v2Icon('play')}
                     </button>
                     <button class="sq-pc ${snapshotMode() === 'next' ? 'active' : ''}"
                         onclick="setSnapshotViewMode('next')"
                         aria-label="Show Gameweek ${currentGW + 1}"
                         data-tooltip="GW${currentGW + 1} — projected points and the fixture coming up. The gameweek you are picking for.">
-                        <i data-lucide="skip-forward"></i>
+                        ${v2Icon('next')}
                     </button>
                     <button class="sq-pc sq-pc-go" onclick="runAutoOptimize()"
                         aria-label="Auto-optimise lineup"
                         data-tooltip="Auto-optimise — the best legal XI across your next 3 gameweeks">
-                        <i data-lucide="wand-2"></i>
+                        ${v2Icon('sparkle')}
                     </button>
                     <!-- Auto-optimise applies its result rather than previewing
                          it, so the way back has to live somewhere. The toast
@@ -157,7 +157,7 @@
                     ${snapshotOptimizeUndo ? `<button class="sq-pc sq-pc-undo" onclick="revertAutoOptimize()"
                         aria-label="Revert Auto-optimise"
                         data-tooltip="Revert — put back the eleven, bench order and armband you had before Auto-optimise ran">
-                        <i data-lucide="undo-2"></i>
+                        ${v2Icon('refresh')}
                     </button>` : ''}
                 </div>
                     <div class="pitch-grass">
@@ -1575,7 +1575,7 @@
         function renderLineupAlert() {
             const suggestions = computeLineupSuggestions();
             if (!suggestions.length) {
-                return `<div class="lineup-alert good"><i data-lucide="check-circle" class="icon"></i> Best XI already selected</div>`;
+                return `<div class="lineup-alert good">${v2Icon('check')} Best XI already selected</div>`;
             }
             const rows = suggestions.slice(0, 2).map(s => {
                 const b = s.bench.player, st = s.starter.player;
@@ -1585,7 +1585,7 @@
                 </div>`;
             }).join('');
             return `<div class="lineup-alert warn">
-                <div class="lineup-alert-head"><i data-lucide="repeat" class="icon"></i> Lineup check</div>
+                <div class="lineup-alert-head">${v2Icon('swap')} Lineup check</div>
                 ${rows}
             </div>`;
         }

@@ -385,7 +385,13 @@
         let squadFilterMaxPrice = null;
         // Expanded by default (first visit has no saved preference yet — only an
         // explicit '0' from the user collapsing it before should keep it closed).
-        let sqChartExpanded = localStorage.getItem('fpl_charts_expanded') !== '0';
+        /* Closed unless you opened it. This read `!== '0'`, so a first
+           visit rendered the Visual Analysis modal open — a full-screen
+           overlay over the squad page before you had asked for anything,
+           which on a phone is the entire first screen and on a desktop
+           quietly swallowed clicks meant for the page under it. Someone
+           who had it open keeps it open; the key is the same. */
+        let sqChartExpanded = localStorage.getItem('fpl_charts_expanded') === '1';
         let sqChartInstance = null;
         let sqChartXMetric = 'xgi90';
         let sqChartYMetric = 'points';
