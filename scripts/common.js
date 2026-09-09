@@ -546,7 +546,7 @@ function v2PosEdgeClass(position) {
  *
  * `opts`:
  *   size   'full' (a modal), 'compact' (a card), 'mini' (a small card)
- *   chip   a short verdict label — "★ Top pick", "#4", "STAR"
+ *   chip   a short verdict label — "Top pick", "#4", "STAR"
  *   chipClass  a modifier for it
  *   sub    what goes under the club name, if anything
  *
@@ -809,7 +809,7 @@ const V2_ICON_PATHS = {
     boost: '<path d="M12 20V6"/><path d="m6 12 6-6 6 6"/><path d="M5 3h14"/>',
 
     /* The squad and market tickers.
-       These were emoji — 🚑, 🔥, ❄️, 📅, 👑, 🎟️, 💸, 🃏, ⏱️, 🚫, 🔄, 🎯 — which
+       These were emoji — , , , , , , , , , , , — which
        is twelve different drawing styles from twelve different vendors,
        rendered at whatever weight the reader's platform ships, next to a chip
        row drawn in one consistent 1.8px line. Same marks, drawn the same way. */
@@ -824,7 +824,58 @@ const V2_ICON_PATHS = {
     swap: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
     crosshair: '<circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
     up: '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
-    down: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>'
+    down: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+
+    /* ===== The rest of the set =====
+       Everything the site used to say with an emoji. They were never a style
+       choice so much as an absence of one: eighty different marks drawn by
+       eighty different vendors, at whatever weight the reader's platform
+       ships, sitting next to a nav and a chip row drawn in one consistent
+       1.8px line. Same meanings, drawn the same way. */
+    warn: '<path d="M12 3 2 20h20Z"/><path d="M12 10v5M12 18h.01"/>',
+    check: '<path d="m4 12 5 5L20 6"/>',
+    close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 15 3-4 3 3 5-7"/>',
+    bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7Z"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
+    scales: '<path d="M12 4v16M7 20h10"/><path d="m5 9 3-5 3 5a3 3 0 0 1-6 0Z"/><path d="m13 9 3-5 3 5a3 3 0 0 1-6 0Z"/>',
+    shield: '<path d="M12 3 5 6v6c0 4.2 2.9 7.9 7 9 4.1-1.1 7-4.8 7-9V6Z"/>',
+    star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.2-5.4-2.9-5.4 2.9 1-6.2L3.2 9.5l6.1-.9Z"/>',
+    clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6"/>',
+    swords: '<path d="m4 4 9 9-3 3-9-9Z"/><path d="m20 4-9 9 3 3 9-9Z"/><path d="m8 16-4 4M16 16l4 4"/>',
+    bench: '<path d="M4 10h16M6 10v9M18 10v9"/><path d="M4 6h16v4H4Z"/>',
+    hand: '<path d="M8 12V5a2 2 0 0 1 4 0v6M12 11V4a2 2 0 0 1 4 0v8"/><path d="M16 9a2 2 0 0 1 4 0v5a7 7 0 0 1-7 7h-1a7 7 0 0 1-7-7v-3a2 2 0 0 1 4 0"/>',
+    ruler: '<path d="m15 3 6 6L9 21l-6-6Z"/><path d="m8 10 2 2M11 7l2 2M5 13l2 2"/>',
+    gloves: '<path d="M6 21V9a2 2 0 0 1 4 0V4a2 2 0 0 1 4 0v5a2 2 0 0 1 4 0v12Z"/>',
+    bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.3.3.5.7.5 1.1h6c0-.4.2-.8.5-1.1A6 6 0 0 0 12 3Z"/>',
+    brain: '<path d="M9.5 3A3.5 3.5 0 0 0 6 6.5 3 3 0 0 0 4 9.5 3 3 0 0 0 6 12a3 3 0 0 0-2 3 3 3 0 0 0 3 3 3 3 0 0 0 3 3V3Z"/><path d="M14.5 3A3.5 3.5 0 0 1 18 6.5a3 3 0 0 1 2 3 3 3 0 0 1-2 2.5 3 3 0 0 1 2 3 3 3 0 0 1-3 3 3 3 0 0 1-3 3V3Z"/>',
+    coins: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+    tools: '<path d="m14 6 4-4 4 4-4 4Z"/><path d="M6 22 2 18l9-9 4 4Z"/><path d="m14 10-4-4"/>',
+    trash: '<path d="M4 7h16M10 4h4M9 7v12M15 7v12"/><path d="M6 7h12l-1 14H7Z"/>',
+    cart: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12h11L21 7H6"/>',
+    siren: '<path d="M6 18a6 6 0 0 1 12 0Z"/><path d="M4 21h16M12 4V2M5 7 3.5 5.5M19 7l1.5-1.5"/>',
+    inbox: '<path d="M12 3v10m0 0-4-4m4 4 4-4"/><path d="M3 15h5l1 3h6l1-3h5v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+    outbox: '<path d="M12 13V3m0 0-4 4m4-4 4 4"/><path d="M3 15h5l1 3h6l1-3h5v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+    compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/>',
+    goal: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>',
+    card: '<rect x="6" y="3" width="12" height="18" rx="2"/>',
+    sleep: '<path d="M13 4h6l-6 7h6"/><path d="M4 13h6l-6 7h6"/>',
+    cap: '<path d="M2 9l10-5 10 5-10 5Z"/><path d="M6 11.5V17c0 1.7 2.7 3 6 3s6-1.3 6-3v-5.5"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18Z"/>',
+    sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>',
+    shuffle: '<path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6M4 4l5 5"/>',
+    person: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    hospital: '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M12 11v6M9 14h6"/><path d="M8 7V4h8v3"/>',
+    pencil: '<path d="M4 20h4L20 8l-4-4L4 16Z"/><path d="m14 6 4 4"/>',
+    medal: '<circle cx="12" cy="15" r="6"/><path d="m8 3 2.5 6M16 3l-2.5 6"/>',
+    palette: '<path d="M12 3a9 9 0 0 0 0 18c1.7 0 2-1.3 1.2-2.2-.8-1 .1-2.3 1.3-2.3H17a4 4 0 0 0 4-4c0-5-4-9.5-9-9.5Z"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="10" r="1"/>',
+    crystal: '<path d="M12 3 4 9l8 12 8-12Z"/><path d="M4 9h16M12 3v18"/>',
+    flask: '<path d="M10 3v6L4 20h16l-6-11V3"/><path d="M9 3h6"/>',
+    folders: '<path d="M3 8a2 2 0 0 1 2-2h3l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M7 6V5a2 2 0 0 1 2-2h3l2 2h4a2 2 0 0 1 2 2v1"/>',
+    lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
+    pointer: '<path d="M8 3v10l3-2 2 5 2-1-2-5h4Z"/>'
 };
 
 function v2Icon(name) {
@@ -1215,7 +1266,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=186')
+    fetch('footer.html?v=187')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

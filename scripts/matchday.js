@@ -217,12 +217,12 @@
             const proj = mdProjBonus ? (mdProjBonus[p.id] || mdProjBonus[String(p.id)] || 0) : 0;
             const bits = [];
             if (live) {
-                for (let i = 0; i < (live.goals || 0); i++) bits.push('<i class="md-ev goal" title="Goal">⚽</i>');
-                for (let i = 0; i < (live.assists || 0); i++) bits.push('<i class="md-ev assist" title="Assist">🅰</i>');
-                if (live.cleanSheets) bits.push('<i class="md-ev cs" title="Clean sheet">🧤</i>');
-                if (live.pensSaved) bits.push('<i class="md-ev cs" title="Penalty saved">🧤+</i>');
-                if (live.red) bits.push('<i class="md-ev red" title="Red card">🟥</i>');
-                else if (live.yellow) bits.push('<i class="md-ev yellow" title="Yellow card">🟨</i>');
+                for (let i = 0; i < (live.goals || 0); i++) bits.push('<i class="md-ev goal" title="Goal"></i>');
+                for (let i = 0; i < (live.assists || 0); i++) bits.push('<i class="md-ev assist" title="Assist">A</i>');
+                if (live.cleanSheets) bits.push('<i class="md-ev cs" title="Clean sheet"></i>');
+                if (live.pensSaved) bits.push('<i class="md-ev cs" title="Penalty saved">+</i>');
+                if (live.red) bits.push('<i class="md-ev red" title="Red card"></i>');
+                else if (live.yellow) bits.push('<i class="md-ev yellow" title="Yellow card"></i>');
                 if (live.ownGoals) bits.push('<i class="md-ev red" title="Own goal">OG</i>');
             }
             const mult = p.multiplier != null ? p.multiplier : (p.isCaptain ? 2 : 1);

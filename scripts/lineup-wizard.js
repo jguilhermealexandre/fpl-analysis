@@ -125,18 +125,18 @@
             container.innerHTML = `
                 <div class="lw-cc">
                     <div class="lw-cc-head">
-                        <div class="lw-cc-title">🎛️ Lineup command centre <span class="lw-cc-gw">GW${planningGW}</span></div>
+                        <div class="lw-cc-title">${v2Icon('sliders')} Lineup command centre <span class="lw-cc-gw">GW${planningGW}</span></div>
                         <div class="lw-cc-stats">
                             <span class="lw-cc-stat" data-tooltip="The shape the optimiser settled on for your available players.">
                                 <span class="lw-cc-stat-l">Formation</span><span class="lw-cc-stat-v" id="lwFormation">${lineupState.formation}</span></span>
                             <span class="lw-cc-stat" data-tooltip="Projected points for the starting eleven this gameweek, with the captain's points doubled.">
                                 <span class="lw-cc-stat-l">Projected</span><span class="lw-cc-stat-v accent" id="lwTotal">${lwTotalXP().toFixed(1)}</span></span>
                         </div>
-                        <button class="rc-btn" onclick="resetLineupToOptimal()" data-tooltip="${optimiseTip}">✨ Auto-optimise</button>
+                        <button class="rc-btn" onclick="resetLineupToOptimal()" data-tooltip="${optimiseTip}">${v2Icon('sparkle')} Auto-optimise</button>
                         ${lineupState.undo ? `<button class="rc-btn" onclick="lwUndoOptimise()"
                             data-tooltip="Put back the eleven, bench order and armband you had before Auto-optimise ran.">↩︎ Undo</button>` : ''}
                     </div>
-                    ${lineupState.optimizeReport ? `<div class="sq-optimize-summary">✨ ${buildOptimizeSummary(lineupState.optimizeReport, 'openLineupOptimizeReport()')}</div>` : ''}
+                    ${lineupState.optimizeReport ? `<div class="sq-optimize-summary">${buildOptimizeSummary(lineupState.optimizeReport, 'openLineupOptimizeReport()')}</div>` : ''}
                     <div class="lw-cc-body">
                         <div class="lw-cc-pitch" id="lwPitchPane">${renderLWPitch()}</div>
                         <div class="lw-cc-intel" id="lwIntelPane">${renderLWIntel()}</div>
@@ -190,7 +190,7 @@
             const lwIdent = { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team };
             return `<div class="${cls}" onclick="handleLWSwapClick(${p.id})">
                 <div class="dp-badges">${badges}</div>
-                <button class="dp-transfer" onclick="handleLWInfoBtnClick(${p.id}, event)" data-tooltip="View ${escHTML(p.web_name)}'s detail — click a second player to compare them">ℹ️</button>
+                <button class="dp-transfer" onclick="handleLWInfoBtnClick(${p.id}, event)" data-tooltip="View ${escHTML(p.web_name)}'s detail — click a second player to compare them">ℹ</button>
                 ${typeof v2IdentityHTML === 'function'
                     ? v2IdentityHTML(lwIdent, 'v2-pid-portrait',
                         `<span class="v2-pid-num" data-tooltip="Projected points for ${escHTML(p.web_name)} this gameweek.">${xp.toFixed(1)}<span class="u">xP</span></span>`)
@@ -216,7 +216,7 @@
             html += `</div></div>`;
             html += `<div class="lw-pitch-hint">${lineupState.swapSource
                 ? `Swapping <strong>${escHTML((lineupState.squad.find(p => p.id === lineupState.swapSource) || {}).web_name || '')}</strong> — click another player to complete it, or click them again to cancel.`
-                : 'Click a player to swap them. Use ℹ️ to view detail, or click a second ℹ️ to compare two side by side.'}</div>`;
+                : 'Click a player to swap them. Use ℹ to view detail, or click a second ℹ to compare two side by side.'}</div>`;
             return html;
         }
 
@@ -244,9 +244,9 @@
             }
             return `<div class="lw-intel">
                 <div class="lw-intel-tabs">
-                    <button class="lw-intel-tab ${tab === 'overview' ? 'active' : ''}" onclick="setLWIntelTab('overview')">🧠 Overview</button>
-                    <button class="lw-intel-tab ${tab === 'captaincy' ? 'active' : ''}" onclick="setLWIntelTab('captaincy')">👑 Captaincy</button>
-                    <button class="lw-intel-tab ${tab === 'odds' ? 'active' : ''}" onclick="setLWIntelTab('odds')" data-tooltip="What the betting market expects from this gameweek's fixtures — goals, clean sheets and results, with the bookmaker's margin removed.">📈 Matchday</button>
+                    <button class="lw-intel-tab ${tab === 'overview' ? 'active' : ''}" onclick="setLWIntelTab('overview')">${v2Icon('brain')} Overview</button>
+                    <button class="lw-intel-tab ${tab === 'captaincy' ? 'active' : ''}" onclick="setLWIntelTab('captaincy')">${v2Icon('crown')} Captaincy</button>
+                    <button class="lw-intel-tab ${tab === 'odds' ? 'active' : ''}" onclick="setLWIntelTab('odds')" data-tooltip="What the betting market expects from this gameweek's fixtures — goals, clean sheets and results, with the bookmaker's margin removed.">${v2Icon('up')} Matchday</button>
                 </div>
                 <div class="lw-intel-body">${body}</div>
             </div>`;
@@ -343,13 +343,13 @@
                 </div>
 
                 ${sources.length ? `<div class="lw-sum-block">
-                    <div class="lw-sum-h">📊 Where the points come from</div>
+                    <div class="lw-sum-h">Where the points come from</div>
                     ${lwSourcesBar(sources)}
                     <div class="lw-sum-note">${escHTML(sources[0].key)} is the largest single source at <strong>${sources[0].v.toFixed(1)}</strong> projected points across the eleven.</div>
                 </div>` : ''}
 
                 <div class="lw-sum-block">
-                    <div class="lw-sum-h">🗓️ What the eleven face</div>
+                    <div class="lw-sum-h">${v2Icon('calendar')} What the eleven face</div>
                     <div class="lw-sum-note">${easyCount} of the eleven face a difficulty-2-or-easier fixture and ${hardCount} face a 4 or harder.
                         ${stacked.length
                             ? `You are stacked on <strong>${escHTML(stacked.join(', '))}</strong> — a strong week for them lifts the whole team, a poor one sinks it.`
@@ -357,7 +357,7 @@
                 </div>
 
                 <div class="lw-sum-block">
-                    <div class="lw-sum-h">🔻 Weakest link in the XI</div>
+                    <div class="lw-sum-h">${v2Icon('down')} Weakest link in the XI</div>
                     <div class="lw-sum-row">
                         <span class="lw-sum-name">${escHTML(weakest.web_name)}</span>
                         <span class="lw-sum-xp">${weakest.lwScore.toFixed(1)} ${runUnit}</span>
@@ -368,7 +368,7 @@
                 </div>
 
                 <div class="lw-sum-block">
-                    <div class="lw-sum-h">🪑 Strongest player on the bench</div>
+                    <div class="lw-sum-h">${v2Icon('bench')} Strongest player on the bench</div>
                     ${strongestBench ? `<div class="lw-sum-row">
                         <span class="lw-sum-name">${escHTML(strongestBench.web_name)}</span>
                         <span class="lw-sum-xp">${strongestBench.lwScore.toFixed(1)} ${runUnit}</span>
@@ -380,14 +380,14 @@
                 </div>
 
                 ${(flagged.length || risky.length) ? `<div class="lw-sum-block">
-                    <div class="lw-sum-h">⚠️ Worth checking</div>
+                    <div class="lw-sum-h">Worth checking</div>
                     ${flagged.map(p => `<div class="lw-sum-flag"><strong>${escHTML(p.web_name)}</strong> — ${escHTML((p.news || '').split('.')[0] || (p.status === 'd' ? 'fitness doubt' : 'unavailable'))}${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}</div>`).join('')}
                     ${risky.filter(p => !flagged.some(f => f.id === p.id)).map(p => `<div class="lw-sum-flag"><strong>${escHTML(p.web_name)}</strong> — rotation risk, ${Math.round(expectedMinutesModel(p).pStart * 100)}% likely to start</div>`).join('')}
                 </div>` : ''}
 
                 ${renderLWChanges()}
 
-                <div class="lw-sum-hintline">Click a player on the pitch to swap them. Use ℹ️ for their detail, or two ℹ️s to compare.</div>
+                <div class="lw-sum-hintline">Click a player on the pitch to swap them. Use ℹ for their detail, or two ℹs to compare.</div>
             </div>`;
         }
 
@@ -714,8 +714,8 @@
             const changed = !was || was.id !== now.id;
 
             const head = changed
-                ? `<div class="opt-bench-head">👑 Armband moved${was ? ` from <strong>${escHTML(was.web_name || was.name)}</strong>` : ''} to <strong>${escHTML(now.web_name || now.name)}</strong></div>`
-                : `<div class="opt-bench-head">👑 Armband stayed on <strong>${escHTML(now.web_name || now.name)}</strong></div>`;
+                ? `<div class="opt-bench-head">${v2Icon('crown')} Armband moved${was ? ` from <strong>${escHTML(was.web_name || was.name)}</strong>` : ''} to <strong>${escHTML(now.web_name || now.name)}</strong></div>`
+                : `<div class="opt-bench-head">${v2Icon('crown')} Armband stayed on <strong>${escHTML(now.web_name || now.name)}</strong></div>`;
 
             const why = [];
             if (changed && was) {
@@ -789,7 +789,7 @@
             }).join('');
 
             const shapeHtml = shapeChanged ? `<div class="opt-bench-row">
-                    <div class="opt-bench-head">📐 Shape changed from <strong>${escHTML(r.beforeFormation)}</strong> to <strong>${escHTML(r.formation)}</strong></div>
+                    <div class="opt-bench-head">${v2Icon('ruler')} Shape changed from <strong>${escHTML(r.beforeFormation)}</strong> to <strong>${escHTML(r.formation)}</strong></div>
                     <div class="opt-bench-why">The eleven above only fits in this shape. ${(r.formationScores || []).length > 1
                         ? `${escHTML(r.formation)} scored ${r.formationScores[0].total.toFixed(1)} against ${r.formationScores[1].total.toFixed(1)} for the next best shape.`
                         : ''}</div>
@@ -835,19 +835,19 @@
             </div>
 
             <div class="detail-section">
-                <div class="detail-section-title">🔀 What changed</div>
+                <div class="detail-section-title">${v2Icon('shuffle')} What changed</div>
                 ${changeCount === 0
                     ? '<div class="opt-empty">Nothing moved. Your eleven, shape and armband were already the best available from this squad.</div>'
                     : `${rows}${shapeHtml}${lwCaptainChangeSection(r)}`}
             </div>
 
             ${shapeChanged ? `<div class="detail-section">
-                <div class="detail-section-title">📐 Why this shape</div>
+                <div class="detail-section-title">Why this shape</div>
                 ${altHtml}
             </div>` : ''}
 
             <div class="detail-section">
-                <div class="detail-section-title">🪑 Bench</div>
+                <div class="detail-section-title">${v2Icon('bench')} Bench</div>
                 ${benchHtml}
             </div>
 
@@ -860,7 +860,7 @@
         function openLineupOptimizeReport() {
             if (!lineupState.optimizeReport) return;
             const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = `📊 GW${planningGW} — what Auto-optimise changed`;
+            if (title) title.textContent = `${v2Icon('chart')} GW${planningGW} — what Auto-optimise changed`;
             document.getElementById('optReportBody').innerHTML = renderLWChangeReport(lineupState.optimizeReport);
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -922,7 +922,7 @@
             changes.forEach(c => {
                 const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
                 html += `<div class="lw-change-row">
-                    <span class="lw-change-badge ${c.type}">${c.type === 'promoted' ? '↑ IN' : c.type === 'benched' ? '↓ OUT' : '👑'}</span>
+                    <span class="lw-change-badge ${c.type}">${c.type === 'promoted' ? '↑ IN' : c.type === 'benched' ? '↓ OUT' : v2Icon('crown')}</span>
                     <span style="font-weight:600;">${escHTML(c.player.web_name)}</span>
                     <span style="font-size:11px;color:var(--text-muted);">${posNames[c.player.pos]} · ${escHTML(c.player.team)}</span>
                     <span style="flex:1;"></span>
@@ -1017,7 +1017,7 @@
                 <div class="lw-ctx-empty">
                     <div class="lw-ctx-empty-icon"><i data-lucide="mouse-pointer-click" style="width:32px;height:32px;"></i></div>
                     <div style="font-weight:600;margin-bottom:4px;">Player Intel Panel</div>
-                    <div>Click a player's ℹ️ to view deep stats & score breakdown.<br>Click a second ℹ️ to compare side-by-side.</div>
+                    <div>Click a player's ℹ to view deep stats & score breakdown.<br>Click a second ℹ to compare side-by-side.</div>
                 </div>
             </div>`;
         }
@@ -1250,7 +1250,7 @@
         // A plain click on the card itself now swaps (see lwCard's onclick,
         // matching how the Squad Analysis pitch already lets you swap by just
         // clicking two players — no dedicated button needed for that). This is
-        // the ℹ️ button's handler instead: always toggles compare-select,
+        // the ℹ button's handler instead: always toggles compare-select,
         // independent of any swap in progress, so viewing a player's detail
         // never gets swallowed by swap mode the way the old combined handler
         // used to swallow it.

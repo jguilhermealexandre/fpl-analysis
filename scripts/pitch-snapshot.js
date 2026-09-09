@@ -709,7 +709,7 @@
             refreshSnapshot();
         }
 
-        // ✨ Auto-Optimize: reuses the Lineup Wizard's formation-valid solver
+        // Auto-Optimize: reuses the Lineup Wizard's formation-valid solver
         // (solveQuickLineup already only tries real FPL formations — 1 GK, min 3 DEF,
         // min 1 FWD — never a blind top-11-scorers pick), ranking players by the
         // same projected points the cards and the headline score show, so the gain
@@ -1082,7 +1082,7 @@
                 const { ctx } = optTeamContext(p, ranks, gw);
                 const isVice = p.id === r.viceId;
                 return `<tr class="${i === 0 ? 'opt-pick' : ''}">
-                    <td>${i === 0 ? '👑 ' : isVice ? '🅥 ' : ''}${escHTML(p.name)}${i === 0 ? ' <span class="opt-tag">AI pick</span>' : isVice ? ' <span class="opt-tag vice">Vice</span>' : ''}
+                    <td>${i === 0 ? `${v2Icon('crown')} ` : isVice ? 'V ' : ''}${escHTML(p.name)}${i === 0 ? ' <span class="opt-tag">AI pick</span>' : isVice ? ' <span class="opt-tag vice">Vice</span>' : ''}
                         <div class="opt-cap-sub">${escHTML(p.team)} · ${p.ownership != null ? `${p.ownership}% owned` : ''}${ctx && ctx.ranked ? ` · opponent concedes ${ctx.conceded.toFixed(1)}/game` : ''}</div></td>
                     <td class="opt-num">${gwPoints(p).toFixed(1)}</td>
                     <td class="opt-num">${form.toFixed(1)}</td>
@@ -1105,7 +1105,7 @@
                 return `<div class="opt-xi-row">
                     <div class="opt-xi-head">
                         <span class="position-badge ${POSITION_CONFIG[p.position].class}">${POSITION_CONFIG[p.position].short}</span>
-                        <span class="opt-xi-name">${isCap ? '👑 ' : p.id === r.viceId ? '🅥 ' : ''}${escHTML(p.name)}</span>
+                        <span class="opt-xi-name">${isCap ? `${v2Icon('crown')} ` : p.id === r.viceId ? 'V ' : ''}${escHTML(p.name)}</span>
                         <span class="opt-xi-team">${escHTML(p.team)}</span>
                         <span class="fixture-chip fdr-${optFdrFor(p, gw)}">${optFixtureLabel(p, gw)}</span>
                         <span class="opt-xi-xp">${gwPoints(p).toFixed(1)}<span class="opt-xi-xp-unit">xP</span></span>
@@ -1209,12 +1209,12 @@
             </div>
 
             <div class="detail-section">
-                <div class="detail-section-title">🧭 Squad outlook</div>
+                <div class="detail-section-title">${v2Icon('compass')} Squad outlook</div>
                 ${outlook}
             </div>
 
             <div class="detail-section">
-                <div class="detail-section-title">👑 Captaincy decision</div>
+                <div class="detail-section-title">${v2Icon('crown')} Captaincy decision</div>
                 <table class="opt-table">
                     <thead><tr><th>Player</th><th class="opt-num">xP</th><th class="opt-num">Form</th><th class="opt-num">Start</th><th>Fixture</th></tr></thead>
                     <tbody>${capRows}</tbody>
@@ -1225,19 +1225,19 @@
             </div>
 
             <div class="detail-section">
-                <div class="detail-section-title">📋 Starting eleven</div>
+                <div class="detail-section-title">Starting eleven</div>
                 <div class="opt-why">Each bar splits that player's projection into where the points are expected to come from.</div>
                 ${xiRows}
             </div>
 
             <div class="detail-section">
-                <div class="detail-section-title">🔄 Bench decisions</div>
+                <div class="detail-section-title">Bench decisions</div>
                 ${benchRows}
                 ${benchOrderHtml}
             </div>
 
             <div class="detail-section">
-                <div class="detail-section-title">📐 Formation check</div>
+                <div class="detail-section-title">Formation check</div>
                 <div class="opt-formation">${escHTML(shape)}</div>
                 <div class="opt-why">
                     ${blocks.map(b => `${b.label}: <strong>${b.xp.toFixed(1)} xP</strong> from ${b.n}`).join(' · ')}.
@@ -1251,14 +1251,14 @@
             </div>
 
             <div class="detail-section">
-                <div class="detail-section-title">⚠️ Risks in this lineup</div>
+                <div class="detail-section-title">Risks in this lineup</div>
                 ${warnHtml}
             </div>`;
         }
 
         function openOptimizeReport() {
             const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = '📊 Optimization report';
+            if (title) title.textContent = `${v2Icon('chart')} Optimization report`;
             document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal();
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1389,7 +1389,7 @@
                 .slice(0, MAX_SUGGESTED_TRANSFERS)
                 .forEach(t => {
                     moves.push({
-                        icon: '🔥',
+                        icon: v2Icon('flame'),
                         kind: 'transfer',
                         urgent: t.forced,
                         title: `${t.forced ? 'Replace' : 'Upgrade'} ${t.out.name}`,
@@ -1416,7 +1416,7 @@
                 });
                 if (bestAlt && bestAltXP - capXP >= 0.5) {
                     moves.push({
-                        icon: '👑',
+                        icon: v2Icon('crown'),
                         kind: 'captain',
                         urgent: true,
                         title: `Change captain to ${bestAlt.player.name}`,
@@ -1432,7 +1432,7 @@
             // --- 3. Bench swaps, each with the projected delta that justifies it.
             computeLineupSuggestions().slice(0, 2).forEach(s => {
                 moves.push({
-                    icon: '🔄',
+                    icon: v2Icon('swap'),
                     kind: 'bench',
                     urgent: false,
                     title: `Start ${s.bench.player.name} over ${s.starter.player.name}`,
@@ -1449,7 +1449,7 @@
             if (unactionedDoubts.length) {
                 const names = unactionedDoubts.slice(0, 3).map(a => a.player.name).join(', ');
                 moves.push({
-                    icon: '⚠️',
+                    icon: v2Icon('warn'),
                     kind: 'risk',
                     urgent: false,
                     title: `${unactionedDoubts.length} fitness doubt${unactionedDoubts.length > 1 ? 's' : ''}`,
@@ -1477,7 +1477,7 @@
                     const c = pwClassify(a.player);
                     if (!c || c.dir !== 'fall' || c.tier !== 'due') return;
                     moves.push({
-                        icon: '📉',
+                        icon: v2Icon('down'),
                         kind: 'price',
                         urgent: false,
                         title: `${a.player.name} drops to £${(a.player.price - 0.1).toFixed(1)}m tonight`,
@@ -1551,7 +1551,7 @@
         function renderSuggestedMoves(moves) {
             if (!moves.length) {
                 return `<div class="insight-move insight-move-clear">
-                    <span class="insight-move-icon">✅</span>
+                    <span class="insight-move-icon"></span>
                     <div class="insight-move-body"><div class="insight-move-title">No urgent moves</div>
                     <div class="insight-move-detail">Lineup and captain look right for this gameweek.</div></div>
                 </div>`;

@@ -334,7 +334,7 @@ function updateCompareBar() {
             const byValue = [...reportData].sort((a, b) => b.valueScore - a.valueScore);
             const bestValue = byValue[0];
             picks.push({
-                category: 'Best Value', cssClass: 'pick-value', icon: '💰',
+                category: 'Best Value', cssClass: 'pick-value', icon: '',
                 winner: bestValue.name, winnerId: bestValue.id,
                 reason: `${bestValue.ptsPerGame.toFixed(1)} pts/g at just £${bestValue.price.toFixed(1)}m — ${bestValue.valueScore.toFixed(2)} pts per £m${byValue[1] ? `, ${((bestValue.valueScore - byValue[1].valueScore) / byValue[1].valueScore * 100).toFixed(0)}% better value than ${byValue[1].name}` : ''}`
             });
@@ -347,7 +347,7 @@ function updateCompareBar() {
             });
             const bestCeiling = byCeiling[0];
             picks.push({
-                category: 'Best Ceiling', cssClass: 'pick-ceiling', icon: '🚀',
+                category: 'Best Ceiling', cssClass: 'pick-ceiling', icon: '',
                 winner: bestCeiling.name, winnerId: bestCeiling.id,
                 reason: `${bestCeiling.explosiveness.toFixed(0)}% explosive rate with ${bestCeiling.routesData.routeCount || 0} routes to points and ${bestCeiling.xgiPerGame.toFixed(2)} xGI/g`
             });
@@ -360,7 +360,7 @@ function updateCompareBar() {
             });
             const bestSafety = bySafety[0];
             picks.push({
-                category: 'Best Safety', cssClass: 'pick-safety', icon: '🛡️',
+                category: 'Best Safety', cssClass: 'pick-safety', icon: '',
                 winner: bestSafety.name, winnerId: bestSafety.id,
                 reason: `${bestSafety.reliability.toFixed(0)}% return rate, ${bestSafety.minsPerGame.toFixed(0)} mins/g — the most consistent and nailed-on pick`
             });
@@ -379,7 +379,7 @@ function updateCompareBar() {
             const bfFdr = bestFixtures.fixtures?.avgFDR3 || 3;
             const bfHome = (bestFixtures.fixtures?.next5 || []).filter(f => f.isHome).length;
             picks.push({
-                category: 'Best Fixtures', cssClass: 'pick-fixtures', icon: '📅',
+                category: 'Best Fixtures', cssClass: 'pick-fixtures', icon: '',
                 winner: bestFixtures.name, winnerId: bestFixtures.id,
                 reason: `FDR ${bfFdr.toFixed(1)} next 3 with ${bfHome}/5 home games${bestFixtures.swing?.direction === 'improving' ? ' — fixtures improving' : ''}`
             });
@@ -392,7 +392,7 @@ function updateCompareBar() {
             });
             const bestForm = byForm[0];
             picks.push({
-                category: 'Best Form', cssClass: 'pick-form', icon: '📈',
+                category: 'Best Form', cssClass: 'pick-form', icon: '',
                 winner: bestForm.name, winnerId: bestForm.id,
                 reason: `${bestForm.ptsPerGame.toFixed(1)} pts/g recently${bestForm.risingScore > 0 ? ` with rising form score of ${bestForm.risingScore.toFixed(0)}` : ''} — ${bestForm.form.toFixed(1)} FPL form`
             });

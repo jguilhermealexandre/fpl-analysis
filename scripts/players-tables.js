@@ -114,10 +114,10 @@ function colValue(p, colKey) {
 
 // Column presets. 'player' is always first and always frozen.
 const COLUMN_PRESETS = {
-    core:      { label: '\u{1F3AF} Core', cols: ['player', 'price', 'own', 'pts', 'form', 'xGIG', 'fixtures'] },
-    attacking: { label: '⚡ Attacking', cols: ['player', 'price', 'goals', 'assists', 'xGG', 'xAG', 'xGIG', 'kp', 'bcc', 'bcm', 'fixtures'] },
-    defensive: { label: '\u{1F6E1}️ Defensive', cols: ['player', 'price', 'csPct', 'xGC90', 'saves90', 'gc90', 'bps', 'fixtures'] },
-    all:       { label: '\u{1F4CA} All stats', cols: null }
+    core:      { label: 'Core', cols: ['player', 'price', 'own', 'pts', 'form', 'xGIG', 'fixtures'] },
+    attacking: { label: 'Attacking', cols: ['player', 'price', 'goals', 'assists', 'xGG', 'xAG', 'xGIG', 'kp', 'bcc', 'bcm', 'fixtures'] },
+    defensive: { label: 'Defensive', cols: ['player', 'price', 'csPct', 'xGC90', 'saves90', 'gc90', 'bps', 'fixtures'] },
+    all:       { label: 'All stats', cols: null }
 };
 const PRESET_STORAGE_KEY = 'fpl_allplayers_preset';
 
@@ -639,8 +639,8 @@ function renderPlayerRow(p, position) {
 function renderActionsCell(p) {
     return `<td class="col-actions">
         <div class="row-actions">
-            <button class="row-action" title="Compare this player" onclick="event.stopPropagation(); toggleComparePlayer(${p.id})">⚖️ Compare</button>
-            <button class="row-action" title="Plan a transfer for this player" onclick="event.stopPropagation(); swapFromTable(${p.id})">⚡ Swap</button>
+            <button class="row-action" title="Compare this player" onclick="event.stopPropagation(); toggleComparePlayer(${p.id})">${v2Icon('scales')} Compare</button>
+            <button class="row-action" title="Plan a transfer for this player" onclick="event.stopPropagation(); swapFromTable(${p.id})">${v2Icon('bolt')} Swap</button>
         </div>
     </td>`;
 }

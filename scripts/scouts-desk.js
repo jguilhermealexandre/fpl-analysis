@@ -170,11 +170,20 @@ function sdTable(headers, rows) {
    generators raw HTML would give that guarantee up for a styling convenience,
    so instead the renderer owns the tags and the generators only supply text. */
 
+/* Plain words, no mark at all.
+
+   These four were emoji, and the sweep turned them into icon calls — which
+   broke twice over. They are evaluated when this file loads, before common.js
+   has defined v2Icon, so the module threw on import; and the file's own rule a
+   few lines up is that the generators supply text and the renderer owns the
+   tags, which an inline SVG in a label would give up. A callout already has a
+   coloured edge and a variant class saying which kind it is, so the label only
+   ever has to read as a label. */
 const SD_CALLOUT_LABEL = {
-    insight: "\u{1F4A1} Scout's key takeaway",
-    warning: '⚠️ Risk check',
-    data: '\u{1F4CA} What the data says',
-    tactical: '\u{1F9E0} Tactical read'
+    insight: "Scout's key takeaway",
+    warning: 'Risk check',
+    data: 'What the data says',
+    tactical: 'Tactical read'
 };
 
 function sdCallout(variant, body) {
@@ -561,7 +570,7 @@ function sdGenGameweekDebrief() {
         id: 'gw-debrief',
         title: `Gameweek ${gw} Debrief: winners, blanks, and what the underlying numbers say`,
         category: 'Gameweek Debrief',
-        icon: '📊',
+        icon: v2Icon('chart'),
         dek: `${hero.name} led Gameweek ${gw} with ${hero.gwPoints} points${ev && ev.average_entry_score ? ` against an average of ${ev.average_entry_score}` : ''}. Underneath the scoreline, the expected-goals numbers point at a different set of names.`,
         body: md,
         featured: true,
@@ -743,7 +752,7 @@ function sdGenPreDeadlineCaptaincy() {
         id: 'pre-deadline-captaincy',
         title: `Gameweek ${gw} Captaincy Matrix: the armband, the differentials, and the bench calls`,
         category: 'Strategy',
-        icon: '👑',
+        icon: '',
         dek: `${lead ? lead.name : 'The template pick'} leads the captaincy matrix for Gameweek ${gw}${lead ? `, ${lead.fx.home ? 'at home to' : 'away at'} ${lead.fx.opponent}` : ''}. The differentials, the hard fixtures, and the players whose minutes are not safe.`,
         body: md,
         source: `Generated from the Gameweek ${gw} fixture list and current form`
@@ -857,7 +866,7 @@ function sdGenUnderTheHood() {
         id: 'under-the-hood',
         title: 'Under the Hood: the low-owned players creating chances without the returns',
         category: 'Data Deep-Dive',
-        icon: '🎯',
+        icon: '',
         dek: `${lead.name} has ${sdRound(lead.xGI)} expected involvements and ${lead.ret} to show for it, on ${lead.own}% ownership. The gap between process and result is where differentials are found.`,
         body: md,
         source: `Generated from expected involvement against actual returns across ${rounds} gameweek${rounds === 1 ? '' : 's'}`
@@ -897,7 +906,7 @@ function sdGenInsideAlgorithm() {
     md += `Early in a season that sample is small, which is why this site says "too early to rank" rather than inventing a ranking.\n`;
 
     return { id: 'inside-algorithm', title: 'Inside the Algorithm: How our FPL AI predicts points',
-        category: 'Behind the Build', icon: '🔧',
+        category: 'Behind the Build', icon: '',
         dek: `No black box. A component-by-component walkthrough of how every projected-points number on this site is produced, and what the model refuses to claim.`,
         body: md, source: 'Describes the projection model in scripts/pitch-snapshot.js' };
 }
@@ -1034,7 +1043,7 @@ function sdGenFixtureHorizon() {
         id: 'fixture-horizon',
         title: `The Fixture Horizon: who turns green through Gameweek ${gws[gws.length - 1]}`,
         category: 'Fixture Watch',
-        icon: '📅',
+        icon: '',
         dek: `${easing[0].name} see their schedule ease sharply over the next six gameweeks while ${hardening[0].name} run into a wall. The full matrix, the swings, and where to buy before the turn.`,
         body: md,
         source: `Generated from fixture difficulty across GW${gws[0]}–GW${gws[gws.length - 1]}`
@@ -1141,7 +1150,7 @@ function sdGenMarketDigest() {
         id: 'market-digest',
         title: 'Market Watch: who is rising, who is being sold, and what it costs to be late',
         category: 'Market',
-        icon: '📈',
+        icon: '',
         dek: `${rising[0].name} is under the heaviest buying pressure in the game and ${falling[0].name} is being sold hardest. Where the transfer market is heading before the prices catch up.`,
         body: md,
         source: `Generated from this gameweek's net transfers measured against ownership`
@@ -1326,7 +1335,7 @@ function sdGenTacticalPlaybook() {
         id: 'tactical-playbook',
         title: 'The Tactical Playbook: chip timing, budget structure, and where the value sits',
         category: 'Tactical',
-        icon: '🧠',
+        icon: '',
         dek: `${chipRows.length ? `${(chipTotals[chipRows[0][0]] || 0).toLocaleString()} managers have already played a ${SD_CHIP_NAME[chipRows[0][0]] || chipRows[0][0]}. ` : ''}The structural decisions — chips and budget distribution — decide more rank than the weekly transfer does.`,
         body: md,
         source: `Generated from published chip usage and the current price and points distribution`
@@ -1389,7 +1398,7 @@ function sdGenGameweekRoast() {
         .sort((a, b) => b.price - a.price || b.own - a.own);
     if (blanks.length) {
         const b = blanks[0];
-        awards.push(sdRoastAward('\u{1FAA6}', 'The Golden Blank', sdRoastPick(`blank-${gw}`, [
+        awards.push(sdRoastAward('', 'The Golden Blank', sdRoastPick(`blank-${gw}`, [
             `**${b.name}**, ${money(b)}, ${b.gwMinutes} minutes, ${pl(b.gwPoints, 'point', 'points')}. He was owned by ${b.own}% of the game going in, so at least the disappointment was catered.`,
             `**${b.name}** cost ${money(b)} and returned ${pl(b.gwPoints, 'point', 'points')} from ${b.gwMinutes} minutes ${b.gwHome ? 'at home to' : 'away at'} ${b.gwOpponent}. ${b.own}% of managers watched all of it.`,
             `${money(b)} buys a lot of things. On this occasion it bought ${b.gwMinutes} minutes of **${b.name}** and ${pl(b.gwPoints, 'point', 'points')}, which ${b.own}% of you had budgeted for rather differently.`
@@ -1402,7 +1411,7 @@ function sdGenGameweekRoast() {
     const capt = ev && ev.most_captained ? rows.find(r => r.id === ev.most_captained) : null;
     if (capt) {
         const doubled = capt.gwPoints * 2;
-        awards.push(sdRoastAward('\u{1F9E2}', 'The Armband Tax', capt.gwPoints <= 3
+        awards.push(sdRoastAward('', 'The Armband Tax', capt.gwPoints <= 3
             ? sdRoastPick(`capt-bad-${gw}`, [
                 `The game captained **${capt.name}**. He returned ${pl(capt.gwPoints, 'point', 'points')}, which doubled to ${doubled}. Doubling a small number remains one of the great disappointments available to a person on a Saturday.`,
                 `Most-captained: **${capt.name}**. Points: ${capt.gwPoints}. Doubled: ${doubled}. The armband is the biggest call you make each week, and this week most of us made it in unison and were wrong together.`,
@@ -1421,7 +1430,7 @@ function sdGenGameweekRoast() {
         .sort((a, b) => b.gwPoints - a.gwPoints || a.own - b.own);
     if (diffs.length) {
         const d = diffs[0];
-        awards.push(sdRoastAward('\u{1F0CF}', 'The One You Did Not Own', sdRoastPick(`diff-${gw}`, [
+        awards.push(sdRoastAward('', 'The One You Did Not Own', sdRoastPick(`diff-${gw}`, [
             `**${d.name}** (${money(d)}) scored ${d.gwPoints} while owned by ${d.own}% of managers. The other ${(100 - d.own).toFixed(1)}% are currently explaining to themselves that they would never have started him, which is true, and beside the point.`,
             `${d.gwPoints} points from **${d.name}**, owned by ${d.own}%. Somewhere a very small number of people are having their best Saturday of the season and telling absolutely everybody.`,
             `**${d.name}** at ${d.own}% ownership returned ${d.gwPoints}. That is the differential working exactly as advertised, for almost nobody.`
@@ -1435,7 +1444,7 @@ function sdGenGameweekRoast() {
         .sort((a, b) => (b.gwPoints - a.gwPoints) || (a.gwMinutes - b.gwMinutes));
     const cameo = cameos.find(r => r.gwPoints >= 3) || cameos[0];
     if (cameo) {
-        awards.push(sdRoastAward('\u{23F1}\u{FE0F}', 'Cameo of the Week', cameo.gwPoints >= 3
+        awards.push(sdRoastAward('', 'Cameo of the Week', cameo.gwPoints >= 3
             ? sdRoastPick(`cameo-good-${gw}`, [
                 `**${cameo.name}** was on the pitch for ${cameo.gwMinutes} minutes and came off it with ${pl(cameo.gwPoints, 'point', 'points')}. Efficiency of that order should be studied, or at least owned.`,
                 `${cameo.gwMinutes} minutes. ${pl(cameo.gwPoints, 'point', 'points')}. **${cameo.name}** did more after coming on than several people did all afternoon, most of them in your starting eleven.`
@@ -1454,7 +1463,7 @@ function sdGenGameweekRoast() {
         .sort((a, b) => b.ppm - a.ppm);
     if (value.length) {
         const v = value[0];
-        awards.push(sdRoastAward('\u{1F4B0}', 'Best Value on the Board', sdRoastPick(`value-${gw}`, [
+        awards.push(sdRoastAward('', 'Best Value on the Board', sdRoastPick(`value-${gw}`, [
             `**${v.name}** at ${money(v)} returned ${v.gwPoints} — ${v.ppm.toFixed(1)} points per million. Premium ownership is a lifestyle choice and this is the invoice.`,
             `${v.gwPoints} points for ${money(v)}. **${v.name}** did in one afternoon what some of your budget lines have not managed all season.`,
             `**${v.name}**, ${money(v)}, ${v.gwPoints} points, ${v.ppm.toFixed(1)} per million. Quietly the most sensible thing that happened all weekend.`
@@ -1470,13 +1479,13 @@ function sdGenGameweekRoast() {
         .sort((a, b) => (b.gwGoals + b.gwAssists) - (a.gwGoals + a.gwAssists));
     if (robbed.length) {
         const r = robbed[0];
-        awards.push(sdRoastAward('\u{1F3AF}', 'Mugged by the Woodwork', sdRoastPick(`robbed-${gw}`, [
+        awards.push(sdRoastAward('', 'Mugged by the Woodwork', sdRoastPick(`robbed-${gw}`, [
             `**${r.name}** generated ${r.gwXGI.toFixed(2)} expected goal involvements and converted precisely none of them. The underlying numbers liked him a great deal more than the scoreboard did, which is either a buy signal or a warning depending on how your season is going.`,
             `${r.gwXGI.toFixed(2)} xGI, zero returns: **${r.name}** did everything but the last bit. Historically the last bit arrives. Historically it arrives the week after you sell him.`
         ])));
     } else if (larceny.length) {
         const r = larceny[0];
-        awards.push(sdRoastAward('\u{1F3AF}', 'Daylight Robbery', sdRoastPick(`larceny-${gw}`, [
+        awards.push(sdRoastAward('', 'Daylight Robbery', sdRoastPick(`larceny-${gw}`, [
             `**${r.name}** produced ${pl(r.gwGoals + r.gwAssists, 'return', 'returns')} from ${r.gwXGI.toFixed(2)} expected goal involvements. Beautiful to watch, impossible to repeat, and the model would like a word.`,
             `${pl(r.gwGoals + r.gwAssists, 'return', 'returns')} from ${r.gwXGI.toFixed(2)} xGI. **${r.name}** has been sent from the future to punish everyone who reads underlying statistics.`
         ])));
@@ -1525,7 +1534,7 @@ function sdGenGameweekRoast() {
         id: `gw-${gw}-hall-of-shame`,
         title: `Gameweek ${gw} Hall of Shame: the blanks, the cameos, and the captain who cost you`,
         category: 'Hall of Shame',
-        icon: '\u{1F3C6}',
+        icon: '',
         dek: `The awards nobody wants from Gameweek ${gw}${headline ? `, starting with ${headline.name}` : ''}. Every one of them a real number, which is the problem.`,
         body: md,
         source: 'Official FPL data'
@@ -1562,12 +1571,12 @@ function sdMarkdown(md) {
         .replace(/`(.+?)`/g, '<code>$1</code>'));
 
     const ACTION = {
-        buy:  { cls: 'action-buy',  dot: '\u{1F7E2}', word: 'BUY' },
-        hold: { cls: 'action-hold', dot: '\u{1F7E1}', word: 'HOLD' },
-        sell: { cls: 'action-sell', dot: '\u{1F534}', word: 'SELL' },
-        start:{ cls: 'action-buy',  dot: '\u{1F7E2}', word: 'START' },
-        bench:{ cls: 'action-sell', dot: '\u{1F534}', word: 'BENCH' },
-        watch:{ cls: 'action-hold', dot: '\u{1F7E1}', word: 'WATCH' }
+        buy:  { cls: 'action-buy',  dot: '', word: 'BUY' },
+        hold: { cls: 'action-hold', dot: '', word: 'HOLD' },
+        sell: { cls: 'action-sell', dot: '', word: 'SELL' },
+        start:{ cls: 'action-buy',  dot: '', word: 'START' },
+        bench:{ cls: 'action-sell', dot: '', word: 'BENCH' },
+        watch:{ cls: 'action-hold', dot: '', word: 'WATCH' }
     };
 
     // Directive blocks. The renderer owns every tag and class here; the block
@@ -1595,7 +1604,7 @@ function sdMarkdown(md) {
         }
         if (kind === 'takeaways') {
             const items = body.filter(l => /^-\s/.test(l)).map(l => `<li>${inline(l.replace(/^-\s/, ''))}</li>`).join('');
-            return items ? `<aside class="article-takeaways"><div class="callout-header">\u{1F5DE}️ The short version</div><ul>${items}</ul></aside>` : '';
+            return items ? `<aside class="article-takeaways"><div class="callout-header">The short version</div><ul>${items}</ul></aside>` : '';
         }
         if (kind === 'fixtures') {
             const cells = body.map(line => {
@@ -1685,7 +1694,7 @@ function renderArticlesPage() {
             <div class="sd-featured-body">
                 <div class="sd-tags">
                     <span class="sd-tag primary">${escHTML(featured.category)}</span>
-                    <span class="sd-read">⏱️ ${featured.readTime} min read</span>
+                    <span class="sd-read">${featured.readTime} min read</span>
                 </div>
                 <h2 class="sd-featured-title">${escHTML(featured.title)}</h2>
                 <p class="sd-featured-dek">${escHTML(featured.dek)}</p>
@@ -1698,7 +1707,7 @@ function renderArticlesPage() {
                 <a class="sd-card" href="${sdPermalink(a)}" onclick="return sdCardClick(event, '${a.id}')">
                     <div class="sd-card-top">
                         <span class="sd-tag">${a.icon} ${escHTML(a.category)}</span>
-                        <span class="sd-read">⏱️ ${a.readTime} min</span>
+                        <span class="sd-read">${a.readTime} min</span>
                     </div>
                     <h3 class="sd-card-title">${escHTML(a.title)}</h3>
                     <p class="sd-card-dek">${escHTML(a.dek)}</p>
@@ -1741,7 +1750,7 @@ function sdRenderArticle(a) {
     document.getElementById('sdReaderBody').innerHTML = `
         <div class="sd-tags">
             <span class="sd-tag primary">${a.icon} ${escHTML(a.category)}</span>
-            <span class="sd-read">⏱️ ${a.readTime} min read</span>
+            <span class="sd-read">${a.readTime} min read</span>
         </div>
         <h1 class="sd-reader-title">${escHTML(a.title)}</h1>
         <p class="sd-reader-dek">${escHTML(a.dek)}</p>

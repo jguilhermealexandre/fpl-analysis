@@ -117,10 +117,22 @@ export function itemImage(itemXml) {
         if (!c) continue;
         const url = decode(c).trim();
         if (SKIP.test(url)) continue;
-        if (/^\/\//.test(url)) return 'https:' + url;
-        if (/^https?:\/\//i.test(url)) return url.replace(/^http:\/\//i, 'https://');
+        if (/^\/\//.test(url)) return widen('https:' + url);
+        if (/^https?:\/\//i.test(url)) return widen(url.replace(/^http:\/\//i, 'https://'));
     }
     return null;
+}
+
+/* The BBC's feed asks for a 240px crop and the cards draw it at 300, which is
+   what "pixelated" looks like — 4.5KB of image stretched across a card. The
+   same path serves any width from that one segment and signs nothing, so
+   widening it is safe; 800 comes back at 30-45KB. Confirmed against the live
+   host rather than assumed.
+
+   Nothing else is touched. Guardian URLs carry an HMAC over their query
+   string, so changing a width there turns a working image into a 403. */
+function widen(url) {
+    return url.replace(/(ichef\.bbci\.co\.uk\/[a-z]+\/[a-z]+\/)\d{2,4}(\/)/i, '$1800$2');
 }
 
 /* One item, or null if it is not one. A headline you cannot click is not an

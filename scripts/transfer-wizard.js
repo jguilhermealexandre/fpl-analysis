@@ -61,7 +61,7 @@
         }
 
         // Clean sheet probability model (ported from lineup wizard)
-        /* Drawn rather than typed. The 🔄 emoji rendered as a different glyph
+        /* Drawn rather than typed. The emoji rendered as a different glyph
            at a different weight on every platform — full colour on one, a thin
            outline on another — and could take neither the button's text colour
            nor either theme. */
@@ -548,7 +548,7 @@
         /* ===== How you are transferring =====
 
            There used to be two independent toggles in two different panels —
-           "🃏 Play wildcard" in the header and "🗑️ Sell mode" above the squad —
+           "Play wildcard" in the header and "Sell mode" above the squad —
            each with its own on-state, describing overlapping things. Sell mode
            is what you always want on a wildcard, and a wildcard badge sitting
            next to a "1 free transfer" counter is two claims about the same
@@ -650,7 +650,7 @@
                 const nearest = moves[0];
                 return `
                     <div class="twr-verdict hold">
-                        <div class="twr-verdict-icon">✋</div>
+                        <div class="twr-verdict-icon">${v2Icon('hand')}</div>
                         <div>
                             <div class="twr-verdict-title">Hold — no transfer worth making</div>
                             <div class="twr-verdict-sub">${r.noLegalMove
@@ -712,7 +712,7 @@
 
             return `
                 <div class="twr-verdict act">
-                    <div class="twr-verdict-icon">${best.n === 1 ? '🔁' : '⚡'}</div>
+                    <div class="twr-verdict-icon">${best.n === 1 ? v2Icon('swap') : v2Icon('bolt')}</div>
                     <div>
                         <div class="twr-verdict-title">Make ${best.n} transfer${best.n === 1 ? '' : 's'}</div>
                         <div class="twr-verdict-sub">
@@ -1228,7 +1228,7 @@
                         data-tooltip="Projected points gained across the next ${railGWs.length} gameweeks from the transfers you have filled in${hit > 0 ? `, after the ${hit}-point hit` : ''}.">
                         ${netGain > 0 ? '+' : ''}${netGain.toFixed(1)} pts${hit > 0 ? ` (after −${hit})` : ''}
                     </span>
-                    ${openCount ? `<button class="twc-plan-fill" onclick="twFillAllSlots()" data-tooltip="Pick the best affordable replacement for every open slot, sharing the bank across them.">✨ Fill ${openCount} open slot${openCount === 1 ? '' : 's'}</button>` : ''}
+                    ${openCount ? `<button class="twc-plan-fill" onclick="twFillAllSlots()" data-tooltip="Pick the best affordable replacement for every open slot, sharing the bank across them.">Fill ${openCount} open slot${openCount === 1 ? '' : 's'}</button>` : ''}
                 </div>
                 ${balance}
                 <div class="twc-plan-rows">${rows}</div>`;
@@ -1253,7 +1253,7 @@
                         <span class="twc-stat-v ${itbClass}">£${itb.toFixed(1)}m</span>
                     </div>
                     <div class="twc-actions">
-                        ${count ? `<button class="rc-btn" onclick="twOpenPreview()" data-tooltip="See the squad these transfers would leave you with, on a pitch, with its value and projection.">👁️ Preview squad</button>` : ''}
+                        ${count ? `<button class="rc-btn" onclick="twOpenPreview()" data-tooltip="See the squad these transfers would leave you with, on a pitch, with its value and projection.">Preview squad</button>` : ''}
                         ${count ? `<button class="rc-btn" onclick="twClearPending()" data-tooltip="Discard every pending transfer">Clear</button>` : ''}
                         <button class="rc-btn primary" ${!allFilled ? 'disabled' : ''} onclick="twShowSummary()" data-tooltip="${allFilled ? 'Review the finished plan' : 'Every transfer needs a replacement before you can review'}">Summary →</button>
                     </div>
@@ -1332,7 +1332,7 @@
 
             el.innerHTML = `<div class="twc-panel">
                 <div class="twc-panel-head">
-                    <span class="twc-panel-title">👥 Your squad</span>
+                    <span class="twc-panel-title">${v2Icon('users')} Your squad</span>
                     ${transferState.sellMode
                         ? `<span class="twc-panel-hint" data-tooltip="Set by the plan selector above. Switch to Single to go back to one swap at a time.">Click any player to add them to the plan</span>`
                         : `<span class="twc-panel-hint">Hit Swap on anyone to replace them</span>`}
@@ -1369,7 +1369,7 @@
             if (mode === 'compare' && transferState.previewPlayer && transferState.activeSlot >= 0) return renderTWComparison(el);
             if (mode === 'market' && transferState.activeSlot >= 0) return renderTWMarket(el);
             if (mode === 'summary') return twRenderSummaryPanel(el);
-            el.innerHTML = `<div class="twc-panel"><div class="twc-panel-head"><span class="twc-panel-title">🛒 Market</span></div>
+            el.innerHTML = `<div class="twc-panel"><div class="twc-panel-head"><span class="twc-panel-title">${v2Icon('cart')} Market</span></div>
                 <div class="twc-idle">Hit <strong>Swap</strong> on any player and their replacements appear here, already filtered to their position and what you can afford.</div></div>`;
         }
 
@@ -1506,7 +1506,7 @@
             el.innerHTML = `<div class="twc-panel">
                 <div class="twc-panel-head">
                     <button class="twc-mini" onclick="twBackToMarket()" data-tooltip="Back to the replacement list">← Market</button>
-                    <span class="twc-panel-title">⚖️ ${escHTML(sold.name)} vs ${escHTML(cand.name)}</span>
+                    <span class="twc-panel-title">${escHTML(sold.name)} vs ${escHTML(cand.name)}</span>
                 </div>
                 <div class="twc-panel-body">
                     <div class="twh-verdict ${verdict.cls}">
@@ -1717,9 +1717,9 @@
                         <div class="twp-stat-l" data-tooltip="Projected points for the new eleven (${newXP.toFixed(1)}) against your current one (${oldXP.toFixed(1)})${hit > 0 ? `, after the ${hit}-point hit` : ''}.">xP change</div></div>
                 </div>
 
-                ${!squadLegal ? `<div class="twp-warn">⚠️ This is not a legal squad yet — FPL needs 2 keepers, 5 defenders, 5 midfielders and 3 forwards. You have ${counts[1]}/${counts[2]}/${counts[3]}/${counts[4]}.</div>` : ''}
-                ${overStacked.length ? `<div class="twp-warn">⚠️ More than three players from ${escHTML(overStacked.join(', '))} — FPL does not allow it.</div>` : ''}
-                ${getTWLiveITB() < 0 ? `<div class="twp-warn">⚠️ You are £${Math.abs(getTWLiveITB()).toFixed(1)}m over budget.</div>` : ''}
+                ${!squadLegal ? `<div class="twp-warn">This is not a legal squad yet — FPL needs 2 keepers, 5 defenders, 5 midfielders and 3 forwards. You have ${counts[1]}/${counts[2]}/${counts[3]}/${counts[4]}.</div>` : ''}
+                ${overStacked.length ? `<div class="twp-warn">More than three players from ${escHTML(overStacked.join(', '))} — FPL does not allow it.</div>` : ''}
+                ${getTWLiveITB() < 0 ? `<div class="twp-warn">You are £${Math.abs(getTWLiveITB()).toFixed(1)}m over budget.</div>` : ''}
 
                 <div class="twp-pitch">${rowFor(4)}${rowFor(3)}${rowFor(2)}${rowFor(1)}
                     <div class="twp-bench"><div class="twp-bench-l">Bench</div><div class="twp-row">${bench.map(card).join('')}</div></div>
@@ -2278,7 +2278,7 @@
             }
             if (interleaved.length) {
                 const item = p => `<span class="tm-tick ${p.threshold > 0 ? 'up' : 'down'}">
-                    <span class="tm-tick-arrow">${p.threshold > 0 ? '📈' : '📉'}</span>
+                    <span class="tm-tick-arrow">${p.threshold > 0 ? '' : ''}</span>
                     <span class="tm-tick-name">${escHTML(p.name)}</span>
                     <span class="tm-tick-team">(${escHTML(p.teamShort)})</span>
                     ${squadIds.has(p.id) ? '<span class="tm-tick-squad">SQUAD</span>' : ''}
@@ -2306,17 +2306,17 @@
 
             html += `<div class="tm-portfolio">
                 <div class="tm-lock" data-tooltip="FPL changes prices once a night, at 00:00 UK time. The exact minute is not published and drifts by a few, so treat this as close rather than exact.">
-                    <span class="tm-lock-label">⏱️ Market closes in</span>
+                    <span class="tm-lock-label">${v2Icon('stopwatch')} Market closes in</span>
                     <span class="tm-lock-value" id="tmLockValue">—</span>
                     <span class="tm-lock-note">00:00 UK</span>
                 </div>
                 <div class="tm-exposure">
                     ${atRisk.length
-                        ? `<span class="tm-exp-risk" data-tooltip="${escHTML(atRisk.map(p => p.name).join(', '))}">🚨 <strong>${atRisk.length}</strong> squad ${atRisk.length === 1 ? 'player' : 'players'} on track to drop <span class="tm-exp-money">−£${exposure.toFixed(1)}m</span></span>`
+                        ? `<span class="tm-exp-risk" data-tooltip="${escHTML(atRisk.map(p => p.name).join(', '))}"><strong>${atRisk.length}</strong> squad ${atRisk.length === 1 ? 'player' : 'players'} on track to drop <span class="tm-exp-money">−£${exposure.toFixed(1)}m</span></span>`
                         : closingToDrop.length
-                            ? `<span class="tm-exp-watch" data-tooltip="${escHTML(closingToDrop.map(p => `${p.name} ${Math.round(Math.abs(p.threshold))}%`).join(', '))}">👀 <strong>${closingToDrop.length}</strong> closing in on a drop, ${closingToDrop.length === 1 ? 'but not there' : 'but none there'} yet</span>`
-                            : `<span class="tm-exp-safe">✅ No squad player is close to dropping tonight</span>`}
-                    ${rising.length ? `<span class="tm-exp-gain" data-tooltip="${escHTML(rising.map(p => p.name).join(', '))}">📈 <strong>${rising.length}</strong> on track to rise</span>` : ''}
+                            ? `<span class="tm-exp-watch" data-tooltip="${escHTML(closingToDrop.map(p => `${p.name} ${Math.round(Math.abs(p.threshold))}%`).join(', '))}"><strong>${closingToDrop.length}</strong> closing in on a drop, ${closingToDrop.length === 1 ? 'but not there' : 'but none there'} yet</span>`
+                            : `<span class="tm-exp-safe">No squad player is close to dropping tonight</span>`}
+                    ${rising.length ? `<span class="tm-exp-gain" data-tooltip="${escHTML(rising.map(p => p.name).join(', '))}"><strong>${rising.length}</strong> on track to rise</span>` : ''}
                 </div>
             </div>`;
 
@@ -2357,9 +2357,9 @@
             const enablers = filterPlayers(market.filter(p => p.price <= 5.5 && p.threshold > 0)).sort((a, b) => b.threshold - a.threshold);
 
             const tabs = [
-                { key: 'risers', label: '🔥 Hot risers', list: risers },
-                { key: 'fallers', label: '📉 Steep fallers', list: fallers },
-                { key: 'enablers', label: '🎯 Budget enablers', list: enablers }
+                { key: 'risers', label: 'Hot risers', list: risers },
+                { key: 'fallers', label: 'Steep fallers', list: fallers },
+                { key: 'enablers', label: 'Budget enablers', list: enablers }
             ];
             const active = tabs.find(t => t.key === tmMarketTab) || tabs[0];
             const showAll = active.key === 'fallers' ? tmShowAllFalling : tmShowAllRising;
@@ -2494,8 +2494,8 @@
                     Counts are the whole game, your own squad included.
                 </div>
                 <div class="tm-tb-cols">
-                    ${column('Most bought', '📥', 'in', bought, totalIn, inOf, outOf)}
-                    ${column('Most sold', '📤', 'out', sold, totalOut, outOf, inOf)}
+                    ${column('Most bought', v2Icon('inbox'), 'in', bought, totalIn, inOf, outOf)}
+                    ${column('Most sold', v2Icon('outbox'), 'out', sold, totalOut, outOf, inOf)}
                 </div>
             </div>`;
         }
@@ -2592,7 +2592,7 @@
                 </div>
                 <div class="tm-watch-act">
                     ${inSquad && pct <= -85
-                        ? `<button class="tm-sell-btn" onclick="tmSellBeforeDrop(${p.id})">⚡ Sell before drop</button>`
+                        ? `<button class="tm-sell-btn" onclick="tmSellBeforeDrop(${p.id})">Sell before drop</button>`
                         : ''}
                 </div>
             </div>`;

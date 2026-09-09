@@ -96,7 +96,7 @@ function articlePage(a) {
     <article class="sd-reader-body">
         <div class="sd-tags">
             <span class="sd-tag primary">${esc(a.icon)} ${esc(a.category)}</span>
-            <span class="sd-read">⏱️ ${a.readTime} min read</span>
+            <span class="sd-read">${a.readTime} min read</span>
             <span class="sd-read">${words.toLocaleString()} words</span>
         </div>
         <h1 class="sd-reader-title">${esc(a.title)}</h1>

@@ -128,8 +128,8 @@
 
             <div class="detail-section">
                 <div class="tp-head">
-                    <span class="tp-head-title">⚡ AI-ranked replacements <span class="tp-head-budget">≤ £${maxPrice.toFixed(1)}m</span></span>
-                    <span class="tp-head-info" data-tooltip="Ranked by projected points over ${escHTML(horizon)} — the same projection behind the pitch cards, the captain pick and the optimizer. Tick players to build an AI Scouting Report.">ℹ️</span>
+                    <span class="tp-head-title">${v2Icon('bolt')} AI-ranked replacements <span class="tp-head-budget">≤ £${maxPrice.toFixed(1)}m</span></span>
+                    <span class="tp-head-info" data-tooltip="Ranked by projected points over ${escHTML(horizon)} — the same projection behind the pitch cards, the captain pick and the optimizer. Tick players to build an AI Scouting Report.">ℹ</span>
                 </div>`;
 
             if (!candidates.length) {
@@ -512,7 +512,7 @@
                 const turnGW = cal[3] ? cal[3].gw : startGW + 3;
                 const worstRun = cal.slice(3, 6).flatMap(e => e.list).map(f => f.opponent).filter(Boolean);
                 adviceHtml = `<div class="fx-advice ${hardening ? 'bad' : 'good'}">
-                    <div class="fx-advice-head">${hardening ? '🔴 Schedule hardens from GW' + turnGW : '🟢 Schedule eases from GW' + turnGW}</div>
+                    <div class="fx-advice-head">${hardening ? `${v2Icon('ban')} Schedule hardens from GW` + turnGW : `${v2Icon('check')} Schedule eases from GW` + turnGW}</div>
                     <div class="fx-advice-body">${hardening
                         ? `Start ${escHTML(player.name)} through GW${turnGW - 1}, then rotate or move them on${worstRun.length ? ` — ${escHTML(worstRun.join(', '))} follow` : ''}.`
                         : `Hold through the tougher opening; ${escHTML(player.name)} becomes a stronger hold from GW${turnGW}.`}</div>
@@ -547,7 +547,7 @@
                 const { soloAvg, partners } = findRotationPartners(teamId, startGW, FIXTURE_PANEL_GWS, 2);
                 if (partners.length && soloAvg != null) {
                     rotationHtml = `<div class="detail-section">
-                        <div class="detail-section-title">🔄 Best rotation partners</div>
+                        <div class="detail-section-title">${v2Icon('swap')} Best rotation partners</div>
                         <div class="fx-rot-note">Starting whichever has the kinder fixture each week, over the next ${cal.length} gameweeks.</div>
                         ${partners.map(pt => `<div class="fx-rot">
                             <span class="fx-rot-team">${escHTML(pt.name)}</span>
@@ -568,12 +568,12 @@
 
             let compareHtml = `<div class="detail-section">
                 <div class="fx-compare-bar">
-                    <label class="fx-compare-label" for="fxCompareSelect">⚔️ Compare calendar with</label>
+                    <label class="fx-compare-label" for="fxCompareSelect">${v2Icon('swords')} Compare calendar with</label>
                     <select id="fxCompareSelect" class="fx-compare-select" onchange="setFixtureCompare(this.value)">
                         <option value="">Select a team…</option>
                         ${teamOptions}
                     </select>
-                    <button class="fx-compare-auto" onclick="autoCompareBestRotation()">✨ Best rotation</button>
+                    <button class="fx-compare-auto" onclick="autoCompareBestRotation()">${v2Icon('sparkle')} Best rotation</button>
                 </div>`;
 
             if (fixtureCompareTeamId && teams[fixtureCompareTeamId]) {
@@ -593,7 +593,7 @@
                         <span class="fx-matrix-gw">GW${entry.gw}</span>
                         <span class="fx-matrix-cell ${best === 'A' ? 'win' : ''}">${fxChip(a, { teamId, ranks })}</span>
                         <span class="fx-matrix-cell ${best === 'B' ? 'win' : ''}">${fxChip(b, { teamId: fixtureCompareTeamId, ranks })}</span>
-                        <span class="fx-matrix-pick">${best ? `🛡️ ${escHTML(pick)}` : '—'}</span>
+                        <span class="fx-matrix-pick">${best ? `${escHTML(pick)}` : '—'}</span>
                     </div>`;
                 }).join('');
 
@@ -617,7 +617,7 @@
                         soloB != null ? ` and ${escHTML(other.short_name || '')} alone at <strong>${soloB.toFixed(1)}</strong>` : ''}.
                     ${saving > 0.15 ? `<span class="fx-combined-gain">Saves ${saving.toFixed(1)} FDR per gameweek.</span>` : ''}
                 </div>
-                ${pivot ? `<div class="fx-pivot">🔄 Ideal transfer pivot: <strong>GW${pivot.gw}</strong> — ${escHTML(pivot.worsening === 'A' ? player.team : (other.short_name || ''))}'s run turns hard just as ${escHTML(pivot.improving === 'A' ? player.team : (other.short_name || ''))}'s eases.</div>` : ''}`;
+                ${pivot ? `<div class="fx-pivot">Ideal transfer pivot: <strong>GW${pivot.gw}</strong> — ${escHTML(pivot.worsening === 'A' ? player.team : (other.short_name || ''))}'s run turns hard just as ${escHTML(pivot.improving === 'A' ? player.team : (other.short_name || ''))}'s eases.</div>` : ''}`;
             }
             compareHtml += `</div>`;
 
@@ -629,13 +629,13 @@
             `;
             document.getElementById('detailBody').innerHTML = `
                 <div class="detail-section">
-                    <div class="detail-section-title">📊 Near term vs the run ahead</div>
+                    <div class="detail-section-title">${v2Icon('chart')} Near term vs the run ahead</div>
                     ${ratingStrip}
                     ${splitCards}
                     ${adviceHtml}
                 </div>
                 <div class="detail-section">
-                    <div class="detail-section-title">📅 Upcoming matches</div>
+                    <div class="detail-section-title">${v2Icon('calendar')} Upcoming matches</div>
                     <div class="fx-row fx-row-head">
                         <span class="fx-row-gw">GW</span>
                         <span class="fx-row-fixtures">Opponent</span>
@@ -1093,7 +1093,7 @@
                 const headlineHTML = isValidLink
                     ? `<a href="${escHTML(item.link)}" target="_blank" rel="noopener noreferrer" class="news-card-link">${safeHeadline}</a>`
                     : safeHeadline;
-                const squadBadge = item.isSquad ? `<span class="news-card-squad-badge">\u26a1 Your Player</span>` : '';
+                const squadBadge = item.isSquad ? `<span class="news-card-squad-badge">${v2Icon('bolt')} Your Player</span>` : '';
                 const squadClass = item.isSquad ? ' is-squad' : '';
                 const cardClass = isHero ? `news-card-hero${squadClass}` : `news-card${squadClass}`;
                 const media = buildImageOrGraphic(item);
@@ -1421,7 +1421,7 @@
             }).join('');
 
             return `<div class="detail-section" data-accent="team" data-wide>
-                <div class="detail-section-title">\u2694\ufe0f Opponent Form \u2014 Next ${upcoming.length}</div>
+                <div class="detail-section-title">${v2Icon('swords')} Opponent Form \u2014 Next ${upcoming.length}</div>
                 <div class="opp-cards">${cards}</div>
             </div>`;
         }
@@ -1679,8 +1679,8 @@
             // "SELL" as a badge on a player you're evaluating to BUY reads as an
             // instruction, not a rating \u2014 candidate mode swaps in strength words.
             const chipLabel = context === 'candidate'
-                ? { star: '\u2605 STRONG', hold: 'SOLID', monitor: 'MIXED', sell: 'WEAK' }[verdict] || verdict.toUpperCase()
-                : (verdict === 'star' ? '\u2605 STAR' : verdict.toUpperCase());
+                ? { star: 'STRONG', hold: 'SOLID', monitor: 'MIXED', sell: 'WEAK' }[verdict] || verdict.toUpperCase()
+                : (verdict === 'star' ? 'STAR' : verdict.toUpperCase());
 
             let html = '';
 
@@ -1717,7 +1717,7 @@
             const sellTone = sellRating >= 65 ? 'var(--verdict-sell)'
                 : sellRating >= 35 ? 'var(--verdict-monitor)' : 'var(--verdict-hold)';
             html += `<div class="detail-section pd-verdict" data-accent="verdict">
-                <div class="detail-section-title">\u2696\ufe0f Verdict</div>
+                <div class="detail-section-title">${v2Icon('scales')} Verdict</div>
                 <div class="pd-verdict-top">
                     <span class="pd-verdict-chip ${verdict}">${chipLabel}</span>
                 </div>
@@ -1836,7 +1836,7 @@
 
             if (concerns.length > 0) {
                 html += `<div class="detail-section" data-accent="concerns">
-                    <div class="detail-section-title">\u26a0\ufe0f Concerns (${concerns.length})</div>
+                    <div class="detail-section-title">${v2Icon('warn')} Concerns (${concerns.length})</div>
                     ${concerns.map(c => `<div class="insight-item ${c.type}">
                         ${c.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(c.title)}</div>` : ''}
                         <div class="insight-text">${escHTML(c.text)}</div>
@@ -1846,7 +1846,7 @@
 
             if (positives.length > 0) {
                 html += `<div class="detail-section" data-accent="positives">
-                    <div class="detail-section-title">\u2705 Positives (${positives.length})</div>
+                    <div class="detail-section-title">${v2Icon('check')} Positives (${positives.length})</div>
                     ${positives.map(p => `<div class="insight-item positive">
                         ${p.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(p.title)}</div>` : ''}
                         <div class="insight-text">${escHTML(p.text)}</div>
@@ -1957,7 +1957,7 @@
                     </div>
                     <div style="margin-top:6px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">
                         <div class="metric-box"><div class="metric-label">\ud83c\udfe0 Home</div><div class="metric-value neutral" style="font-size:10px;">W${detailSS.homeW}/${detailSS.homeP} \u2022 ${detailSS.homeGF}GF ${detailSS.homeGA}GA \u2022 ${detailSS.homeCS}CS</div></div>
-                        <div class="metric-box"><div class="metric-label">\u2708\ufe0f Away</div><div class="metric-value neutral" style="font-size:10px;">W${detailSS.awayW}/${detailSS.awayP} \u2022 ${detailSS.awayGF}GF ${detailSS.awayGA}GA \u2022 ${detailSS.awayCS}CS</div></div>
+                        <div class="metric-box"><div class="metric-label">Away</div><div class="metric-value neutral" style="font-size:10px;">W${detailSS.awayW}/${detailSS.awayP} \u2022 ${detailSS.awayGF}GF ${detailSS.awayGA}GA \u2022 ${detailSS.awayCS}CS</div></div>
                     </div>
                     ` : ''}
                     ${swingHtml}
@@ -1968,7 +1968,7 @@
             // ===== OPPONENTS =====
             const oppSection = renderOpponentSection(player, fixtures);
             if (oppSection) {
-                html += `<div class="pd-group"><div class="pd-group-title">\u2694\ufe0f Opponents</div>${oppSection}</div>`;
+                html += `<div class="pd-group"><div class="pd-group-title">${v2Icon('swords')} Opponents</div>${oppSection}</div>`;
             }
 
             return html;
@@ -2034,7 +2034,7 @@
                 }
             } catch (e) { /* no teams map here */ }
             const verdict = analysis && analysis.verdict;
-            const chip = { star: '★ STAR', hold: 'HOLD', monitor: 'WATCH', sell: 'SELL' }[verdict] || '';
+            const chip = { star: 'STAR', hold: 'HOLD', monitor: 'WATCH', sell: 'SELL' }[verdict] || '';
 
             return `<div class="pdm-hero" style="--club:${shirt};--club-ink:${ink};">
                 <div class="pdm-hero-shape" aria-hidden="true"></div>
@@ -2612,7 +2612,7 @@
                 }
 
                 return `<div class="h2h-verdict">
-                    <div class="h2h-verdict-title">💡 FPL Verdict</div>
+                    <div class="h2h-verdict-title">${v2Icon('bulb')} FPL Verdict</div>
                     <div class="h2h-verdict-text">${tags.join('')} ${lines.join(' ')}</div>
                 </div>`;
             }
@@ -2659,7 +2659,7 @@
             // xG tug-of-war
             if (sXg && oppSXg) {
                 html += `<div class="h2h-xg-section">`;
-                html += `<div class="h2h-xg-title">⚡ Expected Goals Comparison</div>`;
+                html += `<div class="h2h-xg-title">${v2Icon('bolt')} Expected Goals Comparison</div>`;
                 html += xgBar('xG per game (season)', sXg.xGpg, oppSXg.xGpg, false);
                 html += xgBar('xGC per game (season)', sXg.xGCpg, oppSXg.xGCpg, true);
                 if (rXg && oppRXg) {

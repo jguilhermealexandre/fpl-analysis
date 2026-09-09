@@ -96,3 +96,26 @@ test('the same story twice is one story', () => {
     assert.equal(items.length, 2);
     assert.equal(items[0].title, 'A', 'the first one wins, so source order is preserved');
 });
+
+test('a Premier League photo gets the width its image service demands', async () => {
+    /* The content API hands back a source asset, and a plain GET on it answers
+       400: "At least one of width or height parameters must be specified".
+       Confirmed against the live host — with a width it is a 200 and a webp.
+       Without this every Premier League card renders a blank. */
+    const out = normalise({
+        title: 'Arteta changes his defence for Napoli test',
+        link: 'https://www.premierleague.com/en/news/4713308',
+        image: 'https://resources.premierleague.pulselive.com/photo-resources/2026/09/09/x/y.jpeg'
+    });
+    assert.match(out.image, /[?&]width=\d+$/);
+});
+
+test('a photo that already carries a size is left alone', () => {
+    const url = 'https://resources.premierleague.pulselive.com/photo-resources/a/b.jpg?width=1200';
+    assert.equal(normalise({ title: 'A headline long enough', link: 'https://x.com/a', image: url }).image, url);
+});
+
+test('another host’s URL is not given a width it has no use for', () => {
+    const url = 'https://i.guim.co.uk/img/media/abc/master/5000.jpg?s=sig';
+    assert.equal(normalise({ title: 'A headline long enough', link: 'https://x.com/a', image: url }).image, url);
+});

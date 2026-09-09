@@ -1588,7 +1588,7 @@
                 <div class="health-verdict-counts">
                     ${sells.length ? `<span class="hv-count sell">● ${sells.length} Sell</span>` : ''}
                     ${monitors.length ? `<span class="hv-count monitor">● ${monitors.length} Monitor</span>` : ''}
-                    ${stars.length ? `<span class="hv-count star">★ ${stars.length} Star</span>` : ''}
+                    ${stars.length ? `<span class="hv-count star">${stars.length} Star</span>` : ''}
                     <span class="hv-count hold">● ${holds.length} Hold</span>
                 </div>
 
@@ -1839,7 +1839,7 @@
                 </div>
 
                 <div class="mgr-row">
-                    <span class="mgr-label">${v2Icon('ticket')}Free transfers${d.freeTransfersExact ? '' : '<span class="mgr-est" title="Estimated: FPL does not publish your free-transfer count, so it is replayed from your transfer history.">est</span>'}</span>
+                    <span class="mgr-label">${v2Icon('ticket')} Free transfers${d.freeTransfersExact ? '' : '<span class="mgr-est" title="Estimated: FPL does not publish your free-transfer count, so it is replayed from your transfer history.">est</span>'}</span>
                     <span class="mgr-value">${d.freeTransfers}<span class="mgr-sub">${escHTML(ftNote)}</span></span>
                 </div>
 

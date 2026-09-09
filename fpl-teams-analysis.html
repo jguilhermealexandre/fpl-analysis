@@ -17,12 +17,12 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=186">
-    <link rel="stylesheet" href="styles/teams.css?v=186">
-    <link rel="stylesheet" href="styles/v2-design.css?v=186">
-    <script src="scripts/error-monitor.js?v=186"></script>
-    <script src="scripts/common.js?v=186"></script>
-    <script src="scripts/sidebar-nav.js?v=186"></script>
+    <link rel="stylesheet" href="styles/common.css?v=187">
+    <link rel="stylesheet" href="styles/teams.css?v=187">
+    <link rel="stylesheet" href="styles/v2-design.css?v=187">
+    <script src="scripts/error-monitor.js?v=187"></script>
+    <script src="scripts/common.js?v=187"></script>
+    <script src="scripts/sidebar-nav.js?v=187"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -172,7 +172,7 @@
                 
                 // Log stats availability
                 const fixturesWithStats = fixturesData.filter(f => f.stats && f.stats.length > 0);
-                console.log(`📊 Loaded ${fixturesData.length} fixtures (${fixturesWithStats.length} with detailed stats)`);
+                console.log(`${v2Icon('chart')} Loaded ${fixturesData.length} fixtures (${fixturesWithStats.length} with detailed stats)`);
 
                 planningGW = planningGameweek(bootstrapData, fixturesData);
                 document.getElementById('planningGW').textContent = `GW${planningGW}`;
@@ -251,7 +251,7 @@
                 if (playersRes.ok) {
                     const playersData = await playersRes.json();
                     if (playersData?.metadata?.lastUpdated && window.updateDataFreshness) window.updateDataFreshness(playersData.metadata.lastUpdated);
-                    console.log(`🎯 Loaded players-data.json: ${playersData.metadata?.playerCount} players with per-GW history`);
+                    console.log(`${v2Icon('target')} Loaded players-data.json: ${playersData.metadata?.playerCount} players with per-GW history`);
                     
                     (playersData.players || []).forEach(player => {
                         const tid = player.team;
@@ -313,10 +313,10 @@
                     });
                     
                     const teamsWithData = teams.filter(t => teamXg[t.id].hasPerGwData).length;
-                    console.log(`🎯 Per-GW xG data available for ${teamsWithData}/20 teams`);
+                    console.log(`${v2Icon('target')} Per-GW xG data available for ${teamsWithData}/20 teams`);
                 }
             } catch (e) {
-                console.log('⚠️ players-data.json not available, using season-level xG only');
+                console.log('players-data.json not available, using season-level xG only');
             }
 
             window.teamXgData = teamXg;
@@ -1300,7 +1300,7 @@
                                                         <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
                                                     </div>
                                                     <div class="swing-pivot">
-                                                        <span class="swing-pivot-badge improving">⚡ Eases GW${s.swingGW}</span>
+                                                        <span class="swing-pivot-badge improving">Eases GW${s.swingGW}</span>
                                                     </div>
                                                     <div class="swing-side">
                                                         <span class="swing-side-label">From GW${s.swingGW}</span>
@@ -1333,7 +1333,7 @@
                                                         <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
                                                     </div>
                                                     <div class="swing-pivot">
-                                                        <span class="swing-pivot-badge worsening">⚡ Hardens GW${s.swingGW}</span>
+                                                        <span class="swing-pivot-badge worsening">Hardens GW${s.swingGW}</span>
                                                     </div>
                                                     <div class="swing-side">
                                                         <span class="swing-side-label">From GW${s.swingGW}</span>
@@ -3309,7 +3309,7 @@
             // Mark it as a default so it does not read as a deliberate selection.
             const badge = document.createElement('div');
             badge.className = 'scout-default-badge';
-            badge.innerHTML = '⭐ Team of the week — click any dot to scout another';
+            badge.innerHTML = 'Team of the week — click any dot to scout another';
             panel.prepend(badge);
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -3351,7 +3351,7 @@
                 reportText = `<strong>${escHTML(team.name)}</strong> boast strong underlying numbers \u2014 their xG metrics rank well above average. However, their upcoming fixture schedule is challenging (avg FDR ${fdrVal}). Hold existing assets but consider selling to fund moves elsewhere. Revisit once fixtures turn.`;
             } else if (!goodForm && goodFixtures) {
                 quadrant = 'speculative';
-                quadrantLabel = '\u26A0 Speculative Buy';
+                quadrantLabel = 'Speculative Buy';
                 quadrantClass = 'speculative';
                 reportText = `<strong>${escHTML(team.name)}</strong> have been underwhelming in recent underlying data, but their fixture schedule is about to soften significantly (avg FDR ${fdrVal}). This makes them a speculative buy \u2014 the easy games could catalyse a turnaround. Low-cost differentials from this squad could pay off.`;
             } else {

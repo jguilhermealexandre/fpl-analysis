@@ -504,7 +504,7 @@
             const rFix = teamFixtures6[replacement.teamId] || [];
 
             let html = `<div class="detail-section">
-                <div class="detail-section-title">⚔️ Side-by-Side Comparison</div>
+                <div class="detail-section-title">${v2Icon('swords')} Side-by-Side Comparison</div>
                 <div class="transfer-vs">
                     <div class="transfer-vs-col">
                         <div class="transfer-vs-label">Current</div>
@@ -822,7 +822,7 @@
             const report = ds.optimizeReports && ds.optimizeReports[gw];
             if (!report) return;
             const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = `📊 GW${gw} optimization report`;
+            if (title) title.textContent = `${v2Icon('chart')} GW${gw} optimization report`;
             document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal(report, gw);
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1114,8 +1114,8 @@
             // ===== STATS HUB — Tabbed Interface =====
             html += `<div class="gw-stats-hub" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
             html += `<div class="hub-tab-nav">`;
-            html += `<button class="hub-tab active" data-target="player-tab" onclick="switchHubTab(this)">👤 Player Insights</button>`;
-            html += `<button class="hub-tab" data-target="team-tab" onclick="switchHubTab(this)">🛡️ Team Insights</button>`;
+            html += `<button class="hub-tab active" data-target="player-tab" onclick="switchHubTab(this)">${v2Icon('person')} Player Insights</button>`;
+            html += `<button class="hub-tab" data-target="team-tab" onclick="switchHubTab(this)">${v2Icon('shield')} Team Insights</button>`;
             html += `</div>`;
 
             // Player Insights tab (active by default)
@@ -1125,9 +1125,9 @@
             html += `<div class="dp-table-toolbar">
                 <div class="dp-view-toggle" role="group" aria-label="Table view">
                     <button class="dp-view-btn ${draftTableView === 'stats' ? 'active' : ''}" onclick="setDraftTableView('stats')"
-                        data-tooltip="What each player has actually done — per-90 rates for the season and the last six gameweeks.">📊 Historical stats</button>
+                        data-tooltip="What each player has actually done — per-90 rates for the season and the last six gameweeks.">${v2Icon('chart')} Historical stats</button>
                     <button class="dp-view-btn ${draftTableView === 'xp' ? 'active' : ''}" onclick="setDraftTableView('xp')"
-                        data-tooltip="What each player projects for every gameweek in the plan — the quickest way to spot a benching headache.">🎯 Projected xP</button>
+                        data-tooltip="What each player projects for every gameweek in the plan — the quickest way to spot a benching headache.">${v2Icon('target')} Projected xP</button>
                 </div>
                 <span class="dp-table-hint">${draftTableView === 'stats'
                     ? 'Stat names sit in each position header — keepers and midfielders are judged on different things.'
@@ -1190,10 +1190,10 @@
             // Plan actions
             html += `<div class="draft-plan-actions">`;
             if (draftSlotCount < 3) {
-                html += `<button class="draft-plan-action-btn" onclick="duplicateDraftSlot(${activeDraftSlot})" title="Duplicate current plan">📋 Duplicate</button>`;
+                html += `<button class="draft-plan-action-btn" onclick="duplicateDraftSlot(${activeDraftSlot})" title="Duplicate current plan">${v2Icon('clipboard')} Duplicate</button>`;
             }
             if (draftSlotCount >= 2) {
-                html += `<button class="draft-plan-action-btn" onclick="openPlanComparison()" data-tooltip="Score every plan side by side on projected points, hits, bank and squad differences">⚖️ Compare plans</button>`;
+                html += `<button class="draft-plan-action-btn" onclick="openPlanComparison()" data-tooltip="Score every plan side by side on projected points, hits, bank and squad differences">${v2Icon('scales')} Compare plans</button>`;
             }
             html += `</div>`;
             html += `</div>`;
@@ -1277,7 +1277,7 @@
             if (isDraftChipAvailable('benchboost')) {
                 const p = pick('bb');
                 picks.push({
-                    chip: 'benchboost', icon: '📈', gw: p.gw,
+                    chip: 'benchboost', icon: '', gw: p.gw,
                     headline: `GW${p.gw} · your bench projects ${p.value.toFixed(1)} pts`,
                     detail: p.edge >= DRAFT_CHIP_STANDOUT
                         ? `That is ${p.edge.toFixed(1)} clear of an average week in this window${p.doubling ? `, with ${p.doubling} of your squad playing twice` : ''}.`
@@ -1288,7 +1288,7 @@
             if (isDraftChipAvailable('triplecaptain')) {
                 const p = pick('tc');
                 picks.push({
-                    chip: 'triplecaptain', icon: '👑', gw: p.gw,
+                    chip: 'triplecaptain', icon: '', gw: p.gw,
                     headline: `GW${p.gw} · the extra captain armband adds ${p.value.toFixed(1)} pts`,
                     detail: p.edge >= DRAFT_CHIP_STANDOUT
                         ? `That is ${p.edge.toFixed(1)} clear of an average week in this window.`
@@ -1300,7 +1300,7 @@
                 const worst = rows.reduce((a, b) => (b.playingXI < a.playingXI ? b : (b.playingXI === a.playingXI && b.base < a.base ? b : a)));
                 const blank = worst.playingXI < 11;
                 picks.push({
-                    chip: 'freehit', icon: '⚡', gw: worst.gw,
+                    chip: 'freehit', icon: '', gw: worst.gw,
                     headline: blank
                         ? `GW${worst.gw} · only ${worst.playingXI} of your eleven have a fixture`
                         : `GW${worst.gw} · your thinnest week, projecting ${worst.base.toFixed(1)}`,
@@ -1374,7 +1374,7 @@
                 let badges = '';
                 if (chip) badges += `<span class="draft-tl-chip" data-tooltip="${escHTML(DRAFT_CHIP_NAME[chip])} played in GW${g}">${DRAFT_CHIP_SHORT[chip]}</span>`;
                 if (dgw.has(g)) badges += `<span class="draft-tl-dgw" data-tooltip="Double gameweek — at least one of your players has two matches.">DGW</span>`;
-                if (ds.optimizeReports && ds.optimizeReports[g]) badges += `<span class="draft-tl-opt" data-tooltip="Auto-optimised — open this gameweek to view its report.">✨</span>`;
+                if (ds.optimizeReports && ds.optimizeReports[g]) badges += `<span class="draft-tl-opt" data-tooltip="Auto-optimised — open this gameweek to view its report.">${v2Icon('sparkle')}</span>`;
 
                 return `<button class="${cls}" onclick="switchDraftGW(${g})">
                     <span class="draft-tl-gw">GW${g}${badges}</span>
@@ -1431,8 +1431,8 @@
                     <label class="draft-stat-label" for="draftStartFT" data-tooltip="Free transfers you began this plan with. FPL does not publish this, so set it if the guess is wrong.">Starting FT</label>
                     <input id="draftStartFT" type="number" class="draft-ft-input" value="${ds.startingFT}" min="0" max="5" onchange="updateDraftStartingFT(this.value)">
                 </div>
-                <button class="draft-action-btn" onclick="draftAutoOptimizeLineup()" data-tooltip="Rebuild GW${gw}'s XI, bench order and captain from the players available that week${optimizeRunGWs.length > 1 ? `, ranked on expected points across GW${optimizeRunGWs[0]}–GW${optimizeRunGWs[optimizeRunGWs.length - 1]} combined` : ''}.">✨ Auto-optimise</button>
-                <button class="draft-action-btn" onclick="draftAutoOptimizeAllGWs()" data-tooltip="Run Auto-optimise on every gameweek in this plan (GW${ds.gwNumbers[0]}–GW${ds.gwNumbers[ds.gwNumbers.length - 1]}) in one go, each scored against its own week and its own run ahead.">✨ Auto-optimise all</button>
+                <button class="draft-action-btn" onclick="draftAutoOptimizeLineup()" data-tooltip="Rebuild GW${gw}'s XI, bench order and captain from the players available that week${optimizeRunGWs.length > 1 ? `, ranked on expected points across GW${optimizeRunGWs[0]}–GW${optimizeRunGWs[optimizeRunGWs.length - 1]} combined` : ''}.">${v2Icon('sparkle')} Auto-optimise</button>
+                <button class="draft-action-btn" onclick="draftAutoOptimizeAllGWs()" data-tooltip="Run Auto-optimise on every gameweek in this plan (GW${ds.gwNumbers[0]}–GW${ds.gwNumbers[ds.gwNumbers.length - 1]}) in one go, each scored against its own week and its own run ahead.">${v2Icon('sparkle')} Auto-optimise all</button>
                 <button class="draft-action-btn danger" onclick="resetDraft()" data-tooltip="Discard every change in this plan and start again from your current squad.">↩ Reset plan</button>
             </div>`;
 
@@ -1441,7 +1441,7 @@
             // Squad Analysis's own summary line under its Auto-Optimize button.
             const report = ds.optimizeReports && ds.optimizeReports[gw];
             if (report) {
-                html += `<div class="sq-optimize-summary">✨ ${buildOptimizeSummary(report, `openDraftOptimizeReport(${gw})`)}</div>`;
+                html += `<div class="sq-optimize-summary">${v2Icon('sparkle')} ${buildOptimizeSummary(report, `openDraftOptimizeReport(${gw})`)}</div>`;
             }
 
             return html;
@@ -1452,10 +1452,10 @@
             const gw = ds.selectedGW;
             const activeChip = ds.chips[gw];
             const chips = [
-                { id: 'wildcard', icon: '♠️', label: 'Wildcard' },
-                { id: 'freehit', icon: '⚡', label: 'Free Hit' },
-                { id: 'benchboost', icon: '📈', label: 'Bench Boost' },
-                { id: 'triplecaptain', icon: '👑', label: 'Triple Captain' }
+                { id: 'wildcard', icon: '', label: 'Wildcard' },
+                { id: 'freehit', icon: '', label: 'Free Hit' },
+                { id: 'benchboost', icon: '', label: 'Bench Boost' },
+                { id: 'triplecaptain', icon: '', label: 'Triple Captain' }
             ];
 
             let html = `<div class="draft-chip-bar">`;
@@ -1566,9 +1566,9 @@
 
             if (draftSwapSource !== null) {
                 const src = lineup.find(p => p.id === draftSwapSource);
-                html += `<div class="planner-lineup-hint"><span>👆</span> ${src ? escHTML(src.name) : 'Player'} selected — click an eligible player to swap.</div>`;
+                html += `<div class="planner-lineup-hint"><span>${v2Icon('pointer')}</span> ${src ? escHTML(src.name) : 'Player'} selected — click an eligible player to swap.</div>`;
             } else {
-                html += `<div class="planner-lineup-hint"><span>💡</span> Click a player to swap with the bench or reorder it. Use <strong>↔</strong> to make a transfer.</div>`;
+                html += `<div class="planner-lineup-hint"><span>${v2Icon('bulb')}</span> Click a player to swap with the bench or reorder it. Use <strong>↔</strong> to make a transfer.</div>`;
             }
             return html;
         }
@@ -1665,7 +1665,7 @@
             let row = `<tr class="${isBench ? 'bench-row' : ''} ${rowSwapClass}" data-player-id="${player.id}">`;
 
             const captain = player.isCaptain ? '<span class="planner-captain-badge">C</span> ' : player.isVice ? '<span class="planner-captain-badge">V</span> ' : '';
-            const statusIcon = player.status === 'i' ? '🏥 ' : player.status === 'd' ? '⚠️ ' : '';
+            const statusIcon = player.status === 'i' ? '' : player.status === 'd' ? '' : '';
             const transferBadge = player.isTransferIn ? '<span class="draft-transfer-badge">IN</span>' : '';
 
             row += `<td><div class="planner-player">
@@ -1736,7 +1736,7 @@
             if (gwTransfers.length === 0) return '';
 
             let html = `<div class="draft-transfer-summary">`;
-            html += `<div class="draft-transfer-summary-title">🔄 Transfers for GW${gw}</div>`;
+            html += `<div class="draft-transfer-summary-title">Transfers for GW${gw}</div>`;
             gwTransfers.forEach((t, i) => {
                 html += `<div class="draft-transfer-item">
                     <span class="draft-transfer-out">${t.outName} (£${t.outPrice.toFixed(1)}m)</span>
@@ -1862,9 +1862,9 @@
 
                 // Meta
                 html += `<div class="draft-compare-meta">`;
-                html += `<span class="draft-compare-meta-item">💰 <strong>£${budget.toFixed(1)}m</strong></span>`;
-                html += `<span class="draft-compare-meta-item">🔄 FT: <strong>${ft}</strong></span>`;
-                if (hitCost > 0) html += `<span class="draft-compare-meta-item" style="color:var(--color-error);">⚠️ <strong>-${hitCost}pts</strong></span>`;
+                html += `<span class="draft-compare-meta-item"><strong>£${budget.toFixed(1)}m</strong></span>`;
+                html += `<span class="draft-compare-meta-item">FT: <strong>${ft}</strong></span>`;
+                if (hitCost > 0) html += `<span class="draft-compare-meta-item" style="color:var(--color-error);"><strong>-${hitCost}pts</strong></span>`;
                 if (activeChip) {
                     const chipLabels = { wildcard: 'WC', benchboost: 'BB', freehit: 'FH', triplecaptain: 'TC' };
                     html += `<span class="draft-compare-meta-item" style="color:var(--color-primary);font-weight:700;">${chipLabels[activeChip]}</span>`;
@@ -1920,7 +1920,7 @@
                 // Transfers for this GW
                 if (gwTransfers.length > 0) {
                     html += `<div class="draft-compare-transfers">`;
-                    html += `<div style="font-size:0.7rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;">🔄 Transfers</div>`;
+                    html += `<div style="font-size:0.7rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Transfers</div>`;
                     gwTransfers.forEach(t => {
                         html += `<div class="draft-compare-transfer-item"><span style="color:var(--color-error);">${t.outName}</span> → <span style="color:var(--color-success);">${t.inName}</span></div>`;
                     });
@@ -2030,7 +2030,7 @@
                         ${row('Hits taken', 'Points sacrificed to transfers beyond the free ones.',
                             plans.map(p => `<td class="dpc-num ${p.hits > 0 ? 'bad' : ''}">${p.hits > 0 ? `${p.transfers} transfers · −${p.hits}` : `${p.transfers} transfers · none`}</td>`))}
                         ${row('Net total', 'Projected points after hits — the number that actually decides between these plans.',
-                            plans.map(p => `<td class="dpc-num dpc-net ${p.slot === best.slot ? 'best' : ''}">${p.net.toFixed(1)}${p.slot === best.slot ? ' 🟢' : ` <span class="dpc-delta">${(p.net - best.net).toFixed(1)}</span>`}</td>`))}
+                            plans.map(p => `<td class="dpc-num dpc-net ${p.slot === best.slot ? 'best' : ''}">${p.net.toFixed(1)}${p.slot === best.slot ? ' ' : ` <span class="dpc-delta">${(p.net - best.net).toFixed(1)}</span>`}</td>`))}
                         ${row('Bank at the end', 'Money left after the last planned gameweek.',
                             plans.map(p => `<td class="dpc-num">£${p.bank.toFixed(1)}m</td>`))}
                         ${row('Chips played', 'Chips this plan commits, and when.',
@@ -2193,7 +2193,7 @@
             const best = rec.best;
             if (!best || best.n === 0) {
                 const closest = rec.moves[0];
-                return `<div class="dp-side-empty">✋ Hold for GW${gw} — nothing clears its margin over ${span}.
+                return `<div class="dp-side-empty">Hold for GW${gw} — nothing clears its margin over ${span}.
                     ${closest ? `<div class="dp-copilot-note" style="margin-top:8px;">Closest: ${escHTML(closest.out.name)} → ${escHTML(closest.in.name)} (${closest.gain >= 0 ? '+' : ''}${closest.gain.toFixed(1)} xP) — short of the free-transfer margin.</div>` : ''}
                 </div>`;
             }
@@ -2219,8 +2219,8 @@
             const gw = ds.selectedGW;
             return `<div class="dp-copilot-note">Projects squad value over a ${TW_HORIZON}-gameweek window from this gameweek on — the same engine behind the Transfer Wizard's own recommendation, scoped to this plan's budget and free transfers at each gameweek.</div>
                 <div class="dp-suggest-actions">
-                    <button class="draft-action-btn" onclick="draftAutoSuggestAllGWs()" data-tooltip="Runs this recommendation on every gameweek in the plan, in order, applying each accepted move before evaluating the next gameweek — a transfer at GW3 changes what GW4 needs. Only spends free transfers; it never takes a points hit on its own.">✨ Auto-suggest all gameweeks</button>
-                    ${ds.lastSuggestLog ? `<button class="draft-action-btn" onclick="openDraftSuggestSummary()">📊 View last summary</button>` : ''}
+                    <button class="draft-action-btn" onclick="draftAutoSuggestAllGWs()" data-tooltip="Runs this recommendation on every gameweek in the plan, in order, applying each accepted move before evaluating the next gameweek — a transfer at GW3 changes what GW4 needs. Only spends free transfers; it never takes a points hit on its own.">Auto-suggest all gameweeks</button>
+                    ${ds.lastSuggestLog ? `<button class="draft-action-btn" onclick="openDraftSuggestSummary()">View last summary</button>` : ''}
                     ${ds.lastSuggestSnapshot ? `<button class="draft-action-btn danger" onclick="undoDraftAutoSuggest()">↩ Undo auto-suggested transfers</button>` : ''}
                 </div>
                 ${renderDraftSuggestForGW(gw)}`;
@@ -2326,7 +2326,7 @@
                     </div>`;
                 }
                 return `<div class="opt-bench-row">
-                    <div class="opt-bench-head">GW${row.gw}${chipBadge} — ✋ Held</div>
+                    <div class="opt-bench-head">GW${row.gw}${chipBadge} — Held</div>
                     <div class="opt-bench-why">${escHTML(row.reason || '')}</div>
                 </div>`;
             }).join('');
@@ -2340,7 +2340,7 @@
                 </div>
             </div>
             <div class="detail-section">
-                <div class="detail-section-title">📅 Gameweek by gameweek</div>
+                <div class="detail-section-title">Gameweek by gameweek</div>
                 ${rows}
             </div>
             ${ds.lastSuggestSnapshot ? `<div class="detail-section"><button class="rc-btn" style="width:100%;" onclick="undoDraftAutoSuggest()">↩ Undo all auto-suggested transfers</button></div>` : ''}`;
@@ -2348,7 +2348,7 @@
 
         function openDraftSuggestSummary() {
             const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = '📊 Auto-suggested transfers';
+            if (title) title.textContent = 'Auto-suggested transfers';
             document.getElementById('optReportBody').innerHTML = renderDraftSuggestSummaryModal();
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -2372,8 +2372,8 @@
                         data-tooltip="${collapsed ? 'Open the strategy panel' : 'Collapse the panel and give the pitch the full width'}">${collapsed ? '◀' : '▶'}</button>
                 <aside class="dp-sidebar">
                     <div class="dp-side-tabs">
-                        <button class="dp-side-tab ${draftSidebarTab === 'suggest' ? 'active' : ''}" data-tab="suggest" onclick="setDraftSidebarTab('suggest')">💡 Suggest Transfers</button>
-                        <button class="dp-side-tab ${draftSidebarTab === 'notes' ? 'active' : ''}" data-tab="notes" onclick="setDraftSidebarTab('notes')">✏️ Notes</button>
+                        <button class="dp-side-tab ${draftSidebarTab === 'suggest' ? 'active' : ''}" data-tab="suggest" onclick="setDraftSidebarTab('suggest')">Suggest Transfers</button>
+                        <button class="dp-side-tab ${draftSidebarTab === 'notes' ? 'active' : ''}" data-tab="notes" onclick="setDraftSidebarTab('notes')">Notes</button>
                     </div>
                     <div class="dp-side-body" id="draftSidebarBody">${renderDraftSidebarBody()}</div>
                 </aside>`;

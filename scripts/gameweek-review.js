@@ -365,7 +365,7 @@
 
         function gwrVerdictBlock(title, v) {
             if (!v) return '';
-            const icon = v.tone === 'good' ? '✅' : v.tone === 'bad' ? '❌' : v.tone === 'pending' ? '⏳' : '⚖️';
+            const icon = v.tone === 'good' ? '' : v.tone === 'bad' ? '' : v.tone === 'pending' ? '⏳' : '';
             return `<div class="gwr-verdict ${v.tone}">
                 <div class="gwr-verdict-head">${icon} ${escHTML(title)}</div>
                 <div class="gwr-verdict-text">${v.verdict}</div>
@@ -424,7 +424,7 @@
                 capHtml = `
                     <div class="gwr-cap ${regret > 0 ? 'miss' : 'hit'}">
                         <div class="gwr-cap-main">
-                            <span class="gwr-cap-name">👑 ${escHTML(c.player.name)}</span>
+                            <span class="gwr-cap-name">${escHTML(c.player.name)}</span>
                             <span class="gwr-cap-pts">${c.raw} × ${mult} = <strong>${c.scored}</strong></span>
                         </div>
                         <div class="gwr-cap-why">
@@ -463,7 +463,7 @@
                     : onBench ? '<em>not counted</em>' : '';
                 return `<div class="gwr-row ${cls}${onBench && !counted ? ' bench' : ''}">
                     <span class="position-badge ${POSITION_CONFIG[e.player.position].class}">${POSITION_CONFIG[e.player.position].short}</span>
-                    <span class="gwr-row-name">${e.isCaptain ? '👑 ' : e.isVice ? '🅥 ' : ''}${escHTML(e.player.name)}</span>
+                    <span class="gwr-row-name">${e.isCaptain ? `${v2Icon('crown')} ` : e.isVice ? 'V ' : ''}${escHTML(e.player.name)}</span>
                     <span class="gwr-row-opp">${s && s.fixtures.length ? s.fixtures.map(f => `${escHTML(f.name)}${f.home ? ' (H)' : ' (A)'}`).join(', ') : '—'}</span>
                     <span class="gwr-row-mins">${s ? s.minutes : 0}'</span>
                     <span class="gwr-row-detail">${phrases.length ? escHTML(phrases.join(', ')) : (s && s.minutes ? 'no returns' : e.played ? 'did not play' : 'yet to play')}</span>
@@ -523,25 +523,25 @@
                report to assemble the conclusion themselves. Only lines with
                something to say are kept. */
             const learnings = [
-                capV && capV.lesson ? { icon: '👑', tone: capV.tone, text: capV.lesson } : null,
-                benchV && benchV.lesson ? { icon: '🪑', tone: benchV.tone, text: benchV.lesson } : null,
-                selV && selV.lesson ? { icon: '📋', tone: selV.tone, text: selV.lesson } : null,
+                capV && capV.lesson ? { icon: '', tone: capV.tone, text: capV.lesson } : null,
+                benchV && benchV.lesson ? { icon: '', tone: benchV.tone, text: benchV.lesson } : null,
+                selV && selV.lesson ? { icon: '', tone: selV.tone, text: selV.lesson } : null,
                 (r.hit > 0) ? (() => {
                     // A hit is only justified if the players brought in cleared it.
                     const covered = vsAvg != null && vsAvg > 0;
-                    return { icon: '🔁', tone: covered ? 'good' : 'bad',
+                    return { icon: '', tone: covered ? 'good' : 'bad',
                         text: covered
                             ? `You paid ${r.hit} points for transfers and still finished above the average, so the move carried its own cost.`
                             : `You paid ${r.hit} points for transfers and finished below the average. A hit has to beat what the outgoing player would have scored, not merely bring in someone good.` };
                 })() : null,
                 (r.benchPoints >= 15 && (!benchV || !benchV.misses.length))
-                    ? { icon: '💤', tone: 'mixed', text: `${r.benchPoints} points sat on your bench legitimately. That much value in reserve every week is a squad-balance question rather than a selection one — a Bench Boost turns it into points.` }
+                    ? { icon: '', tone: 'mixed', text: `${r.benchPoints} points sat on your bench legitimately. That much value in reserve every week is a squad-balance question rather than a selection one — a Bench Boost turns it into points.` }
                     : null
             ].filter(Boolean);
 
             const learningsHtml = `
             <div class="detail-section">
-                <div class="detail-section-title">🎓 What to take from this week</div>
+                <div class="detail-section-title">${v2Icon('cap')} What to take from this week</div>
                 ${learnings.length
                     ? `<div class="gwr-learnings">${learnings.map(l =>
                         `<div class="gwr-learning ${l.tone}"><span class="gwr-learning-icon">${l.icon}</span><span>${l.text}</span></div>`).join('')}</div>`
@@ -552,19 +552,19 @@
             return `
             ${headline}
             <div class="detail-section">
-                <div class="detail-section-title">👑 The armband</div>
+                <div class="detail-section-title">${v2Icon('crown')} The armband</div>
                 ${capHtml}
             </div>
             <div class="detail-section">
-                <div class="detail-section-title">📋 Who delivered</div>
+                <div class="detail-section-title">${v2Icon('clipboard')} Who delivered</div>
                 ${deliveredHtml}
             </div>
             <div class="detail-section">
-                <div class="detail-section-title">🪑 The bench</div>
+                <div class="detail-section-title">${v2Icon('bench')} The bench</div>
                 ${benchHtml}
             </div>
             <div class="detail-section">
-                <div class="detail-section-title">🌍 The week in the game</div>
+                <div class="detail-section-title">${v2Icon('globe')} The week in the game</div>
                 ${fieldHtml}
             </div>
             ${learningsHtml}`;
@@ -573,7 +573,7 @@
         function openGameweekReview() {
             const r = buildGameweekReview();
             const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = `📊 Gameweek ${r ? r.gw : currentGW} review`;
+            if (title) title.textContent = `${v2Icon('chart')} Gameweek ${r ? r.gw : currentGW} review`;
             document.getElementById('optReportBody').innerHTML = renderGameweekReview(r);
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();

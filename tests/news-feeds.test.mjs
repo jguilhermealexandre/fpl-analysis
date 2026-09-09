@@ -136,3 +136,23 @@ test('the feed label travels with each item', () => {
     assert.equal(out.source, 'The Guardian');
     assert.equal(out.badge, 'guardian', 'the page colours the card from this');
 });
+
+test('a BBC crop is widened, because 240px on a 300px card is a blur', () => {
+    /* Confirmed against the live host: the same path at 240 returns 4.5KB and
+       at 800 returns 30KB. The segment is unsigned, so it is safe to change. */
+    const item = `<item><title>A headline long enough to keep</title>
+        <link>https://www.bbc.co.uk/sport/football/1</link>
+        <media:thumbnail width="240" url="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/x/live/y.jpg"/>
+    </item>`;
+    assert.equal(parseItem(item, BBC).image,
+        'https://ichef.bbci.co.uk/ace/standard/800/cpsprodpb/x/live/y.jpg');
+});
+
+test('a Guardian URL is never widened — its signature covers the query', () => {
+    const url = 'https://i.guim.co.uk/img/media/abc/0_0_5000_4000/master/5000.jpg?width=700&s=sig';
+    const item = `<item><title>A headline long enough to keep</title>
+        <link>https://www.theguardian.com/a</link>
+        <media:content width="1000" url="${url}"/></item>`;
+    assert.equal(parseItem(item, GUARDIAN).image, url,
+        'rewriting the width here turns a working image into a 403');
+});

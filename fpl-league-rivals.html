@@ -17,11 +17,11 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=186">
-    <link rel="stylesheet" href="styles/v2-design.css?v=186">
-    <script src="scripts/error-monitor.js?v=186"></script>
-    <script src="scripts/common.js?v=186"></script>
-    <script src="scripts/sidebar-nav.js?v=186"></script>
+    <link rel="stylesheet" href="styles/common.css?v=187">
+    <link rel="stylesheet" href="styles/v2-design.css?v=187">
+    <script src="scripts/error-monitor.js?v=187"></script>
+    <script src="scripts/common.js?v=187"></script>
+    <script src="scripts/sidebar-nav.js?v=187"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -1917,7 +1917,7 @@
                                         ? `<b>−${drop}</b><small>place${drop === 1 ? '' : 's'} → ${damaged}${ordinalSuffix(damaged)}</small>`
                                         : `<b>0</b><small>no rank change</small>`}
                                 </div>
-                                <button class="threat-cta" onclick="targetInWizard(${t.player.id})">⚡ Target</button>
+                                <button class="threat-cta" onclick="targetInWizard(${t.player.id})">Target</button>
                             </div>`).join('')}
                     </div>
                     <p class="threat-note">
@@ -2095,11 +2095,11 @@
                 <div style="display:flex;gap:var(--space-4);margin-top:var(--space-4);justify-content:center;">
                     <div style="background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);text-align:center;">
                         <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">Your Captain</div>
-                        <div style="font-weight:600;">👑 ${myCap?.name || '?'}</div>
+                        <div style="font-weight:600;">${myCap?.name || '?'}</div>
                     </div>
                     <div style="background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);text-align:center;">
                         <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">${rivalManager.player_name.split(' ')[0]}'s Captain</div>
-                        <div style="font-weight:600;">👑 ${rivalCap?.name || '?'}</div>
+                        <div style="font-weight:600;">${rivalCap?.name || '?'}</div>
                     </div>
                 </div>` : ''}
                 
@@ -2250,7 +2250,7 @@
             const heroEl = document.getElementById('captainHero');
             if (topCapPlayer) {
                 heroEl.innerHTML = `
-                    <div style="font-size:32px;margin-bottom:var(--space-2);">👑</div>
+                    <div style="font-size:32px;margin-bottom:var(--space-2);"></div>
                     <div class="captain-hero-name">${escHTML(topCapPlayer.name)}</div>
                     <div class="captain-hero-meta">${escHTML(topCapPlayer.teamName)} • ${escHTML(topCapPlayer.posName)} • £${topCapPlayer.price.toFixed(1)}m</div>
                     <div style="margin-top:var(--space-3);font-size:13px;">
@@ -2274,7 +2274,7 @@
                 const chipLabel = mp.activeChip ? `<span class="chip-played-badge">${mp.activeChip}</span>` : '';
                 
                 rows += `<tr class="${isYou ? 'you-row' : ''}">
-                    <td>${isYou ? '<strong>⭐ ' + escHTML(mp.manager.player_name) + '</strong>' : escHTML(mp.manager.player_name)} ${chipLabel}</td>
+                    <td>${isYou ? '<strong>' + escHTML(mp.manager.player_name) + '</strong>' : escHTML(mp.manager.player_name)} ${chipLabel}</td>
                     <td><strong>${escHTML(capPlayer?.name || '?')}</strong> <span style="color:var(--text-muted);font-size:11px;">${escHTML(capPlayer?.teamName || '')} ${escHTML(capPlayer?.posName || '')}</span></td>
                     <td>${escHTML(vcPlayer?.name || '?')} <span style="color:var(--text-muted);font-size:11px;">${escHTML(vcPlayer?.posName || '')}</span></td>
                     <td style="text-align:center;">${capPlayer?.form || '-'}</td>
@@ -2366,7 +2366,7 @@
             document.getElementById('momentumGrid').innerHTML = `
                 <div class="momentum-card">
                     <div class="mc-title">Gap to Leader</div>
-                    <div class="mc-value" style="color:${gapToLeader === 0 ? 'var(--color-success)' : gapToLeader <= 20 ? 'var(--color-warning)' : 'var(--color-error)'};">${gapToLeader === 0 ? '🥇 You lead!' : gapToLeader + ' pts behind'}</div>
+                    <div class="mc-value" style="color:${gapToLeader === 0 ? 'var(--color-success)' : gapToLeader <= 20 ? 'var(--color-warning)' : 'var(--color-error)'};">${gapToLeader === 0 ? 'You lead!' : gapToLeader + ' pts behind'}</div>
                     <div class="mc-desc">${gapToLeader > 0 ? leaderName + ' leads with ' + leaderTotal + ' pts' : 'You have ' + myTotal + ' pts'}</div>
                 </div>
                 <div class="momentum-card">
@@ -2377,7 +2377,7 @@
                 <div class="momentum-card">
                     <div class="mc-title">Hottest Manager (<abbr title="Last 3 gameweeks">L3</abbr>)</div>
                     <div class="mc-value" style="color:var(--color-warning);">${best3.name.split(' ')[0]}</div>
-                    <div class="mc-desc">${best3.avg} pts/gw over last 3 GWs${best3.id == myTeamId ? ' — That\'s you! 🔥' : ''}</div>
+                    <div class="mc-desc">${best3.avg} pts/gw over last 3 GWs${best3.id == myTeamId ? ' — That\'s you! ' : ''}</div>
                 </div>
                 <div class="momentum-card">
                     <div class="mc-title">Your Chips Used</div>
@@ -2418,7 +2418,7 @@
                 const data = hist.map((gw, i) => mode === 'gap' ? leaderByGW[i] - gw.total_points : gw.total_points);
                 
                 datasets.push({
-                    label: isYou ? '⭐ ' + name : name,
+                    label: isYou ? `${v2Icon('star')} ` + name : name,
                     data,
                     borderColor: color,
                     backgroundColor: color + '20',
@@ -2464,7 +2464,7 @@
         function chartShowOnlyMe(btn) {
             if (!raceChart) return;
             raceChart.data.datasets.forEach((ds, i) => {
-                raceChart.setDatasetVisibility(i, ds.label.startsWith('⭐'));
+                raceChart.setDatasetVisibility(i, ds.label.startsWith(v2Icon('star')));
             });
             raceChart.update();
             document.querySelectorAll('.chart-visibility button').forEach(b => b.classList.remove('active'));
@@ -2513,7 +2513,7 @@
                 
                 return `<tr class="${isYou ? 'you-row' : ''}">
                     <td style="font-weight:600;">${i + 1}</td>
-                    <td>${isYou ? '⭐ ' : ''}${escHTML(r.name)}<br><span style="font-size:10px;color:var(--text-muted);">${escHTML(r.teamName)}</span></td>
+                    <td>${isYou ? '' : ''}${escHTML(r.name)}<br><span style="font-size:10px;color:var(--text-muted);">${escHTML(r.teamName)}</span></td>
                     <td style="text-align:center;font-weight:600;">${r.lastGwPts}</td>
                     <td style="text-align:center;font-weight:700;font-family:'Space Grotesk',sans-serif;">${r.totalPts}</td>
                     <td style="text-align:center;">${r.totalTransfers}</td>
@@ -2565,7 +2565,7 @@
                     <div class="strength-card ${c.isYou ? 'you-card' : ''}">
                         <div class="strength-card-header">
                             <div>
-                                <div class="strength-card-name">${c.isYou ? '⭐ ' : ''}${escHTML(c.name)}</div>
+                                <div class="strength-card-name">${c.isYou ? '' : ''}${escHTML(c.name)}</div>
                                 <div style="font-size:11px;color:var(--text-muted);">${escHTML(c.teamName)} · Rank #${i + 1} easiest</div>
                             </div>
                             <div class="strength-card-fdr" style="color:${fdrColor};">${c.avgFdrDisplay}</div>
@@ -2687,7 +2687,7 @@
             bar.className = `status-bar ${type}`;
             bar.innerHTML = type === 'loading' 
                 ? `<div class="spinner"></div><span>${msg}</span>`
-                : `<span>${type === 'success' ? '✓' : '⚠'} ${msg}</span>`;
+                : `<span>${type === 'success' ? '✓' : ''} ${msg}</span>`;
         }
         
         // Enter key handlers

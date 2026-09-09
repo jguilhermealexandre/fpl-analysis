@@ -250,6 +250,27 @@ function pulseLink(a) {
     return null;
 }
 
+/* A Premier League photo-resource is a source asset, not a servable image.
+ *
+ * The URL the content API hands back answers 400 to a plain GET:
+ *
+ *   {"message":"Bad parameter: At least one of width or height parameters
+ *    must be specified"}
+ *
+ * — which is the image service declining to guess, not a missing file. Adding
+ * a width turns the same URL into a 200 and a webp. So every picture from this
+ * source gets one, at the width the news cards actually draw at.
+ *
+ * Untouched if the URL already carries a size, and untouched for any host but
+ * this one, since nobody else's URLs mean anything by `width`. */
+const PL_PHOTO_WIDTH = 800;
+
+function plSizedImage(url) {
+    if (!url || !/resources\.premierleague(?:\.pulselive)?\.com\/photo-resources\//.test(url)) return url;
+    if (/[?&](?:width|height)=/.test(url)) return url;
+    return url + (url.includes('?') ? '&' : '?') + `width=${PL_PHOTO_WIDTH}`;
+}
+
 function pulseImage(a) {
     // The bundle lifts these two onto `associatedImage`, so they are where the
     // site's own cards get their picture from.
@@ -357,7 +378,7 @@ export function normalise(raw) {
     if (link.startsWith('/')) link = 'https://www.premierleague.com' + link;
     if (!/^https?:\/\//i.test(link)) return null;
 
-    let image = raw.image ? String(raw.image).trim() : null;
+    let image = raw.image ? plSizedImage(String(raw.image).trim()) : null;
     if (image && image.startsWith('//')) image = 'https:' + image;
     if (image && !/^https?:\/\//i.test(image)) image = null;
 

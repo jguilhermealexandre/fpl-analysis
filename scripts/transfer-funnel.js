@@ -412,7 +412,7 @@
         /* The pool this slot can legally shop from, before any funnel filter.
 
            The Favourites source deliberately relaxes both the budget and the
-           minutes floor, exactly as the old ⭐ tab did: "how does the player I
+           minutes floor, exactly as the old tab did: "how does the player I
            starred compare" is worth answering even when he is unaffordable, and
            the card marks that rather than hiding him. */
         function twfBasePool(slotIdx) {
@@ -449,7 +449,7 @@
 
         /* Why a list came back empty, in the terms that caused it.
 
-           The ⭐ source is the case worth spelling out: an empty Favourites list
+           The source is the case worth spelling out: an empty Favourites list
            is otherwise indistinguishable from a broken one, when the real answer
            is usually that the starred players are already in the squad or play
            another position. twShortlistBreakdownText() in transfer-wizard.js
@@ -460,7 +460,7 @@
             if (s.source === 'favorites') {
                 const starred = getTWShortlistIds();
                 if (!starred.size) {
-                    return 'You have not starred any players yet — use the ⭐ on the Players Analysis page and they show up here.';
+                    return 'You have not starred any players yet — use the on the Players Analysis page and they show up here.';
                 }
                 const shortlisted = allPlayers.filter(p => starred.has(p.id));
                 const owned = shortlisted.filter(p => p.position === pos && selectedPlayers.some(q => q.id === p.id));
@@ -562,10 +562,10 @@
             const views = `<div class="twf-views" role="tablist">
                 <button class="twf-view${s.view === 'quick' ? ' active' : ''}" role="tab" aria-selected="${s.view === 'quick'}"
                     onclick="twfSetView('quick')"
-                    data-tooltip="The best replacements we can find for ${escHTML(sold.name)}, ranked, with nothing to fill in.">⚡ Quick picks</button>
+                    data-tooltip="The best replacements we can find for ${escHTML(sold.name)}, ranked, with nothing to fill in.">${v2Icon('bolt')} Quick picks</button>
                 <button class="twf-view${s.view === 'custom' ? ' active' : ''}" role="tab" aria-selected="${s.view === 'custom'}"
                     onclick="twfSetView('custom')"
-                    data-tooltip="Narrow by fixture run, minutes, form, price, ownership and set pieces, then pick from what survives.">🛠️ Custom search</button>
+                    data-tooltip="Narrow by fixture run, minutes, form, price, ownership and set pieces, then pick from what survives.">${v2Icon('tools')} Custom search</button>
             </div>`;
 
             return `<div class="twf-head">
@@ -720,7 +720,7 @@
                     <div class="twf-chips">
                         <button class="twf-chip${s.source === 'all' ? ' active' : ''}" onclick="twfSetFilter('source','all')">All players</button>
                         <button class="twf-chip${s.source === 'favorites' ? ' active' : ''}" onclick="twfSetFilter('source','favorites')"
-                            data-tooltip="Only the players you starred on the Players Analysis page. Budget and minutes limits are lifted here so an unaffordable target still shows, marked.">⭐ Favourites</button>
+                            data-tooltip="Only the players you starred on the Players Analysis page. Budget and minutes limits are lifted here so an unaffordable target still shows, marked.">${v2Icon('star')} Favourites</button>
                     </div>
                 </div>
 
@@ -892,7 +892,7 @@
                     <button class="twf-linkbtn" onclick="twfSetView('custom')">Search properly</button></div>` : ''}
             </div>
             <div class="twf-foot">
-                <button class="twf-back" onclick="twfSetView('custom')">🛠️ Custom search</button>
+                <button class="twf-back" onclick="twfSetView('custom')">${v2Icon('tools')} Custom search</button>
                 <button class="twf-back" onclick="twBackToSquad()">Squad</button>
             </div>`;
         }

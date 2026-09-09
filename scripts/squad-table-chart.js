@@ -207,8 +207,8 @@
            instead. Every tooltip names the club in its first three words. */
         /* renderTeamBadges() was removed with the last of its pills.
            It rendered two badges onto every squad row: "Easier GW5+", which
-           restated the five fixture chips beside it, and "🔥 In form" /
-           "⚖️ Average" / "❄️ Cold", which described the club rather than the
+           restated the five fixture chips beside it, and "In form" /
+           "Average" / "Cold", which described the club rather than the
            player — so on a given weekend fourteen of fifteen rows carried the
            same verdict, and a badge that says the same thing on nearly every
            row is not telling you anything.
@@ -267,7 +267,7 @@
                         ${hazardIcon}
                         ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
                         <div class="sq-row-name-block">
-                            <div class="sq-row-name">${player.isCaptain ? '👑 ' : ''}${player.isVice ? '🅥 ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}${typeof tlBadge === 'function' ? tlBadge(player) : ''}</div>
+                            <div class="sq-row-name">${player.isCaptain ? `${v2Icon('crown')} ` : ''}${player.isVice ? 'V ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}${typeof tlBadge === 'function' ? tlBadge(player) : ''}</div>
                             <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${priceChangeBadge(player)}</div>
                         </div>
                     </div>
