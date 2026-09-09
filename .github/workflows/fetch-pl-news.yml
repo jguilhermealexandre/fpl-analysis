@@ -22,7 +22,7 @@ on:
       mode:
         description: 'What to run'
         type: choice
-        options: [fetch, inspect, probe, matrix, headers, hsweep]
+        options: [fetch, inspect, probe, matrix, headers, hsweep, browser]
         default: fetch
 
 # Writes data/ back to main, and nothing else.
@@ -75,6 +75,18 @@ jobs:
       - name: Sweep the header combinations
         if: inputs.mode == 'hsweep'
         run: node tools/fetch-pl-news.mjs --hsweep
+
+      # Every inference from the bundle has been tried and the content path
+      # still has "no configuration" at the gateway. So watch a real browser
+      # load the page and write down the request it actually makes — there is
+      # nothing left to deduce after that.
+      - name: Install a browser
+        if: inputs.mode == 'browser'
+        run: npm i --no-save playwright@1 && npx playwright install --with-deps chromium
+
+      - name: Record what the news page requests
+        if: inputs.mode == 'browser'
+        run: node tools/pl-news-browser.mjs
 
       - name: Fetch Premier League news
         if: inputs.mode == '' || inputs.mode == 'fetch'
