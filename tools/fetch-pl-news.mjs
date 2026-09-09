@@ -25,15 +25,97 @@ import path from 'node:path';
 const MAX_ITEMS = 30;
 const TIMEOUT_MS = 20000;
 
-/* Pulselive is the CMS behind premierleague.com. The `Origin` and `Account`
-   headers are what the site's own client sends; without them the content API
-   answers 403. */
+/* Pulselive is the CMS behind premierleague.com. Origin and Referer are what
+   the site's own client sends; these alone are enough to read the page and the
+   bundle, which is what the discovery below needs. */
 const PULSE_HEADERS = {
     'Origin': 'https://www.premierleague.com',
     'Referer': 'https://www.premierleague.com/',
     'Account': 'premierleague',
     'User-Agent': 'Mozilla/5.0 (compatible; EasyFPL/1.0; +https://easyfpl.pages.dev)'
 };
+
+/* The gateway routes on these two, and on nothing else we were sending.
+ *
+ * Every path — /content/premierleague/EN, the bare /content/premierleague, all
+ * three language codes, both paging conventions — came back identically:
+ *
+ *   {"title":"Bad Request","detail":"No configuration found for request"}
+ *
+ * which is not a validation error about the query. It is the API gateway
+ * failing to find a configuration for the caller, and the bundle says what
+ * identifies the caller: its request store sets
+ *
+ *   X-Pulse-Application-Name: "web"
+ *   X-Pulse-Application-Version: window.RESOURCES_VERSION
+ *
+ * The version is not a constant we can copy — it is the deployed front end's
+ * own build number, and it moves every time the Premier League ships. Hard-code
+ * it and the feed breaks silently on their next release. So it is read off the
+ * page each run, which also means the fetch follows their deploys for free. */
+const PULSE_APP_NAME = 'web';
+const NEWS_PAGE = 'https://www.premierleague.com/en/news';
+
+/* The account slug and language, read out of the bundle rather than assumed:
+   it defines $n = "premierleague" and Un = "EN" right next to each other. */
+const PULSE_ACCOUNT = 'premierleague';
+const PULSE_LANG = 'EN';
+
+/* Ask the page who it says it is, then build the request the way its own code
+   builds it. Returns null if the page cannot be read at all, which leaves the
+   static fallbacks below to have their turn. */
+async function discoverSiteConfig(headers) {
+    let page;
+    try {
+        const res = await fetch(NEWS_PAGE, { headers });
+        if (!res.ok) return null;
+        page = await res.text();
+    } catch { return null; }
+
+    // window.RESOURCES_VERSION = "v1.52.5" — also recoverable from the bundle
+    // path the page imports, which is /resources/<version>/scripts/....
+    const direct = /RESOURCES_VERSION\s*=\s*["']([^"']+)["']/.exec(page);
+    const fromPath = /\/resources\/([^/"']+)\/scripts\//.exec(page);
+    const version = (direct && direct[1]) || (fromPath && fromPath[1]) || null;
+
+    const api = /SDP_API\s*=\s*["']([^"']+)["']/.exec(page);
+    return { version, api: (api && api[1].replace(/\/$/, '')) || SDP_API };
+}
+
+/* The headers the content API will answer, given a discovered version. */
+function sdpHeaders(version) {
+    return {
+        ...PULSE_HEADERS,
+        'X-Pulse-Application-Name': PULSE_APP_NAME,
+        ...(version ? { 'X-Pulse-Application-Version': version } : {}),
+        'Accept': 'application/json'
+    };
+}
+
+/* The two builders the bundle uses, with the parameters it uses. `page` and
+   `pageSize` are rejected outright — the bundle throws "Invalid legacy
+   parameters passed to content API … use 'limit' and 'offset' instead" — so
+   only limit/offset appear here. */
+function sdpSources(cfg) {
+    const api = (cfg && cfg.api) || SDP_API;
+    const headers = sdpHeaders(cfg && cfg.version);
+    const v = cfg && cfg.version ? ` @ ${cfg.version}` : ' (no version found)';
+    return [
+        {
+            name: `SDP multiType${v}`,
+            url: `${api}/content/${PULSE_ACCOUNT}/${PULSE_LANG}`
+                + `?contentTypes=text&offset=0&limit=${MAX_ITEMS}&onlyRestrictedContent=false`,
+            headers,
+            parse: parsePulselive
+        },
+        {
+            name: `SDP contentType text${v}`,
+            url: `${api}/content/${PULSE_ACCOUNT}/text/${PULSE_LANG}?limit=${MAX_ITEMS}&offset=0`,
+            headers,
+            parse: parsePulselive
+        }
+    ];
+}
 
 /* The real one, read out of the site's own code.
  *
@@ -45,25 +127,10 @@ const PULSE_HEADERS = {
  * which every guess so far went through, is 404 across the board. */
 const SDP_API = 'https://sdp-prem-prod.premier-league-prod.pulselive.com/api';
 
+/* The fallbacks, tried after the discovered SDP endpoints above. None of them
+   currently answers — they are here so that an SDP change is a fallthrough
+   rather than an outage, and so the run log names what else was attempted. */
 const SOURCES = [
-    {
-        name: 'SDP content (multiType)',
-        url: `${SDP_API}/content/premierleague/EN?contentTypes=text&offset=0&limit=${MAX_ITEMS}&onlyRestrictedContent=false`,
-        headers: PULSE_HEADERS,
-        parse: parsePulselive
-    },
-    {
-        name: 'SDP content (contentType text)',
-        url: `${SDP_API}/content/premierleague/text/EN?limit=${MAX_ITEMS}`,
-        headers: PULSE_HEADERS,
-        parse: parsePulselive
-    },
-    {
-        name: 'SDP content (contentType news)',
-        url: `${SDP_API}/content/premierleague/news/EN?limit=${MAX_ITEMS}`,
-        headers: PULSE_HEADERS,
-        parse: parsePulselive
-    },
     {
         name: 'pulselive content API',
         url: `https://footballapi.pulselive.com/football/content/PREMIERLEAGUE/text/EN?pageSize=${MAX_ITEMS}&page=0&references=ALL&type=news`,
@@ -563,8 +630,16 @@ async function main() {
     const outIdx = args.indexOf('--out');
     const out = outIdx > -1 ? args[outIdx + 1] : 'data/pl-news.json';
 
+    /* Discovery first, static fallbacks after. If the page cannot be read the
+       list is still non-empty, so a bad minute at premierleague.com does not
+       change the shape of the run. */
+    const cfg = await discoverSiteConfig(PULSE_HEADERS);
+    console.log(cfg
+        ? `site config: version=${cfg.version || '(none)'} api=${cfg.api}`
+        : 'site config: could not read the news page — using the static list only');
+
     const tried = [];
-    for (const src of SOURCES) {
+    for (const src of [...sdpSources(cfg), ...SOURCES]) {
         process.stdout.write(`→ ${src.name}\n`);
         const r = await tryFetch(src);
         if (r.ok) {
