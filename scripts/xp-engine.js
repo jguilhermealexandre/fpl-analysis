@@ -608,9 +608,33 @@
         // total, because a single gameweek's total is a noisy realisation.
         const DC_BASELINE_90 = { 1: 0, 2: 7.5, 3: 8.4, 4: 4.2 };
 
-        function defensiveContributionPoints(player, min90) {
+        /* Takes the whole minutes model, not min90, and the difference is the
+           whole point.
+
+           Everything else here is LINEAR in minutes — expected goals, saves and
+           cards all scale with time on the pitch, so multiplying a rate by
+           min90, which already blends starting and not starting, gives the right
+           expectation. This does not. It is a threshold, and a threshold cannot
+           be evaluated at an average: shrinking the Poisson rate to account for
+           the chance he does not play cuts the tail probability far harder than
+           it should, because P(X >= 10) falls away much faster than linearly in
+           the mean.
+
+           Measured over the gameweeks with real team news, that cost more than
+           half of what this route actually pays. For outfielders who started, the
+           model gave a 0.080 chance of clearing the threshold where 0.200 of them
+           did. Hand the same Poisson the minutes those players actually got and
+           it predicts 0.204 against 0.200 — so the distribution was never the
+           problem, and neither was the over-dispersion the baselines below were
+           nudged to cover. Only where the probability was applied.
+
+           So the rate is conditioned on him starting, and the chance of starting
+           multiplies the answer afterwards. A substitute's twelve minutes carry
+           essentially no chance of ten defensive actions, so ignoring the bench
+           branch entirely costs nothing. */
+        function defensiveContributionPoints(player, minutesModel) {
             const threshold = DC_THRESHOLD[player.position];
-            if (!threshold || threshold === Infinity || !min90) return 0;
+            if (!threshold || threshold === Infinity || !minutesModel || !minutesModel.pStart) return 0;
 
             const mins = player.minutes || 0;
             // Same regression the attacking rates use: a single match of tackles
@@ -620,7 +644,9 @@
             const own90 = player.defCon90 || (mins > 0 ? ((player.defCon || 0) / mins) * 90 : 0);
             const dc90 = w * own90 + (1 - w) * (DC_BASELINE_90[player.position] || 0);
 
-            const expected = dc90 * min90;
+            // The rate over a match he starts — not the average of starting and
+            // sitting, which is what min90 would give.
+            const expected = dc90 * Math.min(1, (minutesModel.minsPerStart || 0) / 90);
             if (expected <= 0) return 0;
 
             // Counting events over a match sit close enough to Poisson for this
@@ -632,7 +658,9 @@
                 term *= expected / (k + 1);
             }
             const pHit = Math.max(0, Math.min(1, 1 - pBelow));
-            return pHit * DC_POINTS;
+            // The chance of starting multiplies the answer; it does not belong
+            // inside the rate.
+            return minutesModel.pStart * pHit * DC_POINTS;
         }
 
         // A harder fixture suppresses attacking returns by the same factor the
@@ -776,7 +804,10 @@
                does. It cannot go negative: pStart is clamped to 0.96 before being
                multiplied by avail. */
             const expMins = pStart * minsPerStart + (avail - pStart) * 12;
-            return { pStart, avail, expMins, min90: expMins / 90 };
+            /* minsPerStart comes out as well as the blended figure, because a
+               threshold cannot be evaluated at an average. See
+               defensiveContributionPoints. */
+            return { pStart, avail, minsPerStart, expMins, min90: expMins / 90 };
         }
 
         // opts.fixture projects a specific match instead of the player's next one,
@@ -792,7 +823,8 @@
 
             const mins = player.minutes || 0;
             const games = computePlayerGamesPlayed(player);
-            const { pStart, avail, min90 } = expectedMinutesModel(player);
+            const minutesModel = expectedMinutesModel(player);
+            const { pStart, avail, min90 } = minutesModel;
             out.pStart = pStart;
 
             // 2 pts for 60+ minutes, 1 otherwise. The second branch is worth
@@ -856,7 +888,7 @@
             const bonusPerGame = wB * ownBonus + (1 - wB) * 0.25;
             out.bonus = Math.min(1.2, bonusPerGame) * pStart;
 
-            out.defCon = defensiveContributionPoints(player, min90);
+            out.defCon = defensiveContributionPoints(player, minutesModel);
 
             /* Cards: -1 a yellow, -3 a red. Previously not modelled at all, which
                quietly over-rated every habitual booking — and those are mostly

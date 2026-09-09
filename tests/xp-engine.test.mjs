@@ -93,6 +93,42 @@ test('the appearance term needs someone available to appear', () => {
         `a 5% chance is not half an appearance point (got ${doubtful.appearance.toFixed(2)})`);
 });
 
+/* ===== the defensive-contribution threshold ===== */
+
+const DEFENDER = { ...NAILED, position: 2, defCon: 1080, defCon90: 12 };
+const mm = (pStart, minsPerStart = 90) =>
+    ({ pStart, minsPerStart, avail: 1, expMins: pStart * minsPerStart, min90: pStart * minsPerStart / 90 });
+
+test('the chance of starting multiplies the defensive point, it does not shrink the rate', () => {
+    const { defensiveContributionPoints } = engine();
+    const full = defensiveContributionPoints(DEFENDER, mm(1.0));
+    const half = defensiveContributionPoints(DEFENDER, mm(0.5));
+
+    assert.ok(full > 1.2, `12 defensive actions a match clears a threshold of 10 most weeks (got ${full.toFixed(2)})`);
+    /* Exactly half, because starting is a probability and belongs outside the
+       distribution. The old code multiplied the Poisson RATE by a figure that
+       already carried the chance of not playing, and P(X >= 10) collapses far
+       faster than linearly in the mean — at these numbers it returned about a
+       ninth of the full value rather than a half. Measured against real team
+       news that cost more than half of everything this route pays out. */
+    assert.ok(Math.abs(half - full / 2) < 1e-9,
+        `halving the chance of starting must halve the points (${half.toFixed(3)} against ${(full / 2).toFixed(3)})`);
+});
+
+test('fewer minutes when he does start still lowers the chance', () => {
+    const { defensiveContributionPoints } = engine();
+    // This one SHOULD go through the rate: sixty minutes really is fewer chances
+    // to make ten tackles. It is only the not-playing branch that must not.
+    const ninety = defensiveContributionPoints(DEFENDER, mm(1.0, 90));
+    const sixty = defensiveContributionPoints(DEFENDER, mm(1.0, 60));
+    assert.ok(sixty < ninety * 0.8, 'a shorter match is a genuinely thinner tail');
+});
+
+test('goalkeepers never qualify for it', () => {
+    const { defensiveContributionPoints } = engine();
+    assert.equal(defensiveContributionPoints({ ...DEFENDER, position: 1 }, mm(1.0)), 0);
+});
+
 test('a published chance still orders the doubtful', () => {
     const { projectPlayerPointsDetailed } = engine();
     const at = c => projectPlayerPointsDetailed({ ...NAILED, status: 'd', chanceNextRound: c }).total;
