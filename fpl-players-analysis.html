@@ -226,10 +226,11 @@
         <div class="filter-bar" id="filterBar">
             <div class="filter-bar-inner">
                 <div class="fp-group" id="posPills">
-                    <button class="fp-pill active" data-pos="GK" onclick="switchGlobalPosition('GK', this)">GK</button>
-                    <button class="fp-pill" data-pos="DEF" onclick="switchGlobalPosition('DEF', this)">DEF</button>
-                    <button class="fp-pill" data-pos="MID" onclick="switchGlobalPosition('MID', this)">MID</button>
-                    <button class="fp-pill" data-pos="FWD" onclick="switchGlobalPosition('FWD', this)">FWD</button>
+                    <button class="fp-pill active" data-pos="ALL" onclick="switchGlobalPosition('ALL', this)">All</button>
+                    <button class="fp-pill pos-gk" data-pos="GK" onclick="switchGlobalPosition('GK', this)">GK</button>
+                    <button class="fp-pill pos-def" data-pos="DEF" onclick="switchGlobalPosition('DEF', this)">DEF</button>
+                    <button class="fp-pill pos-mid" data-pos="MID" onclick="switchGlobalPosition('MID', this)">MID</button>
+                    <button class="fp-pill pos-fwd" data-pos="FWD" onclick="switchGlobalPosition('FWD', this)">FWD</button>
                 </div>
                 <div class="filter-bar-divider" id="catDivider"></div>
                 <div class="fc-group" id="catPills">
@@ -601,6 +602,10 @@
 
                     analyses.push({
                         id: player.id,
+                        // The photo code, not the element id — playerPhotoSrc()
+                        // addresses portraits by it, so v2IdentityHTML() renders
+                        // initials for everyone without it.
+                        code: player.code,
                         name: player.web_name,
                         fullName: `${player.first_name} ${player.second_name}`,
                         position: player.element_type,
@@ -1547,6 +1552,14 @@
             const hasMore = scored.length > 30;
 
             return `
+              <div class="pa-panel">
+                <div class="pa-panel-head">
+                    <span class="pa-panel-title">${paIcon('routes')}Routes to points</span>
+                    <p class="pa-panel-note">How many different ways a player has of scoring — goals, assists, clean sheets, saves, bonus. A player with four is less dependent on any one of them going right.</p>
+                    <div class="pa-panel-controls">
+                        <div class="pa-filter-pills">${paPositionPills()}</div>
+                    </div>
+                </div>
                 <div class="routes-section mode-prop" id="routesSection">
                     <div class="section-toolbar">
                         <div class="section-toolbar-left">
@@ -1555,8 +1568,8 @@
                                 <button class="routes-view-btn" onclick="switchRoutesView('database', this)">Full Database</button>
                             </div>
                             <div class="rp-mode-toggle">
-                                <button class="rp-mode-btn active" onclick="switchRoutesMode('prop', this)" data-tooltip="Every bar fills the width, so you read the split within one player.">\u{1F4CA} Proportional</button>
-                                <button class="rp-mode-btn" onclick="switchRoutesMode('raw', this)" data-tooltip="Bar length scales against the best player in the same position, so you can compare players.">\u{1F522} Raw stats</button>
+                                <button class="rp-mode-btn active" onclick="switchRoutesMode('prop', this)" data-tooltip="Every bar fills the width, so you read the split within one player.">${paIcon('chart')} Proportional</button>
+                                <button class="rp-mode-btn" onclick="switchRoutesMode('raw', this)" data-tooltip="Bar length scales against the best player in the same position, so you can compare players.">${paIcon('table')} Raw stats</button>
                             </div>
                         </div>
                         <div class="section-toolbar-right">
@@ -1587,6 +1600,7 @@
                         <div class="routes-load-more-wrap" style="text-align:center;margin-top:16px;${hasMore ? '' : 'display:none;'}"><button class="routes-view-btn" style="background:var(--surface-2);border:1px solid var(--border-default);" onclick="loadMoreRoutes()">Load more</button></div>
                     </div>
                 </div>
+              </div>
             `;
         }
 
@@ -1598,7 +1612,7 @@
             const hist = (p.history || []).filter(h => (parseInt(h.minutes, 10) || 0) > 0);
             if (hist.length < 4) {
                 return {
-                    state: 'unknown', icon: '\u{1F4D0}', label: 'Too early to judge', fill: 0,
+                    state: 'unknown', icon: paIcon('ruler'), label: 'Too early to judge', fill: 0,
                     detail: `Variance needs at least four appearances before it says anything. ${hist.length} so far.`
                 };
             }
@@ -1740,19 +1754,33 @@
             const accent = posColors[p.pos] || '#60A5FA';
             const nailed = p.nailedMultiplier >= 1.15;
             const routeNames = (p.routes || []).map(r => r.name).join(', ');
+
+            /* Smaller than a recommendation's, on purpose: a route card is a
+               chart with a name on it, and a big face would compete with the
+               stack bar that is the point of the card. Same portrait, same
+               club wash, half the size. */
+            const club = typeof clubColours === 'function' ? clubColours(p) : { shirt: accent };
+            const portrait = typeof v2IdentityHTML === 'function'
+                ? `<span class="rp-face" style="--club:${club.shirt};">${v2IdentityHTML(p, 'v2-pid-portrait')}</span>`
+                : '';
+            // The .rp-pos chip below said the same thing the edge now says.
+            const posEdge = typeof v2PosEdgeClass === 'function'
+                ? v2PosEdgeClass({ GK: 1, DEF: 2, MID: 3, FWD: 4 }[p.pos] || 3) : '';
+
             return `
-                <div class="rp-card" style="--rp-accent:${accent};" onclick="openPlayerModal(${p.id})">
+                <div class="rp-card ${posEdge}" style="--rp-accent:${accent};" onclick="openPlayerModal(${p.id})">
                     ${getStarHtml(p.id, 'shortlist-star-card')}
                     <div class="rp-head">
                         <span class="rp-rank">${rank}</span>
+                        ${portrait}
                         <div class="rp-id">
-                            <div class="rp-name">${escHTML(p.name)}${nailed ? ' <span class="rp-nailed" data-tooltip="Plays essentially every available minute">\u{1F512}</span>' : ''}</div>
+                            <div class="rp-name">${escHTML(p.name)}${nailed ? ` <span class="rp-nailed" data-tooltip="Plays essentially every available minute">${paIcon('lock')}</span>` : ''}</div>
                         </div>
                         <div class="rp-badge" data-tooltip="Distinct ways this player scores: ${escHTML(routeNames)}. More routes means less reliance on any one of them.">
-                            <span class="rp-badge-star">\u{1F31F}</span><b>${p.routeCount}</b><span class="rp-badge-l">routes</span>
+                            <span class="rp-badge-star">${paIcon('routes')}</span><b>${p.routeCount}</b><span class="rp-badge-l">routes</span>
                         </div>
                     </div>
-                    <div class="rp-sub"><span class="rp-pos">${p.pos}</span><span class="rp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${(p.selectedBy || 0).toFixed(1)}% owned</span></div>
+                    <div class="rp-sub"><span class="rp-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${(p.selectedBy || 0).toFixed(1)}% owned</span></div>
                     ${rpReliabilityMeter(rel)}
                     ${rpStackBar(p)}
                     ${rpMiniPills(p)}
@@ -1773,39 +1801,91 @@
             if (isPreseason) {
                 return renderLastSeasonRecommendations(analyses);
             }
-            // Build each position's HTML but wrap in tab panels
+            /* ALL leads, and is where the page opens. A budget cap is a
+               per-position idea — £5.5m is a cheap midfielder and an expensive
+               goalkeeper — so the pooled tier has no single cap of its own and
+               asks each player's own position for his. */
             const positions = [
-                { pos: 'GK', icon: '<i data-lucide="hand" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', title: 'Goalkeepers', budgetCap: BUDGET_CAPS.GK, metrics: ['cs','saves','gc','ptsG'], budgetDesc: 'High save count, rotation options', premiumDesc: 'Clean sheet magnets from top defenses' },
-                { pos: 'DEF', icon: '<i data-lucide="shield-check" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', title: 'Defenders', budgetCap: BUDGET_CAPS.DEF, metrics: ['cs','gc','xGC','ptsG'], budgetDesc: 'Solid CS potential at low cost', premiumDesc: 'Elite defenders + attacking threat' },
-                { pos: 'MID', icon: '<i data-lucide="zap" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', title: 'Midfielders', budgetCap: BUDGET_CAPS.MID, metrics: ['xGI','goals','assists','ptsG'], budgetDesc: 'High xGI relative to price', premiumDesc: 'Elite creators and scorers' },
-                { pos: 'FWD', icon: '<i data-lucide="crosshair" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', title: 'Forwards', budgetCap: BUDGET_CAPS.FWD, metrics: ['xG','goals','xA','ptsG'], budgetDesc: 'Goal threat on a budget', premiumDesc: 'Premium goal scorers' }
+                { pos: 'ALL', title: 'Every position', budgetCap: null, metrics: ['xGI','goals','assists','ptsG'], budgetDesc: 'Cheap enough to free money elsewhere', premiumDesc: 'The players worth building around' },
+                { pos: 'GK', title: 'Goalkeepers', budgetCap: BUDGET_CAPS.GK, metrics: ['cs','saves','gc','ptsG'], budgetDesc: 'High save count, rotation options', premiumDesc: 'Clean sheet magnets from top defenses' },
+                { pos: 'DEF', title: 'Defenders', budgetCap: BUDGET_CAPS.DEF, metrics: ['cs','gc','xGC','ptsG'], budgetDesc: 'Solid CS potential at low cost', premiumDesc: 'Elite defenders + attacking threat' },
+                { pos: 'MID', title: 'Midfielders', budgetCap: BUDGET_CAPS.MID, metrics: ['xGI','goals','assists','ptsG'], budgetDesc: 'High xGI relative to price', premiumDesc: 'Elite creators and scorers' },
+                { pos: 'FWD', title: 'Forwards', budgetCap: BUDGET_CAPS.FWD, metrics: ['xG','goals','xA','ptsG'], budgetDesc: 'Goal threat on a budget', premiumDesc: 'Premium goal scorers' }
             ];
 
-            const panels = positions.map((cfg, i) =>
+            const panels = positions.map(cfg =>
                 `<div class="sub-tab-panel ${cfg.pos === activeGlobalPosition ? 'active' : ''}" id="rec-panel-${cfg.pos}">${generatePositionRecs(cfg.pos, analyses, cfg)}</div>`
             ).join('');
 
+            /* The "include doubtful players" checkbox is gone. It duplicated
+               the availability filter that already governs every other tab on
+               this page from the same globalFilters.availability flag, so the
+               two controls could disagree about what you were looking at —
+               and a recommendation to buy a player who is not fit is not a
+               recommendation. Injured and doubtful players are still visible
+               where you go to look them up: the All Players table. */
             return `
-                <div class="rec-controls" style="display:flex;align-items:center;gap:16px;padding:4px 0;margin-bottom:4px;flex-wrap:wrap;">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);cursor:pointer;">
-                        <input type="checkbox" id="recIncludeDoubtful" onchange="toggleRecAvailability()" ${globalFilters.availability ? '' : 'checked'} style="cursor:pointer;">
-                        Include doubtful players
-                    </label>
-                    <div class="rec-mode" role="group" aria-label="How much fixtures count">
-                        <span class="rec-mode-l">Weighting</span>
-                        <button class="rec-mode-btn ${recFixtureMode === 'balanced' ? 'active' : ''}"
-                            onclick="setRecFixtureMode('balanced')"
-                            data-tooltip="Form, underlying numbers and value lead; fixtures are one term among many. This is the standard ranking.">Balanced</button>
-                        <button class="rec-mode-btn ${recFixtureMode === 'fixtures' ? 'active' : ''}"
-                            onclick="setRecFixtureMode('fixtures')"
-                            data-tooltip="Weights the next three fixtures — opponent strength, venue, clean-sheet odds and whether the run is easing — so a hard run costs a player his place. Same players, same form, re-ranked on who they face.">Fixture-first</button>
+                <div class="pa-panel">
+                    <div class="pa-panel-head">
+                        <span class="pa-panel-title">${paIcon('target')}Recommendations</span>
+                        <div class="pa-panel-controls">
+                            <div class="pa-filter-pills">${paPositionPills()}</div>
+                            <div class="rec-mode" role="group" aria-label="How much fixtures count">
+                                <span class="rec-mode-l">Weighting</span>
+                                <button class="rec-mode-btn ${recFixtureMode === 'balanced' ? 'active' : ''}"
+                                    onclick="setRecFixtureMode('balanced')"
+                                    data-tooltip="Form, underlying numbers and value lead; fixtures are one term among many. This is the standard ranking.">Balanced</button>
+                                <button class="rec-mode-btn ${recFixtureMode === 'fixtures' ? 'active' : ''}"
+                                    onclick="setRecFixtureMode('fixtures')"
+                                    data-tooltip="Weights the next three fixtures — opponent strength, venue, clean-sheet odds and whether the run is easing — so a hard run costs a player his place. Same players, same form, re-ranked on who they face.">Fixture-first</button>
+                            </div>
+                        </div>
                     </div>
+                    ${recFixtureMode === 'fixtures' ? renderSeasonNotice(
+                        '<strong>Fixture-first.</strong> Ranked with the next three opponents weighted heavily, so form still counts but a hard run pushes a player down. '
+                        + 'The fixture blocks on each card are what is doing the work.') : ''}
+                    ${panels}
                 </div>
-                ${recFixtureMode === 'fixtures' ? renderSeasonNotice(
-                    '<strong>Fixture-first.</strong> Ranked with the next three opponents weighted heavily, so form still counts but a hard run pushes a player down. '
-                    + 'The fixture blocks on each card are what is doing the work.') : ''}
-                ${panels}
             `;
+        }
+
+        /* ===== The shared furniture for this page's panels =====
+           One title icon set and one row of position pills, so the six tabs
+           are the same control in six places rather than six controls. */
+        const PA_ICONS = {
+            target: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z"/><path d="M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"/><circle cx="12" cy="12" r="2"/>',
+            trending: '<path d="M3 17 9 11l4 4 8-8"/><path d="M14 7h7v7"/>',
+            flame: '<path d="M12 22c4 0 7-2.6 7-6.5 0-4-3-6-4.5-9.5C13 9 11 8 11 5 8 7 5 10 5 15.5 5 19.4 8 22 12 22Z"/>',
+            routes: '<circle cx="6" cy="19" r="3"/><path d="M9 19h5a4 4 0 0 0 0-8H9a4 4 0 0 1 0-8h5"/><circle cx="18" cy="5" r="3"/>',
+            chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 15 3-4 3 3 5-7"/>',
+            table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/>',
+            lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+            ruler: '<path d="m15 3 6 6L9 21l-6-6Z"/><path d="m8 10 2 2M11 7l2 2M5 13l2 2"/>'
+        };
+
+        function paIcon(name) {
+            const paths = PA_ICONS[name];
+            if (!paths) return '';
+            return '<svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+                + ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+                + paths + '</svg>';
+        }
+
+        /* The same five pills every panel shows. They drive the one global
+           position, so switching in Recommendations leaves Routes on the same
+           position when you get there — which is the point of it being global. */
+        function paPositionPills() {
+            const pills = [
+                { v: 'ALL', l: 'All', c: '' },
+                { v: 'GK', l: 'GK', c: 'pos-gk' },
+                { v: 'DEF', l: 'DEF', c: 'pos-def' },
+                { v: 'MID', l: 'MID', c: 'pos-mid' },
+                { v: 'FWD', l: 'FWD', c: 'pos-fwd' }
+            ];
+            return pills.map(p =>
+                `<button class="pa-filter-pill ${p.c} ${activeGlobalPosition === p.v ? 'active' : ''}"
+                    data-pa-pos="${p.v}" onclick="switchGlobalPosition('${p.v}', null)">${p.l}</button>`
+            ).join('');
         }
 
         // Preseason fallback: last season's cumulative top scorers by position, clearly labeled.
@@ -1872,39 +1952,49 @@
             `;
         }
 
-        function toggleRecAvailability() {
-            const checkbox = document.getElementById('recIncludeDoubtful');
-            globalFilters.availability = !(checkbox?.checked);
-            // Re-generate recommendations
-            document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(allAnalyses);
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
+        /* toggleRecAvailability() went with the checkbox that called it. The
+           availability filter it flipped is the page-wide one, and having a
+           second control for it here meant Recommendations could be showing
+           doubtful players while every other tab was not. */
 
 
 
         function generatePositionRecs(pos, analyses, config) {
-            const posMap = { GK: 1, DEF: 2, MID: 3, FWD: 4 };
+            const isAll = pos === 'ALL';
             // Apply shared eligibility check (availability + starters filters)
             const posPlayers = analyses.filter(a =>
-                POSITIONS[a.position] === pos && isPlayerEligible(a)
+                (isAll || POSITIONS[a.position] === pos) && isPlayerEligible(a)
             );
-            
-            // Calculate position-specific Power Scores
-            const scoredPlayers = posPlayers.map(p => ({
-                ...p,
-                score: calculatePositionScore(p, pos),
-                displayMetrics: getDisplayMetrics(p, pos)
-            }));
+
+            /* Scores are computed against a player's own position whatever
+               the filter says. A goalkeeper's score is built out of saves and
+               clean sheets and a forward's out of xG; pooling them under one
+               position's formula would rank every goalkeeper last rather than
+               ranking them at all. */
+            const scoredPlayers = posPlayers.map(p => {
+                const own = POSITIONS[p.position];
+                return {
+                    ...p,
+                    score: calculatePositionScore(p, own),
+                    displayMetrics: getDisplayMetrics(p, own)
+                };
+            });
+
+            /* Budget is per position for the same reason: £5.0m buys a first-
+               choice goalkeeper and a bench midfielder, so "cheap" has to be
+               asked of the player's own position, not of the filter. */
+            const capFor = p => (isAll ? getBudgetCap(POSITIONS[p.position]) : config.budgetCap);
+            const shown = isAll ? 12 : 7;
 
             const budgetPlayers = scoredPlayers
-                .filter(p => p.price <= config.budgetCap && (p.l5.minutes / p.l5.games) >= 60)
+                .filter(p => p.price <= capFor(p) && (p.l5.minutes / p.l5.games) >= 60)
                 .sort((a, b) => b.score - a.score)
-                .slice(0, 7);
+                .slice(0, shown);
 
             const premiumPlayers = scoredPlayers
-                .filter(p => p.price > config.budgetCap && (p.l5.minutes / p.l5.games) >= 70)
+                .filter(p => p.price > capFor(p) && (p.l5.minutes / p.l5.games) >= 70)
                 .sort((a, b) => b.score - a.score)
-                .slice(0, 7);
+                .slice(0, shown);
 
             // Differentials get an ownership bonus (lower ownership = more differential value)
             const differentials = scoredPlayers
@@ -1914,7 +2004,7 @@
                     score: p.score + (10 - (p.selectedBy || 0)) * 0.3
                 }))
                 .sort((a, b) => b.score - a.score)
-                .slice(0, 7);
+                .slice(0, shown);
 
             // Default active category preserved per position
             const activeRecCat = window._activeRecCat?.[pos] || 'budget';
@@ -1922,8 +2012,8 @@
             return `
                 <div class="pos-rec-section">
                     <div class="rec-category-tabs" id="recCatTabs-${pos}">
-                        <button class="rec-category-tab budget ${activeRecCat === 'budget' ? 'active' : ''}" onclick="switchRecCategory('${pos}', 'budget', this)"><i data-lucide="coins" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Budget (≤£${config.budgetCap.toFixed(1)}m)</button>
-                        <button class="rec-category-tab premium ${activeRecCat === 'premium' ? 'active' : ''}" onclick="switchRecCategory('${pos}', 'premium', this)"><i data-lucide="star" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Premium (>£${config.budgetCap.toFixed(1)}m)</button>
+                        <button class="rec-category-tab budget ${activeRecCat === 'budget' ? 'active' : ''}" onclick="switchRecCategory('${pos}', 'budget', this)"><i data-lucide="coins" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Budget${isAll ? '' : ` (≤£${config.budgetCap.toFixed(1)}m)`}</button>
+                        <button class="rec-category-tab premium ${activeRecCat === 'premium' ? 'active' : ''}" onclick="switchRecCategory('${pos}', 'premium', this)"><i data-lucide="star" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Premium${isAll ? '' : ` (>£${config.budgetCap.toFixed(1)}m)`}</button>
                         <button class="rec-category-tab differential ${activeRecCat === 'differential' ? 'active' : ''}" onclick="switchRecCategory('${pos}', 'differential', this)"><i data-lucide="gem" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Differentials (<10%)</button>
                     </div>
                     <div class="rec-category-panel ${activeRecCat === 'budget' ? 'active' : ''}" id="recCat-${pos}-budget">
@@ -2640,12 +2730,29 @@
                     : (p.selectedBy || 0) > 25 ? 'Widely owned — not owning him is itself a risk against the field.'
                     : 'Moderately owned.'}">${(p.selectedBy || 0).toFixed(1)}% owned</span>`;
 
+            /* The club's own colour behind the portrait, the way the pitch
+               cards and the player detail already do it — a wash under the
+               face, never a fill behind the text, because Spurs white and
+               Newcastle black would take the card's copy with them. */
+            const club = typeof clubColours === 'function' ? clubColours(p) : { shirt: accent, ink: '#fff' };
+            const portrait = typeof v2IdentityHTML === 'function'
+                ? `<span class="rec-face" style="--club:${club.shirt};">${v2IdentityHTML(p, 'v2-pid-portrait')}</span>`
+                : '';
+
+            /* Position as a coloured edge carrying its initial, which is the
+               same .v2-pos-edge the squad rows use. It replaces the club-colour
+               tab that used to sit in this corner: the crest on the portrait
+               now says which club, and nothing on the card said which position
+               at all. */
+            const posEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
+
             return `
-                <div class="rec-card-v2 ${featured ? 'featured' : ''}" style="--rec-accent:${accent};" onclick="openPlayerModal(${p.id})">
+                <div class="rec-card-v2 ${posEdge} ${featured ? 'featured' : ''}" style="--rec-accent:${accent};" onclick="openPlayerModal(${p.id})">
                     ${getStarHtml(p.id, 'shortlist-star-card')}
-                    <div class="rec-rank-chip">${featured ? '★ Top pick' : '#' + rank}</div>
+                    <div class="rec-rank-chip">${featured ? paIcon('target') + ' Top pick' : '#' + rank}</div>
 
                     <div class="rec-head">
+                        ${portrait}
                         <div class="rec-id">
                             <div class="rec-name">${escHTML(p.name)}</div>
                             <div class="rec-sub">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${ownLine}</div>
@@ -2689,7 +2796,7 @@
         }
 
         // Track active rec category per position
-        window._activeRecCat = { GK: 'budget', DEF: 'budget', MID: 'budget', FWD: 'budget' };
+        window._activeRecCat = { ALL: 'budget', GK: 'budget', DEF: 'budget', MID: 'budget', FWD: 'budget' };
 
         function switchRecCategory(pos, category, btn) {
             window._activeRecCat[pos] = category;
@@ -2727,14 +2834,24 @@
         // ============================================
         // UNIFIED POSITION SWITCHING
         // ============================================
-        let activeGlobalPosition = 'GK';
+        /* All, not GK. Every one of these tabs opened on goalkeepers — two
+           of whom you own — because GK happened to be first in the list, and
+           you had to click past it every time to see anything. */
+        let activeGlobalPosition = 'ALL';
 
         function switchGlobalPosition(pos, btn) {
             activeGlobalPosition = pos;
             // Update position pills
             document.querySelectorAll('#posPills .fp-pill').forEach(p => p.classList.remove('active'));
-            if (btn) btn.classList.add('active');
-            else document.querySelector(`#posPills .fp-pill[data-pos="${pos}"]`)?.classList.add('active');
+            document.querySelector(`#posPills .fp-pill[data-pos="${pos}"]`)?.classList.add('active');
+
+            /* Each panel draws its own copy of the pills, and they all drive
+               this one variable — so every copy is re-marked, not just the one
+               that was clicked. Selecting by the position rather than by the
+               clicked element is what makes a click in Routes leave
+               Recommendations showing the same position when you get there. */
+            document.querySelectorAll('.pa-filter-pill').forEach(p =>
+                p.classList.toggle('active', p.dataset.paPos === pos));
 
             // Switch Recommendations panel
             document.querySelectorAll('[id^="rec-panel-"]').forEach(p => p.classList.remove('active'));
@@ -2751,13 +2868,9 @@
             document.querySelectorAll('[id^="pp-panel-"]').forEach(p => p.classList.remove('active'));
             document.getElementById('pp-panel-' + pos)?.classList.add('active');
 
-            // Sync Rising sub-tabs
-            document.querySelectorAll('#risingSubTabs .sub-tab').forEach(t => t.classList.remove('active'));
-            document.querySelector(`#risingSubTabs .sub-tab[onclick*="'${pos}'"]`)?.classList.add('active');
-
-            // Sync Purple Patch sub-tabs
-            document.querySelectorAll('#ppSubTabs .sub-tab').forEach(t => t.classList.remove('active'));
-            document.querySelector(`#ppSubTabs .sub-tab[onclick*="'${pos}'"]`)?.classList.add('active');
+            /* Rising and Purple Patch used to draw their own sub-tab strips.
+               They are gone: both now show the same .pa-filter-pills every
+               other panel does, and those are re-marked above. */
 
             // Re-filter Routes database view for this position
             window._routesDbOffset = 30;
@@ -2778,7 +2891,7 @@
         function getFilteredRoutesPlayers() {
             if (!window._allRoutesPlayers) return [];
             const pos = activeGlobalPosition;
-            let players = pos
+            let players = (pos && pos !== 'ALL')
                 ? window._allRoutesPlayers.filter(p => p.pos === pos)
                 : window._allRoutesPlayers;
             return players.sort((a, b) => b.compositeScore - a.compositeScore);
@@ -3206,19 +3319,19 @@
             const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
             scored.forEach(p => byPos[p.pos]?.push(p));
 
+            /* ALL first, and pooled from the same scored list rather than
+               concatenated per position, so the ordering across positions is
+               the ranking rather than four rankings stacked. */
             const posConfigs = [
-                { pos: 'GK', icon: '<i data-lucide="hand" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Goalkeepers' },
-                { pos: 'DEF', icon: '<i data-lucide="shield-check" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Defenders' },
-                { pos: 'MID', icon: '<i data-lucide="zap" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Midfielders' },
-                { pos: 'FWD', icon: '<i data-lucide="crosshair" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Forwards' }
+                { pos: 'ALL', name: 'Every position', players: scored },
+                { pos: 'GK', name: 'Goalkeepers', players: byPos.GK },
+                { pos: 'DEF', name: 'Defenders', players: byPos.DEF },
+                { pos: 'MID', name: 'Midfielders', players: byPos.MID },
+                { pos: 'FWD', name: 'Forwards', players: byPos.FWD }
             ];
 
-            const tabs = posConfigs.map((cfg, i) =>
-                `<button class="sub-tab ${i === 0 ? 'active' : ''}" onclick="switchRisingTab('${cfg.pos}', this)">${cfg.icon} ${cfg.name}</button>`
-            ).join('');
-
-            const panels = posConfigs.map((cfg, i) => {
-                const posPlayers = byPos[cfg.pos].slice(0, 15);
+            const panels = posConfigs.map(cfg => {
+                const posPlayers = cfg.players.slice(0, cfg.pos === 'ALL' ? 24 : 15);
                 return `
                     <div class="sub-tab-panel ${cfg.pos === activeGlobalPosition ? 'active' : ''}" id="rising-panel-${cfg.pos}">
                         ${posPlayers.length > 0
@@ -3232,12 +3345,18 @@
             }).join('');
 
             return `
+              <div class="pa-panel">
+                <div class="pa-panel-head">
+                    <span class="pa-panel-title">${paIcon('trending')}Rising form</span>
+                    <p class="pa-panel-note">Players with at least two signals pointing the same way at once — team form, underlying numbers, minutes and fixtures. One signal is noise; several agreeing is a trend worth acting on before the price does.</p>
+                    <div class="pa-panel-controls">
+                        <div class="pa-filter-pills">${paPositionPills()}</div>
+                    </div>
+                </div>
                 ${demoPreviewNotice('Rising Form', 6)}
                 <div class="rising-section">
                     <div class="section-toolbar">
-                        <div class="section-toolbar-left">
-                            <div class="sub-tabs" id="risingSubTabs">${tabs}</div>
-                        </div>
+                        <div class="section-toolbar-left"></div>
                         <div class="section-toolbar-right">
                             <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('risingLegend').classList.toggle('show')">
                                 <span><i data-lucide="info" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Signals</span><span class="legend-caret">▾</span>
@@ -3255,6 +3374,7 @@
                     </div>
                     ${panels}
                 </div>
+              </div>
             `;
         }
 
@@ -3605,18 +3725,15 @@
             scored.forEach(p => byPos[p.pos]?.push(p));
 
             const posConfigs = [
-                { pos: 'GK', icon: '<i data-lucide="hand" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Goalkeepers' },
-                { pos: 'DEF', icon: '<i data-lucide="shield-check" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Defenders' },
-                { pos: 'MID', icon: '<i data-lucide="zap" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Midfielders' },
-                { pos: 'FWD', icon: '<i data-lucide="crosshair" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i>', name: 'Forwards' }
+                { pos: 'ALL', name: 'Every position', players: scored },
+                { pos: 'GK', name: 'Goalkeepers', players: byPos.GK },
+                { pos: 'DEF', name: 'Defenders', players: byPos.DEF },
+                { pos: 'MID', name: 'Midfielders', players: byPos.MID },
+                { pos: 'FWD', name: 'Forwards', players: byPos.FWD }
             ];
 
-            const tabs = posConfigs.map((cfg, i) =>
-                `<button class="sub-tab ${i === 0 ? 'active' : ''}" onclick="switchPurplePatchTab('${cfg.pos}', this)">${cfg.icon} ${cfg.name}</button>`
-            ).join('');
-
             const panels = posConfigs.map(cfg => {
-                const posPlayers = byPos[cfg.pos].slice(0, 15);
+                const posPlayers = cfg.players.slice(0, cfg.pos === 'ALL' ? 24 : 15);
                 return `
                     <div class="sub-tab-panel ${cfg.pos === activeGlobalPosition ? 'active' : ''}" id="pp-panel-${cfg.pos}">
                         ${posPlayers.length > 0
@@ -3630,12 +3747,18 @@
             }).join('');
 
             return `
+              <div class="pa-panel">
+                <div class="pa-panel-head">
+                    <span class="pa-panel-title">${paIcon('flame')}Purple patch</span>
+                    <p class="pa-panel-note">Players scoring well above their own baseline, rated on whether the run is backed by process or is about to regress. The score is the sustainability, not the streak.</p>
+                    <div class="pa-panel-controls">
+                        <div class="pa-filter-pills">${paPositionPills()}</div>
+                    </div>
+                </div>
                 ${demoPreviewNotice('Purple Patch', 8)}
                 <div class="pp-section">
                     <div class="section-toolbar">
-                        <div class="section-toolbar-left">
-                            <div class="sub-tabs" id="ppSubTabs">${tabs}</div>
-                        </div>
+                        <div class="section-toolbar-left"></div>
                         <div class="section-toolbar-right">
                             <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('ppLegend').classList.toggle('show')">
                                 <span><i data-lucide="info" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Dimensions</span><span class="legend-caret">▾</span>
@@ -3652,6 +3775,7 @@
                     </div>
                     ${panels}
                 </div>
+              </div>
             `;
         }
 
@@ -4477,7 +4601,14 @@
             'FWD': { bg: 'rgba(248, 113, 113, 0.8)', border: '#f87171' }
         };
         
-        const POSITION_STYLES = { 'GK': 'circle', 'DEF': 'rect', 'MID': 'triangle', 'FWD': 'rectRot' };
+        /* One shape, four colours.
+           Four marker shapes meant a scatter asked you to hold both a shape
+           key and a colour key while reading it, and at 5px a triangle and a
+           rotated square are barely distinguishable anyway — so the shape was
+           carrying almost no information for all the effort it cost. The
+           colours are the site's --position-* tokens and already say which
+           position; the marker's only job is to be a point. */
+        const POSITION_STYLES = { 'GK': 'circle', 'DEF': 'circle', 'MID': 'circle', 'FWD': 'circle' };
 
         // ============================================
         // SCATTER QUADRANTS
@@ -4737,8 +4868,8 @@
                 const banner = renderSeasonNotice('Form &amp; trend charts need this season’s game-by-game data, which isn’t available until GW1. Showing last season’s top scorers instead.');
                 requestAnimationFrame(() => createLastSeasonChart(analyses));
                 return `${banner}
-                    <div class="chart-category">
-                        <h3 class="chart-category-title"><i data-lucide="trending-up" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Top Points — 2025/26 Season</h3>
+                    <div class="chart-category pa-panel">
+                        <h3 class="chart-category-title pa-panel-title"><i data-lucide="trending-up" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Top Points — 2025/26 Season</h3>
                         <div class="chart-card" style="height:520px;">
                             <div class="chart-container" style="height:480px;"><canvas id="lastSeasonPointsChart"></canvas></div>
                         </div>
@@ -4823,8 +4954,8 @@
                     </div>
                     
                     <!-- Original Value & Form Charts -->
-                    <div class="chart-category">
-                        <h3 class="chart-category-title"><i data-lucide="coins" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Value & Form Analysis</h3>
+                    <div class="chart-category pa-panel">
+                        <h3 class="chart-category-title pa-panel-title"><i data-lucide="coins" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Value & Form Analysis</h3>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('priceVsPoints', 'Price vs Points/Game', 'Above line = Great value | Below = Overpriced')">
                                 <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
@@ -4857,8 +4988,8 @@
                     </div>
                     
                     <!-- Defensive Analysis -->
-                    <div class="chart-category">
-                        <h3 class="chart-category-title"><i data-lucide="shield-check" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Defensive Analysis</h3>
+                    <div class="chart-category pa-panel">
+                        <h3 class="chart-category-title pa-panel-title"><i data-lucide="shield-check" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Defensive Analysis</h3>
                         <p class="chart-category-desc">Find clean sheet hunters and attacking defenders</p>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('xgcVsCS', 'xGC vs Clean Sheets', 'Bottom-Left = Elite | Top-Right = Overperforming (sell)')">
@@ -4885,8 +5016,8 @@
                     </div>
                     
                     <!-- Captaincy & Ceiling -->
-                    <div class="chart-category">
-                        <h3 class="chart-category-title"><i data-lucide="crown" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Captaincy & Ceiling</h3>
+                    <div class="chart-category pa-panel">
+                        <h3 class="chart-category-title pa-panel-title"><i data-lucide="crown" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Captaincy & Ceiling</h3>
                         <p class="chart-category-desc">Find explosive haul potential for captain picks</p>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('reliability', 'Reliability vs Explosiveness', 'Top-Right = PERMACAPTAINS | Top-Left = Ceiling plays')">
@@ -4906,8 +5037,8 @@
                     </div>
                     
                     <!-- Differentials & Meta -->
-                    <div class="chart-category">
-                        <h3 class="chart-category-title"><i data-lucide="gem" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Differentials & Meta</h3>
+                    <div class="chart-category pa-panel">
+                        <h3 class="chart-category-title pa-panel-title"><i data-lucide="gem" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Differentials & Meta</h3>
                         <p class="chart-category-desc">Beat the crowd with smart differential picks</p>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('ownershipVsForm', 'Ownership vs Form', 'Top-Left = DIFFERENTIALS | Bottom-Right = Template')">
@@ -4927,8 +5058,8 @@
                     </div>
                     
                     <!-- Position Distribution -->
-                    <div class="chart-category">
-                        <h3 class="chart-category-title"><i data-lucide="bar-chart-3" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Position Analysis</h3>
+                    <div class="chart-category pa-panel">
+                        <h3 class="chart-category-title pa-panel-title"><i data-lucide="bar-chart-3" style="width:18px;height:18px;display:inline-block;vertical-align:middle;"></i> Position Analysis</h3>
                         <div class="charts-grid">
                             <div class="chart-card" onclick="expandChart('positionDist', 'Points by Position', 'Where should you invest your budget?')">
                                 <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>

@@ -1584,6 +1584,16 @@ export default [
         languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } },
         rules: { 'no-undef': 'error' }
     },
+    /* The news scraper is a Node script that carries page code inside
+       page.evaluate() — that body is serialised and run in the browser, so it
+       legitimately reaches for document while the file around it is Node. */
+    {
+        files: ['tools/pl-news-browser.mjs'],
+        languageOptions: {
+            ecmaVersion: 2022, sourceType: 'module',
+            globals: { ...globals.node, document: 'readonly' }
+        }
+    },
     /* Cloudflare Workers. Neither browser nor Node: no window and no document,
        but Web Crypto, fetch and the URL parser are all present. Listed
        explicitly rather than reusing globals.browser, so that a Worker reaching

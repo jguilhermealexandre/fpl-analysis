@@ -670,6 +670,35 @@ async function headerSweep(baseHeaders) {
     }
 }
 
+/* Run the browser scraper and normalise what it found.
+ *
+ * Kept behind a child process and a try/catch: no browser, no playwright, or
+ * a page that will not load all mean "this source did not answer", which is
+ * the same thing every other source in SOURCES can say. The run then falls
+ * through to the API attempts rather than failing. */
+async function scrapeRenderedPage() {
+    const { spawn } = await import('node:child_process');
+    const script = new URL('./pl-news-browser.mjs', import.meta.url).pathname;
+
+    const raw = await new Promise(resolve => {
+        let stdout = '';
+        let child;
+        try {
+            child = spawn(process.execPath, [script], { stdio: ['ignore', 'pipe', 'inherit'] });
+        } catch { return resolve(''); }
+        const timer = setTimeout(() => { child.kill('SIGKILL'); resolve(''); }, 120000);
+        child.stdout.on('data', d => { stdout += d; });
+        child.on('error', () => { clearTimeout(timer); resolve(''); });
+        child.on('close', code => { clearTimeout(timer); resolve(code === 0 ? stdout : ''); });
+    });
+
+    if (!raw.trim()) return [];
+    let rows;
+    try { rows = JSON.parse(raw); } catch { return []; }
+    if (!Array.isArray(rows)) return [];
+    return dedupe(rows.map(normalise).filter(Boolean));
+}
+
 async function main() {
     const args = process.argv.slice(2);
     if (args.includes('--probe')) {
@@ -696,6 +725,36 @@ async function main() {
     const dryRun = args.includes('--dry-run');
     const outIdx = args.indexOf('--out');
     const out = outIdx > -1 ? args[outIdx + 1] : 'data/pl-news.json';
+
+    /* The rendered page first, because it is the only source that has ever
+       answered with articles.
+     *
+     * Every route into the content API — eight paths, three language codes,
+     * five application names, both paging conventions, both gateway hosts —
+     * ends at the same gateway refusal, and the API was never the point. The
+     * point is the articles on premierleague.com/en/news, and a browser that
+     * loads that page has them: they are, by definition, exactly what the
+     * Premier League is showing. tools/pl-news-browser.mjs renders the page
+     * and prints them as JSON on stdout.
+     *
+     * It is a separate process because it needs playwright, which this
+     * fetcher must keep running without — the API fallbacks below have to
+     * still work on a machine with no browser installed. */
+    const scraped = await scrapeRenderedPage();
+    if (scraped.length) {
+        console.log(`✓ rendered news page: ${scraped.length} article(s)`);
+        scraped.slice(0, 3).forEach(i => console.log(`    · ${i.title}`));
+        const payload = {
+            fetchedAt: new Date().toISOString(),
+            source: 'premierleague.com/en/news (rendered)',
+            items: scraped.slice(0, MAX_ITEMS)
+        };
+        if (dryRun) { console.log(JSON.stringify(payload, null, 2)); return; }
+        fs.mkdirSync(path.dirname(out), { recursive: true });
+        fs.writeFileSync(out, JSON.stringify(payload, null, 2) + '\n');
+        console.log(`written to ${out}`);
+        return;
+    }
 
     /* Discovery first, static fallbacks after. If the page cannot be read the
        list is still non-empty, so a bad minute at premierleague.com does not

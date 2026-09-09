@@ -580,8 +580,9 @@
     z-index: 2;
     cursor: pointer;
 }
-.rec-card .shortlist-star-card i { color: var(--text-muted); opacity: 0.4; }
-.rec-card .shortlist-star-card.shortlisted i { color: #FCD34D; opacity: 1; }
+/* Nothing to override here any more: the base .shortlist-star rules colour
+   the SVG through currentColor, and these two reached for an `i` element that
+   lucide replaces on first render. */
 
 .rec-card-avg-fdr {
     font-family: 'Space Grotesk', sans-serif;
@@ -2878,26 +2879,42 @@
     background: var(--surface-2);
 }
 
-/* ===== SHORTLIST ===== */
+/* ===== SHORTLIST =====
+
+   The star never turned gold, anywhere. These rules were written for an emoji
+   — opacity, grayscale and a text-shadow, which is how you dim and undim a
+   character — and the star has been a lucide icon for a while now. lucide
+   REPLACES the <i data-lucide="star"> placeholder with an <svg>, so every
+   selector reaching for `i` inside the star stopped matching the day it was
+   swapped, and a grayscale filter has nothing to say about an outline that
+   draws itself in currentColor.
+
+   So the colour is set on the wrapper and the SVG inherits it, which is what
+   currentColor is for. Shortlisted fills the star as well as stroking it,
+   because a gold outline and a gold silhouette are distinguishable at 14px in
+   a way that two outlines are not. */
 .shortlist-star {
     cursor: pointer;
     font-size: 16px;
     line-height: 1;
-    opacity: 0.35;
-    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-muted);
+    opacity: 0.55;
+    transition: color 0.15s, opacity 0.15s, transform 0.15s;
     user-select: none;
-    filter: grayscale(1);
 }
+.shortlist-star svg { display: block; }
 .shortlist-star:hover {
-    opacity: 0.8;
-    transform: scale(1.2);
-    filter: grayscale(0);
+    opacity: 1;
+    color: #FCD34D;
+    transform: scale(1.15);
 }
 .shortlist-star.shortlisted {
     opacity: 1;
-    filter: grayscale(0);
-    text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+    color: #FCD34D;
 }
+.shortlist-star.shortlisted svg { fill: #FCD34D; }
 .shortlist-star-card {
     position: absolute;
     top: 8px;
@@ -4165,20 +4182,26 @@
 
 /* Fixture heatmap — blocks big enough to read, with the number behind the colour */
 .rec-fixtures { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 5px; }
+/* The five difficulty bands carry their own ink token, because the ramp runs
+   from a dark green through a near-white grey to a dark red — one fixed dark
+   ink was invisible on band 1 and band 5, which are precisely the two the
+   colour exists to call out. --fdr-N-ink is the pairing the squad table and
+   the pitch already use, so easy/average/hard/very hard reads the same
+   everywhere. */
 .rec-fix {
     display: flex; flex-direction: column; align-items: center; gap: 1px;
     padding: 7px 4px 6px; border-radius: var(--radius-md);
-    font-weight: 700; cursor: help; color: #111827;
+    font-weight: 700; cursor: help; color: var(--fdr-3-ink);
 }
 .rec-fix-gw { font-size: 8px; opacity: .75; font-weight: 600; }
 .rec-fix-opp { font-size: 11.5px; white-space: nowrap; }
 .rec-fix-ha { font-size: 9px; opacity: .8; }
 .rec-fix-fdr { font-size: 9px; opacity: .85; font-family: var(--font-mono); }
-.rec-fix.fdr-1 { background: var(--fdr-1); }
-.rec-fix.fdr-2 { background: var(--fdr-2); }
-.rec-fix.fdr-3 { background: var(--fdr-3); }
-.rec-fix.fdr-4 { background: var(--fdr-4); color: #fff; }
-.rec-fix.fdr-5 { background: var(--fdr-5); color: #fff; }
+.rec-fix.fdr-1 { background: var(--fdr-1); color: var(--fdr-1-ink); }
+.rec-fix.fdr-2 { background: var(--fdr-2); color: var(--fdr-2-ink); }
+.rec-fix.fdr-3 { background: var(--fdr-3); color: var(--fdr-3-ink); }
+.rec-fix.fdr-4 { background: var(--fdr-4); color: var(--fdr-4-ink); }
+.rec-fix.fdr-5 { background: var(--fdr-5); color: var(--fdr-5-ink); }
 .rec-fix-none { background: var(--surface-3); color: var(--text-muted); font-weight: 500; }
 
 .rec-drivers { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
@@ -4237,6 +4260,45 @@
 }
 #filterBar .fc-chip:hover,
 #filterBar .fp-pill:hover { transform: translateY(-1px); border-color: var(--color-primary); }
+
+/* The position pills take their position's own colour, the same tokens the
+   row edges, the pitch and the squad panel use — so DEF is the same green
+   here as it is in My Team. "All" is not a position and keeps the brand
+   green, which is also why it is safe as the default.
+
+   Named classes rather than [class*="pos-"]: that substring matches the base
+   class fp-pill has no part of, but it does match `pos-` inside anything
+   else the pill might carry later, and the version of this selector on the
+   All-players pills matched their own base class and blanked the All pill
+   outright. Once was enough. */
+#filterBar .fp-pill.pos-gk  { --v2-pos-color: var(--position-gk); }
+#filterBar .fp-pill.pos-def { --v2-pos-color: var(--position-def); }
+#filterBar .fp-pill.pos-mid { --v2-pos-color: var(--position-mid); }
+#filterBar .fp-pill.pos-fwd { --v2-pos-color: var(--position-fwd); }
+
+#filterBar .fp-pill.pos-gk,
+#filterBar .fp-pill.pos-def,
+#filterBar .fp-pill.pos-mid,
+#filterBar .fp-pill.pos-fwd {
+    border-color: var(--v2-pos-color);
+    color: var(--v2-pos-color);
+}
+#filterBar .fp-pill.pos-gk:not(.active):hover,
+#filterBar .fp-pill.pos-def:not(.active):hover,
+#filterBar .fp-pill.pos-mid:not(.active):hover,
+#filterBar .fp-pill.pos-fwd:not(.active):hover {
+    background: color-mix(in srgb, var(--v2-pos-color) 14%, transparent);
+    border-color: var(--v2-pos-color);
+    color: var(--v2-pos-color);
+}
+#filterBar .fp-pill.pos-gk.active,
+#filterBar .fp-pill.pos-def.active,
+#filterBar .fp-pill.pos-mid.active,
+#filterBar .fp-pill.pos-fwd.active {
+    background: var(--v2-pos-color);
+    border-color: var(--v2-pos-color);
+    color: #fff;
+}
 
 /* Full width, in normal flow. A two-column split looked balanced on paper but
    the narrative column is always shorter than the evidence column, so it left a
@@ -4633,3 +4695,243 @@
 .rec-mode-btn.active {
     background: var(--color-primary); border-color: var(--color-primary); color: #fff;
 }
+
+/* =====================================================================
+   ONE PANEL LANGUAGE FOR THE PLAYER ANALYSIS TABS
+
+   Six tabs had six shapes: recommendations were bare cards on the page
+   background, routes had its own toolbar, rising and purple patch each drew a
+   different sub-tab strip, and the charts floated loose. Nothing was wrong
+   with any one of them and together they read as six different products.
+
+   The squad panel in My Team already solved this — a titled box with an
+   icon, one row of position pills beneath it, and the content inside. That is
+   the shape borrowed here, deliberately down to the numbers (16px padding,
+   17px display title, 999px pills), so moving between the two pages does not
+   feel like moving between two sites. Where My Team says .sq-, this says
+   .pa-, and the two are intentionally near-identical.
+   ===================================================================== */
+.pa-panel {
+    padding: 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: var(--v2-card-shadow, none);
+    margin-bottom: 20px;
+}
+
+.pa-panel-head {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.pa-panel-title {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-display);
+    font-size: 17px; font-weight: 650; letter-spacing: -0.2px;
+    color: var(--text-primary);
+}
+.pa-panel-title svg { width: 17px; height: 17px; color: var(--color-primary); flex-shrink: 0; }
+
+/* The sentence under the title, for the tabs that need to say what they are
+   ranking on before the cards make sense. */
+.pa-panel-note {
+    font-size: 12px; line-height: 1.55; color: var(--text-muted);
+    max-width: 90ch;
+}
+
+/* Controls sit on one row and wrap as a whole, so the pills never split from
+   the control they belong beside. */
+.pa-panel-controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+    justify-content: space-between;
+}
+.pa-panel-controls > * { min-width: 0; }
+
+/* ----- Position filter pills -----
+   Each position wears its own --position-* token, hover and active alike, so
+   "green means defender" holds on this page as it does on the pitch and in
+   the squad table. "All" is not a position, so it takes the brand green.
+
+   The four position classes are named explicitly rather than matched with
+   [class*="pos-"]. That substring also matches the base class pa-filter-pill
+   itself, which sets border-color and color from a --v2-pos-color that is
+   never defined on "All" — and an unresolved var() makes the whole
+   declaration invalid, so the All pill lost its colour entirely. This exact
+   bug shipped once already on this page. */
+.pa-filter-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.pa-filter-pill {
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-default);
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-size: 12px; font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.pa-filter-pill:not(.active):hover { border-color: var(--color-primary); }
+.pa-filter-pill.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+}
+
+.pa-filter-pill.pos-gk  { --v2-pos-color: var(--position-gk); }
+.pa-filter-pill.pos-def { --v2-pos-color: var(--position-def); }
+.pa-filter-pill.pos-mid { --v2-pos-color: var(--position-mid); }
+.pa-filter-pill.pos-fwd { --v2-pos-color: var(--position-fwd); }
+
+.pa-filter-pill.pos-gk,
+.pa-filter-pill.pos-def,
+.pa-filter-pill.pos-mid,
+.pa-filter-pill.pos-fwd {
+    border-color: var(--v2-pos-color);
+    color: var(--v2-pos-color);
+}
+.pa-filter-pill.pos-gk:not(.active):hover,
+.pa-filter-pill.pos-def:not(.active):hover,
+.pa-filter-pill.pos-mid:not(.active):hover,
+.pa-filter-pill.pos-fwd:not(.active):hover {
+    background: color-mix(in srgb, var(--v2-pos-color) 14%, transparent);
+    color: var(--v2-pos-color);
+}
+.pa-filter-pill.pos-gk.active,
+.pa-filter-pill.pos-def.active,
+.pa-filter-pill.pos-mid.active,
+.pa-filter-pill.pos-fwd.active {
+    background: var(--v2-pos-color);
+    border-color: var(--v2-pos-color);
+    color: #fff;
+}
+
+/* ----- Portrait and position edge on a recommendation card -----
+   The card used to identify a player by name and a three-letter club, with
+   the club's colour as a short tab in the top corner. A face and a crest do
+   that job in one glance and without asking you to know that TOT is Spurs, so
+   the tab is gone and the corner belongs to the position edge instead.
+
+   The club colour survives as a soft disc behind the portrait: enough to read
+   as club identity at a glance, and nowhere near the text. */
+.rec-card-v2 .rec-face {
+    position: relative;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 58px; height: 58px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 42%,
+        color-mix(in srgb, var(--club) 34%, transparent),
+        color-mix(in srgb, var(--club) 12%, transparent) 68%,
+        transparent 72%);
+}
+.rec-card-v2 .rec-face .v2-pid-portrait { --v2-pid-face: 46px; --v2-pid-crest: 19px; }
+.rec-card-v2.featured .rec-face { width: 76px; height: 76px; }
+.rec-card-v2.featured .rec-face .v2-pid-portrait { --v2-pid-face: 62px; --v2-pid-crest: 24px; }
+
+/* The position edge needs room, and it replaces the club tab that lived in
+   the same corner. The edge is drawn by .v2-pos-edge::before, so the card's
+   own ::before has to stand down or the two fight over the same pseudo. */
+.rec-card-v2.v2-pos-edge { padding-left: 28px; }
+.rec-card-v2.v2-pos-edge::before {
+    content: '';
+    width: 18px;
+    border-radius: var(--v2-card-radius, 16px) 0 0 var(--v2-card-radius, 16px);
+    background: var(--v2-pos-color, var(--position-mid));
+    height: auto;
+    writing-mode: vertical-rl;
+    letter-spacing: .12em;
+    font-size: 10px;
+}
+.rec-card-v2.v2-pos-edge.pos-gk::before  { content: 'GK'; }
+.rec-card-v2.v2-pos-edge.pos-def::before { content: 'DEF'; }
+.rec-card-v2.v2-pos-edge.pos-mid::before { content: 'MID'; }
+.rec-card-v2.v2-pos-edge.pos-fwd::before { content: 'FWD'; }
+.rec-card-v2.featured.v2-pos-edge { padding-left: 34px; }
+.rec-card-v2.featured.v2-pos-edge::before { width: 22px; font-size: 11px; }
+
+/* The rank chip carries an icon now rather than a ★ character. */
+.rec-rank-chip { display: inline-flex; align-items: center; gap: 5px; }
+.rec-rank-chip svg { width: 11px; height: 11px; }
+
+.rec-head { align-items: center; }
+
+/* ----- Route cards: a small portrait and the shared position edge -----
+   Smaller than a recommendation's face, and deliberately so. A route card is
+   a chart with a name attached — the stack bar is the thing you came to read —
+   so the portrait identifies the player without competing with it.
+
+   The card's own ::before was a 3px accent bar in the position's colour along
+   the top edge. The position edge says the same thing with a letter on it, so
+   the bar stands down rather than the two stacking. */
+.rp-card .rp-face {
+    position: relative;
+    flex-shrink: 0;
+    display: grid; place-items: center;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 42%,
+        color-mix(in srgb, var(--club) 32%, transparent),
+        color-mix(in srgb, var(--club) 10%, transparent) 70%,
+        transparent 74%);
+}
+.rp-card .rp-face .v2-pid-portrait { --v2-pid-face: 28px; --v2-pid-crest: 13px; }
+
+.rp-card.v2-pos-edge { padding-left: 24px; }
+.rp-card.v2-pos-edge::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 15px; height: auto;
+    border-radius: 14px 0 0 14px;
+    background: var(--v2-pos-color, var(--position-mid));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 9.5px; font-weight: 800; letter-spacing: 0;
+}
+.rp-card.v2-pos-edge.pos-gk::before  { content: 'G'; }
+.rp-card.v2-pos-edge.pos-def::before { content: 'D'; }
+.rp-card.v2-pos-edge.pos-mid::before { content: 'M'; }
+.rp-card.v2-pos-edge.pos-fwd::before { content: 'F'; }
+
+/* Icons where characters used to be. */
+.rp-nailed svg { width: 11px; height: 11px; vertical-align: -1px; }
+.rp-badge-star svg { width: 12px; height: 12px; display: block; }
+.rp-mode-btn svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 3px; }
+
+/* The All Players table wears the same head as every other panel on the page.
+   It sits inside .table-section rather than a .pa-panel of its own: that
+   section already draws the border and the surface, and nesting a second box
+   inside it would put two rounded borders 16px apart. */
+.all-players-head { margin-bottom: 10px; }
+.all-players-head .pa-panel-count {
+    font-family: var(--font-body, inherit);
+    font-size: 11.5px; font-weight: 500; color: var(--text-muted);
+    letter-spacing: 0;
+}
+
+/* ----- Chart rows as sections -----
+   Each group of charts was a heading with an underline and then some cards
+   floating on the page background, so nothing said where one group ended and
+   the next began except a gap. .pa-panel now draws the group as a box, which
+   makes it the same object as every other section on the site.
+
+   The heading loses its own bottom rule: inside a box, a border under the
+   title and a border around the box are two lines saying one thing. */
+.chart-category.pa-panel { margin-bottom: 20px; }
+.chart-category-title.pa-panel-title {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+.chart-category.pa-panel > .chart-category-title { margin-bottom: 4px; }
+.chart-category.pa-panel > .chart-category-desc { margin-top: 4px; }
+.chart-category-title.pa-panel-title svg,
+.chart-category-title.pa-panel-title i { width: 17px; height: 17px; color: var(--color-primary); }
+
+/* The cards inside a section sit on the section, so they need the next
+   surface up rather than the same one. */
+.chart-category.pa-panel .chart-card { background: var(--surface-2); }

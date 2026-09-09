@@ -292,7 +292,19 @@ function createTable(position, analyses) {
 
     const currentTimeframe = tableState.ALL.timeframe || 'l5';
 
+    /* The compact toolbar gets the page's panel head above it — an icon, a
+       title and a count — so All Players is the same shape as Recommendations,
+       Routes and the rest, and as the squad panel in My Team it was always
+       modelled on. The controls below it are unchanged; what was missing was
+       anything saying what you are looking at. */
     const toolbarHtml = position === 'ALL' ? `
+        <div class="pa-panel-head all-players-head">
+            <span class="pa-panel-title">
+                <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>
+                All players
+                <span class="pa-panel-count"><span id="headCount-${position}">${players.length}</span> in the league</span>
+            </span>
+        </div>
         <div class="compact-toolbar" id="compactToolbar-${position}">
             <div class="compact-toolbar-row">
                 <div class="position-filter-pills">

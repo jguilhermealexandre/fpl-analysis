@@ -80,8 +80,10 @@ jobs:
       # still has "no configuration" at the gateway. So watch a real browser
       # load the page and write down the request it actually makes — there is
       # nothing left to deduce after that.
+      # The rendered page is the source now, so the browser is part of the
+      # normal run and not only of the diagnostics.
       - name: Install a browser
-        if: inputs.mode == 'browser'
+        if: inputs.mode != 'inspect' && inputs.mode != 'probe' && inputs.mode != 'matrix' && inputs.mode != 'headers' && inputs.mode != 'hsweep'
         # --with-deps shells out to apt and exited 100 on the runner. The
         # hosted image already carries Chromium's shared libraries, so install
         # the browser alone.
@@ -89,7 +91,7 @@ jobs:
 
       - name: Record what the news page requests
         if: inputs.mode == 'browser'
-        run: node tools/pl-news-browser.mjs
+        run: node tools/pl-news-browser.mjs --dump
 
       - name: Fetch Premier League news
         if: inputs.mode == '' || inputs.mode == 'fetch'
