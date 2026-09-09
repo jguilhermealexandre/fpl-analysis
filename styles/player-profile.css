@@ -189,39 +189,13 @@
    toggling display jumps straight to the end (the same reason the drawers
    never slid). visibility carries the delay on the way out so the fade has
    time to finish. */
-.v2-modal.modal-overlay {
-    position: fixed; inset: 0; z-index: 220;
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px;
-    /* No wash and no backdrop-filter here — the page itself is blurred
-       instead (body.v2-blurred below), so the blur covers the content
-       rather than being a sheet of frosting between you and the modal. */
-    background: transparent;
-    opacity: 0;
-    visibility: hidden;
-    /* pointer-events:none is not optional here. Laying the overlay out so it
-       can animate leaves a full-viewport element at z-index 220 over the page;
-       without this it wins every hit test, and nothing underneath can be
-       clicked or dragged at all. */
-    pointer-events: none;
-    transition: opacity 200ms ease, visibility 0s linear 240ms;
-}
+/* The v2 modal shell moved to styles/v2-design.css.
 
-.v2-modal.modal-overlay.open {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition: opacity 200ms ease, visibility 0s;
-}
+   It lived here, and only two pages load this file — so the settings modal,
+   which opens from the sidebar on all thirteen, had none of it: no centring,
+   no page blur, no pointer-events handling. Same rules, in the sheet every
+   page loads. */
 
-/* The page behind the modal. Only .main-content is blurred — the sidebar is
-   navigation and stays legible — and it animates so the page settles out of
-   focus rather than snapping. */
-body.v2-blurred .main-content {
-    filter: blur(7px);
-    transition: filter 240ms ease;
-    pointer-events: none;
-}
 
 @media (prefers-reduced-motion: reduce) {
     body.v2-blurred .main-content, .main-content { transition: none; }

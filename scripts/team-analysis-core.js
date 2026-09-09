@@ -320,7 +320,7 @@
                 ]);
                 managerData = await mgrRes.json();
                 // The sidebar's account block names the team from this.
-                if (typeof v2MountAccount === 'function') v2MountAccount();
+                if (typeof v2SetTeamName === 'function') v2SetTeamName(managerData.name);
                 picksData = await picksRes.json();
                 managerHistory = await histRes.json();
                 const transferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;

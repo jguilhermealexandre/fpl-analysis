@@ -942,21 +942,20 @@ html.v2-theme body {
        — on nothing at all. Three depths on one page reads as a mistake even
        when you cannot name it.
 
-       --shadow-sm is aliased to this below rather than replaced everywhere,
-       so the fifteen rules that ask for it keep working and get the right
-       answer. And the ambient half is lighter than it was: the complaint was
-       that the shadow was noticeable, and a card should look lifted without
-       you seeing the shadow that lifts it. */
-    --v2-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.03),
-                      0 8px 22px -16px rgba(16, 24, 40, 0.10);
+       The value is the one --shadow-sm already carried: a tight double pair,
+       close to the edge. --v2-card-shadow is defined as it rather than the
+       other way round, so both names resolve to the same pixels and the
+       fifteen rules that ask for --shadow-sm need no edit. */
+    --v2-card-shadow: 0 1px 2px rgba(17, 15, 15, 0.05),
+                      0 1px 3px rgba(17, 15, 15, 0.06);
     --shadow-sm: var(--v2-card-shadow);
 }
 
 [data-theme="dark"] {
     --v2-ground: #12161B;
     --v2-card-border: rgba(255, 255, 255, 0.07);
-    --v2-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.26),
-                      0 8px 22px -16px rgba(0, 0, 0, 0.48);
+    --v2-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4),
+                      0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-sm: var(--v2-card-shadow);
 }
 
@@ -1802,7 +1801,7 @@ html.v2-theme body {
     cursor: pointer;
     transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
 }
-.v2-page-help svg { width: 14px; height: 14px; }
+.v2-page-help { font-family: var(--font-display); font-size: 14px; font-weight: 800; line-height: 1; }
 .v2-page-help:hover {
     color: #fff;
     border-color: var(--color-primary);
@@ -1839,7 +1838,15 @@ html.v2-theme body {
 .chart-category.pa-panel,
 .charts-filter-panel,
 .v2-info-panel,
-.sq-panel {
+.sq-panel,
+.input-section,
+.momentum-matrix-section,
+.scout-report-panel,
+.news-card,
+.news-card-hero,
+.sd-card,
+.v2-desk-card,
+.v2-qa-card {
     box-shadow: var(--v2-card-shadow);
 }
 
@@ -2122,3 +2129,143 @@ html.v2-theme body {
 
 [data-theme="dark"] .news-card-category.cat-pl { background: rgba(151, 71, 255, 0.16); color: #B794F6; }
 [data-theme="dark"] .news-card-category.cat-guardian { background: rgba(90, 165, 214, 0.16); color: #7EC2E8; }
+
+
+/* ===== The help drawer, on every page that opens one =====
+
+   .detail-overlay and .detail-panel were defined in my-team.css, and only My
+   Team loads that. So on Players, Teams and Rivals the drawer opened into the
+   DOM with no styles at all — present, technically visible, and impossible to
+   see. Clicking the ? did exactly what it was told and nothing appeared.
+
+   Self-contained here, under its own class, so it cannot be lost that way
+   again. The My Team drawer keeps its own richer markup and picks these up
+   too. */
+.detail-overlay {
+    position: fixed; inset: 0; z-index: 220;
+    background: rgba(15, 23, 42, 0.34);
+    opacity: 0; visibility: hidden;
+    transition: opacity 200ms ease, visibility 200ms ease;
+}
+.detail-overlay.show { opacity: 1; visibility: visible; }
+
+.detail-overlay .detail-panel {
+    position: absolute; top: 0; right: 0;
+    width: 100%; max-width: 520px; height: 100%;
+    display: flex; flex-direction: column;
+    background: var(--surface-1);
+    border-left: 1px solid var(--border-emphasis);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.22);
+    transform: translateX(100%);
+    transition: transform 240ms ease;
+}
+.detail-overlay.show .detail-panel { transform: translateX(0); }
+
+.detail-overlay .detail-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-shrink: 0;
+    padding: var(--v2-title-y, 20px) var(--v2-title-x, 18px);
+    border-bottom: 1px solid var(--border-subtle);
+}
+.detail-overlay .detail-header .player-name {
+    font-family: var(--font-display);
+    font-size: 17px; font-weight: 650; color: var(--text-primary);
+}
+.detail-overlay .detail-close {
+    width: 30px; height: 30px; flex-shrink: 0;
+    display: grid; place-items: center;
+    border: none; border-radius: 50%;
+    background: var(--surface-2); color: var(--text-secondary);
+    font-size: 20px; line-height: 1; cursor: pointer;
+}
+.detail-overlay .detail-close:hover { background: var(--surface-3); color: var(--text-primary); }
+
+.detail-overlay .detail-body {
+    overflow-y: auto;
+    padding: 4px var(--v2-title-x, 18px) 24px;
+}
+
+.help-intro { font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); margin: 14px 0 4px; }
+.help-section-title {
+    margin-top: 18px; margin-bottom: 2px;
+    font-size: 9.5px; font-weight: 800; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--text-muted);
+}
+.help-step {
+    display: flex; gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.help-step:last-child { border-bottom: none; }
+.help-step-title { font-size: 12.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+.help-step-text { font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+
+@media (max-width: 560px) {
+    .detail-overlay .detail-panel { max-width: none; }
+}
+
+
+/* ===== The v2 modal shell =====
+   Moved from player-profile.css, which only two pages load — so the settings
+   modal, which opens from the sidebar on all thirteen, was getting none of it.
+   The page behind a modal blurs rather than the overlay frosting over it,
+   which is why there is no wash on the overlay itself. ===== */
+.v2-modal.modal-overlay {
+    position: fixed; inset: 0; z-index: 220;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    /* No wash and no backdrop-filter here — the page itself is blurred
+       instead (body.v2-blurred below), so the blur covers the content
+       rather than being a sheet of frosting between you and the modal. */
+    background: transparent;
+    opacity: 0;
+    visibility: hidden;
+    /* pointer-events:none is not optional here. Laying the overlay out so it
+       can animate leaves a full-viewport element at z-index 220 over the page;
+       without this it wins every hit test, and nothing underneath can be
+       clicked or dragged at all. */
+    pointer-events: none;
+    transition: opacity 200ms ease, visibility 0s linear 240ms;
+}
+
+.v2-modal.modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 200ms ease, visibility 0s;
+}
+
+/* The page behind the modal. Only .main-content is blurred — the sidebar is
+   navigation and stays legible — and it animates so the page settles out of
+   focus rather than snapping. */
+body.v2-blurred .main-content {
+    filter: blur(7px);
+    transition: filter 240ms ease;
+    pointer-events: none;
+}
+
+
+/* ----- The notification panel, opened from the sidebar -----
+   It was written for a bell in the dashboard header: 380px wide, anchored to
+   the right edge of its host. In the sidebar that host is ~230px wide and at
+   the left of the screen, so `right: 0` hung the panel off the left edge and
+   most of it was outside the viewport — which is why it could not be read.
+
+   Beside the sidebar instead, and rising from the bell rather than dropping
+   from it, because the bell is near the bottom of the column. */
+.v2-sidebar .nt-drop {
+    top: auto;
+    bottom: -6px;
+    right: auto;
+    left: calc(100% + 10px);
+    width: min(360px, calc(100vw - var(--v2-sidebar-w, 232px) - 24px));
+    max-height: min(70vh, 520px);
+}
+
+/* The rows themselves, which had nothing but the inline rules on the
+   dashboard — so on any page that opens this they were unstyled text. */
+.nt-panel { font-size: 12.5px; }
+.nt-row { color: inherit; }
+.nt-row-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.nt-row-body { font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); }
+.nt-row-when { font-size: 10px; color: var(--text-muted); white-space: nowrap; }

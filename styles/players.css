@@ -4898,7 +4898,12 @@
     }
     .rec-card-v2.featured.has-hero .pdm-hero {
         grid-column: 1;
-        min-height: 340px;
+        /* 340 was taller than the card needed and taller than the photo has
+           pixels for. The source is 250x250; stretched to fill a 340px column
+           it is upscaled by a third, which is what "pixelated" looks like. The
+           panel now takes its height from the reading beside it, and the
+           figure is capped at its own size below. */
+        min-height: 0;
         border-radius: var(--v2-card-radius, 16px) 0 0 var(--v2-card-radius, 16px);
         /* Name, then price, then whatever height is left for the figure. */
         grid-template-columns: minmax(0, 1fr);
@@ -4928,13 +4933,18 @@
     .rec-card-v2.featured.has-hero .pdm-hero-photo {
         grid-row: 3;
         height: auto; width: 100%; min-height: 0;
-        align-self: stretch;
+        align-self: end;
         align-items: flex-end; justify-content: center;
         padding-top: 14px;
         overflow: hidden;
     }
+    /* Never larger than the file. The library serves 250x250 and the fallback
+       110x140; drawn above either of those the image is invented rather than
+       resized, and no amount of object-fit hides that. Capped at 250, it is
+       sharp at every width the card can be. */
     .rec-card-v2.featured.has-hero .pdm-hero-face {
-        height: 100%; width: 100%; max-width: none; max-height: 100%;
+        height: auto; width: auto;
+        max-width: 100%; max-height: min(250px, 100%);
         object-fit: contain; object-position: bottom center;
     }
 

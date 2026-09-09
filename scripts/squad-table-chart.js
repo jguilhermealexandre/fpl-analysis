@@ -292,10 +292,10 @@
                         title="${player.isVice ? 'Remove the vice armband' : 'Make vice-captain'}"
                         aria-label="${player.isVice ? 'Remove the vice armband from' : 'Make vice-captain:'} ${escHTML(player.name)}">V</button>
                     <button class="sq-act" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
-                        <i data-lucide="repeat" style="width:14px;height:14px;"></i>
+                        ${v2Icon('swap')}
                     </button>
                     <button class="sq-act" onclick="event.stopPropagation(); toggleSquadRowDetail(${player.id})" title="Open full player profile" aria-label="Open ${escHTML(player.name)}'s full profile">
-                        <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
+                        ${v2Icon('expand')}
                     </button>
                 </div>
             </div>`;

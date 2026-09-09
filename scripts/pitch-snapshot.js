@@ -389,9 +389,11 @@
                     title="${escHTML(swapTitle)}">
                 ${isCap ? '<span class="pcard-armband cap" title="Captain — points doubled">C</span>'
                         : isVice ? '<span class="pcard-armband vice" title="Vice-captain — takes the armband if the captain does not play">V</span>' : ''}
-                <div class="pcard-cv" role="group" aria-label="Set captain or vice">
-                    <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make ${escHTML(p.name)} captain">Set C</button>
-                    <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make ${escHTML(p.name)} vice-captain">Set V</button>
+                <div class="pcard-cv" role="group" aria-label="Actions for ${escHTML(p.name)}">
+                    <button class="cv-toggle cap ${isCap ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotCaptain(${p.id})" title="Make ${escHTML(p.name)} captain" aria-label="Make ${escHTML(p.name)} captain">C</button>
+                    <button class="cv-toggle vice ${isVice ? 'active' : ''}" onclick="event.stopPropagation(); setSnapshotVice(${p.id})" title="Make ${escHTML(p.name)} vice-captain" aria-label="Make ${escHTML(p.name)} vice-captain">V</button>
+                    <button class="cv-toggle cv-ico" onclick="event.stopPropagation(); openTransferPanel(${p.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(p.name)}">${v2Icon('swap')}</button>
+                    <button class="cv-toggle cv-ico" onclick="event.stopPropagation(); toggleSquadRowDetail(${p.id})" title="Open full player profile" aria-label="Open ${escHTML(p.name)}'s full profile">${v2Icon('expand')}</button>
                 </div>
                 <div class="pcard-flags">${injuryBadge(p)}${marketBadge(p)}</div>
                 ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p, 'v2-pid-pitch') : ''}

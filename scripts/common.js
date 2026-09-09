@@ -707,10 +707,22 @@ function v2AccountInitials(name) {
 function v2AccountName() {
     const st = v2Settings();
     if (st.teamName) return st.teamName;
+    /* Set by whichever page has loaded the manager. The squad page keeps it in
+       a global; the dashboard keeps it in a const inside its own loader, which
+       is invisible from here — so that page hands it over rather than this one
+       reaching for a variable that may not exist. */
+    if (typeof window !== 'undefined' && window.__v2TeamName) return window.__v2TeamName;
     try {
         if (typeof managerData !== 'undefined' && managerData && managerData.name) return managerData.name;
     } catch (e) { /* no manager on this page */ }
     return 'Your team';
+}
+
+/* One place for a page to say what the team is called. */
+function v2SetTeamName(name) {
+    if (typeof window === 'undefined' || !name) return;
+    window.__v2TeamName = name;
+    v2MountAccount();
 }
 
 function v2MountAccount() {
@@ -736,7 +748,16 @@ function v2MountAccount() {
     const nameEl = document.getElementById('v2AccountName');
     if (nameEl) nameEl.textContent = name;
     const subEl = document.getElementById('v2AccountSub');
-    if (subEl) subEl.textContent = st.plan === 'premium' ? 'Premium' : 'Free plan';
+    if (subEl) {
+        const idLabel = teamId === DEMO_TEAM_ID ? 'Demo squad' : 'ID ' + teamId;
+        subEl.textContent = `${idLabel} · ${st.plan === 'premium' ? 'Premium' : 'Free'}`;
+    }
+
+    /* The Team ID badge below said the same thing this block says, so two
+       controls claimed to be your identity and only one of them could be acted
+       on. The badge stands down while this is up; the input it toggles back to
+       is still there, and Settings and v2ChangeTeam() reach it. */
+    document.getElementById('navTidBadge')?.classList.add('hidden');
 }
 
 /* The modal. Built on demand rather than shipped in every page's markup,
@@ -757,7 +778,7 @@ function openSettingsModal(section) {
         <div class="modal-container" role="dialog" aria-modal="true" aria-label="Settings">
             <div class="v2-set-head">
                 <span class="v2-section-title">
-                    <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>
+                    <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.64 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>
                     Settings
                 </span>
                 <button class="modal-close" onclick="closeSettingsModal()" aria-label="Close">&times;</button>
@@ -788,7 +809,7 @@ function openSettingsModal(section) {
                     <div class="v2-set-label">Connected squad</div>
                     <div class="v2-set-row between">
                         <span class="v2-set-value">${teamId ? 'FPL team ID ' + esc(teamId) : 'No team connected yet'}</span>
-                        <button class="v2-set-ghost" onclick="closeSettingsModal(); document.getElementById('navTeamIdInput')?.focus();">Change</button>
+                        <button class="v2-set-ghost" onclick="closeSettingsModal(); v2ChangeTeam();">Change</button>
                     </div>
                 </div>
 
@@ -837,15 +858,30 @@ function openSettingsModal(section) {
         </div>
     </div>`);
 
+    /* The page blurs behind it, the way the visual-analysis modal does — the
+       overlay itself stays clear rather than frosting over the content. */
+    document.body.classList.add('v2-blurred');
+
     if (section === 'plan') {
         document.getElementById('v2SetPlan')?.scrollIntoView({ block: 'nearest' });
     }
+}
+
+/* Back to the Team ID input, from wherever you asked. The account block hides
+   the badge, so the page's own changeTeamIdNav() is no longer reachable by
+   clicking something you can see — this is that door. */
+function v2ChangeTeam() {
+    const host = document.getElementById('v2Account');
+    if (host) host.hidden = true;
+    if (typeof showNavTeamInput === 'function') showNavTeamInput();
+    document.getElementById('navTeamIdInput')?.focus();
 }
 
 function closeSettingsModal(event) {
     // Only the backdrop dismisses, not a click inside the panel.
     if (event && event.target !== event.currentTarget) return;
     document.getElementById('v2SettingsModal')?.remove();
+    document.body.classList.remove('v2-blurred');
 }
 
 /* Checkout is not built. Saying so is better than a button that does nothing
@@ -898,13 +934,14 @@ function v2ApplySettings() {
  * of <body>, so a page opts in with one call and no markup.
  */
 function v2HelpButtonHTML() {
+    /* A question mark, drawn as type rather than as an icon.
+
+       It was an SVG of a ring with a small ? inside it, sitting inside a button
+       that is itself a ring — so it read as a green circle with something
+       indistinct in the middle, and at 14px the mark simply did not survive.
+       A ? is a character; the button is the circle. */
     return '<button type="button" class="v2-page-help" onclick="openHelpOverlay()"'
-        + ' aria-label="How to use this page" data-tooltip="How to use this page">'
-        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
-        + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-        + '<circle cx="12" cy="12" r="10"/>'
-        + '<path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>'
-        + '</svg></button>';
+        + ' aria-label="How to use this page" data-tooltip="How to use this page">?</button>';
 }
 
 /* The drawer. `sections` is [{ title, steps: [{ title, text }] }], which is
@@ -1304,7 +1341,8 @@ const V2_ICON_PATHS = {
     folders: '<path d="M3 8a2 2 0 0 1 2-2h3l2 2h6a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M7 6V5a2 2 0 0 1 2-2h3l2 2h4a2 2 0 0 1 2 2v1"/>',
     lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
     gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
-    pointer: '<path d="M8 3v10l3-2 2 5 2-1-2-5h4Z"/>'
+    pointer: '<path d="M8 3v10l3-2 2 5 2-1-2-5h4Z"/>',
+    expand: '<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>'
 };
 
 function v2Icon(name) {
@@ -1706,7 +1744,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=192')
+    fetch('footer.html?v=193')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
