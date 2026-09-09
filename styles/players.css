@@ -4874,42 +4874,21 @@
 
 .rec-head { align-items: center; }
 
-/* ----- Route cards: a small portrait and the shared position edge -----
-   Smaller than a recommendation's face, and deliberately so. A route card is
-   a chart with a name attached — the stack bar is the thing you came to read —
-   so the portrait identifies the player without competing with it.
-
-   The card's own ::before was a 3px accent bar in the position's colour along
-   the top edge. The position edge says the same thing with a letter on it, so
-   the bar stands down rather than the two stacking. */
-.rp-card .rp-face {
-    position: relative;
-    flex-shrink: 0;
-    display: grid; place-items: center;
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 42%,
-        color-mix(in srgb, var(--club) 32%, transparent),
-        color-mix(in srgb, var(--club) 10%, transparent) 70%,
-        transparent 74%);
+/* ----- Route cards, on the shared mini hero -----
+   The portrait, the crest, the club and the price are all in the header now,
+   which is the same block the recommendation cards and the modal use. What is
+   left in the card's own head is this card's one headline number — how many
+   ways the player scores — and whether he is nailed on. */
+.rp-card.has-hero { padding: 0; }
+.rp-card.has-hero::before { display: none; }
+.rp-card.has-hero .rp-body { padding: 12px 14px 12px; }
+.rp-card.has-hero .rp-head { justify-content: space-between; margin-bottom: 10px; }
+.rp-card.has-hero .rp-nailed {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 700; color: var(--text-muted);
 }
-.rp-card .rp-face .v2-pid-portrait { --v2-pid-face: 28px; --v2-pid-crest: 13px; }
-
-.rp-card.v2-pos-edge { padding-left: 24px; }
-.rp-card.v2-pos-edge::before {
-    content: '';
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 15px; height: auto;
-    border-radius: 14px 0 0 14px;
-    background: var(--v2-pos-color, var(--position-mid));
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 9.5px; font-weight: 800; letter-spacing: 0;
-}
-.rp-card.v2-pos-edge.pos-gk::before  { content: 'G'; }
-.rp-card.v2-pos-edge.pos-def::before { content: 'D'; }
-.rp-card.v2-pos-edge.pos-mid::before { content: 'M'; }
-.rp-card.v2-pos-edge.pos-fwd::before { content: 'F'; }
+.rp-card.has-hero .shortlist-star-card { top: 8px; right: 8px; }
+.rp-card.has-hero .shortlist-star-card:not(.shortlisted) { color: rgba(255,255,255,.82); opacity: 1; }
 
 /* Icons where characters used to be. */
 .rp-nailed svg { width: 11px; height: 11px; vertical-align: -1px; }
@@ -5033,3 +5012,94 @@
     font-size: 9.5px; font-weight: 800; letter-spacing: .07em;
     text-transform: uppercase; color: var(--text-muted);
 }
+
+/* ----- Recommendation cards, built on the shared hero -----
+   The header is now the same block the player modal uses, so the card and the
+   thing it opens are recognisably one object. The card's own padding moves
+   into .rec-body: the hero runs edge to edge, which is the whole point of it. */
+.rec-card-v2.has-hero { padding: 0; gap: 0; }
+.rec-card-v2.has-hero .rec-body {
+    display: flex; flex-direction: column; gap: 9px;
+    padding: 13px 15px 14px;
+}
+.rec-card-v2.featured.has-hero .rec-body { padding: 16px 20px 18px; }
+
+/* The rank and the verdict live in the hero's own chip now, and the club,
+   price and portrait are in its text — so what is left for the first row of
+   the body is the ownership note beside the projection. */
+.rec-card-v2.has-hero .rec-head { align-items: center; justify-content: space-between; }
+.rec-card-v2.has-hero .rec-id { flex: 1; min-width: 0; }
+/* The ownership reading, as a chip rather than a repeat of the figure the
+   hero already shows. */
+.rec-own-line .rec-own {
+    display: inline-block;
+    padding: 3px 9px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--border-subtle);
+    font-size: 10px; font-weight: 700; color: var(--text-muted);
+    cursor: help;
+}
+.rec-own-line .rec-own.diff {
+    background: color-mix(in srgb, var(--color-info) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-info) 35%, transparent);
+    color: var(--color-info);
+}
+.rec-own-line .rec-own.template {
+    background: color-mix(in srgb, var(--text-secondary) 10%, transparent);
+    color: var(--text-secondary);
+}
+
+/* The star sits on the hero, which is dark, so it needs to be white until it
+   is gold rather than the muted grey that reads on a light card. */
+.rec-card-v2.has-hero .shortlist-star-card { top: 10px; right: 10px; }
+.rec-card-v2.has-hero .shortlist-star-card:not(.shortlisted) { color: rgba(255,255,255,.82); opacity: 1; }
+
+/* The old rank chip and the standalone position chip are both inside the hero
+   now; nothing renders them any more, and these keep a stale one from
+   reappearing mid-card if some other view still emits them. */
+.rec-card-v2.has-hero > .rec-rank-chip { display: none; }
+
+/* The featured card's club wash on the body would fight the hero above it. */
+.rec-card-v2.featured.has-hero { background: var(--surface-1); }
+
+/* ----- Rising Form and Purple Patch, on the same hero -----
+   Both drew their own header — a rank chip, a name, a position pill, a score —
+   each styled by its own view and none of them matching the card next door or
+   the modal it opens. The hero replaces all three parts; what is left is the
+   number that view exists to show. */
+.rising-card.has-hero,
+.pp-card.has-hero { padding: 0; overflow: hidden; }
+.rising-card.has-hero .rising-body,
+.pp-card.has-hero .pp-body { padding: 12px 14px 13px; }
+
+.rising-card.has-hero .rising-card-top,
+.pp-card.has-hero .pp-card-top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 10px;
+}
+
+.rising-card.has-hero .shortlist-star-card,
+.pp-card.has-hero .shortlist-star-card { top: 8px; right: 8px; }
+.rising-card.has-hero .shortlist-star-card:not(.shortlisted),
+.pp-card.has-hero .shortlist-star-card:not(.shortlisted) { color: rgba(255,255,255,.82); opacity: 1; }
+
+/* ----- The player modal's header is the shared hero -----
+   It was a grey rounded square with two initials beside a name, which read as
+   a different product from the card that opened it. Now it is the same block,
+   at full size: the hero paints its own club background and runs edge to edge,
+   so the header's own padding and border go. */
+.player-modal-header.is-hero {
+    padding: 0;
+    border-bottom: none;
+    background: none;
+    position: relative;
+}
+.player-modal-header.is-hero .pdm-hero { border-radius: 0; }
+.player-modal-header.is-hero .player-modal-close {
+    position: absolute; top: 14px; right: 16px; z-index: 3;
+    width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center;
+    border: none; cursor: pointer;
+    background: rgba(255, 255, 255, .22);
+    color: #fff; font-size: 20px; line-height: 1;
+}
+.player-modal-header.is-hero .player-modal-close:hover { background: rgba(255, 255, 255, .34); }

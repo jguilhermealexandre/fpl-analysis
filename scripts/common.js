@@ -535,6 +535,70 @@ function v2PosEdgeClass(position) {
     return `v2-pos-edge pos-${V2_POS_CLASS[position] || 'mid'}`;
 }
 
+/* ===== The player hero, for anything that shows one player =====
+ *
+ * A name over the club's colour, the portrait standing on the bottom edge, the
+ * crest beside the club. It was written for the squad analysis modal and built
+ * inline there, so every other player card on the site invented its own header
+ * and none of them matched. This is that header, as one function, so a
+ * recommendation card, a rising-form card, a route card and the players page's
+ * modal are the same object at three sizes.
+ *
+ * `opts`:
+ *   size   'full' (a modal), 'compact' (a card), 'mini' (a small card)
+ *   chip   a short verdict label — "★ Top pick", "#4", "STAR"
+ *   chipClass  a modifier for it
+ *   sub    what goes under the club name, if anything
+ *
+ * The player needs `code` for the portrait and `teamCode`/`teamId` for the
+ * crest; without either it degrades to initials and a club name rather than to
+ * a hole where a face was.
+ */
+function v2PlayerHeroHTML(player, opts) {
+    if (!player) return '';
+    const o = opts || {};
+    const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
+    const colours = typeof clubColours === 'function'
+        ? clubColours(player) : { shirt: '#37003C', ink: '#fff' };
+    const code = typeof v2TeamCode === 'function'
+        ? v2TeamCode(player.teamId, player.teamCode) : player.teamCode;
+
+    /* The last word is the name people use, and it is what the hero says
+       large; anything before it goes above in a lighter weight. A single-word
+       name has no first line, and the layout closes up rather than leaving a
+       gap where one would have been. */
+    const parts = String(player.name || '').trim().split(/\s+/);
+    const last = parts.length ? parts[parts.length - 1] : '';
+    const first = parts.slice(0, -1).join(' ');
+
+    const sizeClass = o.size === 'mini' ? ' is-mini' : o.size === 'full' ? '' : ' is-compact';
+    const price = player.price != null ? `£${Number(player.price).toFixed(1)}m` : '';
+    const own = player.ownership != null ? player.ownership
+        : (player.selectedBy != null ? player.selectedBy : null);
+
+    return `<div class="pdm-hero${sizeClass}" style="--club:${colours.shirt};--club-ink:${colours.ink};">
+        <div class="pdm-hero-shape" aria-hidden="true"></div>
+        <div class="pdm-hero-photo">
+            ${typeof playerPhotoLargeHTML === 'function' && player.code != null
+                ? playerPhotoLargeHTML(player.code, 'pdm-hero-face') : ''}
+        </div>
+        <div class="pdm-hero-text">
+            ${first ? `<span class="pdm-hero-first">${esc(first)}</span>` : ''}
+            <span class="pdm-hero-last">${esc(last)}</span>
+            <span class="pdm-hero-meta">
+                ${code != null ? `<img class="pdm-hero-crest" src="https://resources.premierleague.com/premierleague/badges/50/t${code}.png" alt="" draggable="false" onerror="this.remove()">` : ''}
+                <span>${esc(player.team || '')}</span>
+                ${o.sub ? `<em>•</em><span>${esc(o.sub)}</span>` : ''}
+            </span>
+        </div>
+        <div class="pdm-hero-side">
+            ${o.chip ? `<span class="pdm-hero-chip ${o.chipClass || ''}">${o.chip}</span>` : ''}
+            ${price ? `<span class="pdm-hero-price">${price}</span>` : ''}
+            ${own != null ? `<span class="pdm-hero-own">${Number(own).toFixed(1)}% owned</span>` : ''}
+        </div>
+    </div>`;
+}
+
 /* ===== Loose card groups become sections =====
  *
  * Several pages are built as a flat run of heading, description, content,
@@ -1151,7 +1215,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=185')
+    fetch('footer.html?v=186')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

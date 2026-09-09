@@ -1606,3 +1606,136 @@ html.v2-theme body {
 .v2-section .strength-card,
 .v2-section .rival-card,
 .v2-section .insight-card { background: var(--surface-2); }
+
+
+/* ===== The player hero =====
+
+   A player's name over his club's colour, with the portrait standing on the
+   bottom edge and the crest beside the club name. It was written for the squad
+   analysis modal and lived in my-team.css, which meant it was reachable from
+   one page — so every other player card on the site went its own way and none
+   of them looked like this one.
+
+   Moved here unchanged so the players page can use the same thing for its
+   modal and its cards. --club is the shirt colour and --club-ink something
+   legible on top of it; both come from clubColours() in common.js.
+   ===================================================================== */
+.pdm-hero {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0 22px;
+    min-height: 176px;
+    padding: 0 26px;
+    background: var(--club, #37003C);
+    color: var(--club-ink, #fff);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.pdm-hero-shape {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+        linear-gradient(108deg, rgba(255, 255, 255, .10) 0 32%, transparent 32.4% 44%,
+                        rgba(255, 255, 255, .07) 44.4% 61%, transparent 61.4%),
+        radial-gradient(120% 150% at 88% 0%, rgba(255, 255, 255, .16), transparent 62%),
+        linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, .22));
+}
+.pdm-hero-photo {
+    position: relative; z-index: 1;
+    align-self: end; height: 176px; width: 178px;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+/* The portrait fails for a player the photo endpoint has never had — the
+   <img> removes itself — and a 178px hole where a face was is worse than no
+   face at all, so the column collapses with it. */
+.pdm-hero-photo:empty { width: 0; }
+.pdm-hero-face {
+    height: 176px; width: auto; max-width: none;
+    object-fit: contain; object-position: bottom;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .3));
+}
+.pdm-hero-text {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 26px 0 24px; min-width: 0;
+}
+.pdm-hero-first {
+    font-family: var(--font-display, inherit);
+    font-size: 25px; font-weight: 300; line-height: 1.1;
+    letter-spacing: -.01em; opacity: .92;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pdm-hero-last {
+    font-family: var(--font-display, inherit);
+    font-size: 40px; font-weight: 800; line-height: 1.02;
+    letter-spacing: -.02em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pdm-hero-meta {
+    display: flex; align-items: center; gap: 8px; margin-top: 9px;
+    font-size: 13.5px; font-weight: 600; opacity: .95;
+}
+.pdm-hero-meta em { font-style: normal; opacity: .55; }
+.pdm-hero-crest { width: 22px; height: 22px; object-fit: contain; }
+
+.pdm-hero-side {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+    padding: 26px 0 24px; text-align: right;
+}
+.pdm-hero-chip {
+    padding: 3px 11px; border-radius: 999px; margin-bottom: 4px;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .06em;
+    background: rgba(255, 255, 255, .95); color: #111;
+}
+.pdm-hero-chip.v-sell { background: #DC2626; color: #fff; }
+.pdm-hero-chip.v-monitor { background: #F59E0B; color: #1F1F1F; }
+.pdm-hero-chip.v-star, .pdm-hero-chip.v-hold { background: rgba(255, 255, 255, .95); color: #111; }
+.pdm-hero-price {
+    font-family: var(--font-mono, monospace);
+    font-size: 24px; font-weight: 800; line-height: 1.1;
+}
+.pdm-hero-own { font-size: 11.5px; opacity: .8; }
+
+/* ----- The compact form -----
+   The same hero at card size. A recommendation card, a rising-form card and a
+   route card are all "one player, at a glance", which is what the hero says —
+   so they say it the same way rather than each inventing a header. The portrait
+   is smaller and the name comes down with it; nothing else changes. */
+.pdm-hero.is-compact {
+    min-height: 92px;
+    padding: 0 14px;
+    gap: 0 12px;
+    border-radius: var(--v2-card-radius, 16px) var(--v2-card-radius, 16px) 0 0;
+}
+.pdm-hero.is-compact .pdm-hero-photo { height: 92px; width: 84px; }
+.pdm-hero.is-compact .pdm-hero-face { height: 92px; }
+.pdm-hero.is-compact .pdm-hero-text { padding: 12px 0 11px; }
+.pdm-hero.is-compact .pdm-hero-first { font-size: 13px; }
+.pdm-hero.is-compact .pdm-hero-last { font-size: 20px; }
+.pdm-hero.is-compact .pdm-hero-meta { font-size: 11px; }
+.pdm-hero.is-compact .pdm-hero-crest { width: 16px; height: 16px; }
+.pdm-hero.is-compact .pdm-hero-side { padding: 12px 0 11px; }
+.pdm-hero.is-compact .pdm-hero-price { font-size: 18px; }
+.pdm-hero.is-compact .pdm-hero-own { font-size: 10px; }
+.pdm-hero.is-compact .pdm-hero-chip { font-size: 9px; padding: 2px 7px; }
+
+/* Smaller still, for the route cards — there the chart under the header is
+   the subject and the header only has to say who. */
+.pdm-hero.is-mini { min-height: 72px; padding: 0 12px; }
+.pdm-hero.is-mini .pdm-hero-photo { height: 72px; width: 62px; }
+.pdm-hero.is-mini .pdm-hero-face { height: 72px; }
+.pdm-hero.is-mini .pdm-hero-text { padding: 9px 0 8px; }
+.pdm-hero.is-mini .pdm-hero-first { display: none; }
+.pdm-hero.is-mini .pdm-hero-last { font-size: 16px; }
+.pdm-hero.is-mini .pdm-hero-meta { font-size: 10px; }
+.pdm-hero.is-mini .pdm-hero-side { padding: 9px 0 8px; }
+.pdm-hero.is-mini .pdm-hero-price { font-size: 15px; }
+
+@media (max-width: 520px) {
+    .pdm-hero.is-compact { min-height: 80px; }
+    .pdm-hero.is-compact .pdm-hero-photo { height: 80px; width: 66px; }
+    .pdm-hero.is-compact .pdm-hero-face { height: 80px; }
+    .pdm-hero.is-compact .pdm-hero-last { font-size: 17px; }
+}
