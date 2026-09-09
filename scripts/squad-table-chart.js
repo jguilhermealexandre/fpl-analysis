@@ -224,9 +224,9 @@
            It used to expand in place, which meant the row you had just clicked
            was pushed off the top of the screen by its own detail, and comparing
            two players meant scrolling past a full profile to reach the second
-           one. openPlayerModal() lives in panels-and-tabs.js with the profile
-           builder; these two are kept as the names the rest of the page and the
-           dashboard deep links already call. */
+           one. openPlayerModal() lives in scripts/player-profile.js with the
+           profile builder; these two are kept as the names the rest of the page
+           and the dashboard deep links already call. */
         function expandSquadRow(playerId) {
             toggleSquadRowDetail(playerId);
         }

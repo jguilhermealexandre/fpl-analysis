@@ -1,8 +1,12 @@
-/* Bumped to v7 along with the data-cache key fix below. The bump is the fix for
-   everyone already carrying the bug: activate deletes every cache whose name is
-   not this one, and that is the only thing that reclaims the entries the old key
-   piled up on devices in the wild. */
-const CACHE_NAME = 'easyfpl-v7';
+/* Bumped to v8 with the shared player profile card: styles/player-profile.css
+   and scripts/player-profile.js join the precache list below, and cache.addAll
+   is atomic — a device holding the v7 list would never fetch either.
+
+   v7 went with the data-cache key fix below. The bump is the fix for everyone
+   already carrying the bug: activate deletes every cache whose name is not this
+   one, and that is the only thing that reclaims the entries the old key piled up
+   on devices in the wild. */
+const CACHE_NAME = 'easyfpl-v8';
 
 const STATIC_ASSETS = [
   '/',
@@ -22,6 +26,7 @@ const STATIC_ASSETS = [
   '/styles/players.css',
   '/styles/teams.css',
   '/styles/my-team.css',
+  '/styles/player-profile.css',
   '/scripts/error-monitor.js',
   '/scripts/common.js',
   '/scripts/xp-engine.js',
@@ -29,6 +34,7 @@ const STATIC_ASSETS = [
   '/scripts/transfer-engine.js',
   '/scripts/players-ai.js',
   '/scripts/players-tables.js',
+  '/scripts/player-profile.js',
   '/footer.html',
 ];
 

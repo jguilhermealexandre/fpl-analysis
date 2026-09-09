@@ -4,7 +4,8 @@
    just played, as opposed to every other panel on this page, which is about
    the rounds still to come.
 
-   Reads picksData (the squad as it was submitted for currentGW), the per-GW
+   Reads reviewPicksData (the squad as it was submitted for currentGW — NOT
+   picksData, which by then has next week's transfers in it), the per-GW
    rows in players-data.json, and the event totals FPL publishes in
    bootstrap-static. Nothing here projects anything.
 
@@ -172,10 +173,24 @@
 
         // ===== THE REVIEW =====
 
-        // Only ever the gameweek picksData describes. Reviewing an earlier round
-        // would pair this week's squad with last week's scores.
+        /* The squad that played the round, not the squad being planned.
+
+           picksData holds the second of those from the moment a round ends:
+           transfers made for the next gameweek are replayed into it so every
+           forward-looking panel works on the real team (see
+           applyPendingTransfers() in scripts/common.js). Reviewing with it would
+           credit last weekend's points to players who were not in the squad when
+           they were scored — and blank the ones who were. reviewPicksData is the
+           untouched response for currentGW, kept for exactly this. */
+        function gwReviewPicks() {
+            return (typeof reviewPicksData !== 'undefined' && reviewPicksData) || picksData || null;
+        }
+
+        // Only ever the gameweek the review picks describe. Reviewing an earlier
+        // round would pair this week's squad with last week's scores.
         function gwReviewTarget() {
-            if (!picksData || !picksData.picks || !currentGW) return null;
+            const src = gwReviewPicks();
+            if (!src || !src.picks || !currentGW) return null;
             return gwHasStarted(currentGW) ? currentGW : null;
         }
 
@@ -183,8 +198,9 @@
             const gw = gwReviewTarget();
             if (!gw) return null;
 
+            const src = gwReviewPicks();
             const ev = (typeof gwEvents !== 'undefined' ? gwEvents : []).find(e => e.id === gw) || {};
-            const eh = picksData.entry_history || {};
+            const eh = src.entry_history || {};
             const histRows = managerHistory?.current || [];
             const thisRow = histRows.find(r => r.event === gw) || eh;
             const prevRow = histRows.find(r => r.event === gw - 1) || null;
@@ -193,7 +209,7 @@
             const done = fixtures.filter(f => f.finished_provisional).length;
 
             // Every pick, with what it actually returned.
-            const entries = picksData.picks.map(pick => {
+            const entries = src.picks.map(pick => {
                 const player = allPlayersById[pick.element];
                 if (!player) return null;
                 const s = gwPlayerStats(player, gw);
@@ -222,7 +238,7 @@
             const xi = entries.filter(e => e.started);
             const bench = entries.filter(e => !e.started);
             const captain = entries.find(e => e.isCaptain) || null;
-            const benchBoost = picksData.active_chip === 'bboost';
+            const benchBoost = src.active_chip === 'bboost';
 
             // What the armband could have returned instead. Only counts players who
             // actually started for you — second-guessing against your own bench is a

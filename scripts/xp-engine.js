@@ -421,6 +421,149 @@
             return out;
         }
 
+        /* Where a team's fixture run turns, and against whom.
+
+           Two implementations of this existed, on the squad page and the players
+           page, and they disagreed in two ways that both mattered. This is the
+           merge, and it takes the better half of each.
+
+           From the players page: a gameweek's difficulty is the average over ALL
+           its fixtures, not the first one. Reading only `tfm[g][0]` drops the
+           second half of a double gameweek, which is precisely the round whose
+           difficulty a manager is trying to read.
+
+           From the squad page: the per-gameweek breakdown. "FDR 3.7 → 2.7" is an
+           average of two averages, honest and unusable — it answers "is it
+           easier?" without answering "against whom, and from when", which is the
+           question that decides whether to act on it.
+
+           `fromGW` is the round being PLANNED, not the current one: a window that
+           opens on a round already played is a third of the way into the past.
+           See planningGameweek() in scripts/common.js. */
+        function xpBuildFixtureSwings(bootTeams, fixturesData, fromGW) {
+            const fixtureMap = {};
+            (bootTeams || []).forEach(t => { fixtureMap[t.id] = {}; });
+            (fixturesData || []).forEach(f => {
+                if (!f.event) return;
+                const add = (tid, oppId, fdr, isHome) => {
+                    if (!fixtureMap[tid]) return;
+                    if (!fixtureMap[tid][f.event]) fixtureMap[tid][f.event] = [];
+                    fixtureMap[tid][f.event].push({ opponentId: oppId, fdr: fdr || 3, isHome, finished: !!f.finished_provisional });
+                };
+                add(f.team_h, f.team_a, f.team_h_difficulty, true);
+                add(f.team_a, f.team_h, f.team_a_difficulty, false);
+            });
+
+            const swings = {};
+            const gw = fromGW || 1;
+            (bootTeams || []).forEach(team => {
+                const tfm = fixtureMap[team.id];
+                if (!tfm) return;
+                const futureGWs = Object.keys(tfm).map(Number)
+                    .filter(g => g >= gw && tfm[g] && tfm[g][0] && !tfm[g][0].finished)
+                    .sort((a, b) => a - b);
+                // Three ahead and three beyond them: with fewer there is no second
+                // window to compare the first against.
+                if (futureGWs.length < 6) return;
+                const first3 = futureGWs.slice(0, 3), next3 = futureGWs.slice(3, 6);
+
+                const avgOf = gws => {
+                    let total = 0, count = 0;
+                    gws.forEach(g => {
+                        const fx = tfm[g];
+                        if (fx && fx.length) fx.forEach(f => { total += f.fdr; count++; });
+                        else { total += 3; count++; }   // a blank is neither kind nor cruel
+                    });
+                    return count ? total / count : 3;
+                };
+                const avgFirst = avgOf(first3), avgNext = avgOf(next3);
+                const swing = avgFirst - avgNext;
+                // Below this the "swing" is two runs of much the same difficulty.
+                if (Math.abs(swing) <= 0.3) return;
+
+                const toFixtureList = gws => gws.map(g => ({
+                    gw: g,
+                    opponents: (tfm[g] || []).map(f => ({ opponentId: f.opponentId, fdr: f.fdr, isHome: f.isHome }))
+                }));
+                swings[team.id] = {
+                    swing,
+                    direction: swing > 0 ? 'improving' : 'worsening',
+                    currentFdr: avgFirst.toFixed(1),
+                    futureFdr: avgNext.toFixed(1),
+                    swingGW: futureGWs[3],
+                    currentFixtures: toFixtureList(first3),
+                    futureFixtures: toFixtureList(next3)
+                };
+            });
+            return swings;
+        }
+
+        /* Season-to-date results per club: W/D/L, goals, clean sheets and the
+           home/away split of each. Read straight off finished fixtures, so it is
+           the plain league table rather than anything modelled — which is exactly
+           why a player profile wants it next to the ratings.
+
+           Lived on the squad page, which was the only page that had it. Moved
+           here with the rest of the builders so any page holding
+           bootstrap-static and fixtures can show the same numbers. */
+        function xpBuildSeasonStats(bootTeams, fixturesData) {
+            const stats = {};
+            const teamHistory = {};
+            (bootTeams || []).forEach(t => {
+                stats[t.id] = {
+                    played: 0, wins: 0, draws: 0, losses: 0, points: 0,
+                    goalsFor: 0, goalsAgainst: 0, goalDiff: 0,
+                    cleanSheets: 0, failedToScore: 0,
+                    homeP: 0, homeW: 0, homeGF: 0, homeGA: 0, homeCS: 0,
+                    awayP: 0, awayW: 0, awayGF: 0, awayGA: 0, awayCS: 0,
+                    last5Form: []
+                };
+                teamHistory[t.id] = [];
+            });
+
+            (fixturesData || [])
+                .filter(f => f.finished_provisional && f.team_h_score !== null)
+                .sort((a, b) => a.event - b.event)
+                .forEach(f => {
+                    [[f.team_h, true], [f.team_a, false]].forEach(pair => {
+                        const tid = pair[0], isHome = pair[1];
+                        if (!stats[tid]) return;
+                        const gf = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                        const ga = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                        const result = gf > ga ? 'W' : gf === ga ? 'D' : 'L';
+                        const s = stats[tid];
+                        s.played++;
+                        s.goalsFor += gf; s.goalsAgainst += ga;
+                        if (result === 'W') s.wins++; else if (result === 'D') s.draws++; else s.losses++;
+                        if (ga === 0) s.cleanSheets++;
+                        if (gf === 0) s.failedToScore++;
+                        if (isHome) {
+                            s.homeP++; if (result === 'W') s.homeW++;
+                            s.homeGF += gf; s.homeGA += ga;
+                            if (ga === 0) s.homeCS++;
+                        } else {
+                            s.awayP++; if (result === 'W') s.awayW++;
+                            s.awayGF += gf; s.awayGA += ga;
+                            if (ga === 0) s.awayCS++;
+                        }
+                        teamHistory[tid].push(result);
+                    });
+                });
+
+            (bootTeams || []).forEach(t => {
+                const s = stats[t.id];
+                s.last5Form = teamHistory[t.id].slice(-5);
+                const p = s.played || 1;
+                s.points = s.wins * 3 + s.draws;
+                s.goalDiff = s.goalsFor - s.goalsAgainst;
+                s.csPercent = Math.round((s.cleanSheets / p) * 100);
+                s.ftsPercent = Math.round((s.failedToScore / p) * 100);
+                s.gpg = (s.goalsFor / p).toFixed(2);
+                s.gapg = (s.goalsAgainst / p).toFixed(2);
+            });
+            return stats;
+        }
+
         /* Expected FPL points for the coming gameweek, built from the scoring
            rules rather than read off FPL's ep_next. ep_next is heavily regressed
            early in a season — capped at 4.0 across the whole game — so summing it

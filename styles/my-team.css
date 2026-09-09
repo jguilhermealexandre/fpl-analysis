@@ -160,18 +160,6 @@
     gap: 8px;
 }
 
-.position-badge {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 600;
-}
-
-.position-badge.gk { background: rgba(252, 211, 77, 0.2); color: #FCD34D; }
-.position-badge.def { background: rgba(52, 211, 153, 0.2); color: #34D399; }
-.position-badge.mid { background: rgba(96, 165, 250, 0.2); color: #60A5FA; }
-.position-badge.fwd { background: rgba(248, 113, 113, 0.2); color: #F87171; }
-
 .verdict-chip {
     padding: 4px 10px;
     border-radius: var(--radius-sm);
@@ -209,33 +197,6 @@
     display: flex;
     gap: 8px;
 }
-
-.metric-box {
-    flex: 1;
-    background: var(--surface-2);
-    border-radius: var(--radius-sm);
-    padding: 8px;
-    text-align: center;
-}
-
-.metric-label {
-    font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    margin-bottom: 2px;
-}
-
-.metric-value {
-    font-family: var(--font-mono);
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.metric-value.good { color: var(--color-success); }
-.metric-value.warning { color: var(--color-warning); }
-.metric-value.bad { color: var(--color-error); }
-.metric-value.neutral { color: var(--text-primary); }
 
 .metric-trend {
     font-size: 10px;
@@ -283,17 +244,6 @@
 .swing-badge.worsening {
     background: rgba(248, 113, 113, 0.12);
     color: var(--color-error);
-}
-
-.fixture-team {
-    display: block;
-    font-size: 11px;
-}
-
-.fixture-venue {
-    display: block;
-    font-size: 9px;
-    opacity: 0.7;
 }
 
 /* Inline "who instead" nameplate on sell-verdict cards */
@@ -505,108 +455,10 @@
     padding: 20px;
 }
 
-.detail-section {
-    margin-bottom: 24px;
-}
-
-.detail-section-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
-}
-
-.insight-item {
-    padding: 12px;
-    background: var(--surface-1);
-    border-radius: var(--radius-sm);
-    margin-bottom: 8px;
-}
-
-.insight-item.positive {
-    border-left: 3px solid var(--color-success);
-}
-
-.insight-item.warning {
-    border-left: 3px solid var(--color-warning);
-}
-
-.insight-item.critical {
-    border-left: 3px solid var(--color-error);
-}
-
 .insight-title {
     font-size: 13px;
     font-weight: 600;
     margin-bottom: 4px;
-}
-
-.insight-text {
-    font-size: 12px;
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
-
-.replacement-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: var(--surface-1);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.replacement-card:hover {
-    border-color: var(--color-info);
-    background: var(--surface-2);
-}
-
-.replacement-rank {
-    width: 24px;
-    height: 24px;
-    background: var(--surface-3);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.replacement-info {
-    flex: 1;
-}
-
-.replacement-name {
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.replacement-meta {
-    font-size: 11px;
-    color: var(--text-muted);
-}
-
-.replacement-stats {
-    text-align: right;
-}
-
-.replacement-primary {
-    font-family: var(--font-mono);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-success);
-}
-
-.replacement-secondary {
-    font-size: 10px;
-    color: var(--text-muted);
 }
 
 /* ===== EMPTY STATE ===== */
@@ -725,7 +577,7 @@
     .pitch-player-name { font-size: 13px; max-width: 84px; }
     .transfer-rec-body { flex-direction: column; }
     .transfer-arrow { transform: rotate(90deg); align-self: center; }
-    .detail-stats-grid { grid-template-columns: 1fr; }
+    
 }
 
 @media (max-width: 900px) {
@@ -893,76 +745,8 @@
 }
 .sq-chart-open:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); transform: translateY(-1px); }
 
-/* teams.css is not loaded on this page, so these two class names are defined
-   here — chosen deliberately, because they are what initOverlayDismiss()
-   watches, which is how this gets click-away and Escape for nothing. */
-/* Blur alone, no dark wash: the page behind stays itself, just out of focus,
-   which reads as depth rather than as the lights being turned off.
-
-   Laid out rather than display:none so the open and close can be animated —
-   an element that was not rendered a moment ago has no state to move from, so
-   toggling display jumps straight to the end (the same reason the drawers
-   never slid). visibility carries the delay on the way out so the fade has
-   time to finish. */
-.v2-modal.modal-overlay {
-    position: fixed; inset: 0; z-index: 220;
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px;
-    /* No wash and no backdrop-filter here — the page itself is blurred
-       instead (body.v2-blurred below), so the blur covers the content
-       rather than being a sheet of frosting between you and the modal. */
-    background: transparent;
-    opacity: 0;
-    visibility: hidden;
-    /* pointer-events:none is not optional here. Laying the overlay out so it
-       can animate leaves a full-viewport element at z-index 220 over the page;
-       without this it wins every hit test, and nothing underneath can be
-       clicked or dragged at all. */
-    pointer-events: none;
-    transition: opacity 200ms ease, visibility 0s linear 240ms;
-}
-.v2-modal.modal-overlay.open {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition: opacity 200ms ease, visibility 0s;
-}
-
-/* The page behind the modal. Only .main-content is blurred — the sidebar is
-   navigation and stays legible — and it animates so the page settles out of
-   focus rather than snapping. */
-body.v2-blurred .main-content {
-    filter: blur(7px);
-    transition: filter 240ms ease;
-    pointer-events: none;
-}
-
 .main-content { transition: filter 240ms ease; }
 
-@media (prefers-reduced-motion: reduce) {
-    body.v2-blurred .main-content, .main-content { transition: none; }
-}
-
-/* The panel rises a little and settles, rather than appearing at full size. */
-.v2-modal .modal-container {
-    transform: translateY(10px) scale(0.985);
-    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.v2-modal.open .modal-container { transform: none; }
-
-@media (prefers-reduced-motion: reduce) {
-    .v2-modal.modal-overlay,
-    .v2-modal .modal-container { transition: none; }
-}
-.sq-chart-modal .modal-container {
-    width: 100%; max-width: 1040px; max-height: 88vh;
-    display: flex; flex-direction: column;
-    background: var(--surface-1);
-    border: 1px solid var(--border-emphasis);
-    border-radius: var(--v2-card-radius, 16px);
-    box-shadow: 0 24px 64px rgba(0,0,0,0.35);
-    overflow: hidden;
-}
 .sq-chart-modal-head {
     display: flex; align-items: center; gap: 8px;
     padding: 14px 16px;
@@ -970,13 +754,7 @@ body.v2-blurred .main-content {
     font-family: var(--font-display); font-size: 15px; font-weight: 650;
     color: var(--text-primary);
 }
-.sq-chart-modal-head .modal-close {
-    margin-left: auto;
-    width: 30px; height: 30px; border-radius: 50%;
-    border: 1px solid var(--border-emphasis); background: transparent;
-    color: var(--text-secondary); font-size: 18px; line-height: 1; cursor: pointer;
-}
-.sq-chart-modal-head .modal-close:hover { background: var(--surface-2); color: var(--text-primary); }
+
 .sq-chart-modal .sq-chart-body-inner { padding: 16px; overflow: auto; }
 .sq-chart-modal .sq-chart-canvas-wrap { height: min(58vh, 520px); }
 
@@ -1330,7 +1108,6 @@ body.v2-blurred .main-content {
 .on-bench-tag { font-size: 9px; padding: 2px 6px; background: var(--surface-3); border-radius: 3px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
 .verdict-chip.star { background: var(--verdict-star-bg); color: var(--verdict-star); }
 .verdict-badge.star { background: var(--verdict-star-bg); color: var(--verdict-star); }
-.metric-value.star { color: var(--verdict-star); }
 
 /* ===== HOLD/STAR GRID ===== */
 .hold-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; }
@@ -1346,27 +1123,6 @@ body.v2-blurred .main-content {
 .hold-stat .lbl { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
 .hold-stat .val.good { color: var(--color-success); }
 .hold-stat .val.star { color: var(--verdict-star); }
-
-/* ===== DETAIL PANEL ENHANCEMENTS ===== */
-.detail-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.detail-stat { background: var(--surface-1); border-radius: var(--radius-sm); padding: 12px; }
-.detail-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
-.detail-stat-value { font-family: var(--font-mono); font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-.detail-stat-bar { height: 4px; background: var(--surface-3); border-radius: 2px; overflow: hidden; }
-.detail-stat-bar-fill { height: 100%; border-radius: 2px; }
-.detail-stat-context { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
-
-.comparison-table { width: 100%; border-collapse: collapse; }
-.comparison-table th { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 8px; text-align: center; border-bottom: 1px solid var(--border-default); }
-.comparison-table th:first-child { text-align: left; }
-.comparison-table td { padding: 8px; font-size: 13px; text-align: center; border-bottom: 1px solid var(--border-subtle); }
-.comparison-table td:first-child { text-align: left; color: var(--text-secondary); font-size: 12px; }
-.comparison-table .current { color: var(--text-primary); font-family: var(--font-mono); font-weight: 600; }
-.comparison-table .replacement { color: var(--color-success); font-family: var(--font-mono); font-weight: 600; }
-.comparison-table .better { background: rgba(34,197,94,0.08); }
-.comparison-table .worse { background: rgba(239,68,68,0.06); }
-
-.insight-item.info { border-left: 3px solid var(--color-info); }
 
 /* ===== ANIMATIONS ===== */
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -3260,18 +3016,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     overflow: hidden;
 }
 
-/* Fixed width so the name starts at the same x regardless of which position
-   label is inside — "GK" and "FWD" otherwise render to different widths.
-   Scoped to the squad row so the shared .position-badge is unaffected. */
-.sq-row-main .position-badge {
-    width: 34px;
-    padding-left: 0;
-    padding-right: 0;
-    text-align: center;
-    flex-shrink: 0;
-    box-sizing: border-box;
-}
-
 .sq-row-name-block {
     display: flex;
     flex-direction: column;
@@ -3501,9 +3245,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .ts-alt-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-default); font-size: 11px; color: var(--text-muted); }
 .ts-alt-btn { background: var(--surface-3); border: 1px solid var(--border-default); border-radius: var(--radius-full, 999px); padding: 2px 9px; font-size: 11px; cursor: pointer; color: var(--text-secondary); font-family: inherit; }
 .ts-alt-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.ts-compare-btn { margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; background: none; border: none; color: var(--color-primary); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; font-family: inherit; }
-.ts-compare-btn:hover { text-decoration: underline; }
-.ts-compare-btn .icon { width: 12px; height: 12px; }
+
 .ts-empty { display: flex; align-items: center; gap: 8px; padding: 12px; border-radius: var(--radius-md); background: var(--verdict-hold-bg); color: var(--verdict-hold); font-size: 13px; font-weight: 600; }
 .ts-empty .icon { width: 16px; height: 16px; }
 
@@ -3790,43 +3532,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 .sq-expand-btn:hover { color: var(--color-primary); }
 
-.pd-header {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.pd-header-name { font-size: 16px; font-weight: 700; color: var(--text-primary); }
-.pd-header-meta { font-size: 12px; color: var(--text-muted); }
-
-.pd-report {
-    background: rgba(96, 165, 250, 0.07);
-    border: 1px solid rgba(96, 165, 250, 0.18);
-}
-
-.pd-report-text { font-size: 13px; line-height: 1.65; color: var(--text-secondary); }
-
-.pd-group {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-subtle);
-}
-
-.pd-group:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
-
-.pd-group-title {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
 .pw-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 .pw-badge {
@@ -3843,99 +3548,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .pw-badge.soft { opacity: 0.75; }
 .pw-badge.flat, .pw-badge.locked { background: var(--surface-3); color: var(--text-muted); }
 .pw-text { font-size: 12px; color: var(--text-secondary); }
-
-.opp-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 10px;
-}
-
-.opp-card {
-    background: var(--surface-2);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    padding: 10px;
-}
-
-.opp-card-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    margin-bottom: 8px;
-}
-
-.opp-card-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
-
-.opp-card-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 6px;
-}
-
-.opp-stat { font-size: 10px; color: var(--text-muted); }
-.opp-stat b { color: var(--text-primary); font-family: var(--font-mono); }
-.opp-card-note { font-size: 11px; color: var(--text-secondary); }
-
-/* Fixture swing breakdown — the "Now" vs "From GWx" run, GW by GW */
-.fsw-panel {
-    margin-top: 8px;
-    padding: 10px 12px;
-    border-radius: var(--radius-sm);
-}
-
-.fsw-headline { font-size: 11px; font-weight: 600; margin-bottom: 10px; }
-
-.fsw-rows {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.fsw-row { flex: 1; min-width: 0; }
-
-.fsw-row-label {
-    display: block;
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-}
-
-.fsw-row-label small { text-transform: none; font-weight: 500; letter-spacing: 0; }
-
-.fsw-arrow { flex-shrink: 0; font-size: 14px; color: var(--text-muted); }
-
-.fsw-gws {
-    display: flex;
-    gap: 6px;
-}
-
-.fsw-gw { flex: 1; min-width: 0; }
-
-.fsw-gw-label {
-    display: block;
-    font-size: 8px;
-    color: var(--text-muted);
-    text-align: center;
-    margin-bottom: 2px;
-}
-
-.fsw-gw-chips {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.fsw-chip { width: 100%; box-sizing: border-box; }
-
-@media (max-width: 900px) {
-    .fsw-rows { flex-direction: column; align-items: stretch; }
-    .fsw-arrow { transform: rotate(90deg); align-self: center; }
-}
 
 /* ===== SHARED SQUAD FILTER BAR (Phase 4) ===== */
 .sq-filter-bar {
@@ -4139,7 +3751,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
         width: 100%;
     }
 }
-
 
 /* ===== Manager panel: gameweek context, money, transfers, chips, live progress ===== */
 .manager-name { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -5178,27 +4789,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 .dp-name { font-size: 12px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dp-meta { font-size: 9px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dp-fixtures { display: flex; flex-wrap: wrap; gap: 2px; margin: 2px 0 1px; }
-
-.dp-fix {
-    flex: 1 1 auto;
-    text-align: center;
-    padding: 2px 4px;
-    border-radius: 4px;
-    font-size: 9px;
-    font-weight: 700;
-    white-space: nowrap;
-    cursor: help;
-    color: #111827;
-}
-
-.dp-fix-ha { opacity: .7; font-size: 8px; }
-.dp-fix.fdr-1 { background: var(--fdr-1); }
-.dp-fix.fdr-2 { background: var(--fdr-2); }
-.dp-fix.fdr-3 { background: var(--fdr-3); }
-.dp-fix.fdr-4 { background: var(--fdr-4); color: #fff; }
-.dp-fix.fdr-5 { background: var(--fdr-5); color: #fff; }
-.dp-fix-blank { background: var(--surface-3); color: var(--text-muted); }
 
 .dp-xp { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); cursor: help; line-height: 1.1; }
 .dp-xp-u { font-size: 9px; color: var(--text-muted); margin-left: 1px; }
@@ -5856,23 +5446,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 .sp-badge.first { background: rgba(251, 191, 36, .22); color: #FBBF24; }
 .sp-badge.pen.first { background: rgba(74, 222, 128, .22); color: #4ADE80; }
-
-/* ---- routes to points, in the player detail panel ---- */
-.rtp-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
-.rtp-total { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 800; color: var(--text-primary); }
-.rtp-total small { display: block; font-size: 10px; font-weight: 500; color: var(--text-muted); letter-spacing: .02em; }
-.rtp-drag { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--color-error); }
-.rtp-bar { display: flex; height: 20px; border-radius: 6px; overflow: hidden; background: var(--surface-3); }
-.rtp-seg { box-shadow: inset -2px 0 0 var(--surface-1); }
-.rtp-seg:last-child { box-shadow: none; }
-.rtp-keys { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; }
-.rtp-key { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
-.rtp-key b { color: var(--text-secondary); font-family: var(--font-mono); }
-.rtp-dot { width: 8px; height: 8px; border-radius: 2px; }
-.rtp-duty { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border-subtle); }
-.rtp-duty-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
-.rtp-duty-chip { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--surface-3); color: var(--text-secondary); }
-.rtp-duty-chip.prime { background: rgba(74, 222, 128, .18); color: #4ADE80; }
 
 /* ---- team context pills ----
    One horizontal group, never a vertical stack. The earlier version allowed the
@@ -6794,27 +6367,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    over the blurred page, reusing .v2-modal above for the shell.
    ============================================ */
 
-.pdm-modal .modal-container {
-    width: 100%; max-width: 1080px; max-height: 90vh;
-    display: flex; flex-direction: column;
-    background: var(--surface-1);
-    border: 1px solid var(--border-default);
-    border-radius: 18px;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
-    overflow: hidden;
-    position: relative;
-}
-.pdm-close {
-    position: absolute; top: 14px; right: 14px; z-index: 3;
-    width: 30px; height: 30px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    border: 1px solid rgba(255, 255, 255, .35);
-    background: rgba(0, 0, 0, .22); color: #fff;
-    font-size: 20px; line-height: 1; cursor: pointer;
-    transition: background .15s ease, transform .15s ease;
-}
-.pdm-close:hover { background: rgba(0, 0, 0, .4); transform: scale(1.06); }
-
 /* ===== The hero =====
    The Premier League's own card: the club's shirt colour, a cut-out portrait
    at the left edge, given name light over family name heavy, and the badge,
@@ -6828,233 +6380,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    its own modal and its cards, and duplicating three hundred lines of it is
    how two versions start drifting apart. Same class names, same rules, one
    file — see "The player hero" in v2-design.css. */
-
-/* ===== The sheet =====
-   Two columns of cards rather than one column of sections. .pd-group is a
-   wrapper the builder emits around a run of sections; display:contents lifts
-   its children into this grid so the band titles span it and the sections
-   themselves sit side by side, without the builder having to know it is being
-   laid out differently here. */
-/* Six columns, so a section can take a half (3), a third (2) or the lot.
-   Two across was the only shape available and it put the report over the
-   verdict — the two halves of the same summary — as two stacked bands, and
-   then left Routes to Points alone on a row of its own under a pair of stat
-   cards that had nothing to do with it. */
-/* Twelve columns, so the two bands at the top can be laid out explicitly.
-
-   Band one is what the card concludes — the report, the verdict and whether the
-   price is about to move — on one row. Band two is the three readings, in three
-   equal columns, with the positives and concerns stacked under the third rather
-   than starting a row of their own; that is what makes the top of the card read
-   as one tidy block instead of a stack of half-width cards with ragged gaps
-   between them. Everything below it stays full width. */
-.pdm-body {
-    overflow-y: auto;
-    padding: 18px 22px 24px;
-    display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: 14px;
-    align-items: start;
-    align-content: start;
-}
-.pdm-body .detail-section { grid-column: span 6; }
-.pdm-body .detail-section[data-span="2"] { grid-column: span 4; }
-.pdm-body .detail-section[data-span="4"] { grid-column: span 8; }
-.pdm-body .pd-group { display: contents; }
-.pdm-body .pd-group-title {
-    grid-column: 1 / -1;
-    margin: 8px 0 0;
-    padding-bottom: 7px;
-    border-bottom: 2px solid var(--border-emphasis);
-    font-family: var(--font-display, inherit);
-    font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
-    color: var(--text-secondary);
-}
-.pdm-body > .pd-group:first-child .pd-group-title,
-.pdm-body .pd-group:first-of-type .pd-group-title { margin-top: 0; }
-
-/* Every section is a card of its own, with a colour down its title. The
-   accents are set by the builder rather than guessed from the heading text. */
-.pdm-body .detail-section {
-    margin: 0;
-    padding: 13px 15px 14px;
-    background: var(--surface-1);
-    border: 1px solid var(--border-emphasis);
-    border-radius: 12px;
-    min-width: 0;
-}
-.pdm-body .detail-section-title {
-    display: flex; align-items: center; gap: 7px;
-    margin: 0 0 10px;
-    font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
-    color: var(--pdm-accent, var(--text-secondary));
-}
-.pdm-body .detail-section-title::before {
-    content: ''; width: 3px; height: 13px; border-radius: 2px;
-    background: var(--pdm-accent, var(--text-muted)); flex-shrink: 0;
-}
-.pdm-body .detail-section[data-accent="report"]      { --pdm-accent: #8B5CF6; }
-.pdm-body .detail-section[data-accent="verdict"]     { --pdm-accent: var(--color-primary); }
-.pdm-body .detail-section[data-accent="stats"]       { --pdm-accent: #2563EB; }
-.pdm-body .detail-section[data-accent="season"]      { --pdm-accent: #0EA5E9; }
-.pdm-body .detail-section[data-accent="routes"]      { --pdm-accent: #14B8A6; }
-.pdm-body .detail-section[data-accent="price"]       { --pdm-accent: #F59E0B; }
-.pdm-body .detail-section[data-accent="concerns"]    { --pdm-accent: #DC2626; }
-.pdm-body .detail-section[data-accent="positives"]   { --pdm-accent: #059669; }
-.pdm-body .detail-section[data-accent="fixtures"]    { --pdm-accent: #64748B; }
-.pdm-body .detail-section[data-accent="swap"]        { --pdm-accent: var(--color-primary); }
-.pdm-body .detail-section[data-accent="team"]        { --pdm-accent: #2563EB; }
-
-/* The ones that are wider than they are tall, or that carry a paragraph. */
-.pdm-body .detail-section[data-wide] { grid-column: 1 / -1; }
-
-.pdm-body .detail-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-/* ===== The summary row: what it says, and what it concludes =====
-   The report is the argument and the verdict is the answer to it, so they sit
-   as a pair rather than one under the other. */
-.pdm-body .pd-report { grid-column: 1 / 6; }
-.pdm-body .pd-verdict { grid-column: 6 / 10; }
-.pdm-body .detail-section[data-accent="price"] { grid-column: 10 / 13; }
-.pdm-body .pd-report-text { font-size: 13px; line-height: 1.62; color: var(--text-secondary); }
-
-/* The verdict as a conclusion rather than a row of controls: the rating first
-   and large, the reason under it, then what to do about it. */
-.pdm-body .pd-verdict-top { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
-.pdm-body .pd-verdict-chip {
-    padding: 5px 13px; border-radius: 999px;
-    font-size: 13px; font-weight: 800; letter-spacing: .03em; white-space: nowrap;
-}
-.pdm-body .pd-verdict-chip.star { background: var(--verdict-star-bg, #EDE9FE); color: var(--verdict-star, #7C3AED); }
-.pdm-body .pd-verdict-chip.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
-.pdm-body .pd-verdict-chip.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
-.pdm-body .pd-verdict-chip.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
-.pdm-body .pd-verdict-why { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
-.pdm-body .pd-verdict-rec {
-    font-size: 12px; line-height: 1.5; color: var(--text-secondary);
-    padding: 9px 11px; border-radius: 9px; margin-bottom: 10px;
-    background: var(--surface-2);
-    border-left: 3px solid var(--pdm-accent, var(--color-primary));
-}
-/* The sell rating as the meter it is. "Sell Rating: 0/100" as a line of grey
-   text was the one number on this card you had to stop and parse. */
-.pdm-body .pd-sell-rate { display: flex; align-items: center; gap: 8px; }
-.pdm-body .pd-sell-rate-label {
-    font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-    color: var(--text-muted); white-space: nowrap;
-}
-.pdm-body .pd-sell-rate-bar {
-    flex: 1; height: 5px; border-radius: 999px; background: var(--surface-3, var(--surface-2)); overflow: hidden;
-}
-.pdm-body .pd-sell-rate-bar i { display: block; height: 100%; border-radius: 999px; }
-.pdm-body .pd-sell-rate-num { font-family: var(--font-mono); font-size: 12px; font-weight: 800; }
-
-/* ===== The three readings, packed =====
-   Three real columns rather than grid cells, because the blocks in the third
-   have to sit directly under one another. As grid items the positives started
-   on the grid's next row and that row was as tall as the tallest card on it, so
-   a four-line list sat beside a column and a half of white space. Grid cannot
-   pack that way — masonry rows are not shipped widely enough to rely on — so
-   pdmLayoutBands() moves the sections into these columns and each is a stack. */
-.pdm-bands {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-    align-items: start;
-}
-.pdm-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.pdm-col > .detail-section { grid-column: auto; }
-
-.pdm-body .metric-box { display: flex; flex-direction: column; justify-content: center; }
-
-/* ===== Positives and concerns, compact =====
-   Each was a bold title on its own line over a paragraph, inside a bordered
-   block, which for four short observations was three times the height they
-   need. Title and text run together on one line and wrap only when they must,
-   and the coloured edge does the labelling. */
-.pdm-body .insight-item {
-    padding: 6px 0 6px 10px;
-    margin: 0;
-    border-left: 3px solid var(--pdm-accent, var(--color-primary));
-    border-radius: 0;
-    background: transparent;
-    font-size: 12px; line-height: 1.5;
-}
-.pdm-body .insight-item + .insight-item { margin-top: 8px; }
-.pdm-body .insight-item > div:first-child {
-    display: inline; margin: 0 4px 0 0;
-    font-size: 12px; font-weight: 700; color: var(--text-primary);
-}
-.pdm-body .insight-item > div:first-child::after { content: ' —'; color: var(--text-muted); }
-.pdm-body .insight-text { display: inline; color: var(--text-secondary); }
-
-/* ===== The price meter =====
-   A percentage of a fixed scale, drawn as one. */
-.pw-meter-head { display: flex; align-items: baseline; gap: 7px; margin-bottom: 7px; }
-.pw-meter-pct { font-family: var(--font-mono); font-size: 24px; font-weight: 800; line-height: 1; color: var(--text-primary); }
-.pw-meter-pct em { font-style: normal; font-size: 13px; font-weight: 700; color: var(--text-muted); margin-left: 1px; }
-.pw-meter-label { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-muted); }
-.pw-meter-track {
-    height: 8px; border-radius: 999px; overflow: hidden;
-    background: var(--surface-3, var(--surface-2));
-}
-.pw-meter-track i { display: block; height: 100%; border-radius: 999px; background: var(--text-muted); }
-.pw-meter.rise .pw-meter-track i { background: var(--color-success); }
-.pw-meter.rise .pw-meter-pct { color: var(--color-success); }
-.pw-meter.fall .pw-meter-track i { background: var(--color-error); }
-.pw-meter.fall .pw-meter-pct { color: var(--color-error); }
-.pw-meter-detail { margin-top: 8px; font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); }
-.pdm-body .detail-section[data-accent="season"] .pdm-metrics {
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px;
-}
-.pdm-body .metric-box {
-    background: var(--surface-2); border-radius: 9px; padding: 9px 8px; text-align: center;
-}
-.pdm-body .metric-label { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; margin-bottom: 3px; }
-.pdm-body .metric-value { font-size: 17px; font-weight: 800; }
-.pdm-body .detail-stat-value { font-size: 19px; }
-
-/* In a third-width column the routes keys read better stacked than wrapped:
-   a legend of five entries across ~330px would break mid-label. */
-.pdm-body .rtp-keys { flex-direction: column; gap: 4px; }
-.pdm-body .rtp-key { width: 100%; }
-.pdm-body .rtp-key b { margin-left: auto; }
-.pdm-body .rtp-total { font-size: 30px; }
-
-@media (max-width: 1000px) {
-    .pdm-body .pd-report,
-    .pdm-body .pd-verdict,
-    .pdm-body .detail-section[data-accent="price"] { grid-column: 1 / -1; }
-    .pdm-body .detail-section,
-    .pdm-body .detail-section[data-span="2"],
-    .pdm-bands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 860px) {
-    .pdm-body { grid-template-columns: minmax(0, 1fr); }
-    .pdm-body .detail-section,
-    .pdm-body .detail-section[data-span="2"],
-    .pdm-body .detail-section[data-span="4"],
-    .pdm-body .pd-report, .pdm-body .pd-verdict,
-    .pdm-body .detail-section[data-accent="price"] { grid-column: 1 / -1; }
-    .pdm-bands { grid-template-columns: minmax(0, 1fr); }
-    .pdm-hero { grid-template-columns: auto minmax(0, 1fr); min-height: 148px; padding: 0 18px; }
-    .pdm-hero-photo { height: 148px; width: 120px; }
-    .pdm-hero-face { height: 148px; }
-    .pdm-hero-last { font-size: 30px; }
-    .pdm-hero-first { font-size: 19px; }
-    .pdm-hero-side { grid-column: 2; flex-direction: row; align-items: center; gap: 10px; padding-top: 0; }
-    .pdm-hero-price { font-size: 18px; }
-    .pdm-hero-own { display: none; }
-}
-@media (max-width: 560px) {
-    .pdm-hero { grid-template-columns: auto minmax(0, 1fr); }
-    .pdm-hero-photo { height: 122px; width: 92px; }
-    .pdm-hero-face { height: 122px; }
-    .pdm-hero { min-height: 122px; }
-    .pdm-hero-last { font-size: 24px; }
-}
 
 /* ============================================
    MOST TRANSFERRED — the leaderboard the price meter could not give
@@ -7121,44 +6446,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tm-tb-track i { display: block; height: 100%; border-radius: 2px; }
 .tm-tb-track i.in { background: var(--color-success); }
 .tm-tb-track i.out { background: var(--color-error); }
-
-/* ============================================
-   PRICE HISTORY — start, the path, and now
-   ============================================ */
-.ph-block { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-default); }
-.ph-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
-.ph-title { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; flex: 1; }
-.ph-net { font-family: var(--font-display); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.ph-net.up { color: var(--color-success); }
-.ph-net.down { color: var(--color-error); }
-.ph-net.flat { color: var(--text-muted); }
-
-.ph-rail { display: flex; align-items: center; gap: 10px; }
-.ph-end { font-size: 10px; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ph-end em { display: block; font-style: normal; font-size: 9px; font-weight: 500; color: var(--text-muted); }
-.ph-end.right { text-align: right; }
-
-.ph-spark { flex: 1; height: 46px; min-width: 0; }
-.ph-spark polyline { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.ph-spark.up polyline { stroke: var(--color-success); }
-.ph-spark.down polyline { stroke: var(--color-error); }
-.ph-spark.flat polyline { stroke: var(--text-muted); }
-.ph-spark .ph-dot { fill: var(--surface-0); stroke: currentColor; stroke-width: 1.5; }
-.ph-spark.up { color: var(--color-success); }
-.ph-spark.down { color: var(--color-error); }
-.ph-spark.flat { color: var(--text-muted); }
-.ph-spark .ph-dot-now { fill: currentColor; }
-
-.ph-moves { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; }
-.ph-moves li {
-    display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 7px;
-    border-radius: var(--radius-sm, 6px); background: var(--surface-2);
-    font-size: 10px; font-variant-numeric: tabular-nums;
-}
-.ph-moves li.up { color: var(--color-success); }
-.ph-moves li.down { color: var(--color-error); }
-.ph-move-gw { font-weight: 700; opacity: 0.75; }
-.ph-note { margin-top: 8px; font-size: 10px; color: var(--text-muted); }
 
 /* The ticker marks are SVG now rather than emoji, so they need a size and
    they inherit the row's colour instead of carrying their own. */

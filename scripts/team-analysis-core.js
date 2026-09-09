@@ -76,6 +76,16 @@
 
         let allFixtures = [];     // All fixtures from fixtures.json
         let managerHistory = null; // Manager history from /api/entry/{id}/history/
+        /* picksData is the squad being PLANNED — last round's picks with any
+           transfers already made for planningGW replayed over them, which is the
+           team the manager is actually holding. reviewPicksData is the untouched
+           response for currentGW: the eleven that scored the points the Gameweek
+           Review reports on. They are the same object whenever planningGW equals
+           currentGW, and must not be confused when they are not — reviewing a
+           round with a squad assembled after it ended credits the wrong players.
+           See applyPendingTransfers() in scripts/common.js. */
+        let reviewPicksData = null;
+        let pendingTransfers = null; // { gw, moves:[{out,in,slot}], armband } once applied
         let gwEvents = [];        // bootstrap events[] — deadlines, is_current/is_next
         let chipDefinitions = []; // bootstrap chips[] — each chip's start_event/stop_event window
         let maxFreeTransfers = 5; // from game_settings.max_extra_free_transfers + 1
@@ -188,106 +198,17 @@
 
         // ===== TEAM ANALYSIS SCORES (ported from teams-analysis) =====
 
-        // ===== FIXTURE SWING DETECTION (from teams-analysis) =====
+        /* Both of these are xp-engine.js's now — see xpBuildFixtureSwings and
+           xpBuildSeasonStats. They were page-local because this was the only page
+           that wanted them; the player profile card is shared with the players
+           page, and it reads both. The swing detector also picked up a fix in the
+           move: a double gameweek's second fixture now counts toward the run's
+           difficulty instead of being dropped. */
         function buildFixtureSwingData(bootTeams, fixturesData) {
-            const fixtureMap = {};
-            bootTeams.forEach(t => { fixtureMap[t.id] = {}; });
-            fixturesData.forEach(f => {
-                if (!f.event) return;
-                if (fixtureMap[f.team_h]) {
-                    if (!fixtureMap[f.team_h][f.event]) fixtureMap[f.team_h][f.event] = [];
-                    fixtureMap[f.team_h][f.event].push({ opponentId: f.team_a, fdr: f.team_h_difficulty || 3, isHome: true, finished: f.finished_provisional });
-                }
-                if (fixtureMap[f.team_a]) {
-                    if (!fixtureMap[f.team_a][f.event]) fixtureMap[f.team_a][f.event] = [];
-                    fixtureMap[f.team_a][f.event].push({ opponentId: f.team_h, fdr: f.team_a_difficulty || 3, isHome: false, finished: f.finished_provisional });
-                }
-            });
-            fixtureSwingData = {};
-            const gw = planningGW || 1;
-            bootTeams.forEach(team => {
-                const tfm = fixtureMap[team.id];
-                if (!tfm) return;
-                const futureGWs = Object.keys(tfm).map(Number).filter(g => g >= gw && tfm[g]?.[0] && !tfm[g][0].finished).sort((a, b) => a - b);
-                if (futureGWs.length < 6) return;
-                const first3 = futureGWs.slice(0, 3), next3 = futureGWs.slice(3, 6);
-                const getAvg = (gws) => gws.reduce((s, g) => { const fx = tfm[g]; return s + (fx?.[0] ? fx[0].fdr : 3); }, 0) / gws.length;
-                const avgFirst = getAvg(first3), avgNext = getAvg(next3);
-                const swing = avgFirst - avgNext;
-                if (Math.abs(swing) > 0.3) {
-                    // Per-GW breakdown of both windows, opponent(s) and FDR included —
-                    // an average alone ("3.7 to 2.7") answers "is it easier?" but not
-                    // "against whom", which is the question a manager actually needs
-                    // answered before acting on the swing. tfm[g] (not tfm[g][0]) so a
-                    // double gameweek lists every fixture, not just the first.
-                    const toFixtureList = gws => gws.map(g => ({
-                        gw: g,
-                        opponents: (tfm[g] || []).map(f => ({ opponentId: f.opponentId, fdr: f.fdr, isHome: f.isHome }))
-                    }));
-                    fixtureSwingData[team.id] = {
-                        swing, direction: swing > 0 ? 'improving' : 'worsening',
-                        currentFdr: avgFirst.toFixed(1), futureFdr: avgNext.toFixed(1), swingGW: futureGWs[3],
-                        currentFixtures: toFixtureList(first3), futureFixtures: toFixtureList(next3)
-                    };
-                }
-            });
+            fixtureSwingData = xpBuildFixtureSwings(bootTeams, fixturesData, planningGW);
             console.log('Fixture swings:', Object.keys(fixtureSwingData).length, 'teams');
         }
 
-        // ===== SEASON STATS (from teams-analysis, without xG) =====
-        function calculateBasicSeasonStats(bootTeams, fixturesData) {
-            const stats = {};
-            const finishedFixtures = fixturesData.filter(f => f.finished_provisional && f.team_h_score !== null).sort((a, b) => a.event - b.event);
-            bootTeams.forEach(t => {
-                stats[t.id] = {
-                    played: 0, wins: 0, draws: 0, losses: 0, points: 0,
-                    goalsFor: 0, goalsAgainst: 0, goalDiff: 0,
-                    cleanSheets: 0, failedToScore: 0,
-                    homeP: 0, homeW: 0, homeGF: 0, homeGA: 0, homeCS: 0,
-                    awayP: 0, awayW: 0, awayGF: 0, awayGA: 0, awayCS: 0,
-                    last5Form: []
-                };
-            });
-            const teamHistory = {};
-            bootTeams.forEach(t => { teamHistory[t.id] = []; });
-            finishedFixtures.forEach(f => {
-                [[f.team_h, true], [f.team_a, false]].forEach(([tid, isHome]) => {
-                    if (!stats[tid]) return;
-                    const gf = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
-                    const ga = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
-                    const result = gf > ga ? 'W' : gf === ga ? 'D' : 'L';
-                    stats[tid].played++;
-                    stats[tid].goalsFor += gf; stats[tid].goalsAgainst += ga;
-                    if (result === 'W') stats[tid].wins++;
-                    else if (result === 'D') stats[tid].draws++;
-                    else stats[tid].losses++;
-                    if (ga === 0) stats[tid].cleanSheets++;
-                    if (gf === 0) stats[tid].failedToScore++;
-                    if (isHome) {
-                        stats[tid].homeP++; if (result === 'W') stats[tid].homeW++;
-                        stats[tid].homeGF += gf; stats[tid].homeGA += ga;
-                        if (ga === 0) stats[tid].homeCS++;
-                    } else {
-                        stats[tid].awayP++; if (result === 'W') stats[tid].awayW++;
-                        stats[tid].awayGF += gf; stats[tid].awayGA += ga;
-                        if (ga === 0) stats[tid].awayCS++;
-                    }
-                    teamHistory[tid].push(result);
-                });
-            });
-            bootTeams.forEach(t => {
-                const s = stats[t.id];
-                s.last5Form = teamHistory[t.id].slice(-5);
-                const p = s.played || 1;
-                s.points = s.wins * 3 + s.draws;
-                s.goalDiff = s.goalsFor - s.goalsAgainst;
-                s.csPercent = Math.round((s.cleanSheets / p) * 100);
-                s.ftsPercent = Math.round((s.failedToScore / p) * 100);
-                s.gpg = (s.goalsFor / p).toFixed(2);
-                s.gapg = (s.goalsAgainst / p).toFixed(2);
-            });
-            return stats;
-        }
 
         function computeTeamScores(bootTeams, fixturesData) {
             /* The model moved to scripts/xp-engine.js, alongside the other
@@ -382,18 +303,25 @@
 
                 computeTeamScores(bootData.teams, fixturesData);
                 buildFixtureSwingData(bootData.teams, fixturesData);
-                seasonStats = calculateBasicSeasonStats(bootData.teams, fixturesData);
+                seasonStats = xpBuildSeasonStats(bootData.teams, fixturesData);
 
                 // Fetch manager + picks + history in parallel
                 showLoading(true, `Loading team for GW${currentGW}...`);
-                const [mgrRes, picksRes, histRes] = await Promise.all([
+                const [mgrRes, picksRes, histRes, transfersRes] = await Promise.all([
                     fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/`),
                     fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/event/${currentGW}/picks/`),
-                    fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`)
+                    fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/history/`),
+                    /* Every transfer the manager has ever made, including the
+                       ones for a round that has not kicked off — the only public
+                       source for those. Optional: without it the page falls back
+                       to the pre-transfer squad, which is what it always showed,
+                       so a failure here degrades rather than breaks. */
+                    fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/transfers/`).catch(() => null)
                 ]);
                 managerData = await mgrRes.json();
                 picksData = await picksRes.json();
                 managerHistory = await histRes.json();
+                const transferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;
 
                 // Free Hit fix: if FH was active this GW, the picks endpoint returns
                 // the temporary FH squad. Load the real squad from the previous GW instead.
@@ -408,6 +336,28 @@
                         picks: realPicksData.picks,
                         entry_history: { ...picksData.entry_history, bank: realPicksData.entry_history?.bank }
                     };
+                }
+
+                /* The round just played, kept whole before the planning squad is
+                   built on top of it. Only the Gameweek Review reads it. */
+                reviewPicksData = picksData;
+                pendingTransfers = null;
+
+                /* Transfers the manager has already made for the round being
+                   planned. Guarded on planningGW being ahead of currentGW: while
+                   they are equal the picks endpoint has the moves in it already,
+                   and replaying them would apply every one of them twice. */
+                if (planningGW > currentGW) {
+                    const nowCost = id => {
+                        const el = allPlayersById[id];
+                        return el ? Math.round(el.price * 10) : null;
+                    };
+                    const applied = applyPendingTransfers(picksData, transferLog, planningGW, nowCost);
+                    if (applied) {
+                        picksData = applied.picksData;
+                        pendingTransfers = { gw: applied.gw, moves: applied.moves, armband: applied.armband };
+                        console.log(`[Transfers] ${applied.moves.length} move(s) already made for GW${planningGW} applied to the squad`);
+                    }
                 }
 
                 const premierLeagueSeason = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
@@ -510,388 +460,9 @@
             updateStatus(`Analysis complete — GW${planningGW}`, 'success');
         }
 
-        /* Form, read honestly on a season that has barely started.
-
-           FPL's `form` is average points over the last 30 days, so one gameweek
-           in, it IS that one gameweek. Judged raw, 53% of every player who got
-           on the pitch counted as "poor form" — which is not a form reading, it
-           is "did not score three points once". A defender who played the full
-           ninety and conceded a goal has a form of 2.0 and was charged for it,
-           which is how a squad whose players had one quiet Saturday landed on a
-           health score in the twenties.
-
-           So regress it, the way every rate in the projection is regressed:
-           toward what we already expect of this player, until there is a real
-           sample behind it. The prior is his own points per game last season
-           where that exists, and the position median where it does not. At four
-           games the evidence weight reaches 1 and this returns raw form, so the
-           thresholds downstream keep exactly the meaning they always had — they
-           simply stop firing before anything has been demonstrated. */
-        const FORM_EVIDENCE_GAMES = 4;
-
-        let _lastSeasonById = null;
-        function lastSeasonFor(playerId) {
-            if (!_lastSeasonById) {
-                const rows = playersDetailData && playersDetailData.players;
-                // Not loaded yet: answer null WITHOUT caching, or the empty
-                // answer sticks for the life of the page and the prior silently
-                // reverts to the position median for everyone.
-                if (!rows || !rows.length) return null;
-                _lastSeasonById = {};
-                rows.forEach(r => { if (r.lastSeason) _lastSeasonById[r.id] = r.lastSeason; });
-            }
-            return _lastSeasonById[playerId] || null;
-        }
-
-        function lastSeasonPointsPerGame(player) {
-            const ls = lastSeasonFor(player.id);
-            if (!ls || !ls.totalPoints) return null;
-            const games = ls.starts || (ls.minutes ? ls.minutes / 90 : 0);
-            // A handful of cameos is not a prior worth leaning on.
-            if (games < 10) return null;
-            return ls.totalPoints / games;
-        }
-
-        function regressedForm(player, posConfig, gamesPlayed) {
-            const raw = isPreseason ? (player.ppg || 0) : (parseFloat(player.form) || 0);
-            const prior = lastSeasonPointsPerGame(player);
-            const base = prior != null ? prior : posConfig.formMedian;
-            const evidence = Math.min(1, Math.max(0, gamesPlayed) / FORM_EVIDENCE_GAMES);
-            return raw * evidence + base * (1 - evidence);
-        }
-
-        function analyzePlayer(player) {
-            // Baseline: average player starts at 40 — dimensions push up (sell) or down (keep)
-            let sellRating = 40;
-            let reasons = [], concerns = [], positives = [];
-            const posAvg = positionAverages[player.position] || { form: 3, ppg: 3, ppm: 15, xGIPer90: 0.3 };
-            const posConfig = POSITION_CONFIG[player.position];
-            // Preseason: currentGW-1 is 0 and player.form is already reset to 0.0 by FPL —
-            // used as-is that's not "no data", it's a uniform false "poor form" flag on every
-            // player plus an absurd minutes-per-game (last season's full total / 1). Fall back
-            // to last season's real points-per-game and a starts-based games-played estimate.
-            const gamesPlayed = isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
-            const minsPerGame = player.minutes / gamesPlayed;
-            const effectiveForm = regressedForm(player, posConfig, gamesPlayed);
-            // The raw figure is still what the card prints — it is a fact about
-            // the matches played. It just no longer drives the judgement.
-            const rawForm = isPreseason ? (player.ppg || 0) : (parseFloat(player.form) || 0);
-            const isPremium = player.price >= 10.0;
-            const isMidPremium = player.price >= 7.5;
-            const isBudget = player.price <= 5.5;
-            const ta = teamAnalysis[player.teamId]; // Team analysis data
-
-            // Asymmetric sensitivity: penalties amplified in aggressive mode, bonuses dampened (and vice-versa for patient)
-            const sensAdj = (raw, ...weights) => {
-                const w = weights.reduce((a, b) => a * b, 1);
-                const s = raw >= 0 ? userSettings.sellSensitivity : (2 - userSettings.sellSensitivity);
-                return raw * s * w;
-            };
-
-            // 1. AVAILABILITY (Critical — overrides baseline)
-            // Tracked separately as well as added, because the squad health score
-            // applies its own availability and form penalties and would otherwise
-            // charge for both twice over.
-            let availPenalty = 0, formPenaltyApplied = 0;
-            if (player.status === 'i' || player.status === 'u' || player.status === 's') {
-                availPenalty = sensAdj(40);
-                sellRating += availPenalty;
-                const statusText = player.status === 'i' ? 'Injured' : player.status === 'u' ? 'Unavailable' : 'Suspended';
-                concerns.push({ type: 'critical', title: statusText, text: player.news || 'Check team news for updates' });
-                reasons.push(`${statusText} — cannot play`);
-            } else if (player.status === 'd') {
-                const chance = player.chanceNextRound;
-                const penalty = chance !== null ? Math.round((100 - chance) * 0.4) : 22;
-                availPenalty = sensAdj(penalty);
-                sellRating += availPenalty;
-                concerns.push({ type: 'warning', title: 'Doubtful', text: `${chance !== null ? chance + '% chance' : '75% chance'} of playing. ${player.news || ''}` });
-                if (penalty >= 18) reasons.push('Significant injury doubt');
-            }
-
-            // 2. FORM (Continuous — position-adjusted, asymmetric sensitivity)
-            const formDelta = effectiveForm - posConfig.formMedian;
-            // Linear: each 1.0 of formDelta = ~10 points; capped at ±30
-            const rawFormPenalty = Math.max(-30, Math.min(30, Math.round(-formDelta * 10)));
-            const formPenalty = sensAdj(rawFormPenalty, userSettings.formWeight);
-            sellRating += formPenalty;
-            formPenaltyApplied = formPenalty;
-
-            if (formDelta <= -1.5) {
-                concerns.push({ type: 'critical', title: 'Poor Form', text: `Form ${rawForm.toFixed(1)} is well below ${posConfig.short} average of ${posConfig.formMedian} — consider selling before price drops` });
-                reasons.push('Form collapsed');
-            } else if (formDelta <= -0.5) {
-                concerns.push({ type: 'warning', title: 'Below Average Form', text: `Form ${rawForm.toFixed(1)} vs ${posConfig.short} median ${posConfig.formMedian} — monitor next 2 GWs` });
-            } else if (formDelta >= 2.5) {
-                positives.push({ type: 'positive', title: 'Elite Form', text: `Form ${rawForm.toFixed(1)} — top 5% of ${posConfig.short}s. Strong captain option` });
-            } else if (formDelta >= 1.0) {
-                positives.push({ type: 'positive', title: 'Good Form', text: `Form ${rawForm.toFixed(1)} — above ${posConfig.short} average, keep starting` });
-            }
-
-            // 3. FIXTURES (Continuous — near fixtures weighted more)
-            const fixtures = player.fixtures || [];
-            let avgFDR = 3;
-            if (fixtures.length >= 3) {
-                const weights = [3, 2.5, 2, 1.5, 1];
-                let totalWeight = 0, weightedSum = 0;
-                fixtures.slice(0, 5).forEach((f, i) => {
-                    const w = weights[i] || 1;
-                    weightedSum += f.difficulty * w;
-                    totalWeight += w;
-                });
-                avgFDR = weightedSum / totalWeight;
-            }
-            // Linear: FDR 3 is neutral, each 1.0 away = ~14 points
-            const rawFixPenalty = Math.max(-22, Math.min(22, Math.round((avgFDR - 3.0) * 14)));
-            sellRating += sensAdj(rawFixPenalty, userSettings.fixtureWeight);
-
-            if (avgFDR >= 3.8) {
-                concerns.push({ type: 'warning', title: 'Tough Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)} — difficult run ahead` });
-                reasons.push('Brutal fixture run');
-            } else if (avgFDR <= 2.5) {
-                positives.push({ type: 'positive', title: 'Great Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)} — fantastic fixture swing` });
-            } else if (avgFDR <= 3.0) {
-                positives.push({ type: 'positive', title: 'Decent Fixtures', text: `Weighted FDR ${avgFDR.toFixed(1)}` });
-            }
-            player.avgFDR = avgFDR;
-
-            // 3b. OPPONENT QUALITY (uses team analysis attack/defence power)
-            let opponentAdjustment = 0;
-            if (fixtures.length >= 3 && Object.keys(teamAnalysis).length > 0) {
-                const oppWeights = [3, 2.5, 2, 1.5, 1];
-                let oppWeightedScore = 0, oppTotalWeight = 0;
-                fixtures.slice(0, 5).forEach((f, i) => {
-                    const oppTA = teamAnalysis[f.opponentId];
-                    if (!oppTA) return;
-                    const w = oppWeights[i] || 1;
-                    if (player.position <= 2) {
-                        // Defenders: opponent attack power matters (strong attack = harder to keep CS)
-                        oppWeightedScore += ((oppTA.attackPower - 50) / 50) * w;
-                    } else {
-                        // Attackers: opponent defence power matters (strong defence = harder to score)
-                        oppWeightedScore += ((oppTA.defensePower - 50) / 50) * w;
-                    }
-                    oppTotalWeight += w;
-                });
-                if (oppTotalWeight > 0) {
-                    opponentAdjustment = Math.round(Math.max(-10, Math.min(12, (oppWeightedScore / oppTotalWeight) * 8)));
-                    sellRating += sensAdj(opponentAdjustment, userSettings.fixtureWeight);
-
-                    if (opponentAdjustment >= 5) {
-                        const label = player.position <= 2 ? 'Strong Attacking Opponents' : 'Strong Defensive Opponents';
-                        concerns.push({ type: 'warning', title: label, text: `Upcoming opponents have high ${player.position <= 2 ? 'attack' : 'defence'} power — harder to return points` });
-                    } else if (opponentAdjustment <= -5) {
-                        const label = player.position <= 2 ? 'Weak Attacking Opponents' : 'Weak Defensive Opponents';
-                        positives.push({ type: 'positive', title: label, text: `Upcoming opponents are ${player.position <= 2 ? 'weak in attack' : 'leaky at the back'} — favourable matchups` });
-                    }
-                }
-            }
-
-            // 4. MINUTES & ROTATION (Continuous, more aggressive)
-            let minsPenalty = 0;
-            if (minsPerGame < 20) { minsPenalty = 35; }
-            else if (minsPerGame < 60) { minsPenalty = Math.round(32 - (minsPerGame - 20) * (32 / 40)); }
-            else if (minsPerGame < 75) { minsPenalty = Math.round(5 - (minsPerGame - 60) * (7 / 15)); }
-            else if (minsPerGame >= 85) { minsPenalty = -6; }
-            else { minsPenalty = -2; }
-            sellRating += sensAdj(minsPenalty);
-            player.minsPerGame = minsPerGame;
-
-            if (minsPerGame < 45) {
-                concerns.push({ type: 'critical', title: 'Rotation Risk', text: `Only ${minsPerGame.toFixed(0)} mins/game (${player.starts} starts in ${gamesPlayed} GWs) — consider benching or selling` });
-                reasons.push('Not starting regularly');
-            } else if (minsPerGame < 65) {
-                concerns.push({ type: 'warning', title: 'Reduced Minutes', text: `${minsPerGame.toFixed(0)} mins/game — rotation risk, bench for tough fixtures` });
-            } else if (minsPerGame >= 85) {
-                positives.push({ type: 'positive', title: 'Nailed On', text: `${minsPerGame.toFixed(0)} mins/game — guaranteed starter, no rotation worry` });
-            }
-
-            // 5. VALUE FOR MONEY (Continuous — more aggressive, especially for premiums)
-            const ppm = player.points / Math.max(player.price, 1);
-            const ppmDelta = ppm - posAvg.ppm;
-            const ppgDelta = player.ppg - posAvg.ppg;
-            player.ppm = ppm;
-
-            // Blend PPM and PPG deltas for a richer value signal
-            const valueSignal = (ppmDelta * 0.6) + (ppgDelta * 2.5);
-            let rawValuePenalty = Math.max(-15, Math.min(22, Math.round(-valueSignal)));
-            if (isPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.5);
-            else if (isMidPremium) rawValuePenalty = Math.round(rawValuePenalty * userSettings.premiumHarshness * 1.2);
-            sellRating += sensAdj(rawValuePenalty, userSettings.valueWeight);
-
-            if (isPremium && effectiveForm < posConfig.formMedian) {
-                sellRating += sensAdj(5); // Extra premium penalty
-                concerns.push({ type: 'critical', title: 'Premium Underperforming', text: `£${player.price.toFixed(1)}m price tag not justified (${ppm.toFixed(1)} pts/£m vs avg ${posAvg.ppm.toFixed(1)}) — sell to free up funds for better options` });
-                if (!reasons.length) reasons.push('Premium not delivering');
-            } else if (isMidPremium && effectiveForm < posConfig.formMedian - 0.5) {
-                concerns.push({ type: 'warning', title: 'Mid-Premium Underperforming', text: `£${player.price.toFixed(1)}m with poor form — downgrade to fund upgrades elsewhere` });
-            } else if (ppmDelta > 3) {
-                positives.push({ type: 'positive', title: 'Great Value', text: `${ppm.toFixed(1)} pts/£m — well above ${posConfig.short} average (${posAvg.ppm.toFixed(1)})` });
-            }
-
-            // 6. xG ANALYSIS (Continuous, wider penalty range)
-            if (player.position >= 3 && player.minutes >= 270) {
-                const xGIPer90 = (player.xGI / player.minutes) * 90;
-                const actualGI = player.goals + player.assists;
-                const overperformance = actualGI - player.xGI;
-                player.xGIPer90 = xGIPer90;
-
-                // Continuous: xGI/90 below 0.30 is a concern, above 0.50 is great
-                const xGPenalty = Math.max(-15, Math.min(18, Math.round((0.35 - xGIPer90) * 35)));
-                sellRating += sensAdj(xGPenalty);
-
-                if (xGIPer90 < 0.20) {
-                    concerns.push({ type: 'warning', title: 'Low Underlying Stats', text: `${xGIPer90.toFixed(2)} xGI/90 — not creating enough chances` });
-                } else if (xGIPer90 < 0.30) {
-                    concerns.push({ type: 'info', title: 'Below Average xGI', text: `${xGIPer90.toFixed(2)} xGI/90 — mediocre output` });
-                } else if (xGIPer90 >= 0.60) {
-                    positives.push({ type: 'positive', title: 'Strong xGI', text: `${xGIPer90.toFixed(2)} xGI/90 — high-quality chances` });
-                }
-
-                if (overperformance > 2.0) {
-                    sellRating += sensAdj(Math.round(Math.min(12, overperformance * 2.5)));
-                    concerns.push({ type: 'warning', title: 'Overperforming xG', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — regression risk, consider selling high (+${overperformance.toFixed(1)})` });
-                } else if (overperformance < -2.5) {
-                    sellRating += sensAdj(-Math.round(Math.min(8, Math.abs(overperformance) * 1.5)));
-                    positives.push({ type: 'positive', title: 'Due Returns', text: `${actualGI} G+A vs ${player.xGI.toFixed(1)} xGI — unlucky, due a haul — hold and be patient (${overperformance.toFixed(1)})` });
-                }
-            } else if (player.position <= 2 && player.minutes >= 270) {
-                const csRate = player.cleanSheets / gamesPlayed;
-                player.csRate = csRate;
-                // Continuous: CS rate below 20% adds penalty, above 35% gives bonus (wider range)
-                const csPenalty = Math.max(-10, Math.min(14, Math.round((0.28 - csRate) * 35)));
-                sellRating += sensAdj(csPenalty);
-
-                if (csRate >= 0.40) {
-                    positives.push({ type: 'positive', title: 'CS Machine', text: `${(csRate * 100).toFixed(0)}% clean sheet rate` });
-                } else if (csRate <= 0.18 && !isBudget) {
-                    concerns.push({ type: 'warning', title: 'Few Clean Sheets', text: `Only ${(csRate * 100).toFixed(0)}% CS rate — poor defensive returns` });
-                }
-                player.xGIPer90 = player.position === 1 ? (player.saves / Math.max(player.minutes / 90, 1)) : ((player.xGI / Math.max(player.minutes, 1)) * 90);
-            }
-
-            // 7. OWNERSHIP URGENCY (more sensitive)
-            if (player.ownership > 20 && sellRating > 45) {
-                sellRating += 5;
-                concerns.push({ type: 'info', title: 'High Ownership Risk', text: `${player.ownership.toFixed(1)}% owned — price drop risk if others sell` });
-            } else if (player.ownership < 8 && sellRating < 30) {
-                positives.push({ type: 'positive', title: 'Differential', text: `Only ${player.ownership.toFixed(1)}% owned — great differential pick` });
-                sellRating -= 3;
-            }
-
-            // 7b. NET TRANSFERS — heavy selling = price drop risk
-            const netTransfers = player.transfersIn - player.transfersOut;
-            player.netTransfers = netTransfers;
-            if (netTransfers < -20000) {
-                sellRating += sensAdj(4);
-                concerns.push({ type: 'info', title: 'Mass Selling', text: `${(netTransfers / 1000).toFixed(0)}k net transfers — sell now before price drops further` });
-            }
-
-            // 8. TEAM CONTEXT (from team analysis — attack, defence, form scoring)
-            if (ta) {
-                // Team form: poor team form = harder for all players to return
-                const teamFormDelta = (ta.formRating - 50) / 50; // -1 to +1
-                const teamFormPenalty = Math.round(teamFormDelta * -8); // bad form → +8, good form → -8
-                sellRating += sensAdj(teamFormPenalty);
-
-                if (ta.formRating < 30) {
-                    concerns.push({ type: 'warning', title: 'Team in Poor Form', text: `${player.team} form rating ${ta.formRating}/100 — team struggling (W${ta.wins} D${ta.draws} L${ta.losses} last 5)` });
-                    if (!reasons.length) reasons.push('Team in poor form');
-                } else if (ta.formRating >= 70) {
-                    positives.push({ type: 'positive', title: 'Team in Great Form', text: `${player.team} form rating ${ta.formRating}/100 — team on fire (W${ta.wins} D${ta.draws} L${ta.losses} last 5)` });
-                }
-
-                // Position-specific: attackers benefit from strong team attack
-                if (player.position >= 3) {
-                    const attDelta = (ta.attackPower - 50) / 50;
-                    const teamAttPenalty = Math.round(attDelta * -8);
-                    sellRating += sensAdj(teamAttPenalty);
-
-                    if (ta.attackPower < 35) {
-                        concerns.push({ type: 'warning', title: 'Weak Team Attack', text: `${player.team} attack power ${ta.attackPower}/100 — limited goal threat (${ta.avgGoals.toFixed(1)} goals/game)` });
-                    } else if (ta.attackPower >= 65) {
-                        positives.push({ type: 'positive', title: 'Strong Team Attack', text: `${player.team} attack power ${ta.attackPower}/100 — high goal output (${ta.avgGoals.toFixed(1)} goals/game)` });
-                    }
-                }
-
-                // Position-specific: defenders benefit from strong team defence
-                if (player.position <= 2) {
-                    const defDelta = (ta.defensePower - 50) / 50;
-                    const teamDefPenalty = Math.round(defDelta * -8);
-                    sellRating += sensAdj(teamDefPenalty);
-
-                    if (ta.defensePower < 35) {
-                        concerns.push({ type: 'warning', title: 'Weak Team Defence', text: `${player.team} defence power ${ta.defensePower}/100 — hard to keep clean sheets (${ta.avgConceded.toFixed(1)} conceded/game)` });
-                    } else if (ta.defensePower >= 65) {
-                        positives.push({ type: 'positive', title: 'Strong Team Defence', text: `${player.team} defence power ${ta.defensePower}/100 — clean sheet potential (${ta.csRate > 0 ? (ta.csRate * 100).toFixed(0) + '% CS rate' : ''})` });
-                    }
-                }
-
-                // Team fixture score impacts all players
-                if (ta.fixtureScore < 30) {
-                    sellRating += sensAdj(4, userSettings.fixtureWeight);
-                    concerns.push({ type: 'info', title: 'Poor Team Fixture Score', text: `${player.team} fixture score ${ta.fixtureScore}/100 — tough schedule ahead` });
-                } else if (ta.fixtureScore >= 70) {
-                    sellRating += sensAdj(-3, userSettings.fixtureWeight);
-                    positives.push({ type: 'positive', title: 'Great Team Fixture Score', text: `${player.team} fixture score ${ta.fixtureScore}/100 — favourable run, hold players` });
-                }
-            }
-
-            sellRating = Math.max(0, Math.min(100, Math.round(sellRating)));
-
-            // VERDICT (tighter thresholds — more active flagging)
-            let verdict, verdictReason, recommendation;
-            const nextFix = (player.fixtures || [])[0];
-            const nextOpp = nextFix ? nextFix.opponent : '';
-            const nextGW = nextFix ? nextFix.event : currentGW + 1;
-
-            if (sellRating >= 55) {
-                verdict = 'sell';
-                verdictReason = reasons[0] || 'Multiple red flags — prioritize transfer';
-                const priceRisk = (player.netTransfers || 0) < -10000 ? ' Price drop risk.' : '';
-                recommendation = `Transfer out before GW${nextGW}.${priceRisk} ${concerns.length > 0 ? concerns[0].text : ''}`;
-            } else if (sellRating >= 38) {
-                verdict = 'monitor';
-                verdictReason = reasons[0] || 'Some concerns — monitor closely';
-                const fixNote = avgFDR <= 2.8 ? ' Fixtures improve soon — hold for now.' : avgFDR >= 3.5 ? ' Tough fixtures ahead — consider selling.' : '';
-                recommendation = `Reassess after GW${nextGW}.${fixNote}`;
-            } else if (sellRating <= 20 && effectiveForm >= posConfig.formMedian + 1.5 && minsPerGame >= 75) {
-                verdict = 'star';
-                verdictReason = positives.length > 0 ? positives[0].text : 'Top performer — team cornerstone';
-                recommendation = `Captain candidate GW${nextGW}${nextOpp ? ` vs ${nextOpp}` : ''}. Lock in and don't overthink.`;
-            } else {
-                verdict = 'hold';
-                verdictReason = positives.length > 0 ? positives[0].text : 'Performing as expected';
-                recommendation = `Keep starting. Reliable performer${avgFDR <= 3.0 ? ' with decent fixtures ahead' : ''}.`;
-            }
-
-            const keyMetric = buildKeyMetrics(player, posConfig, minsPerGame, avgFDR, effectiveForm, rawForm);
-            return { player, sellRating, verdict, verdictReason, recommendation, concerns, positives, keyMetric,
-                availPenalty, formPenalty: formPenaltyApplied, effectiveForm, rawForm, fixtures: fixtures.slice(0, 5) };
-        }
-
-        // `form` is what gets printed; `judged` is what decides the colour. Early
-        // in a season those differ: the number is real, the verdict on it is not.
-        function buildKeyMetrics(player, posConfig, minsPerGame, avgFDR, judgedForm, shownForm) {
-            const form = shownForm != null ? shownForm : (isPreseason ? player.ppg : player.form);
-            const judged = judgedForm != null ? judgedForm : form;
-            const ta = teamAnalysis[player.teamId];
-            if (player.position <= 2) {
-                return {
-                    primary: { label: 'Form', value: form.toFixed(1), status: judged >= posConfig.formMedian + 1 ? 'good' : judged < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
-                    secondary: { label: 'Def', value: ta ? ta.defensePower.toString() : '-', status: ta ? (ta.defensePower >= 60 ? 'good' : ta.defensePower < 40 ? 'bad' : 'warning') : 'neutral' },
-                    tertiary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' },
-                    quaternary: { label: 'PPG', value: player.ppg.toFixed(1), status: player.ppg >= 5 ? 'good' : player.ppg < 3 ? 'bad' : 'neutral' }
-                };
-            } else {
-                const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
-                return {
-                    primary: { label: 'Form', value: form.toFixed(1), status: judged >= posConfig.formMedian + 1.5 ? 'good' : judged < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
-                    secondary: { label: 'Att', value: ta ? ta.attackPower.toString() : '-', status: ta ? (ta.attackPower >= 60 ? 'good' : ta.attackPower < 40 ? 'bad' : 'warning') : 'neutral' },
-                    tertiary: { label: 'xGI/90', value: xGIPer90.toFixed(2), status: xGIPer90 >= 0.50 ? 'good' : xGIPer90 < 0.25 ? 'bad' : 'warning' },
-                    quaternary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' }
-                };
-            }
-        }
+        /* analyzePlayer() and the regressed-form prior it reads moved to
+           scripts/player-profile.js, with the card that reports their verdict.
+           Both pages that draw a player profile run the same judgement now. */
 
         // ===== RENDERING =====
         /* Where this squad sits against the field it is competing with.
@@ -1124,6 +695,7 @@
 
             let html = '';
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
+            html += renderPendingTransfersNotice();
             html += renderSquadTickers();
             html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
             /* A trial sits under the numbers it moves, so before and after are
@@ -1162,6 +734,39 @@
                     fill.style.strokeDashoffset = offset;
                 }
             });
+        }
+
+        /* Say so when the squad on screen is not the one that played.
+
+           Everything below this line is built from picksData, which for the days
+           between a round ending and the next deadline is last round's team with
+           the manager's own already-made transfers replayed into it. That is the
+           right squad to analyse and the wrong one to leave unexplained: a
+           manager who sold a player on Sunday and still sees him in the verdict
+           list assumes the page is broken, and one who does not see him assumes
+           it read their team live. Naming the moves settles both. */
+        function renderPendingTransfersNotice() {
+            if (!pendingTransfers || !pendingTransfers.moves.length) return '';
+            const nameOf = id => {
+                const p = allPlayersById[id];
+                return p ? p.name : `Player ${id}`;
+            };
+            // Inline-styled for the same reason renderSeasonNotice() is: one
+            // strip, on one page, not worth a rule in a 7,000-line stylesheet.
+            const chip = 'display:inline-block;margin:2px 4px 0 0;padding:1px 7px;border-radius:999px;'
+                + 'background:var(--surface-2, rgba(255,255,255,0.06));white-space:nowrap;';
+            const moves = pendingTransfers.moves
+                .map(m => `<span style="${chip}"><span style="opacity:.65;text-decoration:line-through;">${escHTML(nameOf(m.out))}</span>`
+                    + ` → <strong>${escHTML(nameOf(m.in))}</strong></span>`)
+                .join('');
+            const armband = pendingTransfers.armband
+                ? ` Armband moved to ${escHTML(nameOf(pendingTransfers.armband.to))}, as FPL does when a captain is sold.`
+                : '';
+            const n = pendingTransfers.moves.length;
+            return `<div class="season-notice" style="display:flex;align-items:flex-start;gap:8px;padding:10px 14px;margin-bottom:12px;background:var(--color-success-muted, rgba(74,222,128,0.08));border:1px solid var(--color-success, #4ade80);border-radius:10px;font-size:12px;color:var(--text-secondary);">
+                <i data-lucide="arrow-left-right" style="width:14px;height:14px;flex-shrink:0;margin-top:2px;color:var(--color-success, #4ade80);"></i>
+                <span>Showing your <strong>GW${pendingTransfers.gw}</strong> squad — the ${n} transfer${n === 1 ? '' : 's'} you have already made ${n === 1 ? 'is' : 'are'} included. ${moves}${armband}</span>
+            </div>`;
         }
 
         // Shared by the Squad Snapshot cards below (hoisted out of renderTeamOverview
@@ -1653,9 +1258,18 @@
             if (!rows.length) return { count: 1, exact: false };
 
             // Replayed by the shared engine so the dashboard cannot drift from this.
-            const ft = typeof twDeriveFreeTransfers === 'function'
+            let ft = typeof twDeriveFreeTransfers === 'function'
                 ? twDeriveFreeTransfers(rows, managerHistory?.chips, maxFreeTransfers)
                 : 1;
+            /* History only gains a row once a round has been scored, so moves
+               already made for the round being planned are not in the replay
+               above — leaving the panel offering two free transfers to a manager
+               who has just spent both. They are known here; deduct them. A
+               Wildcard or Free Hit played for that round would make them free
+               again, and neither is visible before the deadline, so the count
+               reads low for the one case where nothing was spent. */
+            const spent = pendingTransfers ? pendingTransfers.moves.length : 0;
+            ft = Math.max(0, ft - spent);
             // Only trustworthy if the history covers every gameweek up to now.
             const exact = rows.length >= (currentGW - (rows.some(r => r.event === currentGW) ? 0 : 1));
             return { count: ft, exact };
@@ -1753,6 +1367,10 @@
                 freeTransfersExact: ft.exact,
                 transfersMade: thisRow?.event_transfers ?? 0,
                 hitCost: thisRow?.event_transfers_cost ?? 0,
+                // Moves already made for the round being planned, which no
+                // history row covers yet — see applyPendingTransfers().
+                pendingCount: pendingTransfers ? pendingTransfers.moves.length : 0,
+                pendingGW: pendingTransfers ? pendingTransfers.gw : null,
                 activeChip: picksData?.active_chip || null,
                 chips: deriveChipStatus(deadlineGW),
                 deadline: nextEvent?.deadline_time || null,
@@ -1810,9 +1428,14 @@
             const chipsAvail = d.chips.filter(ch => ch.available);
             const activeLabel = d.activeChip ? (CHIP_LABELS[d.activeChip] || d.activeChip) : null;
 
-            const ftNote = d.transfersMade
-                ? `${d.transfersMade} made this GW${d.hitCost ? ` · −${d.hitCost} pts` : ''}`
-                : 'No transfers made yet';
+            /* "No transfers made yet" is the one thing this line must not say to
+               a manager who has just made two for the round being planned. Those
+               are the ones on their mind, so they lead when they exist. */
+            const ftNote = d.pendingCount
+                ? `${d.pendingCount} already made for GW${d.pendingGW}`
+                : d.transfersMade
+                    ? `${d.transfersMade} made this GW${d.hitCost ? ` · −${d.hitCost} pts` : ''}`
+                    : 'No transfers made yet';
 
             const p = d.progress;
             const progressPct = p.total ? Math.round(((p.played + p.live * 0.5) / p.total) * 100) : 0;

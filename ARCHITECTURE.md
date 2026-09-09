@@ -76,6 +76,31 @@ absent or covers a different round. Opponent and scoreline always come from
 Live manager data (picks, leagues, history) goes through the Cloudflare Worker
 proxy in `WORKER_URL`, never direct to FPL — the API has no CORS headers.
 
+### The squad the manager actually has
+
+`entry/{id}/event/{gw}/picks/` only answers for a round whose deadline has
+passed, so for the whole window between a round's last whistle and the next
+deadline it describes a team that has since been changed. That window is most of
+the time anyone spends planning. The endpoint that would know better,
+`my-team/{id}`, needs the manager's own login, which a static site cannot hold.
+
+`entry/{id}/transfers/` is public, needs no login, and stamps every move with the
+gameweek it takes effect in. `applyPendingTransfers()` in `common.js` replays
+this window's moves over last round's picks: the incoming player takes the
+outgoing one's slot, and the bank moves by exactly what FPL credited and charged
+— both stated by the feed rather than inferred. FPL's own rule for a sold
+captain is followed too, the armband passing to the vice.
+
+**Only ever applied while `planningGW > currentGW`.** Once the deadline passes
+FPL publishes real picks for that round with the transfers already in them, and
+replaying the same moves on top would apply every one of them twice.
+
+The squad page keeps both readings and they must not be confused: `picksData` is
+the squad being planned, `reviewPicksData` the untouched response for
+`currentGW`. The Gameweek Review reads the second — scoring a round with a squad
+assembled after it ended credits players who were not in it. Free transfers are
+deducted for pending moves as well, since no history row covers them yet.
+
 `data/odds.json` is the one feed not sourced from FPL. It comes from
 football-data.co.uk, which needs no API key — which is the reason it was
 chosen, since a key could not live in the browser on a static site. Bookmakers
@@ -140,6 +165,36 @@ contract in about ten lines — see the block after `computeIsPreseason` in
 `fpl-players-analysis.html`. Build `teamFixtures6` *before* the players and pass
 it in, or each player's `.fixtures` carries no `opponentId` and every projection
 degrades silently to an FDR-only estimate.
+
+### One profile card
+
+`buildPlayerFullProfileHTML()` and the `analyzePlayer()` verdict behind it live
+in `scripts/player-profile.js`, loaded by the squad page and the players page.
+They used to be the bottom half of `panels-and-tabs.js`, which only the squad
+page loads — and that was the entire reason the players page's own modal showed
+a name, five tiles and four charts. Nothing richer was unavailable to it; the
+code that draws richer could not be reached from there.
+
+The card reads page globals rather than taking arguments: `teams`,
+`teamAnalysis`, `seasonStats`, `fixtureSwingData`, `positionAverages`,
+`currentGW`, `isPreseason`, `playersDetailData`. Every one is now built by a
+shared builder, which is what made the move possible at all. Two hooks let a
+page add to the card without the card knowing: `pdmPageSections(player)` returns
+extra HTML, `pdmAfterRender(player)` runs once it is in the DOM — the players
+page mounts its Chart.js trends there, which is the one thing its old modal had
+that the squad page's never did.
+
+Two more builders moved into `xp-engine.js` with it, both of which had a copy on
+each page: `xpBuildFixtureSwings()` and `xpBuildSeasonStats()`. The swing
+detector took the better half of each copy — the players page's double-gameweek
+handling (the squad page's read only `tfm[g][0]`, dropping the second fixture of
+a double) and the squad page's per-gameweek breakdown, without which a swing can
+say "3.7 → 2.7" and not which opponents either number is made of.
+
+The styles followed the card into `styles/player-profile.css`, moved out of
+`my-team.css` rule for rule. Both pages load it immediately after their own
+sheet. Fixture chips and the FDR ramp deliberately did not move: `common.css`
+already owns those for every page.
 
 `teamAnalysis` was the last divergence and is settled. It had three
 implementations of `computeTeamScores` and they were not copies: the players
@@ -298,10 +353,13 @@ delete a file, remove it from there and bump `CACHE_NAME`.
 
 ## Known debt
 
-- **~13.9k lines of JS inside HTML.** Not lintable until extracted, though
+- **~14.4k lines of JS inside HTML.** Not lintable until extracted, though
   `tests/page-smoke.test.mjs` now at least executes every line of it.
-  `fpl-players-analysis.html` alone holds 5,182 lines. Extract page by page,
-  smallest first; the CI guards are already in place to catch what moves.
+  `fpl-players-analysis.html` alone holds ~5.5k lines, then Teams Analysis at
+  ~4.4k. Extract page by page, smallest first; the CI guards are already in
+  place to catch what moves. The player profile card is a worked example of the
+  other direction — code that was already in `scripts/` but reachable from only
+  one page, which is the same problem wearing a different hat.
 - **`git log` is ~65% automated data commits.** `npm run log` filters them.
 - **`.git` is ~220 MB**, growing a few MB a day from data commits. Fine for
   months; wants a decision eventually.

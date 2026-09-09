@@ -218,6 +218,130 @@ function planningGameweek(bootData, fixturesData, now) {
     return roundOver ? next.id : current.id;
 }
 
+/* ===== The squad you actually have =====
+
+   `entry/{id}/event/{gw}/picks/` only ever answers for a round whose deadline
+   has passed. So for the whole window between a round's last whistle and the
+   next deadline — the window in which managers are actually working — it
+   describes a team that has since been changed, and every panel built on it is
+   analysing last weekend's squad. The endpoint that would know better,
+   `my-team/{id}`, needs the manager's own login, which a static site cannot
+   hold.
+
+   `entry/{id}/transfers/` is public, needs no login, and stamps each move with
+   the gameweek it takes effect in. So the planning squad is last round's picks
+   with this window's moves replayed over them: the incoming player takes the
+   outgoing one's slot, and the bank moves by exactly what FPL credited and
+   charged, both of which the feed states rather than leaving to be inferred.
+
+   Two things this deliberately does not do. It does not guess at a chip — a
+   Wildcard or Free Hit played for the upcoming round is invisible until the
+   deadline, and a squad of fifteen transfers replays the same either way. And
+   it must only ever be called while the round being planned is AHEAD of the
+   round the picks describe: once the deadline passes, FPL publishes real picks
+   for that round with the transfers already in them, and replaying the same
+   moves on top would apply every one of them twice.
+
+   Returns null when there is nothing to apply, so a caller can keep the
+   response it already has rather than being handed a copy of it.
+
+   `nowCostTenths(id)` is optional and only sharpens the selling price of an
+   incoming player; without it the purchase price is used, which is what FPL
+   itself uses until the player's price next moves. */
+function applyPendingTransfers(picksData, transfers, gw, nowCostTenths) {
+    if (!picksData || !Array.isArray(picksData.picks) || !picksData.picks.length) return null;
+
+    const moves = (transfers || [])
+        .filter(t => t && t.event === gw && t.element_in != null && t.element_out != null)
+        // Oldest first. A player bought and then sold again before the deadline
+        // is a chain, and only replaying it in order lands on who is owned now.
+        .sort((a, b) => Date.parse(a.time || 0) - Date.parse(b.time || 0));
+    if (!moves.length) return null;
+
+    const picks = picksData.picks.map(p => ({ ...p }));
+    const before = picks.map(p => p.element);
+    const capIndex = picks.findIndex(p => p.is_captain);
+    const viceIndex = picks.findIndex(p => p.is_vice_captain);
+
+    let bankTenths = picksData.entry_history && picksData.entry_history.bank != null
+        ? picksData.entry_history.bank : 0;
+    const applied = [];
+
+    moves.forEach(t => {
+        const slot = picks.find(p => p.element === t.element_out);
+        // A move out of a player this squad does not hold means the picks and
+        // the transfer log disagree about the starting point. Skipping is the
+        // only safe answer: applying it anyway would invent a squad.
+        if (!slot) return;
+
+        slot.element = t.element_in;
+        slot.purchase_price = t.element_in_cost;
+        slot.selling_price = sellingPriceTenths(t.element_in_cost,
+            typeof nowCostTenths === 'function' ? nowCostTenths(t.element_in) : null);
+        bankTenths += (t.element_out_cost || 0) - (t.element_in_cost || 0);
+
+        // Collapse the chain rather than reporting both halves of it: a manager
+        // who bought Haaland and changed their mind made one net move, not two.
+        const chained = applied.find(m => m.in === t.element_out);
+        if (chained) chained.in = t.element_in;
+        else applied.push({ out: t.element_out, in: t.element_in, slot: slot.position });
+    });
+
+    const netMoves = applied.filter(m => m.in !== m.out);
+    if (!netMoves.length) return null;
+
+    /* FPL hands the armband to the vice-captain when the captain is sold. The
+       alternative — leaving `is_captain` on the slot, so it lands on whoever
+       arrived in it — would quietly captain a player the manager never chose. */
+    let armband = null;
+    const capSold = capIndex >= 0 && picks[capIndex].element !== before[capIndex];
+    const viceSold = viceIndex >= 0 && picks[viceIndex].element !== before[viceIndex];
+    if (capSold) {
+        const heir = (!viceSold && viceIndex >= 0 && viceIndex !== capIndex)
+            ? viceIndex
+            : picks.findIndex((p, i) => i !== capIndex && p.position <= 11 && p.element === before[i]);
+        if (heir >= 0) {
+            picks[capIndex].is_captain = false;
+            picks[capIndex].multiplier = picks[capIndex].position <= 11 ? 1 : 0;
+            picks[heir].is_captain = true;
+            picks[heir].is_vice_captain = false;
+            picks[heir].multiplier = picks[heir].position <= 11 ? 2 : 0;
+            armband = { from: before[capIndex], to: picks[heir].element };
+        }
+    }
+    // Promoting the vice leaves the squad without one; so does selling him.
+    if (!picks.some(p => p.is_vice_captain)) {
+        const deputy = picks.findIndex(p => p.position <= 11 && !p.is_captain);
+        if (deputy >= 0) picks[deputy].is_vice_captain = true;
+    }
+
+    return {
+        gw,
+        moves: netMoves,
+        armband,
+        picksData: {
+            ...picksData,
+            picks,
+            /* Bank moves, team value does not: a transfer credits the bank
+               exactly what it charges the squad, so `value` — which FPL defines
+               as the two added together — is the one figure a transfer leaves
+               alone. */
+            entry_history: { ...(picksData.entry_history || {}), bank: bankTenths }
+        }
+    };
+}
+
+/* What a player bought at `purchaseTenths` would raise if sold again. FPL banks
+   half of any rise since the purchase, rounded down, and the whole of any fall.
+   Both in tenths of a million, which is how the API states prices. */
+function sellingPriceTenths(purchaseTenths, nowTenths) {
+    if (!(purchaseTenths > 0)) return purchaseTenths || 0;
+    if (nowTenths == null || !(nowTenths > 0)) return purchaseTenths;
+    return nowTenths >= purchaseTenths
+        ? purchaseTenths + Math.floor((nowTenths - purchaseTenths) / 2)
+        : nowTenths;
+}
+
 // ===== PLAYER PHOTOS =====
 /* The club's headshot for a player, addressed the way premierleague.com
  * addresses it today.
@@ -746,9 +870,13 @@ function v2WrapSections(scope) {
  * The listener is bound only while something is open, and only from the frame
  * after it opens, so the click that opened a panel cannot also close it.
  */
+/* `.player-modal` was the players page's own player card, and it is gone: that
+   page draws the shared one from scripts/player-profile.js now, which is a
+   `.modal-overlay`. Its three class names are off these lists rather than left
+   behind, because the lists are the site's register of what an overlay looks
+   like and a name in them that matches nothing is a claim that it does. */
 const OVERLAY_OPEN_SELECTORS = [
     '.detail-overlay.show',
-    '.player-modal.show',
     '.compare-modal.show',
     '.modal-overlay.open'
 ];
@@ -756,14 +884,12 @@ const OVERLAY_OPEN_SELECTORS = [
 // The element that actually holds the content — a click inside it is not "outside".
 const OVERLAY_CONTENT_SELECTORS = [
     '.detail-panel',
-    '.player-modal-container',
     '.compare-modal-container',
     '.modal-container'
 ].join(',');
 
 const OVERLAY_CLOSE_SELECTORS = [
     '.detail-close',
-    '.player-modal-close',
     '.compare-modal-close',
     '.modal-close',
     '.drawer-close'
@@ -1098,6 +1224,11 @@ async function getDemoResponse(apiPath) {
         body = { current: [], past: [], chips: [] };
     } else if (apiPath === 'api/entry/0/transfers-latest/') {
         body = []; // never read by any call site
+    } else if (apiPath === 'api/entry/0/transfers/') {
+        /* Read by applyPendingTransfers(). Empty is the honest answer: the demo
+           squad is built fresh from the current bootstrap every load, so there
+           is no earlier team for a transfer to have moved away from. */
+        body = [];
     } else if (apiPath === `api/leagues-classic/${DEMO_LEAGUE_ID}/standings/`) {
         body = {
             league: { id: DEMO_LEAGUE_ID, name: 'The Demo Legends' },
@@ -1345,7 +1476,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=189')
+    fetch('footer.html?v=190')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

@@ -19,8 +19,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=189">
-    <link rel="stylesheet" href="styles/v2-design.css?v=189">
+    <link rel="stylesheet" href="styles/common.css?v=190">
+    <link rel="stylesheet" href="styles/v2-design.css?v=190">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -521,9 +521,9 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=189"></script>
-    <script src="scripts/common.js?v=189"></script>
-    <script src="scripts/sidebar-nav.js?v=189"></script>
+    <script src="scripts/error-monitor.js?v=190"></script>
+    <script src="scripts/common.js?v=190"></script>
+    <script src="scripts/sidebar-nav.js?v=190"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1149,7 +1149,24 @@
                         const picksRes = await fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${encodeURIComponent(savedTeamId)}/event/${currentGW}/picks/`);
                         if (picksRes.ok) {
                             const picksData = await picksRes.json();
-                            (picksData.picks || []).forEach(pk => squadIds.add(pk.element));
+                            /* The squad being planned, not the one that played:
+                               between a round ending and the next deadline the
+                               picks endpoint still names players who have been
+                               sold, and knows nothing of the ones bought. This
+                               page's whole job is flagging news about players
+                               you own. No fixture list here, so
+                               planningGameweek() falls back to the event's own
+                               `finished` flag. See applyPendingTransfers(). */
+                            const planningGW = planningGameweek(bootData, null);
+                            let squadPicks = picksData;
+                            if (planningGW > currentGW) {
+                                const trRes = await fetchWithProxy(
+                                    `https://fantasy.premierleague.com/api/entry/${encodeURIComponent(savedTeamId)}/transfers/`).catch(() => null);
+                                const log = trRes ? await trRes.json().catch(() => null) : null;
+                                const applied = applyPendingTransfers(picksData, log, planningGW);
+                                if (applied) squadPicks = applied.picksData;
+                            }
+                            (squadPicks.picks || []).forEach(pk => squadIds.add(pk.element));
                         }
                     } catch (e) {
                         console.warn('Could not load squad:', e);
