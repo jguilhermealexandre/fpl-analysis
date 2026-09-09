@@ -73,13 +73,19 @@
                invented, so a saved arrangement wins over the fresh solve — but
                only if it is for this team and this gameweek, and only if every
                player in it is still in the squad. lsLoad and lsApply enforce
-               both; anything else falls through to what was just solved. */
+               both; anything else falls through to what was just solved.
+
+               Keyed on planningGW, the round the arrangement is FOR. It was
+               keyed on currentGW, the round already played, which inverted the
+               store's own expiry rule: an eleven picked on the Tuesday was
+               filed under the gameweek behind it and thrown away at the next
+               deadline — the exact moment it became the answer. */
             (() => {
-                if (typeof lsLoad !== 'function' || typeof currentGW === 'undefined') return;
+                if (typeof lsLoad !== 'function' || typeof planningGW === 'undefined') return;
                 let teamId = null;
                 try { teamId = localStorage.getItem('fpl_team_id'); } catch (e) { return; }
                 if (!teamId) return;
-                const saved = lsLoad(teamId, currentGW);
+                const saved = lsLoad(teamId, planningGW);
                 if (saved) lsApply(lineupState, saved);
             })();
 
@@ -119,7 +125,7 @@
             container.innerHTML = `
                 <div class="lw-cc">
                     <div class="lw-cc-head">
-                        <div class="lw-cc-title">🎛️ Lineup command centre <span class="lw-cc-gw">GW${currentGW}</span></div>
+                        <div class="lw-cc-title">🎛️ Lineup command centre <span class="lw-cc-gw">GW${planningGW}</span></div>
                         <div class="lw-cc-stats">
                             <span class="lw-cc-stat" data-tooltip="The shape the optimiser settled on for your available players.">
                                 <span class="lw-cc-stat-l">Formation</span><span class="lw-cc-stat-v" id="lwFormation">${lineupState.formation}</span></span>
@@ -584,8 +590,8 @@
         function lwRemember() {
             if (typeof lsArrangement !== 'function') return;
             const teamId = (() => { try { return localStorage.getItem('fpl_team_id'); } catch (e) { return null; } })();
-            if (!teamId || typeof currentGW === 'undefined') return;
-            lsSave(teamId, currentGW, lsArrangement(lineupState));
+            if (!teamId || typeof planningGW === 'undefined') return;
+            lsSave(teamId, planningGW, lsArrangement(lineupState));
         }
 
         /* Put back whatever Auto-optimise replaced.
@@ -854,7 +860,7 @@
         function openLineupOptimizeReport() {
             if (!lineupState.optimizeReport) return;
             const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = `📊 GW${currentGW} — what Auto-optimise changed`;
+            if (title) title.textContent = `📊 GW${planningGW} — what Auto-optimise changed`;
             document.getElementById('optReportBody').innerHTML = renderLWChangeReport(lineupState.optimizeReport);
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();

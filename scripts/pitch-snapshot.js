@@ -29,6 +29,7 @@
             snapshotCaptainId = null;
             snapshotViceId = null;
             snapshotSwapSource = null;
+            snapshotViewMode = null;
             snapshotOptimizeSummary = '';
             snapshotOptimizeReport = null;
             snapshotOptimizeUndo = null;
@@ -130,16 +131,16 @@
                      which is where someone looks when they want more than a
                      label. -->
                 <div class="sq-pitch-controls" role="group" aria-label="Pitch controls">
-                    <button class="sq-pc ${snapshotViewMode === 'current' ? 'active' : ''}"
+                    <button class="sq-pc ${snapshotMode() === 'current' ? 'active' : ''}"
                         onclick="setSnapshotViewMode('current')"
                         aria-label="Show Gameweek ${currentGW}"
-                        data-tooltip="Current GW${currentGW} — points scored, live while matches are on">
+                        data-tooltip="GW${currentGW} — points scored, live while matches are on. Once the round is over, the one you have already played.">
                         <i data-lucide="circle-play"></i>
                     </button>
-                    <button class="sq-pc ${snapshotViewMode === 'next' ? 'active' : ''}"
+                    <button class="sq-pc ${snapshotMode() === 'next' ? 'active' : ''}"
                         onclick="setSnapshotViewMode('next')"
                         aria-label="Show Gameweek ${currentGW + 1}"
-                        data-tooltip="Next GW${currentGW + 1} — projected points and the fixture coming up">
+                        data-tooltip="GW${currentGW + 1} — projected points and the fixture coming up. The gameweek you are picking for.">
                         <i data-lucide="skip-forward"></i>
                     </button>
                     <button class="sq-pc sq-pc-go" onclick="runAutoOptimize()"
@@ -249,8 +250,27 @@
            fixture being played. 'next' answers "what should I do?" — projected
            points against the fixture coming up. The page used to infer this from
            whether kick-off had passed, which is right on a Saturday and useless on
-           a Tuesday when you are planning. */
-        let snapshotViewMode = 'current';
+           a Tuesday when you are planning.
+
+           So it became an explicit toggle — and then defaulted to 'current'
+           forever, which put the same Tuesday back. Between a round's last
+           whistle and the next deadline the pitch opened on eleven finished
+           matches: Raya vs CHE (H), 3 pts, FT, while the manager reading it was
+           picking a side to face SUN away. "How am I doing" has no answer in that
+           window, and "what should I do" is the only question left.
+
+           Unset means follow the round. A click pins it, because a manager who
+           has deliberately gone back to look at the round just gone should not
+           have it taken off them by the next re-render. */
+        let snapshotViewMode = null;   // null = follow the round; 'current' | 'next' once pinned
+
+        function snapshotMode() {
+            if (snapshotViewMode) return snapshotViewMode;
+            // planningGW only moves past currentGW once every match in the round
+            // has been played, which is exactly when there is nothing left to watch.
+            const planning = typeof planningGW !== 'undefined' ? planningGW : currentGW;
+            return planning !== currentGW ? 'next' : 'current';
+        }
 
         function setSnapshotViewMode(mode) {
             snapshotViewMode = mode === 'next' ? 'next' : 'current';
@@ -259,7 +279,7 @@
 
         // The fixture the card should show, given the mode.
         function snapshotFixtureFor(player) {
-            if (snapshotViewMode === 'next') {
+            if (snapshotMode() === 'next') {
                 // player.fixtures already excludes anything finished, so the head
                 // of that list is the next one to be played.
                 return (player.fixtures || [])[0] || null;
@@ -284,7 +304,7 @@
            kick-off, or FT/LIVE, which colour alone must not be left to say. */
         function getPlayerGwState(player) {
             // Planning mode always shows the projection, whatever the clock says.
-            if (snapshotViewMode === 'next') {
+            if (snapshotMode() === 'next') {
                 const nf = (player.fixtures || [])[0];
                 return {
                     cls: 'xp',

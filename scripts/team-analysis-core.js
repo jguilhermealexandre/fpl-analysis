@@ -53,7 +53,21 @@
                 }
             });
         }
-        let currentGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
+        /* This page needs two gameweeks, and conflating them is what made the
+           pitch describe a round that had already been played.
+
+           currentGW is the round the squad BELONGS TO — the one `is_current`
+           names, the one the picks endpoint will answer for, the one whose
+           points and rank the manager panel reports. It is a fact about the past
+           (or the present, mid-round).
+
+           planningGW is the round you are PICKING FOR. The two are the same
+           number while a round is locked or under way, and differ for the days
+           between its last whistle and the next deadline — which is most of the
+           time anyone spends on this page. Anything projected, arranged or
+           recommended belongs to planningGW; anything scored belongs to
+           currentGW. See planningGameweek() in scripts/common.js. */
+        let currentGW = 1, planningGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
         let isPreseason = false; // true until the season's first fixture kicks off — see computeIsPreseason() in scripts/common.js
         let positionAverages = {};
         let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
@@ -190,7 +204,7 @@
                 }
             });
             fixtureSwingData = {};
-            const gw = currentGW || 1;
+            const gw = planningGW || 1;
             bootTeams.forEach(team => {
                 const tfm = fixtureMap[team.id];
                 if (!tfm) return;
@@ -324,6 +338,8 @@
                 bootData.teams.forEach(t => { teams[t.id] = t; });
                 const currEvent = bootData.events.find(e => e.is_current);
                 currentGW = currEvent ? currEvent.id : 1;
+                // Equal to currentGW until the round's last whistle, one ahead after it.
+                planningGW = planningGameweek(bootData, fixturesData);
                 gwEvents = bootData.events || [];
                 chipDefinitions = bootData.chips || [];
                 // The cap on banked transfers is a game setting, not a constant —
@@ -491,7 +507,7 @@
             analysisResults = selectedPlayers.map(player => analyzePlayer(player));
             analysisResults.sort((a, b) => b.sellRating - a.sellRating);
             renderTeamAnalysis();
-            updateStatus(`Analysis complete — GW${currentGW}`, 'success');
+            updateStatus(`Analysis complete — GW${planningGW}`, 'success');
         }
 
         /* Form, read honestly on a season that has barely started.

@@ -1194,6 +1194,7 @@ export default [
                 snapshotFixtureFor: 'writable',
                 snapshotInitialized: 'writable',
                 snapshotMarkSwapTargets: 'writable',
+                snapshotMode: 'writable',
                 snapshotOptimizeReport: 'writable',
                 snapshotOptimizeSummary: 'writable',
                 snapshotOptimizeUndo: 'writable',

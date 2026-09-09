@@ -403,7 +403,7 @@
         function autoCompareBestRotation() {
             const analysis = analysisResults.find(a => a.player.id === fixturePanelPlayerId);
             if (!analysis) return;
-            const { partners } = findRotationPartners(analysis.player.teamId, currentGW || 1, FIXTURE_PANEL_GWS, 1);
+            const { partners } = findRotationPartners(analysis.player.teamId, planningGW || 1, FIXTURE_PANEL_GWS, 1);
             if (partners.length) {
                 fixtureCompareTeamId = partners[0].teamId;
                 renderFixturePanel();
@@ -431,7 +431,7 @@
             if (!analysis) return;
             const { player } = analysis;
             const teamId = player.teamId;
-            const startGW = currentGW || 1;
+            const startGW = planningGW || 1;
             const isDefensive = player.position <= 2;
             const teamName = (teams[teamId] && teams[teamId].name) || player.team;
 
