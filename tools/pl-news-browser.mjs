@@ -58,6 +58,17 @@ await page.goto(NEWS_PAGE, { waitUntil: 'networkidle', timeout: 60000 });
 // The article list arrives after hydration, so give the app a moment past idle.
 await page.waitForTimeout(4000);
 
+/* Then scroll, because the first pass came back with twenty club-news items
+   and none of the Premier League's own articles: the editorial grid is below
+   the fold and is not rendered until it is scrolled to. Step down the page
+   rather than jumping to the bottom, so each lazy section gets a chance to
+   mount on the way past. */
+for (let i = 0; i < 8; i++) {
+    await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.9));
+    await page.waitForTimeout(700);
+}
+await page.waitForTimeout(1500);
+
 if (DUMP) {
     console.log(`=== ${seen.length} candidate request(s) ===\n`);
     for (const req of seen) {
@@ -112,15 +123,33 @@ const scraped = await page.evaluate(() => {
             const card = a.closest('article, li, [class*="ard"]');
             if (card) img = card.querySelector('img');
         }
-        const image = img && (img.currentSrc || img.src || img.getAttribute('data-src')) || null;
+        let image = img && (img.currentSrc || img.src || img.getAttribute('data-src')) || null;
+        /* A club badge is what sits on a syndicated club-news row, and it is
+           not a picture of the story. Passing it off as one gives every card
+           the same crest; better to have no image and let the news page draw
+           its own placeholder. */
+        if (image && /\/badges?\//.test(image)) image = null;
 
         const time = a.closest('article, li, [class*="ard"]')?.querySelector('time');
         const published = time && (time.getAttribute('datetime') || time.textContent) || null;
 
+        /* Where the article lives. The page carries the Premier League's own
+           editorial alongside a rail of club-site stories it syndicates, and
+           the two are worth telling apart — so the host travels with the row
+           and the ordering below puts premierleague.com first. */
+        let host = '';
+        try { host = new URL(href).hostname.replace(/^www\./, ''); } catch { /* not a URL we can read */ }
+
         seenHref.add(href);
-        out.push({ title, link: href, image, published });
+        out.push({ title, link: href, image, published, host });
     }
-    return out;
+
+    /* premierleague.com's own articles lead, club news follows. Within each
+       group the page's order is kept, which is the Premier League's own idea
+       of what matters today. */
+    const own = out.filter(a => a.host === 'premierleague.com');
+    const club = out.filter(a => a.host !== 'premierleague.com');
+    return [...own, ...club];
 });
 
 if (DUMP) {

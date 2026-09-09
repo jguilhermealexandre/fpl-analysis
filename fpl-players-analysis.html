@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=182">
-    <link rel="stylesheet" href="styles/players.css?v=182">
-    <link rel="stylesheet" href="styles/v2-design.css?v=182">
+    <link rel="stylesheet" href="styles/common.css?v=183">
+    <link rel="stylesheet" href="styles/players.css?v=183">
+    <link rel="stylesheet" href="styles/v2-design.css?v=183">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -61,13 +61,13 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=182">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=182">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=182">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=182">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=182">
-    <link rel="preload" as="script" href="scripts/common.js?v=182">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=182">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=183">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=183">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=183">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=183">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=183">
+    <link rel="preload" as="script" href="scripts/common.js?v=183">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=183">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1621,9 +1621,9 @@
             const sd = Math.sqrt(pts.reduce((s, v) => s + (v - mean) ** 2, 0) / pts.length);
             const score = Math.max(0, Math.min(10, (1 - sd / 6) * 10));
             const detail = `Last ${pts.length} appearances: ${pts.join(', ')} pts — mean ${mean.toFixed(1)}, standard deviation ${sd.toFixed(1)}.`;
-            if (score >= 7) return { state: 'reliable', icon: '\u{1F6E1}️', label: 'Reliable returner', fill: score * 10, detail };
-            if (score >= 4) return { state: 'mixed', icon: '⚖️', label: 'Mixed', fill: score * 10, detail };
-            return { state: 'volatile', icon: '\u{1F3A2}', label: 'High variance', fill: Math.max(8, score * 10), detail };
+            if (score >= 7) return { state: 'reliable', icon: paIcon('shield'), label: 'Reliable returner', fill: score * 10, detail };
+            if (score >= 4) return { state: 'mixed', icon: paIcon('scales'), label: 'Mixed', fill: score * 10, detail };
+            return { state: 'volatile', icon: paIcon('wave'), label: 'High variance', fill: Math.max(8, score * 10), detail };
         }
 
         function rpReliabilityMeter(rel) {
@@ -1668,12 +1668,12 @@
         function rpMiniPills(p) {
             const r = p.per90 || {};
             const pills = p.pos === 'GK'
-                ? [['\u{1F9E4}', r.saves.toFixed(1), 'saves/90'], ['\u{1F6E1}️', Math.round((r.cs || 0) * 100) + '%', 'CS rate'], ['\u{1F945}', r.gc.toFixed(1), 'conceded/90'], ['⭐', (r.bonus || 0).toFixed(1), 'bonus/g']]
+                ? [[paIcon('gloves'), r.saves.toFixed(1), 'saves/90'], [paIcon('shield'), Math.round((r.cs || 0) * 100) + '%', 'CS rate'], [paIcon('goal'), r.gc.toFixed(1), 'conceded/90'], [paIcon('star'), (r.bonus || 0).toFixed(1), 'bonus/g']]
                 : p.pos === 'DEF'
-                ? [['\u{1F3AF}', r.xG.toFixed(2), 'xG/90'], ['\u{1F170}️', r.xA.toFixed(2), 'xA/90'], ['\u{1F6E1}️', Math.round((r.cs || 0) * 100) + '%', 'CS rate'], ['⭐', (r.bonus || 0).toFixed(1), 'bonus/g']]
-                : [['\u{1F3AF}', r.xG.toFixed(2), 'xG/90'], ['\u{1F170}️', r.xA.toFixed(2), 'xA/90'], ['⚔️', r.xGI.toFixed(2), 'xGI/90'], ['⭐', (r.bonus || 0).toFixed(1), 'bonus/g']];
+                ? [[paIcon('target'), r.xG.toFixed(2), 'xG/90'], [paIcon('boot'), r.xA.toFixed(2), 'xA/90'], [paIcon('shield'), Math.round((r.cs || 0) * 100) + '%', 'CS rate'], [paIcon('star'), (r.bonus || 0).toFixed(1), 'bonus/g']]
+                : [[paIcon('target'), r.xG.toFixed(2), 'xG/90'], [paIcon('boot'), r.xA.toFixed(2), 'xA/90'], [paIcon('swords'), r.xGI.toFixed(2), 'xGI/90'], [paIcon('star'), (r.bonus || 0).toFixed(1), 'bonus/g']];
             const thin = (p.gamesSample || 0) < 3;
-            const sample = thin ? `<span class="rp-pill rp-pill-sample" data-tooltip="Season is ${p.gamesSample} game${p.gamesSample === 1 ? '' : 's'} old, so these are single results rather than settled rates.">\u{1F4CF} ${p.gamesSample}g</span>` : '';
+            const sample = thin ? `<span class="rp-pill rp-pill-sample" data-tooltip="Season is ${p.gamesSample} game${p.gamesSample === 1 ? '' : 's'} old, so these are single results rather than settled rates.">${paIcon('ruler')} ${p.gamesSample}g</span>` : '';
             return `<div class="rp-pills-t">Observed so far</div>
             <div class="rp-pills">${pills.map(([i, v, l]) =>
                 `<span class="rp-pill"><span class="rp-pill-i">${i}</span><b>${v}</b><span class="rp-pill-l">${l}</span></span>`).join('')}${sample}</div>`;
@@ -1860,7 +1860,16 @@
             chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 15 3-4 3 3 5-7"/>',
             table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/>',
             lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
-            ruler: '<path d="m15 3 6 6L9 21l-6-6Z"/><path d="m8 10 2 2M11 7l2 2M5 13l2 2"/>'
+            ruler: '<path d="m15 3 6 6L9 21l-6-6Z"/><path d="m8 10 2 2M11 7l2 2M5 13l2 2"/>',
+            shield: '<path d="M12 3 5 6v6c0 4.2 2.9 7.9 7 9 4.1-1.1 7-4.8 7-9V6Z"/>',
+            scales: '<path d="M12 4v16M7 20h10"/><path d="m5 9 3-5 3 5a3 3 0 0 1-6 0Z"/><path d="m13 9 3-5 3 5a3 3 0 0 1-6 0Z"/>',
+            wave: '<path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/><path d="M2 18c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/>',
+            gloves: '<path d="M6 21V9a2 2 0 0 1 4 0V4a2 2 0 0 1 4 0v5a2 2 0 0 1 4 0v12Z"/>',
+            goal: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>',
+            boot: '<path d="M4 6h5l2 5 6 2a3 3 0 0 1 3 3v2H4Z"/><path d="M4 14h16"/>',
+            swords: '<path d="m4 4 9 9-3 3-9-9Z"/><path d="m20 4-9 9 3 3 9-9Z"/><path d="m8 16-4 4M16 16l4 4"/>',
+            star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.2-5.4-2.9-5.4 2.9 1-6.2L3.2 9.5l6.1-.9Z"/>',
+            skull: '<circle cx="12" cy="10" r="7"/><circle cx="9.5" cy="10" r="1.3"/><circle cx="14.5" cy="10" r="1.3"/><path d="M9 17v3M12 17v4M15 17v3"/>'
         };
 
         function paIcon(name) {
@@ -3878,13 +3887,13 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=182"></script>
+    <script src="scripts/error-monitor.js?v=183"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=182"></script>
-    <script src="scripts/players-tables.js?v=182"></script>
-    <script src="scripts/compare-report.js?v=182"></script>
+    <script src="scripts/xp-engine.js?v=183"></script>
+    <script src="scripts/players-tables.js?v=183"></script>
+    <script src="scripts/compare-report.js?v=183"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -4333,8 +4342,26 @@
             const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             const pos = posMap[player.position] || position;
             
-            // Update header info
-            document.getElementById('playerModalAvatar').textContent = player.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+            /* The hero: the player's portrait over his club's colour, with the
+               crest on the corner — the same v2IdentityHTML() treatment the
+               pitch cards and the recommendation cards use, so opening a
+               player from a card does not land you somewhere that looks like
+               a different site. The initials stay underneath as the fallback
+               for anyone the photo library has not shot. */
+            const modalHead = document.querySelector('#playerModal .player-modal-header');
+            const club = typeof clubColours === 'function' ? clubColours(player) : null;
+            if (modalHead && club) {
+                modalHead.style.setProperty('--club', club.shirt);
+                modalHead.classList.add('has-club');
+            }
+            const avatar = document.getElementById('playerModalAvatar');
+            if (typeof v2IdentityHTML === 'function' && player.code != null) {
+                avatar.innerHTML = v2IdentityHTML(player, 'v2-pid-portrait');
+                avatar.classList.add('has-portrait');
+            } else {
+                avatar.classList.remove('has-portrait');
+                avatar.textContent = player.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+            }
             document.getElementById('playerModalName').textContent = player.name;
             document.getElementById('playerModalTeam').textContent = player.team;
             document.getElementById('playerModalPrice').textContent = `£${player.price.toFixed(1)}m`;
@@ -5634,19 +5661,19 @@
 
                 // Terrible form
                 if (p.form < TOXIC_FORM_THRESHOLD) {
-                    reasons.push(`\u{1F534} Avg Form: ${p.form.toFixed(1)}`);
+                    reasons.push(`Avg form: ${p.form.toFixed(1)}`);
                 }
 
                 // Brutal upcoming fixtures
                 if (p.fixtures && p.fixtures.avgFDR3 > TOXIC_FDR_THRESHOLD) {
-                    reasons.push(`\u{1F534} Brutal Next 3 GWs (${p.fixtures.avgFDR3.toFixed(1)})`);
+                    reasons.push(`Brutal next 3 GWs (${p.fixtures.avgFDR3.toFixed(1)})`);
                 }
 
                 // Tactically dropped: 0 mins last GW but not injured/suspended
                 if (p.history && p.history.length > 0) {
                     const lastGw = p.history[p.history.length - 1];
                     if (lastGw.minutes === 0 && p.status === 'a') {
-                        reasons.push(`\u{1F534} Dropped — 0 mins last GW`);
+                        reasons.push('Dropped — 0 mins last GW');
                     }
                 }
 
@@ -5672,11 +5699,11 @@
             if (toxicPlayers.length === 0) {
                 return `<div class="toxic-assets-card">
                     <div class="toxic-header">
-                        <div class="toxic-header-title">\u2622\uFE0F The Toxic List</div>
+                        <div class="toxic-header-title">${paIcon('skull')} The Toxic List</div>
                         <div class="toxic-header-subtitle">Highly-owned traps you need to sell.</div>
                     </div>
                     <div class="toxic-empty">
-                        <div class="toxic-empty-icon">\u2705</div>
+                        <div class="toxic-empty-icon">${paIcon('shield')}</div>
                         <div>All clear — no major ownership traps detected right now.</div>
                     </div>
                 </div>`;
@@ -5684,8 +5711,11 @@
 
             const posClass = { GK: 'gk', DEF: 'def', MID: 'mid', FWD: 'fwd' };
             const rows = toxicPlayers.map((p, i) => {
+                /* The red circle each reason used to start with is now a dot
+                   the badge draws, so the marker is a colour token rather than
+                   a character that renders differently on every platform. */
                 const warnings = p.reasons.map(r =>
-                    `<span class="toxic-warning-badge">${r}</span>`
+                    `<span class="toxic-warning-badge"><span class="toxic-dot"></span>${escHTML(r)}</span>`
                 ).join('');
                 const pc = posClass[p.position] || 'mid';
                 return `<div class="toxic-row">
@@ -5704,7 +5734,7 @@
 
             return `<div class="toxic-assets-card">
                 <div class="toxic-header">
-                    <div class="toxic-header-title">\u2622\uFE0F The Toxic List</div>
+                    <div class="toxic-header-title">${paIcon('skull')} The Toxic List</div>
                     <div class="toxic-header-subtitle">Highly-owned traps you need to sell.</div>
                 </div>
                 <div class="toxic-list">${rows}</div>
@@ -5782,10 +5812,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=182"></script>
+    <script src="scripts/players-ai.js?v=183"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=182"></script>
-    <script src="scripts/sidebar-nav.js?v=182"></script>
+    <script src="scripts/common.js?v=183"></script>
+    <script src="scripts/sidebar-nav.js?v=183"></script>
     <script>
         loadSidebarNav();
         initIcons();

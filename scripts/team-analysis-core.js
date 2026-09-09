@@ -1275,13 +1275,13 @@
                 const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
 
                 if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                    downs.push({ cat: 'avail', w: 100, icon: '🚑', text: `${p.name} out${p.news ? ` — ${String(p.news).split('.')[0]}` : ''}` });
+                    downs.push({ cat: 'avail', w: 100, icon: tickIcon('cross'), text: `${p.name} out${p.news ? ` — ${String(p.news).split('.')[0]}` : ''}` });
                 } else if (p.status === 'd') {
-                    downs.push({ cat: 'avail', w: 80 + (benched ? 0 : 10), icon: '🩹', text: `${p.name} doubtful${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}` });
+                    downs.push({ cat: 'avail', w: 80 + (benched ? 0 : 10), icon: tickIcon('bandage'), text: `${p.name} doubtful${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}` });
                 }
-                if (!benched && form >= 6) ups.push({ cat: 'form', w: 60 + form, icon: '🔥', text: `${p.name} in form (${form.toFixed(1)})` });
-                if (!benched && form > 0 && form < 2.5) downs.push({ cat: 'form', w: 50, icon: '❄️', text: `${p.name} cold (${form.toFixed(1)})` });
-                if (a.verdict === 'star') ups.push({ cat: 'star', w: 70, icon: '⭐', text: `${p.name} rated a star pick` });
+                if (!benched && form >= 6) ups.push({ cat: 'form', w: 60 + form, icon: tickIcon('flame'), text: `${p.name} in form (${form.toFixed(1)})` });
+                if (!benched && form > 0 && form < 2.5) downs.push({ cat: 'form', w: 50, icon: tickIcon('snowflake'), text: `${p.name} cold (${form.toFixed(1)})` });
+                if (a.verdict === 'star') ups.push({ cat: 'star', w: 70, icon: tickIcon('sparkle'), text: `${p.name} rated a star pick` });
             });
 
             // Fixture runs are squad-wide news, so they are reported per club rather
@@ -1294,8 +1294,8 @@
                 const swing = fixtureSwingData[p.teamId];
                 if (!swing) return;
                 const label = (teams[p.teamId] && teams[p.teamId].short_name) || p.team;
-                if (swing.direction === 'improving') ups.push({ cat: 'fixture', w: 55, icon: '📅', text: `${label} fixtures ease from GW${swing.swingGW}` });
-                else downs.push({ cat: 'fixture', w: 55, icon: '📅', text: `${label} fixtures harden from GW${swing.swingGW}` });
+                if (swing.direction === 'improving') ups.push({ cat: 'fixture', w: 55, icon: tickIcon('calendar'), text: `${label} fixtures ease from GW${swing.swingGW}` });
+                else downs.push({ cat: 'fixture', w: 55, icon: tickIcon('calendar'), text: `${label} fixtures harden from GW${swing.swingGW}` });
             });
 
             // Squad-level facts that decide gameweek moves but belong to no single
@@ -1305,31 +1305,31 @@
                 const cap = analysisResults.find(a => a.player.isCaptain);
                 if (cap) {
                     const capXP = predictedGWPoints(cap.player);
-                    ups.push({ cat: 'captain', w: 75, icon: '👑', text: `${cap.player.name} captained — ${(capXP * 2).toFixed(1)} pts projected` });
+                    ups.push({ cat: 'captain', w: 75, icon: tickIcon('crown'), text: `${cap.player.name} captained — ${(capXP * 2).toFixed(1)} pts projected` });
                 }
 
                 if (mgr.freeTransfers >= 2) {
-                    ups.push({ cat: 'transfers', w: 62, icon: '🎟️', text: `${mgr.freeTransfers} free transfers banked${mgr.freeTransfers >= maxFreeTransfers ? ' — at the cap, use one or lose it' : ''}` });
+                    ups.push({ cat: 'transfers', w: 62, icon: tickIcon('ticket'), text: `${mgr.freeTransfers} free transfers banked${mgr.freeTransfers >= maxFreeTransfers ? ' — at the cap, use one or lose it' : ''}` });
                 } else if (mgr.freeTransfers === 0) {
-                    downs.push({ cat: 'transfers', w: 62, icon: '🎟️', text: 'No free transfer — any move costs 4 pts' });
+                    downs.push({ cat: 'transfers', w: 62, icon: tickIcon('ticket'), text: 'No free transfer — any move costs 4 pts' });
                 }
-                if (mgr.hitCost > 0) downs.push({ cat: 'transfers', w: 72, icon: '💸', text: `−${mgr.hitCost} pts taken on transfers this gameweek` });
+                if (mgr.hitCost > 0) downs.push({ cat: 'transfers', w: 72, icon: tickIcon('cash'), text: `−${mgr.hitCost} pts taken on transfers this gameweek` });
 
                 if (mgr.activeChip) {
-                    ups.push({ cat: 'chip', w: 90, icon: '🃏', text: `${CHIP_LABELS[mgr.activeChip] || mgr.activeChip} active this gameweek` });
+                    ups.push({ cat: 'chip', w: 90, icon: tickIcon('chip'), text: `${CHIP_LABELS[mgr.activeChip] || mgr.activeChip} active this gameweek` });
                 }
 
                 // Only worth saying while the gameweek is actually running.
                 if (mgr.gwLive && mgr.progress && mgr.progress.total) {
                     const pr = mgr.progress;
-                    if (pr.toPlay > 0) ups.push({ cat: 'progress', w: 58, icon: '⏱️', text: `${pr.toPlay} of your XI still to play` });
-                    if (pr.blank > 0) downs.push({ cat: 'progress', w: 58, icon: '🚫', text: `${pr.blank} starter${pr.blank > 1 ? 's have' : ' has'} no fixture this gameweek` });
+                    if (pr.toPlay > 0) ups.push({ cat: 'progress', w: 58, icon: tickIcon('stopwatch'), text: `${pr.toPlay} of your XI still to play` });
+                    if (pr.blank > 0) downs.push({ cat: 'progress', w: 58, icon: tickIcon('ban'), text: `${pr.blank} starter${pr.blank > 1 ? 's have' : ' has'} no fixture this gameweek` });
                 }
 
                 if (mgr.rankDelta != null && Math.abs(mgr.rankDelta) >= 1000) {
                     const climbed = mgr.rankDelta > 0;
                     (climbed ? ups : downs).push({
-                        cat: 'rank', w: 54, icon: climbed ? '▲' : '▼',
+                        cat: 'rank', w: 54, icon: tickIcon(climbed ? 'up' : 'down'),
                         text: `Overall rank ${climbed ? 'up' : 'down'} ${Math.abs(mgr.rankDelta).toLocaleString()} places`
                     });
                 }
@@ -1340,7 +1340,7 @@
                 && typeof expectedMinutesModel === 'function'
                 && expectedMinutesModel(a.player).pStart < 0.6);
             if (shaky.length) {
-                downs.push({ cat: 'rotation', w: 66, icon: '🔄', text: `${shaky.length} starter${shaky.length > 1 ? 's are' : ' is'} a rotation risk (${shaky.slice(0, 2).map(a => a.player.name).join(', ')}${shaky.length > 2 ? '…' : ''})` });
+                downs.push({ cat: 'rotation', w: 66, icon: tickIcon('swap'), text: `${shaky.length} starter${shaky.length > 1 ? 's are' : ' is'} a rotation risk (${shaky.slice(0, 2).map(a => a.player.name).join(', ')}${shaky.length > 2 ? '…' : ''})` });
             }
 
             // Three from one club is a concentration bet worth naming.
@@ -1348,7 +1348,7 @@
             analysisResults.filter(a => !a.player.onBench).forEach(a => { byTeam[a.player.teamId] = (byTeam[a.player.teamId] || 0) + 1; });
             Object.keys(byTeam).filter(t => byTeam[t] >= 3).forEach(t => {
                 const label = (teams[t] && teams[t].short_name) || '';
-                downs.push({ cat: 'stacking', w: 52, icon: '🎯', text: `${byTeam[t]} starters from ${label} — your week rides on one result` });
+                downs.push({ cat: 'stacking', w: 52, icon: tickIcon('crosshair'), text: `${byTeam[t]} starters from ${label} — your week rides on one result` });
             });
 
             ups.sort((a, b) => b.w - a.w);
@@ -1412,7 +1412,7 @@
                 const imminent = !!state && state.cls.indexOf('imminent') > -1;
                 return {
                     cls: `${rising ? 'up' : 'down'}${imminent ? ' near' : ''}`,
-                    icon: rising ? '📈' : '📉',
+                    icon: tickIcon(rising ? 'up' : 'down'),
                     text: x.p.name,
                     pct: `${rising ? '+' : '−'}${Math.abs(Math.round(x.pct))}%`,
                     note: state ? state.text : ''
@@ -1428,6 +1428,14 @@
                 if (risers[i] && out.length < SQ_TICKER_MAX) out.push(line(risers[i]));
             }
             return out;
+        }
+
+        /* The ticker's marks, drawn rather than typed.
+           Both strips ran on emoji, which meant twelve vendors' drawing styles
+           sitting above a chip row rendered in one consistent stroke. Same
+           marks from the site's own icon set, at the ticker's size. */
+        function tickIcon(name) {
+            return typeof v2Icon === 'function' ? v2Icon(name) : '';
         }
 
         /* `kind` tags the row so a strip can colour itself. Only the market one

@@ -1591,7 +1591,7 @@ export default [
         files: ['tools/pl-news-browser.mjs'],
         languageOptions: {
             ecmaVersion: 2022, sourceType: 'module',
-            globals: { ...globals.node, document: 'readonly' }
+            globals: { ...globals.node, document: 'readonly', window: 'readonly' }
         }
     },
     /* Cloudflare Workers. Neither browser nor Node: no window and no document,

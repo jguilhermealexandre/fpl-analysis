@@ -337,13 +337,28 @@ export function normalise(raw) {
         if (!isNaN(d.getTime())) published = d.toISOString();
     }
 
+    /* The Premier League's own editorial and the club stories it syndicates
+       both appear on that page, and a card saying "Premier League" over a
+       manutd.com link is a small lie. The host decides the label. */
+    const host = String(raw.host || '').replace(/^www\./, '');
+    const CLUB_SOURCES = {
+        'manutd.com': 'Man Utd', 'chelseafc.com': 'Chelsea', 'liverpoolfc.com': 'Liverpool',
+        'arsenal.com': 'Arsenal', 'mancity.com': 'Man City', 'avfc.co.uk': 'Aston Villa',
+        'tottenhamhotspur.com': 'Spurs', 'nufc.co.uk': 'Newcastle', 'cpfc.co.uk': 'Crystal Palace',
+        'brightonandhovealbion.com': 'Brighton', 'wolves.co.uk': 'Wolves', 'evertonfc.com': 'Everton',
+        'whufc.com': 'West Ham', 'leedsunited.com': 'Leeds', 'nottinghamforest.co.uk': "Nott'm Forest",
+        'burnleyfootballclub.com': 'Burnley', 'bcfc.com': 'Birmingham', 'afcb.co.uk': 'Bournemouth',
+        'brentfordfc.com': 'Brentford', 'safc.com': 'Sunderland', 'fulhamfc.com': 'Fulham',
+        'wearehullcity.co.uk': 'Hull City'
+    };
+
     return {
         title,
         link: link.replace(/^http:\/\//i, 'https://'),
         summary: stripTags(raw.summary).slice(0, 240) || null,
         image: image ? image.replace(/^http:\/\//i, 'https://') : null,
         published,
-        source: 'Premier League'
+        source: CLUB_SOURCES[host] || 'Premier League'
     };
 }
 
