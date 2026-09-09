@@ -44,6 +44,17 @@ function loadSidebarNav() {
             initSidebarCollapse();
             initSidebarFlyout();
             initV2PageEntrance();
+
+            /* The account block and the display preferences. Both live in the
+               sidebar, so both are set up the moment it exists — on every page
+               rather than on the dashboard alone. */
+            if (typeof v2MountAccount === 'function') v2MountAccount();
+            if (typeof v2ApplySettings === 'function') v2ApplySettings();
+            /* The notification centre renders into #ntCentre, which is now in
+               the sidebar rather than the dashboard header. Only the dashboard
+               loads notifications.js and only it has the context the feed is
+               built from, so elsewhere the slot simply stays empty — which is
+               what it looked like before, on twelve pages out of thirteen. */
         })
         .catch(error => {
             console.warn('Sidebar navigation could not be loaded:', error);

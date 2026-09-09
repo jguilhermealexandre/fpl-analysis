@@ -277,15 +277,86 @@
                     </div>
                     <div class="sq-row-fixtures" onclick="event.stopPropagation(); openFixturePanel(${player.id})" title="View ${escHTML(player.team)}'s fixture calendar">${fixtureChips}</div>
                 </div>
-                <button class="sq-transfer-btn" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
-                    <i data-lucide="repeat" style="width:14px;height:14px;"></i>
-                </button>
-                <button class="sq-expand-btn" onclick="event.stopPropagation(); toggleSquadRowDetail(${player.id})" title="Open full player profile" aria-label="Open ${escHTML(player.name)}'s full profile">
-                    <i data-lucide="maximize-2" style="width:15px;height:15px;"></i>
-                </button>
+                <!-- The row's actions, in the order you reach for them:
+                     the armband, someone to replace him with, his full record.
+                     C and V were only settable on the pitch and in the lineup
+                     wizard, which meant leaving the table you were reading to
+                     act on what you had just read. -->
+                <div class="sq-row-actions">
+                    <button class="sq-act sq-act-c${player.isCaptain ? ' on' : ''}"
+                        onclick="event.stopPropagation(); sqSetArmband(${player.id}, 'captain')"
+                        title="${player.isCaptain ? 'Remove the armband' : 'Make captain'}"
+                        aria-label="${player.isCaptain ? 'Remove the armband from' : 'Make captain:'} ${escHTML(player.name)}">C</button>
+                    <button class="sq-act sq-act-v${player.isVice ? ' on' : ''}"
+                        onclick="event.stopPropagation(); sqSetArmband(${player.id}, 'vice')"
+                        title="${player.isVice ? 'Remove the vice armband' : 'Make vice-captain'}"
+                        aria-label="${player.isVice ? 'Remove the vice armband from' : 'Make vice-captain:'} ${escHTML(player.name)}">V</button>
+                    <button class="sq-act" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
+                        <i data-lucide="repeat" style="width:14px;height:14px;"></i>
+                    </button>
+                    <button class="sq-act" onclick="event.stopPropagation(); toggleSquadRowDetail(${player.id})" title="Open full player profile" aria-label="Open ${escHTML(player.name)}'s full profile">
+                        <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
+                    </button>
+                </div>
             </div>`;
 
             return row;
+        }
+
+        /* Set or clear the armband from the squad table.
+         *
+         * This is your plan, not a change at FPL — nothing here can move the
+         * armband on their side, and the row is honest about that by simply
+         * showing what you have chosen. It is saved through the same lineup
+         * store the wizard uses, so the two views agree rather than each
+         * holding a private opinion about who is captain.
+         *
+         * Clicking the role a player already has takes it off him, which is
+         * the only way to end up with no captain — and that is a legitimate
+         * state to be in halfway through deciding.
+         */
+        function sqSetArmband(playerId, role) {
+            if (typeof analysisResults === 'undefined' || !Array.isArray(analysisResults)) return;
+            const target = analysisResults.find(a => a.player.id === playerId);
+            if (!target) return;
+
+            const key = role === 'vice' ? 'isVice' : 'isCaptain';
+            const other = role === 'vice' ? 'isCaptain' : 'isVice';
+            const hadIt = !!target.player[key];
+
+            // One armband of each kind in a squad.
+            analysisResults.forEach(a => { a.player[key] = false; });
+            if (!hadIt) {
+                target.player[key] = true;
+                // Nobody is both, so taking one role gives up the other.
+                target.player[other] = false;
+            }
+
+            sqPersistArmbands();
+            rerenderSquadFilteredViews();
+        }
+
+        /* Through the lineup store, so the wizard and the pitch see the same
+           choice. Best-effort: without a team id, a gameweek or the store
+           itself there is nowhere to put it, and the choice still stands for
+           this render. */
+        function sqPersistArmbands() {
+            if (typeof lsSave !== 'function' || typeof planningGW === 'undefined') return;
+            let teamId = null;
+            try { teamId = localStorage.getItem('fpl_team_id'); } catch (e) { return; }
+            if (!teamId) return;
+
+            const starters = analysisResults.filter(a => !a.player.onBench);
+            const bench = analysisResults.filter(a => a.player.onBench);
+            const cap = analysisResults.find(a => a.player.isCaptain);
+            const vice = analysisResults.find(a => a.player.isVice);
+            lsSave(teamId, planningGW, {
+                xi: starters.map(a => a.player.id),
+                bench: bench.map(a => a.player.id),
+                captain: cap ? cap.player.id : null,
+                vice: vice ? vice.player.id : null,
+                excluded: []
+            });
         }
 
         function renderPositionGroup(pos, items) {

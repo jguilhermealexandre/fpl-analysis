@@ -659,6 +659,230 @@ function v2PosEdgeClass(position) {
     return `v2-pos-edge pos-${V2_POS_CLASS[position] || 'mid'}`;
 }
 
+/* ===== The account block and its settings =====
+ *
+ * Everything about "you" was scattered or missing: the notification bell was
+ * in the dashboard header, so it existed on one page of thirteen; there was
+ * nowhere to see which team you were signed in as except a raw id in a box;
+ * and there were no settings at all. The sidebar is the one piece of furniture
+ * on every page, so that is where they go.
+ *
+ * The settings themselves are deliberately small. What is here is what the
+ * site can actually honour today — a badge, a name, the two display choices it
+ * already respects — plus the plan, which is where the rest will hang.
+ */
+const V2_SETTINGS_KEY = 'easyfpl_settings';
+
+function v2Settings() {
+    try {
+        const raw = localStorage.getItem(V2_SETTINGS_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+}
+
+function v2SaveSettings(patch) {
+    const next = { ...v2Settings(), ...patch };
+    try { localStorage.setItem(V2_SETTINGS_KEY, JSON.stringify(next)); } catch (e) { /* private mode */ }
+    v2MountAccount();
+    return next;
+}
+
+/* The badge, or the team's initials under it.
+
+   Stored as a data URL in localStorage, which is the only place a static site
+   can put it — so it is capped hard. A 5MB photo straight off a phone would
+   fill the origin's whole quota and take the shortlist and the saved lineup
+   down with it. */
+const V2_BADGE_MAX = 120 * 1024;
+
+function v2AccountInitials(name) {
+    return String(name || 'FPL').trim().split(/\s+/).slice(0, 2)
+        .map(w => w[0]).join('').toUpperCase() || 'FPL';
+}
+
+/* The team's name: what you have set, else what FPL calls it, else nothing
+   pretending to be something. Both the sidebar block and the settings modal
+   ask this rather than each working it out, which is how the modal came to
+   show "F" for a team the sidebar was calling Demo Team FC. */
+function v2AccountName() {
+    const st = v2Settings();
+    if (st.teamName) return st.teamName;
+    try {
+        if (typeof managerData !== 'undefined' && managerData && managerData.name) return managerData.name;
+    } catch (e) { /* no manager on this page */ }
+    return 'Your team';
+}
+
+function v2MountAccount() {
+    if (typeof document === 'undefined') return;
+    const host = document.getElementById('v2Account');
+    if (!host) return;
+
+    let teamId = null;
+    try { teamId = localStorage.getItem('fpl_team_id'); } catch (e) { /* private mode */ }
+    // No team, nothing to name — the Team ID box below is the thing to use.
+    host.hidden = !teamId;
+    if (!teamId) return;
+
+    const name = v2AccountName();
+    const st = v2Settings();
+
+    const avatar = document.getElementById('v2AccountAvatar');
+    if (avatar) {
+        avatar.innerHTML = st.badge
+            ? `<img src="${st.badge}" alt="">`
+            : `<b>${(typeof escHTML === 'function' ? escHTML : String)(v2AccountInitials(name))}</b>`;
+    }
+    const nameEl = document.getElementById('v2AccountName');
+    if (nameEl) nameEl.textContent = name;
+    const subEl = document.getElementById('v2AccountSub');
+    if (subEl) subEl.textContent = st.plan === 'premium' ? 'Premium' : 'Free plan';
+}
+
+/* The modal. Built on demand rather than shipped in every page's markup,
+   because it is a rarely-opened thing and thirteen copies of it in the HTML is
+   thirteen copies to keep in step. */
+function openSettingsModal(section) {
+    if (typeof document === 'undefined') return;
+    const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
+    const st = v2Settings();
+    let teamId = '';
+    try { teamId = localStorage.getItem('fpl_team_id') || ''; } catch (e) { /* private mode */ }
+
+    document.getElementById('v2SettingsModal')?.remove();
+    const premium = st.plan === 'premium';
+
+    document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay v2-modal v2-settings open" id="v2SettingsModal" onclick="closeSettingsModal(event)">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-label="Settings">
+            <div class="v2-set-head">
+                <span class="v2-section-title">
+                    <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>
+                    Settings
+                </span>
+                <button class="modal-close" onclick="closeSettingsModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="v2-set-body">
+                <div class="v2-set-group">
+                    <div class="v2-set-label">Your team</div>
+                    <div class="v2-set-row">
+                        <span class="v2-account-avatar lg" id="v2SetAvatar">${st.badge
+                            ? `<img src="${st.badge}" alt="">`
+                            : `<b>${esc(v2AccountInitials(v2AccountName()))}</b>`}</span>
+                        <div class="v2-set-stack">
+                            <input type="text" id="v2SetName" class="v2-set-input" placeholder="Team name"
+                                value="${esc(st.teamName || v2AccountName())}" oninput="v2SaveSettings({ teamName: this.value })">
+                            <div class="v2-set-inline">
+                                <label class="v2-set-file">
+                                    <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="v2UploadBadge(this)">
+                                    <span>Upload badge</span>
+                                </label>
+                                ${st.badge ? '<button class="v2-set-ghost" onclick="v2SaveSettings({ badge: null })">Remove</button>' : ''}
+                            </div>
+                            <p class="v2-set-hint">A square image works best. It is stored in this browser only — nothing is uploaded anywhere.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="v2-set-group">
+                    <div class="v2-set-label">Connected squad</div>
+                    <div class="v2-set-row between">
+                        <span class="v2-set-value">${teamId ? 'FPL team ID ' + esc(teamId) : 'No team connected yet'}</span>
+                        <button class="v2-set-ghost" onclick="closeSettingsModal(); document.getElementById('navTeamIdInput')?.focus();">Change</button>
+                    </div>
+                </div>
+
+                <div class="v2-set-group">
+                    <div class="v2-set-label">Display</div>
+                    <label class="v2-set-check">
+                        <input type="checkbox" ${st.compact ? 'checked' : ''} onchange="v2SaveSettings({ compact: this.checked }); v2ApplySettings();">
+                        <span>Compact tables — tighter rows, more players on screen</span>
+                    </label>
+                    <label class="v2-set-check">
+                        <input type="checkbox" ${st.hideBench === true ? 'checked' : ''} onchange="v2SaveSettings({ hideBench: this.checked }); v2ApplySettings();">
+                        <span>Dim bench players in squad views</span>
+                    </label>
+                </div>
+
+                <div class="v2-set-group${section === 'plan' ? ' is-target' : ''}" id="v2SetPlan">
+                    <div class="v2-set-label">Plan</div>
+                    <div class="v2-plan">
+                        <div class="v2-plan-card${premium ? '' : ' current'}">
+                            <div class="v2-plan-name">Free</div>
+                            <div class="v2-plan-price">£0</div>
+                            <ul class="v2-plan-list">
+                                <li>Every analysis page</li>
+                                <li>One squad</li>
+                                <li>Data refreshed four times a day</li>
+                            </ul>
+                            ${premium ? '' : '<span class="v2-plan-tag">Your plan</span>'}
+                        </div>
+                        <div class="v2-plan-card premium${premium ? ' current' : ''}">
+                            <div class="v2-plan-name">Premium</div>
+                            <div class="v2-plan-price">£3<span>/month</span></div>
+                            <ul class="v2-plan-list">
+                                <li>Alerts on your phone before every deadline</li>
+                                <li>Unlimited saved drafts and wildcards</li>
+                                <li>Full season history and exports</li>
+                                <li>Live data during matches</li>
+                            </ul>
+                            ${premium
+                                ? '<span class="v2-plan-tag">Your plan</span>'
+                                : '<button class="v2-plan-cta" onclick="v2StartCheckout()">Go premium</button>'}
+                        </div>
+                    </div>
+                    <p class="v2-set-hint">Billing is not live yet — this is what it will cost when it is.</p>
+                </div>
+            </div>
+        </div>
+    </div>`);
+
+    if (section === 'plan') {
+        document.getElementById('v2SetPlan')?.scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function closeSettingsModal(event) {
+    // Only the backdrop dismisses, not a click inside the panel.
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('v2SettingsModal')?.remove();
+}
+
+/* Checkout is not built. Saying so is better than a button that does nothing
+   and better than a button that pretends. */
+function v2StartCheckout() {
+    const el = document.querySelector('#v2SetPlan .v2-plan-card.premium .v2-plan-cta');
+    if (el) {
+        el.textContent = 'Not open yet — soon';
+        el.disabled = true;
+    }
+}
+
+function v2UploadBadge(input) {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    if (file.size > V2_BADGE_MAX) {
+        const hint = input.closest('.v2-set-stack')?.querySelector('.v2-set-hint');
+        if (hint) hint.textContent = `That image is ${Math.round(file.size / 1024)}KB. The limit is ${Math.round(V2_BADGE_MAX / 1024)}KB, because it is stored in this browser alongside your shortlist and saved lineups.`;
+        input.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+        v2SaveSettings({ badge: String(reader.result) });
+        openSettingsModal();          // redraw, so the preview and Remove appear
+    };
+    reader.readAsDataURL(file);
+}
+
+/* The two display choices, as classes on <html> for the stylesheets to read. */
+function v2ApplySettings() {
+    if (typeof document === 'undefined') return;
+    const st = v2Settings();
+    document.documentElement.classList.toggle('v2-compact', !!st.compact);
+    document.documentElement.classList.toggle('v2-dim-bench', !!st.hideBench);
+}
+
 /* ===== "How to use this page", on every page that needs one =====
  *
  * My Team had one and nothing else did, and its button lived in a KPI strip
@@ -1460,6 +1684,12 @@ function showNavTeamBadge(teamId) {
     if (badgeEl) badgeEl.classList.remove('hidden');
     if (displayEl) displayEl.textContent = _formatTeamIdLabel(teamId);
     if (badgeInner) badgeInner.classList.toggle('nav-tid-badge--demo', teamId === DEMO_TEAM_ID);
+
+    /* The account block above names the team, and the name comes from data
+       that arrives after the sidebar does. Re-mounting here catches it: this
+       runs when a team id is set, and again on the pass that loads the
+       manager. */
+    if (typeof v2MountAccount === 'function') v2MountAccount();
 }
 
 function showNavTeamInput() {

@@ -1071,10 +1071,15 @@
            rows under it run edge to edge on purpose — so the heading carries
            it, exactly as the All Players heading does inside .table-section.
            It measured 1px from the corner against everything else's 17px. */
-        .v2-info-panel > .v2-section-title {
-            padding: 16px 16px 0;
-            margin-bottom: 12px;
-        }
+        /* Matched to Squad Snapshot beside it, which is the one that looked
+           right: its icon lands 19px in and 25px down from the panel's corner,
+           and this one was at 17 and 21 — close enough to look like a mistake
+           rather than a difference. The panel cannot take the padding itself,
+           since the deadline card and the rows under it run edge to edge on
+           purpose, so the heading carries it. */
+        /* The inset is --v2-title-x/y in v2-design.css — one pair of numbers
+           for every title on the site. Only the gap under it is local. */
+        .v2-info-panel > .v2-section-title { margin-bottom: 12px; }
 
         .v2-info-panel .rd-bar {
             grid-column: auto;
@@ -1912,8 +1917,12 @@
            third of the page, and two colour-washed columns inside it left the
            names with nowhere to go but an ellipsis. */
         .v2-info-panel .v2-market { margin-bottom: 0; border-top: 1px solid var(--border-subtle); }
+        /* --v2-title-y at the top, like every other heading on the site. This
+           is a strip inside the panel rather than a panel of its own, but its
+           title still has an icon beside it and still has to line up. */
         .v2-info-panel .mk-panel {
-            border: none; border-radius: 0; background: transparent; padding: 13px 18px 15px;
+            border: none; border-radius: 0; background: transparent;
+            padding: var(--v2-title-y, 20px) var(--v2-title-x, 18px) 15px;
         }
         .v2-info-panel .mk-head { margin-bottom: 8px; }
         .v2-info-panel .mk-title { font-size: 13px; }
@@ -4032,7 +4041,9 @@
                     <div class="hero-greeting-text v2-page-heading" id="heroTeamName"></div>
                     <div class="hero-greeting-gw" id="heroGwBadge"></div>
                     <!-- What happened while you were away (scripts/notifications.js) -->
-                    <div class="nt-centre" id="ntCentre"></div>
+                    <!-- The notification centre moved to the sidebar, where it
+                         is on every page rather than on this one. See the
+                         account block in sidebar-nav.html. -->
                 </div>
                 <!-- Top row: info panel (left, narrow) + Squad Snapshot (right).
                      The panel leads because it is the answer to "where do I

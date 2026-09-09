@@ -319,6 +319,8 @@
                     fetchWithProxy(`https://fantasy.premierleague.com/api/entry/${teamId}/transfers/`).catch(() => null)
                 ]);
                 managerData = await mgrRes.json();
+                // The sidebar's account block names the team from this.
+                if (typeof v2MountAccount === 'function') v2MountAccount();
                 picksData = await picksRes.json();
                 managerHistory = await histRes.json();
                 const transferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;

@@ -1842,3 +1842,283 @@ html.v2-theme body {
 .sq-panel {
     box-shadow: var(--v2-card-shadow);
 }
+
+/* ===== The account block, in the sidebar =====
+   Who you are, what is new, and the way into settings — in the one piece of
+   furniture that is on every page. The bell was in the dashboard header, so
+   notifications existed on one page of thirteen. */
+.v2-account {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px;
+    margin-bottom: 8px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: 12px;
+    background: var(--surface-1);
+}
+.v2-account[hidden] { display: none; }
+
+.v2-account-main {
+    display: flex; align-items: center; gap: 9px;
+    flex: 1; min-width: 0;
+    padding: 0; border: none; background: none;
+    text-align: left; cursor: pointer; font-family: inherit;
+}
+
+.v2-account-avatar {
+    display: grid; place-items: center;
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    color: var(--color-primary);
+    font-size: 11px; font-weight: 800;
+    overflow: hidden;
+}
+.v2-account-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.v2-account-avatar.lg { width: 56px; height: 56px; font-size: 17px; }
+
+.v2-account-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.v2-account-name {
+    font-size: 12.5px; font-weight: 650; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.v2-account-sub { font-size: 10.5px; color: var(--text-muted); }
+
+.v2-account-gear {
+    display: grid; place-items: center;
+    width: 28px; height: 28px; flex-shrink: 0;
+    padding: 0; border: none; border-radius: 8px;
+    background: none; color: var(--text-muted); cursor: pointer;
+}
+.v2-account-gear svg { width: 15px; height: 15px; }
+.v2-account-gear:hover { background: var(--surface-2); color: var(--text-primary); }
+
+/* The bell sits between the name and the gear. */
+.v2-account .nt-centre { position: relative; flex-shrink: 0; }
+
+/* ----- Go premium -----
+   The one coloured thing in the sidebar, because it is the one thing in it
+   asking for something rather than offering it. */
+.v2-premium {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 9px 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 62%, #0b7));
+    color: #fff; text-decoration: none;
+    font-size: 12px; font-weight: 700;
+    transition: filter 140ms ease, transform 140ms ease;
+}
+.v2-premium:hover { filter: brightness(1.07); transform: translateY(-1px); }
+.v2-premium svg { width: 15px; height: 15px; }
+
+/* Collapsed, the sidebar keeps the marks and drops the words. */
+.v2-sidebar.is-collapsed .v2-account-text,
+.v2-sidebar.is-collapsed .v2-premium span { display: none; }
+.v2-sidebar.is-collapsed .v2-premium { padding: 9px 0; }
+
+/* ===== Settings ===== */
+.v2-settings .modal-container {
+    width: min(560px, calc(100vw - 32px));
+    max-height: 86vh;
+    display: flex; flex-direction: column;
+    background: var(--surface-1);
+    border-radius: var(--v2-card-radius, 16px);
+    overflow: hidden;
+}
+.v2-set-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.v2-set-body { overflow-y: auto; padding: 4px 18px 20px; }
+
+.v2-set-group { padding: 16px 0; border-bottom: 1px solid var(--border-subtle); }
+.v2-set-group:last-child { border-bottom: none; }
+.v2-set-group.is-target { scroll-margin-top: 12px; }
+.v2-set-label {
+    font-size: 9.5px; font-weight: 800; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 10px;
+}
+.v2-set-row { display: flex; align-items: flex-start; gap: 14px; }
+.v2-set-row.between { align-items: center; justify-content: space-between; }
+.v2-set-stack { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+.v2-set-inline { display: flex; align-items: center; gap: 8px; }
+.v2-set-value { font-size: 12.5px; color: var(--text-secondary); }
+
+.v2-set-input {
+    width: 100%;
+    padding: 8px 11px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-family: inherit; font-size: 13px;
+}
+.v2-set-input:focus {
+    outline: none; border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-muted);
+}
+
+.v2-set-file input { display: none; }
+.v2-set-file span,
+.v2-set-ghost {
+    display: inline-block;
+    padding: 6px 13px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 999px;
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-family: inherit; font-size: 11.5px; font-weight: 600;
+    cursor: pointer;
+}
+.v2-set-file span:hover,
+.v2-set-ghost:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+.v2-set-hint { margin: 0; font-size: 11px; line-height: 1.5; color: var(--text-muted); }
+
+.v2-set-check {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 6px 0;
+    font-size: 12.5px; color: var(--text-secondary); cursor: pointer;
+}
+.v2-set-check input { margin-top: 2px; cursor: pointer; }
+
+/* ----- The two plans ----- */
+.v2-plan { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { .v2-plan { grid-template-columns: 1fr; } }
+
+.v2-plan-card {
+    position: relative;
+    padding: 14px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 12px;
+    background: var(--surface-1);
+}
+.v2-plan-card.premium {
+    border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 5%, var(--surface-1));
+}
+.v2-plan-card.current { box-shadow: inset 0 0 0 1px var(--color-primary); }
+.v2-plan-name { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.v2-plan-price {
+    font-family: var(--font-display); font-size: 26px; font-weight: 700;
+    color: var(--text-primary); margin: 2px 0 10px;
+}
+.v2-plan-price span { font-family: var(--font-body, inherit); font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.v2-plan-list { margin: 0 0 12px; padding: 0 0 0 16px; }
+.v2-plan-list li { font-size: 11.5px; line-height: 1.7; color: var(--text-secondary); }
+.v2-plan-tag {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    background: var(--color-primary); color: #fff;
+    font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+}
+.v2-plan-cta {
+    width: 100%; padding: 9px 12px;
+    border: none; border-radius: 999px;
+    background: var(--color-primary); color: #fff;
+    font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.v2-plan-cta:hover:not(:disabled) { filter: brightness(1.07); }
+.v2-plan-cta:disabled { background: var(--surface-3); color: var(--text-muted); cursor: default; }
+
+/* ----- What the display preferences actually do ----- */
+.v2-compact .data-table td,
+.v2-compact .data-table th { padding-top: 5px; padding-bottom: 5px; }
+.v2-compact .sq-row { padding-top: 6px; padding-bottom: 6px; }
+.v2-dim-bench .sq-row.is-bench,
+.v2-dim-bench .pcard.on-bench { opacity: .62; }
+
+
+/* =====================================================================
+   ONE INSET FOR EVERY TITLE
+
+   A section title landed in a different place on almost every panel: 19px in
+   and 25px down on the dashboard's two, 17/21 on the players and squad
+   panels, 17/17 on the teams page, 18/15 on the market strip. None of them
+   was wrong on its own and together they read as carelessness, because the
+   eye tracks the left edge of a run of headings and these did not line up.
+
+   One pair of numbers, declared once. Panels that pad their own content take
+   it as padding; panels whose content must run edge to edge — a pitch, a
+   table, the deadline card — put it on the heading instead, which is the only
+   way to inset the title without insetting what is under it.
+   ===================================================================== */
+:root {
+    --v2-title-x: 18px;
+    --v2-title-y: 20px;
+}
+
+/* Panels that pad their content. */
+.pa-panel,
+.v2-section,
+.sq-panel,
+.chart-category.pa-panel,
+.charts-filter-panel {
+    padding: var(--v2-title-y) var(--v2-title-x) var(--v2-title-x);
+}
+
+/* Panels that cannot: the heading carries the inset alone. */
+.v2-info-panel > .v2-section-title,
+.all-players-head,
+.v2-set-head {
+    padding: var(--v2-title-y) var(--v2-title-x) 0;
+}
+
+/* The dashboard strips, which had their own smaller numbers. */
+.v2-market > .mk-head,
+.v2-matchday > .md-head,
+.v2-news > .v2-feed-head {
+    padding-top: var(--v2-title-y);
+    padding-left: var(--v2-title-x);
+    padding-right: var(--v2-title-x);
+}
+
+
+/* The Rivals and Teams pages write their section headings as <h2> inside a
+   .section-header rather than as a .v2-section-title. Same object, so the same
+   type: 17px at 650, with the icon sized and coloured to match. Left as an h2
+   for the document outline. */
+.v2-section > .section-header h2 {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-display);
+    font-size: 17px; font-weight: 650; letter-spacing: -0.2px;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+.v2-section > .section-header h2 svg,
+.v2-section > .section-header h2 i {
+    width: 17px; height: 17px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+
+/* ----- News source badges, everywhere news is shown -----
+   These were declared inside fpl-news.html, so the dashboard — which renders
+   the same .news-card-category markup from the same feed data — had the
+   element and none of the colours, and every source there came out grey. A
+   badge that means "BBC" on one page has to mean it on the other, so the
+   colours live where both can reach them.
+
+   The hues are the publishers' own, at a 12% wash so a row of them reads as
+   labels rather than as a row of buttons. */
+.news-card-category {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 4px;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .3px;
+    background: var(--surface-2); color: var(--text-muted);
+}
+.news-card-category svg { width: 11px; height: 11px; }
+.news-card-category.cat-bbc      { background: rgba(187, 29, 29, 0.12);  color: #BB1D1D; }
+.news-card-category.cat-pl       { background: rgba(56, 0, 106, 0.12);   color: #38006A; }
+.news-card-category.cat-sky      { background: rgba(0, 98, 178, 0.12);   color: #0062B2; }
+.news-card-category.cat-guardian { background: rgba(5, 81, 126, 0.12);   color: #05517E; }
+.news-card-category.cat-injury   { background: rgba(239, 68, 68, 0.15);  color: #EF4444; }
+.news-card-category.cat-price    { background: rgba(59, 130, 246, 0.12); color: #3B82F6; }
+.news-card-category.cat-transfer { background: rgba(16, 185, 129, 0.12); color: #10B981; }
+.news-card-category.cat-external { background: rgba(139, 92, 246, 0.10); color: #8B5CF6; }
+
+[data-theme="dark"] .news-card-category.cat-pl { background: rgba(151, 71, 255, 0.16); color: #B794F6; }
+[data-theme="dark"] .news-card-category.cat-guardian { background: rgba(90, 165, 214, 0.16); color: #7EC2E8; }
