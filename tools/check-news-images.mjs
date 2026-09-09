@@ -17,19 +17,25 @@ import fs from 'node:fs';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
     + '(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
-async function probe(url, label) {
+async function probe(url, label, opts) {
     try {
-        const res = await fetch(url, {
-            method: 'GET',
-            headers: { 'User-Agent': UA, Accept: 'image/avif,image/webp,image/*,*/*;q=0.8' },
-            redirect: 'follow'
-        });
+        const headers = { 'User-Agent': UA, Accept: 'image/avif,image/webp,image/*,*/*;q=0.8' };
+        /* A browser sends a Referer; this does not, and hotlink protection is
+           the difference between the two. Worth knowing which side of it we
+           are on before blaming the URL. */
+        if (opts && opts.referer) headers.Referer = opts.referer;
+        const res = await fetch(url, { method: 'GET', headers, redirect: 'follow' });
         const type = res.headers.get('content-type') || '';
         const len = res.headers.get('content-length') || '?';
-        console.log(`  ${String(res.status).padEnd(4)} ${label.padEnd(26)} ${type} ${len}B`);
+        console.log(`  ${String(res.status).padEnd(4)} ${label.padEnd(30)} ${type} ${len}B`);
+        // A non-image body is the server explaining itself; print it.
+        if (!/^image\//i.test(type)) {
+            const body = await res.text();
+            console.log(`       ${body.replace(/\s+/g, ' ').slice(0, 180)}`);
+        }
         return res.ok && /^image\//i.test(type);
     } catch (e) {
-        console.log(`  ERR  ${label.padEnd(26)} ${e.message}`);
+        console.log(`  ERR  ${label.padEnd(30)} ${e.message}`);
         return false;
     }
 }
@@ -45,14 +51,31 @@ console.log('=== Premier League ===');
 for (const item of (pl && pl.items || []).slice(0, 3)) {
     console.log(item.image);
     await probe(item.image, 'as stored');
-    /* The API hands back resources.premierleague.pulselive.com. Everything
-       else on this site — badges, player portraits — is served from
-       resources.premierleague.com, so the obvious suspicion is that the first
-       is an origin host and the second is the one the public gets. */
-    await probe(item.image.replace('resources.premierleague.pulselive.com',
-        'resources.premierleague.com'), 'on resources.pl.com');
+    /* 400 with a JSON body means the image service wants parameters, not that
+       the path is wrong — a Pulselive photo-resource is a source file and the
+       public URL is a transform of it. These are the shapes it takes. */
+    for (const [q, label] of [
+        ['?width=800', 'width=800'],
+        ['?width=800&height=450', 'width+height'],
+        ['?width=800&height=450&fit=crop', 'width+height+fit'],
+        ['?w=800', 'w=800'],
+        ['?impolicy=Standard', 'impolicy'],
+        ['/800x450', '/800x450 path segment']
+    ]) {
+        await probe(item.image + q, label);
+    }
     console.log('');
 }
+
+/* Guardian and Sky both answered 200 here, yet the page shows nothing for the
+   Guardian — so ask them again the way a browser would, with our own Referer
+   on the request. Hotlink protection is exactly this difference. */
+console.log('=== with a Referer, as a browser sends ===');
+for (const feed of (feeds && feeds.feeds || [])) {
+    const first = feed.items.find(i => i.image);
+    if (first) await probe(first.image, `${feed.source} + referer`, { referer: 'https://easyfpl.pages.dev/fpl-news.html' });
+}
+console.log('');
 
 for (const feed of (feeds && feeds.feeds || [])) {
     console.log(`=== ${feed.source} ===`);

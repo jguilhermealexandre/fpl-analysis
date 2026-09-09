@@ -25,23 +25,11 @@
            table container rather than to the viewport, so the offset that used to
            be computed from the nav and tab bar heights is no longer needed. */
 
-        /* players.css's .table-section-wrapper breaks out to 100vw via a negative
-           margin that assumes .content is centered on the viewport — true on the old
-           top-nav layout, but in the sidebar layout .content sits inside .v2-main-content
-           (offset by the fixed sidebar's width), so that math pushes the table left,
-           under the sidebar, and off the right edge of the screen. Full-bleed relative
-           to .v2-main-content instead, toggled by activateTab() when the ALL tab is active. */
-        .v2-main-content .content.content--full-bleed {
-            max-width: none;
-            padding-left: 0;
-            padding-right: 0;
-        }
-        .v2-main-content .content.content--full-bleed .position-section.table-section-wrapper {
-            width: 100%;
-            max-width: none;
-            margin-left: 0;
-            padding: 24px;
-        }
+        /* The All Players tab used to widen the whole content column, so
+           switching to it moved the page: the margins vanished and the panel
+           grew, which read as arriving somewhere else rather than as one more
+           tab. It sits in the same column as the rest now, and the table
+           scrolls sideways inside its own container when it needs to. */
     </style>
     <!-- Why preload and not defer.
 
@@ -416,7 +404,7 @@
             document.getElementById(`section-${pos}`)?.classList.add('active');
 
             // ALL tab's table breaks out to full-bleed width (see <style> block for why)
-            document.querySelector('main.content')?.classList.toggle('content--full-bleed', pos === 'ALL');
+            /* No full-bleed switch any more — every tab is the same width. */
 
             // Give the charts their real dimensions the moment the tab is shown.
             // Deliberately not deferred through requestAnimationFrame: rAF can be

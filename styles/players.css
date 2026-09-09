@@ -26,16 +26,16 @@
 .position-section { display: none; }
 .position-section.active { display: block; }
 
-/* Full width for table sections - break out of container */
-.position-section.table-section-wrapper {
-    max-width: none;
-    width: 100vw;
-    margin-left: calc(-50vw + 50%);
-    padding: 24px;
-}
-.position-section.table-section-wrapper .table-section {
-    max-width: 100%;
-}
+/* All Players sits in the same column as every other tab.
+
+   It used to break out to the full width of the viewport, on the reasoning
+   that a wide table wants room. The cost was that switching to it moved the
+   page — the panel got wider, the margins vanished, and it read as a different
+   page rather than as one more tab. The table already scrolls sideways inside
+   .table-container when it needs to, which is the answer to a wide table that
+   does not require the layout to change under you. */
+.position-section.table-section-wrapper { max-width: none; }
+.position-section.table-section-wrapper .table-section { max-width: 100%; }
 
 /* ROUTES TO POINTS */
 .routes-section { }
@@ -4975,24 +4975,20 @@
 
    The portrait is the same one every card and pitch on the site draws, with
    the club crest on its corner. */
-.pcell.v2-pos-edge { padding-left: 20px; }
-.pcell.v2-pos-edge::before {
-    width: 14px;
-    border-radius: 4px;
-    font-size: 9.5px;
-}
-.pcell.v2-pos-edge.pos-gk::before  { content: 'G'; }
-.pcell.v2-pos-edge.pos-def::before { content: 'D'; }
-.pcell.v2-pos-edge.pos-mid::before { content: 'M'; }
-.pcell.v2-pos-edge.pos-fwd::before { content: 'F'; }
+/* Exactly what a squad row does — 24px of padding for a 16px edge, and the
+   letter, colour, radius and weight all inherited from .v2-pos-edge rather
+   than re-specified here.
+
+   They were re-specified, at 20px/14px/9.5px with a 4px radius, and the result
+   was two versions of the same mark that did not match when you moved between
+   the two pages. The whole point of the shared class is that nobody has to
+   remember these numbers; overriding them defeats it. The letters come from
+   .v2-pos-edge too. */
+.pcell.v2-pos-edge { padding-left: 24px; }
 
 .pcell-face { flex-shrink: 0; display: grid; place-items: center; }
-.pcell-face .v2-pid-portrait { --v2-pid-face: 30px; --v2-pid-crest: 14px; }
-
-/* The compact table packs rows tighter, so the portrait comes down with it. */
-.table-section.compact-mode .pcell-face .v2-pid-portrait { --v2-pid-face: 26px; --v2-pid-crest: 12px; }
-.table-section.compact-mode .pcell.v2-pos-edge { padding-left: 18px; }
-.table-section.compact-mode .pcell.v2-pos-edge::before { width: 12px; font-size: 9px; }
+/* Same 28px face and 16px crest the squad rows use. */
+.pcell-face .v2-pid-portrait { --v2-pid-face: 28px; --v2-pid-crest: 16px; }
 
 /* The charts' position filters, in a bar of their own.
    Four chips on the page background above the first chart group read as
