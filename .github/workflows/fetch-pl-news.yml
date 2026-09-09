@@ -82,7 +82,10 @@ jobs:
       # nothing left to deduce after that.
       - name: Install a browser
         if: inputs.mode == 'browser'
-        run: npm i --no-save playwright@1 && npx playwright install --with-deps chromium
+        # --with-deps shells out to apt and exited 100 on the runner. The
+        # hosted image already carries Chromium's shared libraries, so install
+        # the browser alone.
+        run: npm i --no-save playwright@1 && npx playwright install chromium
 
       - name: Record what the news page requests
         if: inputs.mode == 'browser'
