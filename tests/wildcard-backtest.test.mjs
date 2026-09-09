@@ -49,6 +49,48 @@ test('truncating leaves the season object alone', () => {
         'a second cut still sees the full history');
 });
 
+/* ===== team news, when there is any ===== */
+
+const BOOT = { elements: [
+    { id: 1, web_name: 'Fit', team: 3, element_type: 3, now_cost: 70 },
+    { id: 2, web_name: 'Hurt', team: 3, element_type: 4, now_cost: 90 },
+    { id: 3, web_name: 'Doubt', team: 3, element_type: 2, now_cost: 50 }
+] };
+const HIST = { players: [1, 2, 3].map(id => ({ id, history: [
+    { round: 1, minutes: 90, value: 70, total_points: 5 },
+    { round: 2, minutes: 90, value: 70, total_points: 3 }
+] })) };
+const byId = ps => Object.fromEntries(ps.map(p => [p.id, p]));
+
+test('without a snapshot every player is still offered as fit', () => {
+    const p = byId(reconstructPlayers(BOOT, HIST, 3, {}));
+    assert.equal(p[2].status, 'a', 'this is how the harness ran before the snapshots existed');
+    assert.equal(p[2].chanceNextRound, null);
+    assert.equal(p[2].penaltiesOrder, null);
+});
+
+test('team news from before kickoff reaches the player', () => {
+    const avail = { 2: { s: 'i' }, 3: { s: 'd', c: 25 }, 1: { p: 1 } };
+    const p = byId(reconstructPlayers(BOOT, HIST, 3, {}, avail));
+    assert.equal(p[2].status, 'i', 'injured — the projection returns a flat zero for this');
+    assert.equal(p[3].status, 'd');
+    assert.equal(p[3].chanceNextRound, 25, 'the minutes model scales by this');
+    assert.equal(p[1].penaltiesOrder, 1);
+});
+
+test('a player absent from the snapshot is available, not unknown', () => {
+    // The extractor only records departures from "fit, no set-piece duty", so
+    // absence is a positive statement and must not read as missing data.
+    const p = byId(reconstructPlayers(BOOT, HIST, 3, {}, { 2: { s: 'i' } }));
+    assert.equal(p[1].status, 'a');
+    assert.equal(p[1].chanceNextRound, null);
+});
+
+test('a zero chance of playing survives, rather than reading as absent', () => {
+    const p = byId(reconstructPlayers(BOOT, HIST, 3, {}, { 3: { s: 'd', c: 0 } }));
+    assert.equal(p[3].chanceNextRound, 0, '0 is a real answer and must not fall back to null');
+});
+
 test('a gameweek before any history leaves nothing to read', () => {
     const data = { players: [{ id: 1, history: [{ round: 5 }, { round: 6 }] }] };
     assert.deepEqual(truncatePlayersData(data, 1).players[0].history, []);

@@ -229,14 +229,31 @@ mkdir -p /tmp/season2526
 for f in players-data.json fixtures.json bootstrap-static.json; do
   git show e893f5c:data/$f > /tmp/season2526/$f      # 2026-05-28, GW38
 done
+node tools/extract-availability.mjs /tmp/season2526  # team news, from git history
 npm run backtest -- --data /tmp/season2526
 npm run backtest -- --data /tmp/season2526 --mode projection
 ```
 
 `--mode projection` checks the layer underneath on every player-gameweek at
 once, which is where a calibration error shows up long before a squad total
-moves. Both modes and their caveats — injuries and ownership cannot be
-reconstructed — are documented at the top of `tools/wildcard-backtest.mjs`.
+moves.
+
+**Run the availability step.** It is optional only in the sense that the tool
+still works without it, and skipping it does not weaken the measurement so much
+as change what is being measured. The projection earns most of its accuracy
+deciding who plays, and without team news the harness marks every player fit —
+so it scores a model denied its most important input. On the 16 gameweeks of
+2025/26 where a snapshot from before kickoff exists, supplying it moves MAE from
+1.935 to 1.697 and rank correlation from 0.367 to 0.542. Nothing about the model
+changed; the instrument stopped lying.
+
+That is worth remembering before trusting any number this tool prints. A
+calibration was fitted against the blind harness and shipped, and the news-aware
+run showed the correction pointing the wrong way — the top decile under-projects
+by 0.27 once injured players are excluded, where blind it appeared to over-project
+by 0.39. It was reverted. Coverage begins at GW20 because the bootstrap feed has
+only been committed since January; earlier gameweeks, and three with a stale
+snapshot, are still measured with everyone fit.
 
 ## Deployment
 

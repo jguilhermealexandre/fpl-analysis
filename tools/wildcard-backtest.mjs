@@ -88,7 +88,11 @@ export function maskFixtures(fixtures, gw) {
             team_h_score: null, team_a_score: null });
 }
 
-export function reconstructPlayers(bootData, playersData, gw, teamsById) {
+/* `avail` is the team news as it stood before this gameweek kicked off, keyed by
+   player id — see tools/extract-availability.mjs. Omit it and every player is
+   offered as fit, which is how this ran for as long as the data was believed not
+   to exist. */
+export function reconstructPlayers(bootData, playersData, gw, teamsById, avail) {
     const meta = new Map(bootData.elements.map(e => [e.id, e]));
     const out = [];
     for (const p of playersData.players || []) {
@@ -127,8 +131,14 @@ export function reconstructPlayers(bootData, playersData, gw, teamsById) {
             price,
             form, ppg: apps ? points / apps : 0, points,
             ownership: 0, selected: ownRow ? (ownRow.selected || 0) : 0,
-            // Not reconstructable — see the header. Everyone is offered as fit.
-            status: 'a', chanceNextRound: null, news: '',
+            /* Team news, when a snapshot from before kickoff was available. The
+               projection returns a flat zero for 'i', 'u' and 's', and scales the
+               minutes model by chanceNextRound for 'd', so this is the single
+               input with the most leverage over what the model is measured on.
+               Absent the file, everyone is fit and this behaves as it always did. */
+            status: (avail && avail[p.id] && avail[p.id].s) || 'a',
+            chanceNextRound: (avail && avail[p.id] && avail[p.id].c != null) ? avail[p.id].c : null,
+            news: '',
             minutes, starts: sum('starts'),
             goals: sum('goals_scored'), assists: sum('assists'),
             cleanSheets: sum('clean_sheets'), goalsConceded: sum('goals_conceded'),
@@ -138,9 +148,12 @@ export function reconstructPlayers(bootData, playersData, gw, teamsById) {
             yellowCards: sum('yellow_cards'), redCards: sum('red_cards'),
             saves: sum('saves'),
             defCon: sum('defensive_contribution'),
-            // Reading either from the end-of-season snapshot would be reading
-            // the future. Both only feed priors that have faded by now.
-            penaltiesOrder: null, epNext: 0,
+            /* Spot-kick duty from the same pre-kickoff snapshot. epNext stays at
+               zero deliberately even when the snapshot has it: it is FPL's own
+               projection, and letting it act as a floor would mean scoring this
+               model partly on theirs. */
+            penaltiesOrder: (avail && avail[p.id] && avail[p.id].p != null) ? avail[p.id].p : null,
+            epNext: 0,
             fixtures: []
         };
         out.push(player);
@@ -531,7 +544,28 @@ export function loadSeason(dir) {
     bootData.teams.forEach(t => { teamsById[t.id] = t; });
     const rounds = new Set();
     for (const p of playersData.players || []) for (const h of p.history || []) rounds.add(h.round);
-    return { bootData, fixtures, playersData, teamsById, lastRound: Math.max(0, ...rounds) };
+
+    /* Optional, and produced by tools/extract-availability.mjs from this repo's
+       own history of the bootstrap feed. Without it the run is exactly what it
+       was before the file existed, so an old data directory still works. */
+    let availability = null;
+    try { availability = JSON.parse(fs.readFileSync(path.join(dir, 'availability.json'), 'utf8')); }
+    catch { /* no snapshots extracted for this season */ }
+
+    const coveredSet = new Set(availability ? availability.covered : []);
+    return {
+        bootData, fixtures, playersData, teamsById,
+        lastRound: Math.max(0, ...rounds),
+        availability,
+        covered: availability ? availability.covered : [],
+        /* Only gameweeks listed as covered get team news. A gameweek whose nearest
+           snapshot was days stale is deliberately not in that list — see the
+           extractor — and reading it anyway would score the model against news
+           nobody had. */
+        availabilityAt(gw) {
+            return coveredSet.has(gw) ? availability.gw[gw] : null;
+        }
+    };
 }
 
 /* State as of just before `gw`, cached: a six-gameweek window over a dozen
@@ -546,7 +580,8 @@ export function stateCache(season) {
                 teams: season.teamsById,
                 bootTeams: season.bootData.teams,
                 fixtures: maskFixtures(season.fixtures, gw),
-                players: reconstructPlayers(season.bootData, season.playersData, gw, season.teamsById),
+                players: reconstructPlayers(season.bootData, season.playersData, gw, season.teamsById,
+                                            season.availabilityAt(gw)),
                 playersData: truncatePlayersData(season.playersData, gw)
             });
         }
