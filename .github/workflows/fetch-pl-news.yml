@@ -97,6 +97,15 @@ jobs:
         if: inputs.mode == '' || inputs.mode == 'fetch'
         run: node tools/fetch-pl-news.mjs --out data/pl-news.json
 
+      # BBC, Sky and the Guardian, fetched here for the same reason: the
+      # rss2json proxy the page uses drops the Guardian's <media:content>, so
+      # every Guardian card has been rendering a placeholder instead of the
+      # picture the article actually has.
+      - name: Fetch the other news feeds
+        if: inputs.mode == '' || inputs.mode == 'fetch'
+        continue-on-error: true
+        run: node tools/fetch-news-feeds.mjs --out data/news-feeds.json
+
       # A valid-JSON-but-empty result would replace a good list with nothing, so
       # the shape is checked before it is allowed anywhere near a commit.
       - name: Check what was written
@@ -125,11 +134,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- data/pl-news.json; then
+          if git diff --quiet -- data/pl-news.json data/news-feeds.json; then
             echo "no change"
             exit 0
           fi
-          git add data/pl-news.json
+          git add data/pl-news.json data/news-feeds.json
           git commit -m "Update Premier League news - $(date -u '+%Y-%m-%d %H:%M UTC')"
           # The data lane is shared, so another writer may have pushed since
           # checkout. Rebase onto it rather than failing the run.

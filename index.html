@@ -1171,16 +1171,24 @@
         .pn-offer.on .pn-more { border-color: var(--color-success); color: var(--color-success); }
         .pn-offer[open] .pn-more::after { content: ' ▴'; }
 
-        /* Opened, it becomes a small popover hanging off the header rather
-           than pushing the activity list down the panel. */
-        .pn-offer[open] {
-            display: inline-flex;
-        }
+        /* Opened, the detail appears beneath the header, in the panel's own
+           flow.
+
+           It was an absolutely-positioned popover, and it was invisible: the
+           panel it hangs inside is `overflow-y: auto` so it can scroll a long
+           activity list, and an overflow container clips absolutely-positioned
+           children as readily as any other. Clicking "Alerts off" therefore
+           opened a details element whose contents were cropped out of
+           existence, and the button that actually asks for the permission
+           could never be reached.
+
+           In flow it pushes the activity list down instead, which the panel
+           already knows how to scroll. */
+        .pn-offer[open] { display: block; width: 100%; }
         .pn-offer[open] .pn-body {
-            position: absolute; top: calc(100% + 8px); right: 0; z-index: 5;
-            width: 250px; padding: 12px;
+            margin-top: 10px; padding: 12px;
             border: 1px solid var(--border-default); border-radius: 10px;
-            background: var(--surface-1); box-shadow: 0 12px 32px rgba(0,0,0,.28);
+            background: var(--surface-2);
         }
         .pn-offer[open] .pn-body .pn-text { display: block; max-width: none; margin-bottom: 8px; }
         .pn-offer[open] .pn-btn { margin-top: 10px; width: 100%; }
@@ -1225,11 +1233,15 @@
         }
         .nt-drop[hidden] { display: none; }
         .nt-head {
-            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 8px 10px;
             padding: 12px 14px; border-bottom: 1px solid var(--border-subtle);
             font-size: 12.5px; font-weight: 700; color: var(--text-primary);
         }
-        .nt-head-alerts { position: relative; display: inline-flex; }
+        /* Closed it is a chip beside the title; opened it takes the row under
+           it, which is what flex-wrap on the header is for. */
+        .nt-head-alerts { display: inline-flex; }
+        .nt-head-alerts:has(.pn-offer[open]) { flex: 1 0 100%; }
         .nt-empty { margin: 0; padding: 14px; font-size: 12px; line-height: 1.55; color: var(--text-muted); }
         .nt-group { display: flex; flex-direction: column; }
         .nt-group-l {

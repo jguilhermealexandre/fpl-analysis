@@ -687,7 +687,57 @@
                 console.warn('Premier League news file unavailable:', e.message);
             }
 
+            /* BBC, Sky and the Guardian from the file the same job writes,
+               before the live proxy is asked for them.
+             *
+               These three are read through api.rss2json.com because a browser
+               cannot fetch an RSS feed cross-origin, and that proxy decides for
+               itself which namespaced elements to map. The Guardian's pictures
+               are the casualty: its items carry no <enclosure> and no
+               <media:thumbnail>, only a stack of <media:content>, and its
+               description is plain text — so by the time an item arrives here
+               there is nothing in it that looks like an image and every card
+               falls back to a placeholder. Reading the XML server-side puts the
+               picture back.
+
+               A feed that answers from the file is not asked for again below;
+               anything the file is missing still goes through the proxy, so a
+               failed job is a page with fewer pictures rather than no news. */
+            const servedFromFile = new Set();
+            try {
+                const nfRes = await fetch('data/news-feeds.json?v=' + Math.floor(Date.now() / 300000));
+                if (nfRes.ok) {
+                    const nf = await nfRes.json();
+                    (nf.feeds || []).forEach(f => {
+                        const kept = (f.items || []).filter(a => {
+                            if (!a.link || seenLinks.has(a.link)) return false;
+                            if (!isValidHeadline(a.title)) return false;
+                            return true;
+                        });
+                        if (!kept.length) return;
+                        servedFromFile.add(f.badge);
+                        kept.slice(0, 12).forEach(a => {
+                            seenLinks.add(a.link);
+                            items.push({
+                                headline: a.title,
+                                link: a.link,
+                                thumbnail: a.image || null,
+                                detail: (a.summary || '').slice(0, 140) || f.source,
+                                source: f.source,
+                                badge: f.badge,
+                                timestamp: a.published,
+                                teams: matchTeams(a.title),
+                                tags: tagArticle(a.title)
+                            });
+                        });
+                    });
+                }
+            } catch (e) {
+                console.warn('News feed file unavailable:', e.message);
+            }
+
             for (const feed of feeds) {
+                if (servedFromFile.has(feed.badge)) continue;
                 try {
                     const rssUrl = encodeURIComponent(feed.url);
                     const resp = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`);

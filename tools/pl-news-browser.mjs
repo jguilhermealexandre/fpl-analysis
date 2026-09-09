@@ -194,6 +194,38 @@ if (DUMP) {
         return n;
     });
     console.log(`=== ${roots} shadow root(s) walked ===`);
+
+    /* Where every link on the page points, grouped by host. The scrape keeps
+       coming back with the syndicated club rail and none of the Premier
+       League's own articles, so the question is whether their editorial is on
+       this page at all under a route the filter does not recognise — or on a
+       different page entirely. This says which. */
+    const routes = await page.evaluate(() => {
+        const anchors = [];
+        const walk = (root, d) => {
+            if (!root || d > 20) return;
+            root.querySelectorAll('a[href]').forEach(a => anchors.push(a.href));
+            root.querySelectorAll('*').forEach(el => { if (el.shadowRoot) walk(el.shadowRoot, d + 1); });
+        };
+        walk(document, 0);
+        const byHost = {};
+        for (const href of anchors) {
+            let u; try { u = new URL(href); } catch { continue; }
+            const host = u.hostname.replace(/^www\./, '');
+            // The first two path segments say what kind of route it is.
+            const shape = '/' + u.pathname.split('/').filter(Boolean).slice(0, 2).join('/');
+            byHost[host] = byHost[host] || {};
+            byHost[host][shape] = (byHost[host][shape] || 0) + 1;
+        }
+        return byHost;
+    });
+    console.log('=== every link on the page, by host and route shape ===');
+    for (const [host, shapes] of Object.entries(routes)) {
+        console.log(`  ${host}`);
+        Object.entries(shapes).sort((a, b) => b[1] - a[1]).slice(0, 12)
+            .forEach(([shape, n]) => console.log(`      ${n}x  ${shape}`));
+    }
+
     console.log(`=== ${scraped.length} article(s) scraped ===`);
     scraped.slice(0, 15).forEach(a => console.log(`  ${a.title}\n     ${a.link}\n     img: ${a.image || '(none)'}`));
 } else {

@@ -872,7 +872,41 @@
                 }
             } catch (e) { /* three other feeds remain; a missing file is not an error */ }
 
+            /* BBC, Sky and the Guardian from the file too, before the proxy is
+               asked. The proxy drops the Guardian's <media:content>, which is
+               the only place a Guardian item's picture lives — so every
+               Guardian card here has been a placeholder over an article that
+               had a photograph all along. A feed the file served is not asked
+               for again; anything it is missing still goes through the proxy. */
+            const servedFromFile = new Set();
+            try {
+                const nfRes = await fetch('data/news-feeds.json?v=' + Math.floor(Date.now() / 300000));
+                if (nfRes.ok) {
+                    const nf = await nfRes.json();
+                    (nf.feeds || []).forEach(f => {
+                        const kept = (f.items || []).filter(a => a.link && !seenLinks.has(a.link));
+                        if (!kept.length) return;
+                        servedFromFile.add(f.badge);
+                        kept.slice(0, 12).forEach(a => {
+                            seenLinks.add(a.link);
+                            items.push({
+                                category: 'external', categoryLabel: f.source,
+                                headline: a.title,
+                                link: a.link,
+                                thumbnail: a.image || null,
+                                source: f.source, badge: f.badge,
+                                detail: (a.summary || '').slice(0, 140) || f.source,
+                                isSquad: false,
+                                timestamp: a.published,
+                                sortWeight: 5
+                            });
+                        });
+                    });
+                }
+            } catch (e) { /* the proxy below still runs */ }
+
             for (const feed of feeds) {
+                if (servedFromFile.has(feed.badge)) continue;
                 try {
                     const rssUrl = encodeURIComponent(feed.url);
                     const resp = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`);
