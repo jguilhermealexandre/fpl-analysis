@@ -289,7 +289,7 @@ async function inspect(url, headers) {
 
     console.log('--- any absolute path that mentions content or news ---');
     const paths = new Set();
-    [...body.matchAll(/["'](\/[a-z0-9\/_-]*(?:content|news)[a-z0-9\/_-]*)["']/gi)]
+    [...body.matchAll(/["'](\/[a-z0-9/_-]*(?:content|news)[a-z0-9/_-]*)["']/gi)]
         .forEach(m => paths.add(m[1]));
     [...paths].slice(0, 25).forEach(x => console.log('  ' + x));
 
