@@ -220,14 +220,16 @@
             const esc = typeof escHTML === 'function' ? escHTML : (s => String(s == null ? '' : s));
             if (state === 'unsupported') return '';
             if (state === 'needs-install') {
-                return `<div class="pn-offer muted">
-                    <span class="pn-text">Add EasyFPL to your home screen to get alerts about your squad — iPhone only allows them for installed apps.</span>
-                </div>`;
+                return `<details class="pn-offer muted">
+                    <summary class="pn-sum" title="Add EasyFPL to your home screen to get alerts — iPhone only allows them for installed apps."><span class="pn-more">Alerts</span></summary>
+                    <div class="pn-body"><span class="pn-text">Add EasyFPL to your home screen to get alerts about your squad — iPhone only allows them for installed apps.</span></div>
+                </details>`;
             }
             if (state === 'blocked') {
-                return `<div class="pn-offer muted">
-                    <span class="pn-text">Alerts are blocked for this site in your browser settings.</span>
-                </div>`;
+                return `<details class="pn-offer muted">
+                    <summary class="pn-sum" title="Alerts are blocked for this site in your browser settings."><span class="pn-more">Alerts blocked</span></summary>
+                    <div class="pn-body"><span class="pn-text">Alerts are blocked for this site in your browser settings. Your browser will not ask again — it has to be undone in its site permissions.</span></div>
+                </details>`;
             }
             /* What will actually be sent, listed before it is agreed to.
 
@@ -245,23 +247,33 @@
 
             const prefs = pnStoredPrefs();
 
+            /* This lives in the notification panel's header now, beside
+               "Activity", rather than as a block on the dashboard. So the
+               summary is a short label and the sentence explaining what the
+               alerts cover moves inside .pn-body, which opens as a small
+               popover — a header is not the place for a paragraph, and the
+               list of what gets sent was always the part worth reading. */
             if (state === 'on') {
                 return `<details class="pn-offer on">
-                    <summary class="pn-sum">
-                        <span class="pn-text">Alerts are on for your squad.</span>
-                        <span class="pn-more">What you get</span>
+                    <summary class="pn-sum" title="Alerts are on for your squad. Open for what gets sent.">
+                        <span class="pn-more">Alerts on</span>
                     </summary>
-                    ${list(true)}
-                    <button type="button" class="pn-btn ghost" onclick="pnToggleFromUI(false)">Turn off alerts</button>
+                    <div class="pn-body">
+                        <span class="pn-text">Alerts are on for your squad. Here is what gets sent:</span>
+                        ${list(true)}
+                        <button type="button" class="pn-btn ghost" onclick="pnToggleFromUI(false)">Turn off alerts</button>
+                    </div>
                 </details>`;
             }
             return `<details class="pn-offer">
-                <summary class="pn-sum">
-                    <span class="pn-text">Get told when something in your squad needs you, even when the site is closed.</span>
-                    <span class="pn-more">What you get</span>
+                <summary class="pn-sum" title="Get told when something in your squad needs you, even when the site is closed. Open for what gets sent.">
+                    <span class="pn-more">Alerts off</span>
                 </summary>
-                ${list(false)}
-                <button type="button" class="pn-btn" onclick="pnToggleFromUI(true)">Turn on alerts</button>
+                <div class="pn-body">
+                    <span class="pn-text">Get told when something in your squad needs you, even when the site is closed:</span>
+                    ${list(false)}
+                    <button type="button" class="pn-btn" onclick="pnToggleFromUI(true)">Turn on alerts</button>
+                </div>
             </details>`;
         }
 

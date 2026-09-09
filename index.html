@@ -1124,18 +1124,24 @@
         .v2-info-panel .rd-lane.done .rd-mark { font-size: 9px; }
         .v2-info-panel .rd-lane.done .rd-label { color: var(--text-secondary); }
 
-        /* The alerts offer. Spans both columns and stays quiet — it is an offer,
-           not a call to action, and it sits below the checks because that is the
-           only point at which it means anything. */
-        .pn-slot { grid-column: 1 / -1; }
+        /* The alerts offer, now inside the notification panel's header rather
+           than as a third block on the dashboard grid. It is a switch on the
+           thing it switches: this panel is the list of what would be sent.
+
+           Compact by default — a label and a control — because the header is
+           a header. What the alerts actually cover opens on click, and the
+           permission prompt is still only ever raised from a button, since a
+           browser refusal is one-shot per origin. */
         .pn-offer {
-            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-            padding: 10px 14px; border-radius: 10px;
-            border: 1px dashed var(--border-default); background: transparent;
+            position: relative;
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 0; border: none; background: transparent;
         }
-        .pn-offer.on { border-style: solid; border-color: var(--color-success); }
-        .pn-offer.muted { border-style: solid; opacity: .75; }
-        .pn-text { flex: 1; min-width: 200px; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
+        .pn-offer.muted { opacity: .75; }
+        .pn-text {
+            font-size: 11px; line-height: 1.4; font-weight: 500; color: var(--text-muted);
+            max-width: 190px;
+        }
         .pn-btn {
             padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;
             border: 1px solid var(--color-primary); background: var(--color-primary); color: #fff;
@@ -1146,19 +1152,40 @@
 
         /* What will be sent, listed before it is agreed to. The permission
            cannot be asked for twice, so vagueness here is expensive. */
-        .pn-sum { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; cursor: pointer; list-style: none; }
+        /* In the header the summary is the whole control: the long sentence
+           collapses to a short label, and the detail is a click away. */
+        .pn-sum {
+            display: inline-flex; align-items: center; gap: 7px;
+            cursor: pointer; list-style: none;
+        }
         .pn-sum::-webkit-details-marker { display: none; }
+        .pn-sum .pn-text { display: none; }
         .pn-more {
-            padding: 2px 9px; border-radius: 999px; white-space: nowrap;
-            border: 1px solid var(--border-default); color: var(--text-muted);
+            padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+            border: 1px solid var(--border-default); color: var(--text-secondary);
+            background: var(--surface-2);
             font-size: 10.5px; font-weight: 700;
         }
         .pn-more::after { content: ' ▾'; }
+        .pn-offer:hover .pn-more { border-color: var(--color-primary); color: var(--text-primary); }
+        .pn-offer.on .pn-more { border-color: var(--color-success); color: var(--color-success); }
         .pn-offer[open] .pn-more::after { content: ' ▴'; }
-        .pn-offer[open] { display: block; }
-        .pn-offer[open] .pn-btn { margin-top: 10px; }
 
-        .pn-list { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+        /* Opened, it becomes a small popover hanging off the header rather
+           than pushing the activity list down the panel. */
+        .pn-offer[open] {
+            display: inline-flex;
+        }
+        .pn-offer[open] .pn-body {
+            position: absolute; top: calc(100% + 8px); right: 0; z-index: 5;
+            width: 250px; padding: 12px;
+            border: 1px solid var(--border-default); border-radius: 10px;
+            background: var(--surface-1); box-shadow: 0 12px 32px rgba(0,0,0,.28);
+        }
+        .pn-offer[open] .pn-body .pn-text { display: block; max-width: none; margin-bottom: 8px; }
+        .pn-offer[open] .pn-btn { margin-top: 10px; width: 100%; }
+
+        .pn-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
         .pn-item { display: flex; flex-direction: column; gap: 1px; padding-left: 14px; position: relative; }
         .pn-item::before { content: '•'; position: absolute; left: 0; color: var(--color-success); }
         .pn-item.off::before { content: '○'; color: var(--text-muted); }
@@ -1198,9 +1225,11 @@
         }
         .nt-drop[hidden] { display: none; }
         .nt-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
             padding: 12px 14px; border-bottom: 1px solid var(--border-subtle);
             font-size: 12.5px; font-weight: 700; color: var(--text-primary);
         }
+        .nt-head-alerts { position: relative; display: inline-flex; }
         .nt-empty { margin: 0; padding: 14px; font-size: 12px; line-height: 1.55; color: var(--text-muted); }
         .nt-group { display: flex; flex-direction: column; }
         .nt-group-l {
