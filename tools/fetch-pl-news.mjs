@@ -484,6 +484,62 @@ async function matrix(headers) {
     }
 }
 
+/* The gateway answers "No configuration found for request" to every path,
+ * including the bare /content/premierleague. That is not a query problem —
+ * a wrong parameter gives a validation error, and a wrong path gives 404.
+ * It is the gateway declining to route the request at all, which for a
+ * Pulselive SDP deployment is decided by the headers and by the account slug
+ * in the path, not by the query string.
+ *
+ * Both are in the bundle: the store sets `prepareHeaders: wp` and builds its
+ * paths as `/content/${$n}/...`. So resolve those minified names to their
+ * definitions and print them. Minified identifiers are stable only within one
+ * build, so they are read out of the bundle each run rather than hard-coded.
+ */
+async function headersProbe(headers) {
+    const page = await (await fetch('https://www.premierleague.com/en/news', { headers })).text();
+    const ref = /import\(["'](\/resources\/[^"']+?\.js)["']\)/.exec(page);
+    if (!ref) { console.log('no bundle reference in the page'); return; }
+    const bundle = await (await fetch('https://www.premierleague.com' + ref[1], { headers })).text();
+    console.log(`bundle ${bundle.length}B\n`);
+
+    // Minified names are single tokens; find where each is assigned and print it.
+    const defOf = (name, span = 700) => {
+        const esc = name.replace(/[$]/g, '\\$');
+        const re = new RegExp(`(?:function\\s+${esc}\\s*\\(|\\b(?:const|let|var)\\s+${esc}\\s*=|[,;{]\\s*${esc}\\s*=)`);
+        const m = re.exec(bundle);
+        if (!m) return `${name}: no assignment found`;
+        return `${name}: ${bundle.slice(m.index, m.index + span).replace(/\s+/g, ' ')}`;
+    };
+
+    // Whatever the store actually names them in this build.
+    const prep = /prepareHeaders:\s*([A-Za-z_$][\w$]*)/.exec(bundle);
+    const acct = /\/content\/\$\{([A-Za-z_$][\w$]*)\}\//.exec(bundle);
+    const lang = /\$\{([A-Za-z_$][\w$]*)\.language\}/.exec(bundle);
+    const base = /baseUrl:\s*([A-Za-z_$][\w$]*)\s*\|\|/.exec(bundle);
+    console.log(`names: prepareHeaders=${prep?.[1]} account=${acct?.[1]} lang=${lang?.[1]} baseUrl=${base?.[1]}\n`);
+
+    for (const n of [prep?.[1], acct?.[1], lang?.[1], base?.[1]].filter(Boolean)) {
+        console.log(defOf(n) + '\n');
+    }
+
+    /* And every header name the bundle sets, whichever function sets it —
+       the one that unlocks the gateway is in this list. */
+    console.log('--- .set("Header", …) calls in the bundle ---');
+    const sets = new Set();
+    for (const m of bundle.matchAll(/\.set\(\s*["']([A-Za-z][\w-]*)["']\s*,([^)]{0,90})\)/g)) {
+        sets.add(`${m[1]} = ${m[2].trim().slice(0, 80)}`);
+    }
+    [...sets].slice(0, 40).forEach(x => console.log('  ' + x));
+
+    /* Anything that looks like an account or tenant identifier. */
+    console.log('\n--- account / tenant strings ---');
+    const ids = new Set();
+    for (const m of bundle.matchAll(/["'](?:account|Account|tenant|siteId|clientId)["']\s*[:,]\s*["']([^"']{1,60})["']/g)) ids.add(m[1]);
+    for (const m of bundle.matchAll(/\b(?:account|tenant)\s*[:=]\s*["']([^"']{1,60})["']/gi)) ids.add(m[1]);
+    [...ids].slice(0, 30).forEach(x => console.log('  ' + x));
+}
+
 async function main() {
     const args = process.argv.slice(2);
     if (args.includes('--probe')) {
@@ -492,6 +548,10 @@ async function main() {
     }
     if (args.includes('--matrix')) {
         await matrix(PULSE_HEADERS);
+        return;
+    }
+    if (args.includes('--headers')) {
+        await headersProbe(PULSE_HEADERS);
         return;
     }
     if (args.includes('--inspect')) {

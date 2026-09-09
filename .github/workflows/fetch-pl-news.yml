@@ -22,7 +22,7 @@ on:
       mode:
         description: 'What to run'
         type: choice
-        options: [fetch, inspect, probe, matrix]
+        options: [fetch, inspect, probe, matrix, headers]
         default: fetch
 
 # Writes data/ back to main, and nothing else.
@@ -60,6 +60,14 @@ jobs:
       - name: Try every spelling of the content query
         if: inputs.mode == 'matrix'
         run: node tools/fetch-pl-news.mjs --matrix
+
+      # Every path answers "No configuration found for request", including the
+      # bare one — the gateway is refusing to route, which is a header and
+      # account-slug question rather than a query one. This resolves both out
+      # of the bundle's own minified names.
+      - name: Read the gateway headers out of the bundle
+        if: inputs.mode == 'headers'
+        run: node tools/fetch-pl-news.mjs --headers
 
       - name: Fetch Premier League news
         if: inputs.mode == '' || inputs.mode == 'fetch'
