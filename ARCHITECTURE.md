@@ -166,6 +166,36 @@ choice could be made on evidence. The harness had been passing
 `players-data.json` — a future leak that lied about nothing only because nothing
 read it.
 
+### Calibration and ranking pull against each other
+
+Worth knowing before optimising the projection, because it has now been measured
+three times and the answer was the same each time.
+
+The model is systematically conservative in two places, both real and both
+identified: `expectedGoalsAgainst` spreads defences about two and a half times
+wider than they actually differ, and `pStart` under-rates anyone who has missed
+matches, because its denominator counts absences that `status` already handles.
+Each was corrected, fitted properly, and validated. Each made the site worse.
+
+Correcting `pStart` takes the projection from a bias of 0.140 to −0.013 —
+essentially unbiased — and drops the mean score of its top ten picks from 4.97 to
+4.76. Shrinking `expectedGoalsAgainst` halves the team-level calibration error and
+costs top-ten 4.97 to 4.82. Two more variants of the appearance term lose the same
+way. The details and the numbers live on the two functions in `xp-engine.js`.
+
+The reason is the same in both: the conservatism is concentrated on marginal
+players — returners, rotation risks, weak defences — and being too pessimistic
+about them keeps them out of the top of a list, which is where every
+recommendation on this site is read from. They are marginal for a reason, so
+correcting the bias promotes players who then underperform the corrected number.
+
+The practical rule: **judge a change to the projection on top-N and rank
+correlation, not on bias or MAE.** A well-calibrated ordering would be better than
+both, and nothing measured so far gets you one; the two goals genuinely conflict
+at this level of accuracy. `tools/wildcard-backtest.mjs --mode projection` prints
+bias and MAE because they localise a fault — the defensive-contribution bug was
+found that way — but they are diagnostics, not the score.
+
 ## Conventions
 
 **Cache-busting.** One number in `asset-version.json`. Bump it, run `npm run

@@ -774,6 +774,51 @@
             return !!player && XP_STATUS_OUT.indexOf(player.status) !== -1;
         }
 
+        /* pStart is too low for anyone who has missed matches, on purpose now.
+
+           startRate below is starts divided by computePlayerGamesPlayed, which is
+           gameweeks ELAPSED. Every gameweek a player was injured or unregistered
+           therefore counts as a gameweek he did not start, and keeps counting long
+           after he is fit again. Since status and chanceNextRound already handle
+           availability through `avail`, that is the same fact deducted twice.
+
+           It is measurable and it is large. Over the gameweeks with real team news,
+           among players who were FIT at the time:
+
+             played most gameweeks   pStart 0.855   actually started 0.877
+             missed a lot            pStart 0.441   actually started 0.543
+             fringe                  pStart 0.148   actually started 0.300
+
+           Exactly the shape the double-deduction predicts — right for the ever-
+           presents, badly low for everyone else.
+
+           Three ways of fixing it were measured against the season, and all three
+           make the site worse:
+
+             as shipped                bias 0.140   top-10 4.97   top-20 4.52
+             recalibrate pStart        bias -0.013  top-10 4.76   top-20 4.46
+             measured coefficients     bias 0.177   top-10 4.91   top-20 4.49
+             appearance uses P(60+)    bias 0.104   top-10 4.91   top-20 4.43
+
+           The second line is the striking one: correcting pStart against its own
+           measured curve makes the projection essentially unbiased and costs a
+           fifth of a point per gameweek off the top ten. The reason is that the
+           correction lifts exactly the marginal players — returners, rotation
+           risks, fringe squad members — and they are marginal for a reason. Being
+           too pessimistic about them is wrong as an expectation and load-bearing
+           as a ranking.
+
+           Same conclusion as the spread in expectedGoalsAgainst above, reached
+           independently. Both remaining biases are conservative, both are real,
+           and correcting either trades the thing this model is for against a
+           number nobody picks a team from. Worth revisiting only with a season of
+           team news from GW1, or if the projection is ever asked to be a
+           calibrated expectation rather than an ordering — but note that wanting
+           both from one number is what the evidence here says you cannot have.
+
+           The two coefficients below are, for the record, close to right: a fit
+           starter averages 1.936 appearance points and a fit non-starter 0.501,
+           against the 2 and 0.5 assumed. */
         function expectedMinutesModel(player) {
             const avail = player.status === 'd'
                 ? (player.chanceNextRound != null ? player.chanceNextRound : 50) / 100
