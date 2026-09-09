@@ -1426,6 +1426,80 @@
             return `<div class="detail-section" data-accent="price">
                 <div class="detail-section-title">\ud83d\udcb7 Price Watch</div>
                 ${body}
+                ${renderPriceHistoryBlock(player)}
+            </div>`;
+        }
+
+        /* ===== Where the price has been =====
+
+           The meter above is entirely about tonight. It could not say whether a
+           player is \u00a30.3m up on the season or \u00a30.2m down, which is the figure
+           that decides what a squad can afford in February and the one thing a
+           manager cannot reconstruct from anywhere else on the site.
+
+           pwPriceHistory() in scripts/price-watch.js does the arithmetic; this
+           draws it. The chart is a polyline over the gameweek prices with today
+           appended, on a y-axis padded by a tenth either side so a season with a
+           single move is a visible step rather than a line hugging the frame. A
+           flat season is drawn flat and said in words, rather than being
+           stretched to fill the box and implying movement that did not happen. */
+        function renderPriceHistoryBlock(player) {
+            if (typeof pwPriceHistory !== 'function') return '';
+            const history = (playersDetailData?.players || []).find(p => p.id === player.id)?.history || [];
+            const h = pwPriceHistory(player, history);
+            if (!h) return '';
+
+            const dir = h.netTenths > 0 ? 'up' : h.netTenths < 0 ? 'down' : 'flat';
+            // "\u00a30.0m" is a worse way of saying nothing happened than saying it.
+            const netTxt = h.netTenths === 0
+                ? 'no change'
+                : `${h.netTenths > 0 ? '+' : '\u2212'}\u00a3${Math.abs(h.net).toFixed(1)}m`;
+
+            const W = 240, H = 46, PAD = 4;
+            const tenths = h.points.map(p => p.tenths);
+            const lo = Math.min.apply(null, tenths) - 1;
+            const hi = Math.max.apply(null, tenths) + 1;
+            const span = Math.max(1, hi - lo);
+            const x = i => PAD + (h.points.length > 1 ? (i / (h.points.length - 1)) * (W - PAD * 2) : (W - PAD * 2) / 2);
+            const y = t => PAD + (1 - (t - lo) / span) * (H - PAD * 2);
+            const pts = h.points.map((p, i) => `${x(i).toFixed(1)},${y(p.tenths).toFixed(1)}`).join(' ');
+
+            const label = p => p.isNow ? 'now' : p.isStart ? 'season start' : `GW${p.gw}`;
+            const dots = h.points.map((p, i) =>
+                `<circle cx="${x(i).toFixed(1)}" cy="${y(p.tenths).toFixed(1)}" r="${p.isNow ? 3 : 2}"
+                    class="${p.isNow ? 'ph-dot-now' : 'ph-dot'}"><title>${escHTML(label(p))}: \u00a3${(p.tenths / 10).toFixed(1)}m</title></circle>`
+            ).join('');
+
+            /* Only the weeks the price actually moved. Most gameweeks it does
+               not, and a row per gameweek would bury the three that matter. */
+            const moves = h.moves.slice(-6).map(m => {
+                const up = m.to > m.from;
+                // The final step has no gameweek of its own: it happened after the
+                // most recent one was played, which is what "now" means here.
+                const when = m.isNow || m.gw == null ? 'now' : `GW${m.gw}`;
+                return `<li class="${up ? 'up' : 'down'}"><span class="ph-move-gw">${escHTML(when)}</span>
+                    <span class="ph-move-val">\u00a3${(m.from / 10).toFixed(1)} \u2192 \u00a3${(m.to / 10).toFixed(1)}</span></li>`;
+            }).join('');
+
+            return `<div class="ph-block">
+                <div class="ph-head">
+                    <span class="ph-title">Price this season</span>
+                    <span class="ph-net ${dir}" data-tooltip="Started at \u00a3${h.start.toFixed(1)}m, worth \u00a3${h.now.toFixed(1)}m now.">${netTxt}</span>
+                </div>
+                <div class="ph-rail">
+                    <span class="ph-end"><em>start</em>\u00a3${h.start.toFixed(1)}m</span>
+                    <svg class="ph-spark ${dir}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+                        aria-label="Price from \u00a3${h.start.toFixed(1)}m at the start of the season to \u00a3${h.now.toFixed(1)}m now">
+                        <polyline points="${pts}" fill="none" />
+                        ${dots}
+                    </svg>
+                    <span class="ph-end right"><em>now</em>\u00a3${h.now.toFixed(1)}m</span>
+                </div>
+                ${h.moves.length
+                    ? `<ul class="ph-moves">${moves}</ul>
+                       <div class="ph-note">${h.rises} rise${h.rises === 1 ? '' : 's'}, ${h.falls} fall${h.falls === 1 ? '' : 's'};
+                       high \u00a3${h.high.toFixed(1)}m, low \u00a3${h.low.toFixed(1)}m.</div>`
+                    : `<div class="ph-note">Unchanged at \u00a3${h.now.toFixed(1)}m all season.</div>`}
             </div>`;
         }
 

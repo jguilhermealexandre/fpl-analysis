@@ -2395,6 +2395,19 @@
 
             html += `</div>`;   // .tm-columns
 
+            /* Who the game is actually buying and selling, under the two columns
+               rather than above them: the squad watch is the part that needs a
+               decision before tonight, and this is the context around it. Built
+               from every player rather than playersWithPressure, whose
+               ownership > 0.5% and minutes > 0 filters are right for a price
+               watch and wrong for a leaderboard — the most-sold player in a
+               gameweek is often one who has just stopped playing. */
+            html += renderTmTransferBoard(allPlayers.map(p => ({
+                ...p,
+                posName: ['', 'GK', 'DEF', 'MID', 'FWD'][p.position] || '?',
+                teamShort: (p.team || '???').substring(0, 3)
+            })), squadIds);
+
             container.innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
             startPriceLockCountdown();
@@ -2402,6 +2415,138 @@
 
         // One row shape for both the squad watch and the market lists, so a player
         // reads identically wherever they appear.
+        /* ===== Most transferred in and out =====
+
+           The tab could say who was about to change price and not who the game
+           was actually buying and selling, which is the first thing the official
+           site puts in front of you and the thing every other FPL site leads
+           with. They are not the same question: the price meter is net movement
+           weighted against an ownership base, so a cheap defender with forty
+           thousand buys can sit above a premium with four hundred thousand.
+
+           Three deliberate differences from the panel beside it. This one counts
+           the whole game rather than the players you do not own — leaving your
+           own squad out of a "most transferred" list would be answering a
+           question nobody asked, so squad members appear and are badged. It does
+           not filter on ownership or minutes, because a leaderboard that quietly
+           drops players is not a leaderboard. And it offers the season alongside
+           the gameweek, since "who has been sold all season" and "who is being
+           sold this week" are different and both are asked.
+
+           The totals are real sums, not estimates: every transfer is one player
+           in and one player out, so summing either column across all players
+           gives the number of transfers made, and the two agree to the unit. */
+        let tmTransferScope = 'gw';   // 'gw' | 'season'
+
+        function tmSetTransferScope(scope) {
+            tmTransferScope = scope === 'season' ? 'season' : 'gw';
+            transferMarketRendered = false;
+            renderTransferMarket();
+        }
+
+        // Start-of-season price against today's, for the row's £4.5 → £4.8 strip.
+        // Needs no gameweek history — cost_change_start carries the whole move —
+        // so the list stays cheap to build for six hundred players.
+        function tmSeasonPriceMove(p) {
+            return typeof pwPriceHistory === 'function' ? pwPriceHistory(p, null) : null;
+        }
+
+        function renderTmTransferBoard(players, squadIds) {
+            const season = tmTransferScope === 'season';
+            const inOf = p => (season ? p.transfersInTotal : p.transfersIn) || 0;
+            const outOf = p => (season ? p.transfersOutTotal : p.transfersOut) || 0;
+
+            const pool = (players || []).filter(p => inOf(p) > 0 || outOf(p) > 0);
+            if (!pool.length) {
+                return `<div class="tm-section tm-tb-section">
+                    <div class="tm-section-header"><h2>⇄ Most transferred</h2></div>
+                    <div class="tm-market-empty">No transfers recorded yet${season ? ' this season' : ' this gameweek'}.</div>
+                </div>`;
+            }
+
+            const totalIn = pool.reduce((s, p) => s + inOf(p), 0);
+            const totalOut = pool.reduce((s, p) => s + outOf(p), 0);
+            const bought = pool.slice().sort((a, b) => inOf(b) - inOf(a)).slice(0, 10);
+            const sold = pool.slice().sort((a, b) => outOf(b) - outOf(a)).slice(0, 10);
+            const topCount = Math.max(inOf(bought[0]) || 0, outOf(sold[0]) || 0, 1);
+
+            const column = (title, icon, cls, list, total, valueOf, otherOf) => `
+                <div class="tm-tb-col">
+                    <div class="tm-tb-col-head ${cls}">
+                        <span class="tm-tb-col-title">${icon} ${escHTML(title)}</span>
+                        <span class="tm-tb-col-total">${total.toLocaleString()}<em>total</em></span>
+                    </div>
+                    <div class="tm-tb-rows">
+                        ${list.map((p, i) => renderTmTransferRow(p, i + 1, cls, valueOf(p), otherOf(p), topCount, squadIds, season)).join('')}
+                    </div>
+                </div>`;
+
+            return `<div class="tm-section tm-tb-section">
+                <div class="tm-section-header">
+                    <h2><i data-lucide="arrow-left-right" style="width:16px;height:16px;display:inline;"></i> Most transferred ${season ? 'this season' : 'this gameweek'}</h2>
+                    <div class="tm-tb-scope" role="group" aria-label="Transfer period">
+                        <button class="tm-tb-scope-btn ${season ? '' : 'active'}" onclick="tmSetTransferScope('gw')">This gameweek</button>
+                        <button class="tm-tb-scope-btn ${season ? 'active' : ''}" onclick="tmSetTransferScope('season')">Season</button>
+                    </div>
+                </div>
+                <div class="tm-watch-note">
+                    <strong>${totalIn.toLocaleString()}</strong> transfers made ${season ? 'so far this season' : 'ahead of this deadline'} across every FPL manager.
+                    Counts are the whole game, your own squad included.
+                </div>
+                <div class="tm-tb-cols">
+                    ${column('Most bought', '📥', 'in', bought, totalIn, inOf, outOf)}
+                    ${column('Most sold', '📤', 'out', sold, totalOut, outOf, inOf)}
+                </div>
+            </div>`;
+        }
+
+        function renderTmTransferRow(p, rank, cls, value, counter, topCount, squadIds, season) {
+            const ident = { name: p.name, code: p.code, teamId: p.teamId, team: p.teamShort };
+            // Net over the same period the column is counting, or the two numbers
+            // in one row would be measuring different spans of the season.
+            const net = season
+                ? (p.transfersInTotal || 0) - (p.transfersOutTotal || 0)
+                : (p.transfersIn || 0) - (p.transfersOut || 0);
+            const period = season ? 'this season' : 'this gameweek';
+            const move = tmSeasonPriceMove(p);
+            const owned = squadIds && squadIds.has(p.id);
+            // The bar is each player against the biggest number in either column,
+            // so the two lists are on one scale and can be read against each other.
+            const width = Math.max(2, Math.round((value / topCount) * 100));
+
+            /* Where the price has been, in the space of a strip. A player at his
+               opening price says so rather than printing the same number twice. */
+            const priceStrip = move && move.netTenths !== 0
+                ? `<span class="tm-tb-price ${move.netTenths > 0 ? 'up' : 'down'}"
+                        data-tooltip="Started the season at £${move.start.toFixed(1)}m and is £${move.now.toFixed(1)}m now.">
+                        £${move.start.toFixed(1)}<i>→</i>£${move.now.toFixed(1)}</span>`
+                : `<span class="tm-tb-price flat" data-tooltip="Unchanged from his opening price.">£${p.price.toFixed(1)}m</span>`;
+
+            return `<div class="tm-tb-row ${cls}">
+                <span class="tm-tb-rank">${rank}</span>
+                <div class="tm-tb-ident">
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
+                    <div class="tm-tb-info">
+                        <div class="tm-tb-name-row">
+                            <span class="tm-tb-name">${escHTML(p.name)}</span>
+                            ${owned ? '<span class="tm-badge in-squad">SQUAD</span>' : ''}
+                        </div>
+                        <div class="tm-tb-sub">
+                            <span>${escHTML(p.teamShort)}</span>
+                            ${priceStrip}
+                        </div>
+                    </div>
+                </div>
+                <div class="tm-tb-num">
+                    <span class="tm-tb-count">${value.toLocaleString()}</span>
+                    <span class="tm-tb-net ${net >= 0 ? 'pos' : 'neg'}"
+                        data-tooltip="Transfers in minus transfers out ${period}: ${counter.toLocaleString()} the other way.">
+                        net ${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()}</span>
+                    <div class="tm-tb-track"><i class="${cls}" style="width:${width}%"></i></div>
+                </div>
+            </div>`;
+        }
+
         function renderTmWatchRow(p, isMarket) {
             const pct = p.threshold;
             const st = thresholdState(pct);

@@ -126,6 +126,94 @@
                 : `${Math.round(Math.abs(c.progress))}% of the way, and not projected to cross yet.`;
         }
 
+        /* ===== Where the price has actually been =====
+
+           The meter above answers "is he about to move". This answers "what has
+           he done", which is the question a squad's value is made of and which
+           nothing on the site could answer.
+
+           Two sources, because neither is complete on its own. Each gameweek row
+           in players-data.json carries `value`, the player's price at that
+           gameweek — that is the path. But it stops at the last gameweek played,
+           and prices move nightly, so a player who rose since Saturday is
+           already dearer than his own last row: De Cuyper reads 45, 46, 47
+           across GW1-3 and is 48 today. now_cost is therefore appended as a
+           final point rather than trusted to be the last row.
+
+           The start price is `now_cost - cost_change_start`, which the game
+           maintains for exactly this purpose and which agrees with the first
+           history row where one exists. It is used on its own when a player has
+           no history at all — signed mid-season, or the file has not caught up —
+           so the headline start-to-now figure survives an empty path.
+
+           Prices are held in tenths of a million throughout and divided once, at
+           the edge, so no intermediate rounding can drift. */
+        function pwPriceHistory(player, history) {
+            if (!player) return null;
+            // Every caller builds players through xpBuildPlayers, where `price` is
+            // now_cost/10. Back to tenths, so the arithmetic below is integers.
+            const nowTenths = Math.round(pwNum(player.price) * 10);
+            if (!nowTenths) return null;
+            const startTenths = nowTenths - pwNum(player.costChangeStart);
+
+            const points = [];
+            (history || []).forEach(row => {
+                const v = pwNum(row && row.value);
+                const gw = row && row.round;
+                if (!v || gw == null) return;
+                points.push({ gw: Number(gw), tenths: v });
+            });
+            points.sort((a, b) => a.gw - b.gw);
+
+            // The live price, as a point of its own — unless the last row is
+            // already it, in which case a duplicate would flatten the tail.
+            const last = points[points.length - 1];
+            if (!last || last.tenths !== nowTenths) {
+                points.push({ gw: null, tenths: nowTenths, isNow: true });
+            } else {
+                last.isNow = true;
+            }
+
+            /* Every step the price actually took, which is not the same as one
+               per gameweek: most weeks it does not move, and the weeks it does
+               are the only ones worth listing. */
+            const moves = [];
+            let prev = points.length ? points[0].tenths : startTenths;
+            if (points.length && points[0].tenths !== startTenths) {
+                moves.push({ gw: points[0].gw, from: startTenths, to: points[0].tenths });
+                prev = points[0].tenths;
+            }
+            points.slice(1).forEach(pt => {
+                if (pt.tenths !== prev) {
+                    moves.push({ gw: pt.gw, from: prev, to: pt.tenths, isNow: !!pt.isNow });
+                }
+                prev = pt.tenths;
+            });
+
+            const all = points.map(p => p.tenths).concat([startTenths]);
+            return {
+                startTenths,
+                nowTenths,
+                netTenths: nowTenths - startTenths,
+                start: startTenths / 10,
+                now: nowTenths / 10,
+                net: (nowTenths - startTenths) / 10,
+                high: Math.max.apply(null, all) / 10,
+                low: Math.min.apply(null, all) / 10,
+                rises: moves.filter(m => m.to > m.from).length,
+                falls: moves.filter(m => m.to < m.from).length,
+                moves,
+                /* Always at least two points, so a flat season still draws a
+                   line rather than a dot. A point carries either a gameweek or
+                   one of the two roles — the season's opening price, and today's
+                   — because neither of those is a gameweek and labelling them
+                   with one would be a small lie in every tooltip. */
+                points: points.length > 1
+                    ? points
+                    : [{ gw: null, isStart: true, tenths: startTenths }].concat(points)
+            };
+        }
+
         // A host page can check the engine loaded before calling it.
         function pwEngineReady() {
             return typeof pwClassify === 'function';
