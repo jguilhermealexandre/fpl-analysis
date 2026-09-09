@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=184">
-    <link rel="stylesheet" href="styles/players.css?v=184">
-    <link rel="stylesheet" href="styles/v2-design.css?v=184">
+    <link rel="stylesheet" href="styles/common.css?v=185">
+    <link rel="stylesheet" href="styles/players.css?v=185">
+    <link rel="stylesheet" href="styles/v2-design.css?v=185">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -61,13 +61,13 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=184">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=184">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=184">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=184">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=184">
-    <link rel="preload" as="script" href="scripts/common.js?v=184">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=184">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=185">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=185">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=185">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=185">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=185">
+    <link rel="preload" as="script" href="scripts/common.js?v=185">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=185">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -223,7 +223,19 @@
             <h1 class="page-title v2-page-heading"><i data-lucide="user-round-search" class="icon"></i> Player Analysis</h1>
             <p class="page-subtitle" id="pageSubtitle"></p>
         </div>
-        <div class="filter-bar" id="filterBar">
+        <!-- The standalone filter bar is retired.
+
+             Every panel on this page now draws its own position pills and,
+             in Recommendations, its own budget/premium/differential row — so
+             this bar was a second copy of both, sitting above a panel that
+             already showed them and driving the same state. Two controls for
+             one setting is worse than either alone.
+
+             It stays in the DOM, hidden, because switchGlobalPosition() and
+             switchGlobalCategory() resolve their buttons through it to keep
+             every copy of the pills in agreement. Deleting it would mean
+             unpicking that syncing for no visible gain. -->
+        <div class="filter-bar is-retired" id="filterBar" aria-hidden="true">
             <div class="filter-bar-inner">
                 <div class="fp-group" id="posPills">
                     <button class="fp-pill active" data-pos="ALL" onclick="switchGlobalPosition('ALL', this)">All</button>
@@ -439,8 +451,9 @@
                     const top15Active = !!document.querySelector('.routes-top15-view.active');
                     posPills.classList.toggle('hidden', top15Active);
                 }
-                // Hide entire filter bar when no filters apply (ALL tab has its own toolbar)
-                if (filterBar) filterBar.style.display = (pos === 'ALL') ? 'none' : '';
+                /* The bar itself is retired and permanently hidden — see the
+                   comment on #filterBar. Nothing to show or hide here. */
+                void filterBar;
             }
 
             // Show/hide category pills (only on Recommendations, Rising, Purple Patch)
@@ -2748,15 +2761,19 @@
                 ? `<span class="rec-face" style="--club:${club.shirt};">${v2IdentityHTML(p, 'v2-pid-portrait')}</span>`
                 : '';
 
-            /* Position as a coloured edge carrying its initial, which is the
-               same .v2-pos-edge the squad rows use. It replaces the club-colour
-               tab that used to sit in this corner: the crest on the portrait
-               now says which club, and nothing on the card said which position
-               at all. */
-            const posEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
+            /* The position sits in the line under the name, not down the
+               card's edge. A vertical GK/DEF/MID/FWD strip works on a table
+               row, where it labels a column you read top to bottom; on a card
+               it is a slab of colour with sideways text on it competing with
+               the portrait for the same corner. Here it is a small chip in the
+               position's colour, beside the club and the price — where the
+               rest of the player's particulars already are. */
+            const POS_SHORT = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const POS_CLASS = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
+            const posChip = `<span class="rec-pos pos-${POS_CLASS[p.position] || 'mid'}">${POS_SHORT[p.position] || ''}</span>`;
 
             return `
-                <div class="rec-card-v2 ${posEdge} ${featured ? 'featured' : ''}" style="--rec-accent:${accent};" onclick="openPlayerModal(${p.id})">
+                <div class="rec-card-v2 ${featured ? 'featured' : ''}" style="--rec-accent:${accent};" onclick="openPlayerModal(${p.id})">
                     ${getStarHtml(p.id, 'shortlist-star-card')}
                     <div class="rec-rank-chip">${featured ? paIcon('target') + ' Top pick' : '#' + rank}</div>
 
@@ -2764,7 +2781,7 @@
                         ${portrait}
                         <div class="rec-id">
                             <div class="rec-name">${escHTML(p.name)}</div>
-                            <div class="rec-sub">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${ownLine}</div>
+                            <div class="rec-sub">${posChip}${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${ownLine}</div>
                         </div>
                         ${xpBadge}
                     </div>
@@ -3364,8 +3381,7 @@
                 </div>
                 ${demoPreviewNotice('Rising Form', 6)}
                 <div class="rising-section">
-                    <div class="section-toolbar">
-                        <div class="section-toolbar-left"></div>
+                    <div class="section-toolbar is-right-only">
                         <div class="section-toolbar-right">
                             <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('risingLegend').classList.toggle('show')">
                                 <span><i data-lucide="info" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Signals</span><span class="legend-caret">▾</span>
@@ -3766,8 +3782,7 @@
                 </div>
                 ${demoPreviewNotice('Purple Patch', 8)}
                 <div class="pp-section">
-                    <div class="section-toolbar">
-                        <div class="section-toolbar-left"></div>
+                    <div class="section-toolbar is-right-only">
                         <div class="section-toolbar-right">
                             <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('ppLegend').classList.toggle('show')">
                                 <span><i data-lucide="info" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Dimensions</span><span class="legend-caret">▾</span>
@@ -3887,13 +3902,13 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=184"></script>
+    <script src="scripts/error-monitor.js?v=185"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=184"></script>
-    <script src="scripts/players-tables.js?v=184"></script>
-    <script src="scripts/compare-report.js?v=184"></script>
+    <script src="scripts/xp-engine.js?v=185"></script>
+    <script src="scripts/players-tables.js?v=185"></script>
+    <script src="scripts/compare-report.js?v=185"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -4968,7 +4983,14 @@
 
             const html = `
                 <div class="charts-section">
-                    <div class="section-toolbar" style="margin-bottom:20px;">
+                    <!-- The position filters were four chips floating on the
+                         page background above the first chart group, so it was
+                         never clear whether they belonged to that group or to
+                         all of them. In their own bar, on the same surface as
+                         the sections beneath, they read as what they are: one
+                         control over everything below. -->
+                    <div class="charts-filter-panel">
+                        <span class="charts-filter-l">Positions</span>
                         <div class="charts-filter-bar">
                             ${['GK', 'DEF', 'MID', 'FWD'].map(pos => `
                                 <label class="pos-chip active" id="chartChip-${pos}" onclick="toggleChartChip('${pos}', this)">
@@ -5812,10 +5834,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=184"></script>
+    <script src="scripts/players-ai.js?v=185"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=184"></script>
-    <script src="scripts/sidebar-nav.js?v=184"></script>
+    <script src="scripts/common.js?v=185"></script>
+    <script src="scripts/sidebar-nav.js?v=185"></script>
     <script>
         loadSidebarNav();
         initIcons();

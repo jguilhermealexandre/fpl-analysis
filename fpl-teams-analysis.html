@@ -17,12 +17,12 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=184">
-    <link rel="stylesheet" href="styles/teams.css?v=184">
-    <link rel="stylesheet" href="styles/v2-design.css?v=184">
-    <script src="scripts/error-monitor.js?v=184"></script>
-    <script src="scripts/common.js?v=184"></script>
-    <script src="scripts/sidebar-nav.js?v=184"></script>
+    <link rel="stylesheet" href="styles/common.css?v=185">
+    <link rel="stylesheet" href="styles/teams.css?v=185">
+    <link rel="stylesheet" href="styles/v2-design.css?v=185">
+    <script src="scripts/error-monitor.js?v=185"></script>
+    <script src="scripts/common.js?v=185"></script>
+    <script src="scripts/sidebar-nav.js?v=185"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -975,7 +975,19 @@
                             </div>
                         </div>
                     `;
-                    contentArea.innerHTML = renderMomentumMatrix() + pillsHtml + '<div class="teams-grid" id="teams-grid"></div>';
+                    /* The twenty club cards sat directly on the page under
+                       the sort pills, so nothing said the pills governed them
+                       — or where the ranking ended. Both go in one section,
+                       titled, the way every other group on the site is. */
+                    contentArea.innerHTML = renderMomentumMatrix()
+                        + `<div class="v2-section">
+                            <div class="section-header">
+                                <h2><i data-lucide="list-ordered" style="width:18px;height:18px;display:inline;"></i> Every club, ranked</h2>
+                            </div>
+                            <p class="section-desc">All twenty clubs on the measure you choose. Attack and form rank highest-first; defence and fixtures rank lowest-first, because on those two a smaller number is the better one.</p>
+                            ${pillsHtml}
+                            <div class="teams-grid" id="teams-grid"></div>
+                        </div>`;
                     document.getElementById('teams-grid').innerHTML = sorted.map((team, i) => createTeamCard(team, i + 1, highlightMode)).join('');
                     initMomentumChart();
                     break;
@@ -1415,7 +1427,10 @@
             });
             const displayGWs = Array.from(allGWs).sort((a, b) => a - b).filter(gw => gw >= planningGW);
             window._teamFixtureMap = fixtureMap;
-            container.innerHTML = renderSoftTargets(fixtureMap, displayGWs, { standalone: true });
+            /* In a section, like everything else. It was a heading and a grid
+               of club cards sitting on the page background with no boundary of
+               its own. */
+            container.innerHTML = `<div class="v2-section">${renderSoftTargets(fixtureMap, displayGWs, { standalone: true })}</div>`;
         }
 
         function renderSoftTargets(fixtureMap, displayGWs, opts) {
@@ -1574,7 +1589,7 @@
             calendarColorMode = savedMode;
 
             return `
-                <div class="calendar-section targetable-calendar" style="margin-top: var(--space-6);">
+                <div class="calendar-section targetable-calendar">
                     <div class="calendar-header">
                         <div>
                             <h2 class="calendar-title" style="font-size: 18px;"><i data-lucide="target" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Targetable Patches Calendar</h2>

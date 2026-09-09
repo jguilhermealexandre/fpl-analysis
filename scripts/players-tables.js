@@ -665,16 +665,28 @@ function renderCell(p, colKey, position, isSelected) {
         const selected = isSelected !== undefined ? isSelected : compareList.some(cp => cp.id === p.id);
         // Identity, compare and shortlist in one frozen cell. Position and team
         // live on the second line, which is why their own columns were dropped.
+        /* The row's leading edge carries the position as a single letter in
+           its colour — the .v2-pos-edge treatment the squad rows use — so the
+           position is readable down the whole column without a word of it on
+           every line. The portrait and its club crest sit beside the name,
+           which is how a player is identified everywhere else on the site.
+
+           The .pcell-pos chip on the second line is gone: it said what the
+           edge now says, twice on the same row. */
+        const edge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
+        const face = typeof v2IdentityHTML === 'function'
+            ? `<span class="pcell-face">${v2IdentityHTML(p, 'v2-pid-portrait')}</span>` : '';
         return `<td class="col-player">
-            <div class="pcell">
+            <div class="pcell ${edge}">
                 <input type="checkbox" class="compare-checkbox" ${selected ? 'checked' : ''}
                     ${!selected && compareList.length >= 5 ? 'disabled' : ''}
                     title="Add to comparison"
                     onchange="onCompareCheckboxChange(${p.id}, '${position || 'ALL'}')">
                 ${getStarHtml(p.id)}
+                ${face}
                 <div class="pcell-id clickable" onclick="openPlayerModal(${p.id}, '${posName}')">
                     <div class="pcell-name">${escHTML(p.name)}</div>
-                    <div class="pcell-sub"><span class="pcell-pos pos-${posName}">${posName}</span>${escHTML(p.team)}</div>
+                    <div class="pcell-sub">${escHTML(p.team)}</div>
                 </div>
             </div>
         </td>`;

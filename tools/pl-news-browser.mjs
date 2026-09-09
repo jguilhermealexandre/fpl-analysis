@@ -183,6 +183,84 @@ const scraped = await page.evaluate(() => {
     return [...own, ...club];
 });
 
+/* The Premier League's own articles, if the news page did not carry any.
+ *
+ * That page turns out to be an aggregator: twenty stories, every one of them
+ * syndicated from a club site, and not a single premierleague.com article
+ * among them. Their own editorial is published somewhere — it just is not on
+ * the route their nav calls "News". So try the handful of routes it could
+ * plausibly be on, and keep whatever yields articles on their own domain.
+ *
+ * This runs only when the main page produced none of them, so on the day they
+ * put their editorial back on /en/news it costs nothing.
+ */
+const OWN_ROUTES = [
+    'https://www.premierleague.com/en/latest',
+    'https://www.premierleague.com/en/news/all',
+    'https://www.premierleague.com/en/fantasy/news',
+    'https://www.premierleague.com/news',
+    'https://www.premierleague.com/en/features'
+];
+
+async function scrapeArticles(target) {
+    await target.waitForTimeout(1200);
+    for (let i = 0; i < 6; i++) {
+        await target.evaluate(() => window.scrollBy(0, window.innerHeight * 0.9));
+        await target.waitForTimeout(500);
+    }
+    return target.evaluate(() => {
+        const anchors = [];
+        const walk = (root, d) => {
+            if (!root || d > 20) return;
+            root.querySelectorAll('a[href]').forEach(a => anchors.push(a));
+            root.querySelectorAll('*').forEach(el => { if (el.shadowRoot) walk(el.shadowRoot, d + 1); });
+        };
+        walk(document, 0);
+        const out = [];
+        const seen = new Set();
+        for (const a of anchors) {
+            const href = a.href;
+            if (!/^https:\/\/(www\.)?premierleague\.com\/.*\/news\//.test(href)) continue;
+            if (seen.has(href)) continue;
+            const heading = a.querySelector('h1,h2,h3,h4,[class*="itle"]');
+            const title = ((heading && heading.textContent) || a.textContent || '').replace(/\s+/g, ' ').trim();
+            if (title.length < 12) continue;
+            let img = a.querySelector('img');
+            let node = a.parentNode;
+            for (let i = 0; i < 6 && node && !img; i++) {
+                if (node.querySelector) img = node.querySelector('img');
+                node = node.parentNode || node.host;
+            }
+            let image = img && (img.currentSrc || img.src || img.getAttribute('data-src')) || null;
+            if (image && /\/badges?\//.test(image)) image = null;
+            seen.add(href);
+            out.push({ title, link: href, image, published: null, host: 'premierleague.com' });
+        }
+        return out;
+    });
+}
+
+if (!scraped.some(a => a.host === 'premierleague.com')) {
+    for (const route of OWN_ROUTES) {
+        let found = [];
+        try {
+            const res = await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            if (!res || res.status() >= 400) { if (DUMP) console.log(`  ${res ? res.status() : '???'}  ${route}`); continue; }
+            found = await scrapeArticles(page);
+        } catch (e) {
+            if (DUMP) console.log(`  ERR  ${route}: ${e.message}`);
+            continue;
+        }
+        if (DUMP) console.log(`  ${found.length} own article(s) at ${route}`);
+        if (found.length >= 3) {
+            /* Theirs lead — that is the whole point of looking — and the club
+               rail from the news page follows. */
+            scraped.unshift(...found);
+            break;
+        }
+    }
+}
+
 if (DUMP) {
     const roots = await page.evaluate(() => {
         let n = 0;

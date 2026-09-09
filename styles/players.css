@@ -2755,11 +2755,20 @@
 .section-toolbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    /* Grouped left, not pushed apart.
+
+       space-between drove the Legend button to the far edge and left a band of
+       empty panel between it and the controls it belongs with — which reads as
+       a blank white bar rather than as a gap, because the panel behind it is
+       white. The controls are a set; they sit together and the row ends where
+       they end. */
+    justify-content: flex-start;
     gap: 12px;
     margin-bottom: 16px;
     flex-wrap: wrap;
 }
+/* A toolbar whose left half is gone keeps its right half on the left. */
+.section-toolbar.is-right-only { justify-content: flex-start; }
 .section-toolbar-left {
     display: flex;
     align-items: center;
@@ -4243,10 +4252,16 @@
     grid-template-columns: none;
 }
 
-/* The in-panel category row duplicates the sticky filter bar, which drives the
-   same state. Keep it in the DOM so the existing sync logic keeps resolving its
-   buttons, but show only one control to the user. */
-.rec-category-tabs { display: none; }
+/* This is now the visible control, and the sticky bar above it is the one
+   that hides. The bar was a second copy of these chips and of the position
+   pills, sitting above a panel that draws both — two controls for one setting,
+   which is worse than either alone. */
+.rec-category-tabs { display: flex; }
+
+/* Retired, not deleted: switchGlobalPosition() and switchGlobalCategory()
+   resolve their buttons through it to keep every copy of the pills in
+   agreement, so it stays in the DOM and out of the layout. */
+.filter-bar.is-retired { display: none !important; }
 
 /* Chunky chips belong on the control that is actually visible while scrolling. */
 #filterBar .fc-chip,
@@ -4833,26 +4848,25 @@
 .rec-card-v2.featured .rec-face { width: 76px; height: 76px; }
 .rec-card-v2.featured .rec-face .v2-pid-portrait { --v2-pid-face: 62px; --v2-pid-crest: 24px; }
 
-/* The position edge needs room, and it replaces the club tab that lived in
-   the same corner. The edge is drawn by .v2-pos-edge::before, so the card's
-   own ::before has to stand down or the two fight over the same pseudo. */
-.rec-card-v2.v2-pos-edge { padding-left: 28px; }
-.rec-card-v2.v2-pos-edge::before {
-    content: '';
-    width: 18px;
-    border-radius: var(--v2-card-radius, 16px) 0 0 var(--v2-card-radius, 16px);
-    background: var(--v2-pos-color, var(--position-mid));
-    height: auto;
-    writing-mode: vertical-rl;
-    letter-spacing: .12em;
-    font-size: 10px;
+/* The position is a chip in the sub-line, not a strip down the card's edge.
+   The vertical edge works on a table row, where it labels a column you read
+   top to bottom; on a card it was a slab of colour with sideways text on it,
+   fighting the portrait for the same corner. In the sub-line it sits with the
+   club and the price, which is where a player's particulars already are. */
+.rec-pos {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--v2-pos-color) 16%, transparent);
+    color: var(--v2-pos-color);
+    font-size: 9.5px; font-weight: 800; letter-spacing: .04em;
+    vertical-align: 1px;
 }
-.rec-card-v2.v2-pos-edge.pos-gk::before  { content: 'GK'; }
-.rec-card-v2.v2-pos-edge.pos-def::before { content: 'DEF'; }
-.rec-card-v2.v2-pos-edge.pos-mid::before { content: 'MID'; }
-.rec-card-v2.v2-pos-edge.pos-fwd::before { content: 'FWD'; }
-.rec-card-v2.featured.v2-pos-edge { padding-left: 34px; }
-.rec-card-v2.featured.v2-pos-edge::before { width: 22px; font-size: 11px; }
+.rec-pos.pos-gk  { --v2-pos-color: var(--position-gk); }
+.rec-pos.pos-def { --v2-pos-color: var(--position-def); }
+.rec-pos.pos-mid { --v2-pos-color: var(--position-mid); }
+.rec-pos.pos-fwd { --v2-pos-color: var(--position-fwd); }
 
 /* The rank chip carries an icon now rather than a ★ character. */
 .rec-rank-chip { display: inline-flex; align-items: center; gap: 5px; }
@@ -4972,3 +4986,50 @@
 /* Route pills and the reliability meter carry icons now rather than emoji. */
 .rp-pill-i svg, .rp-rel-icon svg { width: 12px; height: 12px; display: block; }
 .rp-rel-icon { display: inline-flex; align-items: center; }
+
+/* ----- The player cell: an edge, a face, a name -----
+   The position used to be a word on the row's second line, which cost the
+   width of "DEF" on 650 rows and had to be read one row at a time. As a
+   coloured letter down the leading edge — the same .v2-pos-edge the squad rows
+   use — it is legible as a column, and the second line gets its space back for
+   the club.
+
+   The portrait is the same one every card and pitch on the site draws, with
+   the club crest on its corner. */
+.pcell.v2-pos-edge { padding-left: 20px; }
+.pcell.v2-pos-edge::before {
+    width: 14px;
+    border-radius: 4px;
+    font-size: 9.5px;
+}
+.pcell.v2-pos-edge.pos-gk::before  { content: 'G'; }
+.pcell.v2-pos-edge.pos-def::before { content: 'D'; }
+.pcell.v2-pos-edge.pos-mid::before { content: 'M'; }
+.pcell.v2-pos-edge.pos-fwd::before { content: 'F'; }
+
+.pcell-face { flex-shrink: 0; display: grid; place-items: center; }
+.pcell-face .v2-pid-portrait { --v2-pid-face: 30px; --v2-pid-crest: 14px; }
+
+/* The compact table packs rows tighter, so the portrait comes down with it. */
+.table-section.compact-mode .pcell-face .v2-pid-portrait { --v2-pid-face: 26px; --v2-pid-crest: 12px; }
+.table-section.compact-mode .pcell.v2-pos-edge { padding-left: 18px; }
+.table-section.compact-mode .pcell.v2-pos-edge::before { width: 12px; font-size: 9px; }
+
+/* The charts' position filters, in a bar of their own.
+   Four chips on the page background above the first chart group read as
+   belonging to that group rather than to all of them. On the same surface as
+   the sections beneath, and labelled, they are one control over everything
+   below. */
+.charts-filter-panel {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: var(--v2-card-shadow, none);
+}
+.charts-filter-l {
+    font-size: 9.5px; font-weight: 800; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--text-muted);
+}

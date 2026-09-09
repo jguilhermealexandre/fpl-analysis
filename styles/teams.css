@@ -3021,3 +3021,24 @@
     border-radius: 4px; font-size: 10px; font-weight: 700; cursor: help; }
 .fx-split-cs { font-family: "Space Grotesk", sans-serif; }
 .fx-split-note { margin: var(--space-2) 0 0; font-size: 10px; color: var(--text-muted); }
+
+/* ----- Fixture Swings: one gap, not three different ones -----
+   The view stacks three panels — the gold mines card, the two swing columns,
+   and the targetable calendar — and each carried its own spacing: the first
+   two had none between them, and the calendar had an inline margin-top of its
+   own. So the same view had a flush join in one place and a wide gap in the
+   next. One column, one gap, set here. */
+.swing-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+}
+/* The inline margin that made the calendar's gap the odd one out is gone from
+   the markup; this makes sure nothing reintroduces it. */
+.swing-section > .calendar-section { margin-top: 0; }
+
+/* Soft Targets and the club rankings are in .v2-section now, which draws its
+   own box — so the parts inside stop drawing their own top margins. */
+.v2-section > .soft-section.standalone { margin-top: 0; }
+.v2-section > .rankings-toolbar { margin-top: 0; }
