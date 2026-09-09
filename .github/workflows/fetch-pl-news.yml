@@ -22,7 +22,7 @@ on:
       mode:
         description: 'What to run'
         type: choice
-        options: [fetch, inspect, probe, matrix, headers, hsweep, browser, list]
+        options: [fetch, inspect, probe, matrix, headers, hsweep, browser, list, images]
         default: fetch
 
 # Writes data/ back to main, and nothing else.
@@ -99,6 +99,14 @@ jobs:
       - name: Sweep the listing endpoint
         if: inputs.mode == 'list'
         run: node tools/fetch-pl-news.mjs --list
+
+      # The page shows no picture for the Premier League or the Guardian and a
+      # soft one for the BBC, while the JSON has a URL for every item — so the
+      # question is whether those URLs load, which needs a network this sandbox
+      # does not have.
+      - name: Check the stored picture URLs
+        if: inputs.mode == 'images'
+        run: node tools/check-news-images.mjs
 
       - name: Fetch Premier League news
         if: inputs.mode == '' || inputs.mode == 'fetch'
