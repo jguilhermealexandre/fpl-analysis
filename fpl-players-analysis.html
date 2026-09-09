@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=179">
-    <link rel="stylesheet" href="styles/players.css?v=179">
-    <link rel="stylesheet" href="styles/v2-design.css?v=179">
+    <link rel="stylesheet" href="styles/common.css?v=180">
+    <link rel="stylesheet" href="styles/players.css?v=180">
+    <link rel="stylesheet" href="styles/v2-design.css?v=180">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -61,13 +61,13 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=179">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=179">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=179">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=179">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=179">
-    <link rel="preload" as="script" href="scripts/common.js?v=179">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=179">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=180">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=180">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=180">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=180">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=180">
+    <link rel="preload" as="script" href="scripts/common.js?v=180">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=180">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1786,12 +1786,24 @@
             ).join('');
 
             return `
-                <div class="rec-controls" style="display:flex;align-items:center;gap:16px;padding:4px 0;margin-bottom:4px;">
+                <div class="rec-controls" style="display:flex;align-items:center;gap:16px;padding:4px 0;margin-bottom:4px;flex-wrap:wrap;">
                     <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);cursor:pointer;">
-                        <input type="checkbox" id="recIncludeDoubtful" onchange="toggleRecAvailability()" style="cursor:pointer;">
+                        <input type="checkbox" id="recIncludeDoubtful" onchange="toggleRecAvailability()" ${globalFilters.availability ? '' : 'checked'} style="cursor:pointer;">
                         Include doubtful players
                     </label>
+                    <div class="rec-mode" role="group" aria-label="How much fixtures count">
+                        <span class="rec-mode-l">Weighting</span>
+                        <button class="rec-mode-btn ${recFixtureMode === 'balanced' ? 'active' : ''}"
+                            onclick="setRecFixtureMode('balanced')"
+                            data-tooltip="Form, underlying numbers and value lead; fixtures are one term among many. This is the standard ranking.">Balanced</button>
+                        <button class="rec-mode-btn ${recFixtureMode === 'fixtures' ? 'active' : ''}"
+                            onclick="setRecFixtureMode('fixtures')"
+                            data-tooltip="Weights the next three fixtures — opponent strength, venue, clean-sheet odds and whether the run is easing — so a hard run costs a player his place. Same players, same form, re-ranked on who they face.">Fixture-first</button>
+                    </div>
                 </div>
+                ${recFixtureMode === 'fixtures' ? renderSeasonNotice(
+                    '<strong>Fixture-first.</strong> Ranked with the next three opponents weighted heavily, so form still counts but a hard run pushes a player down. '
+                    + 'The fixture blocks on each card are what is doing the work.') : ''}
                 ${panels}
             `;
         }
@@ -1925,6 +1937,73 @@
                     </div>
                 </div>
             `;
+        }
+
+        /* ===== Fixture-first mode =====
+
+           The score has always read fixtures, and reading them is not the same as
+           being ranked by them. Two findings, both measured rather than assumed.
+
+           First, how much fixtures move a recommendation. Swap a player's next
+           three opponents for the three hardest, then the three easiest, hold his
+           form fixed, and compare the swing against the spread of scores across
+           his position:
+
+             GK   0.62 s.d.    DEF  0.64 s.d.    MID  0.23 s.d.    FWD  0.25 s.d.
+
+           So fixtures decide a defender and barely touch a midfielder. The visible
+           consequence was the top six midfielders averaging an avgFDR3 of 3.17
+           against a league mean of 3.03 — worse fixtures than average, with the
+           fixture blocks printed on the card saying so.
+
+           Second, and the reason the obvious fix does not work: the large fixture
+           term does not run on the difficulty rating at all. It runs on this
+           site's own opponent-power model, and after three gameweeks that model
+           and FPL's published FDR are close to unrelated —
+
+             corr(FDR, opponent attack power)  = 0.19    drives the GK/DEF term
+             corr(FDR, opponent defence power) = 0.13    drives the MID/FWD term
+
+           — with the FDR-2 band actually showing HIGHER mean opponent attack
+           (42.5) than the FDR-3 band (39.3). Amplifying that term therefore
+           optimises something orthogonal to the number on the card, and measuring
+           it confirmed the damage: at a 12x boost the recommended defenders went
+           from avgFDR3 2.94 to 3.44, further from good fixtures rather than
+           nearer. That approach was built, measured, and thrown away.
+
+           So fixture-first adds the difficulty rating itself as its own term,
+           weighted 3/2/1 across the next three. REC_FDR_WEIGHT is score points per
+           step of difficulty avoided, swept against the outcome that matters —
+           the average FDR of what actually gets recommended:
+
+             W      GK      DEF     MID     FWD     names kept from balanced
+             0     3.00    2.94    3.17    3.06    6/6  (this is balanced mode)
+             14    2.94    2.78    3.17    3.06    5-6/6
+             25    2.83    2.78    3.00    2.83    4-5/6
+             35    2.83    2.67    3.00    2.83    4-5/6
+
+           25 is the knee: every position at or below its league mean, while four
+           to five of the original six survive, so the list is still ranking good
+           players by fixture and not ranking anyone with an easy run. Past that,
+           the gain is small and the churn is not.
+
+           Midfield only reaches its league average rather than beating it. That is
+           the model declining to drop players who are far enough ahead on quality
+           to be worth a hard run, which is the right call and worth knowing about.
+
+           Balanced remains the default. This is a lens to switch to, not a
+           correction applied to everyone. */
+        let recFixtureMode = 'balanced';   // 'balanced' | 'fixtures'
+
+        // Score points per step of FPL difficulty avoided. See the sweep above.
+        let REC_FDR_WEIGHT = 25;
+
+        function setRecFixtureMode(mode) {
+            const next = mode === 'fixtures' ? 'fixtures' : 'balanced';
+            if (next === recFixtureMode) return;
+            recFixtureMode = next;
+            document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(allAnalyses);
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function calculatePositionScore(p, pos) {
@@ -2171,6 +2250,27 @@
                 reliabilityBonus = Math.max(-3, Math.min(3, reliabilityBonus));
             }
 
+            /* Fixture-first: the difficulty rating itself, weighted 3/2/1 over the
+               next three, on the same 1-5 scale the fixture blocks on the card
+               print. Deliberately NOT an amplification of fixtureFactor above —
+               see REC_FDR_WEIGHT for the measurement that ruled that out.
+
+               Home is worth a quarter of a difficulty step. FPL's own ratings are
+               venue-blind, so an away trip and a home tie against the same club
+               carry the same number, and a quarter-step is the smallest
+               adjustment that breaks that tie without inventing a bigger one. */
+            let fdrFactor = 0;
+            if (recFixtureMode === 'fixtures' && next3.length > 0) {
+                let wSum = 0, wTot = 0;
+                next3.slice(0, 3).forEach((f, idx) => {
+                    const w = fixtureWeights[idx] || 1;
+                    wSum += ((f.difficulty || 3) - (f.isHome ? 0.25 : 0)) * w;
+                    wTot += w;
+                });
+                const wFdr = wTot ? wSum / wTot : 3;
+                fdrFactor = (3 - wFdr) * REC_FDR_WEIGHT;
+            }
+
             // Sum of all enhancement bonuses
             const enhancementBonus = fixtureSwingBonus + easyRunBonus + xgTrendBonus + risingFormBonus + purplePatchBonus + routesDiversityBonus + reliabilityBonus;
 
@@ -2191,6 +2291,7 @@
                        (rwPtsPerGame * 3) +
                        (value * valueWeight) +
                        fixtureFactor +
+                       fdrFactor +
                        teamQualityFactor +
                        teamFormFactor +
                        csProbFactor +
@@ -2210,6 +2311,7 @@
                        (rwPtsPerGame * 3) +
                        (value * valueWeight) +
                        fixtureFactor +
+                       fdrFactor +
                        teamQualityFactor +
                        teamFormFactor +
                        csProbFactor +
@@ -2233,6 +2335,7 @@
                        (rwBonus * 2) +
                        (value * valueWeight) +
                        fixtureFactor +
+                       fdrFactor +
                        teamQualityFactor +
                        teamFormFactor +
                        xPtsFactor +
@@ -2256,6 +2359,7 @@
                        (rwBonus * 2) +
                        (value * valueWeight) +
                        fixtureFactor +
+                       fdrFactor +
                        teamQualityFactor +
                        teamFormFactor +
                        xPtsFactor +
@@ -3650,13 +3754,13 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=179"></script>
+    <script src="scripts/error-monitor.js?v=180"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=179"></script>
-    <script src="scripts/players-tables.js?v=179"></script>
-    <script src="scripts/compare-report.js?v=179"></script>
+    <script src="scripts/xp-engine.js?v=180"></script>
+    <script src="scripts/players-tables.js?v=180"></script>
+    <script src="scripts/compare-report.js?v=180"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5547,10 +5651,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=179"></script>
+    <script src="scripts/players-ai.js?v=180"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=179"></script>
-    <script src="scripts/sidebar-nav.js?v=179"></script>
+    <script src="scripts/common.js?v=180"></script>
+    <script src="scripts/sidebar-nav.js?v=180"></script>
     <script>
         loadSidebarNav();
         initIcons();
