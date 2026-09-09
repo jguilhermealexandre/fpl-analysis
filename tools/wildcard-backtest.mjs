@@ -148,6 +148,29 @@ export function reconstructPlayers(bootData, playersData, gw, teamsById) {
     return out;
 }
 
+/* players-data.json as it stood before a gameweek kicked off.
+
+   reconstructPlayers above already truncates history for the pool it builds, but
+   the raw file was being handed to the engine whole, and the engine reads it:
+   buildTeamXgData walks playersDetailData.players[].history to build per-gameweek
+   team xG. Left untruncated, a backtest at GW10 would build team strength partly
+   out of gameweeks 10 to 38.
+
+   That leaked nothing while it went unread — the projection has never touched
+   teamXgData, which is why the call site could pass an empty array and say so.
+   The moment team strength starts reading xG, the leak becomes a backtest that
+   flatters itself and cannot be caught by looking at the number it prints. So
+   the truncation goes in first, before anything depends on it. */
+export function truncatePlayersData(playersData, gw) {
+    return {
+        ...playersData,
+        players: (playersData.players || []).map(p => ({
+            ...p,
+            history: (p.history || []).filter(h => h.round < gw)
+        }))
+    };
+}
+
 // Actual returns for one gameweek. A double gameweek is two rows for the same
 // round and both count, which is exactly the case a season total would hide.
 export function actualsFor(playersData, gw) {
@@ -420,10 +443,26 @@ globalThis.__engine = {
         allPlayers.forEach(p => { allPlayersById[p.id] = p; });
         allPlayers.forEach(p => { p.fixtures = teamFixtures[p.teamId] || []; });
         computePositionAverages();
-        // Empty on purpose: teamXgData only feeds the xgTrend labels, which the
-        // projection never reads, and the bootstrap elements it would be built
-        // from are end-of-season totals.
-        buildTeamXgData([]);
+        /* Team xG, built from the season as it stood before this gameweek.
+
+           This used to pass an empty array, correctly: teamXgData fed only the
+           xgTrend labels, the projection never read it, and the only season
+           totals to hand were the end-of-season ones, which would have been the
+           future. The cost was that the harness could not see the team model at
+           all — computeTeamScores has three implementations across the site and
+           the two that read xG were unmeasurable here.
+
+           Both halves are period-correct now. The per-gameweek path reads
+           st.playersData, which is truncated to rounds before this one. The
+           season totals below are summed from st.players, which reconstructPlayers
+           built from the same truncated history — so they are the real figures a
+           manager had, not zeroes and not the end of the season. Shaped as
+           bootstrap elements because that is what buildTeamXgData consumes. */
+        buildTeamXgData(st.players.map(p => ({
+            team: p.teamId, minutes: p.minutes,
+            expected_goals: p.xG, expected_assists: p.xA,
+            goals_scored: p.goals, assists: p.assists
+        })));
         computeTeamScores(st.bootTeams, st.fixtures);
     },
     project(player, gw) { return projectPlayerPointsForGW(player, gw); },
@@ -508,7 +547,7 @@ export function stateCache(season) {
                 bootTeams: season.bootData.teams,
                 fixtures: maskFixtures(season.fixtures, gw),
                 players: reconstructPlayers(season.bootData, season.playersData, gw, season.teamsById),
-                playersData: season.playersData
+                playersData: truncatePlayersData(season.playersData, gw)
             });
         }
         return cache.get(gw);

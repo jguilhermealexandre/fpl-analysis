@@ -10,13 +10,49 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    maskFixtures, reconstructPlayers, actualsFor,
+    maskFixtures, reconstructPlayers, actualsFor, truncatePlayersData,
     pickXI, applyAutoSubs, scoreGameweek,
     greedyFill, baselineSquads, lcg, shuffled, engineSource,
     mean, sd, pearson, spearman, SQUAD_QUOTA, MAX_PER_CLUB
 } from '../tools/wildcard-backtest.mjs';
 
 /* ===== no reading the future ===== */
+
+/* The raw players file used to be handed to the engine whole while only the
+   reconstructed pool was truncated. Nothing read it, so nothing lied — but
+   buildTeamXgData walks playersDetailData.players[].history to build per-gameweek
+   team xG, and the moment team strength starts reading that, an untruncated file
+   is a backtest quietly scoring itself on gameweeks it should not have seen. */
+test('the raw players file is cut off at the build gameweek too', () => {
+    const data = { metadata: { lastUpdated: 'x' }, players: [
+        { id: 1, team: 3, history: [
+            { round: 8, expected_goals: '0.5' },
+            { round: 9, expected_goals: '0.7' },
+            { round: 10, expected_goals: '9.9' },
+            { round: 11, expected_goals: '9.9' }
+        ] }
+    ] };
+    const cut = truncatePlayersData(data, 10);
+    assert.deepEqual(cut.players[0].history.map(h => h.round), [8, 9],
+        'gameweek 10 is the one being projected and has not happened yet');
+    assert.equal(cut.metadata.lastUpdated, 'x', 'everything else survives');
+});
+
+test('truncating leaves the season object alone', () => {
+    // stateCache holds one season and truncates per gameweek. A mutating cut
+    // would shorten the history for every later gameweek as a side effect, and
+    // the tool would get quieter and more wrong the further it ran.
+    const data = { players: [{ id: 1, team: 3, history: [{ round: 1 }, { round: 2 }, { round: 3 }] }] };
+    truncatePlayersData(data, 2);
+    assert.equal(data.players[0].history.length, 3);
+    assert.equal(truncatePlayersData(data, 3).players[0].history.length, 2,
+        'a second cut still sees the full history');
+});
+
+test('a gameweek before any history leaves nothing to read', () => {
+    const data = { players: [{ id: 1, history: [{ round: 5 }, { round: 6 }] }] };
+    assert.deepEqual(truncatePlayersData(data, 1).players[0].history, []);
+});
 
 test('fixtures from the build gameweek on go back to unplayed', () => {
     const fx = [
