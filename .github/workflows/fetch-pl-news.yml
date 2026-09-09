@@ -18,6 +18,11 @@ on:
     # moves at the pace of press releases.
     - cron: '20 6,11,16,21 * * *'
   workflow_dispatch:
+    inputs:
+      inspect:
+        description: 'Print the news page structure instead of fetching (for writing the parser)'
+        type: boolean
+        default: false
 
 # Writes data/ back to main, and nothing else.
 permissions:
@@ -38,12 +43,18 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Inspect the news page
+        if: inputs.inspect
+        run: node tools/fetch-pl-news.mjs --inspect
+
       - name: Fetch Premier League news
+        if: '!inputs.inspect'
         run: node tools/fetch-pl-news.mjs --out data/pl-news.json
 
       # A valid-JSON-but-empty result would replace a good list with nothing, so
       # the shape is checked before it is allowed anywhere near a commit.
       - name: Check what was written
+        if: '!inputs.inspect'
         run: |
           node -e '
             const fs = require("fs");
@@ -64,6 +75,7 @@ jobs:
           '
 
       - name: Commit
+        if: '!inputs.inspect'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -241,8 +241,48 @@ async function tryFetch(src) {
     }
 }
 
+/* What is actually in the page, printed to a CI log.
+ *
+ * This exists because the endpoints are all 404 and the only thing left that
+ * answers is the news page itself — and its markup cannot be looked at from a
+ * browser sandbox or from a laptop behind the same CORS wall. Run the workflow
+ * with inspect=true and the log says what the page is made of, which is how the
+ * parser below gets written against the real thing rather than a guess. */
+async function inspect(url, headers) {
+    const res = await fetch(url, { headers });
+    const body = await res.text();
+    console.log(`HTTP ${res.status}, ${body.length} bytes, content-type: ${res.headers.get('content-type')}`);
+
+    const scripts = [...body.matchAll(/<script([^>]*)>([\s\S]{0,200})/gi)];
+    console.log(`\n${scripts.length} <script> tag(s):`);
+    scripts.slice(0, 25).forEach(([, attrs, head], i) => {
+        console.log(`  [${i}] ${attrs.trim().slice(0, 120) || '(no attrs)'}`);
+        const peek = head.replace(/\s+/g, ' ').trim().slice(0, 120);
+        if (peek) console.log(`       ${peek}`);
+    });
+
+    const anchors = [...body.matchAll(/<a[^>]+href=["']([^"']*\/news\/[^"']*)["'][^>]*>([\s\S]{0,120}?)<\/a>/gi)];
+    console.log(`\n${anchors.length} anchor(s) pointing at a news URL. First 10:`);
+    anchors.slice(0, 10).forEach(([, href, text]) => {
+        console.log(`  ${href}`);
+        console.log(`     text: ${text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)}`);
+    });
+
+    ['__NEXT_DATA__', '__NUXT__', 'INITIAL_STATE', 'application/ld+json', 'articles', 'headline']
+        .forEach(k => console.log(`contains ${k}: ${body.includes(k)}`));
+
+    const heads = [...body.matchAll(/<h[23][^>]*>([\s\S]{0,120}?)<\/h[23]>/gi)].slice(0, 10);
+    console.log(`\nFirst ${heads.length} h2/h3:`);
+    heads.forEach(([, t]) => console.log(`  ${t.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)}`));
+}
+
 async function main() {
     const args = process.argv.slice(2);
+    if (args.includes('--inspect')) {
+        const src = SOURCES[SOURCES.length - 1];
+        await inspect(src.url, src.headers);
+        return;
+    }
     const dryRun = args.includes('--dry-run');
     const outIdx = args.indexOf('--out');
     const out = outIdx > -1 ? args[outIdx + 1] : 'data/pl-news.json';
