@@ -1516,6 +1516,7 @@ export default [
                 xpBuildPlayers: 'writable',
                 xpBuildPositionAverages: 'writable',
                 xpBuildTeamFixtures: 'writable',
+                xpBuildTeamScores: 'writable',
                 xpEngineReady: 'writable',
                 xpNext3: 'writable',
                 xpOver: 'writable',

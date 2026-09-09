@@ -141,12 +141,30 @@ contract in about ten lines — see the block after `computeIsPreseason` in
 it in, or each player's `.fixtures` carries no `opponentId` and every projection
 degrades silently to an FDR-only estimate.
 
-One divergence is left. `teamAnalysis` still has three implementations of
-`computeTeamScores` — `team-analysis-core.js`, `index.html` and
-`fpl-players-analysis.html` — with the same field names and possibly different
-values. Same model, different inputs, so the same player can still project
-slightly differently on two pages. That is the last thing between here and one
-number everywhere.
+`teamAnalysis` was the last divergence and is settled. It had three
+implementations of `computeTeamScores` and they were not copies: the players
+page blended 35% xG, 35% goals and 30% FPL strength, `team-analysis-core.js`
+used goals and strength alone, and `index.html`'s emitted no home/away splits at
+all, so the projection fell back to the unsplit figure on the dashboard and only
+there. One model reading three sets of inputs still gives one player two answers
+on two pages.
+
+It was decided by measurement rather than by taste, and the answer was not the
+one the sophistication suggested. Both models were run over the 2025/26 season
+through `tools/wildcard-backtest.mjs`: the xG version moved every team's attack
+rating, one of them by 31 points, and changed the projection not at all —
+Spearman 0.356 against 0.356, Pearson 0.318 against 0.314, MAE 2.028 against
+2.013, and 2.4% of same-gameweek player pairs ordered differently. Equivalent for
+the only thing it feeds, so the cheaper one won: `xpBuildTeamScores()` in
+`xp-engine.js` is the 2-component model, and dropping the xG dependency means a
+page wanting team strength no longer needs `players-data.json` to get it.
+
+Worth keeping in mind before the next one of these: making the backtest able to
+see the team model took longer than unifying it, and was the only reason the
+choice could be made on evidence. The harness had been passing
+`buildTeamXgData([])` and, behind that, handing the engine an untruncated
+`players-data.json` — a future leak that lied about nothing only because nothing
+read it.
 
 ## Conventions
 
@@ -233,9 +251,9 @@ delete a file, remove it from there and bump `CACHE_NAME`.
 
 ## Known debt
 
-- **~14.2k lines of JS inside HTML.** Not lintable until extracted, though
+- **~13.9k lines of JS inside HTML.** Not lintable until extracted, though
   `tests/page-smoke.test.mjs` now at least executes every line of it.
-  `fpl-players-analysis.html` alone holds 5,370 lines. Extract page by page,
+  `fpl-players-analysis.html` alone holds 5,182 lines. Extract page by page,
   smallest first; the CI guards are already in place to catch what moves.
 - **`git log` is ~65% automated data commits.** `npm run log` filters them.
 - **`.git` is ~220 MB**, growing a few MB a day from data commits. Fine for

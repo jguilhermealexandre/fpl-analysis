@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=169">
-    <link rel="stylesheet" href="styles/players.css?v=169">
-    <link rel="stylesheet" href="styles/v2-design.css?v=169">
+    <link rel="stylesheet" href="styles/common.css?v=170">
+    <link rel="stylesheet" href="styles/players.css?v=170">
+    <link rel="stylesheet" href="styles/v2-design.css?v=170">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -61,13 +61,13 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=169">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=169">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=169">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=169">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=169">
-    <link rel="preload" as="script" href="scripts/common.js?v=169">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=169">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=170">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=170">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=170">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=170">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=170">
+    <link rel="preload" as="script" href="scripts/common.js?v=170">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=170">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -525,7 +525,11 @@
                 buildTeamXgData(staticData, fixturesData);
 
                 // Compute team-level scores (attack, defense, form, fixtures) — 3-component xG model
-                computeTeamScores(staticData.teams, fixturesData);
+                /* One implementation, in scripts/xp-engine.js. This page used to
+                   carry its own, blending xG into attack and defence — measured
+                   against the shared one over a season and equivalent, so the
+                   cheaper model won. See xpBuildTeamScores. */
+                teamAnalysis = xpBuildTeamScores(staticData.teams, fixturesData);
 
                 isPreseason = computeIsPreseason(bootData, fixturesData);
 
@@ -808,7 +812,7 @@
             const oppAtk = isHome ? (op.attackPowerAway || op.attackPower) : (op.attackPowerHome || op.attackPower);
             base += (teamDef - 50) * 0.003;
             base -= (oppAtk - 50) * 0.0025;
-            base += (1.3 - tp.gaPerGame) * 0.06;
+            base += (1.3 - tp.avgConceded) * 0.06;
             return Math.max(0.05, Math.min(0.65, base));
         }
 
@@ -861,198 +865,6 @@
         // ============================================
         // TEAM ANALYSIS SCORES (3-component xG model)
         // ============================================
-        function computeTeamScores(bootTeams, fixturesData) {
-            teamAnalysis = {};
-
-            const finishedFixtures = fixturesData
-                .filter(fixturePlayed)
-                .sort((a, b) => a.event - b.event);
-
-            const upcomingFixtures = fixturesData
-                .filter(f => !fixturePlayed(f) && f.event !== null)
-                .sort((a, b) => a.event - b.event);
-
-            bootTeams.forEach(team => {
-                const teamId = team.id;
-
-                const pastFixtures = finishedFixtures
-                    .filter(f => f.team_h === teamId || f.team_a === teamId);
-                const last10 = pastFixtures.slice(-10);
-                const last5 = pastFixtures.slice(-5);
-
-                const futureFixtures = upcomingFixtures
-                    .filter(f => f.team_h === teamId || f.team_a === teamId)
-                    .slice(0, 5);
-
-                let totalScored = 0, totalConceded = 0;
-                let homeStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
-                let awayStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
-
-                last10.forEach(f => {
-                    const isHome = f.team_h === teamId;
-                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
-                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
-                    totalScored += scored;
-                    totalConceded += conceded;
-                    if (isHome) {
-                        homeStats.goals += scored; homeStats.conceded += conceded;
-                        homeStats.games++; if (conceded === 0) homeStats.cleanSheets++;
-                    } else {
-                        awayStats.goals += scored; awayStats.conceded += conceded;
-                        awayStats.games++; if (conceded === 0) awayStats.cleanSheets++;
-                    }
-                });
-
-                const gamesPlayed = last10.length || 1;
-                const avgGoals = totalScored / gamesPlayed;
-                const avgConceded = totalConceded / gamesPlayed;
-
-                // xG data for this team
-                const seasonXg = getTeamSeasonXg(teamId);
-                const recent6Xg = getTeamXgWindow(teamId, 6);
-                const hasRealXg = seasonXg && seasonXg.totalXg > 0;
-
-                // FPL strength ratings (normalized 0-1)
-                const fplAttackStrength = (team.strength_attack_home + team.strength_attack_away) / 2;
-                const fplDefenseStrength = (team.strength_defence_home + team.strength_defence_away) / 2;
-                const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));
-                const fplDefNorm = Math.min(1, Math.max(0, (fplDefenseStrength - 900) / 500));
-
-                // Attack Power (0-100) — 3-component: 35% xG + 35% actual goals + 30% FPL
-                let attackPower;
-                if (hasRealXg && recent6Xg) {
-                    const recentXgRate = Math.min(1, recent6Xg.xGpg / 2.0);
-                    const recent6Rate = Math.min(1, recent6Xg.gpg / 2.0);
-                    attackPower = Math.round((recentXgRate * 0.35 + recent6Rate * 0.35 + fplAttNorm * 0.30) * 100);
-                } else {
-                    const goalRate = Math.min(1, avgGoals / 2.0);
-                    attackPower = Math.round((goalRate * 0.55 + fplAttNorm * 0.45) * 100);
-                }
-                attackPower = Math.min(100, Math.max(0, attackPower));
-
-                // Defense Power (0-100) — 3-component: 35% xGC + 35% actual GA + 30% FPL
-                let defensePower;
-                if (hasRealXg && recent6Xg) {
-                    const recentXgcRate = Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0)));
-                    const recent6DefRate = Math.min(1, Math.max(0, 1 - (recent6Xg.gapg / 2.0)));
-                    defensePower = Math.round((recentXgcRate * 0.35 + recent6DefRate * 0.35 + fplDefNorm * 0.30) * 100);
-                } else {
-                    const concedeRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.0)));
-                    defensePower = Math.round((concedeRate * 0.55 + fplDefNorm * 0.45) * 100);
-                }
-                defensePower = Math.min(100, Math.max(0, defensePower));
-
-                // Form Rating (0-100) - recency-weighted W/D/L from last 5
-                const formWeights = [5, 4, 3, 2, 1];
-                const reversedResults = [...last5].reverse();
-                let weightedPts = 0, weightSum = 0;
-                let wins = 0, draws = 0, losses = 0;
-                reversedResults.forEach((f, i) => {
-                    const isHome = f.team_h === teamId;
-                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
-                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
-                    const result = scored > conceded ? 'W' : scored === conceded ? 'D' : 'L';
-                    const pts = result === 'W' ? 3 : result === 'D' ? 1 : 0;
-                    weightedPts += pts * formWeights[i];
-                    weightSum += formWeights[i];
-                    if (result === 'W') wins++; else if (result === 'D') draws++; else losses++;
-                });
-                const maxWeightedPts = 3 * weightSum;
-                const formBase = weightSum > 0 ? (weightedPts / maxWeightedPts) * 70 : 35;
-
-                const recentGD = last5.reduce((sum, f) => {
-                    const isHome = f.team_h === teamId;
-                    return sum + (isHome ? (f.team_h_score || 0) : (f.team_a_score || 0))
-                                - (isHome ? (f.team_a_score || 0) : (f.team_h_score || 0));
-                }, 0);
-                const gdBonus = Math.min(10, Math.max(-10, recentGD * 2));
-
-                let streakBonus = 0;
-                for (let i = 0; i < reversedResults.length; i++) {
-                    const f = reversedResults[i];
-                    const isHome = f.team_h === teamId;
-                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
-                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
-                    if (scored > conceded) streakBonus += 3;
-                    else if (scored === conceded) streakBonus += 1;
-                    else break;
-                }
-                streakBonus = Math.min(15, streakBonus);
-
-                const formRating = Math.round(Math.min(100, Math.max(0, formBase + gdBonus + streakBonus)));
-
-                // Fixture Score (0-100)
-                let totalFdr = 0;
-                const futureDetails = futureFixtures.map(f => {
-                    const isHome = f.team_h === teamId;
-                    const fdr = isHome ? f.team_h_difficulty : f.team_a_difficulty;
-                    totalFdr += fdr || 3;
-                    return { fdr: fdr || 3, isHome };
-                });
-                const avgFdr = futureDetails.length > 0 ? totalFdr / futureDetails.length : 3;
-                const homeFixCount = futureDetails.filter(f => f.isHome).length;
-                const fixtureScore = Math.round(Math.min(100, Math.max(0,
-                    ((5 - avgFdr) / 4) * 85 + (homeFixCount / Math.max(1, futureDetails.length)) * 15)));
-
-                const totalCS = homeStats.cleanSheets + awayStats.cleanSheets;
-                const csRate = gamesPlayed > 0 ? totalCS / gamesPlayed : 0;
-
-                const gaPerGame = avgConceded;
-
-                // ── Venue-adjusted attack/defense power (ported from teams-analysis) ──
-                const fplAttHomeNorm = Math.min(1, Math.max(0, (team.strength_attack_home - 900) / 500));
-                const fplAttAwayNorm = Math.min(1, Math.max(0, (team.strength_attack_away - 900) / 500));
-                const fplDefHomeNorm = Math.min(1, Math.max(0, (team.strength_defence_home - 900) / 500));
-                const fplDefAwayNorm = Math.min(1, Math.max(0, (team.strength_defence_away - 900) / 500));
-
-                const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                    Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.35 +
-                    (hasRealXg && recent6Xg ? Math.min(1, recent6Xg.xGpg / 2.0) * 0.35 : Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.35) +
-                    fplAttHomeNorm * 0.30
-                ) * 100))) : attackPower;
-
-                const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                    Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.35 +
-                    (hasRealXg && recent6Xg ? Math.min(1, recent6Xg.xGpg / 2.0) * 0.35 : Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.35) +
-                    fplAttAwayNorm * 0.30
-                ) * 100))) : attackPower;
-
-                const homeGaConcededRate = homeStats.games > 0 ? Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.0))) : 0.5;
-                const awayGaConcededRate = awayStats.games > 0 ? Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.0))) : 0.5;
-                const xgcHomeComponent = hasRealXg && recent6Xg ? Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0))) : homeGaConcededRate;
-                const xgcAwayComponent = hasRealXg && recent6Xg ? Math.min(1, Math.max(0, 1 - (recent6Xg.xGCpg / 2.0))) : awayGaConcededRate;
-
-                const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                    homeGaConcededRate * 0.35 + xgcHomeComponent * 0.35 + fplDefHomeNorm * 0.30
-                ) * 100))) : defensePower;
-
-                const defensePowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0, (
-                    awayGaConcededRate * 0.35 + xgcAwayComponent * 0.35 + fplDefAwayNorm * 0.30
-                ) * 100))) : defensePower;
-
-                // ── xG trend data (ported from teams-analysis) ──
-                let xgTrend = 'stable', xgcTrend = 'stable';
-                if (recent6Xg && seasonXg && (seasonXg.games || 0) >= 10) {
-                    const xgDelta = recent6Xg.xGpg - seasonXg.xGpg;
-                    if (xgDelta > 0.25) xgTrend = 'rising';
-                    else if (xgDelta < -0.25) xgTrend = 'falling';
-                    const xgcDelta = recent6Xg.xGCpg - seasonXg.xGCpg;
-                    if (xgcDelta < -0.20) xgcTrend = 'improving';
-                    else if (xgcDelta > 0.20) xgcTrend = 'worsening';
-                }
-
-                teamAnalysis[teamId] = {
-                    attackPower, defensePower, formRating, fixtureScore,
-                    attackPowerHome, attackPowerAway, defensePowerHome, defensePowerAway,
-                    xgTrend, xgcTrend, xgTrendDelta: recent6Xg && seasonXg ? recent6Xg.xGpg - seasonXg.xGpg : 0,
-                    xgcTrendDelta: recent6Xg && seasonXg ? seasonXg.xGCpg - recent6Xg.xGCpg : 0,
-                    avgGoals, avgConceded, avgFdr, csRate, gaPerGame,
-                    wins, draws, losses, gamesPlayed,
-                    teamName: team.short_name || team.name
-                };
-            });
-            console.log('Team analysis computed for', Object.keys(teamAnalysis).length, 'teams (3-component xG model)');
-        }
 
         // Wraps a player's lastSeason cumulative totals in the same shape calculateStats()
         // returns, so preseason code paths that expect a season/l5 object (e.g. the All
@@ -3752,13 +3564,13 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=169"></script>
+    <script src="scripts/error-monitor.js?v=170"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=169"></script>
-    <script src="scripts/players-tables.js?v=169"></script>
-    <script src="scripts/compare-report.js?v=169"></script>
+    <script src="scripts/xp-engine.js?v=170"></script>
+    <script src="scripts/players-tables.js?v=170"></script>
+    <script src="scripts/compare-report.js?v=170"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5649,10 +5461,10 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=169"></script>
+    <script src="scripts/players-ai.js?v=170"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=169"></script>
-    <script src="scripts/sidebar-nav.js?v=169"></script>
+    <script src="scripts/common.js?v=170"></script>
+    <script src="scripts/sidebar-nav.js?v=170"></script>
     <script>
         loadSidebarNav();
         initIcons();

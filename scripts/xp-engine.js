@@ -175,6 +175,212 @@
             }));
         }
 
+        /* Team strength — attack, defence, form and the upcoming fixture run.
+
+           The site had three of these, and they were not merely copies of each
+           other. The players page blended 35% xG, 35% goals and 30% FPL strength;
+           this one uses goals and strength alone; the dashboard's emitted no
+           home/away splits at all, so the projection quietly fell back to the
+           unsplit figure there.
+
+           This is the 2-component one, kept because it was measured rather than
+           preferred. Run over the 2025/26 season through
+           tools/wildcard-backtest.mjs, the xG-blended version moved every team's
+           attack rating — one of them by 31 points — and changed the projection
+           not at all: Spearman 0.356 against 0.356, Pearson 0.318 against 0.314,
+           MAE 2.028 against 2.013, and only 2.4% of same-gameweek player pairs
+           ordered differently. Equivalent for the one thing it feeds, so the
+           cheaper one wins — no team-xG dependency means no players-data.json
+           needed on a page that only wanted team strength.
+
+           The xG helpers survive for the trend LABELS, which are display only and
+           which the projection has never read. They are typeof-guarded because
+           the dashboard has no team-xG subsystem at all, and a label is not worth
+           a ReferenceError.
+
+           Returns rather than assigning, so each page owns its own binding. */
+        function xpBuildTeamScores(bootTeams, fixturesData) {
+            const ta = {};
+
+            // finished_provisional flips as soon as full time is blown — f.finished stays
+            // false until FPL confirms bonus points, which can take a day or more, so a
+            // team's very first result of the season wouldn't count here at all otherwise
+            // (form/attack/defense would fall back to a neutral baseline for every team,
+            // making every player look like their team is "struggling").
+            const finishedFixtures = fixturesData
+                .filter(f => f.finished_provisional && f.team_h_score !== null)
+                .sort((a, b) => a.event - b.event);
+
+            const upcomingFixtures = fixturesData
+                .filter(f => !f.finished_provisional && f.event !== null)
+                .sort((a, b) => a.event - b.event);
+
+            bootTeams.forEach(team => {
+                const teamId = team.id;
+
+                // Past fixtures for this team
+                const pastFixtures = finishedFixtures
+                    .filter(f => f.team_h === teamId || f.team_a === teamId);
+                const last10 = pastFixtures.slice(-10);
+                const last5 = pastFixtures.slice(-5);
+
+                // Future fixtures (next 5)
+                const futureFixtures = upcomingFixtures
+                    .filter(f => f.team_h === teamId || f.team_a === teamId)
+                    .slice(0, 5);
+
+                // Compute goals scored/conceded from last 10 games
+                let totalScored = 0, totalConceded = 0;
+                let homeStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
+                let awayStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
+
+                last10.forEach(f => {
+                    const isHome = f.team_h === teamId;
+                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    totalScored += scored;
+                    totalConceded += conceded;
+                    if (isHome) {
+                        homeStats.goals += scored; homeStats.conceded += conceded;
+                        homeStats.games++; if (conceded === 0) homeStats.cleanSheets++;
+                    } else {
+                        awayStats.goals += scored; awayStats.conceded += conceded;
+                        awayStats.games++; if (conceded === 0) awayStats.cleanSheets++;
+                    }
+                });
+
+                const gamesPlayed = last10.length || 1;
+                const avgGoals = totalScored / gamesPlayed;
+                const avgConceded = totalConceded / gamesPlayed;
+
+                // Attack Power (0-100): blend actual goals with FPL strength
+                const fplAttackStrength = (team.strength_attack_home + team.strength_attack_away) / 2;
+                const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));
+                const goalRate = Math.min(1, avgGoals / 2.0);
+                const attackPower = Math.round(Math.min(100, Math.max(0, (goalRate * 0.55 + fplAttNorm * 0.45) * 100)));
+
+                // Defense Power (0-100) - inverted
+                const fplDefenseStrength = (team.strength_defence_home + team.strength_defence_away) / 2;
+                const fplDefNorm = Math.min(1, Math.max(0, (fplDefenseStrength - 900) / 500));
+                const concedeRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.0)));
+                const defensePower = Math.round(Math.min(100, Math.max(0, (concedeRate * 0.55 + fplDefNorm * 0.45) * 100)));
+
+                // Home/Away splits
+                const fplAttHomeNorm = Math.min(1, Math.max(0, (team.strength_attack_home - 900) / 500));
+                const fplAttAwayNorm = Math.min(1, Math.max(0, (team.strength_attack_away - 900) / 500));
+                const fplDefHomeNorm = Math.min(1, Math.max(0, (team.strength_defence_home - 900) / 500));
+                const fplDefAwayNorm = Math.min(1, Math.max(0, (team.strength_defence_away - 900) / 500));
+
+                const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
+                    (Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.55 + fplAttHomeNorm * 0.45) * 100))) : attackPower;
+                const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
+                    (Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.55 + fplAttAwayNorm * 0.45) * 100))) : attackPower;
+                const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
+                    (Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.0))) * 0.55 + fplDefHomeNorm * 0.45) * 100))) : defensePower;
+                const defensePowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
+                    (Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.0))) * 0.55 + fplDefAwayNorm * 0.45) * 100))) : defensePower;
+
+                // Form Rating (0-100) - recency-weighted W/D/L from last 5
+                const formWeights = [5, 4, 3, 2, 1];
+                const reversedResults = [...last5].reverse();
+                let weightedPts = 0, weightSum = 0;
+                let wins = 0, draws = 0, losses = 0;
+                reversedResults.forEach((f, i) => {
+                    const isHome = f.team_h === teamId;
+                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    const result = scored > conceded ? 'W' : scored === conceded ? 'D' : 'L';
+                    const pts = result === 'W' ? 3 : result === 'D' ? 1 : 0;
+                    weightedPts += pts * formWeights[i];
+                    weightSum += formWeights[i];
+                    if (result === 'W') wins++; else if (result === 'D') draws++; else losses++;
+                });
+                // Map weighted points-per-game onto the 0-100 rating so that a team
+                // drawing its games lands mid-scale. The old formula scaled the
+                // win-ratio straight onto 0-70, which put an all-draws record at 23 —
+                // under the 40 "struggling" cut-off — so a single 2-2 draw in GW1 had
+                // every player on that team badged as struggling.
+                // Anchors: 0.0 ppg -> 10, 1.0 ppg (all draws) -> 50, 3.0 ppg -> 90.
+                const weightedPpg = weightSum > 0 ? weightedPts / weightSum : 1;
+                const formBase = weightedPpg <= 1
+                    ? 10 + weightedPpg * 40
+                    : 50 + ((weightedPpg - 1) / 2) * 40;
+
+                // GD bonus from last 5
+                const recentGD = last5.reduce((sum, f) => {
+                    const isHome = f.team_h === teamId;
+                    return sum + (isHome ? (f.team_h_score || 0) : (f.team_a_score || 0))
+                                - (isHome ? (f.team_a_score || 0) : (f.team_h_score || 0));
+                }, 0);
+                const gdBonus = Math.min(10, Math.max(-10, recentGD * 2));
+
+                // Streak bonus
+                let streakBonus = 0;
+                for (let i = 0; i < reversedResults.length; i++) {
+                    const f = reversedResults[i];
+                    const isHome = f.team_h === teamId;
+                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
+                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
+                    if (scored > conceded) streakBonus += 3;
+                    else if (scored === conceded) streakBonus += 1;
+                    else break;
+                }
+                streakBonus = Math.min(15, streakBonus);
+
+                const formRating = Math.round(Math.min(100, Math.max(0, formBase + gdBonus + streakBonus)));
+
+                // Fixture Score (0-100)
+                let totalFdr = 0;
+                const futureDetails = futureFixtures.map(f => {
+                    const isHome = f.team_h === teamId;
+                    const fdr = isHome ? f.team_h_difficulty : f.team_a_difficulty;
+                    totalFdr += fdr || 3;
+                    return { fdr: fdr || 3, isHome };
+                });
+                const avgFdr = futureDetails.length > 0 ? totalFdr / futureDetails.length : 3;
+                const homeFixCount = futureDetails.filter(f => f.isHome).length;
+                const fixtureScore = Math.round(Math.min(100, Math.max(0,
+                    ((5 - avgFdr) / 4) * 85 + (homeFixCount / Math.max(1, futureDetails.length)) * 15)));
+
+                // Clean Sheet Rate
+                const totalCS = homeStats.cleanSheets + awayStats.cleanSheets;
+                const csRate = gamesPlayed > 0 ? totalCS / gamesPlayed : 0;
+
+                // xG trend data (ported from fpl-players-analysis.html's computeTeamScores,
+                // so the shared AI Scouting Report's Team Context section has real data here too)
+                const seasonXg = typeof getTeamSeasonXg === 'function' ? getTeamSeasonXg(teamId) : null;
+                const recent6Xg = typeof getTeamXgWindow === 'function' ? getTeamXgWindow(teamId, 6) : null;
+                let xgTrend = 'stable', xgcTrend = 'stable';
+                if (recent6Xg && seasonXg && (seasonXg.games || 0) >= 10) {
+                    const xgDelta = recent6Xg.xGpg - seasonXg.xGpg;
+                    if (xgDelta > 0.25) xgTrend = 'rising';
+                    else if (xgDelta < -0.25) xgTrend = 'falling';
+                    const xgcDelta = recent6Xg.xGCpg - seasonXg.xGCpg;
+                    if (xgcDelta < -0.20) xgcTrend = 'improving';
+                    else if (xgcDelta > 0.20) xgcTrend = 'worsening';
+                }
+
+                ta[teamId] = {
+                    attackPower, defensePower, formRating, fixtureScore,
+                    attackPowerHome, attackPowerAway, defensePowerHome, defensePowerAway,
+                    xgTrend, xgcTrend, xgTrendDelta: recent6Xg && seasonXg ? recent6Xg.xGpg - seasonXg.xGpg : 0,
+                    xgcTrendDelta: recent6Xg && seasonXg ? seasonXg.xGCpg - recent6Xg.xGCpg : 0,
+                    avgGoals, avgConceded, avgFdr, csRate, totalCS,
+                    // Needed to tell a genuine home/away split from the fallback:
+                    // *PowerHome/Away silently reuse the overall rating at 0 games.
+                    homeGames: homeStats.games, awayGames: awayStats.games,
+                    wins, draws, losses, gamesPlayed,
+                    // Real count of completed matches. `gamesPlayed` above is
+                    // `last10.length || 1`, so it reports 1 even for a team that
+                    // hasn't kicked a ball — no good for "do we have data yet?".
+                    matchesPlayed: pastFixtures.length,
+                    teamName: team.short_name || team.name
+                };
+            });
+            console.log('Team analysis computed for', Object.keys(ta).length, 'teams');
+            return ta;
+        }
+
         /* Upcoming fixtures per team, keyed by team id — the input
            projectPlayerPointsForGW reads.
 
