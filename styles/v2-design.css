@@ -1570,3 +1570,39 @@ html.v2-theme body {
 
 [data-theme="dark"] .v2-fdr-2 { background: #4ADE80 !important; color: #08240F !important; }
 [data-theme="dark"] .v2-fdr-3 { background: #3A424D !important; color: #D5DAE2 !important; }
+
+/* ----- A section is a box -----
+   Applied by v2WrapSections() in common.js, which wraps each .section-header
+   and everything under it up to the next one. Same surface, border and radius
+   as the panels the rest of the site draws, so a group of cards reads as one
+   thing rather than as cards that happen to be near each other. */
+.v2-section {
+    padding: 16px;
+    margin-bottom: 20px;
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: var(--v2-card-shadow, none);
+}
+
+/* Inside a box, a rule under the heading and a border around the box are two
+   lines doing one job. */
+.v2-section > .section-header {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 6px;
+}
+.v2-section > .section-header h2 svg,
+.v2-section > .section-header h2 i {
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+.v2-section > .section-desc { margin-bottom: 14px; }
+.v2-section > :last-child { margin-bottom: 0; }
+
+/* Cards sit on the section, so they take the next surface up rather than the
+   same one — otherwise a card on a panel of the same colour is invisible. */
+.v2-section .stat-card,
+.v2-section .strength-card,
+.v2-section .rival-card,
+.v2-section .insight-card { background: var(--surface-2); }

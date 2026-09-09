@@ -17,11 +17,11 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=183">
-    <link rel="stylesheet" href="styles/v2-design.css?v=183">
-    <script src="scripts/error-monitor.js?v=183"></script>
-    <script src="scripts/common.js?v=183"></script>
-    <script src="scripts/sidebar-nav.js?v=183"></script>
+    <link rel="stylesheet" href="styles/common.css?v=184">
+    <link rel="stylesheet" href="styles/v2-design.css?v=184">
+    <script src="scripts/error-monitor.js?v=184"></script>
+    <script src="scripts/common.js?v=184"></script>
+    <script src="scripts/sidebar-nav.js?v=184"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -684,13 +684,30 @@
         .pitch-container::after { content: ''; position: absolute; top: calc(50% - 60px); left: calc(50% - 60px); width: 120px; height: 120px; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; }
         .pitch-row { display: flex; justify-content: center; gap: var(--space-4); margin-bottom: var(--space-4); position: relative; z-index: 1; }
         .pitch-player { text-align: center; min-width: 70px; }
-        .pitch-player-circle { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-1); font-size: 11px; font-weight: 700; color: #fff; border: 2px solid rgba(255,255,255,0.5); }
-        .pitch-player-circle.gk { background: var(--position-gk); }
-        .pitch-player-circle.def { background: var(--position-def); }
-        .pitch-player-circle.mid { background: var(--position-mid); }
-        .pitch-player-circle.fwd { background: var(--position-fwd); }
-        .pitch-player-circle.you-have { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.5); }
-        .pitch-player-circle.you-missing { border-color: rgba(255,255,255,0.2); opacity: 0.7; }
+        /* The portrait, with the position's colour as the ring around it.
+           This replaced a solid disc with "MID" written on it: the row a
+           player stands in already says his position, and the disc could not
+           say who he was. The ring keeps the colour, and the own/missing
+           states keep doing the job this pitch exists for — which of the
+           template you already have. */
+        .pitch-player-face {
+            width: 48px; height: 48px; border-radius: 50%;
+            display: grid; place-items: center;
+            margin: 0 auto var(--space-1);
+            border: 2px solid var(--v2-pos-color, rgba(255,255,255,0.5));
+            background: rgba(255,255,255,0.10);
+            cursor: help;
+        }
+        .pitch-player-face .v2-pid-portrait { --v2-pid-face: 40px; --v2-pid-crest: 17px; }
+        .pitch-player-face.gk  { --v2-pos-color: var(--position-gk); }
+        .pitch-player-face.def { --v2-pos-color: var(--position-def); }
+        .pitch-player-face.mid { --v2-pos-color: var(--position-mid); }
+        .pitch-player-face.fwd { --v2-pos-color: var(--position-fwd); }
+        .pitch-player-face.you-have {
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.85), 0 0 14px rgba(255,255,255,0.45);
+        }
+        .pitch-player-face.you-missing { opacity: 0.62; }
+        .pitch-player-initials { font-size: 11px; font-weight: 700; color: #fff; }
         .pitch-player-name { font-size: 10px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         .pitch-player-own { font-size: 9px; color: rgba(255,255,255,0.7); }
         .pitch-label { text-align: center; color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 600; margin-bottom: var(--space-6); text-transform: uppercase; letter-spacing: 1px; }
@@ -1204,6 +1221,11 @@
                 // reads the wrong one fails silently rather than throwing.
                 allPlayers = data.elements.map(p => normalisePlayerShape({
                     id: p.id,
+                    // The photo code and the club's badge code, so this page's
+                    // pitch can draw the same portraits every other pitch does.
+                    code: p.code,
+                    teamId: p.team,
+                    teamCode: data.teams.find(t => t.id === p.team)?.code,
                     name: p.web_name,
                     team: p.team,
                     teamName: data.teams.find(t => t.id === p.team)?.short_name || '???',
@@ -2586,10 +2608,28 @@
             const templateAll = [...templateGK, ...templateDEF, ...templateMID, ...templateFWD];
             const youHaveCount = templateAll.filter(p => p.youOwn).length;
             
+            /* The same portrait every other pitch on the site draws — a face
+               with the club crest on its corner — instead of a coloured disc
+               with "MID" written in it. The position was the only thing the
+               disc said, and on a pitch the row a player stands in says it
+               already; what the disc could not say was who he is.
+
+               The own/missing ring stays, because on this pitch that is the
+               whole question: which of the template you already have. */
             function renderRow(players, posClass) {
+                const ident = pl => (typeof v2IdentityHTML === 'function'
+                    ? v2IdentityHTML({
+                        name: pl.name, code: pl.code,
+                        teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName
+                    }, 'v2-pid-portrait')
+                    : `<span class="pitch-player-initials">${escHTML(pl.posName)}</span>`);
+
                 return `<div class="pitch-row">${players.map(p => `
                     <div class="pitch-player">
-                        <div class="pitch-player-circle ${posClass} ${p.youOwn ? 'you-have' : 'you-missing'}">${escHTML(p.player.posName)}</div>
+                        <div class="pitch-player-face ${posClass} ${p.youOwn ? 'you-have' : 'you-missing'}"
+                            data-tooltip="${escHTML(p.player.name)} — ${escHTML(p.player.teamName)}, ${escHTML(p.player.posName)}. ${p.youOwn ? 'In your squad.' : 'Not in your squad.'}">
+                            ${ident(p.player)}
+                        </div>
                         <div class="pitch-player-name">${escHTML(p.player.name)}</div>
                         <div class="pitch-player-own">${p.startCount}/${allManagerIds.length} start</div>
                     </div>`).join('')}</div>`;
@@ -2686,7 +2726,12 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>loadSidebarNav(); initIcons();
-        loadFooter();</script>
+        loadFooter();
+        /* Every heading-plus-content run on this page becomes one box. The
+           groups are all in the markup already — only the content inside them
+           is rendered later — so this runs once here rather than after each
+           analysis, and is idempotent if it ever needs to run again. */
+        v2WrapSections();</script>
     <!-- Marketing footer: legal, methodology and contact links on every page -->
 </body>
 </html>

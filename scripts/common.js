@@ -535,6 +535,54 @@ function v2PosEdgeClass(position) {
     return `v2-pos-edge pos-${V2_POS_CLASS[position] || 'mid'}`;
 }
 
+/* ===== Loose card groups become sections =====
+ *
+ * Several pages are built as a flat run of heading, description, content,
+ * heading, description, content — with nothing drawing a boundary between one
+ * group and the next except a gap. "Fixture Difficulty Ranking" has a dozen
+ * manager cards under it and no box around them, so where that section ends
+ * and "Full Ownership Matrix" begins is left to the reader to infer from
+ * spacing.
+ *
+ * Rather than hand-editing fifteen sites of near-identical markup on each
+ * page — and getting one of them subtly wrong — this wraps them at load.
+ * Every .section-header and everything after it up to the next one becomes
+ * one .v2-section, which is the same box the panels elsewhere on the site
+ * draw. The markup stays as it is, and a page that later adds a section gets
+ * the treatment without anyone remembering to.
+ *
+ * Idempotent: a header already inside a .v2-section is skipped, so calling it
+ * again after a re-render costs nothing.
+ */
+function v2WrapSections(scope) {
+    if (typeof document === 'undefined') return 0;
+    const root = scope || document;
+    let wrapped = 0;
+
+    root.querySelectorAll('.section-header').forEach(head => {
+        if (head.closest('.v2-section')) return;
+        const parent = head.parentNode;
+        if (!parent) return;
+
+        const box = document.createElement('div');
+        box.className = 'v2-section';
+        parent.insertBefore(box, head);
+
+        /* Read the next sibling BEFORE moving the current one — appending to
+           the box removes it from the run, and its nextElementSibling then
+           reads from inside the box rather than from the page. */
+        let node = head;
+        while (node) {
+            const next = node.nextElementSibling;
+            box.appendChild(node);
+            if (!next || next.classList.contains('section-header')) break;
+            node = next;
+        }
+        wrapped++;
+    });
+    return wrapped;
+}
+
 // ===== DISMISSING PANELS =====
 /* Click away to close, for every overlay on the site.
  *
@@ -1103,7 +1151,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=183')
+    fetch('footer.html?v=184')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
