@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=187">
-    <link rel="stylesheet" href="styles/players.css?v=187">
-    <link rel="stylesheet" href="styles/v2-design.css?v=187">
+    <link rel="stylesheet" href="styles/common.css?v=188">
+    <link rel="stylesheet" href="styles/players.css?v=188">
+    <link rel="stylesheet" href="styles/v2-design.css?v=188">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -49,13 +49,13 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=187">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=187">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=187">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=187">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=187">
-    <link rel="preload" as="script" href="scripts/common.js?v=187">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=187">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=188">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=188">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=188">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=188">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=188">
+    <link rel="preload" as="script" href="scripts/common.js?v=188">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=188">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -200,9 +200,13 @@
     </div>
 
     <main class="content">
+        <!-- The per-tab sentence that used to sit under this title is gone.
+             It changed as you moved between tabs, so the page's own heading
+             never held still, and it could only ever be one line. The same
+             explanation, at the length it actually needs, is behind the ? in
+             the heading — always in the same place, on every page. -->
         <div class="page-header">
             <h1 class="page-title v2-page-heading"><i data-lucide="user-round-search" class="icon"></i> Player Analysis</h1>
-            <p class="page-subtitle" id="pageSubtitle"></p>
         </div>
         <!-- The standalone filter bar is retired.
 
@@ -3888,13 +3892,13 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=187"></script>
+    <script src="scripts/error-monitor.js?v=188"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=187"></script>
-    <script src="scripts/players-tables.js?v=187"></script>
-    <script src="scripts/compare-report.js?v=187"></script>
+    <script src="scripts/xp-engine.js?v=188"></script>
+    <script src="scripts/players-tables.js?v=188"></script>
+    <script src="scripts/compare-report.js?v=188"></script>
     <script>
         // calculateStats / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5802,13 +5806,37 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=187"></script>
+    <script src="scripts/players-ai.js?v=188"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=187"></script>
-    <script src="scripts/sidebar-nav.js?v=187"></script>
+    <script src="scripts/common.js?v=188"></script>
+    <script src="scripts/sidebar-nav.js?v=188"></script>
     <script>
         loadSidebarNav();
         initIcons();
+
+        /* Help beside the title. What each tab is for used to be a one-line
+           subtitle that changed as you switched tabs, so the heading never
+           held still and the explanation could never be longer than a line.
+           Here it is the length it needs, in the same place on every page. */
+        v2MountPageHelp(
+            'This page ranks every player in the game six different ways. Each tab answers a different question, and the position pills at the top of each one filter all of them together.',
+            [
+                { title: 'The tabs', steps: [
+                    { title: 'Recommendations', text: 'Who to buy, split into budget, premium and differential. Ranked on form, underlying numbers, minutes, value and fixtures together — <strong>Balanced</strong> lets form lead, <strong>Fixture-first</strong> weights the next three opponents heavily, so the same players re-rank on who they face.' },
+                    { title: 'Rising Form', text: 'Players with at least two signals pointing the same way at once — team form, underlying numbers, minutes, fixtures. One signal is noise; several agreeing is a trend, usually before the price moves.' },
+                    { title: 'Purple Patch', text: 'Players scoring well above their own baseline, rated on whether the run is backed by process or about to regress. The score is the sustainability, not the streak.' },
+                    { title: 'Charts', text: 'Scatter plots for spotting value, over- and under-performance and differentials by eye. The position filters at the top apply to every chart at once.' },
+                    { title: 'Routes to Points', text: 'How many different ways a player has of scoring — goals, assists, clean sheets, saves, bonus. Four routes is less dependent on any one of them going right than one route is.' },
+                    { title: 'All Players', text: 'The full table, sortable and filterable, with column presets and a shortlist. Every other tab is a view onto this one.' }
+                ] },
+                { title: 'Reading a card', steps: [
+                    { title: 'The header', text: 'The club colour, the portrait and crest, the price, and how much of the field owns him. Clicking it opens the same player larger, with his full record.' },
+                    { title: 'xP5', text: 'Projected points across the next five gameweeks, from his recent rates, his expected minutes and his fixtures. A projection, not a promise.' },
+                    { title: 'The fixture blocks', text: 'His next matches, coloured by difficulty on the same five-step ramp the whole site uses — dark green easiest, dark red hardest.' },
+                    { title: 'The star', text: 'Adds him to your shortlist, which survives a reload and filters the All Players table.' }
+                ] }
+            ]
+        );
     </script>
     <!-- Marketing footer: legal, methodology and contact links on every page -->
     <script>

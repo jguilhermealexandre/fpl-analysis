@@ -1544,14 +1544,17 @@
                 </span>
             </div>`;
 
-            /* Help and settings live at the end of the strip, stacked. They
-               were in the page's header row, where they sat beside the title
-               and squeezed the two tickers underneath into a shorter run than
-               the same component gets on Transfers. */
+            /* Settings stays at the end of the strip. Help does not: it now
+               sits beside the page title, where the other four pages put
+               theirs, so the ? is in the same place wherever you are rather
+               than halfway down one page and nowhere on the rest.
+
+               It was moved into this strip originally because it shared the
+               header row with the title and squeezed the tickers below into a
+               shorter run. That was a layout problem with two buttons in the
+               row; one small circle inside the heading itself does not cause
+               it. */
             const tools = `<div class="sq-kpi-tools">
-                <button class="sq-kpi-tool" id="helpBtn" onclick="openHelpOverlay()" aria-label="How to use this page" data-tooltip="How to use this page">
-                    <i data-lucide="help-circle"></i>
-                </button>
                 <button class="sq-kpi-tool" id="settingsBtn" onclick="openSettings()" aria-label="Analysis settings" data-tooltip="Analysis settings">
                     <i data-lucide="settings"></i>
                 </button>

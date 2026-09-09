@@ -674,8 +674,13 @@ function renderCell(p, colKey, position, isSelected) {
            The .pcell-pos chip on the second line is gone: it said what the
            edge now says, twice on the same row. */
         const edge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
-        const face = typeof v2IdentityHTML === 'function'
-            ? `<span class="pcell-face">${v2IdentityHTML(p, 'v2-pid-portrait')}</span>` : '';
+        /* The row form, not the portrait form — the same call the squad table
+           makes. The portrait form hangs the crest off the face's lower corner,
+           which is right on a card where the face is the subject; in a table
+           row the two sit side by side, and that is what My Team shows. They
+           were two different marks for the same thing on two tables that are
+           meant to read alike. */
+        const face = typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p) : '';
         return `<td class="col-player">
             <div class="pcell ${edge}">
                 <input type="checkbox" class="compare-checkbox" ${selected ? 'checked' : ''}

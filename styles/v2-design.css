@@ -1650,9 +1650,21 @@ html.v2-theme body {
    <img> removes itself — and a 178px hole where a face was is worse than no
    face at all, so the column collapses with it. */
 .pdm-hero-photo:empty { width: 0; }
+/* A fixed box, and the photo fitted inside it.
+ *
+ * It was `height: 176px; width: auto`, which sizes the element from the
+ * image's own proportions — and the images are not one shape. The current
+ * library is 250x250; the fallback that catches everyone it has not reshot is
+ * 110x140, a much taller crop. So a player served from the fallback rendered
+ * 176px tall and only 138px wide, standing visibly taller and narrower than
+ * the square-cropped player beside him. Gibbs-White is not that tall.
+ *
+ * With the box fixed and object-fit doing the fitting, both crops occupy the
+ * same space and neither is stretched: the shorter one is letterboxed rather
+ * than blown up. */
 .pdm-hero-face {
-    height: 176px; width: auto; max-width: none;
-    object-fit: contain; object-position: bottom;
+    height: 176px; width: 100%; max-width: 178px;
+    object-fit: contain; object-position: bottom center;
     filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .3));
 }
 .pdm-hero-text {
@@ -1710,7 +1722,7 @@ html.v2-theme body {
     border-radius: var(--v2-card-radius, 16px) var(--v2-card-radius, 16px) 0 0;
 }
 .pdm-hero.is-compact .pdm-hero-photo { height: 92px; width: 84px; }
-.pdm-hero.is-compact .pdm-hero-face { height: 92px; }
+.pdm-hero.is-compact .pdm-hero-face { height: 92px; max-width: 84px; }
 .pdm-hero.is-compact .pdm-hero-text { padding: 12px 0 11px; }
 .pdm-hero.is-compact .pdm-hero-first { font-size: 13px; }
 .pdm-hero.is-compact .pdm-hero-last { font-size: 20px; }
@@ -1725,7 +1737,7 @@ html.v2-theme body {
    the subject and the header only has to say who. */
 .pdm-hero.is-mini { min-height: 72px; padding: 0 12px; }
 .pdm-hero.is-mini .pdm-hero-photo { height: 72px; width: 62px; }
-.pdm-hero.is-mini .pdm-hero-face { height: 72px; }
+.pdm-hero.is-mini .pdm-hero-face { height: 72px; max-width: 62px; }
 .pdm-hero.is-mini .pdm-hero-text { padding: 9px 0 8px; }
 .pdm-hero.is-mini .pdm-hero-first { display: none; }
 .pdm-hero.is-mini .pdm-hero-last { font-size: 16px; }
@@ -1736,6 +1748,50 @@ html.v2-theme body {
 @media (max-width: 520px) {
     .pdm-hero.is-compact { min-height: 80px; }
     .pdm-hero.is-compact .pdm-hero-photo { height: 80px; width: 66px; }
-    .pdm-hero.is-compact .pdm-hero-face { height: 80px; }
+    .pdm-hero.is-compact .pdm-hero-face { height: 80px; max-width: 66px; }
     .pdm-hero.is-compact .pdm-hero-last { font-size: 17px; }
+}
+
+/* ----- "How to use this page", in the heading -----
+   One page had help and its button was in a KPI strip halfway down; the other
+   four had none. It belongs beside the title, which is the one element every
+   page has in the same place and the first thing on screen — so the ? is
+   always where you last saw it. */
+.v2-page-help {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    margin-left: 10px;
+    padding: 0;
+    vertical-align: middle;
+    border: 1px solid var(--border-default);
+    border-radius: 50%;
+    background: var(--surface-1);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.v2-page-help svg { width: 14px; height: 14px; }
+.v2-page-help:hover {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+/* ----- One section title -----
+   Panels across the site each grew their own heading with the same intent and
+   slightly different numbers — .pa-panel-title on the players page, a private
+   .v2-info-title on the dashboard, .sq-panel-title in My Team. They are the
+   same object and they now share one definition, so a change to it is a
+   change everywhere rather than in three places and a miss. */
+.v2-section-title {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-display);
+    font-size: 17px; font-weight: 650; letter-spacing: -0.2px;
+    color: var(--text-primary);
+}
+.v2-section-title svg,
+.v2-section-title .v2-sec-icon {
+    width: 17px; height: 17px;
+    color: var(--color-primary);
+    flex-shrink: 0;
 }

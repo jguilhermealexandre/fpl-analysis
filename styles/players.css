@@ -1,6 +1,14 @@
 /* HEADER (ultra-compact — tabs provide page context) */
+/* The same gap under the heading that every other page has.
+
+   This was `padding: 8px 0 4px`, which left 4px between the title and the
+   first panel where Teams, Rivals and My Team all leave 24 — those three use
+   .header-row from common.css, and this page had its own rule with its own
+   numbers. So the players page started tighter than the rest of the site for
+   no reason anyone chose. */
 .page-header {
-    padding: 8px 0 4px;
+    padding: 0;
+    margin-bottom: 24px;
 }
 .page-header-inner {
     max-width: 1400px;
@@ -4899,7 +4907,16 @@
    It sits inside .table-section rather than a .pa-panel of its own: that
    section already draws the border and the surface, and nesting a second box
    inside it would put two rounded borders 16px apart. */
-.all-players-head { margin-bottom: 10px; }
+/* Inset to match every other panel title on the page.
+
+   .table-section has no padding of its own — the table inside it runs to the
+   edges on purpose — so a heading placed in it sat 1px from the corner while
+   the Recommendations title sits 17px in. Same 16px here, on the heading
+   alone, so the table keeps its full width. */
+.all-players-head {
+    padding: 16px 16px 0;
+    margin-bottom: 10px;
+}
 .all-players-head .pa-panel-count {
     font-family: var(--font-body, inherit);
     font-size: 11.5px; font-weight: 500; color: var(--text-muted);
@@ -4986,9 +5003,11 @@
    .v2-pos-edge too. */
 .pcell.v2-pos-edge { padding-left: 24px; }
 
-.pcell-face { flex-shrink: 0; display: grid; place-items: center; }
-/* Same 28px face and 16px crest the squad rows use. */
-.pcell-face .v2-pid-portrait { --v2-pid-face: 28px; --v2-pid-crest: 16px; }
+/* The same 28px face and 16px crest the squad rows use — the numbers are
+   .sq-row's, copied so the two tables are the same object at the same size. */
+.pcell .v2-pid-avatar { width: 28px; height: 28px; }
+.pcell .v2-pid-crest,
+.pcell .v2-pid-crest img { width: 16px; height: 16px; }
 
 /* The charts' position filters, in a bar of their own.
    Four chips on the page background above the first chart group read as
@@ -5019,6 +5038,73 @@
     padding: 13px 15px 14px;
 }
 .rec-card-v2.featured.has-hero .rec-body { padding: 16px 20px 18px; }
+
+/* ----- The top pick, side by side -----
+   Stacked, the featured card was the same shape as the eleven under it, only
+   taller — a header, then a column of everything. Split, the club colour and
+   the face take a panel down the left and the reading runs beside it, which is
+   what makes it read as the pick of the list rather than as the first row of
+   it.
+
+   30% for the portrait: enough for the face to be the size it is on the modal,
+   not so much that the verdict beside it loses its measure. Below 860px it
+   goes back to stacking, because a third of a phone is not a portrait. */
+@media (min-width: 860px) {
+    .rec-card-v2.featured.has-hero {
+        display: grid;
+        grid-template-columns: minmax(230px, 30%) minmax(0, 1fr);
+        align-items: stretch;
+    }
+    .rec-card-v2.featured.has-hero .pdm-hero {
+        min-height: 100%;
+        grid-column: 1;
+        border-radius: var(--v2-card-radius, 16px) 0 0 var(--v2-card-radius, 16px);
+        /* Portrait above, name and price under it, rather than a row. */
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: 1fr auto auto;
+        align-items: end;
+        padding: 0 18px 16px;
+        gap: 0;
+    }
+    .rec-card-v2.featured.has-hero .pdm-hero-photo {
+        height: auto; width: 100%;
+        align-self: end;
+        justify-content: center;
+        padding-top: 18px;
+    }
+    .rec-card-v2.featured.has-hero .pdm-hero-face {
+        height: auto; width: 100%; max-width: 200px;
+        object-position: bottom;
+    }
+    .rec-card-v2.featured.has-hero .pdm-hero-text { padding: 10px 0 0; }
+    .rec-card-v2.featured.has-hero .pdm-hero-last { font-size: 26px; }
+    .rec-card-v2.featured.has-hero .pdm-hero-side {
+        flex-direction: row; align-items: baseline; justify-content: space-between;
+        flex-wrap: wrap; gap: 6px; padding: 8px 0 0; text-align: left;
+    }
+    .rec-card-v2.featured.has-hero .pdm-hero-price { font-size: 22px; }
+    /* The rank chip goes to the top corner, out of the way of the face.
+
+       .pdm-hero-side is position:relative, so an absolute child of it is
+       positioned against the side block — which in this layout sits at the
+       bottom, and the chip landed on top of the price. Making the side block
+       static hands the chip back to .pdm-hero, which is the corner meant. */
+    .rec-card-v2.featured.has-hero .pdm-hero-side { position: static; }
+    .rec-card-v2.featured.has-hero .pdm-hero-chip {
+        position: absolute; top: 14px; left: 18px; z-index: 2;
+        margin-bottom: 0;
+    }
+    .rec-card-v2.featured.has-hero .rec-body {
+        grid-column: 2;
+        padding: 18px 20px;
+        justify-content: center;
+    }
+    .rec-card-v2.featured.has-hero .shortlist-star-card { top: 14px; right: 14px; }
+    /* On a light card again, so back to the muted grey. */
+    .rec-card-v2.featured.has-hero .shortlist-star-card:not(.shortlisted) {
+        color: var(--text-muted); opacity: .55;
+    }
+}
 
 /* The rank and the verdict live in the hero's own chip now, and the club,
    price and portrait are in its text — so what is left for the first row of

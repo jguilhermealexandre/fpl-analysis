@@ -2021,16 +2021,11 @@
             document.getElementById('settingsOverlay').classList.remove('show');
         }
 
-        function openHelpOverlay() {
-            document.getElementById('helpOverlay').classList.add('show');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
+        /* openHelpOverlay / closeHelpOverlay moved to scripts/common.js.
 
-        function closeHelpOverlay(event) {
-            // Only dismiss on a click of the backdrop itself, not the panel inside it.
-            if (event && event.target !== event.currentTarget) return;
-            document.getElementById('helpOverlay').classList.remove('show');
-        }
+           They lived here, which only My Team loads, so any other page calling
+           them got a ReferenceError — and four pages now have a help drawer of
+           their own. */
 
         function applyPreset(preset) {
             if (preset === 'aggressive') {

@@ -17,8 +17,8 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=187">
-    <link rel="stylesheet" href="styles/v2-design.css?v=187">
+    <link rel="stylesheet" href="styles/common.css?v=188">
+    <link rel="stylesheet" href="styles/v2-design.css?v=188">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1062,16 +1062,11 @@
            so they collapse to a wrap of ticked labels, which says the same
            thing in three lines instead of seven. */
         .v2-readiness:empty { display: none; }
-        /* The panel's name. Same type as every other section title on the
-           site — display face, 17px, icon in the brand green. */
-        .v2-info-head { margin-bottom: 12px; }
-        .v2-info-title {
-            display: inline-flex; align-items: center; gap: 8px;
-            font-family: var(--font-display);
-            font-size: 17px; font-weight: 650; letter-spacing: -0.2px;
-            color: var(--text-primary);
-        }
-        .v2-info-title svg { width: 17px; height: 17px; color: var(--color-primary); flex-shrink: 0; }
+        /* The panel's heading is .v2-section-title, defined once in
+           v2-design.css. It was a private .v2-info-title here with its own
+           copy of the same rules, which is how two things that should look
+           identical stop being identical. */
+        .v2-info-panel > .v2-section-title { margin-bottom: 12px; }
 
         .v2-info-panel .rd-bar {
             grid-column: auto;
@@ -3813,20 +3808,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=187">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=187">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=187">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=187">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=187">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=187">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=187">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=187">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=187">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=187">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=187">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=187">
-    <link rel="preload" as="script" href="scripts/common.js?v=187">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=187">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=188">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=188">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=188">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=188">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=188">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=188">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=188">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=188">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=188">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=188">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=188">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=188">
+    <link rel="preload" as="script" href="scripts/common.js?v=188">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=188">
 </head>
 <body>
 <script>
@@ -4039,19 +4034,20 @@
                      above the lineup rather than below it. -->
                 <div class="v2-top-row">
                     <aside class="v2-info-panel">
-                        <!-- The panel had no name. Its four rows — the
-                             countdown, your rank and bank, the price moves in
-                             your squad, and the readiness checks — are one
-                             question asked four ways, and the comment above
-                             already said which: where your squad stands before
-                             the deadline. So that is the title, and the clock
-                             is the icon, because the deadline is what the
-                             whole column is measured against. -->
-                        <div class="v2-info-head">
-                            <span class="v2-info-title">
-                                <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                                Before the deadline
-                            </span>
+                        <!-- "Before the deadline" was too narrow a name for
+                             what is in here. The countdown is about the
+                             deadline; your rank, your bank, the price moves in
+                             your squad and the readiness checks are not — they
+                             are true whether a deadline is near or not. What
+                             they have in common is that they are all the state
+                             of your team right now, which is what it is called.
+
+                             The heading uses .v2-section-title so it is the
+                             same object as every other section title on the
+                             site rather than a lookalike with its own rules. -->
+                        <div class="v2-section-title">
+                            <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 3.5 16 2a4 4 0 0 1-8 0L3.6 3.5a2 2 0 0 0-1.3 2.2l.6 3.5a1 1 0 0 0 1 .8H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.1a1 1 0 0 0 1-.8l.6-3.5a2 2 0 0 0-1.3-2.2z"/></svg>
+                            Your team right now
                         </div>
                         <div class="v2-deadline-hero" id="v2DeadlineHero"></div>
                         <div class="v2-status-stack" id="v2StatusStack"></div>
@@ -4545,20 +4541,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=187"></script>
-    <script src="scripts/price-watch.js?v=187"></script>
-    <script src="scripts/xp-engine.js?v=187"></script>
-    <script src="scripts/odds-panel.js?v=187"></script>
-    <script src="scripts/live-gw.js?v=187"></script>
-    <script src="scripts/matchday.js?v=187"></script>
-    <script src="scripts/market-panel.js?v=187"></script>
-    <script src="scripts/eo-layer.js?v=187"></script>
-    <script src="scripts/readiness.js?v=187"></script>
-    <script src="scripts/push-alerts.js?v=187"></script>
-    <script src="scripts/notifications.js?v=187"></script>
-    <script src="scripts/transfer-engine.js?v=187"></script>
-    <script src="scripts/common.js?v=187"></script>
-    <script src="scripts/sidebar-nav.js?v=187"></script>
+    <script src="scripts/error-monitor.js?v=188"></script>
+    <script src="scripts/price-watch.js?v=188"></script>
+    <script src="scripts/xp-engine.js?v=188"></script>
+    <script src="scripts/odds-panel.js?v=188"></script>
+    <script src="scripts/live-gw.js?v=188"></script>
+    <script src="scripts/matchday.js?v=188"></script>
+    <script src="scripts/market-panel.js?v=188"></script>
+    <script src="scripts/eo-layer.js?v=188"></script>
+    <script src="scripts/readiness.js?v=188"></script>
+    <script src="scripts/push-alerts.js?v=188"></script>
+    <script src="scripts/notifications.js?v=188"></script>
+    <script src="scripts/transfer-engine.js?v=188"></script>
+    <script src="scripts/common.js?v=188"></script>
+    <script src="scripts/sidebar-nav.js?v=188"></script>
     <script>
         initIcons();
         loadFooter();

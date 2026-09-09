@@ -535,6 +535,85 @@ function v2PosEdgeClass(position) {
     return `v2-pos-edge pos-${V2_POS_CLASS[position] || 'mid'}`;
 }
 
+/* ===== "How to use this page", on every page that needs one =====
+ *
+ * My Team had one and nothing else did, and its button lived in a KPI strip
+ * halfway down the page — so on the one page that had help you had to know
+ * where to look for it, and on the other four there was nothing to look for.
+ *
+ * The button belongs beside the page's own title, which is the one element
+ * every page has in the same place, and it is the first thing on screen. The
+ * drawer it opens is the same drawer on all of them; only the content differs,
+ * and each page supplies its own.
+ *
+ * v2MountPageHelp() puts the button in the heading and the drawer at the end
+ * of <body>, so a page opts in with one call and no markup.
+ */
+function v2HelpButtonHTML() {
+    return '<button type="button" class="v2-page-help" onclick="openHelpOverlay()"'
+        + ' aria-label="How to use this page" data-tooltip="How to use this page">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+        + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<circle cx="12" cy="12" r="10"/>'
+        + '<path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>'
+        + '</svg></button>';
+}
+
+/* The drawer. `sections` is [{ title, steps: [{ title, text }] }], which is
+   the shape the My Team panel already reads as. */
+function v2HelpOverlayHTML(heading, intro, sections) {
+    const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
+    const body = (sections || []).map(sec => `
+        <div class="help-section-title">${esc(sec.title)}</div>
+        ${(sec.steps || []).map(step => `
+            <div class="help-step">
+                <div>
+                    <div class="help-step-title">${esc(step.title)}</div>
+                    <div class="help-step-text">${step.text}</div>
+                </div>
+            </div>`).join('')}`).join('');
+
+    return `<div class="detail-overlay" id="helpOverlay" onclick="closeHelpOverlay(event)">
+        <div class="detail-panel help-panel">
+            <div class="detail-header">
+                <div class="player-name">How to use this page</div>
+                <button class="detail-close" onclick="closeHelpOverlay()" aria-label="Close">&times;</button>
+            </div>
+            <div class="detail-body">
+                <p class="help-intro">${intro}</p>
+                ${body}
+            </div>
+        </div>
+    </div>`;
+}
+
+/* Open and close. These lived in transfer-wizard.js, which only My Team loads,
+   so any other page calling them got a ReferenceError. */
+function openHelpOverlay() {
+    const el = typeof document !== 'undefined' && document.getElementById('helpOverlay');
+    if (!el) return;
+    el.classList.add('show');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeHelpOverlay(event) {
+    // Only dismiss on a click of the backdrop itself, not the panel inside it.
+    if (event && event.target !== event.currentTarget) return;
+    const el = typeof document !== 'undefined' && document.getElementById('helpOverlay');
+    if (el) el.classList.remove('show');
+}
+
+function v2MountPageHelp(intro, sections) {
+    if (typeof document === 'undefined') return;
+    const title = document.querySelector('.page-title');
+    if (title && !title.querySelector('.v2-page-help')) {
+        title.insertAdjacentHTML('beforeend', v2HelpButtonHTML());
+    }
+    if (!document.getElementById('helpOverlay')) {
+        document.body.insertAdjacentHTML('beforeend', v2HelpOverlayHTML('', intro, sections));
+    }
+}
+
 /* ===== The player hero, for anything that shows one player =====
  *
  * A name over the club's colour, the portrait standing on the bottom edge, the
@@ -1266,7 +1345,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=187')
+    fetch('footer.html?v=188')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

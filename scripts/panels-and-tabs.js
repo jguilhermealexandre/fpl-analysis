@@ -708,8 +708,9 @@
             // the pitch, the armband buttons, Auto-Optimize, the fixture chips — so
             // it has nothing to say on the other tabs. Hide the button with the same
             // rule as settings, and close the overlay if it is open when you leave.
-            const helpBtn = document.getElementById('helpBtn');
-            if (helpBtn) helpBtn.style.display = (tab === 'team') ? '' : 'none';
+            /* The help button is in the page heading now and its drawer covers
+               the whole page, so it no longer hides itself on the other tabs.
+               See v2MountPageHelp() in common.js. */
             if (tab !== 'team' && typeof closeHelpOverlay === 'function') closeHelpOverlay();
 
             if (tab === 'team') {
