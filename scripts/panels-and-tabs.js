@@ -837,13 +837,6 @@
             }
             const feeds = [
                 { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport', badge: 'bbc' },
-                /* Two Premier League URLs on purpose. The site moved its news
-                   under /en/, and which of the two still serves RSS is not
-                   something this file can know — a feed that 404s is skipped by
-                   the loop below, and if both answer, the de-duplication by link
-                   further down drops the repeat. */
-                { url: 'https://www.premierleague.com/news.rss', source: 'Premier League', badge: 'pl' },
-                { url: 'https://www.premierleague.com/en/news.rss', source: 'Premier League', badge: 'pl' },
                 { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', badge: 'sky' },
                 { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian', badge: 'guardian' }
             ];
@@ -852,6 +845,33 @@
                URLs, and a publisher that syndicates to another can put the same
                link in both — a duplicated card reads as a duplicated story. */
             const seenLinks = new Set();
+
+            /* The Premier League's own articles, from the file the scheduled
+               job writes (see .github/workflows/fetch-pl-news.yml).
+               premierleague.com sends no CORS headers, so this is the only way
+               the browser can have them at all. */
+            try {
+                const plRes = await fetch('data/pl-news.json?v=' + Math.floor(Date.now() / 300000));
+                if (plRes.ok) {
+                    const pl = await plRes.json();
+                    (pl.items || []).forEach(a => {
+                        if (!a.link || seenLinks.has(a.link)) return;
+                        seenLinks.add(a.link);
+                        items.push({
+                            category: 'external', categoryLabel: 'Premier League',
+                            headline: a.title,
+                            link: a.link,
+                            thumbnail: a.image || null,
+                            source: 'Premier League', badge: 'pl',
+                            detail: a.summary || 'Premier League',
+                            isSquad: false,
+                            timestamp: a.published,
+                            sortWeight: 5
+                        });
+                    });
+                }
+            } catch (e) { /* three other feeds remain; a missing file is not an error */ }
+
             for (const feed of feeds) {
                 try {
                     const rssUrl = encodeURIComponent(feed.url);

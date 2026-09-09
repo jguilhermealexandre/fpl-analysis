@@ -1,0 +1,282 @@
+#!/usr/bin/env node
+/* Premier League news, fetched where a browser cannot fetch it.
+ *
+ * premierleague.com sends no CORS headers, so the site cannot read it from the
+ * page. The workaround so far was api.rss2json.com pointed at a feed URL, which
+ * put two guesses in a row between us and the articles: whether that URL still
+ * serves RSS at all, and whether a third-party proxy maps the fields we need.
+ * Both have been wrong, and neither can be checked from a browser.
+ *
+ * So it is fetched the same way every other external dataset in this repo is:
+ * server-side, on a schedule, validated, and committed as JSON that the page
+ * reads from its own origin. No CORS, no proxy, and if it breaks it breaks in a
+ * CI log with the reason in it rather than silently on someone's phone.
+ *
+ * The Premier League has moved this endpoint more than once and is under no
+ * obligation to tell us, so SOURCES is a list and the first one that answers
+ * with something usable wins. Add to it rather than replacing it: an endpoint
+ * that stops working should fall through to the next, not take the feed down.
+ *
+ * Run: node tools/fetch-pl-news.mjs [--out data/pl-news.json] [--dry-run]
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+
+const MAX_ITEMS = 30;
+const TIMEOUT_MS = 20000;
+
+/* Pulselive is the CMS behind premierleague.com. The `Origin` and `Account`
+   headers are what the site's own client sends; without them the content API
+   answers 403. */
+const PULSE_HEADERS = {
+    'Origin': 'https://www.premierleague.com',
+    'Referer': 'https://www.premierleague.com/',
+    'Account': 'premierleague',
+    'User-Agent': 'Mozilla/5.0 (compatible; EasyFPL/1.0; +https://easyfpl.pages.dev)'
+};
+
+const SOURCES = [
+    {
+        name: 'pulselive content API',
+        url: `https://footballapi.pulselive.com/football/content/PREMIERLEAGUE/text/EN?pageSize=${MAX_ITEMS}&page=0&references=ALL&type=news`,
+        headers: PULSE_HEADERS,
+        parse: parsePulselive
+    },
+    {
+        name: 'pulselive content API (no reference filter)',
+        url: `https://footballapi.pulselive.com/football/content/PREMIERLEAGUE/text/EN?pageSize=${MAX_ITEMS}&page=0`,
+        headers: PULSE_HEADERS,
+        parse: parsePulselive
+    },
+    {
+        name: 'premierleague.com /en/news.rss',
+        url: 'https://www.premierleague.com/en/news.rss',
+        headers: PULSE_HEADERS,
+        parse: parseRss
+    },
+    {
+        name: 'premierleague.com /news.rss',
+        url: 'https://www.premierleague.com/news.rss',
+        headers: PULSE_HEADERS,
+        parse: parseRss
+    },
+    {
+        name: 'premierleague.com /en/news (embedded JSON)',
+        url: 'https://www.premierleague.com/en/news',
+        headers: PULSE_HEADERS,
+        parse: parseEmbedded
+    }
+];
+
+// ===== Parsers =====
+// Each takes the raw response body and returns an array of normalised items,
+// or an empty array if the body is not the shape it knows about. They never
+// throw on a shape they do not recognise — that is what lets the caller fall
+// through to the next source.
+
+/* Pulselive's content API. An article's picture is in `imageUrl` or in a
+   `leadMedia` object; its body is HTML we do not want, so only the summary
+   comes across. */
+function parsePulselive(body) {
+    let json;
+    try { json = JSON.parse(body); } catch { return []; }
+    const rows = json && (json.content || json.items || json.data);
+    if (!Array.isArray(rows)) return [];
+    return rows.map(a => normalise({
+        title: a.title || a.headline,
+        link: a.id != null ? `https://www.premierleague.com/en/news/${a.id}` : a.url,
+        summary: a.subtitle || a.summary || a.description,
+        image: pulseImage(a),
+        published: a.date && (a.date.millis != null ? new Date(a.date.millis).toISOString() : a.date.label)
+            || a.publishFrom || a.publishedDate
+    })).filter(Boolean);
+}
+
+function pulseImage(a) {
+    const media = a.leadMedia || a.imageUrl || a.image;
+    if (typeof media === 'string') return media;
+    if (media && typeof media === 'object') {
+        if (typeof media.onDemandUrl === 'string') return media.onDemandUrl;
+        if (media.imageUrl) return String(media.imageUrl);
+        // { "url": "https://.../{format}", "variants": [...] }
+        if (typeof media.url === 'string') return media.url.replace('{format}', 'landscape');
+    }
+    return null;
+}
+
+/* RSS 2.0. Deliberately a regex reader rather than an XML parser: this runs in
+   CI with no dependencies, the shape is fixed, and anything it cannot read
+   falls through to the next source rather than failing the run. */
+function parseRss(body) {
+    if (!/<rss|<feed|<channel/i.test(body)) return [];
+    const items = body.match(/<item[\s>][\s\S]*?<\/item>/gi) || [];
+    return items.slice(0, MAX_ITEMS).map(x => normalise({
+        title: tag(x, 'title'),
+        link: tag(x, 'link'),
+        summary: tag(x, 'description'),
+        image: attr(x, 'media:content', 'url') || attr(x, 'media:thumbnail', 'url')
+            || attr(x, 'enclosure', 'url') || firstImg(tag(x, 'description')),
+        published: tag(x, 'pubDate')
+    })).filter(Boolean);
+}
+
+/* The news page itself, for the day both APIs are gone. Next.js and similar
+   frameworks inline the page's data as JSON in a <script>; if we can find an
+   array of things with titles and links in there, that is the article list. */
+function parseEmbedded(body) {
+    const blocks = body.match(/<script[^>]*type="application\/(?:ld\+)?json"[^>]*>([\s\S]*?)<\/script>/gi) || [];
+    const found = [];
+    for (const block of blocks) {
+        const raw = block.replace(/^<script[^>]*>/i, '').replace(/<\/script>$/i, '');
+        let json;
+        try { json = JSON.parse(raw); } catch { continue; }
+        collectArticles(json, found, 0);
+        if (found.length >= 5) break;
+    }
+    return found.slice(0, MAX_ITEMS).map(normalise).filter(Boolean);
+}
+
+function collectArticles(node, out, depth) {
+    if (!node || depth > 6 || out.length >= MAX_ITEMS) return;
+    if (Array.isArray(node)) { node.forEach(n => collectArticles(n, out, depth + 1)); return; }
+    if (typeof node !== 'object') return;
+    const title = node.headline || node.title || node.name;
+    const link = node.url || node.link;
+    if (typeof title === 'string' && typeof link === 'string' && /^https?:\/\//.test(link)
+        && /premierleague\.com/.test(link) && title.length > 12) {
+        out.push({
+            title, link,
+            summary: node.description || node.subtitle,
+            image: typeof node.image === 'string' ? node.image : node.image?.url,
+            published: node.datePublished || node.date
+        });
+    }
+    Object.values(node).forEach(v => collectArticles(v, out, depth + 1));
+}
+
+// ===== Shared helpers =====
+const tag = (xml, name) => {
+    const m = new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, 'i').exec(xml);
+    return m ? decode(m[1]) : '';
+};
+/* CDATA has to come off before anything strips tags: <![CDATA[...]]> matches
+   /<[^>]*>/ in its entirety, so a tag-stripper run first eats the content along
+   with the wrapper and leaves an empty string. */
+const uncdata = s => String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+const attr = (xml, name, key) => {
+    const m = new RegExp(`<${name}[^>]*\\s${key}=["']([^"']+)["']`, 'i').exec(xml);
+    return m ? m[1] : null;
+};
+const firstImg = html => {
+    const m = /<img[^>]+?src\s*=\s*["']([^"']+)["']/i.exec(html || '');
+    return m ? m[1] : null;
+};
+
+function decode(s) {
+    return uncdata(s)
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        // Ampersand last, so &amp;lt; does not become a real < on the way through.
+        .replace(/&amp;/g, '&')
+        .trim();
+}
+
+const stripTags = s => decode(uncdata(s).replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+
+/* One shape, whatever answered. Returns null for a row that has no title or no
+   link, since a headline you cannot click is not an article. */
+export function normalise(raw) {
+    if (!raw) return null;
+    const title = stripTags(raw.title);
+    let link = String(raw.link || '').trim();
+    if (!title || !link) return null;
+    if (link.startsWith('/')) link = 'https://www.premierleague.com' + link;
+    if (!/^https?:\/\//i.test(link)) return null;
+
+    let image = raw.image ? String(raw.image).trim() : null;
+    if (image && image.startsWith('//')) image = 'https:' + image;
+    if (image && !/^https?:\/\//i.test(image)) image = null;
+
+    let published = null;
+    if (raw.published) {
+        const d = new Date(raw.published);
+        if (!isNaN(d.getTime())) published = d.toISOString();
+    }
+
+    return {
+        title,
+        link: link.replace(/^http:\/\//i, 'https://'),
+        summary: stripTags(raw.summary).slice(0, 240) || null,
+        image: image ? image.replace(/^http:\/\//i, 'https://') : null,
+        published,
+        source: 'Premier League'
+    };
+}
+
+/* De-duplicate by link, keep the order the source gave us. */
+export function dedupe(items) {
+    const seen = new Set();
+    return items.filter(i => {
+        if (seen.has(i.link)) return false;
+        seen.add(i.link);
+        return true;
+    });
+}
+
+async function tryFetch(src) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+        const res = await fetch(src.url, { headers: src.headers, signal: controller.signal });
+        if (!res.ok) return { ok: false, why: `HTTP ${res.status}` };
+        const body = await res.text();
+        const items = dedupe(src.parse(body));
+        if (!items.length) return { ok: false, why: `answered ${body.length}B but no articles could be read from it` };
+        return { ok: true, items };
+    } catch (e) {
+        return { ok: false, why: e.name === 'AbortError' ? `timed out after ${TIMEOUT_MS}ms` : e.message };
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function main() {
+    const args = process.argv.slice(2);
+    const dryRun = args.includes('--dry-run');
+    const outIdx = args.indexOf('--out');
+    const out = outIdx > -1 ? args[outIdx + 1] : 'data/pl-news.json';
+
+    const tried = [];
+    for (const src of SOURCES) {
+        process.stdout.write(`→ ${src.name}\n`);
+        const r = await tryFetch(src);
+        if (r.ok) {
+            console.log(`✓ ${src.name}: ${r.items.length} article(s)`);
+            r.items.slice(0, 3).forEach(i => console.log(`    · ${i.title}`));
+            const payload = {
+                fetchedAt: new Date().toISOString(),
+                source: src.name,
+                items: r.items.slice(0, MAX_ITEMS)
+            };
+            if (dryRun) { console.log(JSON.stringify(payload, null, 2)); return; }
+            fs.mkdirSync(path.dirname(out), { recursive: true });
+            fs.writeFileSync(out, JSON.stringify(payload, null, 2) + '\n');
+            console.log(`written to ${out}`);
+            return;
+        }
+        console.log(`  ✗ ${r.why}`);
+        tried.push(`${src.name}: ${r.why}`);
+    }
+
+    /* Every source failed. Say so loudly and leave whatever is already in the
+       file alone — a stale article list is better than none, and the run log
+       now names each thing that was tried and why it did not work. */
+    console.error('::error::No Premier League news source answered. Tried:');
+    tried.forEach(t => console.error(`::error::  ${t}`));
+    process.exit(1);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+    main().catch(e => { console.error(`::error::${e.message}`); process.exit(1); });
+}

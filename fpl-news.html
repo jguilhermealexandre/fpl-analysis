@@ -19,8 +19,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=181">
-    <link rel="stylesheet" href="styles/v2-design.css?v=181">
+    <link rel="stylesheet" href="styles/common.css?v=182">
+    <link rel="stylesheet" href="styles/v2-design.css?v=182">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -521,9 +521,9 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=181"></script>
-    <script src="scripts/common.js?v=181"></script>
-    <script src="scripts/sidebar-nav.js?v=181"></script>
+    <script src="scripts/error-monitor.js?v=182"></script>
+    <script src="scripts/common.js?v=182"></script>
+    <script src="scripts/sidebar-nav.js?v=182"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -641,23 +641,52 @@
             if (externalNewsCache && (now - externalNewsFetchedAt) < 30 * 60 * 1000) {
                 return externalNewsCache;
             }
+            /* The Premier League is not in this list any more.
+               premierleague.com sends no CORS headers, so the browser cannot
+               read it and the rss2json detour depended on a feed URL that may
+               not serve RSS at all. It is fetched server-side now by
+               .github/workflows/fetch-pl-news.yml and read below from
+               data/pl-news.json, on our own origin. */
             const feeds = [
                 { url: 'https://feeds.bbci.co.uk/sport/football/premier-league/rss.xml', source: 'BBC Sport', badge: 'bbc' },
-                /* Two Premier League URLs on purpose. The site moved its news
-                   under /en/, and which of the two still serves RSS is not
-                   something this file can know — a feed that 404s is skipped by
-                   the loop below, and if both answer, the de-duplication by link
-                   further down drops the repeat. */
-                { url: 'https://www.premierleague.com/news.rss', source: 'Premier League', badge: 'pl' },
-                { url: 'https://www.premierleague.com/en/news.rss', source: 'Premier League', badge: 'pl' },
                 { url: 'https://www.skysports.com/rss/12040', source: 'Sky Sports', badge: 'sky' },
                 { url: 'https://www.theguardian.com/football/premierleague/rss', source: 'The Guardian', badge: 'guardian' }
             ];
             const items = [];
-            /* One story, once. Two of the feeds are the same publisher at two
-               URLs, and a publisher that syndicates to another can put the same
-               link in both — a duplicated card reads as a duplicated story. */
+            /* One story, once. A publisher that syndicates to another can put
+               the same link in both, and a duplicated card reads as a
+               duplicated story. */
             const seenLinks = new Set();
+
+            /* The Premier League's own articles, first, from the file the
+               scheduled job writes. It is optional in the sense that the page
+               still works without it — a missing file is three other feeds, not
+               an error — but it is the only source here that cannot silently
+               return nothing, because the job that writes it fails loudly. */
+            try {
+                const plRes = await fetch('data/pl-news.json?v=' + Math.floor(Date.now() / 300000));
+                if (plRes.ok) {
+                    const pl = await plRes.json();
+                    (pl.items || []).forEach(a => {
+                        if (!a.link || seenLinks.has(a.link)) return;
+                        seenLinks.add(a.link);
+                        items.push({
+                            headline: a.title,
+                            link: a.link,
+                            thumbnail: a.image || null,
+                            detail: a.summary || 'Premier League',
+                            source: 'Premier League',
+                            badge: 'pl',
+                            timestamp: a.published,
+                            teams: matchTeams(a.title),
+                            tags: tagArticle(a.title)
+                        });
+                    });
+                }
+            } catch (e) {
+                console.warn('Premier League news file unavailable:', e.message);
+            }
+
             for (const feed of feeds) {
                 try {
                     const rssUrl = encodeURIComponent(feed.url);

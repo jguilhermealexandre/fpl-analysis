@@ -1,0 +1,79 @@
+name: Fetch Premier League News
+
+# premierleague.com sends no CORS headers, so the site cannot read it from the
+# browser. Every attempt to work around that from the page — a feed URL through
+# api.rss2json.com — has depended on two things nobody can check from a browser:
+# whether that URL still serves RSS, and whether a third-party proxy maps the
+# fields through. This fetches it here instead, where there is no CORS and the
+# failure lands in a run log with a reason attached.
+#
+# tools/fetch-pl-news.mjs tries several endpoints and takes the first that
+# answers with articles, so one of them going away is a fallthrough rather than
+# an outage.
+
+on:
+  schedule:
+    # Four times a day. Club news is not a live feed and the page also carries
+    # BBC, Sky and the Guardian; this is the Premier League's own copy, which
+    # moves at the pace of press releases.
+    - cron: '20 6,11,16,21 * * *'
+  workflow_dispatch:
+
+# Writes data/ back to main, and nothing else.
+permissions:
+  contents: write
+
+# Shares a lane with the other data writers so two runs cannot race the branch.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch Premier League news
+        run: node tools/fetch-pl-news.mjs --out data/pl-news.json
+
+      # A valid-JSON-but-empty result would replace a good list with nothing, so
+      # the shape is checked before it is allowed anywhere near a commit.
+      - name: Check what was written
+        run: |
+          node -e '
+            const fs = require("fs");
+            let d;
+            try { d = JSON.parse(fs.readFileSync("data/pl-news.json", "utf8")); }
+            catch (e) { console.error("::error::pl-news.json is not valid JSON"); process.exit(1); }
+            if (!Array.isArray(d.items) || d.items.length < 3) {
+              console.error(`::error::only ${d.items ? d.items.length : 0} article(s) — refusing to publish that`);
+              process.exit(1);
+            }
+            const bad = d.items.filter(i => !i.title || !/^https:\/\//.test(i.link || ""));
+            if (bad.length) {
+              console.error(`::error::${bad.length} article(s) have no title or no https link`);
+              process.exit(1);
+            }
+            const withPics = d.items.filter(i => i.image).length;
+            console.log(`${d.items.length} articles from ${d.source}, ${withPics} with a picture`);
+          '
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/pl-news.json; then
+            echo "no change"
+            exit 0
+          fi
+          git add data/pl-news.json
+          git commit -m "Update Premier League news - $(date -u '+%Y-%m-%d %H:%M UTC')"
+          # The data lane is shared, so another writer may have pushed since
+          # checkout. Rebase onto it rather than failing the run.
+          git pull --rebase --autostash origin main
+          git push
