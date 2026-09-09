@@ -295,7 +295,15 @@ async function tryFetch(src) {
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
         const res = await fetch(src.url, { headers: src.headers, signal: controller.signal });
-        if (!res.ok) return { ok: false, why: `HTTP ${res.status}` };
+        if (!res.ok) {
+            /* An API that answers 400 is telling us what is wrong with the
+               request, and that sentence is the whole difference between
+               guessing at parameters and reading them off. A 404 says nothing,
+               so cap it — this goes in a public run log. */
+            const detail = await res.text().catch(() => '');
+            const why = `HTTP ${res.status}`;
+            return { ok: false, why: detail ? `${why} — ${detail.replace(/\s+/g, ' ').slice(0, 300)}` : why };
+        }
         const body = await res.text();
         const items = dedupe(src.parse(body));
         if (!items.length) return { ok: false, why: `answered ${body.length}B but no articles could be read from it` };
@@ -413,10 +421,77 @@ async function probe(headers) {
     });
 }
 
+/* Every plausible spelling of the SDP content request, tried at once.
+ *
+ * The endpoints answer 400, which means the path is right and the query is
+ * not — the host would say 404 otherwise, as footballapi.pulselive.com does.
+ * A 400 body normally names the parameter it did not like, so this fires a
+ * grid of variants and prints each status with its body. One run should end
+ * the guessing; whichever line comes back 200 becomes the source above.
+ */
+async function matrix(headers) {
+    const langs = ['EN', 'en', 'en-GB'];
+    const urls = [];
+    const add = u => { if (!urls.includes(u)) urls.push(u); };
+
+    for (const lang of langs) {
+        // Bare, so the error names what is missing rather than what is wrong.
+        add(`${SDP_API}/content/premierleague/${lang}`);
+        add(`${SDP_API}/content/premierleague/text/${lang}`);
+        // The two builders out of the bundle, with each paging convention.
+        add(`${SDP_API}/content/premierleague/${lang}?contentTypes=text&limit=10&offset=0&onlyRestrictedContent=false`);
+        add(`${SDP_API}/content/premierleague/${lang}?contentTypes=TEXT&limit=10&offset=0&onlyRestrictedContent=false`);
+        add(`${SDP_API}/content/premierleague/${lang}?contentTypes=text&pageSize=10&page=0&onlyRestrictedContent=false`);
+        add(`${SDP_API}/content/premierleague/text/${lang}?limit=10&offset=0`);
+        add(`${SDP_API}/content/premierleague/text/${lang}?pageSize=10&page=0`);
+        add(`${SDP_API}/content/premierleague/text/${lang}?pageSize=10&page=0&references=ALL`);
+    }
+    // Other content types the site uses, in case `text` is not what news is filed as.
+    ['news', 'editorial', 'article', 'story'].forEach(t =>
+        add(`${SDP_API}/content/premierleague/${t}/EN?pageSize=10&page=0`));
+    // And the API root, which often lists what it serves.
+    add(`${SDP_API}/content/premierleague`);
+
+    for (const url of urls) {
+        let line;
+        try {
+            const res = await fetch(url, { headers });
+            const body = await res.text();
+            line = `${res.status}  ${url}`;
+            const peek = body.replace(/\s+/g, ' ').slice(0, 220);
+            line += res.ok ? `\n      ${body.length}B  ${peek}` : `\n      ${peek}`;
+        } catch (e) {
+            line = `ERR  ${url}\n      ${e.message}`;
+        }
+        console.log(line);
+    }
+
+    /* And what the bundle says the parameters are, read out of the code that
+       builds them rather than inferred from an error message. */
+    console.log('\n--- how the bundle spells the query ---');
+    try {
+        const page = await (await fetch('https://www.premierleague.com/en/news', { headers })).text();
+        const ref = /import\(["'](\/resources\/[^"']+?\.js)["']\)/.exec(page);
+        if (!ref) { console.log('no bundle reference in the page'); return; }
+        const bundle = await (await fetch('https://www.premierleague.com' + ref[1], { headers })).text();
+        for (const key of ['onlyRestrictedContent', 'contentTypes', 'pageSize', 'X-Content-Language', 'account']) {
+            const idx = bundle.indexOf(key);
+            console.log(`\n[${key}] ${idx === -1 ? 'not present'
+                : '...' + bundle.slice(Math.max(0, idx - 500), idx + 500).replace(/\s+/g, ' ') + '...'}`);
+        }
+    } catch (e) {
+        console.log(`bundle read failed: ${e.message}`);
+    }
+}
+
 async function main() {
     const args = process.argv.slice(2);
     if (args.includes('--probe')) {
         await probe(PULSE_HEADERS);
+        return;
+    }
+    if (args.includes('--matrix')) {
+        await matrix(PULSE_HEADERS);
         return;
     }
     if (args.includes('--inspect')) {

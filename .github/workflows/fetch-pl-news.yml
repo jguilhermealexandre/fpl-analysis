@@ -22,7 +22,7 @@ on:
       mode:
         description: 'What to run'
         type: choice
-        options: [fetch, inspect, probe]
+        options: [fetch, inspect, probe, matrix]
         default: fetch
 
 # Writes data/ back to main, and nothing else.
@@ -53,6 +53,13 @@ jobs:
       - name: Probe the app bundle for its API
         if: inputs.mode == 'probe'
         run: node tools/fetch-pl-news.mjs --probe
+
+      # The SDP endpoints answer 400, not 404: the path is right and the query
+      # is not. This fires every plausible spelling and prints each error body,
+      # which is where the API says which parameter it wanted.
+      - name: Try every spelling of the content query
+        if: inputs.mode == 'matrix'
+        run: node tools/fetch-pl-news.mjs --matrix
 
       - name: Fetch Premier League news
         if: inputs.mode == '' || inputs.mode == 'fetch'
