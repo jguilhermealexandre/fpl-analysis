@@ -697,6 +697,24 @@
             return Math.min(90, ls.minutes / ls.starts);
         }
 
+        /* The statuses that mean "will not feature", as one list rather than as a
+           condition repeated in two places.
+
+           It was repeated in two places, and both were missing 'n' — FPL's code
+           for a player not in the squad at all, typically unregistered or out on
+           loan. Those players were projected exactly like anyone else. Measured
+           over the gameweeks with real team news: 56 player-gameweeks projecting
+           2.15 points and returning 0.00, and 2 of the 56 appeared at all.
+
+           A list nobody has to remember to update twice is the actual fix. 'd',
+           doubtful, is deliberately absent — that one is a probability, handled by
+           `avail` in the minutes model rather than by exclusion. */
+        const XP_STATUS_OUT = ['i', 'u', 's', 'n'];
+
+        function xpIsUnavailable(player) {
+            return !!player && XP_STATUS_OUT.indexOf(player.status) !== -1;
+        }
+
         function expectedMinutesModel(player) {
             const avail = player.status === 'd'
                 ? (player.chanceNextRound != null ? player.chanceNextRound : 50) / 100
@@ -743,8 +761,22 @@
             const minsPerStart = starts > 0
                 ? ownMinsPerStart * startEvidence + priorMinsPerStart * (1 - startEvidence)
                 : priorMinsPerStart;
-            const expMins = pStart * minsPerStart + (1 - pStart) * 12;
-            return { pStart, expMins, min90: expMins / 90 };
+            /* Not starting is worth twelve minutes off the bench — but only to a
+               player who is actually in the squad.
+
+               pStart already has `avail` folded into it, so `1 - pStart` GROWS as
+               a player's chance of featuring falls: the less likely he is to play,
+               the more bench time this credited him with. Backwards, and it showed.
+               Against real team news, doubtful players on a published 1-25% chance
+               projected 0.99 points and returned 0.03, with not one of them
+               completing an hour. They were not being benched, they were absent.
+
+               `avail - pStart` is the same quantity for a fit player — avail is 1
+               and the term is unchanged — and collapses toward zero as availability
+               does. It cannot go negative: pStart is clamped to 0.96 before being
+               multiplied by avail. */
+            const expMins = pStart * minsPerStart + (avail - pStart) * 12;
+            return { pStart, avail, expMins, min90: expMins / 90 };
         }
 
         // opts.fixture projects a specific match instead of the player's next one,
@@ -756,15 +788,18 @@
             const o = opts || {};
             const out = { total: 0, appearance: 0, attack: 0, cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, defCon: 0, cards: 0, pStart: 0 };
             if (!player) return out;
-            if (player.status === 'i' || player.status === 'u' || player.status === 's') return out;
+            if (xpIsUnavailable(player)) return out;
 
             const mins = player.minutes || 0;
             const games = computePlayerGamesPlayed(player);
-            const { pStart, min90 } = expectedMinutesModel(player);
+            const { pStart, avail, min90 } = expectedMinutesModel(player);
             out.pStart = pStart;
 
-            // 2 pts for 60+ minutes, 1 otherwise.
-            out.appearance = pStart * 2 + (1 - pStart) * 0.5;
+            // 2 pts for 60+ minutes, 1 otherwise. The second branch is worth
+            // `avail - pStart` rather than `1 - pStart`, for the reason given in
+            // expectedMinutesModel: an appearance point needs someone available to
+            // appear. Identical for a fit player, where avail is 1.
+            out.appearance = pStart * 2 + (avail - pStart) * 0.5;
 
             const fx = o.fixture !== undefined ? o.fixture : (player.fixtures || [])[0];
             const fdr = fx ? (fx.difficulty || 3) : 3;
@@ -858,7 +893,7 @@
             // thin, treat ep_next as a floor rather than letting a fit, expected
             // starter be projected at almost nothing purely for lack of history.
             // Once there's real evidence (~5 full matches) our model stands alone.
-            if (o.applyEpFloor !== false && player.status !== 'i' && player.status !== 'u' && player.status !== 's') {
+            if (o.applyEpFloor !== false && !xpIsUnavailable(player)) {
                 const evidence = Math.min(1, mins / 450);
                 const floor = (player.epNext || 0) * (1 - evidence);
                 out.total = Math.max(out.total, floor);
