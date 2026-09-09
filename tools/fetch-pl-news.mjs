@@ -607,6 +607,69 @@ async function headersProbe(headers) {
     [...ids].slice(0, 30).forEach(x => console.log('  ' + x));
 }
 
+/* The two headers the bundle sets were not enough on their own, so sweep the
+ * ways they can be spelled rather than guessing one at a time.
+ *
+ * The version arrives as "v1.52.5" from the resources path; the site may well
+ * send it without the prefix, and the gateway's configuration lookup is an
+ * exact match either way. The application name, the presence of Origin, and
+ * which of the two gateway hosts is addressed are the other free variables.
+ * Each combination is one line of output with its status and its body.
+ */
+async function headerSweep(baseHeaders) {
+    const cfg = await discoverSiteConfig(baseHeaders);
+    console.log(`discovered: version=${JSON.stringify(cfg && cfg.version)} api=${JSON.stringify(cfg && cfg.api)}\n`);
+
+    const version = (cfg && cfg.version) || 'v1.52.5';
+    const bare = version.replace(/^v/, '');
+    const hosts = [
+        (cfg && cfg.api) || SDP_API,
+        'https://sdp-prem-prod.premier-league-prod.pulselive.com/api',
+        'https://sdp-prem-test.platform-eu-test.pulselive.com/api'
+    ].filter((h, i, a) => a.indexOf(h) === i);
+
+    const versions = [version, bare, ''];
+    const names = ['web', 'Web', 'premierleague-web', 'pl-web', ''];
+
+    const variants = [];
+    for (const name of names) {
+        for (const ver of versions) {
+            variants.push({
+                label: `name=${name || '(none)'} ver=${ver || '(none)'}`,
+                headers: {
+                    ...baseHeaders,
+                    Accept: 'application/json',
+                    ...(name ? { 'X-Pulse-Application-Name': name } : {}),
+                    ...(ver ? { 'X-Pulse-Application-Version': ver } : {})
+                }
+            });
+        }
+    }
+    // And the same request with the browser-ish headers stripped, in case one
+    // of Origin/Referer/Account is what the gateway is rejecting.
+    variants.push({
+        label: 'only the two pulse headers, no Origin/Referer/Account',
+        headers: { Accept: 'application/json', 'X-Pulse-Application-Name': 'web', 'X-Pulse-Application-Version': version }
+    });
+    variants.push({ label: 'no custom headers at all', headers: { Accept: 'application/json' } });
+
+    for (const host of hosts) {
+        console.log(`\n===== ${host} =====`);
+        const url = `${host}/content/${PULSE_ACCOUNT}/${PULSE_LANG}`
+            + `?contentTypes=text&offset=0&limit=5&onlyRestrictedContent=false`;
+        for (const v of variants) {
+            try {
+                const res = await fetch(url, { headers: v.headers });
+                const body = await res.text();
+                console.log(`${res.status}  ${v.label}`);
+                console.log(`      ${body.replace(/\s+/g, ' ').slice(0, 200)}`);
+            } catch (e) {
+                console.log(`ERR  ${v.label}: ${e.message}`);
+            }
+        }
+    }
+}
+
 async function main() {
     const args = process.argv.slice(2);
     if (args.includes('--probe')) {
@@ -619,6 +682,10 @@ async function main() {
     }
     if (args.includes('--headers')) {
         await headersProbe(PULSE_HEADERS);
+        return;
+    }
+    if (args.includes('--hsweep')) {
+        await headerSweep(PULSE_HEADERS);
         return;
     }
     if (args.includes('--inspect')) {

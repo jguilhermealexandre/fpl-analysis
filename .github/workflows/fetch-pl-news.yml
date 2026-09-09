@@ -22,7 +22,7 @@ on:
       mode:
         description: 'What to run'
         type: choice
-        options: [fetch, inspect, probe, matrix, headers]
+        options: [fetch, inspect, probe, matrix, headers, hsweep]
         default: fetch
 
 # Writes data/ back to main, and nothing else.
@@ -68,6 +68,13 @@ jobs:
       - name: Read the gateway headers out of the bundle
         if: inputs.mode == 'headers'
         run: node tools/fetch-pl-news.mjs --headers
+
+      # The two headers alone did not open it, so sweep how they can be
+      # spelled — version with and without its v, four application names,
+      # both gateway hosts, and the request stripped back to nothing.
+      - name: Sweep the header combinations
+        if: inputs.mode == 'hsweep'
+        run: node tools/fetch-pl-news.mjs --hsweep
 
       - name: Fetch Premier League news
         if: inputs.mode == '' || inputs.mode == 'fetch'
