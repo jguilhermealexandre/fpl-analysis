@@ -123,10 +123,14 @@ const scraped = await page.evaluate(() => {
 
     for (const a of anchors) {
         const href = a.href;
-        if (!/^https?:\/\//.test(href)) continue;
-        // Article routes on the Premier League's own site and on the club
-        // sites it syndicates from both carry /news/ in the path.
-        if (!/\/news\//.test(href) && !/\/en\/news\//.test(href)) continue;
+        /* premierleague.com's own articles, and nothing else.
+         *
+           That page carries two things: the Premier League's own editorial and
+           a rail of stories syndicated from club sites — manutd.com,
+           chelseafc.com, liverpoolfc.com. Taking both meant the news page filled
+           up with club PR under a "Premier League" badge, which is a different
+           publication wearing their name. Only their own domain counts. */
+        if (!/^https:\/\/(www\.)?premierleague\.com\/.*\/news\//.test(href)) continue;
         if (seenHref.has(href)) continue;
 
         /* The heading inside the card, if there is one, is the headline; the
@@ -175,12 +179,8 @@ const scraped = await page.evaluate(() => {
         out.push({ title, link: href, image, published, host });
     }
 
-    /* premierleague.com's own articles lead, club news follows. Within each
-       group the page's order is kept, which is the Premier League's own idea
-       of what matters today. */
-    const own = out.filter(a => a.host === 'premierleague.com');
-    const club = out.filter(a => a.host !== 'premierleague.com');
-    return [...own, ...club];
+    // Their page order is kept, which is their own idea of what matters today.
+    return out;
 });
 
 /* The Premier League's own articles, if the news page did not carry any.

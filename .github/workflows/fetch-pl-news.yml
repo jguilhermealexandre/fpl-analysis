@@ -125,6 +125,15 @@ jobs:
               console.error(`::error::${bad.length} article(s) have no title or no https link`);
               process.exit(1);
             }
+            // Their own articles only. The page also carries a rail of stories
+            // syndicated from club sites, and those must never be published
+            // under a Premier League badge — so a link off their domain is a
+            // failed run, not a card.
+            const offsite = d.items.filter(i => !/^https:\/\/(www\.)?premierleague\.com\//.test(i.link));
+            if (offsite.length) {
+              console.error(`::error::${offsite.length} article(s) are not on premierleague.com — e.g. ${offsite[0].link}`);
+              process.exit(1);
+            }
             const withPics = d.items.filter(i => i.image).length;
             console.log(`${d.items.length} articles from ${d.source}, ${withPics} with a picture`);
           '
