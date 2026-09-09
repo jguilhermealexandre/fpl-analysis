@@ -1335,11 +1335,24 @@
                 const excludeIds = new Set(selectedPlayers.map(p => p.id));
                 const best = findTransferCandidates(out.position, budget, excludeIds)[0];
                 if (!best) return;
-                const gain = predictedGWPoints(best) - predictedGWPoints(out);
+                /* Priced over the run the candidate list is ranked on, which is what
+                   the comment above has always claimed happened here. It used to take
+                   [0] off a list ordered by calculateTransferScore and then judge it
+                   over a single gameweek, so the best candidate over the run was not
+                   necessarily the one considered — frequently it was never seen.
+
+                   TW_MIN_FREE_GAIN is the margin the transfer recommender already
+                   requires before spending a free transfer, and is stated over this
+                   same whole horizon rather than per gameweek. */
+                const runGWs = typeof twRunGWs === 'function' ? twRunGWs() : [];
+                const inXP = runGWs.length ? twXPOver(best, runGWs) : predictedGWPoints(best);
+                const outXP = runGWs.length ? twXPOver(out, runGWs) : predictedGWPoints(out);
+                const gain = inXP - outXP;
+                const minGain = runGWs.length ? TW_MIN_FREE_GAIN : 0.8;
                 // Forced moves go through even at a small loss — the player can't play.
-                if (!forced && gain < 0.8) return;
+                if (!forced && gain < minGain) return;
                 seen.add(out.id);
-                transferCandidates.push({ out, in: best, gain, forced, budget });
+                transferCandidates.push({ out, in: best, gain, forced, budget, inXP, outXP, gws: runGWs.length });
             };
 
             injuredStarters.forEach(a => considerForTransfer(a, true));
@@ -1360,7 +1373,12 @@
                         kind: 'transfer',
                         urgent: t.forced,
                         title: `${t.forced ? 'Replace' : 'Upgrade'} ${t.out.name}`,
-                        detail: `${t.in.name} [${predictedGWPoints(t.in).toFixed(1)} xP] over ${t.out.name} [${predictedGWPoints(t.out).toFixed(1)} xP]`
+                        // The bracketed figures are the same two the gain is the
+                        // difference of, over the same run — printing a one-gameweek
+                        // xP beside a five-gameweek gain reads as arithmetic that
+                        // does not add up.
+                        detail: `${t.in.name} [${t.inXP.toFixed(1)} xP] over ${t.out.name} [${t.outXP.toFixed(1)} xP]`
+                            + `${t.gws > 1 ? ` across ${t.gws} GWs` : ''}`
                             + `${t.gain > 0 ? ` — projected +${t.gain.toFixed(1)} pts` : ''} · budget £${t.budget.toFixed(1)}m`,
                         actionLabel: 'View options',
                         action: `openTransferPanel(${t.out.id})`

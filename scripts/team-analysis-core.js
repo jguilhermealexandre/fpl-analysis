@@ -162,30 +162,14 @@
             if (text) document.getElementById('loadingText').textContent = text;
         }
 
-        // Position-level baselines. The minutes bar has to scale with the season:
-        // a flat 200 matches nobody until GW3, which silently collapsed every
-        // position onto one hardcoded fallback — so a goalkeeper was regressed
-        // toward the same 0.30 xGI/90 baseline as a striker.
+        /* Position-level baselines, built by the engine that consumes them.
+
+           positionAverages is one of the engine's documented inputs and its
+           medPrice is the reference the price-quality prior measures against, so
+           the construction belongs next to the model rather than in the squad
+           page that happened to need it first. */
         function computePositionAverages() {
-            positionAverages = {};
-            const minMinutes = Math.min(200, Math.max(currentGW - 1, 1) * 60);
-            // Sensible per-position xGI/90 priors for when there's still no sample.
-            const FALLBACK_XGI90 = { 1: 0.01, 2: 0.08, 3: 0.28, 4: 0.45 };
-            [1, 2, 3, 4].forEach(pos => {
-                const posPlayers = allPlayers.filter(p => p.position === pos && p.minutes >= minMinutes);
-                if (posPlayers.length === 0) { positionAverages[pos] = { form: 3, ppg: 3, ppm: 15, xGIPer90: FALLBACK_XGI90[pos] }; return; }
-                const avg = (arr, fn) => arr.reduce((s, p) => s + fn(p), 0) / arr.length;
-                // Median price for this position, which is the reference point the
-                // projection's price-quality prior measures a player against.
-                const prices = posPlayers.map(p => p.price).sort((a, b) => a - b);
-                positionAverages[pos] = {
-                    form: avg(posPlayers, p => p.form),
-                    ppg: avg(posPlayers, p => p.ppg),
-                    ppm: avg(posPlayers, p => p.points / Math.max(p.price, 1)),
-                    xGIPer90: avg(posPlayers, p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0),
-                    medPrice: prices[Math.floor(prices.length / 2)] || 0
-                };
-            });
+            positionAverages = xpBuildPositionAverages(allPlayers, currentGW);
         }
 
         // ===== TEAM ANALYSIS SCORES (ported from teams-analysis) =====
@@ -292,184 +276,12 @@
         }
 
         function computeTeamScores(bootTeams, fixturesData) {
-            teamAnalysis = {};
-
-            // finished_provisional flips as soon as full time is blown — f.finished stays
-            // false until FPL confirms bonus points, which can take a day or more, so a
-            // team's very first result of the season wouldn't count here at all otherwise
-            // (form/attack/defense would fall back to a neutral baseline for every team,
-            // making every player look like their team is "struggling").
-            const finishedFixtures = fixturesData
-                .filter(f => f.finished_provisional && f.team_h_score !== null)
-                .sort((a, b) => a.event - b.event);
-
-            const upcomingFixtures = fixturesData
-                .filter(f => !f.finished_provisional && f.event !== null)
-                .sort((a, b) => a.event - b.event);
-
-            bootTeams.forEach(team => {
-                const teamId = team.id;
-
-                // Past fixtures for this team
-                const pastFixtures = finishedFixtures
-                    .filter(f => f.team_h === teamId || f.team_a === teamId);
-                const last10 = pastFixtures.slice(-10);
-                const last5 = pastFixtures.slice(-5);
-
-                // Future fixtures (next 5)
-                const futureFixtures = upcomingFixtures
-                    .filter(f => f.team_h === teamId || f.team_a === teamId)
-                    .slice(0, 5);
-
-                // Compute goals scored/conceded from last 10 games
-                let totalScored = 0, totalConceded = 0;
-                let homeStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
-                let awayStats = { goals: 0, conceded: 0, games: 0, cleanSheets: 0 };
-
-                last10.forEach(f => {
-                    const isHome = f.team_h === teamId;
-                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
-                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
-                    totalScored += scored;
-                    totalConceded += conceded;
-                    if (isHome) {
-                        homeStats.goals += scored; homeStats.conceded += conceded;
-                        homeStats.games++; if (conceded === 0) homeStats.cleanSheets++;
-                    } else {
-                        awayStats.goals += scored; awayStats.conceded += conceded;
-                        awayStats.games++; if (conceded === 0) awayStats.cleanSheets++;
-                    }
-                });
-
-                const gamesPlayed = last10.length || 1;
-                const avgGoals = totalScored / gamesPlayed;
-                const avgConceded = totalConceded / gamesPlayed;
-
-                // Attack Power (0-100): blend actual goals with FPL strength
-                const fplAttackStrength = (team.strength_attack_home + team.strength_attack_away) / 2;
-                const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));
-                const goalRate = Math.min(1, avgGoals / 2.0);
-                const attackPower = Math.round(Math.min(100, Math.max(0, (goalRate * 0.55 + fplAttNorm * 0.45) * 100)));
-
-                // Defense Power (0-100) - inverted
-                const fplDefenseStrength = (team.strength_defence_home + team.strength_defence_away) / 2;
-                const fplDefNorm = Math.min(1, Math.max(0, (fplDefenseStrength - 900) / 500));
-                const concedeRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.0)));
-                const defensePower = Math.round(Math.min(100, Math.max(0, (concedeRate * 0.55 + fplDefNorm * 0.45) * 100)));
-
-                // Home/Away splits
-                const fplAttHomeNorm = Math.min(1, Math.max(0, (team.strength_attack_home - 900) / 500));
-                const fplAttAwayNorm = Math.min(1, Math.max(0, (team.strength_attack_away - 900) / 500));
-                const fplDefHomeNorm = Math.min(1, Math.max(0, (team.strength_defence_home - 900) / 500));
-                const fplDefAwayNorm = Math.min(1, Math.max(0, (team.strength_defence_away - 900) / 500));
-
-                const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                    (Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.55 + fplAttHomeNorm * 0.45) * 100))) : attackPower;
-                const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                    (Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.55 + fplAttAwayNorm * 0.45) * 100))) : attackPower;
-                const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                    (Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.0))) * 0.55 + fplDefHomeNorm * 0.45) * 100))) : defensePower;
-                const defensePowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                    (Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.0))) * 0.55 + fplDefAwayNorm * 0.45) * 100))) : defensePower;
-
-                // Form Rating (0-100) - recency-weighted W/D/L from last 5
-                const formWeights = [5, 4, 3, 2, 1];
-                const reversedResults = [...last5].reverse();
-                let weightedPts = 0, weightSum = 0;
-                let wins = 0, draws = 0, losses = 0;
-                reversedResults.forEach((f, i) => {
-                    const isHome = f.team_h === teamId;
-                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
-                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
-                    const result = scored > conceded ? 'W' : scored === conceded ? 'D' : 'L';
-                    const pts = result === 'W' ? 3 : result === 'D' ? 1 : 0;
-                    weightedPts += pts * formWeights[i];
-                    weightSum += formWeights[i];
-                    if (result === 'W') wins++; else if (result === 'D') draws++; else losses++;
-                });
-                // Map weighted points-per-game onto the 0-100 rating so that a team
-                // drawing its games lands mid-scale. The old formula scaled the
-                // win-ratio straight onto 0-70, which put an all-draws record at 23 —
-                // under the 40 "struggling" cut-off — so a single 2-2 draw in GW1 had
-                // every player on that team badged as struggling.
-                // Anchors: 0.0 ppg -> 10, 1.0 ppg (all draws) -> 50, 3.0 ppg -> 90.
-                const weightedPpg = weightSum > 0 ? weightedPts / weightSum : 1;
-                const formBase = weightedPpg <= 1
-                    ? 10 + weightedPpg * 40
-                    : 50 + ((weightedPpg - 1) / 2) * 40;
-
-                // GD bonus from last 5
-                const recentGD = last5.reduce((sum, f) => {
-                    const isHome = f.team_h === teamId;
-                    return sum + (isHome ? (f.team_h_score || 0) : (f.team_a_score || 0))
-                                - (isHome ? (f.team_a_score || 0) : (f.team_h_score || 0));
-                }, 0);
-                const gdBonus = Math.min(10, Math.max(-10, recentGD * 2));
-
-                // Streak bonus
-                let streakBonus = 0;
-                for (let i = 0; i < reversedResults.length; i++) {
-                    const f = reversedResults[i];
-                    const isHome = f.team_h === teamId;
-                    const scored = isHome ? (f.team_h_score || 0) : (f.team_a_score || 0);
-                    const conceded = isHome ? (f.team_a_score || 0) : (f.team_h_score || 0);
-                    if (scored > conceded) streakBonus += 3;
-                    else if (scored === conceded) streakBonus += 1;
-                    else break;
-                }
-                streakBonus = Math.min(15, streakBonus);
-
-                const formRating = Math.round(Math.min(100, Math.max(0, formBase + gdBonus + streakBonus)));
-
-                // Fixture Score (0-100)
-                let totalFdr = 0;
-                const futureDetails = futureFixtures.map(f => {
-                    const isHome = f.team_h === teamId;
-                    const fdr = isHome ? f.team_h_difficulty : f.team_a_difficulty;
-                    totalFdr += fdr || 3;
-                    return { fdr: fdr || 3, isHome };
-                });
-                const avgFdr = futureDetails.length > 0 ? totalFdr / futureDetails.length : 3;
-                const homeFixCount = futureDetails.filter(f => f.isHome).length;
-                const fixtureScore = Math.round(Math.min(100, Math.max(0,
-                    ((5 - avgFdr) / 4) * 85 + (homeFixCount / Math.max(1, futureDetails.length)) * 15)));
-
-                // Clean Sheet Rate
-                const totalCS = homeStats.cleanSheets + awayStats.cleanSheets;
-                const csRate = gamesPlayed > 0 ? totalCS / gamesPlayed : 0;
-
-                // xG trend data (ported from fpl-players-analysis.html's computeTeamScores,
-                // so the shared AI Scouting Report's Team Context section has real data here too)
-                const seasonXg = getTeamSeasonXg(teamId);
-                const recent6Xg = getTeamXgWindow(teamId, 6);
-                let xgTrend = 'stable', xgcTrend = 'stable';
-                if (recent6Xg && seasonXg && (seasonXg.games || 0) >= 10) {
-                    const xgDelta = recent6Xg.xGpg - seasonXg.xGpg;
-                    if (xgDelta > 0.25) xgTrend = 'rising';
-                    else if (xgDelta < -0.25) xgTrend = 'falling';
-                    const xgcDelta = recent6Xg.xGCpg - seasonXg.xGCpg;
-                    if (xgcDelta < -0.20) xgcTrend = 'improving';
-                    else if (xgcDelta > 0.20) xgcTrend = 'worsening';
-                }
-
-                teamAnalysis[teamId] = {
-                    attackPower, defensePower, formRating, fixtureScore,
-                    attackPowerHome, attackPowerAway, defensePowerHome, defensePowerAway,
-                    xgTrend, xgcTrend, xgTrendDelta: recent6Xg && seasonXg ? recent6Xg.xGpg - seasonXg.xGpg : 0,
-                    xgcTrendDelta: recent6Xg && seasonXg ? seasonXg.xGCpg - recent6Xg.xGCpg : 0,
-                    avgGoals, avgConceded, avgFdr, csRate, totalCS,
-                    // Needed to tell a genuine home/away split from the fallback:
-                    // *PowerHome/Away silently reuse the overall rating at 0 games.
-                    homeGames: homeStats.games, awayGames: awayStats.games,
-                    wins, draws, losses, gamesPlayed,
-                    // Real count of completed matches. `gamesPlayed` above is
-                    // `last10.length || 1`, so it reports 1 even for a team that
-                    // hasn't kicked a ball — no good for "do we have data yet?".
-                    matchesPlayed: pastFixtures.length,
-                    teamName: team.short_name || team.name
-                };
-            });
-            console.log('Team analysis computed for', Object.keys(teamAnalysis).length, 'teams');
+            /* The model moved to scripts/xp-engine.js, alongside the other
+               builders for the engine's documented inputs. The name stays because
+               this file's load path and the backtest harness both call it, and
+               because the global it fills is what every reader on this page
+               expects to find. */
+            teamAnalysis = xpBuildTeamScores(bootTeams, fixturesData);
         }
 
         // ===== DATA LOADING =====
@@ -529,80 +341,17 @@
                 if (playersDataRes?.metadata?.lastUpdated && window.updateDataFreshness) window.updateDataFreshness(playersDataRes.metadata.lastUpdated);
                 console.log('[Players] Players detail data:', playersDetailData ? `${(playersDetailData.players||[]).length} players with history` : 'not available');
 
-                // Build players with ALL available data
-                allPlayers = bootData.elements.map(p => ({
-                    id: p.id, code: p.code, name: p.web_name, fullName: `${p.first_name} ${p.second_name}`,
-                    squadNumber: p.squad_number,
-                    team: teams[p.team]?.short_name || 'N/A', teamId: p.team,
-                    position: p.element_type, price: p.now_cost / 10,
-                    form: parseFloat(p.form) || 0, points: p.total_points,
-                    ppg: parseFloat(p.points_per_game) || 0,
-                    ownership: parseFloat(p.selected_by_percent) || 0,
-                    status: p.status, news: p.news, newsAdded: p.news_added || null,
-                    chanceNextRound: p.chance_of_playing_next_round,
-                    minutes: p.minutes, starts: p.starts || 0,
-                    goals: p.goals_scored, assists: p.assists,
-                    cleanSheets: p.clean_sheets, goalsConceded: p.goals_conceded || 0,
-                    xG: parseFloat(p.expected_goals) || 0, xA: parseFloat(p.expected_assists) || 0,
-                    xGI: parseFloat(p.expected_goal_involvements) || 0,
-                    xGC: parseFloat(p.expected_goals_conceded) || 0,
-                    ictIndex: parseFloat(p.ict_index) || 0,
-                    influence: parseFloat(p.influence) || 0,
-                    creativity: parseFloat(p.creativity) || 0,
-                    threat: parseFloat(p.threat) || 0,
-                    bonus: p.bonus, bps: p.bps,
-                    yellowCards: p.yellow_cards, redCards: p.red_cards,
-                    saves: p.saves || 0,
-                    // Defensive contribution — the 25/26 scoring route. Tackles,
-                    // clearances/blocks/interceptions and recoveries, totalled by
-                    // FPL, worth 2 points once a per-match threshold is cleared.
-                    defCon: p.defensive_contribution || 0,
-                    defCon90: parseFloat(p.defensive_contribution_per_90) || 0,
-                    /* FPL publishes its own per-90s and its own within-position
-                       ranks. Both were being recomputed from season totals in
-                       three places and the ranks were not available at all, which
-                       is why every rate on the site was shown raw — 0.32 xGI/90
-                       is elite for a defender and ordinary for a striker, and
-                       nothing could say which. rank_type is 1 = best within the
-                       position; scripts/transfer-funnel.js turns them into
-                       percentiles for its quality filter. */
-                    xG90: p.expected_goals_per_90 != null ? parseFloat(p.expected_goals_per_90) : null,
-                    xA90: p.expected_assists_per_90 != null ? parseFloat(p.expected_assists_per_90) : null,
-                    xGI90: p.expected_goal_involvements_per_90 != null ? parseFloat(p.expected_goal_involvements_per_90) : null,
-                    xGC90: p.expected_goals_conceded_per_90 != null ? parseFloat(p.expected_goals_conceded_per_90) : null,
-                    saves90: p.saves_per_90 != null ? parseFloat(p.saves_per_90) : null,
-                    starts90: p.starts_per_90 != null ? parseFloat(p.starts_per_90) : null,
-                    cs90: p.clean_sheets_per_90 != null ? parseFloat(p.clean_sheets_per_90) : null,
-                    formRankType: p.form_rank_type || null,
-                    ppgRankType: p.points_per_game_rank_type || null,
-                    ictRankType: p.ict_index_rank_type || null,
-                    threatRankType: p.threat_rank_type || null,
-                    creativityRankType: p.creativity_rank_type || null,
-                    ownershipRankType: p.selected_rank_type || null,
-                    // Set-piece duty as published, rather than inferred from a
-                    // goals-minus-xG gap. 1 = first choice.
-                    penaltiesOrder: p.penalties_order || null,
-                    cornersOrder: p.corners_and_indirect_freekicks_order || null,
-                    freekicksOrder: p.direct_freekicks_order || null,
-                    transfersIn: p.transfers_in_event || 0,
-                    transfersOut: p.transfers_out_event || 0,
-                    transfersInTotal: p.transfers_in || 0,
-                    transfersOutTotal: p.transfers_out || 0,
-                    costChangeEvent: p.cost_change_event || 0,
-                    costChangeStart: p.cost_change_start || 0,
-                    /* Official price engine: a 0->100 progress meter toward the
-                       next change, the game's own forecast of it for today/+1/+2
-                       days, and a lock before which the player cannot move.
-                       Read by scripts/price-watch.js. */
-                    priceProgress: parseFloat(p.price_change_percent) || 0,
-                    priceProjection: (p.price_change_projections || []).map(x => parseFloat(x.projected_percent) || 0),
-                    priceLockedUntil: p.price_change_locked_until || null,
-                    epNext: parseFloat(p.ep_next) || 0,
-                    dreamteamCount: p.dreamteam_count || 0,
-                    valueForm: parseFloat(p.value_form) || 0,
-                    valueSeason: parseFloat(p.value_season) || 0,
-                    fixtures: teamFixtures[p.team] || []
-                }));
+                /* Built by the projection engine rather than here.
+
+                   The shape below is the engine's input contract — every field
+                   projectPlayerPointsDetailed reads (minutes, starts, xG, xA,
+                   bonus, saves, status, chanceNextRound, penaltiesOrder, teamId)
+                   comes out of this one mapping, and until it moved, this file was
+                   the only place in the codebase that produced it. That is the
+                   real reason the projection could not be used on the players
+                   page: not the missing <script> tag, but that nothing else could
+                   build a player the engine understood. */
+                allPlayers = xpBuildPlayers(bootData.elements, teams, teamFixtures);
 
                 totalFplPlayers = bootData.total_players || 11000000;
 

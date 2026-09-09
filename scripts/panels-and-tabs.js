@@ -94,8 +94,21 @@
 
             // The player being replaced, kept on screen as the thing every candidate
             // is being judged against — otherwise the numbers below have no anchor.
+            /* Priced over the same run findTransferCandidates just ranked on, so
+               the order of the list and the delta printed on each row are one
+               quantity rather than two opinions about it. This used to be a
+               one-gameweek delta against a list ordered by calculateTransferScore,
+               which is how the top card could show a smaller gain than the card
+               under it. Falls back to the next gameweek alone when the engine
+               cannot project, and the tooltips say which of the two you are
+               looking at. */
             const outCols = computePlayerStatColumns(player);
-            const outXP = predictedGWPoints(player);
+            const runGWs = typeof twRunGWs === 'function' ? twRunGWs() : [];
+            const projecting = runGWs.length > 0 && candidates.some(c => c._xpRun != null);
+            const outXP = projecting ? twXPOver(player, runGWs) : predictedGWPoints(player);
+            const horizon = projecting
+                ? `the next ${runGWs.length} gameweek${runGWs.length === 1 ? '' : 's'}`
+                : 'the coming gameweek';
             const outFixtures = player.fixtures || teamFixtures[player.teamId] || [];
 
             let html = `
@@ -108,7 +121,7 @@
                 </div>
                 <div class="tp-benchmark-stats">
                     <span class="rc-pill" data-tooltip="${escHTML(outCols.form.tip)}">${escHTML(outCols.form.label)} <strong>${escHTML(String(outCols.form.value))}</strong></span>
-                    <span class="rc-pill" data-tooltip="Projected points for the upcoming gameweek — the figure every candidate below is compared against.">xP <strong>${outXP.toFixed(1)}</strong></span>
+                    <span class="rc-pill" data-tooltip="Projected points over ${escHTML(horizon)} — the figure every candidate below is compared against, and the order they are listed in.">xP <strong>${outXP.toFixed(1)}</strong></span>
                     ${renderFixtureChip(outFixtures[0])}
                 </div>
             </div>
@@ -116,7 +129,7 @@
             <div class="detail-section">
                 <div class="tp-head">
                     <span class="tp-head-title">⚡ AI-ranked replacements <span class="tp-head-budget">≤ £${maxPrice.toFixed(1)}m</span></span>
-                    <span class="tp-head-info" data-tooltip="Ranked by the same engine as the Transfer Wizard: recency-weighted form, fixture-adjusted opponent matchup and team context. Tick players to build an AI Scouting Report.">ℹ️</span>
+                    <span class="tp-head-info" data-tooltip="Ranked by projected points over ${escHTML(horizon)} — the same projection behind the pitch cards, the captain pick and the optimizer. Tick players to build an AI Scouting Report.">ℹ️</span>
                 </div>`;
 
             if (!candidates.length) {
@@ -127,10 +140,12 @@
                     const nextF = (teamFixtures[c.teamId] || c.fixtures || [])[0];
                     const cols = computePlayerStatColumns(c);
 
-                    // Both sides use predictedGWPoints so this delta matches the xP on
-                    // the pitch cards and in the optimizer. ep_next regresses toward the
-                    // mean and would disagree with every other number on the page.
-                    const delta = predictedGWPoints(c) - outXP;
+                    // Both sides come off the same projection over the same run, so
+                    // this is the quantity the list is sorted by rather than a second
+                    // opinion about it. ep_next regresses toward the mean and would
+                    // disagree with every other number on the page.
+                    const inXP = projecting ? c._xpRun : predictedGWPoints(c);
+                    const delta = inXP - outXP;
                     const better = delta > 0.05;
                     const worse = delta < -0.05;
                     const deltaCls = better ? 'good' : worse ? 'bad' : 'flat';
@@ -148,8 +163,8 @@
                             <span class="rc-price">£${c.price.toFixed(1)}m ${priceChangeBadge(c)}</span>
                         </div>
                         <div class="rc-mid">
-                            <span class="rc-score" data-tooltip="AI Transfer Score — the engine's overall ranking of this candidate for your squad. Higher is better; it is a ranking, not a points prediction.">${(c._transferScore || 0).toFixed(0)} <span class="rc-score-unit">score</span></span>
-                            <span class="rc-delta ${deltaCls}" data-tooltip="Projected points for the coming gameweek: ${predictedGWPoints(c).toFixed(1)} xP against ${escHTML(player.name)}'s ${outXP.toFixed(1)} xP.">${deltaText} xP</span>
+                            <span class="rc-score" data-tooltip="Transfer score — a second reading, covering recency-weighted form, the opponent matchup and team context. The list is ordered by projected points; this only separates candidates that project the same.">${(c._transferScore || 0).toFixed(0)} <span class="rc-score-unit">score</span></span>
+                            <span class="rc-delta ${deltaCls}" data-tooltip="Projected points over ${escHTML(horizon)}: ${inXP.toFixed(1)} xP against ${escHTML(player.name)}'s ${outXP.toFixed(1)} xP.">${deltaText} xP</span>
                             ${renderFixtureChip(nextF)}
                         </div>
                         <div class="rc-pills">${pills}</div>

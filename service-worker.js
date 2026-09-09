@@ -1,4 +1,8 @@
-const CACHE_NAME = 'easyfpl-v6';
+/* Bumped to v7 along with the data-cache key fix below. The bump is the fix for
+   everyone already carrying the bug: activate deletes every cache whose name is
+   not this one, and that is the only thing that reclaims the entries the old key
+   piled up on devices in the wild. */
+const CACHE_NAME = 'easyfpl-v7';
 
 const STATIC_ASSETS = [
   '/',
@@ -27,6 +31,30 @@ const STATIC_ASSETS = [
   '/scripts/players-tables.js',
   '/footer.html',
 ];
+
+/* The key a data response is stored under, with the cache buster taken off.
+
+   Every /data/ URL arrives carrying ?v=<Date.now()/300000> from common.js, so the
+   URL rotates every five minutes even when the bytes behind it do not —
+   players-data.json is rewritten every four hours. Keyed on the request exactly
+   as it arrived, this cache gained a fresh 2.75 MB entry every five minutes and
+   never dropped one, and the offline fallback below could never match anything:
+   by the time a fetch failed, the URL it was looking up had already rotated past
+   everything stored. Navigations have always been keyed on their pathname for
+   this same reason; this brings data requests into line with them.
+
+   Only /data/ is normalised, and that restraint is the point. The other two
+   things this branch matches are the FPL proxy and api.rss2json.com, and
+   rss2json carries the whole feed identity in the query string: every news feed
+   shares the path /v1/api.json and differs only by ?rss_url=. Stripping the
+   query there would collapse them onto one key and serve one feed's articles in
+   place of another's. */
+function dataCacheKey(url) {
+  if (!url.pathname.startsWith('/data/')) return url.href;
+  const key = new URL(url.href);
+  key.searchParams.delete('v');
+  return key.href;
+}
 
 // Strip the "redirected" flag so cached responses can be served for navigations
 function cleanResponse(response) {
@@ -66,15 +94,23 @@ self.addEventListener('fetch', event => {
 
   // 1) Data files & API calls → network-first, fall back to cache
   if (url.pathname.startsWith('/data/') || url.hostname.includes('workers.dev') || url.hostname.includes('rss2json')) {
+    const cacheKey = dataCacheKey(url);
     event.respondWith(
       fetch(event.request)
         .then(response => {
           const safe = cleanResponse(response);
-          const clone = safe.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          /* Only a success is worth keeping. data/odds.json is optional and 404s
+             when no round is priced, and the proxy can answer 5xx while FPL is
+             updating; storing either would hand the fallback below an error to
+             serve in place of the last good copy, which is the opposite of the
+             job it exists to do. */
+          if (safe.ok) {
+            const clone = safe.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(cacheKey, clone));
+          }
           return safe;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => caches.match(cacheKey))
     );
     return;
   }

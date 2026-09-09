@@ -96,7 +96,7 @@
      teamAnalysis              for the team-form multiplier
      projectPlayerPointsForGW  scripts/xp-engine.js
      xpPlanGWs                 scripts/xp-engine.js
-     computePlayerGamesPlayed  scripts/squad-table-chart.js
+     computePlayerGamesPlayed  scripts/xp-engine.js
      minMinutesForCandidate    optional; transfer-engine.js installs a fallback
      teams                     optional, for club labels in the report
    ============================================ */

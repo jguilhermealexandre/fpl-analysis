@@ -76,6 +76,14 @@ jobs:
       - name: Stylesheets are balanced
         run: node tools/check-inline-css.mjs
 
+      # Three pages preload their scripts because the tags cannot be moved or
+      # deferred — the inline block after them calls into them at parse time.
+      # That leaves a second copy of the file list in <head>, and a duplicated
+      # list rots silently in both directions: an unused preload only warns in a
+      # console, and a script added without one just gets slow again.
+      - name: Preload hints match the scripts loaded
+        run: node tools/check-preload.mjs
+
       # scripts/build-articles.js and scripts/scouts-desk.js are CommonJS and are
       # run by node in the data workflow. Adding "type": "module" to package.json
       # silently broke that — require() throws in an ES module scope, and the only

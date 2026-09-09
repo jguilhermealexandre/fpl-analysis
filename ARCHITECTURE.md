@@ -11,7 +11,7 @@ files in a fixed order. **This is deliberate.** Every problem the codebase has
 hit is addressable without changing it, and a migration would be months of risk
 to fix things a linter catches in an afternoon.
 
-Roughly 53k lines: ~20k in `scripts/`, ~17k CSS, and ~14.6k of JavaScript still
+Roughly 53k lines: ~20k in `scripts/`, ~17k CSS, and ~13.9k of JavaScript still
 living inside `<script>` blocks in HTML pages. That last number is the main
 outstanding debt (see *Known debt*).
 
@@ -36,7 +36,18 @@ Consequences you have to work with:
   `md*` the dashboard's live matchday panel and gameweek state, `mk*` the
   dashboard's price-movement panel, `dp*` draft planner, `sd*` scout's desk,
   `gwr*` gameweek review, `opt*` the shared optimisation report, `wc*` the
-  wildcard builder. Keep using them.
+  wildcard builder, `pa*` the players-analysis page's own scoring helpers.
+  Keep using them.
+
+  `pa*` is the newest and worth reading as a worked example, because it exists
+  for a reason a prefix is not always the answer to. `xp-engine.js` owns
+  `priceQualityMultiplier`; the players page had one of its own by the same
+  name. They compute the identical formula from identical constants and still
+  disagree, because each takes its reference median from a different pool of
+  players. A shared name would have been a silent behaviour change on whichever
+  page lost the argument, so the page-local one became
+  `paPriceQualityMultiplier`. Prefix when two functions genuinely differ; merge
+  when they genuinely do not. Telling those apart is the work.
 
 ## Data
 
@@ -85,6 +96,106 @@ accumulates model-versus-market pairs so the model's bias can be measured
 rather than argued about — the first round found its overall level right and
 its home/away split roughly 1.8x too strong.
 
+## One projection
+
+Every xP figure on the site comes from `projectPlayerPointsDetailed()` in
+`scripts/xp-engine.js`. The pitch, the captain pick, the lineup optimiser, the
+draft, the transfer deltas, the players page's recommendation cards and both
+Compare reports all call the same function.
+
+That is recent. There were four scoring systems: this one, `calculateMultiGWxPts`
+(a second projection inside `fpl-players-analysis.html`), and the pair of
+heuristic scores `calculatePositionScore` and `calculateTransferScore`, which are
+copies of each other that drifted apart. The second projection is deleted.
+
+Both scores are still here, and both still decide orderings, so this is one
+projection everywhere and **not yet one model**. `calculatePositionScore` sorts
+the players page's Budget, Premium and Differentials lists.
+`calculateTransferScore` no longer chooses the transfer candidate list — that
+ranks on `xpOver()` over `TW_HORIZON`, and the score survives there as a
+tie-break and a second reading on the card — but it does still sort the wizard's
+three package strategies, blended against price and ownership.
+
+What is left is not a deduplication, which is why it did not come with the rest.
+Both scores mix prediction with decision: `points / price` and a differential
+bonus are opinions about your budget and your rank welded into a forecast, and
+the tabs they order are named for exactly those opinions. Retiring them needs a
+decision layer that takes the projection and applies price, ownership and risk on
+top of it. Attempt that as a refactor and you lose the Premium and Differentials
+tabs, because expected points alone cannot answer what either of them asks.
+
+**Why the duplicate existed, and how not to recreate it.** The engine reads six
+globals the host page must define — `positionAverages`, `teamAnalysis`,
+`currentGW`, `isPreseason`, `computePlayerGamesPlayed`, `teamFixtures6`, listed
+at the top of the file — plus a seventh dependency that went undocumented for
+much longer: **the player object's own shape**. For a long time exactly one file
+could build it, buried in `team-analysis-core.js`, so a page that wanted a
+projection had to load the whole squad module or write its own model. The players
+page wrote its own.
+
+So the mapping is a builder now, and the engine ships the builders for its own
+inputs: `xpBuildPlayers()`, `xpBuildTeamFixtures()`, `xpBuildPositionAverages()`.
+Any page holding `bootstrap-static.json` and `fixtures.json` can satisfy the
+contract in about ten lines — see the block after `computeIsPreseason` in
+`fpl-players-analysis.html`. Build `teamFixtures6` *before* the players and pass
+it in, or each player's `.fixtures` carries no `opponentId` and every projection
+degrades silently to an FDR-only estimate.
+
+`teamAnalysis` was the last divergence and is settled. It had three
+implementations of `computeTeamScores` and they were not copies: the players
+page blended 35% xG, 35% goals and 30% FPL strength, `team-analysis-core.js`
+used goals and strength alone, and `index.html`'s emitted no home/away splits at
+all, so the projection fell back to the unsplit figure on the dashboard and only
+there. One model reading three sets of inputs still gives one player two answers
+on two pages.
+
+It was decided by measurement rather than by taste, and the answer was not the
+one the sophistication suggested. Both models were run over the 2025/26 season
+through `tools/wildcard-backtest.mjs`: the xG version moved every team's attack
+rating, one of them by 31 points, and changed the projection not at all —
+Spearman 0.356 against 0.356, Pearson 0.318 against 0.314, MAE 2.028 against
+2.013, and 2.4% of same-gameweek player pairs ordered differently. Equivalent for
+the only thing it feeds, so the cheaper one won: `xpBuildTeamScores()` in
+`xp-engine.js` is the 2-component model, and dropping the xG dependency means a
+page wanting team strength no longer needs `players-data.json` to get it.
+
+Worth keeping in mind before the next one of these: making the backtest able to
+see the team model took longer than unifying it, and was the only reason the
+choice could be made on evidence. The harness had been passing
+`buildTeamXgData([])` and, behind that, handing the engine an untruncated
+`players-data.json` — a future leak that lied about nothing only because nothing
+read it.
+
+### Calibration and ranking pull against each other
+
+Worth knowing before optimising the projection, because it has now been measured
+three times and the answer was the same each time.
+
+The model is systematically conservative in two places, both real and both
+identified: `expectedGoalsAgainst` spreads defences about two and a half times
+wider than they actually differ, and `pStart` under-rates anyone who has missed
+matches, because its denominator counts absences that `status` already handles.
+Each was corrected, fitted properly, and validated. Each made the site worse.
+
+Correcting `pStart` takes the projection from a bias of 0.140 to −0.013 —
+essentially unbiased — and drops the mean score of its top ten picks from 4.97 to
+4.76. Shrinking `expectedGoalsAgainst` halves the team-level calibration error and
+costs top-ten 4.97 to 4.82. Two more variants of the appearance term lose the same
+way. The details and the numbers live on the two functions in `xp-engine.js`.
+
+The reason is the same in both: the conservatism is concentrated on marginal
+players — returners, rotation risks, weak defences — and being too pessimistic
+about them keeps them out of the top of a list, which is where every
+recommendation on this site is read from. They are marginal for a reason, so
+correcting the bias promotes players who then underperform the corrected number.
+
+The practical rule: **judge a change to the projection on top-N and rank
+correlation, not on bias or MAE.** A well-calibrated ordering would be better than
+both, and nothing measured so far gets you one; the two goals genuinely conflict
+at this level of accuracy. `tools/wildcard-backtest.mjs --mode projection` prints
+bias and MAE because they localise a fault — the defensive-contribution bug was
+found that way — but they are diagnostics, not the score.
+
 ## Conventions
 
 **Cache-busting.** One number in `asset-version.json`. Bump it, run `npm run
@@ -119,7 +230,7 @@ forwarded anywhere unless `window.FPL_ERROR_ENDPOINT` is set.
 npm install          # eslint and friends, dev-only
 npm run dev          # http://localhost:8080, honours _redirects
 npm test             # node:test, no browser needed
-npm run check        # lint + globals + versions + inline syntax
+npm run check        # lint + globals + versions + inline syntax + css + preload
 npm run stamp        # after bumping asset-version.json
 ```
 
@@ -148,14 +259,31 @@ mkdir -p /tmp/season2526
 for f in players-data.json fixtures.json bootstrap-static.json; do
   git show e893f5c:data/$f > /tmp/season2526/$f      # 2026-05-28, GW38
 done
+node tools/extract-availability.mjs /tmp/season2526  # team news, from git history
 npm run backtest -- --data /tmp/season2526
 npm run backtest -- --data /tmp/season2526 --mode projection
 ```
 
 `--mode projection` checks the layer underneath on every player-gameweek at
 once, which is where a calibration error shows up long before a squad total
-moves. Both modes and their caveats — injuries and ownership cannot be
-reconstructed — are documented at the top of `tools/wildcard-backtest.mjs`.
+moves.
+
+**Run the availability step.** It is optional only in the sense that the tool
+still works without it, and skipping it does not weaken the measurement so much
+as change what is being measured. The projection earns most of its accuracy
+deciding who plays, and without team news the harness marks every player fit —
+so it scores a model denied its most important input. On the 16 gameweeks of
+2025/26 where a snapshot from before kickoff exists, supplying it moves MAE from
+1.935 to 1.697 and rank correlation from 0.367 to 0.542. Nothing about the model
+changed; the instrument stopped lying.
+
+That is worth remembering before trusting any number this tool prints. A
+calibration was fitted against the blind harness and shipped, and the news-aware
+run showed the correction pointing the wrong way — the top decile under-projects
+by 0.27 once injured players are excluded, where blind it appeared to over-project
+by 0.39. It was reverted. Coverage begins at GW20 because the bootstrap feed has
+only been committed since January; earlier gameweeks, and three with a stale
+snapshot, are still measured with everyone fit.
 
 ## Deployment
 
@@ -170,8 +298,9 @@ delete a file, remove it from there and bump `CACHE_NAME`.
 
 ## Known debt
 
-- **~14.6k lines of JS inside HTML.** Not lintable or testable until extracted.
-  `fpl-players-analysis.html` alone holds 5,369 lines. Extract page by page,
+- **~13.9k lines of JS inside HTML.** Not lintable until extracted, though
+  `tests/page-smoke.test.mjs` now at least executes every line of it.
+  `fpl-players-analysis.html` alone holds 5,182 lines. Extract page by page,
   smallest first; the CI guards are already in place to catch what moves.
 - **`git log` is ~65% automated data commits.** `npm run log` filters them.
 - **`.git` is ~220 MB**, growing a few MB a day from data commits. Fine for
