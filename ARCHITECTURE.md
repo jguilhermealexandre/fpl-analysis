@@ -11,7 +11,7 @@ files in a fixed order. **This is deliberate.** Every problem the codebase has
 hit is addressable without changing it, and a migration would be months of risk
 to fix things a linter catches in an afternoon.
 
-Roughly 53k lines: ~20k in `scripts/`, ~17k CSS, and ~14.6k of JavaScript still
+Roughly 53k lines: ~20k in `scripts/`, ~17k CSS, and ~13.9k of JavaScript still
 living inside `<script>` blocks in HTML pages. That last number is the main
 outstanding debt (see *Known debt*).
 
