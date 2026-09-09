@@ -271,6 +271,28 @@ async function inspect(url, headers) {
     ['__NEXT_DATA__', '__NUXT__', 'INITIAL_STATE', 'application/ld+json', 'articles', 'headline']
         .forEach(k => console.log(`contains ${k}: ${body.includes(k)}`));
 
+    /* The page is a shell: no articles in the markup at all, and a bundle that
+       fetches them at runtime. What it fetches them from is configured on
+       window.PULSE, which IS in the markup — so print it, and every API-looking
+       host alongside it. */
+    console.log('\n--- window.PULSE assignments ---');
+    [...body.matchAll(/window\.PULSE[.\w]*\s*=\s*([\s\S]{0,1200}?);\s*(?:window\.|<\/script>|\n\s*\n)/g)]
+        .slice(0, 6).forEach(m => console.log(m[0].replace(/\s+/g, ' ').slice(0, 1100) + '\n'));
+
+    console.log('--- hosts that look like an API ---');
+    const hosts = new Set();
+    [...body.matchAll(/https?:\/\/([a-z0-9.-]*(?:api|pulselive|content)[a-z0-9.-]*)/gi)]
+        .forEach(m => hosts.add(m[1]));
+    [...body.matchAll(/["'](\/\/[a-z0-9.-]*(?:api|pulselive|content)[a-z0-9.-]*)/gi)]
+        .forEach(m => hosts.add(m[1]));
+    [...hosts].slice(0, 30).forEach(h => console.log('  ' + h));
+
+    console.log('--- any absolute path that mentions content or news ---');
+    const paths = new Set();
+    [...body.matchAll(/["'](\/[a-z0-9\/_-]*(?:content|news)[a-z0-9\/_-]*)["']/gi)]
+        .forEach(m => paths.add(m[1]));
+    [...paths].slice(0, 25).forEach(x => console.log('  ' + x));
+
     const heads = [...body.matchAll(/<h[23][^>]*>([\s\S]{0,120}?)<\/h[23]>/gi)].slice(0, 10);
     console.log(`\nFirst ${heads.length} h2/h3:`);
     heads.forEach(([, t]) => console.log(`  ${t.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)}`));
