@@ -329,6 +329,22 @@ async function probe(headers) {
     show('api/v2 paths', /\/api\/v[0-9]\/[a-zA-Z0-9/_{}$.-]{2,80}/g, 60);
     show('paths mentioning content or article or news', /["'`]\/[a-zA-Z0-9/_{}$.-]*(?:content|article|news|editorial)[a-zA-Z0-9/_{}$.-]*["'`]/gi, 40);
     show('pulselive hosts', /https?:\/\/[a-z0-9.-]*pulselive[a-z0-9.-]*/gi, 20);
+
+    /* The path templates name variables, not values. Print what surrounds each
+       one so the base URL and the arguments are readable. */
+    console.log('--- context around each /content/ template ---');
+    [...bundle.matchAll(/`\/content\/[^`]{0,120}`/g)].slice(0, 6).forEach((m, i) => {
+        const from = Math.max(0, m.index - 700);
+        console.log(`\n[${i}] ...${bundle.slice(from, m.index + m[0].length + 400).replace(/\s+/g, ' ')}...`);
+    });
+
+    /* And the config the app reads its base URL out of, from the page. */
+    console.log('\n--- envPaths / config in the page ---');
+    ['envPaths', 'sdp', 'contentApi', 'apiUrl', 'baseUrl'].forEach(key => {
+        const idx = page.indexOf(key);
+        if (idx === -1) { console.log(`  ${key}: not present`); return; }
+        console.log(`  ${key}: ...${page.slice(Math.max(0, idx - 120), idx + 700).replace(/\s+/g, ' ')}...\n`);
+    });
 }
 
 async function main() {
