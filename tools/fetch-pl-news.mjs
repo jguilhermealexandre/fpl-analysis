@@ -127,10 +127,38 @@ function sdpSources(cfg) {
  * which every guess so far went through, is 404 across the board. */
 const SDP_API = 'https://sdp-prem-prod.premier-league-prod.pulselive.com/api';
 
-/* The fallbacks, tried after the discovered SDP endpoints above. None of them
-   currently answers — they are here so that an SDP change is a fallthrough
-   rather than an outage, and so the run log names what else was attempted. */
+/* The one that works.
+ *
+ * Nine runs went through the SDP gateway the app bundle configures and every
+ * one came back "No configuration found for request". The browser probe ended
+ * it by recording what the page actually fetches — a different host entirely:
+ *
+ *   https://api.premierleague.com/content/premierleague/TEXT/en/{id}
+ *
+ * and the same path without an id is the listing. `tagNames=series:news` is
+ * what narrows it to news rather than to every text asset the CMS holds —
+ * that tag is on the articles themselves, which is where it was read from.
+ *
+ * The plain listing follows it, because a tag they stop using should mean a
+ * broader list rather than an empty one.
+ *
+ * `references=ALL` answers 500 on this host; `pageSize`/`page` is the paging
+ * it takes here, unlike the SDP endpoint that rejects them as legacy. */
+const PL_API = 'https://api.premierleague.com/content/premierleague/text/en';
+
 const SOURCES = [
+    {
+        name: 'api.premierleague.com (series:news)',
+        url: `${PL_API}?pageSize=${MAX_ITEMS}&page=0&detail=DETAILED&tagNames=series:news`,
+        headers: PULSE_HEADERS,
+        parse: parsePulselive
+    },
+    {
+        name: 'api.premierleague.com (all text)',
+        url: `${PL_API}?pageSize=${MAX_ITEMS}&page=0&detail=DETAILED`,
+        headers: PULSE_HEADERS,
+        parse: parsePulselive
+    },
     {
         name: 'pulselive content API',
         url: `https://footballapi.pulselive.com/football/content/PREMIERLEAGUE/text/EN?pageSize=${MAX_ITEMS}&page=0&references=ALL&type=news`,
@@ -215,7 +243,9 @@ function parsePulselive(body) {
    payload carries one. */
 function pulseLink(a) {
     if (typeof a.url === 'string' && /^https?:\/\//.test(a.url)) return a.url;
-    if (a.slug) return `https://www.premierleague.com/en/news/${a.id}/${a.slug}`;
+    /* Their own route for an article is /en/news/{id} — which is what the page
+       was fetching by id when the probe caught it. A slug, when the payload
+       carries one, is only decoration on the same URL. */
     if (a.id != null) return `https://www.premierleague.com/en/news/${a.id}`;
     return null;
 }
@@ -780,8 +810,14 @@ async function main() {
     const outIdx = args.indexOf('--out');
     const out = outIdx > -1 ? args[outIdx + 1] : 'data/pl-news.json';
 
-    /* The rendered page first, because it is the only source that has ever
-       answered with articles.
+    /* The API first now; the rendered page after it.
+     *
+     * The scrape was the primary source for exactly as long as it took to find
+     * the real endpoint. It stays because it costs nothing when the API works
+     * — it is not reached — and because it is a genuinely independent way in
+     * if the API moves again. Its old comment follows, still true of it:
+     *
+     * The rendered page, because it was the only source that had ever
      *
      * Every route into the content API — eight paths, three language codes,
      * five application names, both paging conventions, both gateway hosts —
@@ -794,6 +830,28 @@ async function main() {
      * It is a separate process because it needs playwright, which this
      * fetcher must keep running without — the API fallbacks below have to
      * still work on a machine with no browser installed. */
+    const tried = [];
+    for (const src of SOURCES) {
+        process.stdout.write(`→ ${src.name}\n`);
+        const r = await tryFetch(src);
+        if (r.ok) {
+            console.log(`✓ ${src.name}: ${r.items.length} article(s)`);
+            r.items.slice(0, 3).forEach(i => console.log(`    · ${i.title}`));
+            const payload = {
+                fetchedAt: new Date().toISOString(),
+                source: src.name,
+                items: r.items.slice(0, MAX_ITEMS)
+            };
+            if (dryRun) { console.log(JSON.stringify(payload, null, 2)); return; }
+            fs.mkdirSync(path.dirname(out), { recursive: true });
+            fs.writeFileSync(out, JSON.stringify(payload, null, 2) + '\n');
+            console.log(`written to ${out}`);
+            return;
+        }
+        console.log(`  ✗ ${r.why}`);
+        tried.push(`${src.name}: ${r.why}`);
+    }
+
     const scraped = await scrapeRenderedPage();
     if (scraped.length) {
         console.log(`✓ rendered news page: ${scraped.length} article(s)`);
@@ -810,16 +868,15 @@ async function main() {
         return;
     }
 
-    /* Discovery first, static fallbacks after. If the page cannot be read the
-       list is still non-empty, so a bad minute at premierleague.com does not
-       change the shape of the run. */
+    /* And the SDP endpoints last, discovered from the page. None of them has
+       ever answered; they stay so that a change of heart at their end is a
+       fallthrough rather than an outage. */
     const cfg = await discoverSiteConfig(PULSE_HEADERS);
     console.log(cfg
         ? `site config: version=${cfg.version || '(none)'} api=${cfg.api}`
-        : 'site config: could not read the news page — using the static list only');
+        : 'site config: could not read the news page');
 
-    const tried = [];
-    for (const src of [...sdpSources(cfg), ...SOURCES]) {
+    for (const src of sdpSources(cfg)) {
         process.stdout.write(`→ ${src.name}\n`);
         const r = await tryFetch(src);
         if (r.ok) {
