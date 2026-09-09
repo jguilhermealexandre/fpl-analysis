@@ -1,0 +1,665 @@
+/* ============================================================
+   EasyFPL — Responsive layer
+   ------------------------------------------------------------
+   The site was built at desktop width and grew media queries one
+   symptom at a time: twenty-three different breakpoints across nine
+   stylesheets, so a phone crossed 900px, then 820px, then 768px, 720px,
+   700px, 640px and 620px, each one changing a different unrelated thing.
+   Nothing was wrong with any single query; together they meant no width
+   had a layout anyone had designed.
+
+   This file is the one that does. It loads last on every page, so it is
+   the final word wherever it speaks, and it uses three widths and only
+   three:
+
+       <= 1024px   tablet     two columns, the sidebar off-canvas
+       <=  768px   phone+     one column, tables scroll
+       <=  480px   phone      the tightest pass — chrome shrinks
+
+   The old queries are left where they are. They fire inside these
+   ranges and mostly agree with them; where they do not, this file wins
+   by load order, which is a great deal safer than editing a hundred
+   rules that other pages depend on.
+   ============================================================ */
+
+
+/* ============================================================
+   1. The shell
+   ============================================================ */
+
+/* On a narrow screen the sidebar stops being furniture and becomes a
+   drawer. Below 1024px it used to collapse to a 76px icon rail, which
+   on a 390px phone spent a fifth of the screen on navigation and hid
+   every label behind a :hover flyout — and a touch screen has no hover,
+   so those sections were simply unreachable. */
+
+.v2-mobile-bar { display: none; }
+
+@media (max-width: 1024px) {
+
+    /* The bar that replaces the rail. Fixed, so navigation is one thumb
+       away from anywhere in a long page rather than a scroll to the top. */
+    .v2-mobile-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 56px;
+        padding: 0 12px;
+        z-index: 60;
+        background: var(--surface-0);
+        border-bottom: 1px solid var(--border-emphasis);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .v2-mobile-bar-btn {
+        flex: 0 0 auto;
+        width: 40px; height: 40px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid var(--border-emphasis);
+        border-radius: 10px;
+        background: var(--surface-1);
+        color: var(--text-primary);
+        cursor: pointer;
+        padding: 0;
+    }
+    .v2-mobile-bar-btn svg { width: 19px; height: 19px; }
+    .v2-mobile-bar-btn:active { background: var(--surface-2); }
+
+    .v2-mobile-bar-title {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .v2-mobile-bar-title b { color: var(--color-primary); }
+
+    /* The drawer itself. Off-canvas, full labels, its own scroll —
+       everything the desktop sidebar has, at a width a thumb can hit. */
+    .v2-sidebar {
+        width: min(84vw, 300px);
+        max-width: 300px;
+        padding: 16px 14px;
+        align-items: stretch;
+        transform: translateX(-102%);
+        transition: transform 220ms cubic-bezier(.22,1,.36,1);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        box-shadow: none;
+        z-index: 90;
+    }
+    body.v2-nav-open .v2-sidebar {
+        transform: translateX(0);
+        box-shadow: 0 0 0 100vmax rgba(0,0,0,.001), 0 18px 50px rgba(0,0,0,.28);
+    }
+
+    /* Labels come back — this is a drawer, not a rail, and the 900px
+       query had hidden every one of them. */
+    .v2-sidebar-logo span,
+    .v2-nav-item span,
+    .v2-sidebar-group-label,
+    .v2-sidebar-team-id {
+        display: revert;
+    }
+    .v2-nav-item {
+        justify-content: flex-start;
+        width: auto;
+        padding: 11px 12px;
+        min-height: 44px;
+    }
+    .v2-sidebar-collapse { display: none; }
+
+    /* Flyouts opened on :hover, which never fires on a touch screen.
+       In the drawer they are plain disclosure lists instead: the toggle
+       is a real button again and the panel simply sits under its parent
+       when open, in the flow, rather than floating beside the rail. */
+    .v2-flyout-toggle {
+        display: inline-flex;
+        align-items: center; justify-content: center;
+        margin-left: auto;
+        width: 32px; height: 32px;
+        border: 0; background: none; color: inherit; cursor: pointer;
+        transition: transform 160ms ease;
+    }
+    .v2-nav-group.open .v2-flyout-toggle { transform: rotate(90deg); }
+
+    .v2-flyout-panel {
+        position: static;
+        transform: none;
+        opacity: 1;
+        pointer-events: auto;
+        display: none;
+        width: auto;
+        min-width: 0;
+        max-height: none;
+        margin: 2px 0 6px 10px;
+        padding: 4px;
+        box-shadow: none;
+        border-left: 2px solid var(--border-emphasis);
+        border-radius: 0;
+        background: none;
+    }
+    .v2-nav-group.open > .v2-flyout-panel { display: block; }
+    /* and hover must not open it any more */
+    .v2-nav-group:hover > .v2-flyout-panel { display: none; }
+    .v2-nav-group.open:hover > .v2-flyout-panel { display: block; }
+
+    .v2-flyout-item { padding: 9px 10px; min-height: 42px; }
+    .v2-flyout-desc { display: none; }
+
+    /* The scrim. A tap anywhere off the drawer closes it. */
+    .v2-nav-scrim {
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        background: rgba(15, 23, 25, .45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 200ms ease;
+        border: 0;
+        padding: 0;
+    }
+    body.v2-nav-open .v2-nav-scrim { opacity: 1; pointer-events: auto; }
+    body.v2-nav-open { overflow: hidden; }
+
+    /* The page gets the whole width back, and clears the fixed bar. */
+    .v2-main-content {
+        margin-left: 0 !important;
+        padding-top: 56px;
+    }
+
+    /* The notification panel was positioned beside the rail. In the
+       drawer there is no beside — it opens over the drawer instead. */
+    .v2-sidebar .nt-drop {
+        position: fixed;
+        left: 8px; right: 8px;
+        top: 64px;
+        width: auto;
+        max-width: none;
+        max-height: calc(100vh - 96px);
+        z-index: 95;
+    }
+}
+
+/* The desktop rail preference must not leak into the drawer: a phone
+   that once visited the site on a laptop would otherwise open a 76px
+   drawer with no labels in it. */
+@media (max-width: 1024px) {
+    .v2-sidebar-collapsed .v2-sidebar {
+        width: min(84vw, 300px);
+        padding: 16px 14px;
+        align-items: stretch;
+    }
+    .v2-sidebar-collapsed .v2-sidebar-logo span,
+    .v2-sidebar-collapsed .v2-nav-item > span,
+    .v2-sidebar-collapsed .v2-sidebar-group-label,
+    .v2-sidebar-collapsed .v2-sidebar-team-id { display: revert; }
+    .v2-sidebar-collapsed .v2-nav-item { width: auto; justify-content: flex-start; }
+    .v2-sidebar-collapsed .v2-account,
+    .v2-sidebar-collapsed .v2-premium { display: flex; }
+}
+
+
+/* ============================================================
+   2. Sticky offsets
+   ============================================================ */
+
+/* The tab strip and the filter bar are position:sticky at top:0, sized
+   for a shell with no bar above them. The mobile bar is fixed and 56px
+   tall, so at top:0 they stick underneath it and disappear. */
+@media (max-width: 1024px) {
+    .v2-main-content .tabs-container,
+    .v2-main-content .tw-budget-bar-top { top: 56px; }
+    .v2-main-content .filter-bar { top: 91px; }
+    .v2-main-content .tabs-container.tabs-hidden ~ .filter-bar { top: 56px; }
+    .v2-main-content .tw-scout-col { top: 120px; }
+}
+
+
+/* ============================================================
+   3. Page rhythm
+   ============================================================ */
+
+/* Desktop padding is 24-32px on each side. On a 390px screen that is a
+   sixth of the width spent on margin, and every card inside inherits the
+   squeeze. Tighter, in two steps, so a phone reads at close to the same
+   line length a tablet does. */
+@media (max-width: 1024px) {
+    .v2-main-content > main.main-content,
+    .v2-main-content > main.content,
+    .v2-main-content > .main-content,
+    .main-content > .container,
+    .content-wrapper { padding-left: 18px; padding-right: 18px; }
+    .v2-section, .pa-panel, .sq-panel, .v2-info-panel { padding: 16px; }
+}
+
+@media (max-width: 768px) {
+    .v2-main-content > main.main-content,
+    .v2-main-content > main.content,
+    .v2-main-content > .main-content,
+    .main-content > .container,
+    .content-wrapper { padding-left: 12px; padding-right: 12px; }
+    .v2-section, .pa-panel, .sq-panel, .v2-info-panel { padding: 14px; }
+
+    /* Title insets shrink with the padding they sit inside, or the title
+       ends up further from the corner than the card is from the screen. */
+    :root { --v2-title-x: 14px; --v2-title-y: 15px; }
+}
+
+@media (max-width: 480px) {
+    .v2-main-content > main.main-content,
+    .v2-main-content > main.content,
+    .v2-main-content > .main-content,
+    .main-content > .container,
+    .content-wrapper { padding-left: 10px; padding-right: 10px; }
+    .v2-section, .pa-panel, .sq-panel, .v2-info-panel { padding: 12px; }
+    :root { --v2-title-x: 12px; --v2-title-y: 13px; }
+}
+
+
+/* ============================================================
+   4. Headings
+   ============================================================ */
+
+/* A 34px page title is four words per line on a phone. These step down
+   with the viewport rather than being fixed, so nothing has to be
+   re-chosen for a size nobody tested. */
+@media (max-width: 768px) {
+    .page-title, .v2-page-title, h1 { font-size: clamp(21px, 5.4vw, 28px); line-height: 1.2; }
+    h2 { font-size: clamp(17px, 4.4vw, 21px); }
+    .section-title, .v2-section-title { font-size: clamp(14px, 3.9vw, 16px); }
+    .page-subtitle, .v2-page-sub { font-size: 13px; }
+}
+
+/* The page header and its help button stay on one line — the "?" beside
+   the title is the way into the guide, and it must not wrap under it. */
+@media (max-width: 768px) {
+    .v2-page-head, .page-header, .v2-title-row {
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .v2-page-help { flex: 0 0 auto; margin-top: 2px; }
+}
+
+
+/* ============================================================
+   5. Grids
+   ============================================================ */
+
+/* Anything laid out in fixed columns collapses. Two columns of 180px on
+   a 390px screen is two columns of nothing; one column of 366px is a
+   readable card. Tablet keeps two, which is what 820px has room for. */
+@media (max-width: 1024px) {
+    .stats-grid,
+    .summary-grid,
+    .metrics-grid,
+    .v2-qa-grid,
+    .v2-desk-grid,
+    .insight-grid,
+    .kpi-grid,
+    .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 768px) {
+    .stats-grid,
+    .summary-grid,
+    .metrics-grid,
+    .v2-qa-grid,
+    .v2-desk-grid,
+    .insight-grid,
+    .kpi-grid,
+    .overview-grid,
+    .two-col,
+    .cards-grid,
+    .news-grid { grid-template-columns: minmax(0, 1fr) !important; }
+
+    /* Anything that spanned two tracks now spans the one there is. */
+    .v2-main-content [style*="grid-column: 1 / -1"],
+    .v2-main-content .span-2 { grid-column: 1 / -1 !important; }
+}
+
+/* A flex row of cards that never wrapped will wrap now. */
+@media (max-width: 768px) {
+    .card-row, .v2-row, .stat-row { flex-wrap: wrap; }
+}
+
+
+/* ============================================================
+   6. Tables
+   ============================================================ */
+
+/* A twelve-column table does not become readable by being squeezed; it
+   becomes readable by keeping its columns and letting you push it
+   sideways with a thumb. Every table gets a scrollport, its first
+   column pinned so you never lose track of whose row you are reading,
+   and a hint that there is more to the right.
+
+   The alternative — restacking each row as a card — would have meant
+   rewriting the renderer for six different tables and losing the
+   column-to-column comparison that is the whole point of them. */
+@media (max-width: 1024px) {
+    .table-container,
+    .tm-table-wrap,
+    .planner-table-wrap,
+    .sd-table-wrap,
+    .doc-table-wrap,
+    .data-table-wrap,
+    .apf-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    /* Tables that are not already inside one of those. */
+    .v2-section > table,
+    .pa-panel > table,
+    .sq-panel > table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+@media (max-width: 768px) {
+    /* The name column stays put while the numbers scroll past it. */
+    .data-table th:first-child,
+    .data-table td:first-child,
+    .tm-table th:first-child,
+    .tm-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        background: var(--surface-0);
+    }
+    .data-table thead th:first-child { z-index: 3; }
+
+    .data-table, .tm-table, .planner-table { font-size: 12px; }
+    .data-table th, .data-table td { padding: 8px 9px; }
+
+    /* Column minimums written for a 1400px canvas. */
+    .data-table td.col-player { min-width: 148px; max-width: 172px; }
+    .tm-player-cell { min-width: 132px; }
+    .planner-player { min-width: 120px; }
+}
+
+
+/* ============================================================
+   7. Tab strips and filter bars
+   ============================================================ */
+
+/* These already scroll horizontally; what they do not do is stop
+   wrapping, so on a phone a six-tab strip became three rows of tabs and
+   pushed the page content below the fold. One row, swipeable, with the
+   scrollbar hidden because the overflow is obvious from the cut-off
+   tab at the edge. */
+@media (max-width: 1024px) {
+    .tabs,
+    .tab-list,
+    .v2-tabs,
+    .filter-bar-inner,
+    .apf-bar,
+    .tm-pos-filter,
+    .charts-filter-panel .cf-row {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .tabs::-webkit-scrollbar,
+    .tab-list::-webkit-scrollbar,
+    .v2-tabs::-webkit-scrollbar,
+    .filter-bar-inner::-webkit-scrollbar,
+    .apf-bar::-webkit-scrollbar,
+    .tm-pos-filter::-webkit-scrollbar { height: 0; }
+
+    .tabs .tab, .tab-btn, .v2-tab { flex: 0 0 auto; white-space: nowrap; }
+    .tabs { padding-left: 12px; padding-right: 12px; }
+    .tabs .tab { min-height: 46px; padding: 12px 14px; }
+    .tabs-container { min-height: 46px; }
+}
+
+/* The All Players filter bar is eight labelled groups. On a phone it
+   wraps into a column instead of scrolling — a horizontal scroll inside
+   a page you are also scrolling vertically is a fight, and these are
+   controls you set once rather than a strip you skim. */
+@media (max-width: 768px) {
+    .apf-bar {
+        flex-wrap: wrap;
+        overflow-x: visible;
+        gap: 10px;
+    }
+    .apf-group { flex: 1 1 calc(50% - 5px); min-width: 0; }
+    .apf-group.apf-wide, .apf-bar .search-box { flex: 1 1 100%; min-width: 0; }
+    .apf-tail { flex: 1 1 100%; justify-content: space-between; }
+}
+
+@media (max-width: 480px) {
+    .apf-group { flex: 1 1 100%; }
+}
+
+
+/* ============================================================
+   8. Modals
+   ============================================================ */
+
+/* A centred dialog with 24px of padding round it wastes the only two
+   dimensions a phone has. Below 768px every modal is a sheet: full
+   width, off the bottom of the screen, scrolling inside itself with the
+   close button reachable without scrolling first. */
+@media (max-width: 768px) {
+    .v2-modal.modal-overlay,
+    .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .v2-modal .modal-content,
+    .v2-modal .v2-modal-panel,
+    .v2-modal .pdm-modal-panel,
+    .modal-overlay > .modal-content,
+    .modal-overlay > .modal-container,
+    .modal-container,
+    .detail-panel {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 92vh;
+        margin: 0;
+        border-radius: 18px 18px 0 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .modal-close, .pdm-close, .help-close {
+        top: 10px; right: 10px;
+        width: 38px; height: 38px;
+        font-size: 22px;
+    }
+
+    /* The blur is a 7px filter over the whole page; on a phone GPU that
+       is the most expensive thing on screen and it sits behind a sheet
+       that already covers everything. */
+    body.v2-blurred .main-content { filter: none; }
+}
+
+
+/* ============================================================
+   9. Touch targets
+   ============================================================ */
+
+/* Nothing you are meant to tap should be smaller than a fingertip.
+   Coarse pointers only, so a mouse layout is untouched. */
+@media (pointer: coarse) {
+    button, .btn, [role="tab"], .tab, .tab-btn, select, .v2-nav-item {
+        min-height: 40px;
+    }
+    input[type="text"], input[type="number"], input[type="search"], select, textarea {
+        min-height: 40px;
+        /* Under 16px iOS Safari zooms the page on focus and never zooms
+           back out, which leaves the layout stuck wider than the screen. */
+        font-size: 16px;
+    }
+    /* Icon-only buttons are square, so a min-height alone would make
+       them oblong. */
+    .v2-mobile-bar-btn, .modal-close, .icon-btn { min-width: 40px; }
+}
+
+
+/* ============================================================
+   10. Media
+   ============================================================ */
+
+@media (max-width: 768px) {
+    img, svg, canvas, video { max-width: 100%; }
+    .news-card-hero { flex-direction: column; }
+    .news-card-hero .news-card-img { width: 100%; min-height: 180px; }
+    .chart-container, .chart-box { min-height: 0; }
+    canvas { height: auto !important; }
+}
+
+
+/* ============================================================
+   11. The pitch
+   ============================================================ */
+
+/* Eleven player cards in four rows, sized for a 900px column. Five
+   defenders at 90px each is 450px of cards on a 390px screen, so the
+   back line ran off both sides. These widths are what actually fits:
+   five across, inside the section's padding, with the gap intact. */
+@media (max-width: 768px) {
+    .pcard {
+        width: 62px;
+        padding: 11px 3px 7px;
+        gap: 2px;
+        border-width: 1.5px;
+    }
+    .pcard .v2-pid-pitch { --v2-pid-face: 26px; --v2-pid-crest: 15px; gap: 3px; }
+    .pcard-name { font-size: 9px; }
+    .pcard-score b { font-size: 11px; }
+    .pcard-fixture { font-size: 8px; }
+    .pitch-row { gap: 3px; }
+    .dugout-cards .pcard { min-width: 58px; max-width: 76px; }
+
+    .pitch-player { min-width: 44px; }
+    .pitch-player-node { width: 27px; height: 27px; font-size: 10px; }
+    .pitch-player-name { font-size: 9.5px; max-width: 58px; }
+    .pitch-bench .pitch-player { min-width: 42px; }
+
+    .lw-pitch-node { width: 34px; height: 34px; font-size: 9px; }
+    .lw-pitch-name { font-size: 9px; max-width: 58px; }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .pcard { width: 76px; padding-left: 5px; padding-right: 5px; }
+    .pcard .v2-pid-pitch { --v2-pid-face: 30px; --v2-pid-crest: 18px; }
+    .pcard-name { font-size: 10px; }
+}
+
+/* Without a hover there is no way to reach the four actions at all, so
+   on a touch screen they are simply always there. They are the only
+   route to the captaincy, a replacement search and the full profile
+   from the pitch — a phone cannot be the one device where the pitch is
+   read-only. */
+@media (pointer: coarse) {
+    .pcard-cv {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(-50%) scale(1);
+        gap: 3px;
+    }
+    .pcard { margin-top: 11px; }
+}
+
+@media (pointer: coarse) and (max-width: 768px) {
+    .cv-toggle { width: 17px; height: 17px; }
+    .cv-toggle svg { width: 10px; height: 10px; }
+    .pcard-cv { gap: 2px; top: -9px; }
+}
+
+
+/* ============================================================
+   12. Dense list rows
+   ============================================================ */
+
+/* A squad row is a table row wearing a card: identity, eight stats, five
+   fixture chips and four action buttons, side by side. That needs about
+   760px. Below 768px it stacks instead — the same four blocks, in the
+   same order, down the card rather than across it. Nothing is dropped,
+   because everything in the row is something you read the row for. */
+@media (max-width: 768px) {
+    .sq-row { flex-direction: column; align-items: stretch; gap: 0; }
+
+    .sq-row-clickable {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 9px;
+        padding: 11px 12px 8px;
+    }
+
+    .sq-row-main { width: 100%; }
+
+    /* Eight stats in two rows of four rather than eight columns of 32px,
+       which is narrower than the labels in them. */
+    .sq-row-stats {
+        grid-auto-flow: row;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px 6px;
+        width: 100%;
+    }
+    .sq-stat-label { font-size: 9px; }
+    .sq-stat-value { font-size: 12px; }
+
+    .sq-row-fixtures { flex-wrap: wrap; }
+
+    .sq-row-actions {
+        justify-content: flex-end;
+        gap: 6px;
+        padding: 0 12px 10px;
+    }
+    .sq-act { width: 32px; height: 32px; }
+}
+
+@media (max-width: 480px) {
+    .sq-row-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* The same shape, wherever a row was built the same way. */
+@media (max-width: 768px) {
+    .lo-card, .ts-row, .rec-row, .tw-row {
+        flex-wrap: wrap;
+    }
+    .lo-card-side, .ts-side { min-width: 0; flex: 1 1 44%; }
+}
+
+
+/* ============================================================
+   13. Segmented controls and pill rows
+   ============================================================ */
+
+/* A four-way segmented control and a row of ranking pills are both
+   built as an unwrapping flex row, sized by their labels. Neither had a
+   width that fits a phone, and both are how you change what the page
+   below them shows — so they cannot simply be hidden. They swipe. */
+@media (max-width: 768px) {
+    .segmented-control,
+    .rankings-pills,
+    .pill-row,
+    .chip-row {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        max-width: 100%;
+    }
+    .segmented-control::-webkit-scrollbar,
+    .rankings-pills::-webkit-scrollbar,
+    .pill-row::-webkit-scrollbar,
+    .chip-row::-webkit-scrollbar { height: 0; }
+
+    .segmented-btn, .rankings-pill { flex: 0 0 auto; white-space: nowrap; }
+    .segmented-btn { padding-left: 12px; padding-right: 12px; font-size: 12px; }
+}

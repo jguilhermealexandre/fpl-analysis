@@ -329,7 +329,31 @@
             const host = document.getElementById('ntCentre');
             if (!host) return null;
             const state = ntUpdate(ctx);
+            host.dataset.ntMounted = '1';
             host.innerHTML = ntBellHTML(state.unread)
+                + `<div class="nt-drop" id="ntDrop" hidden>${ntPanelHTML(state.events, state.lastSeen)}</div>`;
+            return state;
+        }
+
+        /* The bell, on the twelve pages that are not the dashboard.
+
+           The feed is a record kept in localStorage, and the dashboard is
+           where it is written — it is the only page that loads a squad, the
+           live scores and the price watch, which is what the events are
+           diffed from. Every other page can still show what is in the record,
+           and should: a bell that exists on one page in thirteen is a bell
+           you will never happen to be looking at when it rings.
+
+           So this renders the stored feed and nothing else. It collects no
+           events and saves no snapshot, which means visiting the players page
+           cannot quietly consume the "since you were away" grouping that the
+           dashboard built for you. */
+        function ntMount() {
+            const host = document.getElementById('ntCentre');
+            if (!host || host.dataset.ntMounted) return null;
+            const state = ntLoad();
+            host.dataset.ntMounted = '1';
+            host.innerHTML = ntBellHTML(ntUnread(state.events, state.lastSeen))
                 + `<div class="nt-drop" id="ntDrop" hidden>${ntPanelHTML(state.events, state.lastSeen)}</div>`;
             return state;
         }

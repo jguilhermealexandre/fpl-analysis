@@ -14,7 +14,7 @@ try {
 }
 
 function loadSidebarNav() {
-    return fetch('sidebar-nav.html?v=193')
+    return fetch('sidebar-nav.html?v=194')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -43,6 +43,7 @@ function loadSidebarNav() {
 
             initSidebarCollapse();
             initSidebarFlyout();
+            initMobileNav();
             initV2PageEntrance();
 
             /* The account block and the display preferences. Both live in the
@@ -50,16 +51,94 @@ function loadSidebarNav() {
                rather than on the dashboard alone. */
             if (typeof v2MountAccount === 'function') v2MountAccount();
             if (typeof v2ApplySettings === 'function') v2ApplySettings();
-            /* The notification centre renders into #ntCentre, which is now in
-               the sidebar rather than the dashboard header. Only the dashboard
-               loads notifications.js and only it has the context the feed is
-               built from, so elsewhere the slot simply stays empty — which is
-               what it looked like before, on twelve pages out of thirteen. */
+            /* The notification centre renders into #ntCentre, which is in the
+               sidebar rather than the dashboard header. The dashboard fills it
+               itself, with the squad and live context the feed is diffed from;
+               everywhere else ntMount() draws the same feed out of storage, so
+               the bell is on every page rather than on one of thirteen. */
+            if (typeof ntMount === 'function') ntMount();
         })
         .catch(error => {
             console.warn('Sidebar navigation could not be loaded:', error);
             return null;
         });
+}
+
+/* ===== The narrow-screen shell =====
+
+   Below 1024px the sidebar is a drawer rather than furniture, so
+   something has to open it. That something is built here rather than
+   added to sidebar-nav.html, so it arrives on all thirteen pages with
+   the sidebar itself instead of on the ones someone remembered to edit.
+
+   The bar and the scrim exist at every width; CSS hides them above the
+   breakpoint. That way there is no resize handler deciding what should
+   exist — the browser decides, which it is much better at, and a phone
+   rotated to landscape does not need us to notice. */
+function initMobileNav() {
+    if (document.querySelector('.v2-mobile-bar')) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'v2-mobile-bar';
+    bar.innerHTML =
+        '<button type="button" class="v2-mobile-bar-btn" id="v2NavOpen" aria-label="Open navigation" aria-expanded="false" aria-controls="v2SidebarDrawer">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">'
+        + '<path d="M4 7h16M4 12h16M4 17h16"/></svg></button>'
+        + '<span class="v2-mobile-bar-title" id="v2MobileTitle"></span>';
+
+    const scrim = document.createElement('button');
+    scrim.type = 'button';
+    scrim.className = 'v2-nav-scrim';
+    scrim.id = 'v2NavScrim';
+    scrim.tabIndex = -1;
+    scrim.setAttribute('aria-label', 'Close navigation');
+
+    document.body.insertAdjacentElement('afterbegin', scrim);
+    document.body.insertAdjacentElement('afterbegin', bar);
+
+    const drawer = document.querySelector('.v2-sidebar');
+    if (drawer) drawer.id = drawer.id || 'v2SidebarDrawer';
+
+    /* The bar names the page you are on. The <title> is the only string
+       every page already has, and it is written for humans; the suffix
+       after the dash is the site name, which the bar does not need. */
+    const label = document.getElementById('v2MobileTitle');
+    if (label) {
+        const h1 = document.querySelector('.v2-main-content h1, main h1');
+        const fromH1 = h1 ? h1.textContent.trim().replace(/\s+/g, ' ') : '';
+        const fromTitle = (document.title || 'EasyFPL').split(/\s+[—|–|-]\s+/)[0].trim();
+        label.textContent = fromH1 && fromH1.length < 40 ? fromH1 : fromTitle;
+    }
+
+    document.getElementById('v2NavOpen')?.addEventListener('click', toggleMobileNav);
+    scrim.addEventListener('click', closeMobileNav);
+
+    /* Following a link should not leave the drawer open over the page it
+       just loaded — and for an in-page #hash link no load happens at all,
+       so nothing else would ever close it. */
+    document.querySelectorAll('.v2-sidebar a[href]').forEach(a => {
+        a.addEventListener('click', () => closeMobileNav());
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && document.body.classList.contains('v2-nav-open')) closeMobileNav();
+    });
+}
+
+function toggleMobileNav() {
+    if (document.body.classList.contains('v2-nav-open')) closeMobileNav();
+    else openMobileNav();
+}
+
+function openMobileNav() {
+    document.body.classList.add('v2-nav-open');
+    document.getElementById('v2NavOpen')?.setAttribute('aria-expanded', 'true');
+    document.querySelector('.v2-sidebar .v2-nav-item.active, .v2-sidebar a')?.focus?.({ preventScroll: true });
+}
+
+function closeMobileNav() {
+    document.body.classList.remove('v2-nav-open');
+    document.getElementById('v2NavOpen')?.setAttribute('aria-expanded', 'false');
 }
 
 function initSidebarCollapse() {

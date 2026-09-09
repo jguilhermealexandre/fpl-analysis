@@ -747,17 +747,23 @@ function v2MountAccount() {
     }
     const nameEl = document.getElementById('v2AccountName');
     if (nameEl) nameEl.textContent = name;
+    /* Three lines, three different facts. It used to read "Demo Team FC" over
+       "Demo squad · Free", which is the team named twice and the only new word
+       in the second line buried at the end of it. */
     const subEl = document.getElementById('v2AccountSub');
-    if (subEl) {
-        const idLabel = teamId === DEMO_TEAM_ID ? 'Demo squad' : 'ID ' + teamId;
-        subEl.textContent = `${idLabel} · ${st.plan === 'premium' ? 'Premium' : 'Free'}`;
-    }
+    if (subEl) subEl.textContent = 'ID ' + teamId;
+    const planEl = document.getElementById('v2AccountPlan');
+    if (planEl) planEl.textContent = st.plan === 'premium' ? 'Premium' : 'Free';
 
-    /* The Team ID badge below said the same thing this block says, so two
+    /* The Team ID widget below said the same thing this block says, so two
        controls claimed to be your identity and only one of them could be acted
-       on. The badge stands down while this is up; the input it toggles back to
-       is still there, and Settings and v2ChangeTeam() reach it. */
+       on. The whole widget stands down while this is up — hiding only the
+       badge inside it left an empty box holding a gap open between "Go
+       premium" and the theme switch. Settings and v2ChangeTeam() bring it
+       back, which is the only way in to it now. */
     document.getElementById('navTidBadge')?.classList.add('hidden');
+    const widget = document.querySelector('.v2-sidebar-team-id');
+    if (widget) widget.hidden = true;
 }
 
 /* The modal. Built on demand rather than shipped in every page's markup,
@@ -774,7 +780,7 @@ function openSettingsModal(section) {
     const premium = st.plan === 'premium';
 
     document.body.insertAdjacentHTML('beforeend', `
-    <div class="modal-overlay v2-modal v2-settings open" id="v2SettingsModal" onclick="closeSettingsModal(event)">
+    <div class="modal-overlay v2-modal v2-settings" id="v2SettingsModal" onclick="closeSettingsModal(event)">
         <div class="modal-container" role="dialog" aria-modal="true" aria-label="Settings">
             <div class="v2-set-head">
                 <span class="v2-section-title">
@@ -809,7 +815,10 @@ function openSettingsModal(section) {
                     <div class="v2-set-label">Connected squad</div>
                     <div class="v2-set-row between">
                         <span class="v2-set-value">${teamId ? 'FPL team ID ' + esc(teamId) : 'No team connected yet'}</span>
-                        <button class="v2-set-ghost" onclick="closeSettingsModal(); v2ChangeTeam();">Change</button>
+                        <span class="v2-set-actions">
+                            <button class="v2-set-ghost" onclick="closeSettingsModal(); v2ChangeTeam();">Change ID</button>
+                            ${teamId ? '<button class="v2-set-ghost danger" onclick="v2LogOut()">Log out</button>' : ''}
+                        </span>
                     </div>
                 </div>
 
@@ -862,6 +871,14 @@ function openSettingsModal(section) {
        overlay itself stays clear rather than frosting over the content. */
     document.body.classList.add('v2-blurred');
 
+    /* And it rises into place rather than appearing. The shell already has
+       the transition on it; what it did not have was a state to transition
+       from, because the markup was inserted with .open already set and the
+       browser has nothing to animate between one frame and the same frame.
+       Inserted closed, opened on the next paint. */
+    const el = document.getElementById('v2SettingsModal');
+    if (el) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
+
     if (section === 'plan') {
         document.getElementById('v2SetPlan')?.scrollIntoView({ block: 'nearest' });
     }
@@ -873,6 +890,8 @@ function openSettingsModal(section) {
 function v2ChangeTeam() {
     const host = document.getElementById('v2Account');
     if (host) host.hidden = true;
+    const widget = document.querySelector('.v2-sidebar-team-id');
+    if (widget) widget.hidden = false;
     if (typeof showNavTeamInput === 'function') showNavTeamInput();
     document.getElementById('navTeamIdInput')?.focus();
 }
@@ -880,8 +899,32 @@ function v2ChangeTeam() {
 function closeSettingsModal(event) {
     // Only the backdrop dismisses, not a click inside the panel.
     if (event && event.target !== event.currentTarget) return;
-    document.getElementById('v2SettingsModal')?.remove();
+    const el = document.getElementById('v2SettingsModal');
     document.body.classList.remove('v2-blurred');
+    if (!el) return;
+    /* Let the same transition run backwards before the node goes. The
+       fallback timer is not decoration: transitionend does not fire if the
+       element is hidden or the user has reduced motion on, and without it the
+       modal would stay in the DOM over the page for ever. */
+    el.classList.remove('open');
+    let done = false;
+    const drop = () => { if (done) return; done = true; el.remove(); };
+    el.addEventListener('transitionend', drop, { once: true });
+    setTimeout(drop, 320);
+}
+
+/* Disconnect. The Team ID is the whole of your identity here — there is no
+   account and no server-side session — so signing out is forgetting it, and
+   saying that plainly is better than a "Log out" that implies more than
+   happens. The rest of your settings stay, because they are this browser's
+   preferences rather than that team's. */
+function v2LogOut() {
+    try {
+        localStorage.removeItem('fpl_team_id');
+        localStorage.removeItem('fpl_league_id');
+    } catch (e) { /* private mode: nothing was stored to remove */ }
+    closeSettingsModal();
+    location.href = 'index.html';
 }
 
 /* Checkout is not built. Saying so is better than a button that does nothing
@@ -1744,7 +1787,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=193')
+    fetch('footer.html?v=194')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

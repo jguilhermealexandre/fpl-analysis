@@ -1889,6 +1889,19 @@ html.v2-theme body {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .v2-account-sub { font-size: 10.5px; color: var(--text-muted); }
+/* The plan on its own line, the way the ID is. Three short facts stacked
+   read faster than two of them run together with a middot. */
+.v2-account-plan {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--color-primary-text);
+}
+
+.v2-sidebar-team-id[hidden] { display: none; }
+
+/* The two buttons in "Connected squad". */
+.v2-set-actions { display: inline-flex; gap: 6px; flex-shrink: 0; }
+.v2-set-ghost.danger { color: var(--color-negative, #B3261E); }
+.v2-set-ghost.danger:hover { border-color: var(--color-negative, #B3261E); }
 
 .v2-account-gear {
     display: grid; place-items: center;
@@ -1908,7 +1921,9 @@ html.v2-theme body {
 .v2-premium {
     display: flex; align-items: center; justify-content: center; gap: 7px;
     padding: 9px 12px;
-    margin-bottom: 10px;
+    /* The same 8 the account block leaves under itself, so the three
+       things at the foot of the sidebar are evenly spaced. */
+    margin-bottom: 8px;
     border-radius: 10px;
     background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 62%, #0b7));
     color: #fff; text-decoration: none;
@@ -2054,6 +2069,18 @@ html.v2-theme body {
 :root {
     --v2-title-x: 18px;
     --v2-title-y: 20px;
+    /* And one gap under it. The inset was made consistent; the space
+       between a heading and the thing it heads was not, so panels that
+       started their titles on the same line still began their content on
+       different ones — 12px under the dashboard's deadline title, 6px on
+       the teams page, 10px under the snapshot header. This is the second
+       half of the same idea: same distance in from the corner, same
+       distance down to the content. */
+    /* The same number as the inset above it, deliberately. Two different
+       values would have been defensible, but then the space above a heading
+       and the space below it differ on every panel — which is the thing
+       being fixed here, one level up. One number, above and below. */
+    --v2-title-gap: var(--v2-title-y);
 }
 
 /* Panels that pad their content. */
@@ -2070,6 +2097,18 @@ html.v2-theme body {
 .all-players-head,
 .v2-set-head {
     padding: var(--v2-title-y) var(--v2-title-x) 0;
+    margin-bottom: var(--v2-title-gap);
+}
+
+/* The gap below the heading, wherever the heading sits. */
+.pa-panel > .v2-section-title,
+.v2-section > .v2-section-title,
+.sq-panel > .v2-section-title,
+.v2-section > .section-header,
+.pa-panel > .section-header,
+.sq-panel > .section-header,
+.charts-filter-panel > .v2-section-title {
+    margin-bottom: var(--v2-title-gap);
 }
 
 /* The dashboard strips, which had their own smaller numbers. */
@@ -2235,14 +2274,22 @@ html.v2-theme body {
     transition: opacity 200ms ease, visibility 0s;
 }
 
-/* The page behind the modal. Only .main-content is blurred — the sidebar is
-   navigation and stays legible — and it animates so the page settles out of
-   focus rather than snapping. */
+/* The page behind the modal. The sidebar is navigation and stays legible;
+   everything else settles out of focus rather than snapping.
+
+   Both selectors are needed. <main class="main-content"> is the article on
+   most pages, but the shell around it — the page heading, the tab strip, the
+   tickers — is .v2-main-content's own children, and blurring only the inner
+   one left the top third of the dashboard sharp behind a modal. The modal is
+   appended to <body>, outside both, so it never blurs itself. */
+body.v2-blurred .v2-main-content,
 body.v2-blurred .main-content {
     filter: blur(7px);
     transition: filter 240ms ease;
     pointer-events: none;
 }
+/* Nested, they would blur twice. */
+body.v2-blurred .v2-main-content .main-content { filter: none; }
 
 
 /* ----- The notification panel, opened from the sidebar -----
