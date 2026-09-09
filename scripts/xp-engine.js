@@ -747,6 +747,71 @@
             return { pStart, expMins, min90: expMins / 90 };
         }
 
+        /* Calibration: the model is over-confident about its best picks, and most
+           over-confident when it knows least.
+
+           Measured over the 2025/26 season with tools/wildcard-backtest.mjs. The
+           middle of the distribution is accurate — deciles 3 to 9 land within 0.15
+           of the truth — but the top decile projects 4.58 and delivers 4.19, and
+           the error is concentrated early:
+
+             GW2-13    projects 4.82, delivers 4.17     3.2 pts per 5-GW horizon
+             GW14-25   projects 4.26, delivers 3.80     2.3 pts
+             GW26-38   projects 4.48, delivers 4.39     0.5 pts
+
+           That matters because it lands on one side of a subtraction. A transfer
+           compares a top-decile incoming player against a mid-table outgoing one,
+           so the optimism does not cancel — and early in the season it exceeds
+           TW_MIN_FREE_GAIN outright. The engine was recommending moves whose whole
+           margin was its own confidence.
+
+           Three properties of this fix, in order of how much they matter:
+
+           It is MONOTONE within a fixture, so it barely touches any ranking. Over
+           the season, top-20 and top-50 mean points are unchanged (4.40 and 3.95
+           against 3.94) and top-10 moves from 4.94 to 4.85 — about half a standard
+           error, and traceable to the three double gameweeks in the season. There,
+           two fixtures of 2.6 each stay under the centre and escape the shrink
+           while a single fixture of 5.2 does not, so a double can overtake.
+
+           Applying it to the gameweek total instead removes even that, and was
+           measured: identical MAE, identical bias, top-10 held at 4.94, top decile
+           gap -0.06 against -0.03. It is not used because it would have to be
+           applied in projectPlayerPointsForGW AND predictedGWPoints AND the
+           funnel's own summation, and a fourth caller of the detailed projection
+           would silently get an uncalibrated number. One insertion point that is
+           0.09 short on one metric beats three that agree until someone adds a
+           fourth.
+
+           It TAPERS. A static correction was tried first and is worse than doing
+           nothing: fitted on GW2-25 and applied to GW26-38 it took MAE from 1.932
+           to 2.013, because by then the model needs no correction and the
+           correction fires anyway. The slope here runs 0.61 at GW2 to 1.0 — no
+           correction at all — by about GW35, which the data chose, not me.
+
+           It only touches the UPPER side. Shrinking the bottom too scores better
+           on paper (mean absolute decile gap 0.120 against 0.168) and is not
+           shippable: that half was fitted on players with 300+ minutes and would be
+           applied to fringe players it never saw, inflating every bench. Upper-only
+           captures the entire top-decile gain — out of sample the last decile's gap
+           goes from -0.41 to -0.14 either way — and improves MAE rather than
+           costing it.
+
+           Refit both constants by re-running the backtest against a newer season;
+           they are one season's numbers and should not be treated as permanent. */
+        const XP_CAL_CENTER = 3.0;
+        const XP_CAL_K0 = 0.59;
+        const XP_CAL_K1 = 0.012;
+
+        function xpCalibrate(total, gw) {
+            // Below the centre the projection is left exactly as it was.
+            if (!(total > XP_CAL_CENTER)) return total;
+            const g = gw != null ? gw
+                : (typeof currentGW !== 'undefined' && currentGW ? currentGW : 38);
+            const k = Math.min(1, Math.max(0.55, XP_CAL_K0 + XP_CAL_K1 * g));
+            return XP_CAL_CENTER + k * (total - XP_CAL_CENTER);
+        }
+
         // opts.fixture projects a specific match instead of the player's next one,
         // which is what lets the draft planner price up GW+3. opts.applyEpFloor is
         // separate because FPL's ep_next is an estimate for the NEXT match only —
@@ -862,6 +927,27 @@
                 const evidence = Math.min(1, mins / 450);
                 const floor = (player.epNext || 0) * (1 - evidence);
                 out.total = Math.max(out.total, floor);
+            }
+
+            /* Applied last, to the number that actually leaves this function —
+               after the floor, because a floored projection is still a projection
+               and there is no reason to exempt it. Per FIXTURE rather than per
+               gameweek: the over-confidence is a property of one match's estimate,
+               and a player with two fixtures has genuinely earned two chances at
+               it, so shrinking his gameweek total toward a one-match centre would
+               punish the double rather than the confidence.
+
+               The components are rescaled by the same factor. The transfer funnel
+               draws its component bar and its headline out of this one object, and
+               a breakdown that does not add up to the number beside it is the
+               exact class of contradiction this codebase keeps having to hunt. */
+            const calibrated = xpCalibrate(out.total, fx && fx.event);
+            if (calibrated !== out.total) {
+                const scale = out.total > 0 ? calibrated / out.total : 1;
+                out.appearance *= scale; out.attack *= scale; out.cleanSheet *= scale;
+                out.saves *= scale; out.bonus *= scale; out.conceded *= scale;
+                out.defCon *= scale; out.cards *= scale;
+                out.total = calibrated;
             }
             return out;
         }
