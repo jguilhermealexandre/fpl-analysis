@@ -1027,6 +1027,18 @@ function loadDemoTeam() {
     location.reload();
 }
 
+/* Is the site being shown with the demo team rather than somebody's real one?
+
+   Demo mode is nothing more than a saved team id of DEMO_TEAM_ID, which
+   fetchWithProxy answers locally instead of asking FPL. Because it lives in the
+   same place every page reads its team id from, a page that has no team of its
+   own — the Players Explorer, say — can still tell it is being used as a
+   demonstration. The nav widget is already labelling that id DEMO on screen, so
+   this never puts the page in a state the reader cannot see it is in. */
+function isDemoMode() {
+    return getSavedTeamId() === DEMO_TEAM_ID;
+}
+
 function _formatTeamIdLabel(id) {
     return id === DEMO_TEAM_ID ? 'DEMO' : id;
 }
@@ -1073,7 +1085,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=177')
+    fetch('footer.html?v=178')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
