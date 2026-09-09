@@ -1228,31 +1228,59 @@ body.v2-blurred .main-content {
     transform: translate(-50%, 12px);
     z-index: 300;
     display: flex; align-items: center; gap: 10px;
-    max-width: min(560px, calc(100vw - 32px));
-    padding: 11px 12px 11px 15px;
+    max-width: min(600px, calc(100vw - 32px));
+    padding: 12px 12px 12px 16px;
     border-radius: 999px;
-    background: var(--surface-1);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
-    box-shadow: 0 10px 30px rgba(16, 24, 40, .18);
-    font-size: 12.5px; line-height: 1.45; color: var(--text-primary);
+    /* Solid brand green with white on it. A white pill with a green hairline
+       reads as another card on a page full of them, and this is the one thing
+       here that appears, says something and leaves — it has a few seconds to be
+       noticed, so it does not get to be quiet. */
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--color-primary) 34%, transparent);
+    font-size: 13px; line-height: 1.45; color: #fff;
     opacity: 0; visibility: hidden; pointer-events: none;
     transition: opacity 200ms ease, transform 240ms cubic-bezier(.22,1,.36,1), visibility 0s linear 240ms;
 }
+/* Everything inside inherits the white: the message carries <strong> and the
+   report link is a button with its own colours. */
+.sq-toast strong, .sq-toast b { color: #fff; font-weight: 700; }
 .sq-toast.show {
     opacity: 1; visibility: visible; pointer-events: auto;
     transform: translate(-50%, 0);
     transition: opacity 200ms ease, transform 240ms cubic-bezier(.22,1,.36,1), visibility 0s;
 }
-.sq-toast.tone-good { border-color: color-mix(in srgb, var(--color-primary) 45%, transparent); }
-.sq-toast-body { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.sq-toast .v2-sec-icon { width: 16px; height: 16px; color: var(--color-primary); flex-shrink: 0; }
+/* Tones, for when a toast is not good news. Green is the default because so
+   far everything that raises one is something that went right. */
+.sq-toast.tone-warn { background: var(--color-warning); border-color: var(--color-warning); box-shadow: 0 12px 32px color-mix(in srgb, var(--color-warning) 34%, transparent); }
+.sq-toast.tone-bad { background: var(--color-error); border-color: var(--color-error); box-shadow: 0 12px 32px color-mix(in srgb, var(--color-error) 34%, transparent); }
+
+.sq-toast-body { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.sq-toast .v2-sec-icon { width: 17px; height: 17px; color: #fff; flex-shrink: 0; }
 .sq-toast-x {
-    flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
-    border: none; background: transparent; color: var(--text-muted);
-    font-size: 17px; line-height: 1; cursor: pointer;
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    border: none; background: transparent; color: rgba(255,255,255,0.8);
+    font-size: 18px; line-height: 1; cursor: pointer;
+    transition: background 140ms ease, color 140ms ease;
 }
-.sq-toast-x:hover { background: var(--surface-2); color: var(--text-primary); }
-.sq-toast .opt-report-btn { flex-shrink: 0; }
+.sq-toast-x:hover { background: rgba(255,255,255,0.18); color: #fff; }
+/* A white pill on the green, rather than the page's own outlined button —
+   which was a blue link on a green ground. */
+.sq-toast .opt-report-btn,
+.sq-toast .opt-revert-btn {
+    flex-shrink: 0;
+    background: #fff;
+    border-color: #fff;
+    color: var(--color-primary-text, #065F46);
+    font-weight: 700;
+}
+.sq-toast .opt-report-btn:hover,
+.sq-toast .opt-revert-btn:hover {
+    background: rgba(255,255,255,0.88);
+    border-color: rgba(255,255,255,0.88);
+    color: var(--color-primary-text, #065F46);
+}
+.sq-toast .opt-report-btn .v2-sec-icon { color: currentColor; }
 @media (prefers-reduced-motion: reduce) { .sq-toast { transition: opacity 200ms ease, visibility 0s; } }
 
 .snapshot-player { position: relative; padding-top: 20px; }
@@ -2115,19 +2143,24 @@ body.v2-blurred .main-content {
    xP GW4" against "9 pts FT" — and with the row free to size itself the cards
    changed height when you switched between the gameweek's points and the
    projection, so the whole pitch shifted under you. */
+/* Fixed dark ink, not --text-primary. The card is a white tile on the grass in
+   both themes — .pcard's background does not change — so text that follows the
+   theme turns white on white the moment dark mode is on, and the number this
+   card exists to show disappears. The name above already used a fixed colour
+   for the same reason; these three did not. */
 .pcard-score {
     display: flex; align-items: baseline; justify-content: center; gap: 3px;
     min-height: 20px;
     font-family: var(--font-mono);
-    color: var(--text-primary);
+    color: #17301F;
     white-space: nowrap;
 }
 .pcard-score b { font-size: 16px; font-weight: 800; line-height: 1.1; }
-.pcard-score-u { font-size: 9.5px; font-weight: 700; color: var(--text-muted); }
+.pcard-score-u { font-size: 9.5px; font-weight: 700; color: rgba(15,23,42,0.55); }
 .pcard-when {
     font-family: var(--font-body);
     font-size: 8.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
-    color: var(--text-muted);
+    color: rgba(15,23,42,0.5);
 }
 /* Only the two live states take a colour, and only on the label — the figure
    itself stays black so it reads as a number in every mode. */

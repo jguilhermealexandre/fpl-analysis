@@ -426,10 +426,10 @@ function createTable(position, analyses) {
             </div>
             <div class="table-footer">
                 <div class="table-info">
-                    Showing <span id="showingCount-${position}">${Math.min(getRowsPerPage(position), players.length)}</span> of ${players.length}
+                    Showing <span id="showingCount-${position}">${Math.min(getRowsPerPage(position), players.length)}</span> of <span id="totalCount-${position}">${players.length}</span>
                 </div>
                 <div class="table-pagination" id="pagination-${position}">
-                    ${renderPagination(position, players.length)}
+                    ${renderPagination(position)}
                 </div>
             </div>
         </div>
@@ -457,7 +457,15 @@ function renderTableHeader(position) {
     return cols + `<th class="col-actions"></th>`;
 }
 
-function renderTableBody(position) {
+/* Everything the table shows, in the order it shows it — filtered and sorted,
+   but not yet cut into a page.
+ *
+ * This was inline in renderTableBody, which meant it was the only thing that
+ * knew how many rows there actually are. The pagination was handed
+ * tableData[position].length instead — the whole unfiltered dataset — so it
+ * drew the same five page buttons whatever you filtered down to, including
+ * when the filters matched nothing at all. */
+function getFilteredPlayers(position) {
     const state = tableState[position];
     let players = [...(tableData[position] || [])];
     
@@ -513,16 +521,39 @@ function renderTableBody(position) {
         });
     }
     
+    return players;
+}
+
+/* How many pages the current filter actually produces, and the page we are
+   allowed to be on. Narrowing a filter used to leave state.page pointing past
+   the end of the shorter list, which renders an empty table with no way back
+   other than clicking a page button that is no longer there. */
+function paginationFor(position) {
+    const state = tableState[position];
+    const total = getFilteredPlayers(position).length;
+    const rpp = getRowsPerPage(position);
+    const pages = Math.max(1, Math.ceil(total / rpp));
+    if (state.page > pages) state.page = pages;
+    if (state.page < 1) state.page = 1;
+    return { total, rpp, pages, page: state.page };
+}
+
+function renderTableBody(position) {
+    const state = tableState[position];
+    const players = getFilteredPlayers(position);
+    const { rpp } = paginationFor(position);
+
     // Update count
     setTimeout(() => {
         const countEl = document.getElementById(`rowCount-${position}`);
         if (countEl) countEl.textContent = players.length;
         const showingEl = document.getElementById(`showingCount-${position}`);
-        if (showingEl) showingEl.textContent = Math.min(getRowsPerPage(position) * state.page, players.length);
+        if (showingEl) showingEl.textContent = Math.min(rpp * state.page, players.length);
+        const totalEl = document.getElementById(`totalCount-${position}`);
+        if (totalEl) totalEl.textContent = players.length;
     }, 0);
-    
+
     // Paginate
-    const rpp = getRowsPerPage(position);
     const start = (state.page - 1) * rpp;
     const paginated = players.slice(start, start + rpp);
 
@@ -688,16 +719,33 @@ function renderCell(p, colKey, position, isSelected) {
     return `<td class="stat-cell ${heat}">${heat ? `<span class="stat-pill">${formatted}</span>` : formatted}</td>`;
 }
 
-function renderPagination(position, total) {
-    const rpp = getRowsPerPage(position);
-    const pages = Math.ceil(total / rpp);
+/* Pages for the rows that are actually there.
+
+   The old version always drew buttons 1..5: it was given the unfiltered total,
+   and then capped the count at five — so a filter matching three players still
+   offered five pages, and a list of forty pages also offered five. It now
+   counts the filtered rows, and shows a window around the current page with
+   first/last always reachable. */
+function renderPagination(position) {
+    const { pages, page } = paginationFor(position);
     if (pages <= 1) return '';
-    
-    const state = tableState[position];
-    let html = '';
-    for (let i = 1; i <= Math.min(pages, 5); i++) {
-        html += `<button class="page-btn ${state.page === i ? 'active' : ''}" onclick="goToPage('${position}', ${i})">${i}</button>`;
-    }
+
+    const btn = i => `<button class="page-btn ${page === i ? 'active' : ''}" onclick="goToPage('${position}', ${i})">${i}</button>`;
+    const gap = '<span class="page-gap">…</span>';
+
+    const nums = new Set([1, pages, page, page - 1, page + 1]);
+    // Keep the row a stable width on the first and last pages too.
+    if (page <= 3) [2, 3, 4].forEach(i => nums.add(i));
+    if (page >= pages - 2) [pages - 3, pages - 2, pages - 1].forEach(i => nums.add(i));
+
+    const shown = [...nums].filter(i => i >= 1 && i <= pages).sort((a, b) => a - b);
+
+    let html = `<button class="page-btn nav" onclick="goToPage('${position}', ${page - 1})" ${page === 1 ? 'disabled' : ''} aria-label="Previous page">‹</button>`;
+    shown.forEach((i, idx) => {
+        if (idx > 0 && i - shown[idx - 1] > 1) html += gap;
+        html += btn(i);
+    });
+    html += `<button class="page-btn nav" onclick="goToPage('${position}', ${page + 1})" ${page === pages ? 'disabled' : ''} aria-label="Next page">›</button>`;
     return html;
 }
 
@@ -997,7 +1045,7 @@ function refreshTable(position) {
     const pagination = document.getElementById(`pagination-${position}`);
     if (head) head.innerHTML = renderTableHeader(position);
     if (body) body.innerHTML = renderTableBody(position);
-    if (pagination) pagination.innerHTML = renderPagination(position, tableData[position]?.length || 0);
+    if (pagination) pagination.innerHTML = renderPagination(position);
     updateFilterButtons(position);
     if (typeof lucide !== 'undefined') lucide.createIcons();
     if (head && typeof annotateStatTerms === 'function') annotateStatTerms(head);
@@ -1042,5 +1090,11 @@ function onCompareCheckboxChange(playerId, position) {
 // stay in sync (identical to this page's pre-refactor behavior).
 function onCompareSelectionChange() {
     const body = document.getElementById('tableBody-ALL');
-    if (body) body.innerHTML = renderTableBody('ALL');
+    if (!body) return;
+    body.innerHTML = renderTableBody('ALL');
+    /* The rows carry <i data-lucide="star"> placeholders that lucide swaps for
+       an <svg> when it runs. Replacing the body writes fresh placeholders, so
+       without this the shortlist stars simply vanish the first time anyone
+       ticks a compare box. */
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }

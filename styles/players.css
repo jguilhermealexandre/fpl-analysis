@@ -793,17 +793,32 @@
 .pos-filter-pill.pos-def { --v2-pos-color: var(--position-def); }
 .pos-filter-pill.pos-mid { --v2-pos-color: var(--position-mid); }
 .pos-filter-pill.pos-fwd { --v2-pos-color: var(--position-fwd); }
-.pos-filter-pill[class*="pos-"] {
+/* The four position classes by name, not [class*="pos-"]. That substring
+   matched the base class `pos-filter-pill` as well, so every pill including
+   "All" was caught by it — and on "All" there is no --v2-pos-color to resolve,
+   which makes `color` and `background` invalid at computed-value time. The
+   result was white text on nothing: the All filter was invisible in light mode
+   and unreadable when active. */
+.pos-filter-pill.pos-gk,
+.pos-filter-pill.pos-def,
+.pos-filter-pill.pos-mid,
+.pos-filter-pill.pos-fwd {
     border-color: var(--v2-pos-color);
     color: var(--v2-pos-color);
     background: transparent;
 }
-.pos-filter-pill[class*="pos-"]:not(.active):hover {
+.pos-filter-pill.pos-gk:not(.active):hover,
+.pos-filter-pill.pos-def:not(.active):hover,
+.pos-filter-pill.pos-mid:not(.active):hover,
+.pos-filter-pill.pos-fwd:not(.active):hover {
     background: color-mix(in srgb, var(--v2-pos-color) 14%, transparent);
     color: var(--v2-pos-color);
     border-color: var(--v2-pos-color);
 }
-.pos-filter-pill[class*="pos-"].active {
+.pos-filter-pill.pos-gk.active,
+.pos-filter-pill.pos-def.active,
+.pos-filter-pill.pos-mid.active,
+.pos-filter-pill.pos-fwd.active {
     background: var(--v2-pos-color);
     border-color: var(--v2-pos-color);
     color: #fff;
@@ -1774,8 +1789,12 @@
     transition: all 150ms;
 }
 .page-btn:hover { background: var(--surface-1); color: var(--text-primary); }
-.page-btn.active { background: var(--color-success); color: #000; border-color: var(--color-success); }
-.page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.page-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.page-btn:disabled:hover { background: var(--surface-2); color: var(--text-secondary); }
+.page-btn.nav { font-size: 15px; line-height: 1; padding-top: 0; padding-bottom: 2px; }
+/* The break between two runs of page numbers. */
+.page-gap { padding: 0 2px; color: var(--text-muted); font-size: 12px; user-select: none; }
 
 /* Tooltip for column descriptions */
 .col-tooltip {
