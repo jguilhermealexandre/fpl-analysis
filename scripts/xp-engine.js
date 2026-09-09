@@ -437,6 +437,37 @@
            and the same for the opponent's attack. */
         const LEAGUE_GOALS_PER_TEAM = 1.4;
 
+        /* This spread is too wide, and narrowing it makes the site worse. Both
+           halves of that were measured, so please read before "fixing" it.
+
+           Across 740 team-gameweeks of 2025/26 the number this returns ranges
+           from about 0.94 to 2.15 by quintile where teams actually conceded 1.12
+           to 1.62 — roughly two and a half times the real spread. The constant
+           itself is fine (the league ran at 1.375 a team a game) and the aggregate
+           clean-sheet probability is nearly exact, 0.243 predicted against 0.250.
+           It is the confidence about WHICH defences that is overdone, and it
+           shows at the ends: the best-rated fifth is given a 0.396 chance of a
+           clean sheet and keeps 0.338, the worst-rated 0.119 against 0.189.
+
+           Shrinking toward the league mean fixes that. Fitted on odd gameweeks
+           and checked on even, k=0.7 cuts the mean absolute quintile error from
+           0.258 to 0.148 and improves xGA's own MAE. Then it reaches the players
+           and costs more than it pays: top-10 falls from 4.97 to 4.82 and top-20
+           from 4.52 to 4.47, with rank correlation unmoved at 0.460 and bias
+           barely better at 0.135 against 0.140. Every k from 0.6 to 0.9 loses the
+           same way.
+
+           The reason is that this feeds clean sheets, and the clean-sheet
+           component contributes almost nothing to ordering players anyway —
+           correlation 0.025 with what starters actually scored. Compressing it
+           removes the little discrimination it had while improving a number
+           nobody picks a team from. An over-confident ranking beats a
+           well-calibrated flat one when the output is a ranking.
+
+           Worth a second look if the clean-sheet route ever carries more weight,
+           or with a season of team news from GW1. Home advantage is separately
+           under-modelled — the model concedes 0.929 at home for every 1 away,
+           where the season ran at 0.819 — and that one was not tested on its own. */
         function expectedGoalsAgainst(teamId, fixture) {
             const ta = teamAnalysis[teamId];
             const isHome = fixture ? !!fixture.isHome : true;
