@@ -5192,18 +5192,18 @@
             if (rdSlot) rdSlot.innerHTML = rdSummaryHTML(built.summary, deadlineTime, Date.now(), built.checks);
 
             const html = renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup', 'xi')
-                       + renderCol(txItems, 'repeat', 'Transfers', 'No urgent transfer actions right now', 'fpl-my-team-analysis.html#transfers', 'tx')
-                       /* The alerts offer goes last, under the checks rather
-                          than above them. The browser permission prompt is
-                          one-shot per origin — a refusal cannot be asked again,
-                          only undone in settings, which nobody does — so it is
-                          only ever raised from a click, and only once the
-                          manager has seen the thing it proposes to tell him
-                          about. A banner on page load spends that one chance on
-                          someone who does not yet know what he is agreeing to. */
-                       + '<div class="pn-slot" id="pnToggle"></div>';
+                       + renderCol(txItems, 'repeat', 'Transfers', 'No urgent transfer actions right now', 'fpl-my-team-analysis.html#transfers', 'tx');
+            /* The alerts offer used to be a third block here, under the two
+               attention columns and inside nothing — a floating paragraph on a
+               page made of panels. It now lives in the notification panel
+               beside "Activity", which is the list of exactly the things it
+               proposes to send you, so the switch sits on the thing it
+               switches. See ntHeadHTML() in scripts/notifications.js.
+
+               The reason it is not a load-time banner is unchanged: the
+               browser permission prompt is one-shot per origin, a refusal
+               cannot be asked again, so it is only ever raised from a click. */
             document.getElementById('v2AttentionGrid').innerHTML = html;
-            if (typeof pnRefreshToggle === 'function') pnRefreshToggle();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 

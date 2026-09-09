@@ -100,7 +100,28 @@ const scraped = await page.evaluate(() => {
     const out = [];
     const seenHref = new Set();
 
-    for (const a of document.querySelectorAll('a[href]')) {
+    /* Collect anchors through shadow roots, not just the light DOM.
+     *
+     * The first pass came back with the club-news rail and none of the
+     * Premier League's own editorial, and scrolling did not change that —
+     * because their front end is built out of web components, and an element
+     * inside a shadow root is invisible to document.querySelectorAll(). The
+     * club rail happens to be in the light DOM; the article grid is not.
+     *
+     * So walk the tree and descend into every shadowRoot on the way. Depth is
+     * capped because a component that hosts itself would otherwise not
+     * terminate, and no card is nested twenty roots deep. */
+    const anchors = [];
+    const walk = (root, depth) => {
+        if (!root || depth > 20) return;
+        root.querySelectorAll('a[href]').forEach(a => anchors.push(a));
+        root.querySelectorAll('*').forEach(el => {
+            if (el.shadowRoot) walk(el.shadowRoot, depth + 1);
+        });
+    };
+    walk(document, 0);
+
+    for (const a of anchors) {
         const href = a.href;
         if (!/^https?:\/\//.test(href)) continue;
         // Article routes on the Premier League's own site and on the club
@@ -120,8 +141,13 @@ const scraped = await page.evaluate(() => {
         // close above it — not to the page.
         let img = a.querySelector('img');
         if (!img) {
-            const card = a.closest('article, li, [class*="ard"]');
-            if (card) img = card.querySelector('img');
+            /* closest() stops at a shadow boundary, so walk up by hand and
+               step over the boundary via host when it does. */
+            let node = a.parentNode;
+            for (let i = 0; i < 6 && node && !img; i++) {
+                if (node.querySelector) img = node.querySelector('img');
+                node = node.parentNode || node.host;
+            }
         }
         let image = img && (img.currentSrc || img.src || img.getAttribute('data-src')) || null;
         /* A club badge is what sits on a syndicated club-news row, and it is
@@ -130,7 +156,12 @@ const scraped = await page.evaluate(() => {
            its own placeholder. */
         if (image && /\/badges?\//.test(image)) image = null;
 
-        const time = a.closest('article, li, [class*="ard"]')?.querySelector('time');
+        let time = null;
+        let tnode = a.parentNode;
+        for (let i = 0; i < 4 && tnode && !time; i++) {
+            if (tnode.querySelector) time = tnode.querySelector('time');
+            tnode = tnode.parentNode || tnode.host;
+        }
         const published = time && (time.getAttribute('datetime') || time.textContent) || null;
 
         /* Where the article lives. The page carries the Premier League's own
@@ -153,6 +184,16 @@ const scraped = await page.evaluate(() => {
 });
 
 if (DUMP) {
+    const roots = await page.evaluate(() => {
+        let n = 0;
+        const walk = (root, d) => {
+            if (!root || d > 20) return;
+            root.querySelectorAll('*').forEach(el => { if (el.shadowRoot) { n++; walk(el.shadowRoot, d + 1); } });
+        };
+        walk(document, 0);
+        return n;
+    });
+    console.log(`=== ${roots} shadow root(s) walked ===`);
     console.log(`=== ${scraped.length} article(s) scraped ===`);
     scraped.slice(0, 15).forEach(a => console.log(`  ${a.title}\n     ${a.link}\n     img: ${a.image || '(none)'}`));
 } else {

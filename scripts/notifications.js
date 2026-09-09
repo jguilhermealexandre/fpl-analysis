@@ -265,11 +265,32 @@
             </button>`;
         }
 
+        /* The panel's header: "Activity", and beside it the switch for getting
+           the same things sent to you when the site is closed.
+         *
+           The alerts offer used to be a block on the dashboard, sitting under
+           the attention checks with nothing around it — a floating paragraph
+           on a page of panels. It belongs here: this panel IS the list of
+           things worth telling you about, so "and send these to my phone" is
+           a property of it rather than a separate feature that happened to
+           land on the home page.
+
+           The permission prompt is still only ever raised from a click, for
+           the reason it always was — a browser refusal is one-shot per origin
+           and cannot be asked again — so what the alerts cover is on hover and
+           on focus rather than spent as a paragraph nobody reads. */
+        function ntHeadHTML() {
+            return `<div class="nt-head">
+                <span class="nt-head-l">Activity</span>
+                <span class="nt-head-alerts" id="pnToggle"></span>
+            </div>`;
+        }
+
         function ntPanelHTML(events, lastSeen, now) {
             const esc = typeof escHTML === 'function' ? escHTML : (s => String(s == null ? '' : s));
             if (!events || !events.length) {
                 return `<div class="nt-panel">
-                    <div class="nt-head">Activity</div>
+                    ${ntHeadHTML()}
                     <p class="nt-empty">Nothing yet. Once you have been here a couple of times, this is where
                        news on your players, what they scored, and the gameweek turning over will show up.</p>
                 </div>`;
@@ -287,7 +308,7 @@
                "Since your last visit" is the question this panel exists to
                answer, so it is a heading rather than a decoration. */
             return `<div class="nt-panel">
-                <div class="nt-head">Activity</div>
+                ${ntHeadHTML()}
                 ${fresh.length ? `<div class="nt-group">
                     <span class="nt-group-l">Since your last visit</span>
                     ${fresh.map(row).join('')}
@@ -327,6 +348,11 @@
                you opened it to read does not vanish as you read it. */
             const before = ntLoad();
             drop.innerHTML = ntPanelHTML(before.events, before.lastSeen);
+            /* The alerts switch is rendered into the header this panel just
+               drew, so it has to be filled after — and on every open, since it
+               reports what the browser currently permits rather than what we
+               last saw it permit. */
+            if (typeof pnRefreshToggle === 'function') pnRefreshToggle();
             ntMarkSeen();
             const dot = document.querySelector('.nt-dot');
             if (dot) dot.remove();
