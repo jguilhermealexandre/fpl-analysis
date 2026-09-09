@@ -500,6 +500,52 @@ async function probe(headers) {
  * grid of variants and prints each status with its body. One run should end
  * the guessing; whichever line comes back 200 becomes the source above.
  */
+/* The listing endpoint on the host the page actually calls.
+ *
+ * The browser probe caught it in the act:
+ *
+ *   200 GET https://api.premierleague.com/content/premierleague/TEXT/en/4371402
+ *            ?showAllTitleTranslations=true&detail=DETAILED
+ *   {"id":4371402,"accountId":10,"type":"text","title":"Premier League 2
+ *    fixtures: …","description":"…","date":"…","tags":[{"label":"series:news"}…]}
+ *
+ * So the host is api.premierleague.com — not the SDP gateway every attempt so
+ * far went through — and the path is /content/premierleague/TEXT/en/{id}. That
+ * is one article by id. This sweeps the same path without an id, which is how
+ * a Pulselive content API is asked for a list, across the paging conventions
+ * and the tag filters the article's own tags suggest.
+ */
+async function listSweep(headers) {
+    const API = 'https://api.premierleague.com/content/premierleague';
+    const urls = [];
+    const add = u => { if (!urls.includes(u)) urls.push(u); };
+
+    for (const type of ['TEXT', 'text']) {
+        for (const lang of ['en', 'EN']) {
+            const base = `${API}/${type}/${lang}`;
+            add(base);
+            add(`${base}?pageSize=20&page=0`);
+            add(`${base}?pageSize=20&page=0&detail=DETAILED`);
+            add(`${base}?limit=20&offset=0`);
+            add(`${base}?pageSize=20&page=0&tagNames=series:news`);
+            add(`${base}?pageSize=20&page=0&references=ALL&detail=DETAILED`);
+        }
+    }
+    // And the multi-type listing, in case text is filed under a wrapper.
+    add(`${API}/en?contentTypes=text&limit=20&offset=0&onlyRestrictedContent=false`);
+
+    for (const url of urls) {
+        try {
+            const res = await fetch(url, { headers });
+            const body = await res.text();
+            console.log(`${res.status}  ${url}`);
+            console.log(`      ${body.replace(/\s+/g, ' ').slice(0, 260)}`);
+        } catch (e) {
+            console.log(`ERR  ${url}\n      ${e.message}`);
+        }
+    }
+}
+
 async function matrix(headers) {
     const langs = ['EN', 'en', 'en-GB'];
     const urls = [];
@@ -719,6 +765,10 @@ async function main() {
     }
     if (args.includes('--hsweep')) {
         await headerSweep(PULSE_HEADERS);
+        return;
+    }
+    if (args.includes('--list')) {
+        await listSweep(PULSE_HEADERS);
         return;
     }
     if (args.includes('--inspect')) {

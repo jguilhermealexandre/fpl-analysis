@@ -22,7 +22,7 @@ on:
       mode:
         description: 'What to run'
         type: choice
-        options: [fetch, inspect, probe, matrix, headers, hsweep, browser]
+        options: [fetch, inspect, probe, matrix, headers, hsweep, browser, list]
         default: fetch
 
 # Writes data/ back to main, and nothing else.
@@ -92,6 +92,13 @@ jobs:
       - name: Record what the news page requests
         if: inputs.mode == 'browser'
         run: node tools/pl-news-browser.mjs --dump
+
+      # The browser probe caught the real content API in the act:
+      # api.premierleague.com/content/premierleague/TEXT/en/{id} answers 200
+      # with the article. This asks the same path for a list.
+      - name: Sweep the listing endpoint
+        if: inputs.mode == 'list'
+        run: node tools/fetch-pl-news.mjs --list
 
       - name: Fetch Premier League news
         if: inputs.mode == '' || inputs.mode == 'fetch'
