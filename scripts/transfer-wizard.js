@@ -595,6 +595,7 @@
             const o = opts || {};
             const nav = [
                 o.back ? `<button class="tw-back" onclick="${o.back.on}"${o.back.tip ? ` data-tooltip="${escHTML(o.back.tip)}"` : ''}>${v2Icon('up')} ${escHTML(o.back.label)}</button>` : '',
+                o.extra || '',
                 o.next ? `<button class="tw-next"${o.next.disabled ? ' disabled' : ''} onclick="${o.next.on}"${o.next.tip ? ` data-tooltip="${escHTML(o.next.tip)}"` : ''}>${escHTML(o.next.label)} ${v2Icon('next')}</button>` : ''
             ].filter(Boolean).join('');
             return `<div class="twc-panel-head tw-step-head">
@@ -1519,21 +1520,30 @@
                     const twPosEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
                     const twIdent = { name: p.name, code: p.code, teamId: p.teamId, team: p.team };
 
-                    rows += `<div class="twc-row ${twPosEdge} ${sold ? 'is-sold' : ''} ${pending ? 'is-pending' : ''} ${transferState.sellMode && !planStep ? 'sell-mode' : ''}"
-                        ${transferState.sellMode && !sold && !planStep ? `onclick="twPickOutPlayer(${p.id})"` : ''}>
+                    /* The row is the button.
+
+                       There used to be a 70px Swap button on the right of a
+                       1200px row, and the row itself was only clickable under
+                       a multi plan — so the same list was operated two
+                       different ways depending on a setting three steps
+                       earlier. Click anywhere on anyone now, under any plan;
+                       picked stays lit until you click it again. */
+                    const pickable = !planStep && !sold;
+                    rows += `<div class="twc-row ${twPosEdge} ${sold ? 'is-sold' : ''} ${pending ? 'is-picked' : ''} ${pickable ? 'is-pickable' : ''}"
+                        ${pickable ? `role="button" tabindex="0" aria-pressed="${pending}"
+                            onclick="twRowPick(${p.id})"
+                            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twRowPick(${p.id});}"
+                            data-tooltip="${pending ? escHTML(`${p.name} is in the plan — click to take him back out`) : escHTML(`Move ${p.name} on`)}"` : ''}>
                         ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(twIdent) : ''}
                         <div class="twc-who">
                             <div class="twc-name">${escHTML(p.name)}${status}</div>
-                            <div class="twc-sub">${escHTML(p.team)} · £${(p.sellPrice || p.price).toFixed(1)}m</div>
+                            <div class="twc-sub">${escHTML(p.team)}</div>
                         </div>
+                        <div class="twc-price">£${(p.sellPrice || p.price).toFixed(1)}m</div>
                         <div class="twc-fdrs" data-tooltip="Next three fixtures.">${blocks}</div>
                         <div class="twc-xp" data-tooltip="Projected points across GW${twRun[0]}\u2013GW${twRun[twRun.length - 1]} \u2014 the same three fixtures shown beside it.">${xp.toFixed(1)}<span class="twc-xp-u">xP${twRun.length}</span></div>
                         ${sold ? `<span class="twc-swapped">Swapped</span>`
-                            : `<button class="twc-swap ${pending ? 'active' : ''}" ${planStep ? 'disabled' : ''}
-                                onclick="event.stopPropagation();twSwapPlayer(${p.id})"
-                                data-tooltip="${planStep
-                                    ? 'Choose how you are transferring first — the plan decides how many players you can move.'
-                                    : (pending ? 'Find a replacement for ' + escHTML(p.name) : 'Sell ' + escHTML(p.name) + ' and open the market for their position')}">${TW_SWAP_ICON}${pending ? 'Find' : 'Swap'}</button>`}
+                            : `<span class="twc-mark" aria-hidden="true">${pending ? v2Icon('check') : ''}</span>`}
                     </div>`;
                 });
                 rows += `</div></div>`;
@@ -1566,6 +1576,24 @@
                 <div class="twc-panel-body">${rows}</div>
                 ${eoStrip}
             </div>`;
+        }
+
+        /* One entry point for picking someone out, whatever the plan.
+
+           Single used to go straight to the market on the first click, which
+           meant the same list behaved differently depending on a choice made
+           two steps earlier — and left no way to change your mind without
+           coming back. Every plan collects here now; Find replacements is the
+           step forward, and it is in the header where every other step's is. */
+        function twRowPick(playerId) {
+            if (twStep() !== 2) return;
+            const existing = transferState.pending.findIndex(x => x.soldPlayer.id === playerId);
+            if (existing < 0 && !transferState.sellMode && transferState.pending.length >= 1) {
+                /* Single is one transfer. Clicking a second player replaces the
+                   first rather than refusing — that is what the click means. */
+                transferState.pending = transferState.pending.filter(x => x.replacement);
+            }
+            twPickOutPlayer(playerId);
         }
 
         // One click: stage the sale and open the market for that position.
@@ -2061,7 +2089,10 @@
                     }
                 }
             } else {
-                if (transferState.pending.length >= 5) return;
+                if (transferState.pending.length >= twMaxTransfers()) {
+                    updateStatus(`That is the maximum of ${twMaxTransfers()} transfers`, 'error');
+                    return;
+                }
                 transferState.pending.push({ soldPlayer: player, replacement: null });
             }
             renderTWAll();
@@ -2281,6 +2312,10 @@
            swap as the two players, in their clubs' colours, the way they were
            shown at every step before this one. */
         function twRenderSummaryPanel(el) {
+            /* Confirmed already: this is no longer a decision, it is a
+               receipt. What changed, what it is worth, and the one thing
+               still left to do — which is not on this site. */
+            if (twConfirmedResult && !transferState.pending.length) return twRenderConfirmedPanel(el);
             const hit = getTWHitCost();
             const itb = getTWLiveITB();
             const gws = twPlanGWs(3);
@@ -2326,8 +2361,10 @@
                 ${twStepHead({
                     icon: 'check', title: `Confirm your ${n === 1 ? 'transfer' : 'transfers'}`,
                     hint: `Judged over ${escHTML(span)}`,
-                    back: { label: 'Edit transfers', on: 'twBackFromSummary()' },
-                    next: { label: 'Start over', on: 'renderTransferWizard()', tip: 'Clear the plan and go back to step 1.' }
+                    back: { label: 'Edit', on: 'twBackFromSummary()' },
+                    extra: `<button class="tw-back" onclick="renderTransferWizard()" data-tooltip="Clear the plan and go back to step 1.">${v2Icon('refresh')} Start over</button>`,
+                    next: { label: `Confirm ${n === 1 ? 'transfer' : 'transfers'}`, on: 'twOpenConfirmGuard()',
+                            tip: 'Apply these swaps to your squad across EasyFPL.' }
                 })}
                 <div class="twc-panel-body">
                     <div class="tw-conf-stats">
@@ -2356,6 +2393,243 @@
 
                 </div>
             </div>`;
+        }
+
+        function twRenderConfirmedPanel(el) {
+            const r = twConfirmedResult;
+            const gws = twPlanGWs(3);
+            const span = gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'the gameweeks ahead';
+            const net = r.gain - r.hit;
+            const n = r.moves.length;
+
+            const byId = id => allPlayers.find(p => p.id === id);
+            const swaps = r.moves.map(m => {
+                const inP = byId(m.inId);
+                return `<div class="tw-conf-swap">
+                    <div class="tw-conf-side out">
+                        <span class="tw-conf-tag">Out</span>
+                        ${typeof v2PlayerHeroHTML === 'function' && byId(m.outId)
+                            ? v2PlayerHeroHTML({ ...byId(m.outId), price: m.outPrice / 10 }, { size: 'compact' })
+                            : escHTML(m.outName)}
+                    </div>
+                    <div class="tw-conf-mid"><span class="tw-conf-arrow" aria-hidden="true">\u2192</span></div>
+                    <div class="tw-conf-side in">
+                        <span class="tw-conf-tag is-in">In</span>
+                        ${typeof v2PlayerHeroHTML === 'function' && inP
+                            ? v2PlayerHeroHTML(inP, { size: 'compact' })
+                            : escHTML(m.inName)}
+                    </div>
+                </div>`;
+            }).join('');
+
+            const stat = (label, value, cls, tip) =>
+                `<div class="tw-conf-stat" data-tooltip="${escHTML(tip)}">
+                    <span class="tw-conf-stat-l">${escHTML(label)}</span>
+                    <span class="tw-conf-stat-v ${cls || ''}">${value}</span>
+                </div>`;
+
+            el.innerHTML = `<div class="twc-panel tw-step-panel">
+                ${twStepHead({
+                    icon: 'check', title: `${n} transfer${n === 1 ? '' : 's'} applied`,
+                    hint: `On EasyFPL \u2014 not yet on FPL`,
+                    next: { label: 'Plan another', on: 'renderTransferWizard()', tip: 'Start a new plan from step 1.' }
+                })}
+                <div class="twc-panel-body">
+                    <!-- The reminder outlives the modal: this is the screen
+                         someone will be looking at when they decide whether
+                         they have finished, and they have not. -->
+                    <div class="tw-done-warn">
+                        ${v2Icon('warn')}
+                        <span>Your squad on EasyFPL is updated. Your squad on
+                        <strong>fantasy.premierleague.com</strong> is not \u2014 make
+                        ${n === 1 ? 'this transfer' : 'these transfers'} there before the deadline.</span>
+                    </div>
+
+                    <div class="tw-conf-stats">
+                        ${stat('Projected gain', `${r.gain > 0 ? '+' : ''}${r.gain.toFixed(1)} pts`,
+                            r.gain > 0.3 ? 'up' : r.gain < -0.3 ? 'down' : '',
+                            `What these ${n === 1 ? 'players are' : 'swaps are'} worth across ${span}, before any hit.`)}
+                        ${stat('Points hit', r.hit > 0 ? `\u2212${r.hit} pts` : '0 pts', r.hit > 0 ? 'down' : '',
+                            r.hit > 0 ? 'Charged against your score this gameweek.' : 'Inside your free transfers.')}
+                        ${stat('Net', `${net > 0 ? '+' : ''}${net.toFixed(1)} pts`,
+                            net > 0.3 ? 'up' : net < -0.3 ? 'down' : '',
+                            `The gain once the hit is counted, across ${span}.`)}
+                        ${stat('In the bank', `\u00a3${r.bank.toFixed(1)}m`, r.bank < 0 ? 'down' : '',
+                            'What is left after these transfers.')}
+                    </div>
+
+                    <div class="tw-conf-swaps">${swaps}</div>
+
+                    <div class="tw-done-foot">
+                        <a class="tw-back" href="https://fantasy.premierleague.com/transfers" target="_blank" rel="noopener noreferrer">
+                            ${v2Icon('globe')} Open FPL transfers
+                        </a>
+                        <button class="tw-back" onclick="twUndoConfirmed()" data-tooltip="Take these back out of your EasyFPL squad. Use it if you decide not to make them for real.">
+                            ${v2Icon('refresh')} Undo on EasyFPL
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        /* A confirmed plan is a statement of intent, and intent changes. Undo
+           puts the squad back rather than leaving someone to re-transfer the
+           player they started with just to cancel a decision. */
+        function twUndoConfirmed() {
+            twConfirmedClear();
+            twConfirmedResult = null;
+            updateStatus('Transfers taken back out of your EasyFPL squad \u2014 reloading your real one', 'success');
+            if (typeof loadTeamById === 'function') { loadTeamById(); return; }
+            location.reload();
+        }
+
+        /* ===== Confirming =====
+
+           EasyFPL cannot make a transfer. FPL has no public write API, so a
+           swap agreed here exists only here until the manager makes it on
+           fantasy.premierleague.com as well — and a squad that is right on
+           this site and wrong on theirs is worse than no plan, because every
+           number on every page would then be describing a team they do not
+           own. So confirming says that first, in as many words, and needs it
+           acknowledged before it writes anything. */
+        function twOpenConfirmGuard() {
+            if (!transferState.pending.length) return;
+            if (!transferState.pending.every(x => x.replacement)) return;
+            document.getElementById('twConfirmGuard')?.remove();
+
+            const list = transferState.pending.map(x =>
+                `<li><b>${escHTML(x.soldPlayer.name)}</b> out, <b>${escHTML(x.replacement.name)}</b> in</li>`).join('');
+
+            document.body.insertAdjacentHTML('beforeend', `
+            <div class="modal-overlay v2-modal tw-guard" id="twConfirmGuard" onclick="twCloseConfirmGuard(event)">
+                <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="twGuardTitle">
+                    <div class="v2-set-head">
+                        <span class="v2-section-title" id="twGuardTitle">${v2Icon('warn')}Make these on FPL too</span>
+                        <button class="modal-close" onclick="twCloseConfirmGuard()" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="v2-set-body">
+                        <p class="tw-guard-lead">EasyFPL cannot make transfers for you. Fantasy Premier League
+                        has no public way for another site to change your team, so confirming here updates
+                        <strong>this site only</strong>.</p>
+                        <ul class="tw-guard-list">${list}</ul>
+                        <p class="tw-guard-lead">Make the same ${transferState.pending.length === 1 ? 'move' : 'moves'} on
+                        <strong>fantasy.premierleague.com</strong> before the deadline. If you do not, your real
+                        team is unchanged and everything EasyFPL tells you from here on will be about a squad
+                        you do not own.</p>
+                        <label class="tw-guard-ack">
+                            <input type="checkbox" id="twGuardAck" onchange="twGuardAckChanged(this.checked)">
+                            <span>I understand — I will make ${transferState.pending.length === 1 ? 'this transfer' : 'these transfers'} on the FPL site myself.</span>
+                        </label>
+                        <div class="tw-guard-actions">
+                            <button class="tw-back" onclick="twCloseConfirmGuard()">Cancel</button>
+                            <button class="tw-next" id="twGuardGo" disabled onclick="twApplyConfirmed()">
+                                Apply to my squad ${v2Icon('next')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`);
+            requestAnimationFrame(() => {
+                document.getElementById('twConfirmGuard')?.classList.add('open');
+                document.body.classList.add('v2-blurred');
+            });
+        }
+
+        function twGuardAckChanged(on) {
+            const go = document.getElementById('twGuardGo');
+            if (go) go.disabled = !on;
+        }
+
+        function twCloseConfirmGuard(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const box = document.getElementById('twConfirmGuard');
+            if (!box) return;
+            box.classList.remove('open');
+            document.body.classList.remove('v2-blurred');
+            setTimeout(() => box.remove(), 240);
+        }
+
+        /* Write the swaps, then show what they left behind.
+
+           Stored in FPL's own units — tenths of a million — because that is
+           what picks payloads carry and applyConfirmedSwaps() folds these
+           straight into one. */
+        function twApplyConfirmed() {
+            const moves = transferState.pending.filter(x => x.replacement).map(x => ({
+                outId: x.soldPlayer.id,
+                inId: x.replacement.id,
+                outName: x.soldPlayer.name,
+                inName: x.replacement.name,
+                outPrice: Math.round((x.soldPlayer.sellPrice || x.soldPlayer.price) * 10),
+                inPrice: Math.round(x.replacement.price * 10)
+            }));
+            if (!moves.length) return;
+
+            const teamId = (() => { try { return localStorage.getItem('fpl_team_id') || ''; } catch (e) { return ''; } })();
+            const gws = twPlanGWs(3);
+            const gain = transferState.pending.reduce((sum, x) =>
+                sum + (twXPOver(x.replacement, gws) - twXPOver(x.soldPlayer, gws)), 0);
+            const hit = getTWHitCost();
+            const bank = getTWLiveITB();
+
+            /* Merged rather than replaced: confirming a second transfer later
+               in the same round must not silently undo the first. A repeat of
+               the same outgoing player wins, since it is the newer decision. */
+            const held = twConfirmedRead();
+            const keep = (held && String(held.teamId) === String(teamId) && held.gw === planningGW)
+                ? held.moves.filter(m => !moves.some(n => n.outId === m.outId || n.inId === m.inId))
+                : [];
+            twConfirmedSave(teamId, planningGW, keep.concat(moves));
+
+            twConfirmedResult = { moves, gain, hit, bank, at: Date.now() };
+            twCloseConfirmGuard();
+
+            /* The squad every tab on this page reads. Rebuilt here rather than
+               reloaded from the API, which would return the same unchanged
+               squad — FPL does not know about any of this. */
+            twApplySwapsLocally(moves);
+
+            transferState.pending = [];
+            transferState.activeSlot = -1;
+            transferState.previewPlayer = null;
+            transferState.candidateCache = {};
+            transferState.mode = 'summary';
+            twGoStep(5);
+            updateStatus(`${moves.length} transfer${moves.length === 1 ? '' : 's'} applied on EasyFPL — now make ${moves.length === 1 ? 'it' : 'them'} on the FPL site`, 'success');
+        }
+
+        let twConfirmedResult = null;
+
+        /* Swap the players in the page's own state, in the outgoing player's
+           slot so the formation, the captaincy and the bench order survive. */
+        function twApplySwapsLocally(moves) {
+            moves.forEach(m => {
+                const idx = selectedPlayers.findIndex(p => p.id === m.outId);
+                if (idx < 0) return;
+                const incoming = allPlayers.find(p => p.id === m.inId);
+                if (!incoming) return;
+                const slot = selectedPlayers[idx];
+                selectedPlayers[idx] = {
+                    ...incoming,
+                    isCaptain: slot.isCaptain, isVice: slot.isVice,
+                    onBench: slot.onBench, pickPosition: slot.pickPosition,
+                    multiplier: slot.multiplier,
+                    sellPrice: m.inPrice / 10
+                };
+                if (picksData && Array.isArray(picksData.picks)) {
+                    const pk = picksData.picks.find(x => x.element === m.outId);
+                    if (pk) { pk.element = m.inId; pk.selling_price = m.inPrice; pk.purchase_price = m.inPrice; }
+                    if (picksData.entry_history) {
+                        picksData.entry_history.bank += m.outPrice - m.inPrice;
+                    }
+                }
+            });
+
+            // Every tab is built from selectedPlayers, so all of them are stale.
+            if (typeof analyzeTeam === 'function') analyzeTeam();
+            transferRendered = false;
+            lineupRendered = false;
+            draftTabRendered = false;
         }
 
         function twBackFromSummary() {

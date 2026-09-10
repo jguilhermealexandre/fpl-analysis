@@ -5205,7 +5205,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    spreadsheet's way of separating rows and is not how anything else here
    separates them. */
 .twc-row {
-    display: grid; grid-template-columns: auto minmax(0,1fr) auto auto auto;
+    display: grid; grid-template-columns: auto minmax(0,1fr) auto auto auto auto;
     align-items: center; gap: 10px;
     padding: 9px 11px 9px 22px;
     background: var(--surface-1);
@@ -5213,15 +5213,35 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     border-radius: var(--v2-card-radius, 14px);
     transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
 }
-.twc-row:hover { border-color: var(--border-emphasis); }
 .twc-row .v2-pid-avatar { width: 32px; height: 32px; }
 .twc-row .v2-pid-crest, .twc-row .v2-pid-crest img { width: 17px; height: 17px; }
 .twc-swap-icon { width: 13px; height: 13px; flex-shrink: 0; }
-.twc-swap { display: inline-flex; align-items: center; gap: 5px; }
 .twc-row.is-sold { opacity: .45; }
-.twc-row.is-pending { border-color: var(--color-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent); }
-.twc-row.sell-mode { cursor: pointer; }
-.twc-row.sell-mode:hover { border-color: var(--verdict-sell); background: color-mix(in srgb, var(--verdict-sell) 7%, transparent); }
+
+/* The row is the control. Green under the pointer, and it stays green once
+   picked — the same green either way, so what hovering promises is what
+   clicking leaves behind. */
+.twc-row.is-pickable { cursor: pointer; }
+.twc-row.is-pickable:hover,
+.twc-row.is-pickable:focus-visible {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    outline: none;
+}
+.twc-row.is-picked {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+/* A 20px column that is empty until the row is picked, so nothing shifts
+   sideways at the moment of picking it. */
+.twc-mark { width: 18px; display: inline-flex; justify-content: center; color: var(--color-primary); }
+.twc-mark svg { width: 17px; height: 17px; color: inherit; }
+.twc-price {
+    font-family: var(--font-mono, monospace);
+    font-size: 12px; font-weight: 700; color: var(--text-secondary);
+    white-space: nowrap;
+}
 
 .twc-pos { font-size: 9px; font-weight: 800; text-align: center; padding: 2px 0; border-radius: 3px; background: var(--surface-3); color: var(--text-secondary); }
 .twc-pos.gk { background: #fef3c7; color: #92400e; }
@@ -6627,7 +6647,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     color: var(--text-muted);
     transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
 }
-.tw-rail-mark svg { width: 15px; height: 15px; }
+/* v2Icon() paints in the brand green, which is invisible on the brand-green
+   mark of the step you are on — the same fault the pitch controls and the
+   gameweek review button had. The icon takes the mark's own colour. */
+.tw-rail-mark svg { width: 15px; height: 15px; color: inherit; }
 
 .tw-rail-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .tw-rail-n {
@@ -7019,3 +7042,43 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twh-head .pdm-hero-price { font-size: 15px; }
 .tw-conf-side .pdm-hero-own,
 .twh-head .pdm-hero-own { font-size: 9px; }
+
+/* ===== Confirming, and what it leaves ===== */
+.tw-guard .modal-container { width: min(520px, calc(100vw - 32px)); }
+.tw-guard-lead { font-size: 13px; line-height: 1.6; color: var(--text-secondary); margin: 0 0 12px; }
+.tw-guard-list {
+    margin: 0 0 12px; padding: 10px 12px 10px 28px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    font-size: 12.5px; line-height: 1.9; color: var(--text-primary);
+}
+.tw-guard-ack {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 11px 12px; margin-bottom: 14px;
+    border-radius: 12px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    font-size: 12.5px; line-height: 1.5; color: var(--text-primary);
+    cursor: pointer;
+}
+.tw-guard-ack input { margin-top: 2px; flex: 0 0 auto; accent-color: var(--color-primary); }
+.tw-guard-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.tw-guard .v2-section-title svg { color: var(--color-warning); }
+
+/* The reminder outlives the modal — this is the screen someone is looking at
+   when they decide they are finished, and they are not. */
+.tw-done-warn {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px; margin-bottom: 12px;
+    border-radius: 12px;
+    border-left: 3px solid var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    font-size: 12.5px; line-height: 1.55; color: var(--text-primary);
+}
+.tw-done-warn svg { flex: 0 0 auto; width: 17px; height: 17px; color: var(--color-warning); margin-top: 1px; }
+.tw-done-foot {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 14px; padding-top: 13px;
+    border-top: 1px solid var(--border-subtle, var(--border-emphasis));
+}
+.tw-done-foot .tw-back { text-decoration: none; }

@@ -665,7 +665,16 @@ function renderPlayerRow(p, position) {
     const state = tableState[position];
     const isSelected = compareList.some(cp => cp.id === p.id);
     const cells = state.visibleCols.map(colKey => renderCell(p, colKey, position, isSelected)).join('');
-    return `<tr class="${isSelected ? 'selected-row' : ''}" data-player-id="${p.id}">${cells}${renderActionsCell(p)}</tr>`;
+    /* The whole row opens the player, not just his name.
+
+       The name cell was the only target — about 120px of a 1200px row — while
+       the row's own buttons were already calling event.stopPropagation(),
+       which is what you write when the row is meant to be clickable. It is
+       now. Everything in the row that does something else of its own stops
+       the click: the two action buttons, the compare checkbox and the star. */
+    const posName = p.posName || position || 'ALL';
+    return `<tr class="${isSelected ? 'selected-row' : ''} pl-row-click" data-player-id="${p.id}"
+        onclick="openPlayerModal(${p.id}, '${posName}')">${cells}${renderActionsCell(p)}</tr>`;
 }
 
 // Quick actions, revealed on row hover. Anchored right so they do not consume
@@ -720,10 +729,11 @@ function renderCell(p, colKey, position, isSelected) {
                 <input type="checkbox" class="compare-checkbox" ${selected ? 'checked' : ''}
                     ${!selected && compareList.length >= 5 ? 'disabled' : ''}
                     title="Add to comparison"
+                    onclick="event.stopPropagation()"
                     onchange="onCompareCheckboxChange(${p.id}, '${position || 'ALL'}')">
                 ${getStarHtml(p.id)}
                 ${face}
-                <div class="pcell-id clickable" onclick="openPlayerModal(${p.id}, '${posName}')">
+                <div class="pcell-id clickable">
                     <div class="pcell-name">${escHTML(p.name)}</div>
                     <div class="pcell-sub">${escHTML(p.team)}</div>
                 </div>

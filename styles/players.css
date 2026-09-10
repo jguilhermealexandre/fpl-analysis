@@ -4459,7 +4459,17 @@
 .pcell { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .pcell .compare-checkbox { flex-shrink: 0; cursor: pointer; }
 .pcell .shortlist-star { flex-shrink: 0; }
-.pcell-id { min-width: 0; cursor: pointer; }
+.pcell-id { min-width: 0; }
+
+/* The whole row opens the player now, so the pointer belongs to the row
+   rather than to the 120px of it that used to be the only target. */
+tr.pl-row-click { cursor: pointer; }
+tr.pl-row-click:hover > td { background: var(--surface-2); }
+/* Anything in the row that does something else of its own keeps its own
+   pointer; each already stops the click from reaching the row. */
+tr.pl-row-click .compare-checkbox,
+tr.pl-row-click .shortlist-star,
+tr.pl-row-click .row-action { cursor: pointer; }
 .pcell-name {
     font-weight: 600; font-size: 13.5px; color: var(--text-primary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;

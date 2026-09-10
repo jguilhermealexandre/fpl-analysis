@@ -362,6 +362,17 @@
                     }
                 }
 
+                /* Then the swaps confirmed in the wizard but not yet made on
+                   FPL. After the real log, never before it: a move the manager
+                   has since made for real is in that log, and this drops its
+                   own record of it rather than applying it twice. */
+                const confirmed = typeof applyConfirmedSwaps === 'function'
+                    ? applyConfirmedSwaps(picksData, teamId, planningGW) : null;
+                if (confirmed) {
+                    picksData = confirmed.picksData;
+                    console.log(`[Transfers] ${confirmed.moves.length} confirmed swap(s) folded into the squad`);
+                }
+
                 const premierLeagueSeason = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
                 await loadPremierLeagueJerseyNumbers(picksData.picks, premierLeagueSeason);
 

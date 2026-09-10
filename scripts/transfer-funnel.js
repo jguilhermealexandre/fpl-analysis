@@ -594,9 +594,14 @@
                     data-tooltip="Narrow by fixture run, minutes, form, price, ownership and set pieces, then pick from what survives.">${v2Icon('tools')} Custom search</button>
             </div>`;
 
+            /* Not "Replacements for X". On this step X is a card in his club's
+               colours in the column immediately to the left, with his face on
+               it — this said the same thing again in text, one line above the
+               thing it was describing. What is left is what the card does not
+               carry: what this slot can spend. */
             return `<div class="twf-head">
                 <div class="twf-head-top">
-                    <span class="twf-head-title">Replacements for <strong>${escHTML(sold.name)}</strong></span>
+                    <span class="twf-head-title">Replacements</span>
                     <span class="twf-budget" ${reserved > 0 ? `data-tooltip="${escHTML(`£${reserved.toFixed(1)}m of the bank is held back so your other open slots can still be filled.`)}"` : ''}>£${budget.toFixed(1)}m${reserved > 0 ? `<em>£${reserved.toFixed(1)}m reserved</em>` : ''}</span>
                 </div>
                 <div class="twf-head-bot">

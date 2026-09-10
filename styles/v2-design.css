@@ -29,9 +29,13 @@ html.v2-theme body * {
     padding-left: var(--v2-page-gutter) !important;
 }
 
+/* The 24px under the heading was being supplied by the subtitle that used to
+   sit in here. With that gone the first card started at the title's baseline,
+   where every other page leaves a gap — .page-header's own margin-bottom. */
 .v2-theme .news-page-header {
     max-width: 1440px !important;
     padding: var(--v2-page-title-top) var(--v2-page-gutter) 0 !important;
+    margin-bottom: 24px;
 }
 
 .v2-theme .v2-page-hint {
@@ -2157,7 +2161,8 @@ html.v2-theme body {
    where one stopped and the other began. The login sheet is the same
    object, so it takes the same. */
 .v2-settings .modal-container,
-.v2-login .modal-container {
+.v2-login .modal-container,
+.tw-guard .modal-container {
     width: min(560px, calc(100vw - 32px));
     max-height: 86vh;
     display: flex; flex-direction: column;
@@ -3141,8 +3146,20 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     font-family: inherit;
     resize: vertical;
 }
+/* Both of these lost their @media wrapper at some point and had been
+   applying at every width since. Unconditionally showing a "collapsed"
+   sidebar left a 2px-wide, 1502px-tall element in the grid row beside a
+   728px pitch, stretching the row to its height — which is the 774px of
+   white space under the bench. And the toggle that reopens the rail was
+   hidden everywhere, so there was no way back to it.
+
+   Below the breakpoint where the wrapper stops being two columns, a
+   collapsed rail should simply stack under the pitch, and a control for
+   collapsing a column that no longer exists has nothing to do. */
+@media (max-width: 1100px) {
     .dp-side-toggle { display: none; }
     .planner-layout-wrapper.sidebar-collapsed .dp-sidebar { display: block; }
+}
 .dp-card.lw-picked { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary); }
 .dp-xp-run {
     font-size: 10px;

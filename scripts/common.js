@@ -256,6 +256,93 @@ function planningGameweek(bootData, fixturesData, now) {
    `nowCostTenths(id)` is optional and only sharpens the selling price of an
    incoming player; without it the purchase price is used, which is what FPL
    itself uses until the player's price next moves. */
+/* ===== Transfers you confirmed here, but have not made on FPL =====
+
+   The Transfer Wizard can only ever be advice: FPL has no public write API,
+   so a swap agreed on this site does not exist on theirs until the manager
+   makes it there too. Confirming one used to change nothing at all, which
+   made the rest of the site disagree with the plan you had just settled on —
+   every page still showing the player you had decided to sell.
+
+   These moves are held in this browser, keyed to the team and the round they
+   were made for, and folded into the picks every page fetches. They are the
+   manager's own statement of intent, not data from anywhere, and they expire
+   by themselves: a move whose outgoing player is no longer in the fetched
+   squad has been made for real, so the record of it is dropped.
+
+   The wizard shows a warning before writing any of this — see
+   twOpenConfirmGuard() — because a squad that is right here and wrong on
+   fantasy.premierleague.com is worse than no plan at all. */
+const TW_CONFIRMED_KEY = 'easyfpl_confirmed_transfers';
+
+function twConfirmedRead() {
+    try {
+        const raw = localStorage.getItem(TW_CONFIRMED_KEY);
+        if (!raw) return null;
+        const rec = JSON.parse(raw);
+        return rec && Array.isArray(rec.moves) && rec.moves.length ? rec : null;
+    } catch (e) { return null; }
+}
+
+function twConfirmedSave(teamId, gw, moves) {
+    try {
+        localStorage.setItem(TW_CONFIRMED_KEY, JSON.stringify({
+            teamId: String(teamId), gw, at: Date.now(), moves
+        }));
+    } catch (e) { /* private mode; the plan simply does not persist */ }
+}
+
+function twConfirmedClear() {
+    try { localStorage.removeItem(TW_CONFIRMED_KEY); } catch (e) { /* nothing to clear */ }
+}
+
+/* Fold confirmed swaps into a picks payload, in place on a copy.
+ *
+ * Same shape as applyPendingTransfers() above and the same rules: the
+ * incoming player takes the outgoing one's slot so the formation is
+ * untouched, and the bank moves by what each side actually cost. A move
+ * whose outgoing player is not in the squad is skipped rather than guessed
+ * at — he has either been sold for real already or was never there.
+ *
+ * Returns null when nothing applied, so callers can leave their own data
+ * alone rather than swapping in an identical copy.
+ */
+function applyConfirmedSwaps(picksData, teamId, gw) {
+    const rec = twConfirmedRead();
+    if (!rec || !picksData || !Array.isArray(picksData.picks)) return null;
+    if (String(rec.teamId) !== String(teamId) || rec.gw !== gw) return null;
+
+    const picks = picksData.picks.map(p => ({ ...p }));
+    const applied = [];
+    let bank = picksData.entry_history ? picksData.entry_history.bank : 0;
+
+    rec.moves.forEach(m => {
+        const slot = picks.find(p => p.element === m.outId);
+        if (!slot) return;                       // already made for real
+        if (picks.some(p => p.element === m.inId)) return;   // would duplicate
+        slot.element = m.inId;
+        slot.selling_price = m.inPrice;
+        slot.purchase_price = m.inPrice;
+        bank += m.outPrice - m.inPrice;
+        applied.push(m);
+    });
+
+    if (!applied.length) {
+        // Every one of them has happened on FPL. Stop carrying the record.
+        twConfirmedClear();
+        return null;
+    }
+
+    return {
+        picksData: {
+            ...picksData,
+            picks,
+            entry_history: { ...(picksData.entry_history || {}), bank }
+        },
+        moves: applied
+    };
+}
+
 function applyPendingTransfers(picksData, transfers, gw, nowCostTenths) {
     if (!picksData || !Array.isArray(picksData.picks) || !picksData.picks.length) return null;
 
@@ -697,7 +784,24 @@ function v2SaveSettings(patch) {
        Settings sheet kept showing the image that no longer exists. The sheet
        is built from this state too, so it is redrawn from it. */
     v2RefreshSettingsAvatar();
+    v2RefreshHeroBadge();
     return next;
+}
+
+/* The uploaded badge on the dashboard, beside the team name.
+
+   Called from v2MountAccount() (every page load, after the sidebar exists)
+   and from v2SaveSettings() (so uploading or removing one shows immediately
+   on the page you did it from). Everywhere but the dashboard the element is
+   absent and this is a no-op. */
+function v2RefreshHeroBadge() {
+    const host = document.getElementById('heroTeamBadge');
+    if (!host) return;
+    const badge = v2Settings().badge;
+    host.hidden = !badge;
+    host.innerHTML = badge
+        ? `<img src="${(typeof escHTML === 'function' ? escHTML : String)(badge)}" alt="">`
+        : '';
 }
 
 function v2RefreshSettingsAvatar() {
@@ -947,6 +1051,7 @@ function v2MountAccount() {
     }
     const nameEl = document.getElementById('v2AccountName');
     if (nameEl) nameEl.textContent = name;
+    v2RefreshHeroBadge();
     /* The name, and under it the ID — two different facts. It used to read
        "Demo Team FC" over "Demo squad · Free", which is the team named twice
        with the only new word buried at the end of the second line. */
@@ -2008,7 +2113,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=209')
+    fetch('footer.html?v=210')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

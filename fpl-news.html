@@ -19,9 +19,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=209">
-    <link rel="stylesheet" href="styles/v2-design.css?v=209">
-    <link rel="stylesheet" href="styles/responsive.css?v=209">
+    <link rel="stylesheet" href="styles/common.css?v=210">
+    <link rel="stylesheet" href="styles/v2-design.css?v=210">
+    <link rel="stylesheet" href="styles/responsive.css?v=210">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -38,11 +38,6 @@
             gap: 10px;
         }
         .news-page-title .icon { width: 24px; height: 24px; color: var(--color-primary); }
-        .news-page-sub {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
 
         /* ===== HERO ARTICLE ===== */
         .news-hero {
@@ -563,7 +558,6 @@
     <!-- Page Header -->
     <div class="news-page-header">
         <div class="news-page-title v2-page-heading"><i data-lucide="newspaper" class="icon"></i> PL News Hub</div>
-        <div class="news-page-sub">Press conferences, injuries, transfers &amp; team news from across the Premier League</div>
     </div>
 
     <!-- News Content -->
@@ -582,13 +576,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=209"></script>
-    <script src="scripts/common.js?v=209"></script>
+    <script src="scripts/error-monitor.js?v=210"></script>
+    <script src="scripts/common.js?v=210"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=209"></script>
-    <script src="scripts/notifications.js?v=209"></script>
-    <script src="scripts/sidebar-nav.js?v=209"></script>
+    <script src="scripts/push-alerts.js?v=210"></script>
+    <script src="scripts/notifications.js?v=210"></script>
+    <script src="scripts/sidebar-nav.js?v=210"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1237,6 +1231,12 @@
                                 const applied = applyPendingTransfers(picksData, log, planningGW);
                                 if (applied) squadPicks = applied.picksData;
                             }
+                            /* And the swaps confirmed in the wizard. Squad news
+                               about a player you have decided to sell is not
+                               squad news. */
+                            const confirmedSwaps = typeof applyConfirmedSwaps === 'function'
+                                ? applyConfirmedSwaps(squadPicks, savedTeamId, planningGW) : null;
+                            if (confirmedSwaps) squadPicks = confirmedSwaps.picksData;
                             (squadPicks.picks || []).forEach(pk => squadIds.add(pk.element));
                         }
                     } catch (e) {
