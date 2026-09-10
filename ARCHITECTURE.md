@@ -63,10 +63,21 @@ Three sources, different cadences, and it matters which one you read.
 | `data/odds.json` | `fetch-odds.yml` | 4x daily | bookmakers' prices for the next round, as probabilities |
 | `data/odds-calibration.json` | same | same | the model's expected goals against, next to the market's |
 
-The split exists because `players-data.json` needs 610 sequential
-`element-summary` calls and takes minutes, while the first three are two or
-three plain GETs. Before the split, a match that kicked off at 16:00 was still
-being shown as an upcoming fixture at 22:00.
+The split exists because `players-data.json` needs one `element-summary` call
+per player and takes minutes, while the first three are two or three plain GETs.
+Before the split, a match that kicked off at 16:00 was still being shown as an
+upcoming fixture at 22:00.
+
+That per-player walk is now incremental. `element-summary` has no bulk form, so
+a full refresh is 650-odd separate requests — and six runs a day of that is the
+traffic shape FPL rate-limits from a shared runner, which is how a run ends up
+with no detail at all. bootstrap-static is one request and already carries every
+player's season totals, so a player whose points and minutes are unchanged
+cannot have a changed history and is carried forward instead. Between rounds
+that is every player in the game and the job makes no `element-summary` calls at
+all. A full sweep still runs daily, because a correction can move a history row
+without moving a total; `metadata.lastFullSweep` in the feed is what schedules
+it, so a skipped or failed run does not push the next sweep further away.
 
 **Prefer `event-live.json` for anything about the current gameweek.** The
 gameweek review does, falling back to `players-data.json` history when it is
@@ -104,9 +115,13 @@ deducted for pending moves as well, since no history row covers them yet.
 `data/odds.json` is the one feed not sourced from FPL. It comes from
 football-data.co.uk, which needs no API key — which is the reason it was
 chosen, since a key could not live in the browser on a static site. Bookmakers
-price one round at a time, so the feed only ever covers the next gameweek: the
-Lineup Wizard's Matchday tab reads it, and the Transfer Wizard deliberately
-does not. Nobody quotes clean-sheet percentages, so those are derived in
+price one round at a time, and `fixtures.csv` only carries about the next two
+days, so for most of the week it holds no Premier League rows at all. That is
+the ordinary state of a Tuesday rather than a fault: `tools/fetch-odds.mjs`
+writes nothing and exits green, and goes red only once a round's deadline has
+passed with the odds on file still naming an earlier one. The feed only ever
+covers the next gameweek: the Lineup Wizard's Matchday tab reads it, and the
+Transfer Wizard deliberately does not. Nobody quotes clean-sheet percentages, so those are derived in
 `tools/odds-model.mjs` from the 1X2 and over/under 2.5 markets and committed
 already computed.
 
