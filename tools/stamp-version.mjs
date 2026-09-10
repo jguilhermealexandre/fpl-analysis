@@ -26,6 +26,7 @@ const targets = [
     ...fs.readdirSync('.').filter(f => f.endsWith('.html')).map(f => ({ file: f, rx: /\?v=\d+/g })),
     // The nav partials fetch themselves, so their busters live in JS.
     { file: 'scripts/sidebar-nav.js', rx: /(sidebar-nav\.html\?v=)\d+/g, keep: 1 },
+    { file: 'scripts/sidebar-nav.js', rx: /(landing-nav\.html\?v=)\d+/g, keep: 1 },
     { file: 'scripts/common.js', rx: /(nav\.html\?v=)\d+/g, keep: 1 },
     { file: 'scripts/common.js', rx: /(footer\.html\?v=)\d+/g, keep: 1 }
 ];

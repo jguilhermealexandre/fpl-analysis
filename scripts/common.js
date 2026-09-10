@@ -732,6 +732,100 @@ function v2AccountName() {
     return 'Your team';
 }
 
+/* Logging in.
+
+   There is no account and no password — a Team ID is the whole of your
+   identity here, and typing it is the only thing "log in" can mean. Saying
+   so plainly is better than a form that implies an account you do not have.
+
+   Built on demand, like the settings sheet, and out of the same modal shell
+   so it opens and closes the same way and blurs the page behind it. */
+function openLoginModal() {
+    if (typeof document === 'undefined') return;
+    document.getElementById('v2LoginModal')?.remove();
+
+    document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay v2-modal v2-login" id="v2LoginModal" onclick="closeLoginModal(event)">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-label="Log in">
+            <div class="v2-set-head">
+                <span class="v2-section-title">${v2Icon('person')}Log in</span>
+                <button class="modal-close" onclick="closeLoginModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="v2-set-body">
+                <div class="v2-set-group">
+                    <div class="v2-set-label">Your FPL Team ID</div>
+                    <div class="v2-login-form">
+                        <input type="text" id="v2LoginInput" class="v2-set-input" inputmode="numeric"
+                            placeholder="e.g. 1234567" autocomplete="off"
+                            onkeypress="if (event.key === 'Enter') v2SubmitLogin()">
+                        <button class="btn btn-primary" onclick="v2SubmitLogin()">Continue</button>
+                    </div>
+                    <p class="v2-set-hint" id="v2LoginHint">Open your team on the FPL site: the number in
+                        <code>/entry/<b>1234567</b>/event/…</code> is your ID. It is stored in this browser
+                        and nothing is sent anywhere but the public FPL API.</p>
+                </div>
+                <div class="v2-set-group">
+                    <div class="v2-set-label">Just looking?</div>
+                    <button class="v2-set-ghost" onclick="v2LoginAsDemo()">Explore with a demo squad</button>
+                    <p class="v2-set-hint">Every page, filled with a sample team. You can put your own ID in later.</p>
+                </div>
+            </div>
+        </div>
+    </div>`);
+
+    document.body.classList.add('v2-blurred');
+    const el = document.getElementById('v2LoginModal');
+    if (el) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
+    setTimeout(() => document.getElementById('v2LoginInput')?.focus(), 60);
+}
+
+function closeLoginModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const el = document.getElementById('v2LoginModal');
+    document.body.classList.remove('v2-blurred');
+    if (!el) return;
+    el.classList.remove('open');
+    let done = false;
+    const drop = () => { if (done) return; done = true; el.remove(); };
+    el.addEventListener('transitionend', drop, { once: true });
+    setTimeout(drop, 320);
+}
+
+/* A team ID is digits. Anything else is a typo worth naming rather than a
+   reload that quietly does nothing. */
+function v2SubmitLogin() {
+    const input = document.getElementById('v2LoginInput');
+    const hint = document.getElementById('v2LoginHint');
+    if (!input) return;
+    const id = input.value.trim();
+    if (!/^\d+$/.test(id)) {
+        input.classList.add('is-bad');
+        if (hint) {
+            hint.textContent = id
+                ? 'That does not look like a Team ID — it is digits only, no letters or spaces.'
+                : 'Enter your Team ID to continue.';
+        }
+        input.focus();
+        return;
+    }
+    v2EnterWithTeam(id);
+}
+
+function v2LoginAsDemo() {
+    v2EnterWithTeam(DEMO_TEAM_ID);
+}
+
+/* Save it and reload into the signed-in shell. A reload rather than
+   swapping the chrome in place: half this page is rendered for a visitor
+   with no squad, and re-running it against one is what every page already
+   does on a normal load. */
+function v2EnterWithTeam(teamId) {
+    try {
+        saveTeamId(teamId);
+    } catch (e) { /* private mode: nothing to save into, so nowhere to go */ }
+    location.href = 'index.html';
+}
+
 /* The theme row says which mode is on, so it has to be told when that
    changes — including by the fallback switch below it, and by another tab.
    Called on mount and from toggleThemeSmooth(). */
@@ -837,7 +931,7 @@ function openSettingsModal(section) {
                 <button class="modal-close" onclick="closeSettingsModal()" aria-label="Close">&times;</button>
             </div>
             <div class="v2-set-body">
-                <div class="v2-set-group">
+                <div class="v2-set-group"${teamId ? '' : ' hidden'}>
                     <div class="v2-set-label">Your team</div>
                     <div class="v2-set-row">
                         <span class="v2-account-avatar lg" id="v2SetAvatar">${st.badge
@@ -858,7 +952,11 @@ function openSettingsModal(section) {
                     </div>
                 </div>
 
-                <div class="v2-set-group">
+                <!-- Both of these are about a squad, and Pricing opens this
+                     sheet from the landing page where there is not one. A
+                     badge upload and a "Change ID" for an ID you have not
+                     given are two groups of nothing to act on. -->
+                <div class="v2-set-group"${teamId ? '' : ' hidden'}>
                     <div class="v2-set-label">Connected squad</div>
                     <div class="v2-set-row between">
                         <span class="v2-set-value">${teamId ? 'FPL team ID ' + esc(teamId) : 'No team connected yet'}</span>
@@ -1838,7 +1936,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=196')
+    fetch('footer.html?v=197')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

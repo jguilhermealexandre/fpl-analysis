@@ -13,8 +13,22 @@ try {
     // Storage can be unavailable in strict/private browser contexts.
 }
 
+/* Which shell this visit gets.
+
+   The sidebar is the signed-in one: every item in it leads to a page about
+   a squad, and without a saved Team ID every one of those pages opens by
+   asking for it. A first-time visitor was still shown the whole rail. So
+   there are two shells now, and this is the question that picks between
+   them — the same question index.html already answers before first paint
+   to decide whether to draw the landing page or the dashboard. */
+function v2HasTeam() {
+    try { return !!localStorage.getItem('fpl_team_id'); } catch (e) { return false; }
+}
+
 function loadSidebarNav() {
-    return fetch('sidebar-nav.html?v=196')
+    if (!v2HasTeam()) return loadLandingNav();
+    document.documentElement.classList.add('v2-shell-app');
+    return fetch('sidebar-nav.html?v=197')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -95,6 +109,52 @@ function loadSidebarNav() {
    breakpoint. That way there is no resize handler deciding what should
    exist — the browser decides, which it is much better at, and a phone
    rotated to landscape does not need us to notice. */
+/* The landing shell: a top bar rather than a rail. */
+function loadLandingNav() {
+    document.documentElement.classList.add('v2-shell-landing');
+    return fetch('landing-nav.html?v=197')
+        .then(r => r.text())
+        .then(html => {
+            document.body.insertAdjacentHTML('afterbegin', html);
+
+            let page = location.pathname.split('/').pop() || 'index.html';
+            if (page === '' || page === 'index') page = 'index.html';
+            if (!page.endsWith('.html')) page += '.html';
+            document.querySelector(`.v2-landing-links a[data-page="${page}"]`)?.classList.add('active');
+
+            if (window.lucide) lucide.createIcons();
+            if (typeof v2ApplySettings === 'function') v2ApplySettings();
+            initV2PageEntrance();
+
+            /* Following a link should not leave the menu open over the page
+               it just loaded, and an in-page #hash link loads nothing at all,
+               so nothing else would ever close it. */
+            document.querySelectorAll('.v2-landing-links a').forEach(a =>
+                a.addEventListener('click', () => closeLandingNav()));
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') closeLandingNav();
+            });
+        })
+        .catch(error => {
+            console.warn('Landing navigation could not be loaded:', error);
+            return null;
+        });
+}
+
+function toggleLandingNav() {
+    document.body.classList.contains('v2-landing-open') ? closeLandingNav() : openLandingNav();
+}
+
+function openLandingNav() {
+    document.body.classList.add('v2-landing-open');
+    document.getElementById('v2LandingBurger')?.setAttribute('aria-expanded', 'true');
+}
+
+function closeLandingNav() {
+    document.body.classList.remove('v2-landing-open');
+    document.getElementById('v2LandingBurger')?.setAttribute('aria-expanded', 'false');
+}
+
 function initMobileNav() {
     if (document.querySelector('.v2-mobile-bar')) return;
 

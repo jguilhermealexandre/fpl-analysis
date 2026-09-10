@@ -2036,6 +2036,7 @@ html.v2-theme body {
 .v2-account:not([hidden]) ~ #v2ThemeFallback { display: none; }
 
 /* The two buttons in "Connected squad". */
+.v2-set-group[hidden] { display: none; }
 .v2-set-actions { display: inline-flex; gap: 6px; flex-shrink: 0; }
 .v2-set-ghost.danger { color: var(--color-negative, #B3261E); }
 .v2-set-ghost.danger:hover { border-color: var(--color-negative, #B3261E); }
@@ -2049,12 +2050,19 @@ html.v2-theme body {
 .v2-sidebar.is-collapsed .nt-bell { justify-content: center; padding-left: 0; padding-right: 0; }
 
 /* ===== Settings ===== */
-.v2-settings .modal-container {
+/* The edge and the lift Visual Analysis has. It had neither, so on a light
+   page the sheet ran into the blurred page behind it with nothing marking
+   where one stopped and the other began. The login sheet is the same
+   object, so it takes the same. */
+.v2-settings .modal-container,
+.v2-login .modal-container {
     width: min(560px, calc(100vw - 32px));
     max-height: 86vh;
     display: flex; flex-direction: column;
     background: var(--surface-1);
+    border: 1px solid var(--border-emphasis);
     border-radius: var(--v2-card-radius, 16px);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
     overflow: hidden;
 }
 .v2-set-head {
@@ -2580,3 +2588,142 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .nt-row-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
 .nt-row-body { font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); }
 .nt-row-when { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+
+
+/* =====================================================================
+   THE LANDING SHELL
+
+   Two shells, one question: is there a Team ID saved. With one, the
+   sidebar — a list of things you can do to a squad. Without one, every
+   item in that list leads to a page that opens by asking for the ID you
+   have not got, and a first-time visitor was being shown the whole rail
+   anyway. This is what they get instead: what the site is, what it
+   costs, and the way in.
+
+   sidebar-nav.js puts .v2-shell-landing or .v2-shell-app on <html>, so
+   the two states can be told apart from anywhere without asking storage
+   again.
+   ===================================================================== */
+.v2-landing-nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 60;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 24px;
+    background: color-mix(in srgb, var(--surface-0) 88%, transparent);
+    backdrop-filter: saturate(1.4) blur(10px);
+    -webkit-backdrop-filter: saturate(1.4) blur(10px);
+    border-bottom: 1px solid var(--border-emphasis);
+}
+
+.v2-landing-logo {
+    flex-shrink: 0;
+    font-family: var(--font-display);
+    font-size: 19px; font-weight: 700; letter-spacing: -0.4px;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+.v2-landing-logo b { color: var(--color-primary); font-weight: 700; }
+
+.v2-landing-links {
+    display: flex; align-items: center; gap: 4px;
+    margin-left: 12px;
+}
+.v2-landing-links a {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 130ms ease, color 130ms ease;
+}
+.v2-landing-links a:hover { background: var(--surface-2); color: var(--text-primary); }
+.v2-landing-links a.active { color: var(--color-primary-text); background: var(--color-primary-muted); }
+
+.v2-landing-actions {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+}
+/* The pill is a two-option switch elsewhere in a 232px column; up here it
+   only needs to be a control the size of the button beside it. */
+.v2-landing-theme { flex-shrink: 0; width: auto; }
+
+.v2-landing-login {
+    padding: 9px 18px;
+    white-space: nowrap;
+    border: none; border-radius: 999px;
+    background: var(--color-primary);
+    color: #fff;
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer;
+    transition: filter 140ms ease, transform 140ms ease;
+}
+.v2-landing-login:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+/* The rail is gone, so the page gets the whole width and clears the bar. */
+.v2-shell-landing .v2-main-content {
+    margin-left: 0;
+    padding-top: 64px;
+}
+/* Sticky things inside it were offset for a shell with nothing above them. */
+.v2-shell-landing .v2-main-content .tabs-container,
+.v2-shell-landing .v2-main-content .tw-budget-bar-top { top: 64px; }
+.v2-shell-landing .v2-main-content .filter-bar { top: 99px; }
+
+.v2-landing-burger {
+    display: none;
+    width: 40px; height: 40px;
+    align-items: center; justify-content: center;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 10px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    cursor: pointer; padding: 0;
+}
+.v2-landing-burger svg { width: 19px; height: 19px; }
+
+/* Below the breakpoint the links drop out of the bar and open under it. */
+@media (max-width: 900px) {
+    .v2-landing-nav { gap: 10px; padding: 0 14px; }
+    .v2-landing-burger { display: inline-flex; order: 3; }
+    .v2-landing-actions { order: 2; margin-left: auto; }
+    .v2-landing-links {
+        order: 4;
+        position: fixed;
+        top: 64px; left: 0; right: 0;
+        margin-left: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2px;
+        padding: 10px 14px 14px;
+        background: var(--surface-0);
+        border-bottom: 1px solid var(--border-emphasis);
+        box-shadow: var(--v2-card-shadow);
+        display: none;
+    }
+    body.v2-landing-open .v2-landing-links { display: flex; }
+    .v2-landing-links a { padding: 12px; min-height: 44px; display: flex; align-items: center; }
+    .v2-landing-login { padding: 9px 14px; }
+}
+
+@media (max-width: 560px) {
+    .v2-landing-theme { display: none; }
+}
+
+/* ----- Logging in ----- */
+.v2-login-form { display: flex; gap: 8px; align-items: stretch; }
+.v2-login-form .v2-set-input { flex: 1; min-width: 0; }
+.v2-login-form .btn { flex-shrink: 0; white-space: nowrap; }
+.v2-set-input.is-bad { border-color: var(--color-negative, #B3261E); }
+.v2-login .v2-set-hint code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
