@@ -1090,29 +1090,41 @@
             const loaded = loadDraft();
 
             const ds = getActiveDraft();
+            /* Three sections, the way every other page is built: the plan you
+               are editing, the eleven that plan produces, and what the data
+               says about them. All of this used to be laid straight onto the
+               page — a timeline, a stat row, a chip bar, a pitch and a very
+               large table, none of them in a card and none of them titled,
+               so there was nothing to tell you where one thing ended and the
+               next began. Every id below is unchanged; these are wrappers. */
             let html = '';
 
-            // Plan selector bar
+            // ---- 1. the plan ----
+            html += `<section class="v2-section">
+                <div class="section-header"><h2>${v2Icon('calendar')} Your plan</h2></div>`;
             html += `<div id="draftPlanBar">${renderDraftPlanBar()}</div>`;
+            html += `<div class="draft-toolbar" id="draftToolbar" ${draftCompareMode ? 'style="display:none;"' : ''}>${renderDraftToolbar()}</div>`;
+            html += `<div id="draftChipRow" ${draftCompareMode ? 'style="display:none;"' : ''}>${renderDraftChipRow()}</div>`;
+            html += `</section>`;
 
-            // Compare mode
+            // Compare mode replaces the two sections below it rather than
+            // sitting between them, so it stays outside.
             html += `<div id="draftCompareArea">${draftCompareMode ? renderDraftComparison() : ''}</div>`;
 
-            // Toolbar
-            html += `<div class="draft-toolbar" id="draftToolbar" ${draftCompareMode ? 'style="display:none;"' : ''}>${renderDraftToolbar()}</div>`;
-
-            // Chip selector row
-            html += `<div id="draftChipRow" style="margin-bottom:12px;${draftCompareMode ? 'display:none;' : ''}">${renderDraftChipRow()}</div>`;
-
-            // Pitch + retractable strategy sidebar
+            // ---- 2. the eleven ----
             const sidebarOpen = localStorage.getItem('fpl_notepad_open') === 'true';
-            html += `<div class="planner-layout-wrapper${sidebarOpen ? '' : ' sidebar-collapsed'}" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
+            html += `<section class="v2-section" ${draftCompareMode ? 'style="display:none;"' : ''}>
+                <div class="section-header"><h2>${v2Icon('shirt')} Gameweek ${ds.selectedGW} lineup</h2></div>`;
+            html += `<div class="planner-layout-wrapper${sidebarOpen ? '' : ' sidebar-collapsed'}">`;
             html += `<div class="planner-pitch-wrap" id="draftPitchArea">${renderDraftPitchHTML()}</div>`;
             html += renderDraftSidebar();
             html += `</div>`;
+            html += `</section>`;
 
-            // ===== STATS HUB — Tabbed Interface =====
-            html += `<div class="gw-stats-hub" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
+            // ---- 3. what the data says ----
+            html += `<section class="v2-section" ${draftCompareMode ? 'style="display:none;"' : ''}>
+                <div class="section-header"><h2>${v2Icon('chart')} Insights</h2></div>`;
+            html += `<div class="gw-stats-hub">`;
             html += `<div class="hub-tab-nav">`;
             html += `<button class="hub-tab active" data-target="player-tab" onclick="switchHubTab(this)">${v2Icon('person')} Player Insights</button>`;
             html += `<button class="hub-tab" data-target="team-tab" onclick="switchHubTab(this)">${v2Icon('shield')} Team Insights</button>`;
@@ -1153,6 +1165,7 @@
             }
             html += `</div>`;
             html += `</div>`;
+            html += `</section>`;
 
             // Save indicator
             if (ds.savedAt) {
@@ -1555,14 +1568,16 @@
             html += `<div class="dp-row">${mids.map(p => renderNode(p)).join('')}</div>`;
             html += `<div class="dp-row">${defs.map(p => renderNode(p)).join('')}</div>`;
             html += `<div class="dp-row">${gks.map(p => renderNode(p)).join('')}</div>`;
-            html += `</div>`;
+            /* Closes .dp-pitch and then .dp-pitch-card: the bench is a
+               sibling below the grass rather than a white panel laid on it.
+               Substitutes are not on the field. */
+            html += `</div></div>`;
 
             let benchCounter = 0;
             html += `<div class="dp-bench">
                 <div class="dp-bench-label">${activeChip === 'benchboost' ? 'Bench · boosted, these score too' : 'Bench'}</div>
                 <div class="dp-bench-row">${bench.map(p => renderNode(p, p.position === 1 ? 'GK' : ++benchCounter)).join('')}</div>
             </div>`;
-            html += `</div>`;
 
             if (draftSwapSource !== null) {
                 const src = lineup.find(p => p.id === draftSwapSource);
@@ -1784,11 +1799,14 @@
             const pitchArea = document.getElementById('draftPitchArea');
             if (pitchArea) pitchArea.innerHTML = draftCompareMode ? '' : renderDraftPitchHTML();
 
-            const layoutWrapper = pitchArea?.closest('.planner-layout-wrapper');
-            if (layoutWrapper) layoutWrapper.style.display = draftCompareMode ? 'none' : '';
+            /* Both of these live in a .v2-section now, so it is the section
+               that has to go — hiding only its contents left a titled empty
+               card standing behind the comparison. */
+            const pitchSection = pitchArea?.closest('.v2-section');
+            if (pitchSection) pitchSection.style.display = draftCompareMode ? 'none' : '';
 
-            const statsHub = document.querySelector('.gw-stats-hub');
-            if (statsHub) statsHub.style.display = draftCompareMode ? 'none' : '';
+            const statsSection = document.querySelector('.gw-stats-hub')?.closest('.v2-section');
+            if (statsSection) statsSection.style.display = draftCompareMode ? 'none' : '';
 
             const thead = document.getElementById('draftTableHead');
             if (thead && !draftCompareMode) thead.innerHTML = renderDraftTableHead();

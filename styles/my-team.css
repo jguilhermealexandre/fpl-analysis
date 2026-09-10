@@ -4776,15 +4776,31 @@ select[data-tooltip],
    and the squad page's. It keeps everything it shows — this view's bench
    carries more than the others' — but on a surface the numbers can be read
    against. */
+/* The dugout: its own card under the pitch, not a white panel laid on the
+   grass. It was inside .dp-pitch-card with negative margins pulling it out
+   to the card's edges, which made the bottom fifth of the field white and
+   put four substitutes on the pitch they are by definition not on. */
 .dp-bench {
-    margin: 12px -12px -12px;
-    padding: 10px 12px 12px;
-    border-top: none;
+    margin-top: 10px;
+    padding: 12px 14px 14px;
     background: var(--surface-1);
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: var(--v2-card-shadow, none);
 }
 
-.dp-bench-label { font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+.dp-bench-label {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 9px;
+}
+/* A rule to the right of the word, so the strip reads as its own thing
+   rather than as a caption floating over the cards. */
+.dp-bench-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border-subtle, var(--border-emphasis));
+}
 .dp-bench-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
 
 .dp-card {
@@ -4859,9 +4875,14 @@ select[data-tooltip],
 }
 
 /* The pitch is capped rather than filling the container: at full width a row of
-   three cards floated in the middle of an acre of green. */
+   three cards floated in the middle of an acre of green.
+
+   The cap is on the card now, not only on the rows inside it. Capping the
+   rows alone left the green filling the column with the team huddled in the
+   middle of it — a letterbox rather than a pitch. Card and dugout share the
+   width so the two read as one object stacked, which is what they are. */
+.dp-pitch-card, .dp-bench { max-width: 760px; margin-left: auto; margin-right: auto; }
 .dp-pitch, .dp-bench-row { max-width: 720px; margin-left: auto; margin-right: auto; }
-.dp-bench { max-width: 720px; margin-left: auto; margin-right: auto; }
 
 /* ===== GW Draft table ===== */
 .dp-table-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 9px; }

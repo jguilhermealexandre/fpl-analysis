@@ -211,9 +211,14 @@
             html += `<div class="dp-row">${byPos(3).map(p => lwCard(p)).join('')}</div>`;
             html += `<div class="dp-row">${byPos(2).map(p => lwCard(p)).join('')}</div>`;
             html += `<div class="dp-row">${byPos(1).map(p => lwCard(p)).join('')}</div>`;
-            html += `</div><div class="dp-bench"><div class="dp-bench-label">Bench</div>`;
-            html += `<div class="dp-bench-row">${bench.map(p => lwCard(p, p.pos === 1 ? 'GK' : ++benchCount)).join('')}</div>`;
+            /* The bench closes the pitch card and sits under it, rather than
+               being a white panel laid on the grass. Substitutes are not on
+               the field; drawing them there was the one thing on this pitch
+               that was not true of a real one. */
             html += `</div></div>`;
+            html += `<div class="dp-bench"><div class="dp-bench-label">Bench</div>`;
+            html += `<div class="dp-bench-row">${bench.map(p => lwCard(p, p.pos === 1 ? 'GK' : ++benchCount)).join('')}</div>`;
+            html += `</div>`;
             html += `<div class="lw-pitch-hint">${lineupState.swapSource
                 ? `Swapping <strong>${escHTML((lineupState.squad.find(p => p.id === lineupState.swapSource) || {}).web_name || '')}</strong> — click another player to complete it, or click them again to cancel.`
                 : 'Click a player to swap them. Use ℹ to view detail, or click a second ℹ to compare two side by side.'}</div>`;
