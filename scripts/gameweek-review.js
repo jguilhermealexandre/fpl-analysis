@@ -477,8 +477,12 @@
                 const suffix = e.multiplier > 1 ? `<em>×${e.multiplier}</em>`
                     : onBench && counted ? '<em>came on</em>'
                     : onBench ? '<em>not counted</em>' : '';
+                /* The same face-and-crest pair the squad table uses, so a
+                   player looks like himself wherever you meet him. */
+                const face = typeof v2IdentityHTML === 'function' ? v2IdentityHTML(e.player) : '';
                 return `<div class="gwr-row ${cls}${onBench && !counted ? ' bench' : ''}">
                     <span class="position-badge ${POSITION_CONFIG[e.player.position].class}">${POSITION_CONFIG[e.player.position].short}</span>
+                    ${face}
                     <span class="gwr-row-name">${e.isCaptain ? `${v2Icon('crown')} ` : e.isVice ? 'V ' : ''}${escHTML(e.player.name)}</span>
                     <span class="gwr-row-opp">${s && s.fixtures.length ? s.fixtures.map(f => `${escHTML(f.name)}${f.home ? ' (H)' : ' (A)'}`).join(', ') : '—'}</span>
                     <span class="gwr-row-mins">${s ? s.minutes : 0}'</span>
@@ -589,7 +593,11 @@
         function openGameweekReview() {
             const r = buildGameweekReview();
             const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = `${v2Icon('chart')} Gameweek ${r ? r.gw : currentGW} review`;
+            /* innerHTML, not textContent: this string carries the section
+               icon, and textContent printed "<svg class=..." across the top
+               of the panel as a line of markup. The gameweek number is the
+               only interpolated part and it is a number. */
+            if (title) title.innerHTML = `${v2Icon('chart')} Gameweek ${r ? Number(r.gw) : Number(currentGW)} review`;
             document.getElementById('optReportBody').innerHTML = renderGameweekReview(r);
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();

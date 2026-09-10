@@ -19,9 +19,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=200">
-    <link rel="stylesheet" href="styles/v2-design.css?v=200">
-    <link rel="stylesheet" href="styles/responsive.css?v=200">
+    <link rel="stylesheet" href="styles/common.css?v=201">
+    <link rel="stylesheet" href="styles/v2-design.css?v=201">
+    <link rel="stylesheet" href="styles/responsive.css?v=201">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -450,6 +450,52 @@
         .news-card-graphic-kit { font-size: 32px; font-weight: 900; opacity: 0.5; font-family: var(--font-mono); }
         .news-card-hero .news-card-graphic-kit { font-size: 42px; }
         .news-card-graphic-team { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.4px; opacity: 0.6; }
+
+        /* ----- A squad player's card -----
+           The club's colour behind him, his face on it, and in the corner
+           the crest, his position and his club — with a mark for what the
+           news is so the tile answers "who" and "what" before the headline
+           is read. Laid out as a row rather than the centred stack the
+           generic tile uses, because a face wants one side of the frame and
+           the labels the other. */
+        .news-card-graphic.is-player { justify-content: flex-start; padding: 0 14px; gap: 12px; }
+        .news-card-face {
+            position: relative; z-index: 1;
+            height: 118px; width: auto;
+            align-self: flex-end;
+            object-fit: contain; object-position: bottom;
+            filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .34));
+        }
+        .news-card-hero .news-card-face { height: 190px; }
+
+        .news-card-graphic-id {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+            min-width: 0;
+        }
+        .news-card-crest { width: 26px; height: 26px; object-fit: contain; margin-bottom: 2px; }
+        .news-card-graphic.is-player .news-card-graphic-kit { font-size: 22px; opacity: .75; letter-spacing: -0.5px; }
+        .news-card-hero .news-card-graphic.is-player .news-card-graphic-kit { font-size: 30px; }
+        .news-card-graphic.is-player .news-card-graphic-team { opacity: .75; }
+
+        /* What the news is, in the corner it cannot fight the face for. */
+        .news-card-graphic-mark {
+            position: absolute; top: 10px; right: 12px; z-index: 2;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, .22);
+            backdrop-filter: blur(2px);
+        }
+        .news-card-graphic-mark svg { width: 16px; height: 16px; stroke-width: 1.9; }
+        .news-card-hero .news-card-graphic-mark { width: 38px; height: 38px; }
+        .news-card-hero .news-card-graphic-mark svg { width: 20px; height: 20px; }
+
+        /* A player the photo library cannot serve removes the <img>, and the
+           tile then has only its labels — which is the right thing to fall
+           back to, but it should not leave them adrift in the middle. */
+        .news-card-graphic.is-player:not(:has(.news-card-face)) { justify-content: center; }
+        .news-card-graphic.is-player:not(:has(.news-card-face)) .news-card-graphic-id { align-items: center; }
         .news-card-content { padding: 16px 18px; display: flex; flex-direction: column; flex: 1; }
         .news-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
         .news-card-category { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
@@ -536,13 +582,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=200"></script>
-    <script src="scripts/common.js?v=200"></script>
+    <script src="scripts/error-monitor.js?v=201"></script>
+    <script src="scripts/common.js?v=201"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=200"></script>
-    <script src="scripts/notifications.js?v=200"></script>
-    <script src="scripts/sidebar-nav.js?v=200"></script>
+    <script src="scripts/push-alerts.js?v=201"></script>
+    <script src="scripts/notifications.js?v=201"></script>
+    <script src="scripts/sidebar-nav.js?v=201"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1147,6 +1193,12 @@
 
                 allPlayers = bootData.elements.map(p => ({
                     id: p.id, name: p.web_name,
+                    /* The photo library is keyed by `code`, not by `id`, and the
+                       crest by the team's own code — neither was carried
+                       through, which is why a squad news card could only ever
+                       draw a coloured rectangle. */
+                    code: p.code,
+                    teamCode: localTeams[p.team]?.code,
                     team: localTeams[p.team]?.short_name || 'N/A', teamId: p.team,
                     position: p.element_type, price: p.now_cost / 10,
                     form: parseFloat(p.form) || 0, points: p.total_points,
@@ -1250,17 +1302,37 @@
                     return null;
                 }
 
+                /* A squad news card, in the player's club colours.
+
+                   His face, his club's crest, his position, and a mark for
+                   what the news is — an injury, a price move, a transfer —
+                   so the tile says who and what before you read a word of it.
+
+                   Where a shirt number would go, the position. FPL publishes
+                   a squad_number field and it is null for all 654 players, so
+                   there is no real number to print. What was here before was
+                   `p.id % 30 + 1` — a number invented from the player's
+                   database id and shown as if it were his. A made-up fact is
+                   worse than a missing one, and the position is both true and
+                   the thing an FPL manager reads first. */
                 function buildGraphic(item) {
                     const p = item.player;
                     const colors = TEAM_COLORS[p?.teamId] || ['#6366F1','#FFFFFF'];
                     const iconSVG = CAT_ICONS[item.category] || CAT_ICONS.external;
-                    const kitNum = p ? (p.id % 30 + 1) : '';
+                    const pos = p ? (posShortNames[p.position] || '') : '';
                     const teamName = p ? escHTML(p.team) : '';
-                    return `<div class="news-card-graphic" style="background:linear-gradient(135deg, ${colors[0]} 0%, ${colors[0]}dd 60%, ${colors[0]}99 100%);color:${colors[1]}">
+                    const photo = (p && p.code != null && typeof playerPhotoHTML === 'function')
+                        ? playerPhotoHTML(p.code, 'news-card-face') : '';
+                    const crest = (p && p.teamCode != null)
+                        ? `<img class="news-card-crest" alt="" loading="lazy" src="https://resources.premierleague.com/premierleague/badges/50/t${p.teamCode}.png" onerror="this.remove()">`
+                        : '';
+                    return `<div class="news-card-graphic is-player" style="background:linear-gradient(135deg, ${colors[0]} 0%, ${colors[0]}dd 60%, ${colors[0]}99 100%);color:${colors[1]}">
                         <div class="news-card-graphic-bg" style="background:radial-gradient(circle at 30% 40%,${colors[1]} 0%,transparent 70%)"></div>
-                        <div class="news-card-graphic-icon">
-                            ${iconSVG}
-                            ${kitNum ? `<span class="news-card-graphic-kit">${kitNum}</span>` : ''}
+                        ${photo}
+                        <span class="news-card-graphic-mark">${iconSVG}</span>
+                        <div class="news-card-graphic-id">
+                            ${crest}
+                            ${pos ? `<span class="news-card-graphic-kit">${pos}</span>` : ''}
                             ${teamName ? `<span class="news-card-graphic-team">${teamName}</span>` : ''}
                         </div>
                     </div>`;
