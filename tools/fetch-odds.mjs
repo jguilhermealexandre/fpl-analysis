@@ -108,19 +108,51 @@ function fail(message) {
    holding name the gameweek they cover, so if that gameweek is behind the one
    whose deadline has already passed, we went into a round without pricing it —
    which is a real failure and still goes red. */
+/* How close to a deadline "not priced yet" stops being ordinary. The feed
+   carries about two days of fixtures, so a round is normally in it well before
+   this; still empty inside the window means something about the source has
+   changed rather than that we are early. Chosen so at least one scheduled run
+   (03/09/15/21 UTC) always lands inside it, whatever the deadline. */
+const PRICING_GRACE_MS = 12 * 60 * 60 * 1000;
+
 function notPricedYet(reason, outPath) {
-    let held = null, current = null;
+    let held = null, events = [];
     try {
         held = JSON.parse(fs.readFileSync(outPath, 'utf8'))?.metadata?.events?.slice(-1)[0] ?? null;
-        const boot = JSON.parse(fs.readFileSync('data/bootstrap-static.json', 'utf8'));
-        current = (boot.events || []).find(e => e.is_current) || null;
+        events = (JSON.parse(fs.readFileSync('data/bootstrap-static.json', 'utf8')).events || [])
+            .filter(e => e && e.id != null && e.deadline_time)
+            .sort((a, b) => Date.parse(a.deadline_time) - Date.parse(b.deadline_time));
     } catch (e) {
         /* Nothing held yet, or no bootstrap to judge against. Either way there is
            no round we can show we missed, so this stays a notice. */
     }
 
-    if (held != null && current && held < current.id && Date.parse(current.deadline_time) < Date.now()) {
-        fail(`${reason} — and the odds on file are for GW${held}, while GW${current.id} is already under way. A round went unpriced.`);
+    const now = Date.now();
+    /* NOT `is_current`. That flag names the round whose deadline passed most
+       recently and keeps naming it until the next one locks — so for the whole
+       window in which anyone is picking a team it is a round behind, which is
+       the trap planningGameweek() in scripts/common.js exists for. Judging the
+       odds by it meant the alarm could only fire AFTER a deadline, by which
+       point nobody can act on the answer and the round is already lost.
+
+       The round being planned is simply the next one still open. */
+    const passed = events.filter(e => Date.parse(e.deadline_time) <= now);
+    const locked = passed[passed.length - 1] || null;
+    const planning = events.find(e => Date.parse(e.deadline_time) > now) || null;
+
+    // A round locked while we were holding odds for an earlier one. Definite miss.
+    if (held != null && locked && held < locked.id) {
+        fail(`${reason} — the odds on file are for GW${held} and GW${locked.id} is already locked. A round went unpriced.`);
+    }
+
+    /* The round being planned is nearly locked and still has no prices. This is
+       the alarm that is worth having: early enough to be acted on, late enough
+       that an ordinary unpriced Tuesday never reaches it. */
+    if (planning) {
+        const until = Date.parse(planning.deadline_time) - now;
+        if (until < PRICING_GRACE_MS) {
+            fail(`${reason} — GW${planning.id} locks in ${Math.max(0, Math.round(until / 3600000))}h and still has no prices`);
+        }
     }
 
     console.log(`::notice::${reason}. Keeping the existing odds — bookmakers price one round at a time, so between rounds there is nothing to fetch.`);

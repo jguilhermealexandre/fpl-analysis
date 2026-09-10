@@ -118,10 +118,17 @@ chosen, since a key could not live in the browser on a static site. Bookmakers
 price one round at a time, and `fixtures.csv` only carries about the next two
 days, so for most of the week it holds no Premier League rows at all. That is
 the ordinary state of a Tuesday rather than a fault: `tools/fetch-odds.mjs`
-writes nothing and exits green, and goes red only once a round's deadline has
-passed with the odds on file still naming an earlier one. The feed only ever
-covers the next gameweek: the Lineup Wizard's Matchday tab reads it, and the
-Transfer Wizard deliberately does not. Nobody quotes clean-sheet percentages, so those are derived in
+writes nothing and exits green. It goes red on two conditions, both keyed on the
+round being *planned* rather than on `is_current` — which names the round whose
+deadline passed most recently and so is a round behind for the entire window
+anyone is picking a team in, the same trap `planningGameweek()` exists for.
+Either the next deadline is under twelve hours away and that round still has no
+prices, or a deadline passed while the odds on file named an earlier round.
+Keying it on `is_current` meant the alarm could only fire after a deadline, when
+nothing can be done about it.
+
+The feed only ever covers the next gameweek: the Lineup Wizard's Matchday tab
+reads it, and the Transfer Wizard deliberately does not. Nobody quotes clean-sheet percentages, so those are derived in
 `tools/odds-model.mjs` from the 1X2 and over/under 2.5 markets and committed
 already computed.
 
