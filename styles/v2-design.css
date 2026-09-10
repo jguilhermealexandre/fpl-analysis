@@ -2117,13 +2117,56 @@ html.v2-theme body {
 .v2-set-ghost.danger { color: var(--color-negative, #B3261E); }
 .v2-set-ghost.danger:hover { border-color: var(--color-negative, #B3261E); }
 
-/* Collapsed, the sidebar keeps the marks and drops the words. */
-.v2-sidebar.is-collapsed .v2-account-text,
-.v2-sidebar.is-collapsed .v2-acct-label,
-.v2-sidebar.is-collapsed .nt-bell-label,
-.v2-sidebar.is-collapsed .v2-acct-switch { display: none; }
-.v2-sidebar.is-collapsed .v2-acct-row,
-.v2-sidebar.is-collapsed .nt-bell { justify-content: center; padding-left: 0; padding-right: 0; }
+/* Collapsed, the menu keeps the marks and drops the words.
+
+   These were written against .v2-sidebar.is-collapsed, which is not a
+   class this site has: the rail is .v2-sidebar-collapsed, and it is on
+   <html>, not on the sidebar. So none of it ever applied — the rows kept
+   their labels, their ID chip and a 30px switch inside a 52px rail, and
+   every one of them overflowed it.
+
+   The rail leaves 52px. A row is a 40px square in the middle of that, with
+   nothing in it but its icon. */
+.v2-sidebar-collapsed .v2-account {
+    padding: 4px;
+    gap: 4px;
+}
+.v2-sidebar-collapsed .v2-account-text,
+.v2-sidebar-collapsed .v2-account-plan,
+.v2-sidebar-collapsed .v2-acct-label,
+.v2-sidebar-collapsed .nt-bell-label,
+.v2-sidebar-collapsed .v2-acct-switch { display: none; }
+
+.v2-sidebar-collapsed .v2-acct-row,
+.v2-sidebar-collapsed .v2-account .nt-bell {
+    width: 40px;
+    min-height: 40px;
+    margin: 0 auto;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+}
+/* The avatar is the identity, so it stays — as the whole of that row. */
+.v2-sidebar-collapsed .v2-acct-you { padding: 0; }
+.v2-sidebar-collapsed .v2-account-avatar { width: 30px; height: 30px; }
+
+/* With the label gone there is nothing for the count to sit beside, so it
+   becomes a dot on the bell instead of a chip next to nothing. */
+.v2-sidebar-collapsed .v2-account .nt-count {
+    position: absolute;
+    top: 4px; right: 4px;
+    min-width: 8px; width: 8px; height: 8px;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
+}
+.v2-sidebar-collapsed .v2-account .nt-bell { position: relative; }
+
+.v2-sidebar-collapsed .v2-premium { margin-top: 2px; }
+
+/* The notification panel hangs off the rail rather than off a 230px
+   column, so it needs to know how far to clear. */
+.v2-sidebar-collapsed .v2-sidebar .nt-drop { left: calc(100% + 8px); }
 
 /* ===== Settings ===== */
 /* The edge and the lift Visual Analysis has. It had neither, so on a light
