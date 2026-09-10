@@ -724,6 +724,20 @@ function v2AccountName() {
     return 'Your team';
 }
 
+/* The theme row says which mode is on, so it has to be told when that
+   changes — including by the fallback switch below it, and by another tab.
+   Called on mount and from toggleThemeSmooth(). */
+function v2SyncThemeRow() {
+    if (typeof document === 'undefined') return;
+    const row = document.getElementById('v2ThemeRow');
+    if (!row) return;
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    row.classList.toggle('is-dark', dark);
+    row.setAttribute('aria-pressed', String(dark));
+    const label = document.getElementById('v2ThemeLabel');
+    if (label) label.textContent = dark ? 'Dark mode' : 'Light mode';
+}
+
 /* One place for a page to say what the team is called. */
 function v2SetTeamName(name) {
     if (typeof window === 'undefined' || !name) return;
@@ -762,13 +776,23 @@ function v2MountAccount() {
     }
     const nameEl = document.getElementById('v2AccountName');
     if (nameEl) nameEl.textContent = name;
-    /* Three lines, three different facts. It used to read "Demo Team FC" over
-       "Demo squad · Free", which is the team named twice and the only new word
-       in the second line buried at the end of it. */
+    /* The name, and under it the ID — two different facts. It used to read
+       "Demo Team FC" over "Demo squad · Free", which is the team named twice
+       with the only new word buried at the end of the second line. */
     const subEl = document.getElementById('v2AccountSub');
     if (subEl) subEl.textContent = 'ID: ' + teamId;
+
+    /* The plan is told by what is in the menu rather than by a label: Go
+       premium is there if you are not, and a small PRO mark is there if you
+       are. Saying "Free" to someone on the free plan is a row of the menu
+       spent on something they cannot act on. */
+    const premium = st.plan === 'premium';
     const planEl = document.getElementById('v2AccountPlan');
-    if (planEl) planEl.textContent = st.plan === 'premium' ? 'Premium' : 'Free';
+    if (planEl) planEl.hidden = !premium;
+    const goPremium = document.getElementById('v2Premium');
+    if (goPremium) goPremium.hidden = premium;
+
+    v2SyncThemeRow();
 
     /* The Team ID widget below said the same thing this block says, so two
        controls claimed to be your identity and only one of them could be acted
@@ -1806,7 +1830,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=194')
+    fetch('footer.html?v=195')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

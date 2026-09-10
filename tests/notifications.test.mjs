@@ -224,18 +224,27 @@ test('names in events are escaped', () => {
     assert.ok(html.includes('&lt;img'));
 });
 
-test('the bell only carries a dot when there is something behind it', () => {
+/* The bell is a row in the sidebar's account menu now rather than a bare
+   circular icon, and a row has somewhere to put a number — so the count is
+   back, in place of the dot that stood in for it while there was no room.
+   What has not changed, and is the thing worth pinning, is that an unread
+   mark appears only when something is actually unread. */
+test('the bell only carries a count when there is something behind it', () => {
     const nt = load();
-    assert.doesNotMatch(nt.ntBellHTML(0), /nt-dot/);
+    assert.doesNotMatch(nt.ntBellHTML(0), /nt-count/);
+    assert.doesNotMatch(nt.ntBellHTML(0), /has-new/);
     assert.match(nt.ntBellHTML(0), /Nothing new/);
-    assert.match(nt.ntBellHTML(3), /nt-dot/);
-    assert.match(nt.ntBellHTML(14), /nt-dot/);
+    assert.match(nt.ntBellHTML(3), /nt-count/);
+    assert.match(nt.ntBellHTML(3), /has-new/);
 });
 
-/* The dot is binary, so the number it replaced has to survive somewhere: the
-   panel lists the events, and the label is what a screen reader reads out. */
-test('the count the dot no longer shows is still in the bell label', () => {
+/* Two digits would push the row's label out of shape, so the chip stops at
+   9+ — which means the exact figure has to survive somewhere else. It is in
+   the label, which is also what a screen reader reads out. */
+test('a count too big for the chip is still exact in the bell label', () => {
     const nt = load();
+    assert.match(nt.ntBellHTML(3), />3</);
+    assert.match(nt.ntBellHTML(14), />9\+</);
     assert.match(nt.ntBellHTML(3), /3 new since your last visit/);
     assert.match(nt.ntBellHTML(14), /14 new since your last visit/);
 });

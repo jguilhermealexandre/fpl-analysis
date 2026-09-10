@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=194">
-    <link rel="stylesheet" href="styles/v2-design.css?v=194">
-    <link rel="stylesheet" href="styles/responsive.css?v=194">
+    <link rel="stylesheet" href="styles/common.css?v=195">
+    <link rel="stylesheet" href="styles/v2-design.css?v=195">
+    <link rel="stylesheet" href="styles/responsive.css?v=195">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -771,9 +771,28 @@
         /* A match none of your players are in is context, not a decision: it
            recedes by losing contrast, not by going translucent over whatever
            happens to sit behind it. */
-        .md-match.is-dim { box-shadow: none; background: transparent; border-color: var(--border-subtle); }
-        .md-match.is-dim .md-team, .md-match.is-dim .md-goals { color: var(--text-muted); }
-        .md-match.is-dim .md-crest { filter: grayscale(1); opacity: .55; }
+        /* Which of the ten matches are yours should be readable at a glance,
+           from across the room, before you read a single team name. So both
+           answers are drawn rather than one: a green ground for the matches
+           you have players in, and a flat grey one for the matches you do
+           not. It used to be only the second, and quietly — the "yours"
+           cards looked like every other white card on the page. */
+        .md-match.is-mine {
+            background: color-mix(in srgb, var(--color-primary) 7%, var(--surface-1));
+            border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+        }
+        .md-match.is-dim {
+            box-shadow: none;
+            background: var(--surface-2);
+            border-color: transparent;
+        }
+        .md-match.is-dim .md-team, .md-match.is-dim .md-goals, .md-match.is-dim .md-status { color: var(--text-muted); }
+        .md-match.is-dim .md-none { color: var(--text-muted); opacity: .8; }
+        .md-match.is-dim .md-crest { filter: grayscale(1); opacity: .45; }
+        /* A match being live outranks a match being yours, and .is-mine is
+           declared after .is-live above — so it is restated here, where it
+           wins on order rather than on a fight about specificity. */
+        .md-match.is-live { border-color: rgba(220, 38, 38, .30); }
         .md-match-head { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; }
         .md-status { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 6px; border-radius: var(--radius-full); background: var(--surface-3); color: var(--text-muted); }
         .md-status.live { background: rgba(220, 38, 38, .13); color: #DC2626; }
@@ -1554,18 +1573,34 @@
             flex-direction: column;
             gap: 8px;
         }
+        /* These are buttons, not panels. On a white card ground a white card
+           with a hairline border reads as another block of the page rather
+           than as the three things you can go and do — so they take a light
+           green fill and a green edge, which is what the rest of the site
+           uses for "act on this". */
         .v2-qa-card {
             display: flex;
             align-items: center;
             gap: 10px;
-            background: var(--surface-1);
-            border: 1px solid var(--border-default);
+            background: color-mix(in srgb, var(--color-primary) 8%, var(--surface-1));
+            border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
             border-radius: var(--radius-lg);
             padding: 12px 14px;
             text-decoration: none;
-            transition: border-color 0.15s, transform 0.15s;
+            transition: background 0.15s, border-color 0.15s, transform 0.15s;
         }
-        .v2-qa-card:hover { border-color: var(--color-primary); transform: translateX(2px); }
+        .v2-qa-card:hover {
+            background: color-mix(in srgb, var(--color-primary) 14%, var(--surface-1));
+            border-color: var(--color-primary);
+            transform: translateX(2px);
+        }
+        /* The icon tile was the same muted green as the card now is, which
+           left it invisible against it. A solid mark instead. */
+        .v2-qa-card .v2-qa-icon {
+            background: var(--color-primary);
+            color: #fff;
+        }
+        .v2-qa-card .v2-qa-title { color: var(--color-primary-text); }
         .v2-qa-icon {
             width: 34px; height: 34px;
             border-radius: var(--radius-md);
@@ -3698,20 +3733,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=194">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=194">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=194">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=194">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=194">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=194">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=194">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=194">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=194">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=194">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=194">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=194">
-    <link rel="preload" as="script" href="scripts/common.js?v=194">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=194">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=195">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=195">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=195">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=195">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=195">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=195">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=195">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=195">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=195">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=195">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=195">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=195">
+    <link rel="preload" as="script" href="scripts/common.js?v=195">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=195">
 </head>
 <body>
 <script>
@@ -4433,20 +4468,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=194"></script>
-    <script src="scripts/price-watch.js?v=194"></script>
-    <script src="scripts/xp-engine.js?v=194"></script>
-    <script src="scripts/odds-panel.js?v=194"></script>
-    <script src="scripts/live-gw.js?v=194"></script>
-    <script src="scripts/matchday.js?v=194"></script>
-    <script src="scripts/market-panel.js?v=194"></script>
-    <script src="scripts/eo-layer.js?v=194"></script>
-    <script src="scripts/readiness.js?v=194"></script>
-    <script src="scripts/push-alerts.js?v=194"></script>
-    <script src="scripts/notifications.js?v=194"></script>
-    <script src="scripts/transfer-engine.js?v=194"></script>
-    <script src="scripts/common.js?v=194"></script>
-    <script src="scripts/sidebar-nav.js?v=194"></script>
+    <script src="scripts/error-monitor.js?v=195"></script>
+    <script src="scripts/price-watch.js?v=195"></script>
+    <script src="scripts/xp-engine.js?v=195"></script>
+    <script src="scripts/odds-panel.js?v=195"></script>
+    <script src="scripts/live-gw.js?v=195"></script>
+    <script src="scripts/matchday.js?v=195"></script>
+    <script src="scripts/market-panel.js?v=195"></script>
+    <script src="scripts/eo-layer.js?v=195"></script>
+    <script src="scripts/readiness.js?v=195"></script>
+    <script src="scripts/push-alerts.js?v=195"></script>
+    <script src="scripts/notifications.js?v=195"></script>
+    <script src="scripts/transfer-engine.js?v=195"></script>
+    <script src="scripts/common.js?v=195"></script>
+    <script src="scripts/sidebar-nav.js?v=195"></script>
     <script>
         initIcons();
         loadFooter();

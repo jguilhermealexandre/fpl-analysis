@@ -258,10 +258,15 @@
                question the bell answers — the count that used to sit here is
                one tap away in the panel, and stays in the label for anyone
                reading this with a screen reader. */
+            /* A row in the sidebar's account menu, not a floating bell: an
+               icon, the word, and the count if there is one. It keeps the
+               .nt-bell class because everything else here — the panel
+               toggle, the has-new state, the dot — is written against it. */
             return `<button type="button" class="nt-bell${n ? ' has-new' : ''}" onclick="ntTogglePanel()"
                 aria-label="${n ? `${n} new since your last visit` : 'Nothing new'}" aria-expanded="false">
                 <span class="nt-bell-icon">${NT_BELL_ICON}</span>
-                ${n ? '<span class="nt-dot" aria-hidden="true"></span>' : ''}
+                <span class="nt-bell-label">Notifications</span>
+                ${n ? `<span class="nt-count">${n > 9 ? '9+' : n}</span>` : ''}
             </button>`;
         }
 

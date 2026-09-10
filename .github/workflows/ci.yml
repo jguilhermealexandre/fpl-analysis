@@ -24,7 +24,11 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
+      # Full history: check-version-bump.mjs has to find the commit that last
+      # touched asset-version.json, which a depth-1 checkout does not contain.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -41,6 +45,12 @@ jobs:
 
       - name: Asset version stamped everywhere
         run: node tools/check-versions.mjs
+
+      # And bumped when an asset changed. The one above proves the stamps
+      # agree with each other; this one proves the number is not the same
+      # one the last deploy already put in everybody's cache.
+      - name: Asset version bumped for changed assets
+        run: node tools/check-version-bump.mjs
 
       # Now a gate. It reported rather than blocked because it could not be run
       # locally when it was introduced, and by the time it could it had 957

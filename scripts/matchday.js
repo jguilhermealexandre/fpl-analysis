@@ -289,7 +289,12 @@
                 return s + (l.points || 0) * mult;
             }, 0);
 
-            return `<div class="md-match${isLive ? ' is-live' : ''}${st.kind === 'ft' ? ' is-done' : ''}${mine.length ? '' : ' is-dim'}">
+            /* The row is ten matches and usually you have players in five of
+               them. Marking only the empty ones "dim" left the other five
+               looking like every other card on the page; both halves are
+               named now, so the ones that are yours can be lit rather than
+               merely not greyed. */
+            return `<div class="md-match${isLive ? ' is-live' : ''}${st.kind === 'ft' ? ' is-done' : ''}${mine.length ? ' is-mine' : ' is-dim'}">
                 <div class="md-match-head">
                     <span class="md-status ${st.kind}">${isLive ? '<i class="md-dot"></i>' : ''}${escHTML(st.label)}</span>
                     ${mine.length && mdLiveById ? `<span class="md-mine-total" data-tooltip="Points your players in this match have scored so far, with the armband counted.">${mineTotal}<em>pts</em></span>` : ''}

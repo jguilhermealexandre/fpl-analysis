@@ -1533,6 +1533,7 @@ export default [
                 v2SetTeamName: 'writable',
                 v2Settings: 'writable',
                 v2StartCheckout: 'writable',
+                v2SyncThemeRow: 'writable',
                 v2TeamCode: 'writable',
                 v2UploadBadge: 'writable',
                 v2WrapSections: 'writable',

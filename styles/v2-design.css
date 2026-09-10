@@ -1850,13 +1850,20 @@ html.v2-theme body {
     box-shadow: var(--v2-card-shadow);
 }
 
-/* ===== The account block, in the sidebar =====
-   Who you are, what is new, and the way into settings — in the one piece of
-   furniture that is on every page. The bell was in the dashboard header, so
-   notifications existed on one page of thirteen. */
+/* ===== The account menu, at the foot of the sidebar =====
+
+   It was a compact strip — avatar and name on the left, a bell and a gear
+   squeezed onto the right — and three of its five things were 28px icons
+   with no words. A stack instead: who you are, then notifications,
+   settings, the theme, and the upgrade. One row each, all the same shape,
+   each one saying what it is. Go premium is the only coloured row, and the
+   only one that can be absent: it is not shown to someone already paying.
+   ===================================================================== */
 .v2-account {
-    display: flex; align-items: center; gap: 6px;
-    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
     margin-bottom: 8px;
     border: 1px solid var(--v2-card-border, var(--border-emphasis));
     border-radius: 12px;
@@ -1864,16 +1871,53 @@ html.v2-theme body {
 }
 .v2-account[hidden] { display: none; }
 
-.v2-account-main {
+/* One row. Everything in the menu is one of these, including the bell that
+   notifications.js draws and the Go premium link. */
+.v2-acct-row,
+.v2-account .nt-bell {
     display: flex; align-items: center; gap: 9px;
-    flex: 1; min-width: 0;
-    padding: 0; border: none; background: none;
-    text-align: left; cursor: pointer; font-family: inherit;
+    width: 100%;
+    min-height: 34px;
+    padding: 7px 8px;
+    border: none; border-radius: 8px;
+    background: none;
+    color: var(--text-secondary);
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    text-align: left; text-decoration: none;
+    cursor: pointer;
+    transition: background 130ms ease, color 130ms ease;
 }
+.v2-acct-row:hover,
+.v2-account .nt-bell:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+.v2-acct-row[hidden] { display: none; }
+
+.v2-acct-ico,
+.v2-account .nt-bell-icon {
+    display: grid; place-items: center;
+    width: 18px; height: 18px; flex-shrink: 0;
+    color: var(--text-muted);
+}
+.v2-acct-row:hover .v2-acct-ico,
+.v2-account .nt-bell:hover .nt-bell-icon { color: var(--color-primary); }
+.v2-acct-ico svg,
+.v2-account .nt-bell-icon svg { width: 16px; height: 16px; }
+
+.v2-acct-label,
+.v2-account .nt-bell-label {
+    flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* --- who you are --- */
+.v2-acct-you { padding: 8px; gap: 9px; }
+.v2-acct-you:hover { background: var(--surface-2); }
 
 .v2-account-avatar {
     display: grid; place-items: center;
-    width: 30px; height: 30px; flex-shrink: 0;
+    width: 32px; height: 32px; flex-shrink: 0;
     border-radius: 50%;
     background: color-mix(in srgb, var(--color-primary) 16%, transparent);
     color: var(--color-primary);
@@ -1883,73 +1927,114 @@ html.v2-theme body {
 .v2-account-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .v2-account-avatar.lg { width: 56px; height: 56px; font-size: 17px; }
 
-.v2-account-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.v2-account-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; line-height: 1.2; }
 .v2-account-name {
-    font-size: 12.5px; font-weight: 650; color: var(--text-primary);
+    font-size: 12.5px; font-weight: 700; color: var(--text-primary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
 /* The team ID as a label rather than a line of grey text. It is the one
-   thing on this block you might read out or type somewhere else, and a
+   thing in this menu you might read out or type somewhere else, and a
    tinted chip is how the rest of the site marks a value you can act on. */
 .v2-account-sub {
     align-self: flex-start;
-    margin: 2px 0 1px;
+    max-width: 100%;
     padding: 1.5px 7px;
     border-radius: 999px;
-    background: var(--color-primary-muted, color-mix(in srgb, var(--color-primary) 14%, transparent));
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
     color: var(--color-primary-text, var(--color-primary));
     font-size: 10px; font-weight: 700; letter-spacing: .02em;
-    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .v2-account-sub:empty { display: none; }
-/* The plan on its own line, the way the ID is. Three short facts stacked
-   read faster than two of them run together with a middot. */
+
+/* Shown only to someone who is paying — for everyone else the absence of
+   this and the presence of Go premium say the same thing between them. */
 .v2-account-plan {
-    font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-    color: var(--color-primary-text);
+    flex-shrink: 0;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+    color: var(--color-primary-text, var(--color-primary));
+    font-size: 9px; font-weight: 800; letter-spacing: .06em;
+}
+.v2-account-plan[hidden] { display: none; }
+
+/* --- notifications --- */
+/* The panel is positioned against this row, so the row is its context. */
+.v2-account .nt-centre { position: relative; width: 100%; }
+.v2-account .nt-bell { width: 100%; height: auto; border-radius: 8px; }
+.v2-account .nt-bell.has-new .nt-bell-icon { color: var(--color-primary); }
+
+.v2-account .nt-count {
+    flex-shrink: 0;
+    min-width: 17px; padding: 1px 5px;
+    border-radius: 999px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 9.5px; font-weight: 800; line-height: 1.5;
+    text-align: center;
 }
 
+/* --- the theme --- */
+/* One icon at a time: the one for the mode you are in. */
+.v2-acct-theme .v2-theme-sun { display: none; }
+.v2-acct-theme.is-dark .v2-theme-moon { display: none; }
+.v2-acct-theme.is-dark .v2-theme-sun { display: block; }
+
+.v2-acct-switch {
+    flex-shrink: 0;
+    width: 28px; height: 16px;
+    border-radius: 999px;
+    background: var(--border-emphasis);
+    transition: background 160ms ease;
+    display: inline-flex; align-items: center;
+    padding: 2px;
+}
+.v2-acct-switch i {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.28);
+    transition: transform 160ms cubic-bezier(.22,1,.36,1);
+}
+.v2-acct-theme.is-dark .v2-acct-switch { background: var(--color-primary); }
+.v2-acct-theme.is-dark .v2-acct-switch i { transform: translateX(12px); }
+
+/* --- go premium ---
+   The one coloured row, because it is the one thing in the menu asking for
+   something rather than offering it. */
+.v2-premium {
+    margin-top: 4px;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 62%, #0b7));
+    color: #fff;
+    font-weight: 700;
+    transition: filter 140ms ease, transform 140ms ease;
+}
+.v2-premium:hover { background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 62%, #0b7)); color: #fff; filter: brightness(1.07); transform: translateY(-1px); }
+.v2-premium .v2-acct-ico, .v2-premium:hover .v2-acct-ico { color: #fff; }
+.v2-premium .v2-acct-label { flex: 0 0 auto; }
+.v2-premium[hidden] { display: none; }
+
+/* The stacked menu replaces the standalone theme pill, which stays only for
+   the state before a team is loaded — the menu is hidden then, and the site
+   still has to be switchable. */
 .v2-sidebar-team-id[hidden] { display: none; }
+.v2-account:not([hidden]) ~ #v2ThemeFallback { display: none; }
 
 /* The two buttons in "Connected squad". */
 .v2-set-actions { display: inline-flex; gap: 6px; flex-shrink: 0; }
 .v2-set-ghost.danger { color: var(--color-negative, #B3261E); }
 .v2-set-ghost.danger:hover { border-color: var(--color-negative, #B3261E); }
 
-.v2-account-gear {
-    display: grid; place-items: center;
-    width: 28px; height: 28px; flex-shrink: 0;
-    padding: 0; border: none; border-radius: 8px;
-    background: none; color: var(--text-muted); cursor: pointer;
-}
-.v2-account-gear svg { width: 15px; height: 15px; }
-.v2-account-gear:hover { background: var(--surface-2); color: var(--text-primary); }
-
-/* The bell sits between the name and the gear. */
-.v2-account .nt-centre { position: relative; flex-shrink: 0; }
-
-/* ----- Go premium -----
-   The one coloured thing in the sidebar, because it is the one thing in it
-   asking for something rather than offering it. */
-.v2-premium {
-    display: flex; align-items: center; justify-content: center; gap: 7px;
-    padding: 9px 12px;
-    /* The same 8 the account block leaves under itself, so the three
-       things at the foot of the sidebar are evenly spaced. */
-    margin-bottom: 8px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 62%, #0b7));
-    color: #fff; text-decoration: none;
-    font-size: 12px; font-weight: 700;
-    transition: filter 140ms ease, transform 140ms ease;
-}
-.v2-premium:hover { filter: brightness(1.07); transform: translateY(-1px); }
-.v2-premium svg { width: 15px; height: 15px; }
-
 /* Collapsed, the sidebar keeps the marks and drops the words. */
 .v2-sidebar.is-collapsed .v2-account-text,
-.v2-sidebar.is-collapsed .v2-premium span { display: none; }
-.v2-sidebar.is-collapsed .v2-premium { padding: 9px 0; }
+.v2-sidebar.is-collapsed .v2-acct-label,
+.v2-sidebar.is-collapsed .nt-bell-label,
+.v2-sidebar.is-collapsed .v2-acct-switch { display: none; }
+.v2-sidebar.is-collapsed .v2-acct-row,
+.v2-sidebar.is-collapsed .nt-bell { justify-content: center; padding-left: 0; padding-right: 0; }
 
 /* ===== Settings ===== */
 .v2-settings .modal-container {

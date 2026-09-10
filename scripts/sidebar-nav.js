@@ -14,7 +14,7 @@ try {
 }
 
 function loadSidebarNav() {
-    return fetch('sidebar-nav.html?v=194')
+    return fetch('sidebar-nav.html?v=195')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -206,12 +206,16 @@ function toggleThemeSmooth() {
     root.classList.add('v2-theme-transition');
     if (!document.startViewTransition) {
         toggleTheme();
+        if (typeof v2SyncThemeRow === 'function') v2SyncThemeRow();
         window.setTimeout(() => root.classList.remove('v2-theme-transition'), 650);
         return;
     }
 
     const transition = document.startViewTransition(() => toggleTheme());
-    transition.finished.finally(() => root.classList.remove('v2-theme-transition'));
+    transition.finished.finally(() => {
+        root.classList.remove('v2-theme-transition');
+        if (typeof v2SyncThemeRow === 'function') v2SyncThemeRow();
+    });
 }
 
 // One calm entrance sequence shared by every V2 page: navigation first,
