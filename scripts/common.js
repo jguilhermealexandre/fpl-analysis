@@ -18,6 +18,14 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
     updateThemeIcon();
+    /* Here, rather than after the view transition settles. The sidebar row
+       names the mode you are in and draws a switch for it, and syncing it
+       from transition.finished meant the page went dark while the row still
+       said "Light mode" with the switch to the left, for the ~600ms the
+       animation lasts. Both are attributes of the same fact, so they change
+       on the same line — which also puts them inside the transition, so the
+       row cross-fades with everything else instead of snapping afterwards. */
+    v2SyncThemeRow();
 }
 
 function updateThemeIcon() {
@@ -1830,7 +1838,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=195')
+    fetch('footer.html?v=196')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

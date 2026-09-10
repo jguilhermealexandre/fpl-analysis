@@ -1025,7 +1025,6 @@
                 if (!p) {
                     if (item.link && /^https?:\/\//i.test(item.link)) {
                         return `<div class="news-card-footer">
-                            <span class="news-card-stat">${escHTML(item.source || '')}</span>
                             <a class="news-card-cta" href="${escHTML(item.link)}" target="_blank" rel="noopener noreferrer">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
                         </div>`;
                     }

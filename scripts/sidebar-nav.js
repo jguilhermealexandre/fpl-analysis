@@ -14,7 +14,7 @@ try {
 }
 
 function loadSidebarNav() {
-    return fetch('sidebar-nav.html?v=195')
+    return fetch('sidebar-nav.html?v=196')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -204,18 +204,17 @@ function toggleThemeSmooth() {
     if (root.classList.contains('v2-theme-transition')) return;
 
     root.classList.add('v2-theme-transition');
+    /* toggleTheme() updates the sidebar's theme row itself, so both paths
+       below get it — and inside the transition callback, where it belongs,
+       rather than after the animation has finished. */
     if (!document.startViewTransition) {
         toggleTheme();
-        if (typeof v2SyncThemeRow === 'function') v2SyncThemeRow();
         window.setTimeout(() => root.classList.remove('v2-theme-transition'), 650);
         return;
     }
 
     const transition = document.startViewTransition(() => toggleTheme());
-    transition.finished.finally(() => {
-        root.classList.remove('v2-theme-transition');
-        if (typeof v2SyncThemeRow === 'function') v2SyncThemeRow();
-    });
+    transition.finished.finally(() => root.classList.remove('v2-theme-transition'));
 }
 
 // One calm entrance sequence shared by every V2 page: navigation first,

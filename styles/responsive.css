@@ -33,7 +33,14 @@
    every label behind a :hover flyout — and a touch screen has no hover,
    so those sections were simply unreachable. */
 
-.v2-mobile-bar { display: none; }
+/* Both of these are built on every page at every width, and hidden here
+   rather than by a resize handler. The scrim needs saying as much as the
+   bar does: its position:fixed lives inside the media query below, so
+   above the breakpoint it was an ordinary button sitting in the flow at
+   the top of <body> — 21px of nothing, pushing every page down by its own
+   height. Nobody sees a transparent button; everybody saw the gap. */
+.v2-mobile-bar,
+.v2-nav-scrim { display: none; }
 
 @media (max-width: 1024px) {
 
@@ -154,6 +161,7 @@
 
     /* The scrim. A tap anywhere off the drawer closes it. */
     .v2-nav-scrim {
+        display: block;
         position: fixed;
         inset: 0;
         z-index: 80;

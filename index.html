@@ -17,9 +17,9 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=195">
-    <link rel="stylesheet" href="styles/v2-design.css?v=195">
-    <link rel="stylesheet" href="styles/responsive.css?v=195">
+    <link rel="stylesheet" href="styles/common.css?v=196">
+    <link rel="stylesheet" href="styles/v2-design.css?v=196">
+    <link rel="stylesheet" href="styles/responsive.css?v=196">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -878,18 +878,25 @@
         .v2-news-tab.active span { opacity: 0.75; }
 
         .v2-news-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        /* The same card the Scout's Desk uses one section down: a hairline
+           edge, the panel surface, the same lift on hover. These were the
+           only cards on the dashboard drawn as bare content on the page. */
         .v2-news-card {
             display: flex; flex-direction: column; gap: 6px;
+            padding: 10px 11px 12px;
             text-decoration: none; color: inherit;
+            border: 1px solid var(--border-emphasis);
             border-radius: var(--radius-lg);
-            transition: transform 140ms ease;
+            background: var(--surface-1);
+            box-shadow: var(--v2-card-shadow, none);
+            transition: border-color 150ms ease, transform 140ms ease;
         }
-        .v2-news-card:hover { transform: translateY(-2px); }
+        .v2-news-card:hover { transform: translateY(-2px); border-color: var(--color-primary); }
         .v2-news-card:hover .v2-news-head { color: var(--color-primary); }
         /* A fixed ratio so a missing or slow image never resizes the row. */
         .v2-news-thumb {
             display: block; width: 100%; aspect-ratio: 16 / 10;
-            border-radius: var(--radius-lg); overflow: hidden;
+            border-radius: var(--radius-md); overflow: hidden;
             background: var(--surface-2);
         }
         .v2-news-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -897,9 +904,15 @@
            uppercase text — the same element, the same class, the same colours,
            so BBC looks like BBC on both pages. The age sits beside it rather
            than inside it, since it is not part of the source's name. */
-        .v2-news-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-        .v2-news-age { font-size: 10px; color: var(--text-muted); }
+        /* Source on the left, age on the right, with the space between them
+           rather than a fixed gap — the age is when, not part of the name of
+           where it came from, and it belongs at the edge of the card. */
+        .v2-news-meta { display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; }
+        .v2-news-age { margin-left: auto; flex-shrink: 0; font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+        /* A little clear to the right, so a headline breaks before it reaches
+           the card's edge instead of running right up to it. */
         .v2-news-head { font-size: 13px; font-weight: 650; line-height: 1.35; color: var(--text-primary); transition: color 140ms ease;
+            padding-right: 10px;
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
         .v2-news-empty { grid-column: 1 / -1; padding: 20px; text-align: center; font-size: 12px; color: var(--text-muted); }
 
@@ -1195,7 +1208,14 @@
             background: var(--surface-2);
             color: var(--text-muted);
         }
+        /* One colour per severity, matched to the mark each row carries, so
+           the number at the top of the column reads as a summary of what is
+           under it rather than as an alarm regardless. */
         .v2-attn-col-count.has-items { background: rgba(239,68,68,0.12); color: #DC2626; }
+        .v2-attn-col-count.sev-sell { background: color-mix(in srgb, var(--verdict-sell, #DC2626) 13%, transparent); color: var(--verdict-sell, #DC2626); }
+        .v2-attn-col-count.sev-move { background: color-mix(in srgb, var(--color-primary) 14%, transparent); color: var(--color-primary-text, var(--color-primary)); }
+        .v2-attn-col-count.sev-monitor { background: rgba(217,119,6,0.13); color: #D97706; }
+        .v2-attn-col-count.sev-hold { background: var(--surface-2); color: var(--text-secondary); }
         a.v2-attn-row {
             display: flex;
             align-items: center;
@@ -3733,20 +3753,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=195">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=195">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=195">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=195">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=195">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=195">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=195">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=195">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=195">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=195">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=195">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=195">
-    <link rel="preload" as="script" href="scripts/common.js?v=195">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=195">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=196">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=196">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=196">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=196">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=196">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=196">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=196">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=196">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=196">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=196">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=196">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=196">
+    <link rel="preload" as="script" href="scripts/common.js?v=196">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=196">
 </head>
 <body>
 <script>
@@ -3966,15 +3986,23 @@
                              deadline; your rank, your bank, the price moves in
                              your squad and the readiness checks are not — they
                              are true whether a deadline is near or not. What
-                             they have in common is that they are all the state
-                             of your team right now, which is what it is called.
+                             they have in common is that they are the state of
+                             your team, in one place: an overview.
+
+                             The gauge, rather than the shirt it used to carry
+                             — Squad Snapshot beside it is the shirt, and two
+                             panels on one row wearing the same mark is how you
+                             stop reading either of them.
 
                              The heading uses .v2-section-title so it is the
                              same object as every other section title on the
-                             site rather than a lookalike with its own rules. -->
+                             site rather than a lookalike with its own rules.
+                             The SVG is inline rather than an <i data-lucide>
+                             placeholder, which only becomes an icon if lucide
+                             has loaded and run. -->
                         <div class="v2-section-title">
-                            <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 3.5 16 2a4 4 0 0 1-8 0L3.6 3.5a2 2 0 0 0-1.3 2.2l.6 3.5a1 1 0 0 0 1 .8H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.1a1 1 0 0 0 1-.8l.6-3.5a2 2 0 0 0-1.3-2.2z"/></svg>
-                            Your team right now
+                            <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 18a9 9 0 1 1 17 0"/><path d="m12 18 4.2-5.2"/><circle cx="12" cy="18" r="1.4"/></svg>
+                            Overview
                         </div>
                         <div class="v2-deadline-hero" id="v2DeadlineHero"></div>
                         <div class="v2-status-stack" id="v2StatusStack"></div>
@@ -4468,20 +4496,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=195"></script>
-    <script src="scripts/price-watch.js?v=195"></script>
-    <script src="scripts/xp-engine.js?v=195"></script>
-    <script src="scripts/odds-panel.js?v=195"></script>
-    <script src="scripts/live-gw.js?v=195"></script>
-    <script src="scripts/matchday.js?v=195"></script>
-    <script src="scripts/market-panel.js?v=195"></script>
-    <script src="scripts/eo-layer.js?v=195"></script>
-    <script src="scripts/readiness.js?v=195"></script>
-    <script src="scripts/push-alerts.js?v=195"></script>
-    <script src="scripts/notifications.js?v=195"></script>
-    <script src="scripts/transfer-engine.js?v=195"></script>
-    <script src="scripts/common.js?v=195"></script>
-    <script src="scripts/sidebar-nav.js?v=195"></script>
+    <script src="scripts/error-monitor.js?v=196"></script>
+    <script src="scripts/price-watch.js?v=196"></script>
+    <script src="scripts/xp-engine.js?v=196"></script>
+    <script src="scripts/odds-panel.js?v=196"></script>
+    <script src="scripts/live-gw.js?v=196"></script>
+    <script src="scripts/matchday.js?v=196"></script>
+    <script src="scripts/market-panel.js?v=196"></script>
+    <script src="scripts/eo-layer.js?v=196"></script>
+    <script src="scripts/readiness.js?v=196"></script>
+    <script src="scripts/push-alerts.js?v=196"></script>
+    <script src="scripts/notifications.js?v=196"></script>
+    <script src="scripts/transfer-engine.js?v=196"></script>
+    <script src="scripts/common.js?v=196"></script>
+    <script src="scripts/sidebar-nav.js?v=196"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5169,7 +5197,16 @@
                         </a>`;
                     });
                 }
-                const countBadge = items.length > 0 ? `<span class="v2-attn-col-count has-items">${items.length}</span>` : `<span class="v2-attn-col-count">0</span>`;
+                /* The count takes the colour of the worst thing it is counting,
+                   the same colour that thing's own mark carries in the rows
+                   below. It was always red, which said "urgent" over a column
+                   of things merely worth watching — and made a genuinely
+                   urgent one indistinguishable from them. */
+                const SEV_RANK = ['sell', 'move', 'monitor', 'hold'];
+                const worst = SEV_RANK.find(k => items.some(it => it.severity === k)) || 'monitor';
+                const countBadge = items.length > 0
+                    ? `<span class="v2-attn-col-count has-items sev-${worst}">${items.length}</span>`
+                    : `<span class="v2-attn-col-count">0</span>`;
                 return `<div class="v2-attn-col">
                     <div class="v2-attn-col-header"><i data-lucide="${iconName}" class="icon"></i> ${title}${countBadge}</div>
                     ${renderAttentionSummary(summaryKind, summaryCtx)}
@@ -5450,7 +5487,7 @@
 
                          The placeholder only becomes an icon if lucide has
                          loaded and run, and this one was rendering as nothing
-                         — so the panel beside "Your team right now" had a bare
+                         — so the panel beside "Overview" had a bare
                          title where its neighbour had an icon. Every other
                          section title on the site draws its own mark; this one
                          does now too, and cannot silently lose it. -->

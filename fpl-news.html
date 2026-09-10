@@ -19,9 +19,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=195">
-    <link rel="stylesheet" href="styles/v2-design.css?v=195">
-    <link rel="stylesheet" href="styles/responsive.css?v=195">
+    <link rel="stylesheet" href="styles/common.css?v=196">
+    <link rel="stylesheet" href="styles/v2-design.css?v=196">
+    <link rel="stylesheet" href="styles/responsive.css?v=196">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -466,7 +466,14 @@
         .news-card-detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .news-card-link { color: var(--text-primary); text-decoration: none; }
         .news-card-link:hover { color: var(--color-info); }
-        .news-card-footer { display: flex; align-items: center; gap: 0; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-default); flex-wrap: wrap; }
+        /* The footer sits on the floor of the card, not under whatever the
+   headline happened to leave. Cards in a grid row are the same height, so
+   with margin-top:auto every "Read more" lands on the same line across the
+   row instead of stepping up and down with the length of each summary.
+   .news-card-cta already carries margin-left:auto, which puts it at the
+   right of that line; the 18px it clears on either side is the card's own
+   padding, the same inset the rest of the site uses. */
+.news-card-footer { display: flex; align-items: center; gap: 0; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-default); flex-wrap: wrap; }
         .news-card-stat { font-size: 10.5px; color: var(--text-muted); padding: 0 8px; border-right: 1px solid var(--border-default); white-space: nowrap; line-height: 1; }
         .news-card-stat:first-child { padding-left: 0; }
         .news-card-stat:last-of-type { border-right: none; }
@@ -492,7 +499,7 @@
             .news-card-graphic { height: 100px; }
             .news-card-headline { font-size: 14px; }
             .news-card-footer { gap: 4px; }
-            .news-card-cta { margin-left: 0; margin-top: 6px; }
+            .news-card-cta { margin-left: auto; margin-top: 6px; }
         }
     </style>
 </head>
@@ -522,13 +529,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=195"></script>
-    <script src="scripts/common.js?v=195"></script>
+    <script src="scripts/error-monitor.js?v=196"></script>
+    <script src="scripts/common.js?v=196"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=195"></script>
-    <script src="scripts/notifications.js?v=195"></script>
-    <script src="scripts/sidebar-nav.js?v=195"></script>
+    <script src="scripts/push-alerts.js?v=196"></script>
+    <script src="scripts/notifications.js?v=196"></script>
+    <script src="scripts/sidebar-nav.js?v=196"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1277,7 +1284,6 @@
                     if (!p) {
                         if (item.link && /^https?:\/\//i.test(item.link)) {
                             return `<div class="news-card-footer">
-                                <span class="news-card-stat">${escHTML(item.source || '')}</span>
                                 <a class="news-card-cta" href="${escHTML(item.link)}" target="_blank" rel="noopener noreferrer">Read more <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
                             </div>`;
                         }

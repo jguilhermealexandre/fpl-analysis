@@ -770,13 +770,18 @@
 }
 
 /* Help and settings, stacked at the strip's right-hand end. */
-.sq-kpi-tools { display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+/* The settings button stands in the same row as the four KPI cards, so it
+   is the same height as them and carries the same edge and lift. As a 38px
+   circle floating beside cards three times its height it read as a gap in
+   the row with something small left in it. */
+.sq-kpi-tools { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .sq-kpi-tool {
-    width: 38px; height: 38px;
+    width: 38px; height: 100%; min-height: 38px;
     display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 11px;
+    border-radius: var(--v2-card-radius, 16px);
     border: 1px solid var(--v2-card-border, var(--border-emphasis));
     background: var(--surface-1);
+    box-shadow: var(--v2-card-shadow, none);
     color: var(--text-secondary);
     cursor: pointer; padding: 0;
     transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
@@ -2661,7 +2666,14 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .news-card-link:hover { color: var(--color-info); }
 
 /* Data footer */
-.news-card-footer { display: flex; align-items: center; gap: 0; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-default); flex-wrap: wrap; }
+/* The footer sits on the floor of the card, not under whatever the
+   headline happened to leave. Cards in a grid row are the same height, so
+   with margin-top:auto every "Read more" lands on the same line across the
+   row instead of stepping up and down with the length of each summary.
+   .news-card-cta already carries margin-left:auto, which puts it at the
+   right of that line; the 18px it clears on either side is the card's own
+   padding, the same inset the rest of the site uses. */
+.news-card-footer { display: flex; align-items: center; gap: 0; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-default); flex-wrap: wrap; }
 .news-card-stat { font-size: 10.5px; color: var(--text-muted); padding: 0 8px; border-right: 1px solid var(--border-default); white-space: nowrap; line-height: 1; }
 .news-card-stat:first-child { padding-left: 0; }
 .news-card-stat:last-of-type { border-right: none; }
@@ -2689,7 +2701,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     .news-card-graphic { height: 100px; }
     .news-card-headline { font-size: 14px; }
     .news-card-footer { gap: 4px; }
-    .news-card-cta { margin-left: 0; margin-top: 6px; }
+    .news-card-cta { margin-left: auto; margin-top: 6px; }
 }
 
 /* === PRICE WATCH — Stock Market Theme === */
@@ -3863,6 +3875,22 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 [data-tooltip] {
     cursor: help;
+}
+
+/* A tooltip on a button is not the reason the button is there. "Visual
+   Analysis" opens a modal and showed a question mark on hover, which says
+   "here is an explanation" about a control whose whole job is to be
+   clicked. Anything actually interactive keeps the pointer; help is left
+   to the things that only explain themselves. */
+button[data-tooltip],
+a[data-tooltip],
+label[data-tooltip],
+summary[data-tooltip],
+select[data-tooltip],
+[role="button"][data-tooltip],
+[role="tab"][data-tooltip],
+[onclick][data-tooltip] {
+    cursor: pointer;
 }
 
 /* The stat cells and fixture chips are themselves interactive (the row opens a
