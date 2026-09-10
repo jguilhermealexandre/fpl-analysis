@@ -38,7 +38,7 @@ test('a transfer puts the incoming player in the outgoing one\'s slot', () => {
     const slot = r.picksData.picks.find(p => p.position === 3);
     assert.equal(slot.element, 500);
     assert.equal(r.picksData.picks.some(p => p.element === 103), false);
-    assert.deepEqual(r.moves.map(m => [m.out, m.in]), [[103, 500]]);
+    assert.deepEqual([...r.moves].map(m => [m.out, m.in]), [[103, 500]]);
 });
 
 test('the bank moves by what FPL credited and charged, not by list price', () => {
@@ -64,7 +64,7 @@ test('a player bought and sold again before the deadline is one net move', () =>
         move(500, 600, { time: '2026-09-08T18:00:00Z' })
     ], 4);
     assert.equal(r.picksData.picks.find(p => p.position === 3).element, 600);
-    assert.deepEqual(r.moves.map(m => [m.out, m.in]), [[103, 600]], 'the intermediate player is not reported');
+    assert.deepEqual([...r.moves].map(m => [m.out, m.in]), [[103, 600]], 'the intermediate player is not reported');
 });
 
 test('the chain is replayed in time order, not feed order', () => {
@@ -120,7 +120,7 @@ test('a move out of a player this squad never held is skipped, not guessed at', 
     const r = applyPendingTransfers(squad(), [move(999, 500), move(103, 600)], 4);
     assert.equal(r.picksData.picks.length, 15);
     assert.equal(r.picksData.picks.some(p => p.element === 500), false);
-    assert.deepEqual(r.moves.map(m => m.in), [600]);
+    assert.deepEqual([...r.moves].map(m => m.in), [600]);
 });
 
 test('the incoming player carries a selling price, so the budget is not overstated', () => {

@@ -137,23 +137,19 @@
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(16, 185, 129, 0.15);
 }
 
+/* A fixed four columns of 1fr each looked responsive and was not: 1fr has an
+   auto minimum, so every track kept the card's 280px min-content floor and
+   four of them ran 199px past a 1240px window — the breakpoints below only
+   dropped a column at 1200, which is where the trouble started rather than
+   where it ended. auto-fill fits as many 232px-or-wider cards as the row can
+   hold and needs no breakpoints at all, and min() keeps the track from
+   exceeding the container on a narrow phone. */
 .teams-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(min(232px, 100%), 1fr));
     gap: var(--space-3);
 }
-
-@media (max-width: 1200px) {
-    .teams-grid { grid-template-columns: repeat(3, 1fr); }
-}
-
-@media (max-width: 900px) {
-    .teams-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 600px) {
-    .teams-grid { grid-template-columns: 1fr; }
-}
+.teams-grid > * { min-width: 0; }
 
 /* ===== COMPACT TEAM CARD ===== */
 .team-card {
@@ -2480,7 +2476,7 @@
 
 .momentum-grid {
     display: grid;
-    grid-template-columns: 65fr 35fr;
+    grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
     gap: var(--space-4);
 }
 
@@ -2882,11 +2878,19 @@
 /* ======================================================================
    Team card stat block — concrete numbers instead of 0-100 indices
    ====================================================================== */
+/* The card is the container these two columns answer to, not the window: how
+   much room they get depends on how many cards the grid fitted in the row,
+   which the viewport width alone does not tell you. */
+.team-card { container-type: inline-size; }
 .team-stat-block {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;
     margin: var(--space-3) 0;
 }
+@container (max-width: 244px) {
+    .team-stat-block { grid-template-columns: minmax(0, 1fr); }
+}
 .tsb-col {
+    min-width: 0;
     padding: 9px 11px;
     border-radius: var(--radius-md);
     background: var(--surface-2);
@@ -2901,7 +2905,10 @@
 }
 .tsb-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .tsb-row:last-child { margin-bottom: 0; }
-.tsb-label { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; }
+/* Wraps rather than holding the column open. A two-line "Conceded / game" is
+   readable; the number sheared off the right edge, which is what nowrap was
+   producing once four cards shared a 1240px row, is not. */
+.tsb-label { font-size: 10.5px; color: var(--text-muted); min-width: 0; }
 .tsb-value {
     font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 800;
     color: var(--text-primary); font-variant-numeric: tabular-nums;

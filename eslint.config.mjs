@@ -421,6 +421,7 @@ export default [
                 detectCurrentGameweek: 'writable',
                 detectPivotWindow: 'writable',
                 detectPurplePatch: 'writable',
+                diffColumn: 'writable',
                 diffToFdrBucket: 'writable',
                 dismissLeaguePrompt: 'writable',
                 dismissOverlay: 'writable',

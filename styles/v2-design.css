@@ -2920,7 +2920,7 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 }
 .dp-pitch, .dp-bench { position: relative; z-index: 1; }
 .dp-pitch { display: flex; flex-direction: column; gap: 10px; }
-.dp-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.dp-row { display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; }
 .dp-bench {
     margin-top: 10px;
     padding: 12px 14px 14px;
@@ -2939,10 +2939,18 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     content: ''; flex: 1; height: 1px;
     background: var(--border-subtle, var(--border-emphasis));
 }
-.dp-bench-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.dp-bench-row { display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; }
 .dp-card {
     position: relative;
-    width: 116px;
+    /* The card is fluid, not fixed. --dp-card-w is the width it wants; the
+       flex line below lets it give width back when the row would otherwise
+       wrap, because a back five folding onto two lines destroys the one
+       thing a pitch exists to show. Nothing is dropped on the way down —
+       the card just gets narrower, and the phone breakpoints lower the
+       starting width rather than fighting this. */
+    --dp-card-w: 116px;
+    flex: 0 1 var(--dp-card-w);
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -2994,7 +3002,7 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 }
 .dp-card:hover .dp-transfer { opacity: 1; }
 .dp-transfer:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
-    .dp-card { width: 96px; }
+.dp-card { --dp-card-w: 96px; }
 .dp-pitch-card, .dp-bench { max-width: 760px; margin-left: auto; margin-right: auto; }
 .dp-pitch, .dp-bench-row { max-width: 720px; margin-left: auto; margin-right: auto; }
 .dp-table-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 9px; }

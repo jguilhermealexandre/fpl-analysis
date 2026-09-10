@@ -591,7 +591,7 @@
 }
 
 /* ===== TEAM OVERVIEW ===== */
-.my-team-dashboard-top { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; align-items: start; margin-bottom: 20px; animation: fadeInUp 0.5s ease; }
+.my-team-dashboard-top { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 20px; animation: fadeInUp 0.5s ease; }
 .my-team-side-panel { display: flex; flex-direction: column; gap: 16px; }
 .strategy-preset-toggle {
     display: grid;
@@ -1411,7 +1411,7 @@
 .tw-confirm-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; background: var(--surface-3); color: var(--text-muted); }
 
 /* 2-column Room Layout */
-.tw-room-layout { display: grid; grid-template-columns: 2fr 3fr; gap: 16px; align-items: start; }
+.tw-room-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
 @media (max-width: 900px) { .tw-room-layout { grid-template-columns: 1fr; } }
 .tw-board-col { display: flex; flex-direction: column; gap: 12px; }
 .tw-scout-col { position: sticky; top: 120px; }
@@ -2122,7 +2122,7 @@
 .lw-change-badge.captain { background: rgba(245,158,11,0.12); color: #F59E0B; }
 
 /* ===== LINEUP WIZARD — SPLIT SCREEN LAYOUT ===== */
-.lw-clipboard-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; align-items: start; }
+.lw-clipboard-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .lw-lineup-col { min-width: 0; }
 .lw-context-col { position: sticky; top: 20px; min-width: 0; }
 @media (max-width: 900px) {
@@ -2555,17 +2555,45 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 /* Plan selector */
 .draft-plan-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
-.draft-plan-tabs { display: flex; gap: 4px; }
-.draft-plan-tab { position: relative; padding: 7px 18px; border-radius: 20px; border: 1.5px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.78rem; font-weight: 600; font-family: var(--font-display); cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
-.draft-plan-tab:hover { border-color: var(--color-primary); color: var(--color-primary); background: rgba(99,102,241,0.06); }
-.draft-plan-tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
-.draft-plan-tab .plan-tab-badge { font-size: 0.55rem; font-weight: 600; background: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 8px; }
-.draft-plan-tab.active .plan-tab-badge { background: rgba(255,255,255,0.25); }
-.draft-plan-tab:not(.active) .plan-tab-badge { background: var(--surface-2); color: var(--text-muted); }
-.draft-plan-del { font-size: 0.6rem; width: 16px; height: 16px; border-radius: 50%; border: none; background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; padding: 0; line-height: 1; }
-.draft-plan-tab:not(.active) .draft-plan-del { background: var(--surface-2); color: var(--text-muted); }
+.draft-plan-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+/* The wrapper carries the pill so the tab and its delete control sit side by
+   side inside one outline, each still a real button. */
+.draft-plan-tab-wrap {
+    display: inline-flex; align-items: center;
+    border-radius: 999px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.draft-plan-tab-wrap:hover { border-color: var(--color-primary); }
+.draft-plan-tab-wrap.active {
+    background: var(--color-primary); border-color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
+}
+.draft-plan-tab {
+    padding: 7px 16px; border: none; background: none;
+    color: var(--text-secondary); font-size: 0.78rem; font-weight: 650;
+    font-family: var(--font-display); cursor: pointer; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px; transition: color .18s ease;
+}
+/* Only plan left: no ✕ beside it, so the pill needs its right padding back. */
+.draft-plan-tab:last-child { padding-right: 18px; }
+.draft-plan-tab-wrap:hover .draft-plan-tab { color: var(--color-primary); }
+.draft-plan-tab-wrap.active .draft-plan-tab,
+.draft-plan-tab-wrap.active:hover .draft-plan-tab { color: #fff; }
+.plan-tab-badge { font-size: 0.55rem; font-weight: 700; padding: 1px 5px; border-radius: 8px; background: var(--surface-2); color: var(--text-muted); }
+.draft-plan-tab-wrap.active .plan-tab-badge { background: rgba(255,255,255,0.25); color: #fff; }
+.draft-plan-del {
+    font-size: 0.66rem; line-height: 1; width: 22px; height: 22px;
+    margin-right: 5px; padding: 0;
+    border-radius: 50%; border: none; background: none;
+    color: var(--text-muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s ease, color .15s ease;
+}
+.draft-plan-tab-wrap.active .draft-plan-del { color: rgba(255,255,255,0.75); }
 .draft-plan-del:hover { background: var(--color-error); color: #fff; }
-.draft-plan-add { padding: 7px 12px; border-radius: 20px; border: 1.5px dashed var(--border-default); background: transparent; color: var(--text-muted); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.draft-plan-add { padding: 7px 14px; border-radius: 999px; border: 1px dashed var(--v2-card-border, var(--border-emphasis)); background: transparent; color: var(--text-muted); font-size: 0.78rem; font-weight: 650; font-family: var(--font-display); cursor: pointer; transition: all 0.2s; }
 .draft-plan-add:hover { border-color: var(--color-primary); color: var(--color-primary); border-style: solid; }
 .draft-plan-actions { display: flex; gap: 4px; margin-left: auto; }
 .draft-plan-action-btn { padding: 5px 10px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.68rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
@@ -4855,8 +4883,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .gw-stats-hub .hub-tab.active { background: transparent; color: var(--color-primary); border-bottom-color: var(--color-primary); }
 
 /* ===== GW Draft strategy sidebar ===== */
-.planner-layout-wrapper { position: relative; display: grid; grid-template-columns: 1fr 330px; gap: 10px; align-items: start; }
-.planner-layout-wrapper.sidebar-collapsed { grid-template-columns: 1fr 0; }
+/* The rail was a hard 330px down to 900px wide, which on a 1200px laptop
+   left the pitch about 490px — narrow enough that a back five had to wrap.
+   It gives width back now, and stops being a column at all before it gets
+   small enough to be useless. */
+.planner-layout-wrapper { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) clamp(250px, 23vw, 330px); gap: 10px; align-items: start; }
+.planner-layout-wrapper.sidebar-collapsed { grid-template-columns: minmax(0, 1fr) 0; }
 
 
 
@@ -4875,8 +4907,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 
 
-@media (max-width: 900px) {
-    .planner-layout-wrapper, .planner-layout-wrapper.sidebar-collapsed { grid-template-columns: 1fr; }
+@media (max-width: 1100px) {
+    .planner-layout-wrapper, .planner-layout-wrapper.sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ===== Plan comparison ===== */
@@ -4935,7 +4967,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-cc-stat-v.accent { color: var(--color-primary); }
 
 /* 60/40, the pitch getting the larger share. */
-.lw-cc-body { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; align-items: start; }
+.lw-cc-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
 .lw-pitch-hint { margin-top: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 
 .lw-intel { border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); overflow: hidden; }

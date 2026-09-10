@@ -1188,12 +1188,16 @@
                     Object.values(ds.transfers).forEach(arr => { totalTransfers += (arr || []).length; });
                 }
                 const badge = totalTransfers > 0 ? `<span class="plan-tab-badge">${totalTransfers}T</span>` : '';
-                html += `<button class="draft-plan-tab ${active}" onclick="switchDraftSlot(${i})">`;
-                html += `Plan ${i + 1}${badge}`;
+                /* The pill is the wrapper, not the button: the delete control is a
+                   button of its own and a button cannot be nested inside another —
+                   the parser ejects the inner one, which is why the ✕ used to land
+                   outside the pill with none of its styling and nothing to click. */
+                html += `<div class="draft-plan-tab-wrap ${active}">`;
+                html += `<button class="draft-plan-tab ${active}" onclick="switchDraftSlot(${i})">Plan ${i + 1}${badge}</button>`;
                 if (draftSlotCount > 1) {
-                    html += ` <button class="draft-plan-del" onclick="event.stopPropagation();removeDraftSlot(${i})" title="Delete Plan ${i + 1}" aria-label="Delete Plan ${i + 1}">✕</button>`;
+                    html += `<button class="draft-plan-del" onclick="removeDraftSlot(${i})" title="Delete Plan ${i + 1}" aria-label="Delete Plan ${i + 1}">✕</button>`;
                 }
-                html += `</button>`;
+                html += `</div>`;
             }
             if (draftSlotCount < 3) {
                 html += `<button class="draft-plan-add" onclick="addDraftSlot()" title="Add new plan">+ New Plan</button>`;

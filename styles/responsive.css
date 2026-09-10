@@ -831,28 +831,32 @@
    Every container this file narrows gets its children told they may be
    narrower than their contents; the contents then wrap, ellipsis or
    scroll on their own terms, which each of them already knows how to
-   do. */
-@media (max-width: 1024px) {
-    .v2-attention-grid > *,
-    .v2-top-row > *,
-    .stats-grid > *,
-    .summary-grid > *,
-    .metrics-grid > *,
-    .v2-qa-grid > *,
-    .v2-desk-grid > *,
-    .insight-grid > *,
-    .kpi-grid > *,
-    .overview-grid > *,
-    .two-col > *,
-    .cards-grid > *,
-    .news-grid > *,
-    .report-dashboard > *,
-    .sd-featured > *,
-    .doc-layout > *,
-    .v2-info-panel .rd-lanes > *,
-    .sq-row > *,
-    .sq-row-clickable > * { min-width: 0; }
-}
+   do.
+
+   Not gated to a breakpoint. A grid item is only ever wider than its track
+   because its own contents refuse to be narrower, and that happens the
+   moment the track gets tight — which on a 1280px laptop with the sidebar
+   open is well above any phone breakpoint. min-width: 0 does not shrink
+   anything that has room; it only removes the floor. */
+.v2-attention-grid > *,
+.v2-top-row > *,
+.stats-grid > *,
+.summary-grid > *,
+.metrics-grid > *,
+.v2-qa-grid > *,
+.v2-desk-grid > *,
+.insight-grid > *,
+.kpi-grid > *,
+.overview-grid > *,
+.two-col > *,
+.cards-grid > *,
+.news-grid > *,
+.report-dashboard > *,
+.sd-featured > *,
+.doc-layout > *,
+.v2-info-panel .rd-lanes > *,
+.sq-row > *,
+.sq-row-clickable > * { min-width: 0; }
 
 
 /* The stat cards put a value on the left and a badge on the right, on
@@ -988,7 +992,7 @@
     .dp-row { flex-wrap: nowrap; gap: 4px; }
 
     .dp-card {
-        width: 74px;
+        --dp-card-w: 74px;
         padding: 6px 4px 5px;
         gap: 1px;
         border-top-width: 2px;
@@ -1014,7 +1018,7 @@
 
 @media (max-width: 480px) {
     .dp-card {
-        width: 60px;
+        --dp-card-w: 60px;
         padding: 5px 3px 4px;
     }
     .dp-card .v2-pid-portrait { --v2-pid-face: 28px; }
