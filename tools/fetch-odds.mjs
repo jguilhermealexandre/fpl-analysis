@@ -122,7 +122,7 @@ function notPricedYet(reason, outPath) {
         events = (JSON.parse(fs.readFileSync('data/bootstrap-static.json', 'utf8')).events || [])
             .filter(e => e && e.id != null && e.deadline_time)
             .sort((a, b) => Date.parse(a.deadline_time) - Date.parse(b.deadline_time));
-    } catch (e) {
+    } catch {
         /* Nothing held yet, or no bootstrap to judge against. Either way there is
            no round we can show we missed, so this stays a notice. */
     }
