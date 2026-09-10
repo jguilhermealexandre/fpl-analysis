@@ -1988,30 +1988,86 @@ html.v2-theme body {
     text-align: center;
 }
 
-/* --- the theme --- */
-/* One icon at a time: the one for the mode you are in. */
-.v2-acct-theme .v2-theme-sun { display: none; }
-.v2-acct-theme.is-dark .v2-theme-moon { display: none; }
-.v2-acct-theme.is-dark .v2-theme-sun { display: block; }
+/* --- the theme ---
+
+   The two icons are stacked in the same cell rather than swapped with
+   display, which is a cut: one frame moon, next frame sun, nothing in
+   between. They turn past each other instead — the outgoing one rotates
+   away and shrinks, the incoming one arrives from the other side — and
+   the knob travels on a curve that overshoots a little and settles, the
+   way a real switch does. */
+.v2-acct-theme .v2-acct-ico {
+    display: grid;
+    place-items: center;
+    overflow: visible;
+}
+.v2-acct-theme .v2-acct-ico svg {
+    grid-area: 1 / 1;
+    transition: opacity 240ms ease, transform 440ms cubic-bezier(.34, 1.4, .64, 1);
+}
+.v2-acct-theme .v2-theme-moon { opacity: 1; transform: none; }
+.v2-acct-theme .v2-theme-sun { opacity: 0; transform: rotate(-100deg) scale(.4); }
+.v2-acct-theme.is-dark .v2-theme-moon { opacity: 0; transform: rotate(100deg) scale(.4); }
+.v2-acct-theme.is-dark .v2-theme-sun { opacity: 1; transform: none; }
 
 .v2-acct-switch {
     flex-shrink: 0;
-    width: 28px; height: 16px;
+    width: 30px; height: 17px;
     border-radius: 999px;
     background: var(--border-emphasis);
-    transition: background 160ms ease;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .10);
+    transition: background 320ms ease, box-shadow 320ms ease;
     display: inline-flex; align-items: center;
-    padding: 2px;
+    padding: 2.5px;
 }
 .v2-acct-switch i {
     width: 12px; height: 12px;
-    border-radius: 50%;
+    border-radius: 999px;
     background: #fff;
     box-shadow: 0 1px 2px rgba(0,0,0,.28);
-    transition: transform 160ms cubic-bezier(.22,1,.36,1);
+    /* Two timings on purpose: the slide overshoots and settles, the
+       stretch does not — a knob that bounces its own width looks broken
+       rather than springy. */
+    transition: transform 440ms cubic-bezier(.34, 1.45, .64, 1),
+                width 200ms cubic-bezier(.22, 1, .36, 1);
 }
-.v2-acct-theme.is-dark .v2-acct-switch { background: var(--color-primary); }
-.v2-acct-theme.is-dark .v2-acct-switch i { transform: translateX(12px); }
+.v2-acct-theme.is-dark .v2-acct-switch {
+    background: var(--color-primary);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .18);
+}
+.v2-acct-theme.is-dark .v2-acct-switch i { transform: translateX(13px); }
+
+/* Held down, the knob stretches towards where it is about to go — the
+   press has an answer before the release does. The travel shortens by
+   exactly what it gained, so it still stops flush against the end. */
+.v2-acct-theme:active .v2-acct-switch i { width: 16px; }
+.v2-acct-theme.is-dark:active .v2-acct-switch i { transform: translateX(9px); }
+
+/* And the reason none of the above was visible on its own.
+
+   Switching theme runs document.startViewTransition, which replaces the
+   live page with a snapshot for the length of the cross-fade. A CSS
+   transition on an element inside that snapshot does not play — the
+   element is a picture. So the knob was not sliding slowly, it was not
+   sliding at all: the page dissolved and the switch was simply in its
+   other position on the far side. (Lifting it out with a
+   view-transition-name of its own does not help either; a named group is
+   still two images, and the knob arrives at the end of its travel in the
+   first of them.)
+
+   So the control moves before the snapshot is taken. toggleThemeSmooth()
+   flips this row on the live DOM, waits for the knob to get going, and
+   only then starts the page transition — the switch answers the press,
+   the page follows it. Which is also the right order to feel: you moved
+   the switch, so the switch moves, and the room changes because of it. */
+
+@media (prefers-reduced-motion: reduce) {
+    .v2-acct-theme .v2-acct-ico svg,
+    .v2-acct-switch,
+    .v2-acct-switch i { transition-duration: 1ms; }
+    .v2-acct-theme:active .v2-acct-switch i { width: 12px; }
+    .v2-acct-theme.is-dark:active .v2-acct-switch i { transform: translateX(13px); }
+}
 
 /* --- go premium ---
    The one coloured row, because it is the one thing in the menu asking for
@@ -2037,6 +2093,26 @@ html.v2-theme body {
 
 /* The two buttons in "Connected squad". */
 .v2-set-group[hidden] { display: none; }
+
+/* The field, and the word that tells you it stuck. It fades in where
+   there is already room for it rather than appearing and shoving the
+   hint below down a line. */
+.v2-set-field { position: relative; display: flex; align-items: center; }
+.v2-set-field .v2-set-input { flex: 1; min-width: 0; padding-right: 62px; }
+.v2-set-saved {
+    position: absolute;
+    right: 10px;
+    font-size: 11px; font-weight: 700;
+    color: var(--color-primary-text, var(--color-primary));
+    opacity: 0;
+    transform: translateY(2px);
+    pointer-events: none;
+    transition: opacity 200ms ease, transform 200ms ease;
+}
+.v2-set-saved.is-on { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+    .v2-set-saved { transition-duration: 1ms; }
+}
 .v2-set-actions { display: inline-flex; gap: 6px; flex-shrink: 0; }
 .v2-set-ghost.danger { color: var(--color-negative, #B3261E); }
 .v2-set-ghost.danger:hover { border-color: var(--color-negative, #B3261E); }

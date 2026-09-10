@@ -28,7 +28,7 @@ function v2HasTeam() {
 function loadSidebarNav() {
     if (!v2HasTeam()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('sidebar-nav.html?v=197')
+    return fetch('sidebar-nav.html?v=198')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -112,7 +112,7 @@ function loadSidebarNav() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('landing-nav.html?v=197')
+    return fetch('landing-nav.html?v=198')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -139,6 +139,22 @@ function loadLandingNav() {
             console.warn('Landing navigation could not be loaded:', error);
             return null;
         });
+}
+
+/* Swap the landing shell for the app one, in place.
+
+   The shell is chosen once, on load, from whether a Team ID is saved —
+   which is right for every normal navigation and wrong for the one case
+   where that answer changes without one: the form at the foot of the
+   landing page, which converts the page into the dashboard where it
+   stands. Until this existed, that left the landing header sitting over a
+   dashboard with no sidebar, and only a reload put it right. */
+function v2EnterAppShell() {
+    if (document.querySelector('.v2-sidebar')) return Promise.resolve();
+    document.documentElement.classList.remove('v2-shell-landing');
+    closeLandingNav();
+    document.getElementById('v2LandingNav')?.remove();
+    return loadSidebarNav();
 }
 
 function toggleLandingNav() {
@@ -264,17 +280,33 @@ function toggleThemeSmooth() {
     if (root.classList.contains('v2-theme-transition')) return;
 
     root.classList.add('v2-theme-transition');
-    /* toggleTheme() updates the sidebar's theme row itself, so both paths
-       below get it — and inside the transition callback, where it belongs,
-       rather than after the animation has finished. */
+    /* The switch moves first, on the live DOM.
+
+       startViewTransition replaces the page with a snapshot while it
+       cross-fades, and a CSS transition inside a snapshot does not play —
+       the element is a picture. Flipping the row inside the transition
+       therefore made the knob appear already at the far end, which is what
+       "flat" looked like. Flipping it here, a couple of frames before the
+       snapshot is taken, lets its own 440ms travel start on the real
+       element; by the time the page dissolves behind it, the switch has
+       visibly moved.
+
+       It is also the right order to feel. You pressed the switch, so the
+       switch answers, and the room changes because of it. */
+    v2PreflipThemeRow();
+
     if (!document.startViewTransition) {
         toggleTheme();
         window.setTimeout(() => root.classList.remove('v2-theme-transition'), 650);
         return;
     }
 
-    const transition = document.startViewTransition(() => toggleTheme());
-    transition.finished.finally(() => root.classList.remove('v2-theme-transition'));
+    /* Long enough to read as the switch leading, short enough that it is
+       still one gesture rather than two events. */
+    window.setTimeout(() => {
+        const transition = document.startViewTransition(() => toggleTheme());
+        transition.finished.finally(() => root.classList.remove('v2-theme-transition'));
+    }, 150);
 }
 
 // One calm entrance sequence shared by every V2 page: navigation first,

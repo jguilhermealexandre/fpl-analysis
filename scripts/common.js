@@ -695,6 +695,35 @@ function v2SaveSettings(patch) {
     return next;
 }
 
+/* Renaming your team.
+
+   It saves as you type, which is right — there is nothing to submit to and
+   a Save button for a value already stored would be a lie about where it
+   lives. But a field that saves silently is indistinguishable from a field
+   that does nothing, so it says so, once you stop typing rather than on
+   every keystroke.
+
+   Anywhere the name is shown updates with it: the sidebar through
+   v2MountAccount(), and the dashboard heading, which is on this page when
+   this modal is open and reads the same name. */
+let v2NameSaveTimer = null;
+function v2SaveTeamName(value) {
+    v2SaveSettings({ teamName: value });
+
+    const heading = document.getElementById('heroTeamName');
+    if (heading) heading.textContent = v2AccountName();
+
+    const flag = document.getElementById('v2SetNameSaved');
+    if (!flag) return;
+    clearTimeout(v2NameSaveTimer);
+    flag.classList.remove('is-on');
+    v2NameSaveTimer = setTimeout(() => {
+        flag.textContent = 'Saved';
+        flag.classList.add('is-on');
+        setTimeout(() => flag.classList.remove('is-on'), 1800);
+    }, 500);
+}
+
 /* The badge, or the team's initials under it.
 
    Stored as a data URL in localStorage, which is the only place a static site
@@ -829,6 +858,21 @@ function v2EnterWithTeam(teamId) {
 /* The theme row says which mode is on, so it has to be told when that
    changes — including by the fallback switch below it, and by another tab.
    Called on mount and from toggleThemeSmooth(). */
+/* Flip the row to the mode it is about to be in, ahead of the theme
+   itself. Called from toggleThemeSmooth() before the page snapshot; the
+   sync below then agrees with it when the attribute catches up, so the
+   two never disagree for longer than the 150ms in between. */
+function v2PreflipThemeRow() {
+    if (typeof document === 'undefined') return;
+    const row = document.getElementById('v2ThemeRow');
+    if (!row) return;
+    const nextDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+    row.classList.toggle('is-dark', nextDark);
+    row.setAttribute('aria-pressed', String(nextDark));
+    const label = document.getElementById('v2ThemeLabel');
+    if (label) label.textContent = nextDark ? 'Dark mode' : 'Light mode';
+}
+
 function v2SyncThemeRow() {
     if (typeof document === 'undefined') return;
     const row = document.getElementById('v2ThemeRow');
@@ -938,8 +982,11 @@ function openSettingsModal(section) {
                             ? `<img src="${st.badge}" alt="">`
                             : `<b>${esc(v2AccountInitials(v2AccountName()))}</b>`}</span>
                         <div class="v2-set-stack">
-                            <input type="text" id="v2SetName" class="v2-set-input" placeholder="Team name"
-                                value="${esc(st.teamName || v2AccountName())}" oninput="v2SaveSettings({ teamName: this.value })">
+                            <div class="v2-set-field">
+                                <input type="text" id="v2SetName" class="v2-set-input" placeholder="Team name"
+                                    value="${esc(st.teamName || v2AccountName())}" oninput="v2SaveTeamName(this.value)">
+                                <span class="v2-set-saved" id="v2SetNameSaved" aria-live="polite"></span>
+                            </div>
                             <div class="v2-set-inline">
                                 <label class="v2-set-file">
                                     <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="v2UploadBadge(this)">
@@ -1936,7 +1983,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=197')
+    fetch('footer.html?v=198')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
