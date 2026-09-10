@@ -5240,12 +5240,32 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twh-verdict.bad .twh-verdict-delta { color: var(--verdict-sell); }
 .twh-verdict-text { font-size: 11px; line-height: 1.55; color: var(--text-secondary); }
 
-.twh-heads { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 10px; }
-.twh-head { padding: 7px 9px; border-radius: var(--radius-lg); background: var(--surface-2); border: 1px solid var(--border-subtle); }
-.twh-head.in { border-color: var(--color-primary); }
-.twh-head-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.twh-head-sub { font-size: 9px; color: var(--text-muted); }
-.twh-head-vs { font-size: 10px; color: var(--text-muted); font-weight: 700; }
+/* Each side is a player hero in his club's colours — the same card the
+   player modal, the rivals page and Captain Consensus use. The wrapper
+   only does the outline and the clipping; the hero brings its own paint. */
+.twh-heads { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 10px; margin-bottom: 12px; }
+.twh-head {
+    border-radius: var(--v2-card-radius, 16px);
+    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.twh-head.out { opacity: .82; }
+.twh-head.in { border-color: var(--color-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent); }
+.twh-head .pdm-hero { min-height: 96px; }
+.twh-head-vs {
+    align-self: center;
+    font-size: 10px; color: var(--text-muted); font-weight: 800;
+    letter-spacing: .08em; text-transform: uppercase;
+}
+/* The In/Out label rides on the hero's own side column. */
+.twh-head .pdm-hero-chip.is-out { background: rgba(0, 0, 0, .3); color: #fff; }
+.twh-head .pdm-hero-chip.is-in { background: var(--color-primary); color: #fff; }
+
+@media (max-width: 620px) {
+    .twh-heads { grid-template-columns: minmax(0, 1fr); }
+    .twh-head-vs { justify-self: center; }
+}
 
 .twh-chart { height: 210px; margin: 4px 0 2px; }
 .twh-chart-note { font-size: 9px; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px; text-align: center; }
@@ -5888,15 +5908,23 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* Quick picks / Custom search. The primary choice on this screen — which of
    the two ways of answering "who replaces him" you want — so it reads heavier
    than the funnel's own step buttons sitting beside it. */
-.twf-views { display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-full); overflow: hidden; }
+.twf-views {
+    display: inline-flex;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--radius-full); overflow: hidden;
+}
 .twf-view {
-    padding: 5px 12px; border: none; background: transparent; cursor: pointer;
-    font-family: var(--font-body); font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 13px; border: none; background: transparent; cursor: pointer;
+    font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .02em;
     color: var(--text-muted); transition: background .15s ease, color .15s ease;
 }
+.twf-view svg { width: 13px; height: 13px; }
 .twf-view:hover { color: var(--text-secondary); }
-.twf-view.active { background: var(--surface-3, var(--surface-1)); color: var(--text-primary); }
-.twf-view.active:first-child { background: var(--color-wizard, var(--color-primary)); color: #fff; }
+/* Both selected states are the brand. Quick picks used --color-wizard, a
+   violet defined for the old wizard chrome and used nowhere else on this
+   screen, so the two halves of one control were painted from two palettes. */
+.twf-view.active { background: var(--color-primary); color: #fff; }
 
 .twf-steps { display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-full); overflow: hidden; }
 .twf-step { padding: 4px 11px; border: none; background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: .02em; color: var(--text-muted); cursor: pointer; }
@@ -5994,10 +6022,32 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-out-xp { margin-left: auto; font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text-secondary); }
 .twf-out-xp i { font-style: normal; font-size: 8px; color: var(--text-muted); margin-left: 2px; }
 
-.twf-card { padding: 9px; margin-bottom: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-1); cursor: pointer; transition: border-color 140ms ease; }
-.twf-card:hover { border-color: var(--color-primary); }
+/* The hero runs edge to edge, so the card carries no padding of its own and
+   everything below the hero brings its own gutter. */
+.twf-card {
+    padding: 0; margin-bottom: 8px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+.twf-card:hover { border-color: var(--color-primary); box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .twf-card.unafford { opacity: .5; }
-.twf-card-top { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+.twf-card > *:not(.twf-hero) { padding-left: 10px; padding-right: 10px; }
+.twf-card > *:last-child { padding-bottom: 10px; }
+.twf-hero .pdm-hero { min-height: 92px; }
+.twf-hero .pdm-hero-chip {
+    background: rgba(255, 255, 255, .22); color: var(--club-ink, #fff);
+    font-variant-numeric: tabular-nums;
+}
+.twf-hero .pdm-hero-chip.is-up { background: var(--color-primary); color: #fff; }
+.twf-hero .pdm-hero-chip.is-down { background: color-mix(in srgb, var(--verdict-sell, #EF4444) 85%, transparent); color: #fff; }
+/* Only the badges the hero has no room for, and nothing at all when there
+   are none — an empty strip above the numbers reads as a missing row. */
+.twf-card-top { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; padding-top: 8px; margin-bottom: 6px; }
 .twf-rank { width: 17px; height: 17px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--surface-3); color: var(--text-secondary); font-size: 9px; font-weight: 700; }
 .twf-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .twf-team { font-size: 9px; color: var(--text-muted); }
@@ -6457,3 +6507,398 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     .dc-head { gap: 8px; }
     .draft-compare-col { padding: 9px; }
 }
+
+
+/* ======================================================================
+   THE TRANSFER WIZARD, AS FIVE STEPS
+
+   Everything this screen does, it did before. What it did not do was say
+   where you were in it: a plan selector sized like a filter chip, a
+   recommender, a squad, a market, a comparison and a summary, all on one
+   page from the first second, with most of it irrelevant to whatever you
+   were actually doing.
+
+   The rail names the five. The squad on the left never moves, because it
+   is the one thing true at every step. The right pane is the step, and
+   is the only thing that animates — see twPlayStepMove().
+   ====================================================================== */
+
+.tw-rail {
+    display: flex; align-items: stretch;
+    gap: 0;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.tw-rail::-webkit-scrollbar { height: 0; }
+
+.tw-rail-step {
+    flex: 1 1 0; min-width: 0;
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px;
+    border: none; background: none;
+    border-radius: 11px;
+    font-family: var(--font-display);
+    text-align: left;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease, opacity .18s ease;
+}
+.tw-rail-step:disabled { cursor: default; }
+
+.tw-rail-mark {
+    flex: 0 0 auto;
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-2);
+    color: var(--text-muted);
+    transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+.tw-rail-mark svg { width: 15px; height: 15px; }
+
+.tw-rail-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tw-rail-n {
+    font-size: 8.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+.tw-rail-l {
+    font-size: 12.5px; font-weight: 700; color: var(--text-secondary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Where you are. The only filled mark on the rail, so the step you are on
+   is findable without reading any of it. */
+.tw-rail-step.is-here .tw-rail-mark {
+    background: var(--color-primary); border-color: var(--color-primary);
+    color: #fff;
+    transform: scale(1.06);
+}
+.tw-rail-step.is-here .tw-rail-l { color: var(--text-primary); }
+.tw-rail-step.is-here .tw-rail-n { color: var(--color-primary); }
+
+/* Behind you: done, and a way back. */
+.tw-rail-step.is-done .tw-rail-mark,
+.tw-rail-step.is-open .tw-rail-mark {
+    border-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+.tw-rail-step.is-done:hover, .tw-rail-step.is-open:hover { background: var(--surface-2); }
+
+/* Ahead of you. Still there, so the shape of what is left never changes. */
+.tw-rail-step.is-todo { opacity: .45; }
+
+.tw-rail-link {
+    flex: 0 0 14px; align-self: center;
+    height: 1.5px; border-radius: 1px;
+    background: var(--border-emphasis, var(--border-default));
+}
+
+/* The step's own panel, and the way on from it. */
+.tw-step-panel .twc-panel-body { padding-top: 2px; }
+
+.tw-step-foot {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px; padding-top: 13px;
+    border-top: 1px solid var(--border-subtle, var(--border-emphasis));
+}
+.tw-step-foot-note { font-size: 11.5px; color: var(--text-muted); }
+.tw-step-foot .tw-next { margin-left: auto; }
+
+.tw-next, .tw-back {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-size: 12.5px; font-weight: 700;
+    cursor: pointer;
+    transition: background .18s ease, border-color .18s ease, color .18s ease, opacity .18s ease;
+}
+.tw-next svg, .tw-back svg { width: 14px; height: 14px; }
+.tw-next {
+    border: 1px solid var(--color-primary);
+    background: var(--color-primary); color: #fff;
+}
+.tw-next:hover:not(:disabled) { filter: brightness(1.06); }
+.tw-next:disabled { opacity: .4; cursor: default; }
+.tw-back {
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1); color: var(--text-secondary);
+}
+.tw-back:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+/* ===== Step 1 · the four plans ===== */
+.tw-plans {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: 10px;
+}
+.tw-plan {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 14px;
+    border-radius: var(--v2-card-radius, 16px);
+    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.tw-plan:hover { border-color: color-mix(in srgb, var(--color-primary) 55%, transparent); transform: translateY(-1px); }
+.tw-plan.is-on {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.tw-plan-top { display: flex; align-items: center; gap: 9px; }
+.tw-plan-ico {
+    width: 30px; height: 30px; flex: 0 0 auto;
+    display: grid; place-items: center;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--color-primary) 11%, transparent);
+    color: var(--color-primary);
+}
+.tw-plan-ico svg { width: 16px; height: 16px; }
+.tw-plan-name {
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 800; color: var(--text-primary);
+}
+/* Only on the chosen one, and it holds its place either way so picking a
+   plan does not shuffle the row it is in. */
+.tw-plan-tick { margin-left: auto; color: var(--color-primary); opacity: 0; transition: opacity .18s ease; }
+.tw-plan-tick svg { width: 17px; height: 17px; }
+.tw-plan.is-on .tw-plan-tick { opacity: 1; }
+
+.tw-plan-what { font-size: 12px; font-weight: 650; color: var(--text-secondary); line-height: 1.45; }
+
+/* Three facts, three columns, so the same fact is in the same place on all
+   four cards and they can be read across rather than one card at a time. */
+.tw-plan-facts {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;
+    padding: 8px 0 2px;
+    border-top: 1px solid var(--border-subtle, var(--border-emphasis));
+}
+.tw-plan-fact {
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: var(--surface-2);
+}
+.tw-plan-fact em {
+    font-style: normal;
+    font-size: 8.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+.tw-plan-fact b { font-size: 11.5px; font-weight: 700; color: var(--text-primary); line-height: 1.25; }
+
+/* Shown and inert on step 1 rather than removed, so the row does not change
+   shape the moment a plan is chosen. */
+.twc-swap:disabled { opacity: .38; cursor: default; }
+.twc-swap:disabled:hover { background: inherit; }
+
+.tw-plan-when { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+/* ===== Step 2 · who leaves ===== */
+.tw-out-list { display: flex; flex-direction: column; gap: 7px; }
+.tw-out-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+}
+.tw-out-who { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.tw-out-who b { font-size: 13px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-out-who em { font-style: normal; font-size: 10.5px; color: var(--text-muted); }
+.tw-out-pos {
+    flex: 0 0 auto;
+    padding: 2px 7px; border-radius: 6px;
+    font-size: 9px; font-weight: 800; letter-spacing: .04em;
+    background: var(--surface-2); color: var(--text-secondary);
+}
+.tw-out-pos.gk { background: color-mix(in srgb, var(--position-gk, #f59e0b) 18%, transparent); color: var(--position-gk, #f59e0b); }
+.tw-out-pos.def { background: color-mix(in srgb, var(--position-def, #10b981) 18%, transparent); color: var(--position-def, #10b981); }
+.tw-out-pos.mid { background: color-mix(in srgb, var(--position-mid, #3b82f6) 18%, transparent); color: var(--position-mid, #3b82f6); }
+.tw-out-pos.fwd { background: color-mix(in srgb, var(--position-fwd, #ef4444) 18%, transparent); color: var(--position-fwd, #ef4444); }
+.tw-out-find {
+    flex: 0 0 auto;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+    font-size: 11.5px; font-weight: 700; font-family: var(--font-display);
+    cursor: pointer;
+}
+.tw-out-find:hover { background: var(--color-primary); color: #fff; }
+.tw-out-done {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 700; color: var(--color-primary);
+}
+.tw-out-done svg { width: 13px; height: 13px; }
+.tw-out-x {
+    flex: 0 0 auto;
+    width: 22px; height: 22px; padding: 0;
+    border: none; border-radius: 50%;
+    background: none; color: var(--text-muted);
+    font-size: 15px; line-height: 1; cursor: pointer;
+}
+.tw-out-x:hover { background: var(--color-error); color: #fff; }
+
+/* ===== What each step does not need =====
+
+   Progressive disclosure, done in the stylesheet rather than by branching
+   every renderer: the panels stay where they are and the step says which
+   of them it is asking about. */
+.tw-container[data-tw-step="1"] #twBudgetBar { display: none; }
+.tw-container:not([data-tw-step="1"]) #twRecoPanel,
+.tw-container:not([data-tw-step="1"]):not([data-tw-step="2"]) #wcPanel { display: none; }
+/* Ownership against the field is a question about a finished plan, not one
+   you answer while deciding who to sell. */
+.tw-container:not([data-tw-step="1"]):not([data-tw-step="5"]) .eo-panel { display: none; }
+
+/* ===== The movement between steps ===== */
+@keyframes twStepFwd {
+    from { opacity: 0; transform: translateX(18px); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes twStepBack {
+    from { opacity: 0; transform: translateX(-18px); }
+    to   { opacity: 1; transform: none; }
+}
+.tw-move-fwd  { animation: twStepFwd 300ms cubic-bezier(.22, .8, .3, 1) both; }
+.tw-move-back { animation: twStepBack 300ms cubic-bezier(.22, .8, .3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+    .tw-move-fwd, .tw-move-back { animation: none; }
+    .tw-plan, .tw-rail-mark { transition: none; }
+}
+
+@media (max-width: 768px) {
+    .tw-rail { padding: 6px; gap: 0; }
+    .tw-rail-step { flex: 0 0 auto; padding: 7px 8px; }
+    .tw-rail-link { flex-basis: 8px; }
+    .tw-step-foot { flex-wrap: wrap; }
+    .tw-step-foot .tw-next { margin-left: 0; width: 100%; justify-content: center; }
+}
+
+/* The plan, reported rather than re-offered — see renderTWBudgetBar(). */
+.twc-plan-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    cursor: pointer;
+    transition: border-color .18s ease, background .18s ease;
+}
+.twc-plan-chip:hover { border-color: var(--color-primary); background: var(--surface-2); }
+.twc-plan-chip-l {
+    font-size: 8.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+.twc-plan-chip-v {
+    font-family: var(--font-display);
+    font-size: 12.5px; font-weight: 700; color: var(--color-primary);
+}
+
+/* ===== Step 5 · confirm ===== */
+.tw-conf-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+    gap: 8px; margin-bottom: 10px;
+}
+.tw-conf-stat {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--surface-2);
+}
+.tw-conf-stat-l {
+    font-size: 8.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+.tw-conf-stat-v {
+    font-family: var(--font-mono, monospace);
+    font-size: 19px; font-weight: 800; color: var(--text-primary);
+}
+.tw-conf-stat-v.up { color: var(--color-primary); }
+.tw-conf-stat-v.down { color: var(--color-error); }
+
+/* The one number the whole wizard has been working towards. */
+.tw-conf-net {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; margin-bottom: 14px;
+    border-radius: 12px;
+    border-left: 3px solid var(--border-emphasis);
+    background: var(--surface-2);
+}
+.tw-conf-net.up { border-left-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+.tw-conf-net.down { border-left-color: var(--color-error); background: color-mix(in srgb, var(--color-error) 8%, transparent); }
+.tw-conf-net-v {
+    flex: 0 0 auto;
+    font-family: var(--font-mono, monospace);
+    font-size: 26px; font-weight: 800; line-height: 1;
+    color: var(--text-primary);
+}
+.tw-conf-net.up .tw-conf-net-v { color: var(--color-primary); }
+.tw-conf-net.down .tw-conf-net-v { color: var(--color-error); }
+.tw-conf-net-t { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+
+.tw-conf-swaps { display: flex; flex-direction: column; gap: 10px; }
+.tw-conf-swap {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center; gap: 10px;
+}
+.tw-conf-side { position: relative; border-radius: var(--v2-card-radius, 16px); overflow: hidden; border: 1px solid var(--v2-card-border, var(--border-emphasis)); }
+.tw-conf-side.out { opacity: .8; }
+.tw-conf-side.in { border-color: var(--color-primary); }
+.tw-conf-side .pdm-hero { min-height: 86px; }
+/* The hero pins its own chip to the top-left corner, so this label takes the
+   top-right one rather than fighting it for the same space. */
+.tw-conf-tag {
+    position: absolute; top: 8px; right: 10px; z-index: 2;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 8.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    background: rgba(0, 0, 0, .34); color: #fff;
+}
+.tw-conf-tag.is-in { background: var(--color-primary); }
+.tw-conf-mid { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.tw-conf-arrow { font-size: 17px; color: var(--text-muted); line-height: 1; }
+.tw-conf-delta {
+    font-family: var(--font-mono, monospace);
+    font-size: 12.5px; font-weight: 800;
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--surface-2); color: var(--text-secondary);
+}
+.tw-conf-delta.up { background: color-mix(in srgb, var(--color-primary) 15%, transparent); color: var(--color-primary); }
+.tw-conf-delta.down { background: color-mix(in srgb, var(--color-error) 15%, transparent); color: var(--color-error); }
+
+@media (max-width: 620px) {
+    .tw-conf-swap { grid-template-columns: minmax(0, 1fr); }
+    .tw-conf-mid { flex-direction: row; gap: 8px; }
+    .tw-conf-arrow { transform: rotate(90deg); }
+}
+
+/* A compact hero is built for a full-width panel. In these two places it is
+   one of a pair inside a half-width column, and at that size the photo and
+   the 26px gutters take the room the name needs — every player came out as
+   "Horn…". The photo shrinks and the gutters close up so the name survives,
+   which is the one thing on the card that has to. */
+.tw-conf-side .pdm-hero,
+.twh-head .pdm-hero { padding: 0 14px; gap: 0 12px; }
+.tw-conf-side .pdm-hero-photo,
+.twh-head .pdm-hero-photo { width: 58px; height: 80px; }
+.tw-conf-side .pdm-hero-face,
+.twh-head .pdm-hero-face { height: 80px; max-width: 58px; }
+.tw-conf-side .pdm-hero-last,
+.twh-head .pdm-hero-last { font-size: 17px; }
+.tw-conf-side .pdm-hero-first,
+.twh-head .pdm-hero-first { font-size: 11px; }
+.tw-conf-side .pdm-hero-price,
+.twh-head .pdm-hero-price { font-size: 15px; }
+.tw-conf-side .pdm-hero-own,
+.twh-head .pdm-hero-own { font-size: 9px; }

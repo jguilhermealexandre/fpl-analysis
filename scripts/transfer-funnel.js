@@ -1015,16 +1015,37 @@
                 : f.formRatio < 0.85 ? '<span class="twf-dir down">▼ cooling</span>'
                 : '<span class="twf-dir flat">steady</span>';
 
+            /* The card leads with the player, in his club's colours, the way
+               every other card on the site does — same hero as the player
+               modal, the pitch and the comparison. The analysis under it is
+               unchanged; what it was missing was a face to attach it to. */
+            const hero = typeof v2PlayerHeroHTML === 'function'
+                ? v2PlayerHeroHTML(p, {
+                    size: 'compact',
+                    chip: `#${i + 1}`,
+                    chipClass: gain > 0.3 ? 'is-up' : gain < -0.3 ? 'is-down' : ''
+                })
+                : '';
+
+            /* Name, club, price and ownership are on the hero now, so this row
+               is only what the hero has no place for: fitness, set pieces, and
+               the two reasons a player can be shown but not bought. It renders
+               empty more often than not, and collapses when it does. */
+            /* Built as a string and tested, not rendered and hidden with
+               :empty — the template literal leaves whitespace text nodes
+               inside the element, and :empty does not match an element that
+               contains whitespace. */
+            const topBits = [
+                flag,
+                sp,
+                clubFull ? `<span class="twf-block" data-tooltip="You already hold three players from ${escHTML(p.team)}.">CLUB FULL</span>` : '',
+                unafford && !clubFull ? `<span class="twf-block" data-tooltip="£${p.price.toFixed(1)}m is outside the £${budget.toFixed(1)}m this slot has.">OVER BUDGET</span>` : '',
+                typeof priceChangeBadge === 'function' ? priceChangeBadge(p) : ''
+            ].filter(Boolean).join('');
+
             return `<div class="twf-card${unafford || clubFull ? ' unafford' : ''}" onclick="twPreviewPlayer(${p.id})">
-                <div class="twf-card-top">
-                    <span class="twf-rank">${i + 1}</span>
-                    <span class="twf-name">${escHTML(p.name)}</span>${flag}
-                    <span class="twf-team">${escHTML(p.team)}</span>
-                    ${sp}
-                    ${clubFull ? `<span class="twf-block" data-tooltip="You already hold three players from ${escHTML(p.team)}.">CLUB FULL</span>` : ''}
-                    ${unafford && !clubFull ? `<span class="twf-block" data-tooltip="£${p.price.toFixed(1)}m is outside the £${budget.toFixed(1)}m this slot has.">OVER BUDGET</span>` : ''}
-                    <span class="twf-price">£${p.price.toFixed(1)}m ${typeof priceChangeBadge === 'function' ? priceChangeBadge(p) : ''}</span>
-                </div>
+                <div class="twf-hero">${hero}</div>
+                ${topBits ? `<div class="twf-card-top">${topBits}</div>` : ''}
 
                 <div class="twf-verdict">
                     <span class="twf-xp" data-tooltip="${escHTML(`Projected ${proj.total.toFixed(1)} points over GW${gws[0]}–GW${gws[gws.length - 1]}, against ${soldProj.total.toFixed(1)} for ${sold.name}.`)}">${proj.total.toFixed(1)}<i>xP</i></span>
