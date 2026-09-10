@@ -1418,7 +1418,7 @@
                         <button class="rc-btn primary" ${!allFilled ? 'disabled' : ''} onclick="twShowSummary()" data-tooltip="${allFilled ? 'Review the finished plan' : 'Every transfer needs a replacement before you can review'}">Summary →</button>
                     </div>
                 </div>
-                ${count ? `<div class="twc-plan">${cart}</div>` : ''}`;
+                ${filled ? `<div class="twc-plan">${cart}</div>` : ''}`;
         }
 
         /* ===== Step 3's left column · who you are replacing =====
@@ -1463,8 +1463,9 @@
                 </div>
                 <div class="twc-panel-body">
                     <div class="tw-outc-list">${cards}</div>
+                    ${open > 1 ? `<button class="tw-outrail-fill" onclick="twFillAllSlots()" data-tooltip="Pick the best affordable replacement for every open slot, sharing the bank across them.">${v2Icon('bolt')} Fill all ${open} slots</button>` : ''}
                     <button class="tw-outrail-add" onclick="twRailGo(2)" data-tooltip="Go back to your squad and pick someone else to move on.">${v2Icon('up')} Change who is leaving</button>
-                    ${open > 1 ? `<div class="tw-outrail-note">Pick any of them to see their replacements.</div>` : ''}
+                    ${open > 1 ? `<div class="tw-outrail-note">Or pick any of them to choose one at a time.</div>` : ''}
                 </div>
             </div>`;
         }
@@ -1587,12 +1588,25 @@
            step forward, and it is in the header where every other step's is. */
         function twRowPick(playerId) {
             if (twStep() !== 2) return;
-            const existing = transferState.pending.findIndex(x => x.soldPlayer.id === playerId);
-            if (existing < 0 && !transferState.sellMode && transferState.pending.length >= 1) {
-                /* Single is one transfer. Clicking a second player replaces the
-                   first rather than refusing — that is what the click means. */
+
+            /* On Single there is nothing to collect. One player is the whole
+               answer to "who leaves", so the click is also the step forward —
+               stopping to press Find replacements would be asking a question
+               that has already been answered. Every other plan takes a set,
+               so it stays here until you say the set is complete. */
+            if (!transferState.sellMode) {
+                const already = transferState.pending.find(x => x.soldPlayer.id === playerId);
+                if (already && !already.replacement) {
+                    // Clicking the lit row again takes him back out.
+                    twPickOutPlayer(playerId);
+                    return;
+                }
+                // A different player replaces an unfilled pick rather than being refused.
                 transferState.pending = transferState.pending.filter(x => x.replacement);
+                twSwapPlayer(playerId);
+                return;
             }
+
             twPickOutPlayer(playerId);
         }
 
@@ -2269,18 +2283,23 @@
                 updateStatus(`Filled ${filled} slot${filled === 1 ? '' : 's'}${stillOpen ? ` — ${stillOpen} still open` : ''}`, 'success');
             }
 
-            // Land on the first slot still needing attention, or the plan summary
-            // once nothing does.
+            /* Land on the first slot still needing attention, or on the
+               confirmation once nothing does. It used to fall back to mode
+               'squad', which on step 3 is not a screen — the left column kept
+               its cards and the right half of the page went blank, with the
+               step rail still saying you were choosing replacements you had
+               just finished choosing. */
+            transferState.previewPlayer = null;
             const nextOpen = transferState.pending.findIndex(s => !s.replacement);
             if (nextOpen >= 0) {
                 transferState.activeSlot = nextOpen;
                 transferState.mode = 'market';
+                twGoStep(3);
             } else {
-                transferState.mode = 'squad';
+                transferState.mode = 'summary';
                 transferState.activeSlot = -1;
+                twGoStep(5);
             }
-            transferState.previewPlayer = null;
-            renderTWAll();
         }
 
         function twClearAll() {

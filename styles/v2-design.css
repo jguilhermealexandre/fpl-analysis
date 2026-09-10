@@ -993,7 +993,9 @@ html.v2-theme body {
    layouts' calm. */
 :root {
     --v2-page-title-size: clamp(26px, 2.4vw, 32px);
-    --v2-page-title-spacing: -0.5px;
+    /* In em rather than px, so the tracking stays proportional when the
+       title drops to 24px on a phone instead of biting twice as hard. */
+    --v2-page-title-spacing: -0.022em;
     --v2-page-title-top: 32px;
 }
 
@@ -1004,9 +1006,17 @@ html.v2-theme body {
     }
 }
 
+/* One weight for every page title.
+
+   Every page already computed 650, so they were not disagreeing in the
+   stylesheet — but 650 is not a weight Inter ships. The browser picks the
+   nearest cut it has and synthesises the rest, and how much it synthesises
+   depends on which cuts a given page has actually finished loading, which
+   is why two identical rules could still look like two different weights.
+   600 is a real cut, so it renders as itself everywhere. */
 .v2-theme .v2-page-heading {
     line-height: 1.25 !important;
-    font-weight: 650 !important;
+    font-weight: 600 !important;
     color: var(--text-primary) !important;
 }
 
