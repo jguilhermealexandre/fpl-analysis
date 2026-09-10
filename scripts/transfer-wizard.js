@@ -2476,9 +2476,19 @@
                     </div>
                 </div>`;
 
-            return `<div class="tm-section tm-tb-section">
-                <div class="tm-section-header">
-                    <h2><i data-lucide="arrow-left-right" style="width:16px;height:16px;display:inline;"></i> Most transferred ${season ? 'this season' : 'this gameweek'}</h2>
+            /* A real section with both columns inside it. The heading, the
+               note and the two lists were three loose things stacked on the
+               page, so the only edges anywhere near them belonged to the
+               columns themselves.
+
+               The period switch sits beside the title rather than out at the
+               far right: it is what the whole section is counting, and at
+               the other end of a 1200px header it read as page furniture.
+               The icon is inline SVG rather than an <i data-lucide>, which
+               is only an icon if lucide has loaded and run. */
+            return `<section class="v2-section tm-tb-section">
+                <div class="section-header tm-tb-head">
+                    <h2>${v2Icon('swap')} Most transferred ${season ? 'this season' : 'this gameweek'}</h2>
                     <div class="tm-tb-scope" role="group" aria-label="Transfer period">
                         <button class="tm-tb-scope-btn ${season ? '' : 'active'}" onclick="tmSetTransferScope('gw')">This gameweek</button>
                         <button class="tm-tb-scope-btn ${season ? 'active' : ''}" onclick="tmSetTransferScope('season')">Season</button>
@@ -2492,7 +2502,7 @@
                     ${column('Most bought', v2Icon('inbox'), 'in', bought, totalIn, inOf, outOf)}
                     ${column('Most sold', v2Icon('outbox'), 'out', sold, totalOut, outOf, inOf)}
                 </div>
-            </div>`;
+            </section>`;
         }
 
         function renderTmTransferRow(p, rank, cls, value, counter, topCount, squadIds, season) {

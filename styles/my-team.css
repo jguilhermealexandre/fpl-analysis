@@ -1255,21 +1255,65 @@
 .tm-pos-btn.pos-mid { --v2-pos-color: var(--position-mid); }
 .tm-pos-btn.pos-fwd { --v2-pos-color: var(--position-fwd); }
 
-.tm-pos-btn[class*="pos-"] {
+/* Named explicitly rather than matched on [class*="pos-"], which also
+   matched the element's own class — "tm-POS-Btn" contains "pos-". So All,
+   Premium and Budget were being given `color: var(--v2-pos-color)` with no
+   such variable set on them: an unresolved var() invalidates the whole
+   declaration, so the selected one computed to white text on a transparent
+   background. Invisible on a light page, and on a dark one indistinguishable
+   from the ones next to it. */
+.tm-pos-btn.pos-gk,
+.tm-pos-btn.pos-def,
+.tm-pos-btn.pos-mid,
+.tm-pos-btn.pos-fwd {
     border-color: var(--v2-pos-color);
     color: var(--v2-pos-color);
 }
 
-.tm-pos-btn[class*="pos-"]:not(.active):hover {
+.tm-pos-btn.pos-gk:not(.active):hover,
+.tm-pos-btn.pos-def:not(.active):hover,
+.tm-pos-btn.pos-mid:not(.active):hover,
+.tm-pos-btn.pos-fwd:not(.active):hover {
     background: color-mix(in srgb, var(--v2-pos-color) 12%, transparent);
     color: var(--v2-pos-color);
 }
 
-.tm-pos-btn[class*="pos-"].active {
+.tm-pos-btn.pos-gk.active,
+.tm-pos-btn.pos-def.active,
+.tm-pos-btn.pos-mid.active,
+.tm-pos-btn.pos-fwd.active {
     background: var(--v2-pos-color);
     border-color: var(--v2-pos-color);
     color: #fff;
     box-shadow: 0 2px 8px color-mix(in srgb, var(--v2-pos-color) 35%, transparent);
+}
+
+/* Selected is a filled pill with a check, so which one is on is legible
+   without comparing it against its neighbours. */
+/* The period switch beside the title, not at the far end of the header. */
+.tm-tb-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.tm-tb-head h2 { flex: 0 0 auto; }
+.tm-tb-scope { flex: 0 0 auto; margin-left: 0; }
+
+/* The two columns sit inside the section now, so they drop the card they
+   were each drawing for themselves — one frame, not three. */
+.tm-tb-section .tm-tb-col {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+.tm-tb-section .tm-tb-cols { gap: 26px; }
+
+.tm-pos-btn.active::before {
+    content: '';
+    display: inline-block;
+    width: 11px; height: 11px;
+    margin-right: 5px;
+    vertical-align: -1px;
+    background: currentColor;
+    -webkit-mask: var(--v2-check-mask) center / contain no-repeat;
+    mask: var(--v2-check-mask) center / contain no-repeat;
 }
 
 /* ----- Two columns -----
