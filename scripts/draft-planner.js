@@ -1833,18 +1833,28 @@
             // Use first plan's selectedGW as the comparison GW
             const compareGW = getActiveDraft().selectedGW;
 
-            let html = '';
-
-            // GW selector for comparison
+            /* A section like the rest of the tab, with the week being compared
+               chosen from its header rather than from a bare label above it. */
             const gwNums = getActiveDraft().gwNumbers;
-            html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">`;
-            html += `<span style="font-size:0.78rem;font-weight:700;color:var(--text-primary);">Comparing GW:</span>`;
-            html += `<div class="draft-gw-pills">`;
-            gwNums.forEach(g => {
-                const active = g === compareGW ? 'active' : '';
-                html += `<button class="draft-gw-pill ${active}" onclick="switchCompareGW(${g})">GW${g}</button>`;
-            });
-            html += `</div></div>`;
+            let html = `<section class="v2-section dc-section">
+                <div class="section-header dc-head">
+                    <h2>${v2Icon('scales')} Compare plans</h2>
+                    <div class="draft-gw-pills" role="group" aria-label="Gameweek to compare">
+                        ${gwNums.map(g => `<button class="draft-gw-pill ${g === compareGW ? 'active' : ''}" onclick="switchCompareGW(${g})">GW${g}</button>`).join('')}
+                    </div>
+                </div>`;
+
+            /* What actually differs, before the two pitches. Reading two
+               elevens side by side to find the three names that are not in
+               both is the work this view was leaving to you. */
+            const activeXI = new Set(getDraftSquad(compareGW, activeDraftSlot)
+                .filter(p => !p.onBench).map(p => p.id));
+            const diffFor = (slot) => {
+                if (slot === activeDraftSlot) return null;
+                const xi = getDraftSquad(compareGW, slot).filter(p => !p.onBench);
+                const inOnly = xi.filter(p => !activeXI.has(p.id));
+                return inOnly;
+            };
 
             html += `<div class="draft-compare-wrapper">`;
 
@@ -1874,9 +1884,22 @@
 
                 const gwTransfers = ds.transfers[compareGW] || [];
 
-                html += `<div class="draft-compare-col">`;
-                html += `<div class="draft-compare-header" style="${i === prevSlot ? 'border:2px solid var(--color-primary);' : ''}">Plan ${i + 1}${i === prevSlot ? ' (active)' : ''}</div>`;
-                html += `<div style="text-align:center;font-size:0.72rem;color:var(--text-muted);margin-bottom:6px;">${formation}</div>`;
+                html += `<div class="draft-compare-col${i === prevSlot ? ' is-active' : ''}">`;
+                html += `<div class="draft-compare-header">
+                    <span class="dc-plan">Plan ${i + 1}</span>
+                    ${i === prevSlot ? '<span class="dc-active-tag">Active</span>' : ''}
+                    <span class="dc-formation">${formation}</span>
+                </div>`;
+                const uniques = diffFor(i);
+                /* Every column carries this line, the active one included, so the
+                   pitches below stay on the same baseline across the row. */
+                if (uniques === null) {
+                    html += `<div class="dc-diff is-anchor"><span class="dc-diff-label">The plan everything else is measured against</span></div>`;
+                } else {
+                    html += uniques.length
+                        ? `<div class="dc-diff"><span class="dc-diff-label">Only here</span>${uniques.map(u => `<span class="dc-diff-name">${escHTML(u.name)}</span>`).join('')}</div>`
+                        : `<div class="dc-diff is-same"><span class="dc-diff-label">Same eleven as the active plan</span></div>`;
+                }
 
                 // Meta
                 html += `<div class="draft-compare-meta">`;
@@ -1948,7 +1971,7 @@
                 html += `</div>`;
             }
 
-            html += `</div>`;
+            html += `</div></section>`;
             return html;
         }
 

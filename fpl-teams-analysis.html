@@ -7,7 +7,7 @@
     <title>EasyFPL — Teams Analysis</title>
     <meta name="description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth analysis for smarter FPL decisions.">
     <meta name="theme-color" content="#0a0f1a">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a0f1a'/><text x='50' y='72' font-size='65' font-family='Arial,sans-serif' font-weight='bold' fill='%2300DC82' text-anchor='middle'>e</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2310B981'/><text x='50' y='72' font-size='65' font-family='Arial,sans-serif' font-weight='bold' fill='%230a0f1a' text-anchor='middle'>e</text></svg>">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="EasyFPL">
     <meta property="og:title" content="EasyFPL — Teams Analysis">
@@ -17,17 +17,17 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=204">
-    <link rel="stylesheet" href="styles/teams.css?v=204">
-    <link rel="stylesheet" href="styles/v2-design.css?v=204">
-    <link rel="stylesheet" href="styles/responsive.css?v=204">
-    <script src="scripts/error-monitor.js?v=204"></script>
-    <script src="scripts/common.js?v=204"></script>
+    <link rel="stylesheet" href="styles/common.css?v=205">
+    <link rel="stylesheet" href="styles/teams.css?v=205">
+    <link rel="stylesheet" href="styles/v2-design.css?v=205">
+    <link rel="stylesheet" href="styles/responsive.css?v=205">
+    <script src="scripts/error-monitor.js?v=205"></script>
+    <script src="scripts/common.js?v=205"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=204"></script>
-    <script src="scripts/notifications.js?v=204"></script>
-    <script src="scripts/sidebar-nav.js?v=204"></script>
+    <script src="scripts/push-alerts.js?v=205"></script>
+    <script src="scripts/notifications.js?v=205"></script>
+    <script src="scripts/sidebar-nav.js?v=205"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -3727,13 +3727,34 @@
             const gp = (team.wins || 0) + (team.draws || 0) + (team.losses || 0);
             const windowLabel = gp ? `last ${gp}` : 'no games';
 
+            /* The same hero a player's card wears, with the badge where the
+               portrait goes: club colour behind it, the name large, the
+               record and the fixture outlook on the line under it, and the
+               one number worth leading with out on the right. It was a
+               32px badge, a title and a run-on subtitle on a white bar. */
+            const tc = (typeof CLUB_COLOURS !== 'undefined' && CLUB_COLOURS[team.code]) || null;
+            const shirt = tc ? tc[0] : '#37003C';
+            const ink = tc ? tc[1] : '#FFFFFF';
             const header = `
-                <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="modal-header-badge" onerror="this.style.display='none'">
-                <div class="modal-header-info">
-                    <div class="modal-title">${escHTML(team.name)}</div>
-                    <div class="modal-subtitle">${team.wins}W ${team.draws}D ${team.losses}L <span class="modal-window">(${escHTML(windowLabel)})</span> &nbsp;•&nbsp; Avg <abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> ${team.avgFdr} next 5</div>
+                <div class="pdm-hero tm-hero" style="--club:${shirt};--club-ink:${ink};">
+                    <div class="pdm-hero-shape" aria-hidden="true"></div>
+                    <div class="pdm-hero-photo tm-hero-badge">
+                        <img src="${team.badgeUrl}" alt="" draggable="false" onerror="this.remove()">
+                    </div>
+                    <div class="pdm-hero-text">
+                        <span class="pdm-hero-last">${escHTML(team.name)}</span>
+                        <span class="pdm-hero-meta">
+                            <span>${team.wins}W ${team.draws}D ${team.losses}L</span>
+                            <em>•</em>
+                            <span>${escHTML(windowLabel)}</span>
+                        </span>
+                    </div>
+                    <div class="pdm-hero-side">
+                        <span class="pdm-hero-chip tm-hero-fdr fdr-${Math.round(team.avgFdr)}">FDR ${team.avgFdr}</span>
+                        <span class="pdm-hero-price">next 5</span>
+                    </div>
+                    <button class="modal-close pdm-close" onclick="closeModal()" aria-label="Close modal">&times;</button>
                 </div>
-                <button class="modal-close" onclick="closeModal()" aria-label="Close modal">✕</button>
             `;
 
             /* Four quantities, each with its own unit, where there used to be

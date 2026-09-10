@@ -175,6 +175,18 @@
     body.v2-nav-open .v2-nav-scrim { opacity: 1; pointer-events: auto; }
     body.v2-nav-open { overflow: hidden; }
 
+    /* Above the sticky tab strip.
+
+       .tabs-container is position:sticky at z-index 99, and the drawer was
+       at 90 with its scrim at 80 — so opening the menu slid it out
+       underneath the tabs, which went on sitting over the top of it. The
+       tab strip is page furniture; a menu opened over the page outranks
+       it. The mobile bar stays above both, since the button that opened
+       the drawer has to remain visible to close it. */
+    .v2-sidebar { z-index: 130; }
+    .v2-nav-scrim { z-index: 120; }
+    .v2-mobile-bar { z-index: 140; }
+
     /* The page gets the whole width back, and clears the fixed bar.
        Scoped to the signed-in shell: the landing shell has no drawer and
        no 56px bar, it has its own 64px one, and applying both left it
@@ -956,4 +968,66 @@
         text-overflow: clip;
         letter-spacing: -0.8px;
     }
+}
+
+
+/* ============================================================
+   22. The shared pitch, on a phone
+   ============================================================ */
+
+/* A 116px card lets three across a 312px pitch, so a back four wrapped
+   onto two lines and the formation — the one thing a pitch is for —
+   became unreadable. These widths put five across with the gap intact,
+   which is the widest row football has.
+
+   Everything on the card shrinks with it, and the parts that are saying
+   something twice stop: the club crest goes, because the fixture chip
+   under the name already gives the opponent and the venue, and at 60px
+   the crest was a smudge on the corner of a face. */
+@media (max-width: 768px) {
+    .dp-row { flex-wrap: nowrap; gap: 4px; }
+
+    .dp-card {
+        width: 74px;
+        padding: 6px 4px 5px;
+        gap: 1px;
+        border-top-width: 2px;
+        border-radius: 10px;
+    }
+    .dp-card .v2-pid-portrait { --v2-pid-face: 34px; }
+    .dp-card .v2-pid-crest { display: none; }
+    .dp-name { font-size: 9.5px; }
+    .dp-fixtures { font-size: 8px; }
+    .dp-fixtures .dp-fix { padding: 1px 3px; }
+    .dp-xp-run { font-size: 8px; }
+    .dp-xp-run-u { font-size: 7px; }
+    .v2-pid-num { font-size: 9px; }
+    .v2-pid-num .u { font-size: 6.5px; }
+
+    /* The info button is a 20px target on a 74px card, and every card on
+       the pitch has one. On touch it opens on tap of the card instead. */
+    .dp-transfer, .dp-act { width: 18px; height: 18px; font-size: 9px; }
+
+    .dp-bench-row { gap: 4px; }
+    .dp-bench { padding: 10px 10px 12px; }
+}
+
+@media (max-width: 480px) {
+    .dp-card {
+        width: 60px;
+        padding: 5px 3px 4px;
+    }
+    .dp-card .v2-pid-portrait { --v2-pid-face: 28px; }
+    .dp-name { font-size: 8.5px; }
+    /* The run total is the third number on a 60px card. The one the card
+       is ranked on stays; this one is a tap away in the player's detail. */
+    .dp-xp-run { display: none; }
+    .dp-row { gap: 3px; }
+}
+
+/* The pitch itself: at these card sizes the rows are short, so the grass
+   does not need a desktop pitch's height. */
+@media (max-width: 768px) {
+    .dp-pitch-card { padding: 10px 6px 10px; }
+    .dp-pitch { gap: 6px; }
 }

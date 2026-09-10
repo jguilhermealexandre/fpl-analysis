@@ -7,7 +7,7 @@
     <title>EasyFPL — League Rivals</title>
     <meta name="description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head performance analysis.">
     <meta name="theme-color" content="#0a0f1a">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a0f1a'/><text x='50' y='72' font-size='65' font-family='Arial,sans-serif' font-weight='bold' fill='%2300DC82' text-anchor='middle'>e</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2310B981'/><text x='50' y='72' font-size='65' font-family='Arial,sans-serif' font-weight='bold' fill='%230a0f1a' text-anchor='middle'>e</text></svg>">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="EasyFPL">
     <meta property="og:title" content="EasyFPL — League Rivals">
@@ -17,16 +17,16 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=204">
-    <link rel="stylesheet" href="styles/v2-design.css?v=204">
-    <link rel="stylesheet" href="styles/responsive.css?v=204">
-    <script src="scripts/error-monitor.js?v=204"></script>
-    <script src="scripts/common.js?v=204"></script>
+    <link rel="stylesheet" href="styles/common.css?v=205">
+    <link rel="stylesheet" href="styles/v2-design.css?v=205">
+    <link rel="stylesheet" href="styles/responsive.css?v=205">
+    <script src="scripts/error-monitor.js?v=205"></script>
+    <script src="scripts/common.js?v=205"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=204"></script>
-    <script src="scripts/notifications.js?v=204"></script>
-    <script src="scripts/sidebar-nav.js?v=204"></script>
+    <script src="scripts/push-alerts.js?v=205"></script>
+    <script src="scripts/notifications.js?v=205"></script>
+    <script src="scripts/sidebar-nav.js?v=205"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -629,7 +629,52 @@
         }
 
         /* ===== CAPTAIN RACE ===== */
-        .captain-hero { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-6); text-align: center; }
+        /* The hero inside is the card now — its own colour, its own edge —
+           so this is only the space around it. It used to draw a white card
+           with 24px of padding and centre everything in it. */
+        .captain-hero { margin-bottom: var(--space-6); }
+
+        /* ----- Differentials, as player rows -----
+           Two columns, each a list of cards with a face on them: yours in
+           the brand green, the rival's in the warning amber, so which side
+           a player is on is the first thing the colour tells you. */
+        .rv-diff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-top: var(--space-6); }
+        .rv-diff-head {
+            display: flex; align-items: center; gap: 8px;
+            font-family: var(--font-display); font-size: 13px; font-weight: 700;
+            letter-spacing: .02em;
+            margin-bottom: 10px;
+        }
+        .rv-diff-col.mine .rv-diff-head { color: var(--color-primary-text, var(--color-primary)); }
+        .rv-diff-col.theirs .rv-diff-head { color: var(--color-warning); }
+        .rv-diff-n {
+            padding: 1px 7px; border-radius: 999px;
+            background: var(--surface-2); color: var(--text-muted);
+            font-size: 10.5px; font-weight: 700;
+        }
+        .rv-diff-card {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 11px;
+            margin-bottom: 6px;
+            background: var(--surface-1);
+            border: 1px solid var(--v2-card-border, var(--border-emphasis));
+            border-left: 3px solid var(--border-emphasis);
+            border-radius: 12px;
+            box-shadow: var(--v2-card-shadow, none);
+        }
+        .rv-diff-col.mine .rv-diff-card { border-left-color: var(--color-primary); }
+        .rv-diff-col.theirs .rv-diff-card { border-left-color: var(--color-warning); }
+        .rv-diff-card .v2-pid { --v2-pid-face: 30px; --v2-pid-crest: 17px; flex-shrink: 0; }
+        .rv-diff-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+        .rv-diff-name { font-size: 13px; font-weight: 650; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rv-diff-sub { font-size: 11px; color: var(--text-muted); }
+        .rv-diff-price { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text-primary); flex-shrink: 0; }
+        .rv-diff-card.is-benched { opacity: .72; }
+        .rv-diff-empty { padding: 18px; text-align: center; font-size: 12px; color: var(--text-muted); }
+
+        @media (max-width: 768px) {
+            .rv-diff-cols { grid-template-columns: 1fr; gap: var(--space-4); }
+        }
         .captain-hero-name { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2); }
         .captain-hero-meta { font-size: 13px; color: var(--text-muted); margin-bottom: var(--space-4); }
         .captain-badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 700; text-transform: uppercase; background: #F59E0B; color: #000; }
@@ -2108,27 +2153,9 @@
                     </div>
                 </div>` : ''}
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-top: var(--space-6);">
-                    <div>
-                        <h4 style="color: var(--color-success); margin-bottom: var(--space-4); font-family: 'Space Grotesk', sans-serif;">Your Differentials</h4>
-                        ${onlyYou.map(p => {
-                            const isBenched = !myStarters.has(p.id);
-                            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-3);background:var(--surface-1);border-radius:var(--radius-md);margin-bottom:var(--space-2);border:1px solid var(--border-default);">
-                                <span>${p.name} <span style="color:var(--text-muted);font-size:11px;">${p.posName}</span>${isBenched ? ' <span class="bench-badge">Bench</span>' : ''}</span>
-                                <span style="color:var(--color-success);font-weight:600;">£${p.price.toFixed(1)}m</span>
-                            </div>`;
-                        }).join('')}
-                    </div>
-                    <div>
-                        <h4 style="color: var(--color-error); margin-bottom: var(--space-4); font-family: 'Space Grotesk', sans-serif;">${rivalManager.player_name.split(' ')[0]}'s Differentials</h4>
-                        ${onlyRival.map(p => {
-                            const isBenched = !rivalStarters.has(p.id);
-                            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-3);background:var(--surface-1);border-radius:var(--radius-md);margin-bottom:var(--space-2);border:1px solid var(--border-default);">
-                                <span>${p.name} <span style="color:var(--text-muted);font-size:11px;">${p.posName}</span>${isBenched ? ' <span class="bench-badge">Bench</span>' : ''}</span>
-                                <span style="color:var(--color-warning);font-weight:600;">£${p.price.toFixed(1)}m</span>
-                            </div>`;
-                        }).join('')}
-                    </div>
+                <div class="rv-diff-cols">
+                    ${diffColumn('Your differentials', 'mine', onlyYou, myStarters)}
+                    ${diffColumn(`${escHTML(rivalManager.player_name.split(' ')[0])}'s differentials`, 'theirs', onlyRival, rivalStarters)}
                 </div>
             `;
             
@@ -2136,6 +2163,33 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
         
+        /* A differential is a player, so it gets a player's row: his face,
+           his club's badge, his position and his price — the same identity
+           pair the squad table and the transfer lists use. It was a name and
+           a price on a bare bordered box, which is the one place on the site
+           a player appeared without a face. */
+        function diffColumn(title, side, players, starters) {
+            const rows = players.length
+                ? players.map(p => {
+                    const benched = !starters.has(p.id);
+                    const ident = { name: p.name, code: p.code, teamId: p.teamId, teamCode: p.teamCode, team: p.teamName };
+                    return `<div class="rv-diff-card${benched ? ' is-benched' : ''}">
+                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
+                        <span class="rv-diff-main">
+                            <span class="rv-diff-name">${escHTML(p.name)}</span>
+                            <span class="rv-diff-sub">${escHTML(p.teamName || '')} · ${escHTML(p.posName)}${benched ? ' · benched' : ''}</span>
+                        </span>
+                        <span class="rv-diff-price">£${p.price.toFixed(1)}m</span>
+                    </div>`;
+                }).join('')
+                : `<div class="rv-diff-empty">No players on this side alone.</div>`;
+
+            return `<div class="rv-diff-col ${side}">
+                <div class="rv-diff-head">${escHTML(title)}<span class="rv-diff-n">${players.length}</span></div>
+                ${rows}
+            </div>`;
+        }
+
         function clearCachedLeagueId() {
             localStorage.removeItem('fpl_league_id');
             document.getElementById('leagueIdInput').value = '';
@@ -2254,17 +2308,44 @@
 
             const heroEl = document.getElementById('captainHero');
             if (topCapPlayer) {
+                /* The card a player gets everywhere else on the site: his
+                   club's colour behind him, his face on it, his name large,
+                   and the one number this section exists to give you out on
+                   the right. It was a name, a run-on line of meta and an
+                   empty 32px box where an emoji used to be. */
+                const capCode = typeof v2TeamCode === 'function'
+                    ? v2TeamCode(topCapPlayer.teamId, topCapPlayer.teamCode) : topCapPlayer.teamCode;
+                const capCols = (typeof CLUB_COLOURS !== 'undefined' && CLUB_COLOURS[capCode])
+                    || (typeof CLUB_COLOURS_FALLBACK !== 'undefined' ? CLUB_COLOURS_FALLBACK : ['#37003C', '#FFFFFF']);
+                const capPct = allIds.length ? Math.round((topCapCount / allIds.length) * 100) : 0;
                 heroEl.innerHTML = `
-                    <div style="font-size:32px;margin-bottom:var(--space-2);"></div>
-                    <div class="captain-hero-name">${escHTML(topCapPlayer.name)}</div>
-                    <div class="captain-hero-meta">${escHTML(topCapPlayer.teamName)} • ${escHTML(topCapPlayer.posName)} • £${topCapPlayer.price.toFixed(1)}m</div>
-                    <div style="margin-top:var(--space-3);font-size:13px;">
-                        <strong>${topCapCount} of ${allIds.length}</strong> managers captained this player
-                        ${youMatchedPopular 
-                            ? '<span style="color:var(--color-info);margin-left:8px;">— You matched the consensus</span>' 
-                            : myCaptainPlayer 
-                                ? `<span style="color:var(--color-warning);margin-left:8px;">— You went differential with <strong>${escHTML(myCaptainPlayer.name)}</strong></span>` 
-                                : ''}
+                    <div class="pdm-hero cap-hero" style="--club:${capCols[0]};--club-ink:${capCols[1]};">
+                        <div class="pdm-hero-shape" aria-hidden="true"></div>
+                        <div class="pdm-hero-photo">
+                            ${typeof playerPhotoLargeHTML === 'function' ? playerPhotoLargeHTML(topCapPlayer.code, 'pdm-hero-face') : ''}
+                        </div>
+                        <div class="pdm-hero-text">
+                            <span class="pdm-hero-last">${escHTML(topCapPlayer.name)}</span>
+                            <span class="pdm-hero-meta">
+                                ${capCode != null ? `<img class="pdm-hero-crest" src="https://resources.premierleague.com/premierleague/badges/50/t${capCode}.png" alt="" draggable="false" onerror="this.remove()">` : ''}
+                                <span>${escHTML(topCapPlayer.teamName)}</span>
+                                <em>•</em>
+                                <span>${escHTML(topCapPlayer.posName)}</span>
+                                <em>•</em>
+                                <span>£${topCapPlayer.price.toFixed(1)}m</span>
+                            </span>
+                        </div>
+                        <div class="pdm-hero-side">
+                            <span class="pdm-hero-chip cap-hero-pct">${capPct}%</span>
+                            <span class="pdm-hero-price">${topCapCount} of ${allIds.length}</span>
+                        </div>
+                    </div>
+                    <div class="cap-hero-verdict${youMatchedPopular ? ' is-match' : ''}">
+                        ${youMatchedPopular
+                            ? 'You matched the consensus.'
+                            : myCaptainPlayer
+                                ? `You went differential with <strong>${escHTML(myCaptainPlayer.name)}</strong>.`
+                                : 'No captain recorded for your team this gameweek.'}
                     </div>`;
             }
             
@@ -2621,31 +2702,40 @@
 
                The own/missing ring stays, because on this pitch that is the
                whole question: which of the template you already have. */
-            function renderRow(players, posClass) {
-                const ident = pl => (typeof v2IdentityHTML === 'function'
-                    ? v2IdentityHTML({
-                        name: pl.name, code: pl.code,
-                        teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName
-                    }, 'v2-pid-portrait')
-                    : `<span class="pitch-player-initials">${escHTML(pl.posName)}</span>`);
+            /* The pitch every other page draws — the same grass, the same
+               player cards — with the league's ownership where a card
+               normally carries projected points. It was a bespoke row of
+               faces on a flat background, the only pitch on the site not
+               built from this markup.
 
-                return `<div class="pitch-row">${players.map(p => `
-                    <div class="pitch-player">
-                        <div class="pitch-player-face ${posClass} ${p.youOwn ? 'you-have' : 'you-missing'}"
-                            data-tooltip="${escHTML(p.player.name)} — ${escHTML(p.player.teamName)}, ${escHTML(p.player.posName)}. ${p.youOwn ? 'In your squad.' : 'Not in your squad.'}">
-                            ${ident(p.player)}
-                        </div>
-                        <div class="pitch-player-name">${escHTML(p.player.name)}</div>
-                        <div class="pitch-player-own">${p.startCount}/${allManagerIds.length} start</div>
-                    </div>`).join('')}</div>`;
+               The own/missing ring stays on the card, because on this pitch
+               that is the whole question: which of the template you have. */
+            function renderRow(players) {
+                return `<div class="dp-row">${players.map(p => {
+                    const pl = p.player;
+                    const ident = { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+                    const pct = allManagerIds.length ? Math.round((p.startCount / allManagerIds.length) * 100) : 0;
+                    return `<div class="dp-card rv-card ${p.youOwn ? 'you-have' : 'you-missing'}"
+                        data-tooltip="${escHTML(pl.name)} — ${escHTML(pl.teamName)}, ${escHTML(pl.posName)}. ${p.youOwn ? 'In your squad.' : 'Not in your squad.'}">
+                        <span class="rv-own-flag">${p.youOwn ? 'OWNED' : 'MISSING'}</span>
+                        ${typeof v2IdentityHTML === 'function'
+                            ? v2IdentityHTML(ident, 'v2-pid-portrait',
+                                `<span class="v2-pid-num">${pct}<span class="u">%</span></span>`)
+                            : ''}
+                        <div class="dp-name">${escHTML(pl.name)}</div>
+                        <div class="dp-xp-run">${p.startCount}<span class="dp-xp-run-u">of ${allManagerIds.length} start</span></div>
+                    </div>`;
+                }).join('')}</div>`;
             }
-            
+
             container.innerHTML = `
                 <div class="pitch-label">Most Popular XI (${bestFormation.join('-')}) · You have ${youHaveCount}/11</div>
-                ${renderRow(templateFWD, 'fwd')}
-                ${renderRow(templateMID, 'mid')}
-                ${renderRow(templateDEF, 'def')}
-                ${renderRow(templateGK, 'gk')}
+                <div class="dp-pitch-card"><div class="dp-pitch">
+                    ${renderRow(templateFWD)}
+                    ${renderRow(templateMID)}
+                    ${renderRow(templateDEF)}
+                    ${renderRow(templateGK)}
+                </div></div>
             `;
         }
         

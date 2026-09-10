@@ -1090,26 +1090,32 @@
     font-weight: 600;
 }
 
+/* The calendar's own controls, on the brand rather than in --color-info's
+   blue — the only blue buttons on a green site, and the grid they sit over
+   is coloured by a scale where blue means nothing at all. */
 .calendar-control-btn {
-    padding: var(--space-2) var(--space-3);
-    background: var(--surface-2);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
+    height: 30px;
+    padding: 0 13px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-emphasis);
+    border-radius: 999px;
     color: var(--text-secondary);
+    font-family: inherit;
     font-size: 11px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 150ms;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 .calendar-control-btn:hover {
-    background: var(--surface-3);
-    color: var(--text-primary);
+    border-color: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .calendar-control-btn.active {
-    background: var(--color-info);
-    color: var(--surface-0);
-    border-color: var(--color-info);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
 }
 
 /* Color classes for different modes */
@@ -1505,8 +1511,8 @@
 }
 
 .stats-group-pill.active {
-    background: var(--color-info);
-    color: var(--surface-0);
+    background: var(--color-primary);
+    color: #fff;
 }
 
 .stats-view-pills {
@@ -1762,8 +1768,8 @@
 }
 
 .stats-toggle-btn.active {
-    background: var(--color-info);
-    color: var(--surface-0);
+    background: var(--color-primary);
+    color: #fff;
 }
 
 .stats-scroll {
@@ -3092,3 +3098,71 @@
    own box — so the parts inside stop drawing their own top margins. */
 .v2-section > .soft-section.standalone { margin-top: 0; }
 .v2-section > .rankings-toolbar { margin-top: 0; }
+
+
+/* =====================================================================
+   A club's card, built on the player card's hero
+
+   Same object, same proportions, with the badge where the portrait goes —
+   a club has no face and the crest is the thing you recognise it by. The
+   header was a 32px badge beside a title and a run-on subtitle on a white
+   bar, which looked nothing like the card you get for one of its players.
+   ===================================================================== */
+.modal-header:has(.tm-hero) { padding: 0; border: none; background: none; display: block; }
+
+.tm-hero { min-height: 150px; padding: 0 24px; align-items: center; }
+
+/* The close button's own positioning lives in player-profile.css, which
+   this page does not load — so it is stated here rather than inherited
+   from a stylesheet that is not present. */
+.tm-hero .modal-close {
+    position: absolute; top: 12px; right: 12px; z-index: 3;
+    width: 34px; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: none; border-radius: 50%;
+    background: rgba(0, 0, 0, .26);
+    color: var(--club-ink, #fff);
+    font-size: 21px; line-height: 1;
+    cursor: pointer;
+    transition: background 140ms ease;
+}
+.tm-hero .modal-close:hover { background: rgba(0, 0, 0, .42); }
+.tm-hero .pdm-hero-text { padding-bottom: 0; }
+
+/* The badge sits in the portrait's slot, centred rather than standing on
+   the floor of the hero the way a photo does. */
+.tm-hero-badge { height: 150px; width: 128px; align-items: center; }
+.tm-hero-badge img {
+    width: 96px; height: 96px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, .38));
+}
+
+/* The one number worth leading with, in the difficulty colours the rest of
+   the page already uses for exactly this — each with its own ink, because
+   FDR 3 is a pale grey and white on it is unreadable. */
+.tm-hero-fdr {
+    background: var(--fdr-3);
+    color: var(--fdr-3-ink);
+    font-size: 13px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.tm-hero-fdr.fdr-1 { background: var(--fdr-1); color: var(--fdr-1-ink); }
+.tm-hero-fdr.fdr-2 { background: var(--fdr-2); color: var(--fdr-2-ink); }
+.tm-hero-fdr.fdr-3 { background: var(--fdr-3); color: var(--fdr-3-ink); }
+.tm-hero-fdr.fdr-4 { background: var(--fdr-4); color: var(--fdr-4-ink); }
+.tm-hero-fdr.fdr-5 { background: var(--fdr-5); color: var(--fdr-5-ink); }
+
+/* .pdm-hero-price is a £15.5m — a big number. Here it is the caption under
+   the chip, so it takes a caption's size. */
+.tm-hero .pdm-hero-price {
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    opacity: .82;
+}
+
+@media (max-width: 640px) {
+    .tm-hero { min-height: 118px; padding: 0 14px; }
+    .tm-hero-badge { height: 118px; width: 84px; }
+    .tm-hero-badge img { width: 66px; height: 66px; }
+}
