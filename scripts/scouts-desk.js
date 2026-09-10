@@ -1342,6 +1342,40 @@ function sdGenTacticalPlaybook() {
     };
 }
 
+/* The mark on a featured article's artwork.
+
+   It used to print the article's own `icon`, which was an emoji at 62px —
+   the last one left on this page, and the biggest. Drawn from the category
+   instead, out of the same icon set every section title uses, so a new
+   article gets a mark without anyone having to remember to pick one and an
+   unrecognised category gets the generic one rather than a blank tile. */
+const SD_ART_MARKS = {
+    'Gameweek Debrief': 'chart',
+    'Hall of Shame': 'down',
+    'Captaincy Matrix': 'crown',
+    'Strategy': 'brain',
+    'Data Deep-Dive': 'crosshair',
+    'Market': 'trend',
+    'Market Watch': 'trend',
+    'Fixture Watch': 'calendar',
+    'Tactical': 'clipboard',
+    'Bargain Gems': 'crystal',
+    'Differential Watchlist': 'target',
+    'Premium Dilemma': 'coins',
+    'Behind the Build': 'tools'
+};
+
+function sdArtMark(category) {
+    if (typeof v2Icon !== 'function') return '';
+    return v2Icon(SD_ART_MARKS[category] || 'news');
+}
+
+/* Articles carry an `icon` field and the generators stopped filling it in
+   when the emoji went. The nineteen already in data/articles/ still hold
+   theirs — they are a published archive and are kept as they were — so the
+   renderer is where it stops being drawn, rather than by rewriting the
+   record of what was published. */
+
 /* ---------- The Hall of Shame ---------- */
 
 /* One gameweek, awarded.
@@ -1690,7 +1724,7 @@ function renderArticlesPage() {
 
     el.innerHTML = `
         <a class="sd-featured" href="${sdPermalink(featured)}" onclick="return sdCardClick(event, '${featured.id}')">
-            <div class="sd-featured-art" aria-hidden="true"><span class="sd-featured-glyph">${featured.icon}</span></div>
+            <div class="sd-featured-art" aria-hidden="true"><span class="sd-featured-glyph">${sdArtMark(featured.category)}</span></div>
             <div class="sd-featured-body">
                 <div class="sd-tags">
                     <span class="sd-tag primary">${escHTML(featured.category)}</span>
@@ -1706,7 +1740,7 @@ function renderArticlesPage() {
             ${rest.map(a => `
                 <a class="sd-card" href="${sdPermalink(a)}" onclick="return sdCardClick(event, '${a.id}')">
                     <div class="sd-card-top">
-                        <span class="sd-tag">${a.icon} ${escHTML(a.category)}</span>
+                        <span class="sd-tag">${escHTML(a.category)}</span>
                         <span class="sd-read">${a.readTime} min</span>
                     </div>
                     <h3 class="sd-card-title">${escHTML(a.title)}</h3>
@@ -1749,7 +1783,7 @@ async function sdOpenArticle(id) {
 function sdRenderArticle(a) {
     document.getElementById('sdReaderBody').innerHTML = `
         <div class="sd-tags">
-            <span class="sd-tag primary">${a.icon} ${escHTML(a.category)}</span>
+            <span class="sd-tag primary">${escHTML(a.category)}</span>
             <span class="sd-read">${a.readTime} min read</span>
         </div>
         <h1 class="sd-reader-title">${escHTML(a.title)}</h1>

@@ -10,14 +10,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=198">
-    <link rel="stylesheet" href="styles/v2-design.css?v=198">
-    <link rel="stylesheet" href="styles/scouts-desk.css?v=198">
-    <link rel="stylesheet" href="styles/responsive.css?v=198">
+    <link rel="stylesheet" href="styles/common.css?v=199">
+    <link rel="stylesheet" href="styles/v2-design.css?v=199">
+    <link rel="stylesheet" href="styles/scouts-desk.css?v=199">
+    <link rel="stylesheet" href="styles/responsive.css?v=199">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
-    <main class="v2-main-content">
+    <!-- The same two-element shell every other page uses: .v2-main-content is
+         the shell beside the sidebar, main.main-content is the column inside
+         it. This page had the shell class on a <main> and then its own
+         1180px .sd-page inside that, so its content sat 36px further in and
+         72px narrower than every page you reach it from. -->
+    <div class="v2-main-content">
+    <main class="main-content">
         <div class="sd-page">
             <header class="sd-masthead">
                 <!-- No theme button here. The sidebar carries the one switch
@@ -31,9 +37,20 @@
                 <p class="sd-datanote" id="sdDataNote">Loading the FPL dataset…</p>
             </header>
 
-            <div id="sdFeed" class="sd-feed">
-                <div class="sd-empty">Loading articles…</div>
-            </div>
+            <!-- The articles live in a section, like the cards on every
+                 other page. They were laid on the page bare. -->
+            <section class="v2-section">
+                <div class="section-header">
+                    <!-- Inline, not an <i data-lucide> placeholder: those only
+                         become icons if lucide has loaded and run, and a
+                         section title that can silently lose its mark is a
+                         section title that eventually does. -->
+                    <h2><svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h11a2 2 0 0 1 2 2v11a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M17 8h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2"/><path d="M7 8h5M7 12h5M7 16h3"/></svg> Latest analysis</h2>
+                </div>
+                <div id="sdFeed" class="sd-feed">
+                    <div class="sd-empty">Loading articles…</div>
+                </div>
+            </section>
 
             <!-- Editorial studio: triggers the recurring formats on demand -->
             <section class="sd-studio-wrap">
@@ -50,6 +67,7 @@
             </section>
         </div>
     </main>
+    </div>
 
     <!-- Reader -->
     <div class="sd-reader" id="sdReader" onclick="sdCloseArticle(event)">
@@ -61,14 +79,14 @@
         </div>
     </div>
 
-    <script src="scripts/error-monitor.js?v=198"></script>
-    <script src="scripts/common.js?v=198"></script>
+    <script src="scripts/error-monitor.js?v=199"></script>
+    <script src="scripts/common.js?v=199"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=198"></script>
-    <script src="scripts/notifications.js?v=198"></script>
-    <script src="scripts/sidebar-nav.js?v=198"></script>
-    <script src="scripts/scouts-desk.js?v=198"></script>
+    <script src="scripts/push-alerts.js?v=199"></script>
+    <script src="scripts/notifications.js?v=199"></script>
+    <script src="scripts/sidebar-nav.js?v=199"></script>
+    <script src="scripts/scouts-desk.js?v=199"></script>
     <script>
         initIcons();
         loadSidebarNav().then(initScoutsDesk);

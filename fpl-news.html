@@ -19,9 +19,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=198">
-    <link rel="stylesheet" href="styles/v2-design.css?v=198">
-    <link rel="stylesheet" href="styles/responsive.css?v=198">
+    <link rel="stylesheet" href="styles/common.css?v=199">
+    <link rel="stylesheet" href="styles/v2-design.css?v=199">
+    <link rel="stylesheet" href="styles/responsive.css?v=199">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -128,11 +128,14 @@
         }
 
         /* ===== FILTER BAR ===== */
+        /* The section around it owns the width and the gutters now; this
+           only needs the space under itself before the cards begin. */
         .news-filters {
-            max-width: 1400px;
-            margin: 20px auto 0;
-            padding: 0 24px;
+            margin: 0 0 var(--v2-title-gap, 20px);
         }
+        /* The section's own padding is the frame; the last card group must
+           not add a second one under it. */
+        .news-panel .news-section:last-child { margin-bottom: 0; }
         .news-filter-bar {
             display: flex;
             gap: 6px;
@@ -404,7 +407,11 @@
         .nha-show-more:hover { background: var(--surface-3); color: var(--text-primary); }
 
         /* ===== NEWS CARDS ===== */
-        .news-container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        /* The same column every other page has: 1440 wide with a 32px
+           gutter. It was 1400 at 24px, so this page's content started 8px
+           further left and ran 20px wider than the page you clicked in
+           from — different in a way you cannot name but can see. */
+        .news-container { max-width: 1440px; margin: 0 auto; padding: 0 var(--v2-page-gutter, 32px) 24px; }
         .news-filter-bar { display: flex; gap: 6px; padding: 5px; background: var(--surface-2); border-radius: var(--radius-lg); border: 1px solid var(--border-default); overflow-x: auto; }
         .news-filter-btn { padding: 7px 16px; font-size: 12px; font-weight: 500; color: var(--text-secondary); background: transparent; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all 150ms; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-body); }
         .news-filter-btn:hover { color: var(--text-primary); background: var(--surface-1); }
@@ -485,7 +492,7 @@
         /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
             .news-page-header { padding: 16px 16px 0; }
-            .news-container { padding: 16px; }
+            .news-container { padding: 0 16px 16px; }
             .news-grid { grid-template-columns: 1fr; gap: 12px; }
             .news-card-hero { flex-direction: column; min-height: auto; }
             .news-card-hero .news-card-img { width: 100%; min-height: 160px; }
@@ -529,13 +536,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=198"></script>
-    <script src="scripts/common.js?v=198"></script>
+    <script src="scripts/error-monitor.js?v=199"></script>
+    <script src="scripts/common.js?v=199"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=198"></script>
-    <script src="scripts/notifications.js?v=198"></script>
-    <script src="scripts/sidebar-nav.js?v=198"></script>
+    <script src="scripts/push-alerts.js?v=199"></script>
+    <script src="scripts/notifications.js?v=199"></script>
+    <script src="scripts/sidebar-nav.js?v=199"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1401,9 +1408,15 @@
                     </div>
                 </div>`;
 
+                /* Filters and cards inside one section, the way every other
+                   page presents a set of cards. They were both laid straight
+                   onto the page, so the only thing with an edge round it was
+                   each individual card. */
                 container.innerHTML = `<div class="news-container">
-                    ${filtersHTML}
-                    <div id="newsContent">${renderFiltered('external', null, 'all')}</div>
+                    <section class="v2-section news-panel">
+                        ${filtersHTML}
+                        <div id="newsContent">${renderFiltered('external', null, 'all')}</div>
+                    </section>
                 </div>`;
 
                 // Filter state
