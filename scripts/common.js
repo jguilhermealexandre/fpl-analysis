@@ -692,7 +692,28 @@ function v2SaveSettings(patch) {
     const next = { ...v2Settings(), ...patch };
     try { localStorage.setItem(V2_SETTINGS_KEY, JSON.stringify(next)); } catch (e) { /* private mode */ }
     v2MountAccount();
+    /* v2MountAccount() redraws the sidebar's avatar and nothing else, so
+       removing a badge cleared it there while the big preview in the open
+       Settings sheet kept showing the image that no longer exists. The sheet
+       is built from this state too, so it is redrawn from it. */
+    v2RefreshSettingsAvatar();
     return next;
+}
+
+function v2RefreshSettingsAvatar() {
+    const host = document.getElementById('v2SetAvatar');
+    if (!host) return;
+    const st = v2Settings();
+    const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
+    host.innerHTML = st.badge
+        ? `<img src="${esc(st.badge)}" alt="">`
+        : `<b>${esc(v2AccountInitials(v2AccountName()))}</b>`;
+
+    /* And "Remove" only exists while there is something to remove. Adding a
+       badge is not handled here: v2UploadBadge() redraws the whole sheet
+       once the file has been read, and redrawing it twice would flash. */
+    const row = host.closest('.v2-set-row');
+    if (!st.badge && row) row.querySelector('.v2-set-ghost[onclick*="badge: null"]')?.remove();
 }
 
 /* Renaming your team.
@@ -867,21 +888,25 @@ function v2PreflipThemeRow() {
     const row = document.getElementById('v2ThemeRow');
     if (!row) return;
     const nextDark = document.documentElement.getAttribute('data-theme') !== 'dark';
-    row.classList.toggle('is-dark', nextDark);
-    row.setAttribute('aria-pressed', String(nextDark));
-    const label = document.getElementById('v2ThemeLabel');
-    if (label) label.textContent = nextDark ? 'Dark mode' : 'Light mode';
+    v2MarkThemeRow(row, nextDark);
+}
+
+/* Which mode is on. The row's words and marks are all four in the markup;
+   this only says which pair is the current one, and CSS reads :hover to
+   decide whether to show that pair or the other. */
+function v2MarkThemeRow(row, dark) {
+    row.classList.toggle('is-dark', dark);
+    row.setAttribute('aria-pressed', String(dark));
+    /* The visible text changes under the pointer, so the accessible name
+       has to be the action rather than a copy of the label. */
+    row.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
 }
 
 function v2SyncThemeRow() {
     if (typeof document === 'undefined') return;
     const row = document.getElementById('v2ThemeRow');
     if (!row) return;
-    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    row.classList.toggle('is-dark', dark);
-    row.setAttribute('aria-pressed', String(dark));
-    const label = document.getElementById('v2ThemeLabel');
-    if (label) label.textContent = dark ? 'Dark mode' : 'Light mode';
+    v2MarkThemeRow(row, document.documentElement.getAttribute('data-theme') === 'dark');
 }
 
 /* One place for a page to say what the team is called. */

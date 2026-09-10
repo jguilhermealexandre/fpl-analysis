@@ -1990,83 +1990,66 @@ html.v2-theme body {
 
 /* --- the theme ---
 
-   The two icons are stacked in the same cell rather than swapped with
-   display, which is a cut: one frame moon, next frame sun, nothing in
-   between. They turn past each other instead — the outgoing one rotates
-   away and shrinks, the incoming one arrives from the other side — and
-   the knob travels on a curve that overshoots a little and settles, the
-   way a real switch does. */
-.v2-acct-theme .v2-acct-ico {
-    display: grid;
-    place-items: center;
-    overflow: visible;
-}
+   A row that previews rather than a switch that reports. At rest it names
+   the mode you are in; point at it and it becomes the mode you would get,
+   the word and the mark turning together; move away and it turns back. The
+   preview is the label, so there is nothing else to read.
+
+   All four states are in the markup — two words, two marks — and these
+   rules pick between them from .is-dark and :hover. Nothing is written
+   from JS but which mode is currently on, so the hover state cannot drift
+   out of step with it.
+
+   Show the sun-and-"Light mode" pair when you are in light and not
+   pointing, or in dark and pointing. The moon pair is the complement. */
+.v2-acct-theme .v2-acct-ico { display: grid; place-items: center; overflow: visible; }
 .v2-acct-theme .v2-acct-ico svg {
     grid-area: 1 / 1;
-    transition: opacity 240ms ease, transform 440ms cubic-bezier(.34, 1.4, .64, 1);
+    opacity: 0;
+    transform: rotate(-100deg) scale(.4);
+    transition: opacity 220ms ease, transform 420ms cubic-bezier(.34, 1.4, .64, 1);
 }
-.v2-acct-theme .v2-theme-moon { opacity: 1; transform: none; }
-.v2-acct-theme .v2-theme-sun { opacity: 0; transform: rotate(-100deg) scale(.4); }
-.v2-acct-theme.is-dark .v2-theme-moon { opacity: 0; transform: rotate(100deg) scale(.4); }
-.v2-acct-theme.is-dark .v2-theme-sun { opacity: 1; transform: none; }
-
-.v2-acct-switch {
-    flex-shrink: 0;
-    width: 30px; height: 17px;
-    border-radius: 999px;
-    background: var(--border-emphasis);
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .10);
-    transition: background 320ms ease, box-shadow 320ms ease;
-    display: inline-flex; align-items: center;
-    padding: 2.5px;
+.v2-acct-theme:not(.is-dark) .v2-theme-sun,
+.v2-acct-theme.is-dark:hover .v2-theme-sun,
+.v2-acct-theme.is-dark:not(:hover) .v2-theme-moon,
+.v2-acct-theme:not(.is-dark):hover .v2-theme-moon {
+    opacity: 1;
+    transform: none;
 }
-.v2-acct-switch i {
-    width: 12px; height: 12px;
-    border-radius: 999px;
-    background: #fff;
-    box-shadow: 0 1px 2px rgba(0,0,0,.28);
-    /* Two timings on purpose: the slide overshoots and settles, the
-       stretch does not — a knob that bounces its own width looks broken
-       rather than springy. */
-    transition: transform 440ms cubic-bezier(.34, 1.45, .64, 1),
-                width 200ms cubic-bezier(.22, 1, .36, 1);
+/* :hover wins over the resting pair, so the resting one must be told to
+   leave when the pointer arrives. */
+.v2-acct-theme:not(.is-dark):hover .v2-theme-sun,
+.v2-acct-theme.is-dark:hover .v2-theme-moon {
+    opacity: 0;
+    transform: rotate(100deg) scale(.4);
 }
-.v2-acct-theme.is-dark .v2-acct-switch {
-    background: var(--color-primary);
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .18);
+
+/* The words ride the same swap, sliding rather than turning — a word that
+   rotates is a word you cannot read on the way past. */
+.v2-theme-words { display: grid; align-items: center; overflow: hidden; }
+.v2-theme-word {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transform: translateY(9px);
+    transition: opacity 200ms ease, transform 300ms cubic-bezier(.22, 1, .36, 1);
+    white-space: nowrap;
 }
-.v2-acct-theme.is-dark .v2-acct-switch i { transform: translateX(13px); }
-
-/* Held down, the knob stretches towards where it is about to go — the
-   press has an answer before the release does. The travel shortens by
-   exactly what it gained, so it still stops flush against the end. */
-.v2-acct-theme:active .v2-acct-switch i { width: 16px; }
-.v2-acct-theme.is-dark:active .v2-acct-switch i { transform: translateX(9px); }
-
-/* And the reason none of the above was visible on its own.
-
-   Switching theme runs document.startViewTransition, which replaces the
-   live page with a snapshot for the length of the cross-fade. A CSS
-   transition on an element inside that snapshot does not play — the
-   element is a picture. So the knob was not sliding slowly, it was not
-   sliding at all: the page dissolved and the switch was simply in its
-   other position on the far side. (Lifting it out with a
-   view-transition-name of its own does not help either; a named group is
-   still two images, and the knob arrives at the end of its travel in the
-   first of them.)
-
-   So the control moves before the snapshot is taken. toggleThemeSmooth()
-   flips this row on the live DOM, waits for the knob to get going, and
-   only then starts the page transition — the switch answers the press,
-   the page follows it. Which is also the right order to feel: you moved
-   the switch, so the switch moves, and the room changes because of it. */
+.v2-acct-theme:not(.is-dark) .w-light,
+.v2-acct-theme.is-dark:hover .w-light,
+.v2-acct-theme.is-dark:not(:hover) .w-dark,
+.v2-acct-theme:not(.is-dark):hover .w-dark {
+    opacity: 1;
+    transform: none;
+}
+.v2-acct-theme:not(.is-dark):hover .w-light,
+.v2-acct-theme.is-dark:hover .w-dark {
+    opacity: 0;
+    transform: translateY(-9px);
+}
 
 @media (prefers-reduced-motion: reduce) {
     .v2-acct-theme .v2-acct-ico svg,
-    .v2-acct-switch,
-    .v2-acct-switch i { transition-duration: 1ms; }
-    .v2-acct-theme:active .v2-acct-switch i { width: 12px; }
-    .v2-acct-theme.is-dark:active .v2-acct-switch i { transform: translateX(13px); }
+    .v2-theme-word { transition-duration: 1ms; }
 }
 
 /* --- go premium ---
@@ -2135,7 +2118,7 @@ html.v2-theme body {
 .v2-sidebar-collapsed .v2-account-plan,
 .v2-sidebar-collapsed .v2-acct-label,
 .v2-sidebar-collapsed .nt-bell-label,
-.v2-sidebar-collapsed .v2-acct-switch { display: none; }
+.v2-sidebar-collapsed .v2-theme-words { display: none; }
 
 .v2-sidebar-collapsed .v2-acct-row,
 .v2-sidebar-collapsed .v2-account .nt-bell {
