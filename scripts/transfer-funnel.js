@@ -1045,9 +1045,9 @@
 
             return `<div class="twf-card${unafford || clubFull ? ' unafford' : ''}" onclick="twPreviewPlayer(${p.id})">
                 <div class="twf-hero">${hero}</div>
-                ${topBits ? `<div class="twf-card-top">${topBits}</div>` : ''}
 
                 <div class="twf-verdict">
+                    ${topBits ? `<span class="twf-card-top">${topBits}</span>` : ''}
                     <span class="twf-xp" data-tooltip="${escHTML(`Projected ${proj.total.toFixed(1)} points over GW${gws[0]}–GW${gws[gws.length - 1]}, against ${soldProj.total.toFixed(1)} for ${sold.name}.`)}">${proj.total.toFixed(1)}<i>xP</i></span>
                     <span class="twf-gain ${cls}">${gain > 0 ? '+' : ''}${gain.toFixed(1)}<i>vs ${escHTML(sold.name)}</i></span>
                     <span class="twf-bar-wrap" data-tooltip="Where the projection comes from.">${bar}</span>

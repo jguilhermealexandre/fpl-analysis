@@ -629,7 +629,17 @@
             twGoStep(n);
         }
 
-        function twSetStrategy(strategy) {
+        /* Choosing is the answer, so it is also the way on: picking a plan and
+           then confirming the pick with a second button asked the same
+           question twice. The rail and the plan chip in the toolbar are how
+           you come back and change it. */
+        function twChoosePlan(strategy) {
+            if (!TW_STRATEGIES.some(x => x.id === strategy)) return;
+            twSetStrategy(strategy, { render: false });
+            twGoStep(2);
+        }
+
+        function twSetStrategy(strategy, opts) {
             if (!TW_STRATEGIES.some(x => x.id === strategy)) return;
             transferState.strategy = strategy;
             // Both chips waive hits and lift the transfer limit; only the
@@ -642,7 +652,7 @@
                Sunday. Clearing each slot's filters re-seeds them at the right
                window on the next read. */
             transferState.pending.forEach(s => { s.funnel = null; });
-            renderTWAll();
+            if (!opts || opts.render !== false) renderTWAll();
         }
 
         // The window a strategy reasons over. Everything else is a five-gameweek
@@ -1417,8 +1427,9 @@
                 rows += `<div class="twc-group">
                     <div class="twc-group-head">
                         <span>${pos.label}</span>
-                        ${transferState.sellMode ? `<button class="twc-mini" onclick="twSellAll(${pos.type})" data-tooltip="Sell every ${pos.label.toLowerCase().replace(/s$/, '')} at once and pool the money">Sell all</button>` : ''}
-                    </div>`;
+                        ${transferState.sellMode && !planStep ? `<button class="twc-mini" onclick="twSellAll(${pos.type})" data-tooltip="Sell every ${pos.label.toLowerCase().replace(/s$/, '')} at once and pool the money">Sell all</button>` : ''}
+                    </div>
+                    <div class="twc-rows">`;
                 players.forEach(p => {
                     const sold = filledIds.has(p.id), pending = pendingIds.has(p.id);
                     /* Scored over the same three fixtures shown next to it. This
@@ -1458,7 +1469,7 @@
                                     : (pending ? 'Find a replacement for ' + escHTML(p.name) : 'Sell ' + escHTML(p.name) + ' and open the market for their position')}">${TW_SWAP_ICON}${pending ? 'Find' : 'Swap'}</button>`}
                     </div>`;
                 });
-                rows += `</div>`;
+                rows += `</div></div>`;
             });
 
             /* How the squad this plan would leave you with sits against the
@@ -1480,7 +1491,10 @@
                             ? `<span class="twc-panel-hint" data-tooltip="Set by the plan you chose. Go back to step 1 for one swap at a time.">Click any player to add them to the plan</span>`
                             : `<span class="twc-panel-hint">Hit Swap on anyone to replace them</span>`}
                 </div>
-                <div class="twc-panel-body">${rows}</div>
+                <div class="twc-panel-body">
+                    ${rows}
+                    ${twStep() === 2 ? twOutStepFoot() : ''}
+                </div>
                 ${eoStrip}
             </div>`;
         }
@@ -1518,7 +1532,8 @@
             if (mode === 'compare' && transferState.previewPlayer && transferState.activeSlot >= 0) return renderTWComparison(el);
             if (mode === 'market' && transferState.activeSlot >= 0) return renderTWMarket(el);
             if (mode === 'summary') return twRenderSummaryPanel(el);
-            return twRenderOutStep(el);
+            /* Step 2 is the squad pane's screen; this one is not on it. */
+            el.innerHTML = '';
         }
 
         /* ===== Step 1 · the plan =====
@@ -1549,7 +1564,7 @@
             const cards = TW_STRATEGIES.map(x => {
                 const c = TW_PLAN_COPY[x.id] || {};
                 const on = chosen === x.id;
-                return `<button class="tw-plan${on ? ' is-on' : ''}" onclick="twSetStrategy('${x.id}')"
+                return `<button class="tw-plan${on ? ' is-on' : ''}" onclick="twChoosePlan('${x.id}')"
                     aria-pressed="${on}">
                     <span class="tw-plan-top">
                         <span class="tw-plan-ico">${v2Icon(c.icon || 'swap')}</span>
@@ -1575,65 +1590,39 @@
                 </div>
                 <div class="twc-panel-body">
                     <div class="tw-plans">${cards}</div>
-                    <div class="tw-step-foot">
-                        <span class="tw-step-foot-note">${chosen
-                            ? `Next: pick who leaves your squad.`
-                            : `Choose one to carry on.`}</span>
-                        <button class="tw-next" ${chosen ? '' : 'disabled'} onclick="twGoStep(2)">
-                            ${chosen ? `Continue with ${escHTML(chosenLabel)}` : 'Continue'} ${v2Icon('next')}
-                        </button>
-                    </div>
+                    ${chosen ? `<div class="tw-step-foot">
+                        <span class="tw-step-foot-note">You are on <strong>${escHTML(chosenLabel)}</strong>. Pick another to change it.</span>
+                        <button class="tw-next" onclick="twGoStep(2)">Who leaves ${v2Icon('next')}</button>
+                    </div>` : ''}
                 </div>
             </div>`;
         }
 
         /* ===== Step 2 · who leaves =====
 
-           The squad is on the left and always has been; this is the other half
-           of that instruction — what you have picked so far, and the way on.
-           On Single there is nothing to collect: the first Swap goes straight
-           to the market, and this pane is only ever the prompt. */
-        function twRenderOutStep(el) {
+           Step 2's screen is the squad itself, so what used to be a second
+           panel beside it is a footer under it: how many you have picked, the
+           way back to the plan, and the way on to the market. The picked
+           players themselves are already listed in the plan rail above, at
+           every step from here on, so they are not repeated. */
+        function twOutStepFoot() {
             const multi = transferState.sellMode;
             const picked = transferState.pending;
+            const open = picked.filter(x => !x.replacement).length;
             const max = twMaxTransfers();
 
-            const list = picked.length
-                ? picked.map((slot, i) => {
-                    const o = slot.soldPlayer;
-                    const posShort = ['', 'GK', 'DEF', 'MID', 'FWD'][o.position];
-                    return `<div class="tw-out-row">
-                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(o) : ''}
-                        <span class="tw-out-who">
-                            <b>${escHTML(o.name)}</b>
-                            <em>${escHTML(o.team)} · £${(o.sellPrice || o.price).toFixed(1)}m</em>
-                        </span>
-                        <span class="tw-out-pos ${posShort.toLowerCase()}">${posShort}</span>
-                        ${slot.replacement
-                            ? `<span class="tw-out-done">${v2Icon('check')} ${escHTML(slot.replacement.name)}</span>`
-                            : `<button class="tw-out-find" onclick="twSelectSlot(${i})">Find a replacement</button>`}
-                        <button class="tw-out-x" onclick="twRemoveSlot(${i})" data-tooltip="Take ${escHTML(o.name)} back out of the plan">×</button>
-                    </div>`;
-                }).join('')
-                : `<div class="twc-idle">Hit <strong>${multi ? 'any player' : 'Swap'}</strong> on the left${multi ? '' : ' on anyone you want to move on'}. ${multi ? `You can pick up to ${max} before you go shopping.` : 'You go straight to their replacements.'}</div>`;
+            const note = picked.length
+                ? `${picked.length}${multi ? ` of ${max}` : ''} picked${open ? `, ${open} still ${open === 1 ? 'needs' : 'need'} a replacement` : ''}.`
+                : multi
+                    ? `Click any player to add them to the plan \u2014 up to ${max} before you go shopping.`
+                    : `Hit Swap on whoever you want to move on. You go straight to their replacements.`;
 
-            const open = picked.filter(x => !x.replacement).length;
-            const canGo = open > 0;
-
-            el.innerHTML = `<div class="twc-panel tw-step-panel">
-                <div class="twc-panel-head">
-                    <span class="twc-panel-title">${v2Icon('outbox')} Who is leaving?</span>
-                    <span class="twc-panel-hint">${picked.length}${multi ? ` of ${max}` : ''} picked</span>
-                </div>
-                <div class="twc-panel-body">
-                    <div class="tw-out-list">${list}</div>
-                    <div class="tw-step-foot">
-                        <button class="tw-back" onclick="twRailGo(1)">${v2Icon('up')} Change plan</button>
-                        <button class="tw-next" ${canGo ? '' : 'disabled'} onclick="twStartMarketForSlots()">
-                            ${canGo ? `Find replacement${open === 1 ? '' : 's'}` : 'Find replacements'} ${v2Icon('next')}
-                        </button>
-                    </div>
-                </div>
+            return `<div class="tw-step-foot">
+                <button class="tw-back" onclick="twRailGo(1)">${v2Icon('up')} Change plan</button>
+                <span class="tw-step-foot-note">${note}</span>
+                <button class="tw-next" ${open ? '' : 'disabled'} onclick="twStartMarketForSlots()">
+                    Find replacement${open === 1 ? '' : 's'} ${v2Icon('next')}
+                </button>
             </div>`;
         }
 
