@@ -1454,10 +1454,16 @@
     overflow: hidden;
 }
 
+/* The toolbar reads as one bar of controls rather than as a strip of
+   unrelated widgets: the same surface, the same edge radius and the same
+   inset the rest of the site gives a panel. */
 .stats-compact-toolbar {
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--border-default);
-    background: var(--surface-0);
+    padding: 12px 14px;
+    margin-bottom: var(--v2-title-gap, 20px);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-1);
+    box-shadow: var(--v2-card-shadow, none);
 }
 
 .stats-toolbar-row {
@@ -1529,10 +1535,32 @@
     color: var(--text-primary);
 }
 
+/* Selected is the brand's own state — a filled pill, not a slightly
+   different grey. It was --surface-3 on --surface-2, which is one step of
+   grey apart and asks you to compare it against its neighbours to know
+   which is on. */
 .stats-view-pill.active {
-    background: var(--surface-3);
-    color: var(--text-primary);
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+/* A window that covers the same matches as Season, because the season is
+   shorter than the window. Dotted, so it reads as "nothing new here" rather
+   than as disabled — it is still a real choice, just not a different one
+   yet, and it becomes one as soon as enough matches have been played. */
+.stats-view-pill.is-same:not(.active) {
+    color: var(--text-muted);
+    text-decoration: underline dotted currentColor 1px;
+    text-underline-offset: 3px;
+}
+
+.stats-window-note {
+    font-size: 10.5px;
     font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
 }
 
 .stats-toolbar-divider {
@@ -1559,22 +1587,44 @@
     position: relative;
 }
 
+/* Search and Columns are the same object as every other control on the
+   bar: a 30px pill with a real edge, not a grey rectangle on a grey bar.
+   --border-default resolves to transparent on some pages, which is how a
+   bordered control ends up with no border at all. */
 .col-selector-btn {
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 5px 12px;
-    background: var(--surface-2);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
+    gap: 6px;
+    height: 30px;
+    padding: 0 13px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-emphasis);
+    border-radius: 999px;
     color: var(--text-secondary);
     font-family: inherit;
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 150ms ease-out;
+    transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
     white-space: nowrap;
 }
+.col-selector-btn:hover { border-color: var(--color-primary); color: var(--color-primary-text); }
+
+.stats-search-box .search-input {
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid var(--border-emphasis);
+    background: var(--surface-1);
+    font-size: 11.5px;
+}
+.stats-search-box .search-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
+    outline: none;
+}
+
+/* The pill groups match that height, so the bar sits on one line. */
+.stats-view-pills, .stats-venue-pills { height: 30px; align-items: center; }
 
 .col-selector-btn:hover {
     background: var(--surface-3);

@@ -17,17 +17,17 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=203">
-    <link rel="stylesheet" href="styles/teams.css?v=203">
-    <link rel="stylesheet" href="styles/v2-design.css?v=203">
-    <link rel="stylesheet" href="styles/responsive.css?v=203">
-    <script src="scripts/error-monitor.js?v=203"></script>
-    <script src="scripts/common.js?v=203"></script>
+    <link rel="stylesheet" href="styles/common.css?v=204">
+    <link rel="stylesheet" href="styles/teams.css?v=204">
+    <link rel="stylesheet" href="styles/v2-design.css?v=204">
+    <link rel="stylesheet" href="styles/responsive.css?v=204">
+    <script src="scripts/error-monitor.js?v=204"></script>
+    <script src="scripts/common.js?v=204"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=203"></script>
-    <script src="scripts/notifications.js?v=203"></script>
-    <script src="scripts/sidebar-nav.js?v=203"></script>
+    <script src="scripts/push-alerts.js?v=204"></script>
+    <script src="scripts/notifications.js?v=204"></script>
+    <script src="scripts/sidebar-nav.js?v=204"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -2499,15 +2499,30 @@
                 </div>`;
             }).join('');
 
+            /* The most matches any team has played. Both shorter windows are
+               slices of that, so while it is under them they are the season —
+               which is why switching to one appears to change nothing. */
+            const statsGamesPlayed = Math.max(0, ...Object.values(seasonStats).map(t => (t.season && t.season.p) || 0));
+
             container.innerHTML = `
                 <div class="stats-container">
                     <div class="stats-compact-toolbar">
                         <div class="stats-toolbar-row">
-                            <div class="stats-view-pills">
-                                <button class="stats-view-pill ${statsView === 'season' ? 'active' : ''}" data-view="season">Season</button>
-                                <button class="stats-view-pill ${statsView === 'last10' ? 'active' : ''}" data-view="last10">L10</button>
-                                <button class="stats-view-pill ${statsView === 'last5' ? 'active' : ''}" data-view="last5">L5</button>
+                            <!-- A window wider than the season so far covers the
+                                 same matches as the season, so switching to it
+                                 changes nothing — which reads as a broken filter
+                                 rather than as three games having been played.
+                                 The pill says so instead of leaving you to work
+                                 it out from identical numbers. -->
+                            <div class="stats-view-pills" role="group" aria-label="Stat window">
+                                <button class="stats-view-pill ${statsView === 'season' ? 'active' : ''}" data-view="season"
+                                    data-tooltip="Every match played so far this season${statsGamesPlayed ? ` — ${statsGamesPlayed} per team` : ''}.">Season</button>
+                                <button class="stats-view-pill ${statsView === 'last10' ? 'active' : ''}${statsGamesPlayed && statsGamesPlayed <= 10 ? ' is-same' : ''}" data-view="last10"
+                                    data-tooltip="${statsGamesPlayed && statsGamesPlayed <= 10 ? `Only ${statsGamesPlayed} matches have been played, so this is the same as Season.` : 'The last ten matches each team has played.'}">L10</button>
+                                <button class="stats-view-pill ${statsView === 'last5' ? 'active' : ''}${statsGamesPlayed && statsGamesPlayed <= 5 ? ' is-same' : ''}" data-view="last5"
+                                    data-tooltip="${statsGamesPlayed && statsGamesPlayed <= 5 ? `Only ${statsGamesPlayed} matches have been played, so this is the same as Season.` : 'The last five matches each team has played.'}">L5</button>
                             </div>
+                            ${statsGamesPlayed && statsGamesPlayed <= 10 ? `<span class="stats-window-note">${statsGamesPlayed} played — shorter windows match Season</span>` : ''}
                             <div class="stats-toolbar-divider"></div>
                             <div class="segmented-control stats-venue-pills">
                                 <button class="segmented-btn ${statsVenue === 'all' ? 'active' : ''}" data-venue="all">All</button>
