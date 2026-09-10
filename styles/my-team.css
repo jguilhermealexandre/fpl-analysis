@@ -5153,8 +5153,31 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 /* Two panes: the squad you are selling from stays on screen while you shop. */
 .twc-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
-.twc-panel { border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); overflow: hidden; }
-.twc-panel-head { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-bottom: 1px solid var(--border-default); }
+/* overflow: hidden was here to clip the head's corners. It also makes the
+   panel its own scroll container, which stops position: sticky inside it from
+   ever sticking — so the head rounds its own corners instead. */
+.twc-panel { border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); }
+.twc-panel-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-default);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    background: var(--surface-1);
+}
+
+/* The step's own header is where you go back and forward from.
+
+   These were a footer under the panel, which on the comparison meant
+   scrolling past a radar chart and thirty stat rows to reach Confirm, and
+   then back up again to change your mind. Sticky under the tab strip: the
+   way on and the way back are wherever you are in the step. */
+.tw-step-head {
+    position: sticky; top: 57px; z-index: 6;
+    box-shadow: 0 1px 0 var(--border-default);
+}
+.tw-step-nav { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.tw-step-nav .tw-next, .tw-step-nav .tw-back { padding: 7px 14px; font-size: 12px; }
+.tw-step-head .twc-panel-hint { margin-left: 0; }
 .twc-panel-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .twc-panel-body { padding: 8px; max-height: 720px; overflow-y: auto; }
 .twc-idle { padding: 26px 18px; font-size: 12px; color: var(--text-muted); line-height: 1.6; text-align: center; }
@@ -5299,14 +5322,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twh-b { text-align: left; font-size: 12px; font-family: var(--font-mono); font-weight: 600; color: var(--text-secondary); }
 .twh-a.win, .twh-b.win { color: var(--verdict-hold); font-weight: 800; }
 .twh-l { font-size: 9px; color: var(--text-muted); text-align: center; min-width: 108px; cursor: help; }
-.twh-actionbar { position: sticky; bottom: 0; z-index: 3; margin-top: 12px; padding: 8px 0 2px; background: var(--surface-1); border-top: 1px solid var(--border-default); }
-.twh-actions-why { font-size: 10px; color: var(--color-error); margin-bottom: 6px; text-align: center; }
-.twh-actions { display: flex; gap: 6px; }
-.twh-actions .rc-btn { flex: 1; }
+/* The confirm bar that used to live down here is in the panel's sticky
+   header now, with the back button beside it, so every step is steered from
+   the same place. Its rules are gone rather than left behind unused.
 
-/* Full profile — stacked rather than side by side: this panel is already one
-   of two columns in the wizard's layout (.twc-body), so a further 2-up split
-   here would squeeze each player's detail into a quarter of the page width. */
+   Full profile — side by side, now that the comparison is the full width of
+   the page rather than one of two columns. */
 .twh-deep-label {
     font-size: 10px;
     font-weight: 700;
@@ -5318,7 +5339,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     border-top: 1px solid var(--border-subtle);
 }
 
-.twh-deep { display: flex; flex-direction: column; gap: 16px; margin-bottom: 10px; }
+.twh-deep { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 10px; }
+@media (max-width: 1000px) { .twh-deep { grid-template-columns: minmax(0, 1fr); } }
 
 .twh-deep-col {
     background: var(--surface-2);
@@ -6060,6 +6082,27 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-card > *:not(.twf-hero) { padding-left: 12px; padding-right: 12px; }
 .twf-card > .twf-verdict { padding-top: 10px; }
 .twf-card > *:last-child { padding-bottom: 12px; }
+
+/* Two levels. What decides the pick stays up; the eighteen detail rows are
+   behind this. Closed is the default because six open cards is a wall. */
+.twf-more {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: calc(100% - 24px); margin: 9px 12px 0;
+    padding: 7px 12px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-family: var(--font-display); font-size: 11px; font-weight: 700;
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.twf-more:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--surface-1); }
+.twf-more-c { display: inline-flex; transition: transform .2s ease; }
+.twf-more-c svg { width: 13px; height: 13px; }
+.twf-card.is-open .twf-more-c { transform: rotate(180deg); }
+.twf-card:not(.is-open) .twf-cols { display: none; }
+.twf-card.is-open .twf-cols { padding-top: 10px; }
 .twf-hero .pdm-hero { min-height: 92px; }
 .twf-hero .pdm-hero-chip {
     background: rgba(255, 255, 255, .22); color: var(--club-ink, #fff);
@@ -6758,17 +6801,82 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    reading and the thing it named were not in the same place. The step is the
    full width of the page now, directly under the rail that names it: the plan
    on step 1, your squad on step 2, the market from step 3 on. */
-.twc-body { grid-template-columns: minmax(0, 1fr); }
-/* One column across a 1500px window puts the name at the far left and the
-   xP and the button at the far right with half a screen of nothing between
-   them. A wizard is a reading column, so it is capped and centred — the
-   same thing the pitch card does with its 760px. */
-.tw-container { max-width: 980px; margin-inline: auto; }
+.twc-body { grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+/* Step 3 is the one step that is two things at once: who is going out on the
+   left, who can come in on the right. Every other step is one screen. */
+.tw-container[data-tw-step="3"] .twc-body { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); }
+.tw-container[data-tw-step="3"] #twSquadPane { display: block; }
+/* Both of these say who is being replaced, and the card on the left says it
+   with a face on it. Two more copies in text above and beside it is three. */
+.tw-container[data-tw-step="3"] .twc-plan { display: none; }
+.tw-container[data-tw-step="3"] .twf-out { display: none; }
+@media (max-width: 900px) {
+    .tw-container[data-tw-step="3"] .twc-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The players being replaced, as cards. */
+.tw-outrail { position: sticky; top: 57px; }
+.tw-outc-list { display: flex; flex-direction: column; gap: 8px; }
+.tw-outc {
+    position: relative; display: block; width: 100%;
+    padding: 0; text-align: left;
+    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-1);
+    cursor: pointer; overflow: hidden;
+    transition: border-color .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+.tw-outc:hover { border-color: color-mix(in srgb, var(--color-primary) 55%, transparent); }
+.tw-outc.is-active {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+/* Filled but not the one you are on: still a card, just not the subject. */
+.tw-outc.is-filled:not(.is-active) { opacity: .72; }
+.tw-outc-hero { display: block; }
+.tw-outc-hero .pdm-hero { min-height: 84px; padding: 0 12px; gap: 0 10px; }
+.tw-outc-hero .pdm-hero-photo { width: 52px; height: 76px; }
+.tw-outc-hero .pdm-hero-face { height: 76px; max-width: 52px; }
+.tw-outc-hero .pdm-hero-last { font-size: 16px; }
+.tw-outc-hero .pdm-hero-first { font-size: 10px; }
+.tw-outc-hero .pdm-hero-price { font-size: 14px; }
+.tw-outc-hero .pdm-hero-own { display: none; }
+.tw-outc-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 11px;
+    font-size: 11px;
+}
+.tw-outc-open { color: var(--text-muted); font-weight: 650; }
+.tw-outc-in { display: inline-flex; align-items: center; gap: 4px; color: var(--color-primary); font-weight: 700; }
+.tw-outc-in svg { width: 12px; height: 12px; }
+.tw-outc-budget { font-family: var(--font-mono, monospace); font-weight: 700; color: var(--text-secondary); }
+.tw-outc-xp {
+    position: absolute; right: 11px; top: 52px;
+    font-family: var(--font-mono, monospace);
+    font-size: 12px; font-weight: 800; color: var(--club-ink, #fff);
+    opacity: .85; cursor: help;
+}
+.tw-outc-xp i { font-style: normal; font-size: 8px; margin-left: 1px; }
+.tw-outrail-add {
+    width: 100%; margin-top: 9px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 12px; border-radius: 999px;
+    border: 1px dashed var(--v2-card-border, var(--border-emphasis));
+    background: transparent; color: var(--text-muted);
+    font-family: var(--font-display); font-size: 11.5px; font-weight: 700;
+    cursor: pointer;
+}
+.tw-outrail-add:hover { border-color: var(--color-primary); color: var(--color-primary); border-style: solid; }
+.tw-outrail-add svg { width: 13px; height: 13px; }
+.tw-outrail-note { margin-top: 8px; font-size: 10.5px; color: var(--text-muted); text-align: center; }
+/* No width of its own. Every other section on the site is the page's own
+   content column, and a wizard that is 224px narrower than the section above
+   it reads as a different page rather than another tab of this one. */
 /* A nested scroller made sense when the pane was one of two half-width
    columns. Full width, one step at a time, the page is the scroller. */
 .tw-container .twc-panel-body { max-height: none; overflow: visible; }
 .tw-container[data-tw-step="2"] #twMarketPane { display: none; }
-.tw-container:not([data-tw-step="2"]) #twSquadPane { display: none; }
+.tw-container:not([data-tw-step="2"]):not([data-tw-step="3"]) #twSquadPane { display: none; }
 
 /* ===== The movement between steps ===== */
 @keyframes twStepFwd {

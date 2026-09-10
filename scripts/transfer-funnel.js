@@ -94,6 +94,32 @@
            pending transfer now carries its own funnel, so switching between
            slots restores the search you left there, and a slot that goes away
            takes its filters with it. */
+        /* Which cards are showing everything.
+
+           The card carries two levels: what decides the pick — who he is, what
+           he projects, and how that projection is spread across the run — and
+           then eighteen rows of player and club detail underneath. Both at
+           once made six replacements an unreadable wall, and the top half is
+           what you actually scan on. The bottom half is a click away, and this
+           remembers the clicks so re-rendering the list for a filter keystroke
+           does not close a card you just opened. */
+        const twfOpenCards = new Set();
+
+        function twfToggleDetail(playerId, ev) {
+            if (ev) ev.stopPropagation();
+            const card = document.querySelector(`.twf-card[data-pid="${playerId}"]`);
+            if (!card) return;
+            const open = !card.classList.contains('is-open');
+            card.classList.toggle('is-open', open);
+            if (open) twfOpenCards.add(playerId); else twfOpenCards.delete(playerId);
+            const btn = card.querySelector('.twf-more');
+            if (btn) {
+                btn.setAttribute('aria-expanded', String(open));
+                const label = btn.querySelector('.twf-more-l');
+                if (label) label.textContent = open ? 'Less' : 'All the numbers';
+            }
+        }
+
         function twfState(slotIdx) {
             const i = slotIdx == null ? transferState.activeSlot : slotIdx;
             const slot = transferState.pending[i];
@@ -1043,7 +1069,9 @@
                 typeof priceChangeBadge === 'function' ? priceChangeBadge(p) : ''
             ].filter(Boolean).join('');
 
-            return `<div class="twf-card${unafford || clubFull ? ' unafford' : ''}" onclick="twPreviewPlayer(${p.id})">
+            const isOpen = twfOpenCards.has(p.id);
+
+            return `<div class="twf-card${unafford || clubFull ? ' unafford' : ''}${isOpen ? ' is-open' : ''}" data-pid="${p.id}" onclick="twPreviewPlayer(${p.id})">
                 <div class="twf-hero">${hero}</div>
 
                 <div class="twf-verdict">
@@ -1055,6 +1083,12 @@
                 </div>
 
                 <div class="twf-strip" data-tooltip="Projected points gameweek by gameweek — team quality, opponent, venue, blanks and doubles are all already in these numbers.">${strip}</div>
+
+                <button class="twf-more" onclick="twfToggleDetail(${p.id}, event)" aria-expanded="${isOpen}"
+                    data-tooltip="Form, minutes, hauls, set pieces and the club's own numbers.">
+                    <span class="twf-more-l">${isOpen ? 'Less' : 'All the numbers'}</span>
+                    <span class="twf-more-c" aria-hidden="true">${v2Icon('down')}</span>
+                </button>
 
                 <div class="twf-cols">
                     <div class="twf-col">

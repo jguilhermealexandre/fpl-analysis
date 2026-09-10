@@ -588,6 +588,22 @@
             { n: 5, key: 'confirm', icon: 'check',   label: 'Confirm',     hint: 'What the plan costs and what it buys' }
         ];
 
+        /* One header shape for every step: what the step is, a hint, and the
+           two ways out of it. Rendered into .twc-panel-head so it can be the
+           sticky bar the panel scrolls under. */
+        function twStepHead(opts) {
+            const o = opts || {};
+            const nav = [
+                o.back ? `<button class="tw-back" onclick="${o.back.on}"${o.back.tip ? ` data-tooltip="${escHTML(o.back.tip)}"` : ''}>${v2Icon('up')} ${escHTML(o.back.label)}</button>` : '',
+                o.next ? `<button class="tw-next"${o.next.disabled ? ' disabled' : ''} onclick="${o.next.on}"${o.next.tip ? ` data-tooltip="${escHTML(o.next.tip)}"` : ''}>${escHTML(o.next.label)} ${v2Icon('next')}</button>` : ''
+            ].filter(Boolean).join('');
+            return `<div class="twc-panel-head tw-step-head">
+                <span class="twc-panel-title">${o.icon ? v2Icon(o.icon) : ''} ${escHTML(o.title || '')}</span>
+                ${o.hint ? `<span class="twc-panel-hint">${o.hint}</span>` : ''}
+                ${nav ? `<span class="tw-step-nav">${nav}</span>` : ''}
+            </div>`;
+        }
+
         function twStep() {
             const n = transferState.step;
             return n >= 1 && n <= 5 ? n : 1;
@@ -1404,9 +1420,60 @@
                 ${count ? `<div class="twc-plan">${cart}</div>` : ''}`;
         }
 
+        /* ===== Step 3's left column · who you are replacing =====
+
+           Which player the market on the right belongs to used to be findable
+           only in a 24px-tall plan row saying "Tzolakis → Choose…", and
+           switching between two open swaps meant hitting the right one of
+           those. They are cards here, in their clubs' colours, the one being
+           worked on outlined — the same card the market shows on the other
+           side, so a swap is two of the same object rather than a line of
+           text pointing at a list. */
+        function twRenderOutRail(el) {
+            const gws = twPlanGWs(3);
+            const cards = transferState.pending.map((slot, i) => {
+                const o = slot.soldPlayer;
+                const active = i === transferState.activeSlot;
+                const budget = twSlotBudget(i);
+                const inP = slot.replacement;
+                return `<button class="tw-outc${active ? ' is-active' : ''}${inP ? ' is-filled' : ''}"
+                    onclick="twSelectSlot(${i})"
+                    data-tooltip="${inP ? escHTML(`${o.name} out, ${inP.name} in — click to pick someone else`) : escHTML(`Show replacements for ${o.name}`)}">
+                    <span class="tw-outc-hero">${typeof v2PlayerHeroHTML === 'function'
+                        ? v2PlayerHeroHTML({ ...o, price: o.sellPrice || o.price },
+                            { size: 'compact', chip: String(i + 1) })
+                        : escHTML(o.name)}</span>
+                    <span class="tw-outc-foot">
+                        ${inP
+                            ? `<span class="tw-outc-in">${v2Icon('check')} ${escHTML(inP.name)}</span>`
+                            : `<span class="tw-outc-open">Needs a replacement</span>`}
+                        <span class="tw-outc-budget">£${budget.toFixed(1)}m</span>
+                    </span>
+                    <span class="tw-outc-xp" data-tooltip="What ${escHTML(o.name)} projects over the next ${gws.length} gameweeks.">${twXPOver(o, gws).toFixed(1)}<i>xP</i></span>
+                </button>`;
+            }).join('');
+
+            const open = transferState.pending.filter(x => !x.replacement).length;
+
+            el.innerHTML = `<div class="twc-panel tw-outrail">
+                <div class="twc-panel-head">
+                    <span class="twc-panel-title">${v2Icon('outbox')} Swapping out</span>
+                    <span class="twc-panel-hint">${transferState.pending.length} ${transferState.pending.length === 1 ? 'player' : 'players'}</span>
+                </div>
+                <div class="twc-panel-body">
+                    <div class="tw-outc-list">${cards}</div>
+                    <button class="tw-outrail-add" onclick="twRailGo(2)" data-tooltip="Go back to your squad and pick someone else to move on.">${v2Icon('up')} Change who is leaving</button>
+                    ${open > 1 ? `<div class="tw-outrail-note">Pick any of them to see their replacements.</div>` : ''}
+                </div>
+            </div>`;
+        }
+
         function renderTWSquadPane() {
             const el = document.getElementById('twSquadPane');
             if (!el) return;
+            /* On step 3 this column stops being the squad and becomes the
+               players you are replacing, beside the market that replaces them. */
+            if (twStep() === 3 && transferState.pending.length) return twRenderOutRail(el);
             /* The squad is on screen at every step, but it is only a control at
                some of them. On step 1 no plan has been chosen yet, so there is
                no answer to how many players you may move — Swap is shown and
@@ -1482,19 +1549,21 @@
                 ? renderSquadEO(typeof twBuildPendingSquad === 'function' ? twBuildPendingSquad() : null)
                 : '';
 
+            const open = transferState.pending.filter(x => !x.replacement).length;
             el.innerHTML = `<div class="twc-panel">
-                <div class="twc-panel-head">
-                    <span class="twc-panel-title">${v2Icon('users')} Your squad</span>
-                    ${planStep
-                        ? `<span class="twc-panel-hint">Pick a plan first, on the right</span>`
-                        : transferState.sellMode
-                            ? `<span class="twc-panel-hint" data-tooltip="Set by the plan you chose. Go back to step 1 for one swap at a time.">Click any player to add them to the plan</span>`
-                            : `<span class="twc-panel-hint">Hit Swap on anyone to replace them</span>`}
-                </div>
-                <div class="twc-panel-body">
-                    ${rows}
-                    ${twStep() === 2 ? twOutStepFoot() : ''}
-                </div>
+                ${twStep() === 2
+                    ? twStepHead({
+                        icon: 'users', title: 'Who is leaving?',
+                        hint: escHTML(twOutStepHint()),
+                        back: { label: 'Change plan', on: 'twRailGo(1)' },
+                        next: { label: `Find replacement${open === 1 ? '' : 's'}`, on: 'twStartMarketForSlots()',
+                                disabled: !open, tip: open ? '' : 'Pick at least one player to move on.' }
+                    })
+                    : `<div class="twc-panel-head">
+                        <span class="twc-panel-title">${v2Icon('users')} Your squad</span>
+                        ${planStep ? `<span class="twc-panel-hint">Pick a plan first</span>` : ''}
+                    </div>`}
+                <div class="twc-panel-body">${rows}</div>
                 ${eoStrip}
             </div>`;
         }
@@ -1584,16 +1653,13 @@
             const chosenLabel = chosen ? (TW_STRATEGIES.find(x => x.id === chosen) || {}).label : '';
 
             el.innerHTML = `<div class="twc-panel tw-step-panel">
-                <div class="twc-panel-head">
-                    <span class="twc-panel-title">${v2Icon('sliders')} How are you transferring?</span>
-                    <span class="twc-panel-hint">You have ${ft} free transfer${ft === 1 ? '' : 's'} this week</span>
-                </div>
+                ${twStepHead({
+                    icon: 'sliders', title: 'How are you transferring?',
+                    hint: `You have ${ft} free transfer${ft === 1 ? '' : 's'} this week`,
+                    next: chosen ? { label: 'Who leaves', on: 'twGoStep(2)', tip: `You are on ${chosenLabel}. Pick another card to change it.` } : null
+                })}
                 <div class="twc-panel-body">
                     <div class="tw-plans">${cards}</div>
-                    ${chosen ? `<div class="tw-step-foot">
-                        <span class="tw-step-foot-note">You are on <strong>${escHTML(chosenLabel)}</strong>. Pick another to change it.</span>
-                        <button class="tw-next" onclick="twGoStep(2)">Who leaves ${v2Icon('next')}</button>
-                    </div>` : ''}
                 </div>
             </div>`;
         }
@@ -1605,25 +1671,16 @@
            way back to the plan, and the way on to the market. The picked
            players themselves are already listed in the plan rail above, at
            every step from here on, so they are not repeated. */
-        function twOutStepFoot() {
+        function twOutStepHint() {
             const multi = transferState.sellMode;
             const picked = transferState.pending;
             const open = picked.filter(x => !x.replacement).length;
             const max = twMaxTransfers();
-
-            const note = picked.length
-                ? `${picked.length}${multi ? ` of ${max}` : ''} picked${open ? `, ${open} still ${open === 1 ? 'needs' : 'need'} a replacement` : ''}.`
+            return picked.length
+                ? `${picked.length}${multi ? ` of ${max}` : ''} picked${open ? `, ${open} still ${open === 1 ? 'needs' : 'need'} a replacement` : ''}`
                 : multi
-                    ? `Click any player to add them to the plan \u2014 up to ${max} before you go shopping.`
-                    : `Hit Swap on whoever you want to move on. You go straight to their replacements.`;
-
-            return `<div class="tw-step-foot">
-                <button class="tw-back" onclick="twRailGo(1)">${v2Icon('up')} Change plan</button>
-                <span class="tw-step-foot-note">${note}</span>
-                <button class="tw-next" ${open ? '' : 'disabled'} onclick="twStartMarketForSlots()">
-                    Find replacement${open === 1 ? '' : 's'} ${v2Icon('next')}
-                </button>
-            </div>`;
+                    ? `Click any player to add them \u2014 up to ${max}`
+                    : `Hit Swap on whoever you want to move on`;
         }
 
         /* The market pane.
@@ -1756,11 +1813,14 @@
                 ? buildPlayerFullProfileHTML(cand, getPlayerAnalysis(cand), { header: false, recommendation: false, replacements: false, context: 'candidate' })
                 : '';
 
+            const blocked = !!blockedReason;
             el.innerHTML = `<div class="twc-panel">
-                <div class="twc-panel-head">
-                    <button class="twc-mini" onclick="twBackToMarket()" data-tooltip="Back to the replacement list">← Market</button>
-                    <span class="twc-panel-title">${escHTML(sold.name)} vs ${escHTML(cand.name)}</span>
-                </div>
+                ${twStepHead({
+                    icon: 'scales', title: `${sold.name} vs ${cand.name}`,
+                    back: { label: 'Replacements', on: 'twBackToMarket()', tip: 'Back to the replacement list' },
+                    next: { label: `Confirm ${cand.name}`, on: 'twConfirmPick()',
+                            disabled: blocked, tip: blockedReason || `Put ${cand.name} in for ${sold.name}.` }
+                })}
                 <div class="twc-panel-body">
                     <div class="twh-verdict ${verdict.cls}">
                         <span class="twh-verdict-delta">${delta > 0 ? '▲ +' : delta < 0 ? '▼ ' : '±'}${Math.abs(delta) < 0.05 ? '0.0' : delta.toFixed(1)}</span>
@@ -1808,18 +1868,6 @@
                         </div>
                     </div>
 
-                    <!-- Sticky: the two full player profiles above are long enough
-                         that this bar used to sit several screens below the fold,
-                         so the decision the panel exists to support was the one
-                         thing you had to go hunting for. -->
-                    <div class="twh-actionbar">
-                        ${blockedReason ? `<div class="twh-actions-why">${blockedReason}.</div>` : ''}
-                        <div class="twh-actions">
-                            <button class="rc-btn" onclick="twBackToMarket()">← Back</button>
-                            <button class="rc-btn primary" ${blockedReason ? 'disabled' : ''} onclick="twConfirmPick()"
-                                data-tooltip="${blockedReason || 'Add this transfer to the plan'}">Confirm ${escHTML(cand.name)} →</button>
-                        </div>
-                    </div>
                 </div>
             </div>`;
 
@@ -2275,10 +2323,12 @@
             const n = transferState.pending.length;
 
             el.innerHTML = `<div class="twc-panel tw-step-panel">
-                <div class="twc-panel-head">
-                    <span class="twc-panel-title">${v2Icon('check')} Confirm your ${n === 1 ? 'transfer' : 'transfers'}</span>
-                    <span class="twc-panel-hint">Judged over ${escHTML(span)}</span>
-                </div>
+                ${twStepHead({
+                    icon: 'check', title: `Confirm your ${n === 1 ? 'transfer' : 'transfers'}`,
+                    hint: `Judged over ${escHTML(span)}`,
+                    back: { label: 'Edit transfers', on: 'twBackFromSummary()' },
+                    next: { label: 'Start over', on: 'renderTransferWizard()', tip: 'Clear the plan and go back to step 1.' }
+                })}
                 <div class="twc-panel-body">
                     <div class="tw-conf-stats">
                         ${stat('What it gains', `${gain > 0 ? '+' : ''}${gain.toFixed(1)} pts`,
@@ -2304,11 +2354,6 @@
 
                     <div class="tw-conf-swaps">${swaps}</div>
 
-                    <div class="tw-step-foot">
-                        <button class="tw-back" onclick="twBackFromSummary()">${v2Icon('up')} Edit transfers</button>
-                        <button class="tw-back" onclick="twOpenPreview()" data-tooltip="See the squad this leaves you with, on a pitch.">${v2Icon('shirt')} Preview squad</button>
-                        <button class="tw-next" onclick="renderTransferWizard()" data-tooltip="Clear the plan and go back to step 1.">${v2Icon('refresh')} Start over</button>
-                    </div>
                 </div>
             </div>`;
         }
