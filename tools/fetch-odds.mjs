@@ -90,6 +90,75 @@ function fail(message) {
     process.exit(1);
 }
 
+/* Not every empty answer is a fault.
+
+   fixtures.csv carries roughly the next two days, so for most of the week it
+   holds no Premier League rows at all: bookmakers price one round at a time and
+   the file only surfaces that round a day or two out. Treating it as an error
+   turned about twenty-three of every twenty-eight scheduled runs red, for the
+   ordinary state of a Tuesday — and a red run that means nothing is worse than
+   no run at all, because it trains everyone to ignore the ones that do.
+
+   Nothing is written either way. The site already handles a missing round:
+   boMarketXGA() in scripts/odds-panel.js returns null unless every fixture in a
+   round is priced, so the projection falls back to its own estimate and the
+   Matchday tab simply has nothing to show.
+
+   It stops being ordinary when a round goes by unpriced. The odds we are
+   holding name the gameweek they cover, so if that gameweek is behind the one
+   whose deadline has already passed, we went into a round without pricing it —
+   which is a real failure and still goes red. */
+/* How close to a deadline "not priced yet" stops being ordinary. The feed
+   carries about two days of fixtures, so a round is normally in it well before
+   this; still empty inside the window means something about the source has
+   changed rather than that we are early. Chosen so at least one scheduled run
+   (03/09/15/21 UTC) always lands inside it, whatever the deadline. */
+const PRICING_GRACE_MS = 12 * 60 * 60 * 1000;
+
+function notPricedYet(reason, outPath) {
+    let held = null, events = [];
+    try {
+        held = JSON.parse(fs.readFileSync(outPath, 'utf8'))?.metadata?.events?.slice(-1)[0] ?? null;
+        events = (JSON.parse(fs.readFileSync('data/bootstrap-static.json', 'utf8')).events || [])
+            .filter(e => e && e.id != null && e.deadline_time)
+            .sort((a, b) => Date.parse(a.deadline_time) - Date.parse(b.deadline_time));
+    } catch (e) {
+        /* Nothing held yet, or no bootstrap to judge against. Either way there is
+           no round we can show we missed, so this stays a notice. */
+    }
+
+    const now = Date.now();
+    /* NOT `is_current`. That flag names the round whose deadline passed most
+       recently and keeps naming it until the next one locks — so for the whole
+       window in which anyone is picking a team it is a round behind, which is
+       the trap planningGameweek() in scripts/common.js exists for. Judging the
+       odds by it meant the alarm could only fire AFTER a deadline, by which
+       point nobody can act on the answer and the round is already lost.
+
+       The round being planned is simply the next one still open. */
+    const passed = events.filter(e => Date.parse(e.deadline_time) <= now);
+    const locked = passed[passed.length - 1] || null;
+    const planning = events.find(e => Date.parse(e.deadline_time) > now) || null;
+
+    // A round locked while we were holding odds for an earlier one. Definite miss.
+    if (held != null && locked && held < locked.id) {
+        fail(`${reason} — the odds on file are for GW${held} and GW${locked.id} is already locked. A round went unpriced.`);
+    }
+
+    /* The round being planned is nearly locked and still has no prices. This is
+       the alarm that is worth having: early enough to be acted on, late enough
+       that an ordinary unpriced Tuesday never reaches it. */
+    if (planning) {
+        const until = Date.parse(planning.deadline_time) - now;
+        if (until < PRICING_GRACE_MS) {
+            fail(`${reason} — GW${planning.id} locks in ${Math.max(0, Math.round(until / 3600000))}h and still has no prices`);
+        }
+    }
+
+    console.log(`::notice::${reason}. Keeping the existing odds — bookmakers price one round at a time, so between rounds there is nothing to fetch.`);
+    process.exit(0);
+}
+
 async function main() {
     const args = process.argv.slice(2);
     const outPath = args.includes('--out') ? args[args.indexOf('--out') + 1] : 'data/odds.json';
@@ -110,7 +179,7 @@ async function main() {
     if (!csv || csv.length < 500) fail('fixtures.csv came back empty or truncated — keeping the existing odds');
 
     const rows = parseCsv(csv).filter(r => r.Div === DIVISION);
-    if (!rows.length) fail(`no ${DIVISION} fixtures in fixtures.csv — keeping the existing odds`);
+    if (!rows.length) notPricedYet(`no ${DIVISION} fixtures in fixtures.csv yet`, outPath);
 
     // FPL is the authority on who is playing whom and when. Matching against it
     // gives the gameweek and the true UTC kick-off for free, instead of guessing
@@ -163,7 +232,10 @@ async function main() {
 
     skipped.forEach(s => console.log(`skipped: ${s}`));
     if (matches.length < MIN_FIXTURES) {
-        fail(`only ${matches.length} of ${rows.length} ${DIVISION} fixtures could be priced (need ${MIN_FIXTURES}) — keeping the existing odds`);
+        /* Same condition, caught later: the file has started carrying the round
+           but not all of it. A partial round is no use anyway — the projection
+           only blends the market when every fixture in the round is priced. */
+        notPricedYet(`only ${matches.length} of ${rows.length} ${DIVISION} fixtures could be priced (need ${MIN_FIXTURES})`, outPath);
     }
 
     /* A quiet way for this to be wrong is for the reconstruction to stop

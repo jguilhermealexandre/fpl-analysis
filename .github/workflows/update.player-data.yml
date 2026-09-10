@@ -25,10 +25,10 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -97,15 +97,67 @@ jobs:
           // empty one. Losing freshness for one player is a nuisance; losing his
           // record breaks every per-gameweek view on the site until the next run.
           const previous = new Map();
+          let previousMeta = {};
           try {
             const old = JSON.parse(fs.readFileSync('data/players-data.json', 'utf8'));
             (old.players || []).forEach(p => previous.set(p.id, p));
+            previousMeta = old.metadata || {};
             console.log(`Previous feed: ${previous.size} players available for carry-forward`);
           } catch (error) {
             console.log('No usable previous feed — nothing to carry forward');
           }
+
+          /* A player's history only changes when he plays.
+
+             element-summary has no bulk form, so a full refresh is one request
+             per player — 654 of them, six times a day, close to four thousand
+             daily and almost every one asking for bytes we already hold. That is
+             exactly the traffic shape FPL rate-limits from a shared runner,
+             which is how a run ends up with no detail at all and the guards
+             below correctly refuse to publish it.
+
+             bootstrap-static is ONE request and already carries every player's
+             season totals. If a player's points and minutes are unchanged since
+             the feed we are holding, nothing he has done can have changed, so
+             his history is carried forward rather than re-fetched. Between
+             rounds that is every player in the game, and the run makes no
+             element-summary calls at all.
+
+             A full sweep still runs daily, because a correction can move a
+             history row without moving a total — bonus reallocated between two
+             players, a goal reassigned after review. lastFullSweep rides in the
+             feed rather than being pinned to a cron hour, so a run that is
+             skipped or fails does not push the next sweep further away. */
+          const FULL_SWEEP_AFTER_MS = 24 * 60 * 60 * 1000;
+          const lastSweepAt = Date.parse(previousMeta.lastFullSweep || previousMeta.lastUpdated || '');
+          const fullSweep = !previous.size || !Number.isFinite(lastSweepAt)
+            || (Date.now() - lastSweepAt) >= FULL_SWEEP_AFTER_MS;
+
+          function needsDetail(player) {
+            if (fullSweep) return true;
+            const prev = previous.get(player.id);
+            if (!prev) return true;                            // new to the game
+            if (prev.historyStale) return true;                // last run did not get him
+            if (!Array.isArray(prev.history)) return true;     // malformed entry
+            // An empty history with unchanged zero minutes is a player who has
+            // genuinely not featured, not a fetch we are missing.
+            return prev.totalPoints !== player.total_points || prev.minutes !== player.minutes;
+          }
+
+          const fetchIds = new Set(activePlayers.filter(needsDetail).map(p => p.id));
+          console.log(fullSweep
+            ? `Full sweep: fetching detail for all ${fetchIds.size} players`
+            : `Incremental: ${fetchIds.size} player(s) changed since the last feed, ${activePlayers.length - fetchIds.size} carried forward`);
           
           const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+          /* Paced, not raced. The old rhythm fired requests as fast as they
+             completed with a one-second pause every twenty — roughly three a
+             second, which is enough to get a shared runner IP throttled part way
+             through a sweep and lose the whole run. A fixed gap costs a full
+             sweep about five minutes, and costs an incremental run nothing at
+             all, because there is usually nothing to fetch. */
+          const REQUEST_GAP_MS = 250;
 
           // 610 sequential calls from a shared runner IP is exactly the traffic
           // shape FPL rate-limits, and the previous version treated any non-2xx
@@ -134,7 +186,7 @@ jobs:
           }
           
           // The fields every player gets, with or without a successful detail fetch.
-          function baseEntry(player) {
+          function baseEntry(player, stale = true) {
             return {
               id: player.id,
               name: player.web_name,
@@ -151,7 +203,10 @@ jobs:
               // entry exists precisely because the detail fetch failed.
               lastSeason: previous.get(player.id)?.lastSeason ?? null,
               history: previous.get(player.id)?.history ?? [],
-              historyStale: true
+              // False when the history was carried because nothing changed, which
+              // makes it current rather than missing. True only when a request
+              // was owed and did not arrive.
+              historyStale: stale
             };
           }
 
@@ -159,20 +214,40 @@ jobs:
             const playerData = [];
             let processed = 0;
             let failed = 0;
+            let carried = 0;
+            let abandoned = false;
             
             for (const player of activePlayers) {
-              // Nothing is coming back at all. Ten more minutes of the same will
-              // not change that, and running the loop to completion is what let
-              // an empty feed reach the commit step in the first place.
-              if (processed === 0 && failed >= 40) {
-                console.error('::error::First 40 detail fetches all failed — abandoning rather than publishing an empty feed');
-                break;
+              // Nothing this player has done has changed, so there is nothing to
+              // ask for. The bootstrap fields are still refreshed underneath —
+              // price, form and ownership move without a match being played.
+              if (!fetchIds.has(player.id)) {
+                playerData.push(baseEntry(player, false));
+                carried++;
+                continue;
+              }
+              /* Nothing is coming back at all. Ten more minutes of the same will
+                 not change that.
+
+                 Carries the rest forward rather than breaking, which the earlier
+                 version did: breaking left every remaining player out of the file
+                 entirely, so a dead API cost the feed its player list as well as
+                 its histories. They are marked stale — a request was owed and did
+                 not arrive — and the coverage guard below decides whether what we
+                 ended up with is publishable. */
+              if (abandoned || (processed === 0 && failed >= 40)) {
+                if (!abandoned) {
+                  console.error('::error::First 40 detail fetches all failed — abandoning the sweep and carrying the rest forward');
+                  abandoned = true;
+                }
+                playerData.push(baseEntry(player, true));
+                failed++;
+                continue;
               }
               try {
-                // Add delay to avoid rate limiting (20 players per batch)
-                if (processed > 0 && processed % 20 === 0) {
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-                  console.log(`Processed ${processed}/${activePlayers.length} players...`);
+                if (processed > 0) await sleep(REQUEST_GAP_MS);
+                if (processed > 0 && processed % 50 === 0) {
+                  console.log(`Fetched detail for ${processed}/${fetchIds.size}...`);
                 }
                 
                 const details = await fetchPlayerDetails(player.id);
@@ -236,7 +311,7 @@ jobs:
               }
             }
             
-            console.log(`\nComplete: ${processed} players processed, ${failed} failed`);
+            console.log(`\nComplete: ${processed} fetched, ${carried} carried forward, ${failed} failed`);
             console.log(`Coverage: ${playerData.length}/${activePlayers.length} player IDs in the feed`);
             if (playerData.length !== activePlayers.length) {
               // Flagged loudly, but NOT fatal. A non-zero exit here failed the step
@@ -254,6 +329,18 @@ jobs:
                IDs were present with zero histories between them. ID coverage was
                never the thing that made the file usable.
 
+               This used to require 80% of ALL players to have been fetched, which
+               stopped meaning anything the moment most runs legitimately fetch
+               none. Two questions replace it, and both are about what we are
+               about to write rather than about how much work we did:
+
+                 - Of the players we decided to ask about, did enough answer?
+                   Asking about nothing cannot fail; asking about 300 and getting
+                   12 is the collapse this guard is for.
+                 - Does the file we assembled hold at least as many real histories
+                   as the one we already have? Nothing we publish should be worse
+                   than what it replaces, whatever the reason.
+
                Deliberately not a non-zero exit. That skips every step after this
                one — article build, timestamp, commit — and throws away the
                bootstrap and fixtures fetched above, which are fine and which the
@@ -261,10 +348,27 @@ jobs:
                of the refresh, and fail the job at the end so the run is red
                rather than quietly wrong. */
             const MIN_DETAIL_COVERAGE = 0.8;
-            const floor = Math.floor(activePlayers.length * MIN_DETAIL_COVERAGE);
-            if (processed < floor) {
-              console.error(`::error::DETAIL FETCH COLLAPSED: ${processed}/${activePlayers.length} succeeded, need ${floor}. Keeping the previous players-data.json.`);
-              fs.writeFileSync('/tmp/player-data-rejected', `${processed}/${activePlayers.length}`);
+            const owed = fetchIds.size;
+            const floor = Math.ceil(owed * MIN_DETAIL_COVERAGE);
+            if (owed && processed < floor) {
+              console.error(`::error::DETAIL FETCH COLLAPSED: ${processed}/${owed} of the players that needed a refresh answered, need ${floor}. Keeping the previous players-data.json.`);
+              fs.writeFileSync('/tmp/player-data-rejected', `${processed}/${owed} owed`);
+              return;
+            }
+
+            const hasHistory = p => Array.isArray(p.history) && p.history.length > 0;
+            const nowWithHistory = playerData.filter(hasHistory).length;
+            /* Counted over the players still in the game, not over everyone the
+               previous feed happened to contain. A player who leaves the league
+               in January legitimately disappears from bootstrap, and comparing
+               against a total that still includes him would read as a loss and
+               reject every run from then on. */
+            const stillActive = new Set(activePlayers.map(p => p.id));
+            const wasWithHistory = [...previous.values()]
+              .filter(p => stillActive.has(p.id) && hasHistory(p)).length;
+            if (previous.size && nowWithHistory < wasWithHistory) {
+              console.error(`::error::HISTORY WENT BACKWARDS: ${nowWithHistory} players with a history, down from ${wasWithHistory}. Keeping the previous players-data.json.`);
+              fs.writeFileSync('/tmp/player-data-rejected', `${nowWithHistory}<${wasWithHistory} histories`);
               return;
             }
 
@@ -272,7 +376,14 @@ jobs:
             const output = {
               metadata: {
                 lastUpdated: new Date().toISOString(),
-                playerCount: processed,
+                playerCount: playerData.length,
+                detailFetched: processed,
+                detailCarried: carried,
+                // Read by needsDetail() on the next run to decide whether a full
+                // sweep is due. Only a run that actually swept sets it.
+                lastFullSweep: fullSweep && !abandoned
+                  ? new Date().toISOString()
+                  : (previousMeta.lastFullSweep || null),
                 gameweek: bootstrap.events.find(e => e.is_current)?.id || null
               },
               teams: bootstrap.teams,
@@ -281,7 +392,7 @@ jobs:
             };
             
             fs.writeFileSync('data/players-data.json', JSON.stringify(output, null, 2));
-            console.log(`Saved ${processed} players to data/players-data.json`);
+            console.log(`Saved ${playerData.length} players to data/players-data.json (${processed} freshly fetched)`);
             console.log(`File size: ${(fs.statSync('data/players-data.json').size / 1024 / 1024).toFixed(2)} MB`);
           }
           
