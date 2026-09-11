@@ -112,7 +112,7 @@ function loadSidebarNav() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('landing-nav.html?v=211')
+    return fetch('landing-nav.html?v=212')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
