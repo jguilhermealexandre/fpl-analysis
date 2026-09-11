@@ -570,7 +570,15 @@ function sdGenGameweekDebrief() {
         id: 'gw-debrief',
         title: `Gameweek ${gw} Debrief: winners, blanks, and what the underlying numbers say`,
         category: 'Gameweek Debrief',
-        icon: v2Icon('chart'),
+        /* Blank, like every other generator's icon since the emoji sweep.
+           Two reasons it cannot be a v2Icon() call. This runs under
+           scripts/build-articles.js, which requires this file alone — common.js
+           is not loaded there and v2Icon does not exist, so the generator threw
+           and the article build failed every run. And the value is written into
+           the feed and through esc() into the static page, so an inline SVG
+           would arrive escaped and render as its own source. The renderer picks
+           a mark from the category instead — see sdArticleMark(). */
+        icon: '',
         dek: `${hero.name} led Gameweek ${gw} with ${hero.gwPoints} points${ev && ev.average_entry_score ? ` against an average of ${ev.average_entry_score}` : ''}. Underneath the scoreline, the expected-goals numbers point at a different set of names.`,
         body: md,
         featured: true,

@@ -28,7 +28,7 @@ function v2HasTeam() {
 function loadSidebarNav() {
     if (!v2HasTeam()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('sidebar-nav.html?v=211')
+    return fetch('sidebar-nav.html?v=212')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
