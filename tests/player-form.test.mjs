@@ -1,12 +1,18 @@
 /* The last five gameweeks, and what they are allowed to claim.
 
-   Two things this has to get right, and both are about not overstating what the
-   feed says. A gameweek the club did not play, a fixture the player missed and a
-   match he played badly all end up as nothing on the scoresheet and mean three
-   different things — collapsing them into a zero is how a stats block starts
-   lying quietly. And an actual-against-expected reading over five games is
-   mostly noise unless there is enough expected output to divide, so the reading
-   has to be able to say so rather than inventing a direction. */
+   This is the ONE window on the site. The scouting report and the All Players
+   table used to slice the player's last five history ROWS instead, and the two
+   agreed only while every club played every week and every player had a row for
+   every fixture — neither of which is reliably true. So the cases below are the
+   ways the two used to part company, and they are now one count.
+
+   Everything here is about not overstating what the feed says. A gameweek the
+   club did not play, a fixture the player missed, a fixture that has not kicked
+   off and a match he played badly all end up as nothing on the scoresheet and
+   mean four different things — collapsing them into a zero is how a stats block
+   starts lying quietly. And an actual-against-expected reading over five games
+   is mostly noise unless there is enough expected output to divide, so the
+   reading has to be able to say so rather than inventing a direction. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadFunction } from './helpers/load.mjs';
@@ -15,10 +21,16 @@ const P = 'scripts/player-profile.js';
 const pfMatchStats = loadFunction(P, 'pfMatchStats');
 const pfSum = loadFunction(P, 'pfSum', { pfMatchStats, PF_ZERO_STATS: () => pfMatchStats({}) });
 const fixturePlayed = loadFunction('scripts/common.js', 'fixturePlayed');
-const pfLastPlayedRound = loadFunction(P, 'pfLastPlayedRound', { fixturePlayed });
-const pfFormWindow = loadFunction(P, 'pfFormWindow', {
-    pfMatchStats, pfSum, pfLastPlayedRound, PF_WINDOW: 5, PF_ZERO_STATS: () => pfMatchStats({})
+const pfPlayed = loadFunction(P, 'pfPlayed', { fixturePlayed });
+const pfFixtureIndex = loadFunction(P, 'pfFixtureIndex', {
+    pfPlayed, PF_IDX_CACHE: { fixtures: null, index: null }
 });
+const pfLastPlayedRound = loadFunction(P, 'pfLastPlayedRound', { pfFixtureIndex });
+const pfFormWindow = loadFunction(P, 'pfFormWindow', {
+    pfMatchStats, pfSum, pfPlayed, pfFixtureIndex, PF_WINDOW: 5,
+    PF_ZERO_STATS: () => pfMatchStats({})
+});
+const pfWindowLabel = loadFunction(P, 'pfWindowLabel');
 const pfVsExpected = loadFunction(P, 'pfVsExpected', { PF_PAR: 1.0, PF_THIN: 0.5 });
 
 const TEAMS = { 1: { short_name: 'ARS' }, 2: { short_name: 'BOU' }, 3: { short_name: 'CHE' } };
@@ -90,6 +102,48 @@ test('totals cover every fixture, and the season covers everything', () => {
     assert.equal(w.season.goals, 5);
     // gi is an addition of two published fields, not an estimate of anything.
     assert.equal(w.totals.gi, w.totals.goals + w.totals.assists);
+});
+
+test('a fixture that has not kicked off is not a match he missed', () => {
+    /* The window ends at the last round ANYONE has played, so a round still in
+       flight puts a not-yet-played fixture inside it — and FPL writes the row,
+       zeroed, as soon as the fixture is scheduled. Counting that as a game is
+       how a man who has played every minute his club has played reads as a
+       rotation risk: 270 minutes over three matches is 90, not 68. */
+    const midRound = fixtures.slice(0, 4).concat([
+        { id: 105, event: 5, team_h: 2, team_a: 1, team_h_score: null, team_a_score: null, finished_provisional: false, kickoff_time: '2026-09-12T14:00:00Z' },
+        // Somebody else's GW5 has finished, so the window reaches round 5.
+        { id: 110, event: 5, team_h: 2, team_a: 3, team_h_score: 1, team_a_score: 0, finished_provisional: true, kickoff_time: '2026-09-12T11:30:00Z' }
+    ]);
+    const history = [row(1, 101), row(2, 102), row(4, 104),
+        // The zeroed row FPL writes for a fixture still to come.
+        row(5, 105, { minutes: 0, total_points: 0, goals_scored: 0 })];
+    const w = pfFormWindow(player, history, midRound, TEAMS);
+
+    const gw5 = w.columns.find(c => c.fixtureId === 105);
+    assert.equal(gw5.state, 'upcoming', 'no score means it has not happened');
+    assert.equal(gw5.scoreline, null);
+    assert.equal(w.upcoming, 1);
+
+    // Three fixtures played, three appearances, one still to come.
+    assert.equal(w.matches, 3, 'the unplayed fixture is not a match');
+    assert.equal(w.appearances, 3);
+    assert.equal(w.totals.minutes, 270);
+    assert.equal(w.totals.minutes / w.matches, 90, 'every minute of every match played');
+    assert.equal(pfWindowLabel(w), 'Last 5 gameweeks (3 matches)');
+});
+
+test('matches, appearances and blanks are counted separately', () => {
+    // Three different questions. One standing in for another is what a "GP" of
+    // 4 for a player with no appearances was.
+    const w = build([row(1, 101), row(2, 102, { minutes: 0, total_points: 0 }), row(4, 104), row(5, 105), row(5, 106)]);
+    assert.equal(w.rounds.length, 5, 'gameweeks in the window');
+    assert.equal(w.matches, 5, 'fixtures his club played — GW3 was a blank');
+    assert.equal(w.appearances, 4, 'one of them he did not play');
+    assert.equal(w.blanks, 1);
+    assert.equal(w.upcoming, 0);
+    // Season-to-date club matches, the denominator for a season rate.
+    assert.equal(w.seasonMatches, 5);
 });
 
 test('the window ends at the last round anyone has played', () => {

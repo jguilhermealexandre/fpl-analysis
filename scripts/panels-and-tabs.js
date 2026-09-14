@@ -1300,8 +1300,11 @@
             if (!base) return null;
 
             const history = (playersDetailData?.players || []).find(p => p.id === playerId)?.history || [];
-            const l5 = calculateStats(history, true);
-            const season = calculateStats(history, false);
+            // Same window the profile card on this page draws — buildStatWindows()
+            // reads allFixtures/teams from this page's globals.
+            const windows = buildStatWindows(base, history);
+            const l5 = windows.recent;
+            const season = windows.season;
 
             // teamFixtures is keyed by numeric team id (base.teamId), not base.team (short name).
             // Each entry's `.opponent` here is the short-name string; the report expects the
@@ -1323,6 +1326,7 @@
                 selectedBy: base.ownership,
                 totalPoints: base.points,
                 l5, season, history, fixtures,
+                formWindow: windows.window,
                 teamScores: teamAnalysis[base.teamId]
             };
         }

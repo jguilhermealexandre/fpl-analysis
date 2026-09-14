@@ -554,19 +554,32 @@
            next to the season figure, because five games is a small sample and
            the season is the one that holds up.
 
-           Three things a column can be, and they are not interchangeable:
+           Four things a column can be, and they are not interchangeable:
 
-             played   the club played and so did he
-             dnp      the club played, he did not — a real fixture he missed.
-                      FPL writes a row for an unused squad member too, so this
-                      is minutes rather than the row's existence: an injured
-                      defender has four rows and no appearances
-             blank    the club had no fixture at all that gameweek
+             played    the club played and so did he
+             dnp       the club played, he did not — a real fixture he missed.
+                       FPL writes a row for an unused squad member too, so this
+                       is minutes rather than the row's existence: an injured
+                       defender has four rows and no appearances
+             upcoming  the fixture is in the window but has not kicked off.
+                       The window ends at the last round ANYONE has played, so a
+                       round still in flight puts a not-yet-played fixture inside
+                       it — and FPL writes the row the moment the fixture is
+                       scheduled, zeroed. Counting that as a miss is how a man
+                       who has played every minute his club has played reads as
+                       a rotation risk on the strength of a match that has not
+                       started
+             blank     the club had no fixture at all that gameweek
 
-           A blank and a benching both score nothing and mean opposite things,
-           which is why they are drawn differently rather than both as a zero.
-           A double gameweek gets a column per fixture rather than one merged
-           column, so five gameweeks can be six matches. */
+           A blank, a benching and a match still to come all score nothing and
+           mean three different things, which is why they are drawn differently
+           rather than all as a zero. A double gameweek gets a column per fixture
+           rather than one merged column, so five gameweeks can be six matches.
+
+           `matches` — the fixtures actually played — is the denominator for
+           anything per-match. Appearances is the answer to a different question
+           ("how many did he play in") and is carried separately rather than one
+           standing in for the other. */
         const PF_WINDOW = 5;
 
         // Per-match figures, in the shape both readings consume. Everything is
@@ -582,11 +595,13 @@
                 cleanSheets: n('clean_sheets'), goalsConceded: n('goals_conceded'),
                 xGC: n('expected_goals_conceded'),
                 saves: n('saves'), penaltiesSaved: n('penalties_saved'),
+                penaltiesMissed: n('penalties_missed'),
                 defCon: n('defensive_contribution'),
                 tackles: n('tackles'), cbi: n('clearances_blocks_interceptions'),
                 recoveries: n('recoveries'),
                 bonus: n('bonus'), bps: n('bps'),
-                threat: n('threat'), creativity: n('creativity'), influence: n('influence')
+                threat: n('threat'), creativity: n('creativity'), influence: n('influence'),
+                ict: n('ict_index')
             };
         }
 
@@ -598,16 +613,51 @@
             return out;
         }
 
+        /* Has this fixture been played? fixturePlayed() in common.js is the one
+           definition; the fallback is the same test, for a caller that loads
+           this file without it. A fixture with no score has not happened yet,
+           whatever the round it belongs to is doing. */
+        function pfPlayed(f) {
+            if (typeof fixturePlayed === 'function') return fixturePlayed(f);
+            return !!f && f.team_h_score !== null && f.team_h_score !== undefined
+                && !!(f.finished || f.finished_provisional || f.started);
+        }
+
+        /* The fixture list, indexed by club and round, plus the last round
+           anyone has played.
+
+           Built once per fixture array rather than per player: the players page
+           builds a window for all ~650 of them in a loop, and re-filtering 380
+           fixtures five times each is a million passes to answer a question the
+           fixture list can answer once. Keyed on the array itself, so a reload
+           that replaces it rebuilds. */
+        const PF_IDX_CACHE = { fixtures: null, index: null };
+        function pfFixtureIndex(fixtures) {
+            if (PF_IDX_CACHE.fixtures === fixtures && PF_IDX_CACHE.index) return PF_IDX_CACHE.index;
+            const byTeamRound = new Map();
+            const playedByTeam = new Map();
+            let lastPlayed = 0;
+            (fixtures || []).forEach(f => {
+                if (!f || !f.event) return;
+                const done = pfPlayed(f);
+                if (done && f.event > lastPlayed) lastPlayed = f.event;
+                [f.team_h, f.team_a].forEach(t => {
+                    const k = t + ':' + f.event;
+                    if (!byTeamRound.has(k)) byTeamRound.set(k, []);
+                    byTeamRound.get(k).push(f);
+                    if (done) playedByTeam.set(t, (playedByTeam.get(t) || 0) + 1);
+                });
+            });
+            PF_IDX_CACHE.fixtures = fixtures;
+            PF_IDX_CACHE.index = { byTeamRound, playedByTeam, lastPlayed };
+            return PF_IDX_CACHE.index;
+        }
+
         /* The last round anyone has played, from the fixture list rather than
            from is_current — which names the round whose deadline passed most
-           recently and keeps naming it while that round is still being played.
-           fixturePlayed() is the fast flag; see scripts/common.js. */
+           recently and keeps naming it while that round is still being played. */
         function pfLastPlayedRound(fixtures) {
-            let last = 0;
-            (fixtures || []).forEach(f => {
-                if (f && f.event && typeof fixturePlayed === 'function' && fixturePlayed(f) && f.event > last) last = f.event;
-            });
-            return last;
+            return pfFixtureIndex(fixtures).lastPlayed;
         }
 
         /* The window, as columns. `history` is the player's own per-gameweek
@@ -616,7 +666,8 @@
         function pfFormWindow(player, history, fixtures, teamsById, opts) {
             const o = opts || {};
             const n = o.window || PF_WINDOW;
-            const last = o.lastRound || pfLastPlayedRound(fixtures);
+            const idx = pfFixtureIndex(fixtures);
+            const last = o.lastRound || idx.lastPlayed;
             if (!last) return null;
 
             const rounds = [];
@@ -632,22 +683,24 @@
 
             const columns = [];
             rounds.forEach(gw => {
-                const clubFixtures = (fixtures || []).filter(f =>
-                    f && f.event === gw && (f.team_h === player.teamId || f.team_a === player.teamId));
+                const clubFixtures = idx.byTeamRound.get(player.teamId + ':' + gw) || [];
 
                 if (!clubFixtures.length) {
                     columns.push({ round: gw, state: 'blank', stats: PF_ZERO_STATS() });
                     return;
                 }
                 // A column per fixture: a double gameweek is two matches and
-                // merging them would hide that the second one happened.
-                clubFixtures.sort((a, b) => String(a.kickoff_time || '').localeCompare(String(b.kickoff_time || '')));
-                clubFixtures.forEach(f => {
+                // merging them would hide that the second one happened. Sorted
+                // on a copy — the index's array is shared between players.
+                const ordered = clubFixtures.slice().sort((a, b) =>
+                    String(a.kickoff_time || '').localeCompare(String(b.kickoff_time || '')));
+                ordered.forEach(f => {
                     const isHome = f.team_h === player.teamId;
                     const oppId = isHome ? f.team_a : f.team_h;
                     const row = rowsByFixture.get(f.id)
-                        || (clubFixtures.length === 1 ? (rowsByRound.get(gw) || [])[0] : null);
+                        || (ordered.length === 1 ? (rowsByRound.get(gw) || [])[0] : null);
                     const hasScore = f.team_h_score != null && f.team_a_score != null;
+                    const played = pfPlayed(f);
                     columns.push({
                         round: gw,
                         fixtureId: f.id,
@@ -666,24 +719,41 @@
                         result: !hasScore ? null
                             : Math.sign(isHome ? f.team_h_score - f.team_a_score
                                                : f.team_a_score - f.team_h_score),
-                        state: (row && (parseFloat(row.minutes) || 0) > 0) ? 'played' : 'dnp',
-                        stats: row ? pfMatchStats(row) : PF_ZERO_STATS()
+                        /* Not played yet is its own state. FPL writes the row as
+                           soon as the fixture is scheduled — 0 minutes, 0
+                           points — so "has a row and no minutes" is true both of
+                           a man left out and of a man whose match kicks off
+                           tonight. The fixture's own score is what tells them
+                           apart. */
+                        state: !played ? 'upcoming'
+                            : (row && (parseFloat(row.minutes) || 0) > 0) ? 'played' : 'dnp',
+                        stats: (played && row) ? pfMatchStats(row) : PF_ZERO_STATS()
                     });
                 });
             });
 
-            /* Totalled over every fixture the club played, appeared in or not.
-               An unused row contributes zeros, so this is the same arithmetic as
-               summing only appearances — but it cannot silently drop a figure if
-               FPL ever credits something to a player with no minutes. */
-            const realCols = columns.filter(c => c.state !== 'blank');
+            /* Totalled over every fixture the club has played, appeared in or
+               not. An unused row contributes zeros, so this is the same
+               arithmetic as summing only appearances — but it cannot silently
+               drop a figure if FPL ever credits something to a player with no
+               minutes. A fixture still to come contributes nothing to either the
+               total or the count it would be divided by. */
+            const matchCols = columns.filter(c => c.state === 'played' || c.state === 'dnp');
             return {
                 rounds,
                 columns,
+                matches: matchCols.length,
                 appearances: columns.filter(c => c.state === 'played').length,
                 blanks: columns.filter(c => c.state === 'blank').length,
-                totals: pfSum(realCols.map(c => c.stats)),
+                upcoming: columns.filter(c => c.state === 'upcoming').length,
+                totals: pfSum(matchCols.map(c => c.stats)),
+                // An un-played fixture's row is zeroes throughout, so summing
+                // every row and summing only the played ones give the same
+                // season figure. The counts below are where it matters.
                 season: pfSum((history || []).map(pfMatchStats)),
+                // Matches his club has played all season — the season-rate
+                // denominator, and not the same as his own appearances.
+                seasonMatches: idx.playedByTeam.get(player.teamId) || 0,
                 seasonGames: (history || []).filter(r => (parseFloat(r.minutes) || 0) > 0).length
             };
         }
@@ -779,12 +849,16 @@
             return (Math.round(v * 10 ** d) / 10 ** d).toFixed(d);
         }
 
-        // "Last 5 gameweeks" is the window; a double gameweek makes that six
-        // matches, so the count is said out loud rather than left to be counted.
+        /* "Last 5 gameweeks" is the window; how many matches that is depends on
+           the club. A double makes it six, a blank or a fixture still to come
+           makes it four — and since the totals underneath are summed over
+           matches, the count is said out loud rather than left to be worked out
+           from the columns. */
         function pfWindowLabel(w) {
             const gws = w.rounds.length;
-            const cols = w.columns.length;
-            return cols === gws ? `Last ${gws} gameweeks` : `Last ${gws} gameweeks (${cols} matches)`;
+            const m = w.matches;
+            return m === gws ? `Last ${gws} gameweeks`
+                : `Last ${gws} gameweeks (${m} match${m === 1 ? '' : 'es'})`;
         }
 
         /* The run, match by match. One column per fixture — a double gameweek is
@@ -803,15 +877,19 @@
                 }
                 const res = c.result == null ? '' : RESULT[String(c.result)] || '';
                 const dnp = c.state === 'dnp';
-                return `<th class="pf-col${dnp ? ' pf-dnp' : ''}"${dnp ? ` data-tooltip="${escHTML(player.name)} did not play in this fixture"` : ''}>
+                const soon = c.state === 'upcoming';
+                const tip = dnp ? `${escHTML(player.name)} did not play in this fixture`
+                    : soon ? 'This fixture has not been played yet' : '';
+                return `<th class="pf-col${dnp ? ' pf-dnp' : ''}${soon ? ' pf-upcoming' : ''}"${tip ? ` data-tooltip="${tip}"` : ''}>
                     <span class="pf-gw">GW${c.round}</span>
                     <span class="pf-opp">${c.isHome ? 'v' : '@'} ${escHTML(c.opponent)}</span>
-                    <span class="pf-res${res ? ' r-' + res : ''}">${c.scoreline ? escHTML(c.scoreline) + (res ? ' ' + res : '') : '—'}</span></th>`;
+                    <span class="pf-res${res ? ' r-' + res : ''}">${soon ? 'To play' : c.scoreline ? escHTML(c.scoreline) + (res ? ' ' + res : '') : '—'}</span></th>`;
             }).join('');
 
             const row = (label, get, dp) => `<tr><th scope="row">${escHTML(label)}</th>${
                 w.columns.map(c => {
                     if (c.state === 'blank') return `<td class="pf-na" data-tooltip="No fixture">—</td>`;
+                    if (c.state === 'upcoming') return `<td class="pf-na" data-tooltip="Not played yet">—</td>`;
                     if (c.state === 'dnp') return `<td class="pf-na" data-tooltip="Did not play">—</td>`;
                     return `<td>${pfNum(get(c.stats), dp)}</td>`;
                 }).join('')}</tr>`;
@@ -896,7 +974,7 @@
             if (!w) return '';
             return `<div class="pf-block">
                 <div class="pf-block-head">${escHTML(pfWindowLabel(w))}
-                    <span>${w.appearances} appearance${w.appearances === 1 ? '' : 's'}${w.blanks ? ` · ${w.blanks} blank` : ''}</span>
+                    <span>${w.appearances} appearance${w.appearances === 1 ? '' : 's'}${w.blanks ? ` · ${w.blanks} blank` : ''}${w.upcoming ? ` · ${w.upcoming} still to play` : ''}</span>
                 </div>
                 ${pfRenderMatchGrid(player, w)}
                 <div class="pf-split">

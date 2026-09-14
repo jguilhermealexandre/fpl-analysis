@@ -30,16 +30,21 @@ const COLUMN_DEFS = {
     own: { label: 'Own%', key: 'selectedBy', sortable: true, format: v => v.toFixed(1) + '%', tip: 'Ownership percentage' },
     
     // Gametime
-    games: { label: 'GP', key: 'l5.games', sortable: true, tip: 'Games played (L5)' },
+    /* GP counted his rows in the window, and FPL writes a row for an unused
+       substitute — so a defender who had not kicked a ball in a month still read
+       "4". It is appearances now: matches he was actually on the pitch for. The
+       per-game columns keep dividing by matches his CLUB played, which is the
+       denominator those rates want and is carried separately. */
+    games: { label: 'GP', key: 'l5.appearances', sortable: true, tip: 'Matches he appeared in' },
     mins: { label: 'Mins', key: 'l5.minutes', sortable: true, tip: 'Total minutes (L5)' },
-    minsG: { label: 'Mins/G', key: 'minsPerGame', sortable: true, format: v => v.toFixed(0), tip: 'Minutes per game', highlight: v => v >= 80 ? 'good' : v >= 60 ? '' : 'bad' },
-    
+    minsG: { label: 'Mins/G', key: 'minsPerGame', sortable: true, format: v => v.toFixed(0), tip: 'Minutes per match his club played', highlight: v => v >= 80 ? 'good' : v >= 60 ? '' : 'bad' },
+
     // Points
     pts: { label: 'Pts', key: 'l5.points', sortable: true, tip: 'Total points (L5)' },
-    ptsG: { label: 'Pts/G', key: 'ptsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Points per game', highlight: v => v >= 5 ? 'good' : v >= 3 ? '' : 'bad' },
+    ptsG: { label: 'Pts/G', key: 'ptsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Points per match his club played', highlight: v => v >= 5 ? 'good' : v >= 3 ? '' : 'bad' },
     form: { label: 'Form', key: 'form', sortable: true, format: v => v.toFixed(1), tip: 'FPL form rating', highlight: v => v >= 6 ? 'good' : v >= 4 ? '' : 'bad' },
     seasonPts: { label: 'Pts (S)', key: 'season.points', sortable: true, tip: 'Total season points' },
-    seasonPtsG: { label: 'Pts/G (S)', key: 'seasonPtsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Season points per game' },
+    seasonPtsG: { label: 'Pts/G (S)', key: 'seasonPtsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Season points per match his club played' },
     value: { label: 'Value', key: 'valueScore', sortable: true, format: v => v.toFixed(2), tip: 'Points per million', highlight: v => v >= 0.8 ? 'good' : '' },
     
     // Goals
@@ -985,47 +990,26 @@ document.addEventListener('click', function(e) {
 // ============================================
 // TIMEFRAME TOGGLE (ALL Players)
 // ============================================
+/* The Last 3 / Last 5 / Last 10 / Season toggle above the All Players table.
+
+   This was a third window over the same data, and it did not agree with the
+   other two: it sliced the last N ROWS and counted `games` as appearances,
+   while the L5 branch it sits next to sliced rows and counted `games` as rows.
+   Switching the toggle from Last 5 to Last 3 therefore changed what the GP
+   column meant and what every per-game column was divided by, on top of
+   changing the window — two different edits presented as one.
+
+   Same engine as L5 and the same engine as the profile card now, with N as the
+   only difference between them. */
 function computePlayerStats(player, timeframe) {
     if (timeframe === 'season') return player.season || {};
     if (timeframe === 'l5') return player.l5 || {};
+    if (typeof buildStatWindows !== 'function') return player.l5 || {};
 
-    // Compute from history for l10, l3
     const n = timeframe === 'l10' ? 10 : 3;
     const history = player.history || [];
-    const slice = history.slice(-n);
-    if (slice.length === 0) return player.l5 || {};
-
-    const stats = {
-        games: slice.filter(g => g.minutes > 0).length,
-        minutes: 0, points: 0, goals: 0, assists: 0,
-        xG: 0, xA: 0, xGI: 0, xGC: 0,
-        cleanSheets: 0, goalsConceded: 0, saves: 0,
-        bonus: 0, bps: 0, ict: 0,
-        influence: 0, creativity: 0, threat: 0,
-        penaltiesSaved: 0
-    };
-    slice.forEach(g => {
-        stats.minutes += g.minutes || 0;
-        stats.points += g.total_points || 0;
-        stats.goals += g.goals_scored || 0;
-        stats.assists += g.assists || 0;
-        stats.xG += parseFloat(g.expected_goals) || 0;
-        stats.xA += parseFloat(g.expected_assists) || 0;
-        stats.xGI += parseFloat(g.expected_goal_involvements) || 0;
-        stats.xGC += parseFloat(g.expected_goals_conceded) || 0;
-        stats.cleanSheets += g.clean_sheets || 0;
-        stats.goalsConceded += g.goals_conceded || 0;
-        stats.saves += g.saves || 0;
-        stats.bonus += g.bonus || 0;
-        stats.bps += g.bps || 0;
-        stats.ict += parseFloat(g.ict_index) || 0;
-        stats.influence += parseFloat(g.influence) || 0;
-        stats.creativity += parseFloat(g.creativity) || 0;
-        stats.threat += parseFloat(g.threat) || 0;
-        stats.penaltiesSaved += g.penalties_saved || 0;
-    });
-
-    return stats;
+    if (!history.length) return player.l5 || {};
+    return buildStatWindows(player, history, { window: n }).recent || player.l5 || {};
 }
 
 function setTimeframe(tf) {
