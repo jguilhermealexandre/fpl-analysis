@@ -122,7 +122,8 @@
             // used as-is that's not "no data", it's a uniform false "poor form" flag on every
             // player plus an absurd minutes-per-game (last season's full total / 1). Fall back
             // to last season's real points-per-game and a starts-based games-played estimate.
-            const gamesPlayed = isPreseason ? Math.max(player.starts || Math.round(player.minutes / 90), 1) : Math.max(currentGW - 1, 1);
+            // The shared count — see computePlayerGamesPlayed in xp-engine.js.
+            const gamesPlayed = computePlayerGamesPlayed(player);
             const minsPerGame = player.minutes / gamesPlayed;
             const effectiveForm = regressedForm(player, posConfig, gamesPlayed);
             // The raw figure is still what the card prints — it is a fact about
@@ -1270,7 +1271,7 @@
             const context = opts.context || 'squad';
             const { verdict, verdictReason, recommendation, concerns, positives, sellRating, fixtures } = analysis;
             const posConfig = POSITION_CONFIG[player.position];
-            const gamesPlayed = Math.max(currentGW - 1, 1);
+            const gamesPlayed = computePlayerGamesPlayed(player);
             const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
             const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
             const statsScopeLabel = player.position === 1 ? 'Goalkeeping' : player.position === 2 ? 'Defensive' : 'Attacking';
