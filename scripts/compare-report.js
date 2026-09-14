@@ -123,12 +123,13 @@ function updateCompareBar() {
                 xGC: sum(games, 'expected_goals_conceded'),
                 penaltiesSaved: sum(games, 'penalties_saved'),
                 penaltiesMissed: sum(games, 'penalties_missed'),
-                bigChancesCreated: sum(games, 'big_chances_created') || null,
-                _bigChancesCreatedEst: !sum(games, 'big_chances_created') ? Math.round(sum(games, 'expected_assists') * 2) : null,
-                bigChancesMissed: sum(games, 'big_chances_missed') || null,
-                _bigChancesMissedEst: !sum(games, 'big_chances_missed') ? Math.round(sum(games, 'expected_goals') * 0.8) : null,
-                keyPasses: sum(games, 'key_passes') || null,
-                _keyPassesEst: !sum(games, 'key_passes') ? Math.round(sum(games, 'expected_assists') * 5) : null,
+                /* Big chances and key passes are not here, and there is nothing
+                   to put in their place. FPL has never published them — they are
+                   absent from every one of the ~1,200 gameweek rows in the feed
+                   and from the live element-summary response — so the three
+                   fields that used to sit here were xA and xG multiplied by 2, 5
+                   and 0.8 and given another stat's name. xA and xG already say
+                   what they say, in their own units. */
                 ict: sum(games, 'ict_index'),
                 influence: sum(games, 'influence'),
                 creativity: sum(games, 'creativity'),

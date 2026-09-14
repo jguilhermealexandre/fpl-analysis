@@ -46,14 +46,11 @@ const COLUMN_DEFS = {
     goals: { label: 'G', key: 'l5.goals', sortable: true, tip: 'Goals scored (L5)' },
     xG: { label: 'xG', key: 'l5.xG', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals (L5)', term: 'xG' },
     xGG: { label: 'xG/G', key: 'xgPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xG per game' },
-    bcm: { label: 'BCM', key: 'l5.bigChancesMissed', sortable: true, tip: 'Big chances missed (L5). Null = estimated from xG', estimated: '_bigChancesMissedEst' },
     
     // Assists/Creativity
     assists: { label: 'A', key: 'l5.assists', sortable: true, tip: 'Assists (L5)' },
     xA: { label: 'xA', key: 'l5.xA', sortable: true, format: v => v.toFixed(2), tip: 'Expected assists (L5)', term: 'xA' },
     xAG: { label: 'xA/G', key: 'xaPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xA per game' },
-    kp: { label: 'KP', key: 'l5.keyPasses', sortable: true, tip: 'Key passes (L5). Null = estimated from xA', estimated: '_keyPassesEst' },
-    bcc: { label: 'BCC', key: 'l5.bigChancesCreated', sortable: true, tip: 'Big chances created (L5). Null = estimated from xA', estimated: '_bigChancesCreatedEst' },
     
     // Combined Expected
     xGI: { label: 'xGI', key: 'l5.xGI', sortable: true, format: v => v.toFixed(2), tip: 'Expected goal involvement (L5)', term: 'xGI' },
@@ -115,7 +112,7 @@ function colValue(p, colKey) {
 // Column presets. 'player' is always first and always frozen.
 const COLUMN_PRESETS = {
     core:      { label: 'Core', cols: ['player', 'price', 'own', 'pts', 'form', 'xGIG', 'fixtures'] },
-    attacking: { label: 'Attacking', cols: ['player', 'price', 'goals', 'assists', 'xGG', 'xAG', 'xGIG', 'kp', 'bcc', 'bcm', 'fixtures'] },
+    attacking: { label: 'Attacking', cols: ['player', 'price', 'goals', 'assists', 'xGG', 'xAG', 'xGIG', 'fixtures'] },
     defensive: { label: 'Defensive', cols: ['player', 'price', 'csPct', 'xGC90', 'saves90', 'gc90', 'bps', 'fixtures'] },
     all:       { label: 'All stats', cols: null }
 };
@@ -141,15 +138,20 @@ const DEFAULT_COLS = {
     GK: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'saves', 'gc', 'xGC', 'bonus', 'fdr'],
     DEF: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'gc', 'xGI', 'goals', 'assists', 'bonus', 'fdr'],
     MID: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'xA', 'bonus', 'fdr'],
-    FWD: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'bcm', 'bonus', 'fdr'],
-    ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
+    FWD: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'bonus', 'fdr'],
+    ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
 };
 
 const COLS_STORAGE_KEY = 'fpl_allplayers_cols';
 function loadSavedColumns() {
     try {
         const saved = localStorage.getItem(COLS_STORAGE_KEY);
-        if (saved) return JSON.parse(saved);
+        /* Filtered against the live definitions. A stored key for a column that
+           no longer exists knocked the table out of alignment rather than being
+           ignored — renderTableHeader drops the cell (`if (!col) return ''`)
+           while renderCell keeps one (`return '<td>-</td>'`), so every column
+           after it moved one place left in the header only. */
+        if (saved) return JSON.parse(saved).filter(k => COLUMN_DEFS[k]);
     } catch(e) {}
     return null;
 }
@@ -160,10 +162,10 @@ function saveColumns(cols) {
 // Available columns per position - FULL LIST
 const AVAILABLE_COLS = {
     GK: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'saves', 'gc', 'xGC', 'penSaved', 'bonus', 'bps', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-    DEF: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'gc', 'xGC', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'bcc', 'kp', 'bonus', 'bps', 'ict', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-    MID: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'cs', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-    FWD: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-    ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
+    DEF: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'gc', 'xGC', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'bonus', 'bps', 'ict', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+    MID: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+    FWD: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+    ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
 };
 
 function currentPresetName() {
@@ -614,7 +616,7 @@ function renderTableBody(position) {
 // Columns worth shading: numeric, comparable across players, and meaningful.
 const HEAT_COLS = new Set(['pts', 'ptsG', 'form', 'value', 'goals', 'assists', 'xG', 'xGG', 'xA', 'xAG',
     'xGI', 'xGIG', 'cs', 'csPct', 'saves', 'saves90', 'bonus', 'bps', 'ict', 'influence', 'creativity',
-    'threat', 'kp', 'bcc', 'minsG', 'seasonPts', 'seasonPtsG', 'xGC', 'xGC90', 'gc', 'gc90']);
+    'threat', 'minsG', 'seasonPts', 'seasonPtsG', 'xGC', 'xGC90', 'gc', 'gc90']);
 
 let heatScales = {};
 
@@ -774,15 +776,16 @@ function renderCell(p, colKey, position, isSelected) {
         return `<td style="color: var(--text-muted);">-</td>`;
     }
     
-    // Handle null/undefined values — check for estimated fallback
+    /* A missing number is shown as missing.
+
+       There used to be an "estimated" fallback here: a column with no data
+       rendered ~N, where N was a rescale of xA or xG wearing another stat's
+       name. See the note in fpl-teams-analysis.html, which faced the same
+       absence and refused it — FPL has never published big chances, key passes
+       or shots, so the estimate was not a fallback, it was the only path that
+       ever ran, and it carried no information xA and xG were not already
+       showing in their own columns. */
     if (value === null || value === undefined) {
-        // If this column has an estimated field, show it with ~ prefix
-        if (col.estimated) {
-            const estValue = getNestedValue(p, `l5.${col.estimated}`);
-            if (estValue !== null && estValue !== undefined && estValue !== 0) {
-                return `<td class="stat-cell" style="color: var(--text-muted);" title="Estimated from expected stats">~${estValue}</td>`;
-            }
-        }
         return `<td class="stat-cell" style="color: var(--text-muted);">-</td>`;
     }
     
@@ -999,11 +1002,8 @@ function computePlayerStats(player, timeframe) {
         cleanSheets: 0, goalsConceded: 0, saves: 0,
         bonus: 0, bps: 0, ict: 0,
         influence: 0, creativity: 0, threat: 0,
-        bigChancesMissed: null, bigChancesCreated: null,
-        keyPasses: null, penaltiesSaved: 0
+        penaltiesSaved: 0
     };
-
-    let hasBCM = false, hasBCC = false, hasKP = false;
     slice.forEach(g => {
         stats.minutes += g.minutes || 0;
         stats.points += g.total_points || 0;
@@ -1023,13 +1023,7 @@ function computePlayerStats(player, timeframe) {
         stats.creativity += parseFloat(g.creativity) || 0;
         stats.threat += parseFloat(g.threat) || 0;
         stats.penaltiesSaved += g.penalties_saved || 0;
-        if (g.big_chances_missed !== undefined && g.big_chances_missed !== null) { stats.bigChancesMissed = (stats.bigChancesMissed || 0) + g.big_chances_missed; hasBCM = true; }
-        if (g.big_chances_created !== undefined && g.big_chances_created !== null) { stats.bigChancesCreated = (stats.bigChancesCreated || 0) + g.big_chances_created; hasBCC = true; }
-        if (g.key_passes !== undefined && g.key_passes !== null) { stats.keyPasses = (stats.keyPasses || 0) + g.key_passes; hasKP = true; }
     });
-    if (!hasBCM) stats.bigChancesMissed = null;
-    if (!hasBCC) stats.bigChancesCreated = null;
-    if (!hasKP) stats.keyPasses = null;
 
     return stats;
 }
