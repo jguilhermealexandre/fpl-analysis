@@ -449,6 +449,48 @@
             }
         }
 
+        /* Five tiers where the card used to show a bar.
+
+           The 0-100 sell rating is still what analyzePlayer computes and still
+           what sorts the squad table and feeds squad health — it is just not a
+           number anyone can act on. "61" says nothing the word next to it did
+           not already say, and it invites a precision the model does not have.
+           So the card shows the band, and the band has five steps rather than
+           four because the middle of the old scale did all the work: everything
+           from a mild doubt to a genuine problem arrived as "MONITOR".
+
+           Display only, deliberately. The four verdicts analyzePlayer returns
+           still drive the pitch card colours, the squad table hazard icon,
+           squad health, the readiness checklist and Scout's Desk. Changing that
+           vocabulary is a bigger job than changing this label, and doing half of
+           it would leave the card and the pitch describing one player two ways. */
+        const PF_TIERS = [
+            { at: 20, key: 'essential', squad: 'ESSENTIAL', candidate: 'ELITE' },
+            { at: 35, key: 'solid',     squad: 'SOLID',     candidate: 'STRONG' },
+            { at: 48, key: 'watch',     squad: 'WATCH',     candidate: 'FAIR' },
+            { at: 60, key: 'doubt',     squad: 'DOUBT',     candidate: 'RISKY' },
+            { at: Infinity, key: 'sell', squad: 'SELL',     candidate: 'AVOID' }
+        ];
+
+        function pfTier(sellRating) {
+            return PF_TIERS.find(t => sellRating <= t.at) || PF_TIERS[PF_TIERS.length - 1];
+        }
+
+        /* Stable variety, not randomness.
+
+           Same idea as sdRoastPick in scripts/scouts-desk.js, which is not loaded
+           on these pages: FNV-1a over a seed, used to choose a phrasing. Seeded
+           on the player alone, so his write-up reads the same every time you open
+           it and differs from the next man's. Reaching for Math.random here would
+           mean the same player read differently on two consecutive clicks, which
+           looks like the model changing its mind. */
+        function pfPick(seed, options) {
+            let h = 2166136261;
+            const str = String(seed);
+            for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+            return options[Math.abs(h) % options.length];
+        }
+
         // ===== LEAGUE CONTEXT =====
         // How leaky each defence is, ranked across the league. A raw "concedes 1.8"
         // means little until you know whether that is 3rd worst or mid-table, which
@@ -1145,55 +1187,172 @@
             const effectiveForm = isPreseason ? (player.ppg || 0) : (parseFloat(player.form) || 0);
 
             const sentences = [];
+            /* Seeded on the player, so his write-up reads the same whenever you
+               open it and differently from the next man's. See pfPick. */
+            const pick = (beat, options) => pfPick(`${player.id}:${beat}`, options);
+            const tierKey = pfTier(analysis.sellRating).key;
 
-            const leads = context === 'candidate' ? {
-                star: `${player.name} would be one of the stronger names in this squad`,
-                hold: `${player.name} looks like a solid, low-drama pickup`,
-                monitor: `${player.name} is a fair option but not without questions`,
-                sell: `${player.name}'s underlying signals are weak right now`
-            } : {
-                star: `${player.name} is one of the stronger assets in this squad right now`,
-                hold: `${player.name} looks like a solid, low-drama hold`,
-                monitor: `${player.name} is worth keeping an eye on`,
-                sell: `${player.name} is flagged as a sell candidate`
+            /* Every beat has three phrasings. The old version had one each, in
+               one order, so any two players of the same shape read as the same
+               paragraph with the names swapped — which is what makes generated
+               prose feel generated. Variety only: no beat says anything a single
+               phrasing would not have said. */
+            const LEADS = {
+                squad: {
+                    essential: ['is one of the better assets in this squad',
+                        'is doing exactly the job he was bought for',
+                        'is earning his place comfortably'],
+                    solid: ['looks like a steady, low-drama hold',
+                        'is quietly doing enough',
+                        'is not where this squad has a problem'],
+                    watch: ['is worth keeping an eye on',
+                        'is drifting toward a decision',
+                        'has started asking questions of his own place'],
+                    doubt: ['is getting hard to justify',
+                        'is close to being a problem rather than a worry',
+                        'is holding a place he is not repaying'],
+                    sell: ['is flagged as a sell',
+                        'has run out of excuses',
+                        'looks like the move this squad is waiting on']
+                },
+                candidate: {
+                    essential: ['would be one of the stronger names in most squads',
+                        'is the kind of signing that settles a position',
+                        'reads as a straightforward upgrade'],
+                    solid: ['looks like a sensible, low-drama pickup',
+                        'would do a steady job',
+                        'is a reasonable way to spend the money'],
+                    watch: ['is a fair option, but not without questions',
+                        'would be a bet rather than a signing',
+                        'has enough going for him to be worth a second look'],
+                    doubt: ['is hard to recommend at the moment',
+                        'carries more risk than the price suggests',
+                        'would need the doubts below to resolve first'],
+                    sell: ['does not look like a buy right now',
+                        'has little going for him on these numbers',
+                        'is one to leave alone for now']
+                }
             };
-            const verdictLead = leads[verdict] || `${player.name}'s outlook is mixed`;
-            const reason = verdictReason ? verdictReason.charAt(0).toLowerCase() + verdictReason.slice(1) : '';
-            sentences.push(reason ? `${verdictLead} \u2014 ${reason}` : `${verdictLead}.`);
 
-            if (effectiveForm >= 6) sentences.push(`Individually, form is excellent at ${effectiveForm.toFixed(1)} points a game, well clear of the ${posConfig.short} median of ${posConfig.formMedian}.`);
-            else if (effectiveForm >= 4) sentences.push(`Form is solid at ${effectiveForm.toFixed(1)}, in line with a dependable ${posConfig.short}.`);
-            else if (effectiveForm > 0) sentences.push(`Form is soft at just ${effectiveForm.toFixed(1)}, below the ${posConfig.short} median of ${posConfig.formMedian}.`);
+            /* An unavailable player is not a player who has been judged and found
+               wanting, and the sell vocabulary above reads as though he has. He
+               tops the rating because he cannot play, which is a different
+               sentence — "has run out of excuses" about a man with a back injury
+               is both wrong and rude. */
+            const OUT_LEADS = {
+                squad: ['cannot play at the moment', 'is unavailable', 'is out of the side'],
+                candidate: ['cannot be picked at the moment', 'is unavailable to buy into', 'is out injured']
+            };
+            const unavailable = player.status === 'i' || player.status === 'u' || player.status === 's';
+            const ctxKey = context === 'candidate' ? 'candidate' : 'squad';
+            const leadSet = unavailable
+                ? OUT_LEADS[ctxKey]
+                : ((LEADS[ctxKey] || {})[tierKey] || ['has a mixed outlook']);
+            const reason = verdictReason ? verdictReason.charAt(0).toLowerCase() + verdictReason.slice(1) : '';
+            /* The reason is a fragment from analyzePlayer and does not reliably
+               end in anything, so the terminator is added here — without
+               doubling one that is already there. */
+            const lead = `${player.name} ${pick('lead', leadSet)}${reason ? ` — ${reason}` : ''}`;
+            sentences.push(/[.!?]$/.test(lead) ? lead : `${lead}.`);
+
+            const fm = posConfig.formMedian;
+            if (effectiveForm >= 6) {
+                sentences.push(pick('form', [
+                    `Form is excellent at ${effectiveForm.toFixed(1)} a game, well clear of the ${posConfig.short} median of ${fm}.`,
+                    `He is returning ${effectiveForm.toFixed(1)} a game, which is some way above what a ${posConfig.short} is expected to.`,
+                    `At ${effectiveForm.toFixed(1)} a game he is comfortably outscoring the ${posConfig.short} median of ${fm}.`]));
+            } else if (effectiveForm >= 4) {
+                sentences.push(pick('form', [
+                    `Form is solid at ${effectiveForm.toFixed(1)}, in line with a dependable ${posConfig.short}.`,
+                    `${effectiveForm.toFixed(1)} a game is respectable for a ${posConfig.short} — nothing spectacular, nothing wrong.`,
+                    `He is around the ${posConfig.short} median at ${effectiveForm.toFixed(1)} a game.`]));
+            } else if (effectiveForm > 0) {
+                sentences.push(pick('form', [
+                    `Form is soft at just ${effectiveForm.toFixed(1)}, below the ${posConfig.short} median of ${fm}.`,
+                    `${effectiveForm.toFixed(1)} a game is thin for a ${posConfig.short}, where ${fm} is par.`,
+                    `The returns have dried up: ${effectiveForm.toFixed(1)} a game against a ${posConfig.short} median of ${fm}.`]));
+            }
 
             if (ta && ta.matchesPlayed > 0) {
-                const formWord = ta.formRating >= 55 ? 'in good form' : ta.formRating < 40 ? 'out of form' : 'showing average form';
-                sentences.push(`${player.team} are ${formWord} coming into this (W${ta.wins} D${ta.draws} L${ta.losses} in their last ${Math.min(ta.matchesPlayed, 5)}).`);
+                const wdl = `W${ta.wins} D${ta.draws} L${ta.losses}`;
+                const last = Math.min(ta.matchesPlayed, 5);
+                if (ta.formRating >= 55) {
+                    sentences.push(pick('team', [
+                        `${player.team} are in good form behind him (${wdl} in their last ${last}).`,
+                        `The team around him is winning — ${wdl} from ${last}.`,
+                        `${player.team} have been going well, ${wdl} across their last ${last}.`]));
+                } else if (ta.formRating < 40) {
+                    sentences.push(pick('team', [
+                        `${player.team} are out of form (${wdl} in their last ${last}), which drags on everyone in the side.`,
+                        `He is doing it in a struggling team: ${wdl} from ${last}.`,
+                        `${player.team} have won little lately — ${wdl} in ${last} — and that shows up in returns.`]));
+                } else {
+                    sentences.push(pick('team', [
+                        `${player.team} have been about average (${wdl} in their last ${last}).`,
+                        `The side around him is neither carrying nor hurting him: ${wdl} from ${last}.`,
+                        `${player.team} sit mid-table on form, ${wdl} across ${last}.`]));
+                }
             }
 
             if (swing) {
                 sentences.push(swing.direction === 'improving'
-                    ? `Their fixtures ease up from GW${swing.swingGW} (FDR ${swing.currentFdr} \u2192 ${swing.futureFdr}) \u2014 a good moment to be holding or buying in.`
-                    : `Their fixtures get tougher from GW${swing.swingGW} (FDR ${swing.currentFdr} \u2192 ${swing.futureFdr}) \u2014 worth planning around.`);
+                    ? pick('swing', [
+                        `Their fixtures ease from GW${swing.swingGW} (FDR ${swing.currentFdr} → ${swing.futureFdr}) — a good moment to be holding.`,
+                        `The schedule turns kind at GW${swing.swingGW}, ${swing.currentFdr} down to ${swing.futureFdr}.`,
+                        `From GW${swing.swingGW} the run opens up: FDR ${swing.currentFdr} becomes ${swing.futureFdr}.`])
+                    : pick('swing', [
+                        `Their fixtures tighten from GW${swing.swingGW} (FDR ${swing.currentFdr} → ${swing.futureFdr}) — worth planning around.`,
+                        `The run gets harder at GW${swing.swingGW}, ${swing.currentFdr} rising to ${swing.futureFdr}.`,
+                        `GW${swing.swingGW} is where the schedule turns: FDR ${swing.currentFdr} to ${swing.futureFdr}.`]));
             }
 
             if (fx && oppTA && oppTA.matchesPlayed) {
-                const oppFormWord = oppTA.formRating >= 55 ? 'good form' : oppTA.formRating < 40 ? 'poor form' : 'average form';
-                sentences.push(`Next up ${fx.isHome ? 'at home to' : 'away at'} ${fx.opponent}, who are in ${oppFormWord} (FDR ${fx.difficulty || 3}).`);
+                const word = oppTA.formRating >= 55 ? 'good form' : oppTA.formRating < 40 ? 'poor form' : 'average form';
+                const where = fx.isHome ? `at home to ${fx.opponent}` : `away at ${fx.opponent}`;
+                sentences.push(pick('opp', [
+                    `Next up ${where}, who are in ${word} (FDR ${fx.difficulty || 3}).`,
+                    `${fx.opponent} are next, ${fx.isHome ? 'at home' : 'away'}, and in ${word}.`,
+                    `The immediate test is ${where} — ${word}, FDR ${fx.difficulty || 3}.`]));
             }
 
             const pwLocked = typeof pwIsLocked === 'function' && pwIsLocked(player);
             const pw = !pwLocked && typeof pwClassify === 'function' ? pwClassify(player, 20) : null;
             if (pw) {
+                const dir = pw.dir === 'rise' ? 'rise' : 'drop';
                 sentences.push(pw.tier === 'due'
-                    ? `The price meter is full \u2014 a ${pw.dir === 'rise' ? 'rise' : 'drop'} is due at the next update.`
-                    : `The price meter is ${Math.round(Math.abs(pw.progress))}% of the way to a ${pw.dir === 'rise' ? 'rise' : 'drop'}.`);
+                    ? pick('price', [
+                        `The price meter is full — a ${dir} is due at the next update.`,
+                        `A ${dir} lands tonight unless the meter turns around.`,
+                        `He is at the line: a price ${dir} is due.`])
+                    : pick('price', [
+                        `The price meter is ${Math.round(Math.abs(pw.progress))}% of the way to a ${dir}.`,
+                        `A ${dir} is ${Math.round(Math.abs(pw.progress))}% of the way there — close, not due.`,
+                        `Watch the price: ${Math.round(Math.abs(pw.progress))}% toward a ${dir}.`]));
             } else {
                 const mom = typeof priceMomentum === 'function' ? priceMomentum(player) : null;
-                if (mom) sentences.push(`Transfer momentum points toward a price ${mom.rising ? 'rise' : 'fall'} (${mom.label.toLowerCase()}), though it isn't close enough yet to call.`);
+                if (mom) {
+                    const dir = mom.rising ? 'rise' : 'fall';
+                    sentences.push(pick('price', [
+                        `Transfer momentum points toward a price ${dir}, though it is not close enough to call.`,
+                        `The market is moving on him (${mom.label.toLowerCase()}), which usually precedes a ${dir}.`,
+                        `Early signs of a price ${dir} — momentum only, nothing imminent.`]));
+                }
             }
 
-            if (concerns.length) sentences.push(`${concerns.length} concern${concerns.length > 1 ? 's' : ''} flagged below${positives.length ? `, against ${positives.length} positive${positives.length > 1 ? 's' : ''}.` : '.'}`);
-            else if (positives.length) sentences.push(`No concerns flagged, and ${positives.length} positive${positives.length > 1 ? 's' : ''} working in their favour.`);
+            if (concerns.length) {
+                const c = `${concerns.length} concern${concerns.length > 1 ? 's' : ''}`;
+                const pos = positives.length ? `${positives.length} positive${positives.length > 1 ? 's' : ''}` : null;
+                sentences.push(pick('tally', [
+                    pos ? `${c} flagged below, against ${pos}.` : `${c} flagged below.`,
+                    pos ? `The detail below lists ${c} and ${pos}.` : `The detail below lists ${c}.`,
+                    pos ? `Weigh the ${c} below against the ${pos}.` : `See the ${c} below.`]));
+            } else if (positives.length) {
+                const pos = `${positives.length} positive${positives.length > 1 ? 's' : ''}`;
+                sentences.push(pick('tally', [
+                    `No concerns flagged, and ${pos} in his favour.`,
+                    `Nothing on the concern list, with ${pos} below.`,
+                    `Clean sheet on the concerns, ${pos} working for him.`]));
+            }
 
             return sentences.join(' ');
         }
@@ -1275,11 +1434,11 @@
             const minsPerGame = player.minsPerGame || (player.minutes / gamesPlayed);
             const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
             const statsScopeLabel = player.position === 1 ? 'Goalkeeping' : player.position === 2 ? 'Defensive' : 'Attacking';
-            // "SELL" as a badge on a player you're evaluating to BUY reads as an
-            // instruction, not a rating \u2014 candidate mode swaps in strength words.
-            const chipLabel = context === 'candidate'
-                ? { star: 'STRONG', hold: 'SOLID', monitor: 'MIXED', sell: 'WEAK' }[verdict] || verdict.toUpperCase()
-                : (verdict === 'star' ? 'STAR' : verdict.toUpperCase());
+            /* "SELL" as a badge on a player you are evaluating to BUY reads as
+               an instruction rather than a rating, so candidate mode swaps in
+               strength words for the same five bands. */
+            const tier = pfTier(sellRating);
+            const chipLabel = context === 'candidate' ? tier.candidate : tier.squad;
 
             let html = '';
 
@@ -1303,30 +1462,23 @@
                     ? gwPlayerReportLine(player, gwReviewTarget())
                     : '';
                 html += `<div class="detail-section pd-report" data-accent="report">
-                    <div class="detail-section-title">\ud83e\udde0 AI Report</div>
+                    <div class="detail-section-title">${v2Icon('sparkle')} Scout's Take</div>
                     ${gwLine}
                     <div class="pd-report-text">${escHTML(buildPlayerNarrativeReport(player, analysis, context))}</div>
                 </div>`;
             }
 
-            /* The conclusion, next to the argument that reached it. The rating
-               is a meter rather than "Sell Rating: 0/100" in grey text — it was
-               the one number on this card you had to stop and parse, and it is
-               a percentage of a fixed scale, which is what a bar is for. */
-            const sellTone = sellRating >= 65 ? 'var(--verdict-sell)'
-                : sellRating >= 35 ? 'var(--verdict-monitor)' : 'var(--verdict-hold)';
+            /* The conclusion, next to the argument that reached it. The 0-100
+               meter that used to sit under it is gone: it was a second way of
+               saying what the chip above already said, in a unit nobody can act
+               on. The band carries the reading now — see PF_TIERS. */
             html += `<div class="detail-section pd-verdict" data-accent="verdict">
                 <div class="detail-section-title">${v2Icon('scales')} Verdict</div>
                 <div class="pd-verdict-top">
-                    <span class="pd-verdict-chip ${verdict}">${chipLabel}</span>
+                    <span class="pd-verdict-chip t-${tier.key}">${chipLabel}</span>
                 </div>
-                <div class="pd-verdict-why" style="margin-bottom:10px;">${escHTML(verdictReason)}</div>
+                <div class="pd-verdict-why">${escHTML(verdictReason)}</div>
                 ${showRecommendation && recommendation ? `<div class="pd-verdict-rec"><strong>Do this:</strong> ${escHTML(recommendation)}</div>` : ''}
-                <div class="pd-sell-rate" title="How strongly the model rates this player as a sell, out of 100.">
-                    <span class="pd-sell-rate-label">Sell rating</span>
-                    <span class="pd-sell-rate-bar"><i style="width:${Math.max(0, Math.min(100, sellRating))}%;background:${sellTone}"></i></span>
-                    <span class="pd-sell-rate-num" style="color:${sellTone}">${sellRating}</span>
-                </div>
             </div>`;
 
             /* Price Watch rides with the summary rather than sitting below the
@@ -1695,38 +1847,61 @@
             if (typeof pdmAfterRender === 'function') pdmAfterRender(player);
         }
 
-        /* ===== The masonry band =====
+        /* ===== How the body is laid out =====
 
            The three readings were grid items with explicit columns, which meant
            the positives — placed in the third column — started on the grid's
            next row, and that row's height was set by the tallest thing on it.
            So a short list of positives sat beside a column and a half of white
            space. CSS grid cannot pack that way (masonry rows are not shipped
-           broadly enough to rely on), so the band is three real columns and each
-           one is a stack: the blocks in it sit directly under one another.
+           broadly enough to rely on), so a band is real columns and each one is
+           a stack: the blocks in it sit directly under one another.
 
-           Which section goes in which column is fixed rather than measured. The
-           two stat cards are the tall ones and take a column each; everything
-           that reads as commentary — the routes, the positives, the concerns —
-           stacks in the third. */
-        const PDM_BANDS = [['stats'], ['season'], ['routes', 'concerns', 'positives']];
+           The order is the reading order. Season Numbers first and full width,
+           because the season is the steady figure everything else is judged
+           against. Key Statistics next, also full width — it carries the
+           match-by-match form grid now, which is five or six columns wide and
+           cannot live in a third of the sheet. Then the commentary: routes to
+           points beside the concerns and positives, which are short and stack
+           happily in one column next to it.
+
+           `full` sections keep their own row; `cols` builds a band. */
+        const PDM_LAYOUT = [
+            { full: 'season' },
+            { full: 'stats' },
+            { cols: [['routes'], ['concerns', 'positives']] }
+        ];
 
         function pdmLayoutBands(host) {
             const body = host.querySelector('.pdm-body');
             if (!body) return;
             const pick = a => body.querySelector(`.detail-section[data-accent="${a}"]`);
-            const anchorEl = pick('stats') || pick('season') || pick('routes');
+            const anchorEl = pick('season') || pick('stats') || pick('routes');
             if (!anchorEl || !anchorEl.parentNode) return;
 
-            const wrap = document.createElement('div');
-            wrap.className = 'pdm-bands';
-            anchorEl.parentNode.insertBefore(wrap, anchorEl);
+            /* The holder is inserted at the anchor's place BEFORE anything moves.
+               Building a fragment first and inserting it before the anchor cannot
+               work once the anchor itself has been moved into that fragment. */
+            const holder = document.createElement('div');
+            holder.className = 'pdm-layout';
+            anchorEl.parentNode.insertBefore(holder, anchorEl);
 
-            PDM_BANDS.forEach(keys => {
-                const col = document.createElement('div');
-                col.className = 'pdm-col';
-                keys.forEach(k => { const el = pick(k); if (el) col.appendChild(el); });
-                if (col.children.length) wrap.appendChild(col);
+            PDM_LAYOUT.forEach(row => {
+                if (row.full) {
+                    const el = pick(row.full);
+                    if (el) { el.classList.add('pdm-full'); holder.appendChild(el); }
+                    return;
+                }
+                const wrap = document.createElement('div');
+                wrap.className = 'pdm-bands';
+                wrap.style.setProperty('--pdm-cols', String(row.cols.length));
+                row.cols.forEach(keys => {
+                    const col = document.createElement('div');
+                    col.className = 'pdm-col';
+                    keys.forEach(k => { const el = pick(k); if (el) col.appendChild(el); });
+                    if (col.children.length) wrap.appendChild(col);
+                });
+                if (wrap.children.length) holder.appendChild(wrap);
             });
         }
 
