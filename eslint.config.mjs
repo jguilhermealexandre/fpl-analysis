@@ -112,7 +112,6 @@ export default [
                 PA_ICONS: 'writable',
                 PA_PRICE_PRIOR_CLAMP: 'writable',
                 PA_PRICE_PRIOR_K: 'writable',
-                PDM_BANDS: 'writable',
                 PDM_LAYOUT: 'writable',
                 PEN_XG90: 'writable',
                 PF_PAR: 'writable',
