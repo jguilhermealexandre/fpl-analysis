@@ -533,6 +533,16 @@ function updateCompareBar() {
             const hasAttacker = reportData.some(p => p.pos === 'MID' || p.pos === 'FWD');
 
             // Build enhanced stat rows
+            /* Recent form, from the shared builder in scripts/player-profile.js
+               — the same window and the same five-per-position stats the profile
+               card draws, so the two cannot disagree about a player. Totals only
+               here: the match-by-match grid is five columns wide and this table
+               already carries up to five players across. */
+            reportData.forEach(p => {
+                p._form = (typeof pfWindowFor === 'function') ? pfWindowFor(p) : null;
+            });
+            const formWindow = reportData.map(p => p._form).find(Boolean) || null;
+
             const getValue = (obj, path) => path.split('.').reduce((o, k) => (o || {})[k], obj);
             const lowerIsBetter = new Set(['l5.goalsConceded', 'l5.xGC', 'fdr', 'price']);
 
@@ -592,6 +602,25 @@ function updateCompareBar() {
             statRows.push({ label: 'Value Score', key: 'valueScore', fmt: v => v?.toFixed(2) || '-' });
             statRows.push({ label: 'FDR (Next 3)', key: 'fixtures.avgFDR3', fmt: v => v?.toFixed(1) || '-', lower: true });
 
+            /* Position-specific where it can be. Comparing a keeper with a
+               forward has no five stats in common worth tabulating, so a mixed
+               selection falls back to the figures that mean the same thing in
+               any shirt rather than showing saves against a striker. */
+            if (formWindow) {
+                const positions = new Set(reportData.map(p => p.position).filter(Boolean));
+                const formStats = (positions.size === 1 && typeof pfStatsFor === 'function')
+                    ? pfStatsFor([...positions][0])
+                    : [{ key: 'goals', label: 'Goals' }, { key: 'assists', label: 'Assists' },
+                        { key: 'xGI', label: 'xGI', dp: 1 }, { key: 'bonus', label: 'Bonus' }];
+                statRows.push({ group: (typeof pfWindowLabel === 'function' ? pfWindowLabel(formWindow) : 'Recent form') });
+                statRows.push({ label: 'Pts', key: '_form.totals.points', fmt: v => v == null ? '-' : String(Math.round(v)) });
+                statRows.push({ label: 'Mins', key: '_form.totals.minutes', fmt: v => v == null ? '-' : String(Math.round(v)) });
+                formStats.forEach(st => statRows.push({
+                    label: st.label, key: `_form.totals.${st.key}`, lower: !!st.invert,
+                    fmt: v => v == null ? '-' : (typeof pfNum === 'function' ? pfNum(v, st.dp) : String(v))
+                }));
+            }
+
             // Rising Form & Routes
             statRows.push({ group: 'AI Insights' });
             statRows.push({ label: 'Rising Form Score', key: 'risingScore', fmt: v => v > 0 ? v.toFixed(0) : '-' });
@@ -606,6 +635,24 @@ function updateCompareBar() {
                     const formatted = row.fmt ? row.fmt(val) : (val ?? '-');
                     return `<td class="${i === bestIdx && reportData.length > 1 ? 'best-val' : ''}">${formatted}</td>`;
                 })).join('')}</tr>`;
+            }).join('');
+
+            /* The reading, per player, in both windows. Prose rather than table
+               cells because that is what it is — a sentence about whether the
+               returns match the chances — and because pfVsExpected() is allowed
+               to say the sample is too thin, which is not a number. */
+            const formReadHtml = !formWindow ? '' : reportData.map(p => {
+                const w = p._form;
+                if (!w || typeof pfExpectedPairs !== 'function') return '';
+                const pairs = pfExpectedPairs(p.position);
+                if (!pairs.length) return '';
+                const reads = pairs.map(pr => {
+                    const l5 = pfVsExpected(w.totals[pr.key], w.totals[pr.expected], pr);
+                    const se = pfVsExpected(w.season[pr.key], w.season[pr.expected], pr);
+                    return `<div class="pf-read t-${l5.tone}"><em>${escHTML(pr.label)} · last ${w.rounds.length}</em> ${escHTML(l5.text)}</div>
+                            <div class="pf-read t-${se.tone}"><em>${escHTML(pr.label)} · season</em> ${escHTML(se.text)}</div>`;
+                }).join('');
+                return `<div class="pf-verdict"><div class="pf-verdict-head">${escHTML(p.name)}</div>${reads}</div>`;
             }).join('');
 
             // Build picks HTML
@@ -795,6 +842,11 @@ function updateCompareBar() {
                             </table>
                         </div>
                     </div>
+
+                    ${formReadHtml ? `<div class="report-form-read">
+                        <h4>Actual against expected</h4>
+                        <div class="pf-verdicts">${formReadHtml}</div>
+                    </div>` : ''}
 
                     <!-- Player Profile Cards -->
                     <div class="report-profiles">${profilesHtml}</div>

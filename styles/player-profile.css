@@ -767,3 +767,81 @@
 .ph-moves li.down { color: var(--color-error); }
 .ph-move-gw { font-weight: 700; opacity: 0.75; }
 .ph-note { margin-top: 8px; font-size: 10px; color: var(--text-muted); }
+
+/* ============================================
+   RECENT FORM — the last five gameweeks (scripts/player-profile.js)
+
+   Two readings of one window. The grid is the shape of the run, match by
+   match; the totals are what it added up to, next to the season. Shared by the
+   profile card and the AI Scouting Report, so it lives here with the card.
+   ============================================ */
+.pf-block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-default); }
+
+.pf-block-head {
+    display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-secondary);
+}
+.pf-block-head span { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-muted); }
+
+/* The grid scrolls rather than squeezing: a double gameweek makes six columns,
+   and a stat table that reflows into two lines per cell stops being readable. */
+.pf-grid-wrap { overflow-x: auto; }
+
+.pf-grid { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.pf-grid th, .pf-grid td { padding: 5px 7px; text-align: center; font-size: 12px; }
+.pf-grid tbody th[scope="row"] {
+    text-align: left; white-space: nowrap; font-weight: 600;
+    font-size: 11px; color: var(--text-secondary);
+}
+.pf-grid tbody tr:nth-child(odd) { background: var(--surface-2); }
+.pf-grid td { color: var(--text-primary); font-weight: 600; }
+
+.pf-col { vertical-align: bottom; border-bottom: 1px solid var(--border-default); }
+.pf-col span { display: block; line-height: 1.25; }
+.pf-gw { font-size: 9px; font-weight: 700; letter-spacing: .04em; color: var(--text-muted); }
+.pf-opp { font-size: 11px; font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+.pf-res { font-size: 9.5px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.pf-res.r-W { color: var(--color-success); }
+.pf-res.r-L { color: var(--color-error); }
+
+/* A gameweek the club sat out and a match he was not in are both blank on the
+   scoresheet and mean opposite things, so neither is drawn as a zero. */
+.pf-col.pf-blank .pf-opp, .pf-col.pf-dnp .pf-opp { color: var(--text-muted); font-weight: 600; }
+.pf-col.pf-blank { background: repeating-linear-gradient(135deg,
+    transparent, transparent 4px, var(--surface-2) 4px, var(--surface-2) 8px); }
+.pf-na { color: var(--text-muted) !important; font-weight: 400 !important; }
+
+.pf-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 14px; margin-top: 12px; }
+@media (max-width: 720px) { .pf-split { grid-template-columns: minmax(0, 1fr); } }
+
+.pf-totals { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.pf-totals th, .pf-totals td { padding: 4px 7px; font-size: 12px; text-align: right; }
+.pf-totals thead th { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.pf-totals tbody th[scope="row"] { text-align: left; font-weight: 600; font-size: 11px; color: var(--text-secondary); }
+.pf-totals tbody tr:nth-child(odd) { background: var(--surface-2); }
+.pf-totals td { font-weight: 700; color: var(--text-primary); }
+/* The season column is the steadier number and the recent one is the news, so
+   the recent one is what the eye lands on. */
+.pf-totals .pf-season { color: var(--text-muted); font-weight: 600; }
+
+.pf-verdicts { display: flex; flex-direction: column; gap: 8px; }
+.pf-verdict { padding: 8px 10px; border-radius: var(--radius-sm, 6px); background: var(--surface-2); }
+.pf-verdict-head {
+    font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-primary); margin-bottom: 5px;
+}
+.pf-verdict-head span { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-muted); }
+.pf-read { font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); padding-left: 8px; border-left: 2px solid var(--border-default); }
+.pf-read + .pf-read { margin-top: 4px; }
+.pf-read em { font-style: normal; font-weight: 700; color: var(--text-muted); margin-right: 5px; }
+.pf-read.t-over  { border-left-color: var(--color-success); }
+.pf-read.t-under { border-left-color: var(--color-error); }
+.pf-read.t-par   { border-left-color: var(--text-muted); }
+/* Too small a sample to call is a reading too, and it should not borrow the
+   colour of one that has something to say. */
+.pf-read.t-thin  { border-left-color: var(--border-default); color: var(--text-muted); }
+
+.report-form-read { margin-top: 18px; }
+.report-form-read h4 { font-size: 13px; margin-bottom: 10px; }
+.report-form-read .pf-verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }

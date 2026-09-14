@@ -496,6 +496,373 @@
             };
         }
 
+        /* ===== RECENT FORM — the last five gameweeks, match by match =====
+
+           What the Premier League's own player pages show, built from the only
+           stats FPL actually publishes. Shots, key passes, big chances and pass
+           accuracy are not among them — they are absent from every gameweek row
+           in the feed and from the live element-summary response — so nothing
+           here stands in for them. A number shown is a number FPL reported.
+
+           Two readings come out of one pass, because they answer different
+           questions. The match-by-match grid says what the run looked like: one
+           haul and four blanks is not the same shape as five steady returns,
+           and a total hides the difference. The totals say what it added up to,
+           next to the season figure, because five games is a small sample and
+           the season is the one that holds up.
+
+           Three things a column can be, and they are not interchangeable:
+
+             played   the club played and so did he
+             dnp      the club played, he did not — a real fixture he missed.
+                      FPL writes a row for an unused squad member too, so this
+                      is minutes rather than the row's existence: an injured
+                      defender has four rows and no appearances
+             blank    the club had no fixture at all that gameweek
+
+           A blank and a benching both score nothing and mean opposite things,
+           which is why they are drawn differently rather than both as a zero.
+           A double gameweek gets a column per fixture rather than one merged
+           column, so five gameweeks can be six matches. */
+        const PF_WINDOW = 5;
+
+        // Per-match figures, in the shape both readings consume. Everything is
+        // read straight off the feed's own fields; nothing is derived except
+        // goals-plus-assists, which is an addition rather than an estimate.
+        function pfMatchStats(row) {
+            const n = k => parseFloat(row[k]) || 0;
+            const goals = n('goals_scored'), assists = n('assists');
+            return {
+                points: n('total_points'), minutes: n('minutes'), starts: n('starts'),
+                goals, assists, gi: goals + assists,
+                xG: n('expected_goals'), xA: n('expected_assists'), xGI: n('expected_goal_involvements'),
+                cleanSheets: n('clean_sheets'), goalsConceded: n('goals_conceded'),
+                xGC: n('expected_goals_conceded'),
+                saves: n('saves'), penaltiesSaved: n('penalties_saved'),
+                defCon: n('defensive_contribution'),
+                tackles: n('tackles'), cbi: n('clearances_blocks_interceptions'),
+                recoveries: n('recoveries'),
+                bonus: n('bonus'), bps: n('bps'),
+                threat: n('threat'), creativity: n('creativity'), influence: n('influence')
+            };
+        }
+
+        const PF_ZERO_STATS = () => pfMatchStats({});
+
+        function pfSum(rows) {
+            const out = PF_ZERO_STATS();
+            rows.forEach(r => { Object.keys(out).forEach(k => { out[k] += r[k]; }); });
+            return out;
+        }
+
+        /* The last round anyone has played, from the fixture list rather than
+           from is_current — which names the round whose deadline passed most
+           recently and keeps naming it while that round is still being played.
+           fixturePlayed() is the fast flag; see scripts/common.js. */
+        function pfLastPlayedRound(fixtures) {
+            let last = 0;
+            (fixtures || []).forEach(f => {
+                if (f && f.event && typeof fixturePlayed === 'function' && fixturePlayed(f) && f.event > last) last = f.event;
+            });
+            return last;
+        }
+
+        /* The window, as columns. `history` is the player's own per-gameweek
+           rows; `fixtures` is the whole fixture list, which is what tells a
+           blank gameweek apart from a missed match. */
+        function pfFormWindow(player, history, fixtures, teamsById, opts) {
+            const o = opts || {};
+            const n = o.window || PF_WINDOW;
+            const last = o.lastRound || pfLastPlayedRound(fixtures);
+            if (!last) return null;
+
+            const rounds = [];
+            for (let gw = Math.max(1, last - n + 1); gw <= last; gw++) rounds.push(gw);
+
+            const rowsByFixture = new Map();
+            const rowsByRound = new Map();
+            (history || []).forEach(r => {
+                if (r.fixture != null) rowsByFixture.set(r.fixture, r);
+                if (!rowsByRound.has(r.round)) rowsByRound.set(r.round, []);
+                rowsByRound.get(r.round).push(r);
+            });
+
+            const columns = [];
+            rounds.forEach(gw => {
+                const clubFixtures = (fixtures || []).filter(f =>
+                    f && f.event === gw && (f.team_h === player.teamId || f.team_a === player.teamId));
+
+                if (!clubFixtures.length) {
+                    columns.push({ round: gw, state: 'blank', stats: PF_ZERO_STATS() });
+                    return;
+                }
+                // A column per fixture: a double gameweek is two matches and
+                // merging them would hide that the second one happened.
+                clubFixtures.sort((a, b) => String(a.kickoff_time || '').localeCompare(String(b.kickoff_time || '')));
+                clubFixtures.forEach(f => {
+                    const isHome = f.team_h === player.teamId;
+                    const oppId = isHome ? f.team_a : f.team_h;
+                    const row = rowsByFixture.get(f.id)
+                        || (clubFixtures.length === 1 ? (rowsByRound.get(gw) || [])[0] : null);
+                    const hasScore = f.team_h_score != null && f.team_a_score != null;
+                    columns.push({
+                        round: gw,
+                        fixtureId: f.id,
+                        opponentId: oppId,
+                        opponent: (teamsById && teamsById[oppId] && teamsById[oppId].short_name) || '?',
+                        isHome,
+                        /* From this player's side, not in fixture order. An
+                           away win written the fixture's way is "0-1 W", which
+                           under "@ MUN" reads as a defeat until you work out
+                           whose goal is whose. */
+                        scoreline: hasScore
+                            ? (isHome ? `${f.team_h_score}-${f.team_a_score}`
+                                      : `${f.team_a_score}-${f.team_h_score}`)
+                            : null,
+                        // From this player's side, so a win is a win either way.
+                        result: !hasScore ? null
+                            : Math.sign(isHome ? f.team_h_score - f.team_a_score
+                                               : f.team_a_score - f.team_h_score),
+                        state: (row && (parseFloat(row.minutes) || 0) > 0) ? 'played' : 'dnp',
+                        stats: row ? pfMatchStats(row) : PF_ZERO_STATS()
+                    });
+                });
+            });
+
+            /* Totalled over every fixture the club played, appeared in or not.
+               An unused row contributes zeros, so this is the same arithmetic as
+               summing only appearances — but it cannot silently drop a figure if
+               FPL ever credits something to a player with no minutes. */
+            const realCols = columns.filter(c => c.state !== 'blank');
+            return {
+                rounds,
+                columns,
+                appearances: columns.filter(c => c.state === 'played').length,
+                blanks: columns.filter(c => c.state === 'blank').length,
+                totals: pfSum(realCols.map(c => c.stats)),
+                season: pfSum((history || []).map(pfMatchStats)),
+                seasonGames: (history || []).filter(r => (parseFloat(r.minutes) || 0) > 0).length
+            };
+        }
+
+        /* The five that matter, per position.
+
+           Chosen for what decides an FPL return in that shirt rather than for
+           what a football stats page would lead with: a defender's clean sheets
+           and defensive contribution are worth points, his pass count is not.
+           `expected` names the figure the stat is judged against, and `invert`
+           marks the ones where fewer is better. */
+        const PF_STATS = {
+            1: [
+                { key: 'saves', label: 'Saves' },
+                { key: 'cleanSheets', label: 'Clean sheets' },
+                { key: 'goalsConceded', label: 'Conceded', expected: 'xGC', invert: true },
+                { key: 'penaltiesSaved', label: 'Pens saved' },
+                { key: 'bonus', label: 'Bonus' }
+            ],
+            2: [
+                { key: 'cleanSheets', label: 'Clean sheets' },
+                { key: 'goalsConceded', label: 'Conceded', expected: 'xGC', invert: true },
+                { key: 'defCon', label: 'Def. contribution' },
+                { key: 'gi', label: 'Goals + assists', expected: 'xGI' },
+                { key: 'bonus', label: 'Bonus' }
+            ],
+            3: [
+                { key: 'goals', label: 'Goals', expected: 'xG' },
+                { key: 'assists', label: 'Assists', expected: 'xA' },
+                { key: 'defCon', label: 'Def. contribution' },
+                { key: 'threat', label: 'Threat', dp: 0 },
+                { key: 'bonus', label: 'Bonus' }
+            ],
+            4: [
+                { key: 'goals', label: 'Goals', expected: 'xG' },
+                { key: 'assists', label: 'Assists', expected: 'xA' },
+                { key: 'threat', label: 'Threat', dp: 0 },
+                { key: 'bps', label: 'BPS', dp: 0 },
+                { key: 'bonus', label: 'Bonus' }
+            ]
+        };
+
+        function pfStatsFor(position) { return PF_STATS[position] || PF_STATS[3]; }
+
+        /* What happened against what was expected to happen.
+
+           Always returns a reading — the card states one every time — but the
+           reading is allowed to say there is nothing to read. Five games is a
+           small sample and one penalty moves it, so a window with almost no
+           expected output gets told so rather than being handed a direction it
+           cannot support.
+
+           PF_PAR is a goal. Below one full goal either way is noise dressed as
+           a trend, whichever window it is measured over. PF_THIN is the point
+           under which the expected figure is too small to divide anything by. */
+        const PF_PAR = 1.0;
+        const PF_THIN = 0.5;
+
+        function pfVsExpected(actual, expected, opts) {
+            const o = opts || {};
+            const noun = o.noun || 'chances';
+            const invert = !!o.invert;
+            const delta = actual - expected;
+            // For conceded, under the expected figure is the good side.
+            const good = invert ? -delta : delta;
+
+            if (!(expected >= PF_THIN)) {
+                return { tone: 'thin', delta,
+                    text: `${expected.toFixed(1)} expected — too few ${noun} to read anything into yet` };
+            }
+            if (Math.abs(delta) < PF_PAR) {
+                return { tone: 'par', delta,
+                    text: `${actual} against ${expected.toFixed(1)} expected — about par` };
+            }
+            return {
+                tone: good > 0 ? 'over' : 'under', delta,
+                text: `${actual} against ${expected.toFixed(1)} expected — ${Math.abs(delta).toFixed(1)} ${delta > 0 ? 'more' : 'fewer'} than the ${noun} suggest`
+            };
+        }
+
+        // The pairs the card judges, per position. Same source of truth as the
+        // rows above, so a stat cannot be judged on one figure and shown on
+        // another.
+        function pfExpectedPairs(position) {
+            return pfStatsFor(position).filter(st => st.expected).map(st => ({
+                label: st.label, key: st.key, expected: st.expected, invert: !!st.invert,
+                noun: st.invert ? 'chances they faced' : (st.key === 'assists' ? 'chances created' : 'chances')
+            }));
+        }
+
+        function pfNum(v, dp) {
+            const d = dp == null ? (Number.isInteger(v) ? 0 : 1) : dp;
+            return (Math.round(v * 10 ** d) / 10 ** d).toFixed(d);
+        }
+
+        // "Last 5 gameweeks" is the window; a double gameweek makes that six
+        // matches, so the count is said out loud rather than left to be counted.
+        function pfWindowLabel(w) {
+            const gws = w.rounds.length;
+            const cols = w.columns.length;
+            return cols === gws ? `Last ${gws} gameweeks` : `Last ${gws} gameweeks (${cols} matches)`;
+        }
+
+        /* The run, match by match. One column per fixture — a double gameweek is
+           two columns, because merging them hides that the second one happened —
+           and a gameweek the club sat out is its own kind of column rather than
+           a row of zeros pretending to be a performance. */
+        function pfRenderMatchGrid(player, w) {
+            if (!w || !w.columns.length) return '';
+            const stats = pfStatsFor(player.position);
+            const RESULT = { 1: 'W', 0: 'D', '-1': 'L' };
+
+            const head = w.columns.map(c => {
+                if (c.state === 'blank') {
+                    return `<th class="pf-col pf-blank" data-tooltip="${player.team} had no fixture in GW${c.round}">
+                        <span class="pf-gw">GW${c.round}</span><span class="pf-opp">Blank</span><span class="pf-res">—</span></th>`;
+                }
+                const res = c.result == null ? '' : RESULT[String(c.result)] || '';
+                const dnp = c.state === 'dnp';
+                return `<th class="pf-col${dnp ? ' pf-dnp' : ''}"${dnp ? ` data-tooltip="${escHTML(player.name)} did not play in this fixture"` : ''}>
+                    <span class="pf-gw">GW${c.round}</span>
+                    <span class="pf-opp">${c.isHome ? 'v' : '@'} ${escHTML(c.opponent)}</span>
+                    <span class="pf-res${res ? ' r-' + res : ''}">${c.scoreline ? escHTML(c.scoreline) + (res ? ' ' + res : '') : '—'}</span></th>`;
+            }).join('');
+
+            const row = (label, get, dp) => `<tr><th scope="row">${escHTML(label)}</th>${
+                w.columns.map(c => {
+                    if (c.state === 'blank') return `<td class="pf-na" data-tooltip="No fixture">—</td>`;
+                    if (c.state === 'dnp') return `<td class="pf-na" data-tooltip="Did not play">—</td>`;
+                    return `<td>${pfNum(get(c.stats), dp)}</td>`;
+                }).join('')}</tr>`;
+
+            return `<div class="pf-grid-wrap"><table class="pf-grid">
+                <thead><tr><th scope="col"></th>${head}</tr></thead>
+                <tbody>
+                    ${row('Pts', s2 => s2.points, 0)}
+                    ${row('Mins', s2 => s2.minutes, 0)}
+                    ${stats.map(st => row(st.label, s2 => s2[st.key], st.dp)).join('')}
+                </tbody>
+            </table></div>`;
+        }
+
+        /* What it added up to, next to the season. Five games is a small sample
+           and the season is the one that holds up, so they are shown together
+           rather than the recent figure being left to speak for itself. */
+        function pfRenderTotals(player, w, opts) {
+            if (!w) return '';
+            const o = opts || {};
+            const stats = o.stats || pfStatsFor(player.position);
+            const rows = [
+                { label: 'Pts', key: 'points', dp: 0 },
+                { label: 'Mins', key: 'minutes', dp: 0 }
+            ].concat(stats);
+
+            const body = rows.map(st => `<tr>
+                <th scope="row">${escHTML(st.label)}</th>
+                <td>${pfNum(w.totals[st.key], st.dp)}</td>
+                <td class="pf-season">${pfNum(w.season[st.key], st.dp)}</td>
+            </tr>`).join('');
+
+            return `<table class="pf-totals">
+                <thead><tr><th scope="col"></th>
+                    <th scope="col">${escHTML(pfWindowLabel(w))}</th>
+                    <th scope="col" class="pf-season">Season</th></tr></thead>
+                <tbody>${body}</tbody>
+            </table>`;
+        }
+
+        /* The reading, which is always given. Both windows, because they answer
+           different questions and disagreeing is itself the answer — a season of
+           under-performance that has turned in the last five is the case worth
+           spotting. pfVsExpected() decides when the sample is too thin to call. */
+        function pfRenderVerdicts(player, w) {
+            const pairs = pfExpectedPairs(player.position);
+            if (!pairs.length || !w) return '';
+            const body = pairs.map(pr => {
+                const l5 = pfVsExpected(w.totals[pr.key], w.totals[pr.expected], pr);
+                const se = pfVsExpected(w.season[pr.key], w.season[pr.expected], pr);
+                return `<div class="pf-verdict">
+                    <div class="pf-verdict-head">${escHTML(pr.label)} <span>actual vs expected</span></div>
+                    <div class="pf-read t-${l5.tone}"><em>Last ${w.rounds.length}</em> ${escHTML(l5.text)}</div>
+                    <div class="pf-read t-${se.tone}"><em>Season</em> ${escHTML(se.text)}</div>
+                </div>`;
+            }).join('');
+            return `<div class="pf-verdicts">${body}</div>`;
+        }
+
+        /* The window for a player, or null. Reads the same page globals the rest
+           of this file documents: playersDetailData for the per-gameweek rows,
+           allFixtures for what the club was doing that week, teams for names. */
+        function pfWindowFor(player) {
+            if (!player) return null;
+            const feed = (typeof playersDetailData !== 'undefined' && playersDetailData
+                && playersDetailData.players) || null;
+            const history = (feed ? (feed.find(p => p.id === player.id) || {}).history : null)
+                || player.history || [];
+            if (!history.length) return null;
+            const fixtures = (typeof allFixtures !== 'undefined' && allFixtures) || [];
+            const teamsById = (typeof teams !== 'undefined' && teams) || {};
+            return pfFormWindow(player, history, fixtures, teamsById);
+        }
+
+        /* Recent form, folded into Key Statistics rather than given a band of
+           its own: the tiles above are season rates, and what a player has
+           actually done in the last five weeks belongs beside them rather than
+           three sections further down. Match grid, then totals against the
+           season, then the reading. */
+        function pfRenderRecentForm(player) {
+            const w = pfWindowFor(player);
+            if (!w) return '';
+            return `<div class="pf-block">
+                <div class="pf-block-head">${escHTML(pfWindowLabel(w))}
+                    <span>${w.appearances} appearance${w.appearances === 1 ? '' : 's'}${w.blanks ? ` · ${w.blanks} blank` : ''}</span>
+                </div>
+                ${pfRenderMatchGrid(player, w)}
+                <div class="pf-split">
+                    ${pfRenderTotals(player, w)}
+                    ${pfRenderVerdicts(player, w)}
+                </div>
+            </div>`;
+        }
+
         // ===== THE SECTIONS =====
         // Where this player's projected points are expected to come from, plus the
         // set-piece duty that used to be crammed onto the pitch card. Every figure
@@ -1043,6 +1410,7 @@
                     ${returnStats}
                     ${renderDetailStat('Value', (player.ppm || 0).toFixed(1) + '/\u00a3m', Math.min((player.ppm || 0) / 30, 1), 'var(--color-info)', `Sell: \u00a3${(player.sellPrice || player.price).toFixed(1)}m`)}
                 </div>
+                ${pfRenderRecentForm(player)}
             </div>`;
 
             html += `<div class="detail-section" data-accent="season">
