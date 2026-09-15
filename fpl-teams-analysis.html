@@ -45,17 +45,17 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=226">
-    <link rel="stylesheet" href="styles/teams.css?v=226">
-    <link rel="stylesheet" href="styles/v2-design.css?v=226">
-    <link rel="stylesheet" href="styles/responsive.css?v=226">
-    <script src="scripts/error-monitor.js?v=226"></script>
-    <script src="scripts/common.js?v=226"></script>
+    <link rel="stylesheet" href="styles/common.css?v=227">
+    <link rel="stylesheet" href="styles/teams.css?v=227">
+    <link rel="stylesheet" href="styles/v2-design.css?v=227">
+    <link rel="stylesheet" href="styles/responsive.css?v=227">
+    <script src="scripts/error-monitor.js?v=227"></script>
+    <script src="scripts/common.js?v=227"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=226"></script>
-    <script src="scripts/notifications.js?v=226"></script>
-    <script src="scripts/sidebar-nav.js?v=226"></script>
+    <script src="scripts/push-alerts.js?v=227"></script>
+    <script src="scripts/notifications.js?v=227"></script>
+    <script src="scripts/sidebar-nav.js?v=227"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -135,6 +135,19 @@
         let allTeamsData = [];
         let currentView = 'rankings';
         let rankingsSort = 'attack';
+        /* How many gameweeks the "Best next N" card ranks over. Local to that
+           card by design — the calendar and the patch list answer different
+           questions over their own horizons, and one control driving all three
+           would mean changing the calendar to ask about a shorter run. */
+        let goldMineWindow = 5;
+        // The swing window: five against five where there is room, three against
+        // three when a season is running out of gameweeks to compare.
+        const SWING_LONG = 5, SWING_SHORT = 3, SWING_MIN = SWING_SHORT * 2;
+        /* Which gameweek the patch list is being asked about. null is "any".
+           Picking one shows every patch that COVERS it, which is the question a
+           manager actually has — "I am wildcarding in GW9, whose run is good
+           from there" — rather than "whose patch happens to begin there". */
+        let patchGwFilter = null;
         // The gameweek every horizon on this page starts from — swings, easy runs,
         // gold mines, the calendar's "remaining" mode. Not the same thing as the
         // round just played: see planningGameweek() in scripts/common.js.
@@ -1251,7 +1264,11 @@
             window._teamFixtureMap = teamFixtureMap;
 
             // Filter to future runs only — PREMIUM & GREAT tiers only (avgFdr ≤ 2.5)
-            const futureRuns = easyRuns.filter(r => r.startGW >= planningGW && (r.tier === 'premium' || r.tier === 'great'));
+            const allFutureRuns = easyRuns.filter(r => r.startGW >= planningGW && (r.tier === 'premium' || r.tier === 'great'));
+            // Covering, not starting: a run from GW7 to GW12 is an answer to
+            // "what about GW9".
+            const futureRuns = patchGwFilter == null ? allFutureRuns
+                : allFutureRuns.filter(r => r.startGW <= patchGwFilter && r.endGW >= patchGwFilter);
             const improvingSwings = fixtureSwingTeams.filter(s => s.direction === 'improving');
             const worseningSwings = fixtureSwingTeams.filter(s => s.direction === 'worsening');
 
@@ -1271,10 +1288,18 @@
                                 <span class="swings-panel-icon"><i data-lucide="circle-check" style="width:16px;height:16px;"></i></span>
                                 <span class="swings-panel-title">Best Targetable Fixture Patches</span>
                                 <span class="swings-panel-count">${futureRuns.length} found</span>
+                                <label class="patch-filter">
+                                    <span class="patch-filter-label">Covering</span>
+                                    <select class="patch-filter-select" onchange="setPatchGwFilter(this.value)" aria-label="Show patches covering a gameweek">
+                                        <option value="">Any gameweek</option>
+                                        ${displayGWs.map(gw =>
+                                            `<option value="${gw}"${gw === patchGwFilter ? ' selected' : ''}>GW${gw}</option>`).join('')}
+                                    </select>
+                                </label>
                             </div>
                             <div class="swings-panel-body">
                                 ${futureRuns.length === 0 ? 
-                                    '<div style="padding: var(--space-4); text-align: center; color: var(--text-muted); font-size: 12px;">No targetable patches found in remaining fixtures.</div>' :
+                                    `<div style="padding: var(--space-4); text-align: center; color: var(--text-muted); font-size: 12px;">${patchGwFilter == null ? 'No targetable patches found in remaining fixtures.' : `No club has a targetable patch covering GW${patchGwFilter}.`}</div>` :
                                     futureRuns.map((run, i) => {
                                         const tier = tierColors[run.tier] || tierColors.good;
                                         const fdrClass = run.avgFdr <= 2.2 ? 'good' : run.avgFdr <= 2.7 ? 'info' : 'warn';
@@ -1322,21 +1347,21 @@
                                                     <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
                                                     <div class="swings-run-info">
                                                         <div class="swings-run-name">${escHTML(s.teamName)}</div>
-                                                        <div class="swings-run-detail">${s.homeCountNext}H ${3 - s.homeCountNext}A across the new run</div>
+                                                        <div class="swings-run-detail">${s.homeCountNext}H ${s.windowSize - s.homeCountNext}A across the new run · ${s.windowSize} GWs each side</div>
                                                     </div>
                                                     <span class="swing-delta improving">${s.currentFdr} → ${s.futureFdr}</span>
                                                     <span class="swings-run-arrow">›</span>
                                                 </div>
                                                 <div class="swing-timeline">
                                                     <div class="swing-side">
-                                                        <span class="swing-side-label">Now</span>
+                                                        <span class="swing-side-label">GW${s.fromGW}–${s.swingGW - 1}</span>
                                                         <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
                                                     </div>
                                                     <div class="swing-pivot">
                                                         <span class="swing-pivot-badge improving">Eases GW${s.swingGW}</span>
                                                     </div>
                                                     <div class="swing-side">
-                                                        <span class="swing-side-label">From GW${s.swingGW}</span>
+                                                        <span class="swing-side-label">GW${s.swingGW}–${s.toGW}</span>
                                                         <div class="fx-run">${renderFdrRun((s.nextFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })))}</div>
                                                     </div>
                                                 </div>
@@ -1355,21 +1380,21 @@
                                                     <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
                                                     <div class="swings-run-info">
                                                         <div class="swings-run-name">${escHTML(s.teamName)}</div>
-                                                        <div class="swings-run-detail">${s.homeCountNext}H ${3 - s.homeCountNext}A across the new run</div>
+                                                        <div class="swings-run-detail">${s.homeCountNext}H ${s.windowSize - s.homeCountNext}A across the new run · ${s.windowSize} GWs each side</div>
                                                     </div>
                                                     <span class="swing-delta worsening">${s.currentFdr} → ${s.futureFdr}</span>
                                                     <span class="swings-run-arrow">›</span>
                                                 </div>
                                                 <div class="swing-timeline">
                                                     <div class="swing-side">
-                                                        <span class="swing-side-label">Now</span>
+                                                        <span class="swing-side-label">GW${s.fromGW}–${s.swingGW - 1}</span>
                                                         <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
                                                     </div>
                                                     <div class="swing-pivot">
                                                         <span class="swing-pivot-badge worsening">Hardens GW${s.swingGW}</span>
                                                     </div>
                                                     <div class="swing-side">
-                                                        <span class="swing-side-label">From GW${s.swingGW}</span>
+                                                        <span class="swing-side-label">GW${s.swingGW}–${s.toGW}</span>
                                                         <div class="fx-run">${renderFdrRun((s.nextFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })))}</div>
                                                     </div>
                                                 </div>
@@ -1381,14 +1406,13 @@
                         </div>
                     </div>
                     
-                    ${renderTargetableCalendar(teamFixtureMap, easyRuns, displayGWs)}
+                    ${renderTargetableCalendar(teamFixtureMap, displayGWs)}
                 </div>
             `;
 
             container.innerHTML = html;
             // Not deferred through requestAnimationFrame: it can be throttled to
             // never firing for work scheduled around freshly-inserted markup.
-            applyGwWindow();
         }
 
         // ===== SOFT TARGETS (in Fixture Swings tab) =====
@@ -1563,12 +1587,27 @@
             renderCurrentView();
         }
 
-        function renderTargetableCalendar(fixtureMap, easyRuns, allDisplayGWs) {
-            // Filter to only teams with PREMIUM or GREAT easy runs (avgFdr ≤ 2.5)
-            const futureRuns = easyRuns.filter(r => r.startGW >= planningGW && (r.tier === 'premium' || r.tier === 'great'));
+        function renderTargetableCalendar(fixtureMap, allDisplayGWs) {
+            /* The colour mode is switched FIRST, and the patches are found under
+               it rather than taken from the caller.
+
+               findEasyRuns reads getEffectiveFdr, which reads calendarColorMode.
+               The swap used to happen after the runs had already been chosen, so
+               switching the calendar to Attackers recoloured every cell while the
+               brackets still marked the run that was easy on FDR. A bracket
+               around fixtures that are not a patch under the colouring beside it
+               is worse than no bracket — and an attack patch and a defence patch
+               genuinely are different runs, because they rank opponents on
+               different quantities. */
+            const savedMode = calendarColorMode;
+            calendarColorMode = swingsCalendarColorMode;
+
+            const modeRuns = findEasyRuns(fixtureMap);
+            const futureRuns = modeRuns.filter(r => r.startGW >= planningGW && (r.tier === 'premium' || r.tier === 'great'));
             const teamIdsWithRuns = [...new Set(futureRuns.map(r => r.teamId))];
-            
+
             if (teamIdsWithRuns.length === 0) {
+                calendarColorMode = savedMode;
                 return '<div style="padding: var(--space-6); text-align: center; color: var(--text-muted); font-size: 13px;">No targetable fixture patches found in remaining fixtures.</div>';
             }
 
@@ -1582,10 +1621,6 @@
                 return { team, bestRun };
             }).filter(t => t.team).sort((a, b) => a.bestRun.score - b.bestRun.score);
 
-            // Temporarily set calendarColorMode for rendering
-            const savedMode = calendarColorMode;
-            calendarColorMode = swingsCalendarColorMode;
-
             const colorModeDesc = {
                 fdr: 'Standard FDR difficulty (1-5)',
                 attack: 'Attack FDR — opponent defensive weakness',
@@ -1594,7 +1629,7 @@
             };
 
             const calendarRows = teamsToShow.map(({ team, bestRun }) => {
-                const teamEasyRuns = easyRuns.filter(r => r.teamId === team.id);
+                const teamEasyRuns = modeRuns.filter(r => r.teamId === team.id);
                 const avgFdr = calculateAvgFDR(fixtureMap[team.id], displayGWs);
                 const avgClass = avgFdr <= 2.5 ? 'good' : avgFdr <= 3.2 ? 'warning' : 'bad';
 
@@ -1643,19 +1678,6 @@
                         </div>
                     </div>
 
-                    <div class="gw-window">
-                        <span class="gw-window-label">Planning window</span>
-                        <input type="range" id="gwWindowStart" min="${displayGWs[0]}" max="${displayGWs[displayGWs.length - 1]}"
-                            value="${displayGWs[0]}" oninput="applyGwWindow()" aria-label="First gameweek in the planning window">
-                        <select id="gwWindowLen" onchange="applyGwWindow()" class="gw-window-reset" aria-label="Window length">
-                            <option value="0">All gameweeks</option>
-                            <option value="4">4 GWs</option>
-                            <option value="6" selected>6 GWs</option>
-                            <option value="8">8 GWs</option>
-                        </select>
-                        <span class="gw-window-value" id="gwWindowValue"></span>
-                        <button class="gw-window-reset" onclick="resetGwWindow()">Show all</button>
-                    </div>
 
                     <div class="calendar-container">
                         <div class="calendar-scroll">
@@ -1682,34 +1704,6 @@
         // Thirty gameweeks at once is more than anyone plans against. The window
         // dims what falls outside the range rather than hiding it, so the shape of
         // the season stays readable while attention narrows.
-        function applyGwWindow() {
-            const startEl = document.getElementById('gwWindowStart');
-            const lenEl = document.getElementById('gwWindowLen');
-            const valEl = document.getElementById('gwWindowValue');
-            const table = document.querySelector('.targetable-calendar .calendar-table');
-            if (!startEl || !lenEl || !table) return;
-            const len = parseInt(lenEl.value, 10) || 0;
-            const start = parseInt(startEl.value, 10);
-
-            if (!len) {
-                table.querySelectorAll('[data-gw]').forEach(el => el.classList.remove('gw-out'));
-                if (valEl) valEl.textContent = 'All gameweeks';
-                return;
-            }
-            const end = start + len - 1;
-            table.querySelectorAll('[data-gw]').forEach(el => {
-                const gw = parseInt(el.dataset.gw, 10);
-                el.classList.toggle('gw-out', gw < start || gw > end);
-            });
-            if (valEl) valEl.textContent = `GW${start}–GW${end}`;
-        }
-
-        function resetGwWindow() {
-            const lenEl = document.getElementById('gwWindowLen');
-            if (lenEl) lenEl.value = '0';
-            applyGwWindow();
-        }
-
         // ===== FULL SEASON CALENDAR =====
         let fullSeasonFixtures = [];
         let calendarViewMode = 'all'; // 'all', 'remaining', 'next10'
@@ -1796,30 +1790,27 @@
         }
 
         function getCalendarLegend() {
+            const dot = (v, text, tip) =>
+                `<div class="legend-item"${tip ? ` data-tooltip="${escHTML(tip)}"` : ''}><div class="legend-dot" style="background: var(--fdr-${v});"></div><span>${text}</span></div>`;
             if (calendarColorMode === 'fdr') {
-                return `
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-1);"></div><span>Very Easy (1-2)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-2);"></div><span>Easy (2)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-3);"></div><span>Medium (3)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-4);"></div><span>Hard (4)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-5);"></div><span>Very Hard (5)</span></div>
-                `;
+                /* Five, because this is FPL's own published scale and relabelling
+                   it would put a second meaning on a number printed everywhere
+                   else. The first two entries used to read "Very Easy (1-2)" and
+                   "Easy (2)", which claimed 2 twice and left 1 unaccounted. */
+                return dot(1, 'Very Easy (1)') + dot(2, 'Easy (2)') + dot(3, 'Medium (3)')
+                     + dot(4, 'Hard (4)') + dot(5, 'Very Hard (5)');
             } else if (calendarColorMode === 'attack') {
-                return `
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-1);"></div><span>1 — Leaky Def (Target)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-2);"></div><span>2 — Weak Def</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-3);"></div><span>3 — Average Def</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-4);"></div><span>4 — Strong Def</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-5);"></div><span>5 — Elite Def (Avoid)</span></div>
-                `;
+                // Rating the opponent's DEFENCE, because that is what a forward
+                // or an attacking midfielder has to get past.
+                return dot(1, `Leaky — target`, `Opponent expected to concede more than ${GPG_CUTS.softish} goals a game`)
+                     + dot(3, 'Average', `Opponent expected to concede ${GPG_CUTS.firm}–${GPG_CUTS.softish} a game`)
+                     + dot(5, 'Tight — avoid', `Opponent expected to concede under ${GPG_CUTS.firm} a game`);
             } else if (calendarColorMode === 'defense') {
-                return `
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-1);"></div><span>1 — Weak Att (Safe)</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-2);"></div><span>2 — Below Avg Att</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-3);"></div><span>3 — Average Att</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-4);"></div><span>4 — Strong Att</span></div>
-                    <div class="legend-item"><div class="legend-dot" style="background: var(--fdr-5);"></div><span>5 — Elite Att (Danger)</span></div>
-                `;
+                // Rating the opponent's ATTACK, because that is what a defender
+                // or a keeper has to keep out.
+                return dot(1, 'Blunt — safe', `Opponent expected to score under ${GPG_CUTS.firm} goals a game`)
+                     + dot(3, 'Average', `Opponent expected to score ${GPG_CUTS.firm}–${GPG_CUTS.softish} a game`)
+                     + dot(5, 'Dangerous — avoid', `Opponent expected to score more than ${GPG_CUTS.softish} a game`);
             } else { // cs
                 return `
                     <div class="legend-item"><div class="legend-dot" style="background: #4ADE80;"></div><span>50%+ CS</span></div>
@@ -1829,6 +1820,18 @@
                     <div class="legend-item"><div class="legend-dot" style="background: #EF4444;"></div><span>&lt;20%</span></div>
                 `;
             }
+        }
+
+        // Always five clubs — the question is "who has the kindest run", and a
+        // shortlist that grows with the horizon stops being a shortlist.
+        function setPatchGwFilter(gw) {
+            patchGwFilter = gw === '' || gw == null ? null : parseInt(gw, 10);
+            renderCurrentView();
+        }
+
+        function setGoldMineWindow(n) {
+            goldMineWindow = Math.max(2, Math.min(10, parseInt(n, 10) || 5));
+            renderCurrentView();
         }
 
         function setCalendarView(mode) {
@@ -1854,39 +1857,67 @@
            it is about keeping a clean sheet. Those are genuinely different
            orderings, which is what lets a fixture be kind to your forwards and
            cruel to your defenders at the same time. */
-        function leagueQuintiles(key) {
-            const cacheKey = `${key}:${allTeamsData.length}`;
-            leagueQuintiles._cache = leagueQuintiles._cache || {};
-            if (!(cacheKey in leagueQuintiles._cache)) {
-                const vals = allTeamsData.map(t => t[key])
-                    .filter(v => Number.isFinite(v)).sort((a, b) => a - b);
-                leagueQuintiles._cache[cacheKey] = vals.length >= 5
-                    ? [0.2, 0.4, 0.6, 0.8].map(p => vals[Math.floor(vals.length * p)])
-                    : null;
-            }
-            return leagueQuintiles._cache[cacheKey];
-        }
+        /* Difficulty from goals, not from a ranking.
 
-        // Which fifth of the league a value sits in, 1 (lowest) to 5 (highest).
-        function leagueBand(value, cuts) {
-            if (!cuts || !Number.isFinite(value)) return 3;
-            let band = 1;
-            for (let i = 0; i < cuts.length; i++) if (value > cuts[i]) band = i + 2;
-            return Math.min(5, band);
-        }
+           This used to be quintiles of the league: sort the twenty clubs, cut at
+           the 20th, 40th, 60th and 80th percentiles, four teams to a band. That
+           guarantees the bands are always full, which is exactly what is wrong
+           with it — there are always four "leaky" defences to target even in a
+           season where the worst defence in the division is competent, and
+           always four to avoid even when nobody is actually hard to score
+           against. A colour that is forced to appear four times cannot tell you
+           whether the fixture is good; it can only tell you it is better than
+           fifteen others.
+
+           The cuts are absolute now, in the goals-per-game the numbers are
+           already measured in (LEAGUE_GPG is 1.42, the scale runs 0.55 to 2.45).
+           A band means the same thing in every season, the legend can quote the
+           figure, and a league with no soft defences in it is allowed to show no
+           targets at all.
+
+           Five levels, because the patch and swing maths downstream reads these
+           as a 1-5 FDR and every threshold in it is tuned to that. The calendar
+           groups them into the three the eye needs — see FDR_DISPLAY_BAND. */
+        const GPG_CUTS = { soft: 1.75, softish: 1.60, firm: 1.25, hard: 1.15 };
 
         /* How hard this opponent is to SCORE against — read off their expected
-           goals conceded. A tight defence concedes few, so a low xgAgainst is a
-           high difficulty and the band inverts. */
+           goals conceded. A tight defence concedes few, so the direction flips:
+           conceding a lot makes them EASY, which is a low number. */
         function attackFdrVs(oppXgAgainst) {
-            return 6 - leagueBand(oppXgAgainst, leagueQuintiles('xgAgainst'));
+            const v = Number.isFinite(oppXgAgainst) ? oppXgAgainst : LEAGUE_GPG_REF;
+            if (v > GPG_CUTS.soft) return 1;        // ships goals freely
+            if (v > GPG_CUTS.softish) return 2;
+            if (v > GPG_CUTS.firm) return 3;
+            if (v > GPG_CUTS.hard) return 4;
+            return 5;                                // very hard to score against
         }
 
         /* How hard they are to keep OUT — their expected goals scored. More
-           expected goals is straightforwardly harder, so this one does not. */
+           expected goals is straightforwardly harder, so this one does not flip. */
         function defenceFdrVs(oppXgFor) {
-            return leagueBand(oppXgFor, leagueQuintiles('xgFor'));
+            const v = Number.isFinite(oppXgFor) ? oppXgFor : LEAGUE_GPG_REF;
+            if (v > GPG_CUTS.soft) return 5;        // scores freely
+            if (v > GPG_CUTS.softish) return 4;
+            if (v > GPG_CUTS.firm) return 3;
+            if (v > GPG_CUTS.hard) return 2;
+            return 1;                                // blunt attack, safe to face
         }
+
+        /* Three, for the calendar. Five colours across twenty clubs asks the eye
+           to hold a gradient it cannot hold; the decision a manager makes from
+           this grid has three outcomes — target it, ignore it, avoid it — so the
+           colouring has three. The cut is the same 1.25/1.60 goals-per-game
+           either side of average that the five bands are built from, so the
+           grouping is exact rather than a rounding of it. */
+        function fdrDisplayBand(fdr) {
+            if (fdr <= 2) return 1;   // target
+            if (fdr >= 4) return 3;   // avoid
+            return 2;                 // average
+        }
+
+        // The reference used when a club has no measurable rate yet. Mirrors
+        // LEAGUE_GPG in buildTeamsData, which is scoped to that function.
+        const LEAGUE_GPG_REF = 1.42;
 
         // One number for "how hard is this fixture overall", which is both of
         // the above at once: a side that scores freely and concedes little is
@@ -2073,15 +2104,16 @@
             if (!fixture) return 'bgw-cell';
             
             if (calendarColorMode === 'fdr') {
+                // FPL's own published difficulty, on its own published 1-5 scale.
                 return `fdr-${Math.round(fixture.fdr)}`;
             } else if (calendarColorMode === 'attack') {
-                // Attack FDR: based on opponent's defensive strength (venue-adjusted)
-                // Lower opponent defense = easier for your attackers = lower FDR
-                return `fdr-${Math.round(fixture.attackFdr || fixture.fdr)}`;
+                /* Three colours, not five. The underlying value is still 1-5 —
+                   the patch and swing maths reads it that way — but what the grid
+                   is for has three answers, and fdr-1 / fdr-3 / fdr-5 are the
+                   three ends of the existing palette rather than new colours. */
+                return `fdr-${[1, 3, 5][fdrDisplayBand(Math.round(fixture.attackFdr || fixture.fdr)) - 1]}`;
             } else if (calendarColorMode === 'defense') {
-                // Defense FDR: based on opponent's attacking strength (venue-adjusted)
-                // Lower opponent attack = safer for your defenders = lower FDR
-                return `fdr-${Math.round(fixture.defenseFdr || fixture.fdr)}`;
+                return `fdr-${[1, 3, 5][fdrDisplayBand(Math.round(fixture.defenseFdr || fixture.fdr)) - 1]}`;
             } else { // cs
                 const cs = fixture.csChance || 30;
                 if (cs >= 50) return 'color-1';
@@ -3542,8 +3574,15 @@
                 }
             });
 
-            // Final sort: by score (best patches first)
-            bestRuns.sort((a, b) => a.score - b.score);
+            /* Ranked on the number the row shows.
+
+               The composite score above decides which overlapping windows
+               survive — it is what rewards a longer run and more home games, and
+               that job is still its job. But it was also the final sort, while
+               the column beside the rank badge shows avg FDR, so row 2 could
+               plainly have a better figure than row 1 and the list read as
+               broken. Whatever is ranked has to be what is displayed. */
+            bestRuns.sort((a, b) => a.avgFdr - b.avgFdr || a.score - b.score);
 
             // Assign tier labels
             bestRuns.forEach(run => {
@@ -3616,11 +3655,7 @@
                     .filter(gw => gw >= planningGW && unplayedGW(teamFixtures[gw]))
                     .sort((a, b) => a - b);
 
-                if (futureGWs.length < 6) return;
-
-                // Compare windows: GW1-3 vs GW4-6
-                const first3 = futureGWs.slice(0, 3);
-                const next3 = futureGWs.slice(3, 6);
+                if (futureGWs.length < SWING_MIN) return;
 
                 const getAvg = (gws) => gws.reduce((sum, gw) => {
                     const f = teamFixtures[gw];
@@ -3632,6 +3667,23 @@
                     return f && f[0] ? { ...f[0], gw } : null;
                 }).filter(Boolean);
 
+                /* Five against five, falling back to three against three.
+
+                   Three gameweeks is a short enough window that one awkward
+                   opponent moves the average by a third, so a "swing" could be a
+                   single fixture. Five is the horizon the rest of the page plans
+                   over — the transfer you make now is owned for about that long
+                   — and it takes more than one hard match to move it.
+
+                   It needs ten future gameweeks to compare five against five,
+                   which is not true near the end of a season, so the shorter
+                   window takes over rather than the panel emptying. Which one was
+                   used is carried on the swing and printed, because a 0.6 swing
+                   over three is a different claim from a 0.6 over five. */
+                const half = futureGWs.length >= SWING_LONG * 2 ? SWING_LONG : SWING_SHORT;
+                const first3 = futureGWs.slice(0, half);
+                const next3 = futureGWs.slice(half, half * 2);
+
                 const avgFirst = getAvg(first3);
                 const avgNext = getAvg(next3);
                 const swing = avgFirst - avgNext;
@@ -3642,21 +3694,7 @@
                     const currentFixtures = getFixtures(first3);
                     const homeCountNext = nextFixtures.filter(f => f.isHome).length;
                     const homeCountCurrent = currentFixtures.filter(f => f.isHome).length;
-
-                    // Also look at longer windows: GW1-5 vs GW6-10
                     let longSwing = null;
-                    if (futureGWs.length >= 10) {
-                        const first5 = futureGWs.slice(0, 5);
-                        const next5 = futureGWs.slice(5, 10);
-                        const avgFirst5 = getAvg(first5);
-                        const avgNext5 = getAvg(next5);
-                        longSwing = {
-                            currentFdr: avgFirst5.toFixed(1),
-                            futureFdr: avgNext5.toFixed(1),
-                            swing: (avgFirst5 - avgNext5).toFixed(2),
-                            fixtures: getFixtures(next5)
-                        };
-                    }
 
                     swings.push({
                         teamId: team.id,
@@ -3667,7 +3705,10 @@
                         direction: swing > 0 ? 'improving' : 'worsening',
                         currentFdr: avgFirst.toFixed(1),
                         futureFdr: avgNext.toFixed(1),
-                        swingGW: futureGWs[3],
+                        windowSize: half,
+                        fromGW: first3[0],
+                        toGW: next3[next3.length - 1],
+                        swingGW: futureGWs[half],
                         currentFixtures,
                         nextFixtures,
                         homeCountNext,
@@ -4494,9 +4535,12 @@
         }
 
         function renderUpcomingGoldMines(fixtureMap, displayGWs) {
-            // Find teams with best upcoming 5 GWs
-            const upcoming5 = displayGWs.filter(gw => gw >= planningGW).slice(0, 5);
-            
+            /* The run this card ranks over. There may be fewer gameweeks left
+               than asked for, so the label reads off what was actually taken
+               rather than off the request. */
+            const upcoming5 = displayGWs.filter(gw => gw >= planningGW).slice(0, goldMineWindow);
+            const span = upcoming5.length;
+
             const rankings = allTeamsData.map(team => {
                 const avgFdr = calculateAvgFDR(fixtureMap[team.id], upcoming5);
                 const homeCount = upcoming5.reduce((count, gw) => {
@@ -4517,8 +4561,15 @@
                 <div class="analysis-card">
                     <div class="analysis-card-header">
                         <span class="analysis-card-icon"><i data-lucide="star" style="width:16px;height:16px;"></i></span>
-                        <span class="analysis-card-title">Best Next 5 GWs</span>
+                        <span class="analysis-card-title">Best Next ${span} GW${span === 1 ? '' : 's'}</span>
                         <span class="gm-subtitle">GW${upcoming5[0]}–${upcoming5[upcoming5.length - 1]}</span>
+                        <label class="gm-window">
+                            <span class="gm-window-label">Over</span>
+                            <select class="gm-window-select" onchange="setGoldMineWindow(this.value)" aria-label="Gameweeks to rank over">
+                                ${[2,3,4,5,6,7,8,9,10].map(n =>
+                                    `<option value="${n}"${n === goldMineWindow ? ' selected' : ''}>${n} GWs</option>`).join('')}
+                            </select>
+                        </label>
                     </div>
                     <div class="gm-list">
                         ${top5.map((team, i) => {
@@ -4532,7 +4583,7 @@
                                 <img src="${team.badgeUrl}" alt="${escHTML(team.shortName)}" class="gm-badge" onerror="this.style.display='none'">
                                 <div class="gm-id">
                                     <div class="gm-name">${escHTML(team.name)}</div>
-                                    <div class="gm-detail">${team.homeCount} home · ${5 - team.homeCount} away</div>
+                                    <div class="gm-detail">${team.homeCount} home · ${span - team.homeCount} away</div>
                                 </div>
                                 <div class="gm-fixtures">${renderFdrRun(fx)}</div>
                                 <span class="gm-avg ${team.avgFdr <= 2.5 ? 'good' : team.avgFdr <= 3.2 ? 'mid' : 'bad'}">${team.avgFdr.toFixed(1)}<small>avg</small></span>

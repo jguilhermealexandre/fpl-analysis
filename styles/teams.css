@@ -1288,19 +1288,8 @@
    a run read as a soft 2, and the outlines put a border on a grid that has none
    anywhere else. A bar along the bottom is continuous across the run, says the
    same thing, and leaves the difficulty colour alone. */
-.fixture-cell.easy-run-start,
-.fixture-cell.easy-run-middle,
-.fixture-cell.easy-run-end {
-    box-shadow: inset 0 -3px 0 var(--color-primary);
-}
-.fixture-cell.easy-run-start {
-    border-top-left-radius: 10px;
-    border-bottom-left-radius: 10px;
-}
-.fixture-cell.easy-run-end {
-    border-top-right-radius: 10px;
-    border-bottom-right-radius: 10px;
-}
+/* The patch bracket lives at the foot of this file, with the two panel
+   controls it was written alongside. */
 
 /* Dim non-easy-run cells in targetable calendar */
 .targetable-calendar .fixture-cell:not(.easy-run-start):not(.easy-run-middle):not(.easy-run-end) {
@@ -2152,14 +2141,16 @@
 }
 
 /* ===== SWINGS TAB PANELS ===== */
+/* Stacked, not side by side.
+
+   Two panels at half width each put a seven-gameweek fixture strip into about
+   300px, so the runs the page exists to show were the first thing squeezed.
+   Full width in the order the question is asked: who is good now, then which
+   patches are worth targeting, then whose run is about to turn. */
 .swings-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: var(--space-4);
-}
-
-@media (max-width: 900px) {
-    .swings-layout { grid-template-columns: 1fr; }
 }
 
 .swings-panel {
@@ -2823,29 +2814,6 @@
 .assets-note { margin-top: 12px; font-size: 11px; color: var(--text-muted); font-style: italic; }
 .assets-empty { padding: 18px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
-/* ---- gameweek window ---- */
-.gw-window {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px;
-    border-top: 1px solid var(--border-subtle);
-    flex-wrap: wrap;
-}
-.gw-window-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
-.gw-window input[type="range"] { width: 150px; accent-color: var(--color-primary); cursor: pointer; }
-.gw-window-value {
-    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 800;
-    color: var(--color-primary); min-width: 92px;
-}
-.gw-window-reset {
-    padding: 4px 10px; border-radius: 7px;
-    border: 1px solid var(--border-default); background: var(--surface-2);
-    color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer;
-}
-/* Columns outside the planning window recede rather than disappear, so the
-   shape of the season stays visible while the focus narrows. */
-.calendar-table td.gw-out .fixture-cell,
-.calendar-table th.gw-out { opacity: .22; filter: saturate(.4); }
-
 @media (max-width: 900px) {
     .gm-row { flex-wrap: wrap; }
     .gm-fixtures { order: 3; width: 100%; }
@@ -3172,4 +3140,61 @@
     .tm-hero { min-height: 118px; padding: 0 14px; }
     .tm-hero-badge { height: 118px; width: 84px; }
     .tm-hero-badge img { width: 66px; height: 66px; }
+}
+
+/* The two local controls: how many gameweeks Best Next N ranks over, and which
+   gameweek the patch list has to cover. Both sit in their panel's header and
+   belong to that panel alone. */
+.gm-window, .patch-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+.gm-window-label, .patch-filter-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.gm-window-select, .patch-filter-select {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 6px;
+    cursor: pointer;
+}
+.gm-window-select:hover, .patch-filter-select:hover { border-color: var(--border-emphasis); }
+
+/* A targetable patch, bracketed. It was a 3px underline, which on a grid of
+   coloured cells reads as part of the cell rather than as a span across
+   several. A border on all four sides, closed at the ends, says "these
+   gameweeks, together" — and it has to sit above the neighbouring cells'
+   backgrounds, hence the z-index. */
+.fixture-cell.easy-run-start,
+.fixture-cell.easy-run-middle,
+.fixture-cell.easy-run-end {
+    position: relative;
+    z-index: 1;
+    box-shadow: inset 0 2px 0 var(--color-primary), inset 0 -2px 0 var(--color-primary);
+}
+.fixture-cell.easy-run-start {
+    box-shadow: inset 2px 0 0 var(--color-primary), inset 0 2px 0 var(--color-primary), inset 0 -2px 0 var(--color-primary);
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+.fixture-cell.easy-run-end {
+    box-shadow: inset -2px 0 0 var(--color-primary), inset 0 2px 0 var(--color-primary), inset 0 -2px 0 var(--color-primary);
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+/* A single-gameweek patch cannot happen (the minimum window is three), but if
+   the filter ever narrows one to a single visible cell it still closes. */
+.fixture-cell.easy-run-start.easy-run-end {
+    box-shadow: inset 2px 0 0 var(--color-primary), inset -2px 0 0 var(--color-primary),
+                inset 0 2px 0 var(--color-primary), inset 0 -2px 0 var(--color-primary);
 }
