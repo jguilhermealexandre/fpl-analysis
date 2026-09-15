@@ -2252,26 +2252,23 @@
             const hit = getTWHitCost();
             const xpDelta = newXP - oldXP - hit;
 
-            /* The pitch every other screen draws — the same dp-card with the
-               face at full width, the crest on its lower-right corner and the
-               projection on its lower-left. This preview was the last place
-               still rendering a player as a name over two lines of text on a
-               plain grey tile, which made the one screen whose whole job is
-               "what does this squad look like" the one that looked like
-               nothing else. */
+            /* The pitch every other screen draws — the dashboard's card,
+               face and crest above the name with the projection on its own
+               line beneath. This preview was the last place still rendering
+               a player as a name over two lines of text on a plain grey
+               tile, which made the one screen whose whole job is "what does
+               this squad look like" the one that looked like nothing else. */
             const card = p => {
                 const posClass = `pos-${(typeof V2_POS_CLASS !== 'undefined' && V2_POS_CLASS[p.position]) || 'mid'}`;
                 const ident = { name: p.name, code: p.code, teamId: p.teamId, team: p.team };
                 const fx = (teamFixtures[p.teamId] || p.fixtures || [])[0];
                 return `<div class="dp-card ${posClass}${p.isIncoming ? ' twp-in-card' : ''}">
                     ${p.isIncoming ? '<div class="dp-badges"><span class="dp-badge in">IN</span></div>' : ''}
-                    ${typeof v2IdentityHTML === 'function'
-                        ? v2IdentityHTML(ident, 'v2-pid-portrait',
-                            `<span class="v2-pid-num" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}.">${predictedGWPoints(p).toFixed(1)}<span class="u">xP</span></span>`)
-                        : ''}
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident, 'v2-pid-pitch') : ''}
                     <div class="dp-name">${escHTML(p.name)}</div>
+                    <div class="dp-score" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}."><b>${predictedGWPoints(p).toFixed(1)}</b><span class="u">xP</span></div>
                     <div class="dp-fixtures">${fx
-                        ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">${fx.isHome ? 'H' : 'A'}</span></span>`
+                        ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">(${fx.isHome ? 'H' : 'A'})</span></span>`
                         : '<span class="dp-fix dp-fix-blank" data-tooltip="No fixture this gameweek.">Blank</span>'}</div>
                 </div>`;
             };

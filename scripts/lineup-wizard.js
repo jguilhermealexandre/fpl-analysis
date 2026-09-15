@@ -167,35 +167,39 @@
             const risk = typeof expectedMinutesModel === 'function' ? expectedMinutesModel(p) : { pStart: 1 };
             const rotation = !out && !doubt && risk.pStart < 0.6;
 
+            /* The armband is its own mark on the card's opposite corner, the
+               way the dashboard draws it — not one more chip in the row of
+               status flags, where it read as another warning. */
+            let armband = '';
+            if (p.id === lineupState.captain) armband = `<span class="dp-cap" data-tooltip="Captain — points doubled.">C</span>`;
+            else if (p.id === lineupState.viceCaptain) armband = `<span class="dp-cap" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
+
             let badges = '';
-            if (p.id === lineupState.captain) badges += `<span class="dp-badge cap" data-tooltip="Captain — points doubled.">C</span>`;
-            else if (p.id === lineupState.viceCaptain) badges += `<span class="dp-badge vice" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
             if (benchIdx != null) badges += `<span class="dp-badge bench" data-tooltip="${benchIdx === 'GK' ? 'Reserve keeper.' : `Substitution order — ${benchIdx} in line.`}">${benchIdx === 'GK' ? 'GK' : 'B' + benchIdx}</span>`;
             if (out) badges += `<span class="dp-badge out" data-tooltip="${escHTML(p.news || 'Unavailable this gameweek')}">OUT</span>`;
             else if (doubt) badges += `<span class="dp-badge doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}${p.chanceNextRound != null ? ` — ${p.chanceNextRound}% chance of playing` : ''}">?</span>`;
             else if (rotation) badges += `<span class="dp-badge doubt" data-tooltip="Rotation risk — around ${Math.round(risk.pStart * 100)}% likely to start, based on minutes per appearance.">⟳</span>`;
 
             const fixChip = fx
-                ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3} (${LW_FDR_WORD[fx.difficulty || 3] || 'Average'})">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">${fx.isHome ? 'H' : 'A'}</span></span>`
+                ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3} (${LW_FDR_WORD[fx.difficulty || 3] || 'Average'})">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">(${fx.isHome ? 'H' : 'A'})</span></span>`
                 : `<span class="dp-fix dp-fix-blank" data-tooltip="No fixture this gameweek.">Blank</span>`;
 
             const cls = ['dp-card', posClass, out ? 'is-out' : '', selected ? 'lw-picked' : '',
                 isSwapSrc ? 'swap-selected' : '', isSwapTgt ? 'swap-target' : ''].filter(Boolean).join(' ');
 
-            /* The card the dashboard, the squad pitch and the draft all draw:
-               the face at full width with the club crest on its lower-right and
-               this gameweek's projection on its lower-left. This pitch was the
-               last one still showing a name over a line of text with no face on
-               it at all. */
+            /* The card the dashboard draws, exactly: face and crest above the
+               name, then the projection on a line of its own, then who it
+               comes against. This pitch had the number as a pill laid over
+               the photo and a coloured stripe along the top of the card —
+               enough that the two screens did not read as the same object. */
             const lwIdent = { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team };
             return `<div class="${cls}" onclick="handleLWSwapClick(${p.id})">
                 <div class="dp-badges">${badges}</div>
+                ${armband}
                 <button class="dp-transfer" onclick="handleLWInfoBtnClick(${p.id}, event)" data-tooltip="View ${escHTML(p.web_name)}'s detail — click a second player to compare them">ℹ</button>
-                ${typeof v2IdentityHTML === 'function'
-                    ? v2IdentityHTML(lwIdent, 'v2-pid-portrait',
-                        `<span class="v2-pid-num" data-tooltip="Projected points for ${escHTML(p.web_name)} this gameweek.">${xp.toFixed(1)}<span class="u">xP</span></span>`)
-                    : ''}
+                ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(lwIdent, 'v2-pid-pitch') : ''}
                 <div class="dp-name">${escHTML(p.web_name)}</div>
+                <div class="dp-score" data-tooltip="Projected points for ${escHTML(p.web_name)} this gameweek."><b>${xp.toFixed(1)}</b><span class="u">xP</span></div>
                 <div class="dp-fixtures">${fixChip}</div>
                 ${lwRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${lwRun[0]}\u2013GW${lwRun[lwRun.length - 1]} combined \u2014 this is what Auto-optimise ranks the XI on, so a steady run beats one flukey week.">${lwRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${lwRun.length}</span></div>` : ''}
             </div>`;
@@ -441,7 +445,7 @@
                     <div class="lw-cap-rank">${i + 1}</div>
                     <div class="lw-cap-name">${escHTML(p.web_name)}</div>
                     <div class="lw-cap-team">${escHTML(p.team)} · ${POSITION_CONFIG[p.pos]?.short || ''}</div>
-                    ${fx ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">${fx.isHome ? 'H' : 'A'}</span></span>` : ''}
+                    ${fx ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">(${fx.isHome ? 'H' : 'A'})</span></span>` : ''}
                     <div class="lw-cap-xp" data-tooltip="Projected points with the armband on — ${p.gwScore.toFixed(1)} doubled.">${(p.gwScore * 2).toFixed(1)}<span class="lw-cap-xp-u">pts</span></div>
                     <div class="lw-cap-bars">
                         <div class="lw-cap-bar-row" data-tooltip="Expected goal involvements per 90 for ${escHTML(p.web_name)}: ${threat.toFixed(2)}.">

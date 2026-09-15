@@ -1530,12 +1530,17 @@
                 else if (draftSwapSource !== null) swapClass = draftCanSwap(draftSwapSource, p.id) ? 'swap-target' : 'swap-ineligible';
 
                 const fixtureChips = gwFixtures.length
-                    ? gwFixtures.map(f => `<span class="dp-fix v2-fdr-${f.difficulty || 3}" data-tooltip="GW${gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3} (${FDR_WORD[f.difficulty || 3] || 'Average'})">${escHTML(f.opponent || '?')} <span class="dp-fix-ha">${f.isHome ? 'H' : 'A'}</span></span>`).join('')
+                    ? gwFixtures.map(f => `<span class="dp-fix fdr-${f.difficulty || 3}" data-tooltip="GW${gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3} (${FDR_WORD[f.difficulty || 3] || 'Average'})">${escHTML(f.opponent || '?')} <span class="dp-fix-ha">(${f.isHome ? 'H' : 'A'})</span></span>`).join('')
                     : `<span class="dp-fix dp-fix-blank" data-tooltip="${escHTML(p.team)} have no fixture in GW${gw} — this player scores nothing.">Blank</span>`;
 
+                /* The armband is its own mark on the card's opposite corner,
+                   the way the dashboard draws it, rather than one more chip
+                   in the row of status flags. */
+                let armband = '';
+                if (p.isCaptain) armband = `<span class="dp-cap" data-tooltip="Captain — ${activeChip === 'triplecaptain' ? 'points trebled by Triple Captain' : 'points doubled'}.">${activeChip === 'triplecaptain' ? '3×' : 'C'}</span>`;
+                else if (p.isVice) armband = `<span class="dp-cap" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
+
                 let badges = '';
-                if (p.isCaptain) badges += `<span class="dp-badge cap" data-tooltip="Captain — ${activeChip === 'triplecaptain' ? 'points trebled by Triple Captain' : 'points doubled'}.">${activeChip === 'triplecaptain' ? '3×' : 'C'}</span>`;
-                else if (p.isVice) badges += `<span class="dp-badge vice" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
                 if (p.isTransferIn) badges += `<span class="dp-badge in" data-tooltip="Transferred in for GW${gw} in this plan.">IN</span>`;
                 if (benchIndex != null) {
                     const isGk = benchIndex === 'GK';
@@ -1544,20 +1549,18 @@
                 if (injured) badges += `<span class="dp-badge out" data-tooltip="${escHTML(p.news || 'Unavailable')}">OUT</span>`;
                 else if (doubtful) badges += `<span class="dp-badge doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}${p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance of playing)` : ''}">?</span>`;
 
-                /* Same card as the dashboard and squad pitches: the face fills
-                   the width, the crest sits on its lower-right and the
-                   gameweek's projection on its lower-left, so the three pitches
-                   are one component rather than three that resemble each other.
-                   The run total stays below — it is what the draft is for, and
-                   it is the one thing the other pitches have no equivalent of. */
+                /* Same card as the dashboard's pitch, down to the order it is
+                   read in: face and crest, name, the gameweek's projection,
+                   then who it comes against. The run total stays below it —
+                   it is what the draft is for, and the one line the other
+                   pitches have no equivalent of. */
                 return `<div class="dp-card ${posClass} ${swapClass} ${injured ? 'is-out' : ''}" onclick="handleDraftPitchClick(${p.id})">
                     <div class="dp-badges">${badges}</div>
+                    ${armband}
                     <button class="dp-transfer" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" data-tooltip="Transfer ${escHTML(p.name)} out for GW${gw}">${DP_SWAP_ICON}</button>
-                    ${typeof v2IdentityHTML === 'function'
-                        ? v2IdentityHTML(p, 'v2-pid-portrait',
-                            `<span class="v2-pid-num" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates.">${xp.toFixed(1)}<span class="u">xP</span></span>`)
-                        : ''}
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p, 'v2-pid-pitch') : ''}
                     <div class="dp-name">${escHTML(p.name)}</div>
+                    <div class="dp-score" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates."><b>${xp.toFixed(1)}</b><span class="u">xP</span></div>
                     <div class="dp-fixtures">${fixtureChips}</div>
                     ${dpRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${dpRun[0]}\u2013GW${dpRun[dpRun.length - 1]} combined, so a soft run and a hard one stop looking alike. One gameweek tells you who plays; a run tells you who is worth owning.">${dpRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${dpRun.length}</span></div>` : ''}
                 </div>`;
