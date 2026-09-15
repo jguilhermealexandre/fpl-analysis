@@ -778,6 +778,7 @@ export default [
                 newsThumbUpgrade: 'writable',
                 newsThumbnail: 'writable',
                 newsThumbsFromHTML: 'writable',
+                nextAfterSignIn: 'writable',
                 nextPriceLock: 'writable',
                 normalisePlayerShape: 'writable',
                 normalizeLabel: 'writable',
