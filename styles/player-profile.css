@@ -196,7 +196,6 @@
    no page blur, no pointer-events handling. Same rules, in the sheet every
    page loads. */
 
-
 @media (prefers-reduced-motion: reduce) {
     body.v2-blurred .main-content, .main-content { transition: none; }
 }
@@ -568,10 +567,15 @@
     font-size: 13px; font-weight: 800; letter-spacing: .03em; white-space: nowrap;
 }
 
-.pdm-body .pd-verdict-chip.star { background: var(--verdict-star-bg, #EDE9FE); color: var(--verdict-star, #7C3AED); }
-.pdm-body .pd-verdict-chip.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
-.pdm-body .pd-verdict-chip.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
-.pdm-body .pd-verdict-chip.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
+/* Five bands, not four — see PF_TIERS. The middle of the old scale did all the
+   work: a mild doubt and a genuine problem both arrived as MONITOR. `doubt`
+   borrows the FDR ramp's orange, which is the step this palette already uses
+   between "watch it" and "that is a problem". */
+.pdm-body .pd-verdict-chip.t-essential { background: var(--verdict-star-bg, #EDE9FE); color: var(--verdict-star, #7C3AED); }
+.pdm-body .pd-verdict-chip.t-solid     { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
+.pdm-body .pd-verdict-chip.t-watch     { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
+.pdm-body .pd-verdict-chip.t-doubt     { background: rgba(249, 115, 22, 0.10); color: var(--fdr-4, #F97316); }
+.pdm-body .pd-verdict-chip.t-sell      { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
 .pdm-body .pd-verdict-why { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
 
 .pdm-body .pd-verdict-rec {
@@ -581,21 +585,6 @@
     border-left: 3px solid var(--pdm-accent, var(--color-primary));
 }
 
-/* The sell rating as the meter it is. "Sell Rating: 0/100" as a line of grey
-   text was the one number on this card you had to stop and parse. */
-.pdm-body .pd-sell-rate { display: flex; align-items: center; gap: 8px; }
-
-.pdm-body .pd-sell-rate-label {
-    font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-    color: var(--text-muted); white-space: nowrap;
-}
-
-.pdm-body .pd-sell-rate-bar {
-    flex: 1; height: 5px; border-radius: 999px; background: var(--surface-3, var(--surface-2)); overflow: hidden;
-}
-
-.pdm-body .pd-sell-rate-bar i { display: block; height: 100%; border-radius: 999px; }
-.pdm-body .pd-sell-rate-num { font-family: var(--font-mono); font-size: 12px; font-weight: 800; }
 
 /* ===== The three readings, packed =====
    Three real columns rather than grid cells, because the blocks in the third
@@ -604,10 +593,26 @@
    a four-line list sat beside a column and a half of white space. Grid cannot
    pack that way — masonry rows are not shipped widely enough to rely on — so
    pdmLayoutBands() moves the sections into these columns and each is a stack. */
+/* The body's rows, in reading order — see PDM_LAYOUT. */
+.pdm-layout {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+}
+
+/* A full-width row inside it. Season Numbers and Key Statistics both take one:
+   the second carries the match-by-match form grid, which is five or six columns
+   wide and unreadable squeezed into a third of the sheet. */
+.pdm-layout > .detail-section.pdm-full { grid-column: 1 / -1; width: 100%; }
+
 .pdm-bands {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* Set by pdmLayoutBands from the row it is building, so a two-column band
+       does not inherit thirds from a three-column one. */
+    grid-template-columns: repeat(var(--pdm-cols, 3), minmax(0, 1fr));
     gap: 14px;
     align-items: start;
 }
@@ -687,7 +692,7 @@
 
     .pdm-body .detail-section,
         .pdm-body .detail-section[data-span="2"],
-        .pdm-bands { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .pdm-bands { grid-template-columns: repeat(min(var(--pdm-cols, 3), 2), minmax(0, 1fr)); }
 }
 
 @media (max-width: 860px) {
@@ -767,3 +772,85 @@
 .ph-moves li.down { color: var(--color-error); }
 .ph-move-gw { font-weight: 700; opacity: 0.75; }
 .ph-note { margin-top: 8px; font-size: 10px; color: var(--text-muted); }
+
+/* ============================================
+   RECENT FORM — the last five gameweeks (scripts/player-profile.js)
+
+   Two readings of one window. The grid is the shape of the run, match by
+   match; the totals are what it added up to, next to the season. Shared by the
+   profile card and the AI Scouting Report, so it lives here with the card.
+   ============================================ */
+.pf-block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-default); }
+
+.pf-block-head {
+    display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-secondary);
+}
+.pf-block-head span { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-muted); }
+
+/* The grid scrolls rather than squeezing: a double gameweek makes six columns,
+   and a stat table that reflows into two lines per cell stops being readable. */
+.pf-grid-wrap { overflow-x: auto; }
+
+.pf-grid { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.pf-grid th, .pf-grid td { padding: 5px 7px; text-align: center; font-size: 12px; }
+.pf-grid tbody th[scope="row"] {
+    text-align: left; white-space: nowrap; font-weight: 600;
+    font-size: 11px; color: var(--text-secondary);
+}
+.pf-grid tbody tr:nth-child(odd) { background: var(--surface-2); }
+.pf-grid td { color: var(--text-primary); font-weight: 600; }
+
+.pf-col { vertical-align: bottom; border-bottom: 1px solid var(--border-default); }
+.pf-col span { display: block; line-height: 1.25; }
+.pf-gw { font-size: 9px; font-weight: 700; letter-spacing: .04em; color: var(--text-muted); }
+.pf-opp { font-size: 11px; font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+.pf-res { font-size: 9.5px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.pf-res.r-W { color: var(--color-success); }
+.pf-res.r-L { color: var(--color-error); }
+
+/* A gameweek the club sat out, a match he was not in and a match still to be
+   played are all blank on the scoresheet and mean three different things, so
+   none of them is drawn as a zero. The upcoming column keeps its opponent at
+   full strength — the fixture is the point of it — and says so underneath. */
+.pf-col.pf-blank .pf-opp, .pf-col.pf-dnp .pf-opp { color: var(--text-muted); font-weight: 600; }
+.pf-col.pf-blank { background: repeating-linear-gradient(135deg,
+    transparent, transparent 4px, var(--surface-2) 4px, var(--surface-2) 8px); }
+.pf-col.pf-upcoming { opacity: .72; }
+.pf-col.pf-upcoming .pf-res { font-style: italic; }
+.pf-na { color: var(--text-muted) !important; font-weight: 400 !important; }
+
+.pf-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 14px; margin-top: 12px; }
+@media (max-width: 720px) { .pf-split { grid-template-columns: minmax(0, 1fr); } }
+
+.pf-totals { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.pf-totals th, .pf-totals td { padding: 4px 7px; font-size: 12px; text-align: right; }
+.pf-totals thead th { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.pf-totals tbody th[scope="row"] { text-align: left; font-weight: 600; font-size: 11px; color: var(--text-secondary); }
+.pf-totals tbody tr:nth-child(odd) { background: var(--surface-2); }
+.pf-totals td { font-weight: 700; color: var(--text-primary); }
+/* The season column is the steadier number and the recent one is the news, so
+   the recent one is what the eye lands on. */
+.pf-totals .pf-season { color: var(--text-muted); font-weight: 600; }
+
+.pf-verdicts { display: flex; flex-direction: column; gap: 8px; }
+.pf-verdict { padding: 8px 10px; border-radius: var(--radius-sm, 6px); background: var(--surface-2); }
+.pf-verdict-head {
+    font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-primary); margin-bottom: 5px;
+}
+.pf-verdict-head span { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-muted); }
+.pf-read { font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); padding-left: 8px; border-left: 2px solid var(--border-default); }
+.pf-read + .pf-read { margin-top: 4px; }
+.pf-read em { font-style: normal; font-weight: 700; color: var(--text-muted); margin-right: 5px; }
+.pf-read.t-over  { border-left-color: var(--color-success); }
+.pf-read.t-under { border-left-color: var(--color-error); }
+.pf-read.t-par   { border-left-color: var(--text-muted); }
+/* Too small a sample to call is a reading too, and it should not borrow the
+   colour of one that has something to say. */
+.pf-read.t-thin  { border-left-color: var(--border-default); color: var(--text-muted); }
+
+.report-form-read { margin-top: 18px; }
+.report-form-read h4 { font-size: 13px; margin-bottom: 10px; }
+.report-form-read .pf-verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }

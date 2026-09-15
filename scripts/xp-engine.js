@@ -70,16 +70,59 @@
         /* How many matches a player's season totals are spread over.
 
            Lived in squad-table-chart.js, which put a squad-page rendering file on
-           the dependency list of every projection on the site. It reads the
-           currentGW and isPreseason globals named in the contract above.
+           the dependency list of every projection on the site.
 
-           Preseason has no gameweeks to count, so it falls back to the player's
+           This was `currentGW - 1`, and that is the is_current trap again.
+           is_current names the round whose deadline passed most recently and
+           keeps naming it until the next one locks, so subtracting one is right
+           only WHILE that round is being played and wrong for the days after it
+           — which is most of the week. On the Monday after GW4 it said three
+           gameweeks had been played, so E.Le Fée's 348 minutes over four starts
+           came out as 116 a game. Nobody plays 116 minutes.
+
+           It is not a display problem: expectedMinutesModel divides by this, so
+           a denominator one too small inflated minutes per game, pStart and
+           expected minutes for every player on the site.
+
+           Counted off the club's own fixtures instead. That is right during a
+           round as well as after it, and it handles a blank gameweek for free —
+           a club that did not play cannot have played a match, and its players
+           should not be charged one. The old formula is the fallback for a
+           caller with no fixture list.
+
+           Note this is a different question from the one the pStart comment
+           further down settles. That deliberately counts gameweeks a player
+           MISSED against him; this counts gameweeks that HAPPENED. Both were
+           wrong in the same expression. */
+        let _xpPlayedFor = null, _xpPlayedByTeam = null;
+
+        function xpClubGamesPlayed(teamId) {
+            const fixtures = (typeof allFixtures !== 'undefined' && allFixtures) || [];
+            if (!fixtures.length) return null;
+            // One pass per fixture list, not per player: this is called inside
+            // the projection, for every player, several times over.
+            if (_xpPlayedFor !== fixtures) {
+                _xpPlayedFor = fixtures;
+                _xpPlayedByTeam = {};
+                fixtures.forEach(f => {
+                    if (!f) return;
+                    const done = typeof fixturePlayed === 'function'
+                        ? fixturePlayed(f) : !!f.finished_provisional;
+                    if (!done) return;
+                    _xpPlayedByTeam[f.team_h] = (_xpPlayedByTeam[f.team_h] || 0) + 1;
+                    _xpPlayedByTeam[f.team_a] = (_xpPlayedByTeam[f.team_a] || 0) + 1;
+                });
+            }
+            return teamId == null ? null : (_xpPlayedByTeam[teamId] || 0);
+        }
+
+        /* Preseason has no gameweeks to count, so it falls back to the player's
            own starts — or to whole matches' worth of minutes when even that is
            missing — and never returns zero, because every caller divides by it. */
         function computePlayerGamesPlayed(player) {
-            return isPreseason
-                ? Math.max(player.starts || Math.round(player.minutes / 90), 1)
-                : Math.max(currentGW - 1, 1);
+            if (isPreseason) return Math.max(player.starts || Math.round(player.minutes / 90), 1);
+            const played = xpClubGamesPlayed(player && player.teamId);
+            return Math.max(played == null ? currentGW - 1 : played, 1);
         }
 
         /* One player object, from one FPL `element`, in the shape this engine

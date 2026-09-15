@@ -30,30 +30,32 @@ const COLUMN_DEFS = {
     own: { label: 'Own%', key: 'selectedBy', sortable: true, format: v => v.toFixed(1) + '%', tip: 'Ownership percentage' },
     
     // Gametime
-    games: { label: 'GP', key: 'l5.games', sortable: true, tip: 'Games played (L5)' },
+    /* GP counted his rows in the window, and FPL writes a row for an unused
+       substitute — so a defender who had not kicked a ball in a month still read
+       "4". It is appearances now: matches he was actually on the pitch for. The
+       per-game columns keep dividing by matches his CLUB played, which is the
+       denominator those rates want and is carried separately. */
+    games: { label: 'GP', key: 'l5.appearances', sortable: true, tip: 'Matches he appeared in' },
     mins: { label: 'Mins', key: 'l5.minutes', sortable: true, tip: 'Total minutes (L5)' },
-    minsG: { label: 'Mins/G', key: 'minsPerGame', sortable: true, format: v => v.toFixed(0), tip: 'Minutes per game', highlight: v => v >= 80 ? 'good' : v >= 60 ? '' : 'bad' },
-    
+    minsG: { label: 'Mins/G', key: 'minsPerGame', sortable: true, format: v => v.toFixed(0), tip: 'Minutes per match his club played', highlight: v => v >= 80 ? 'good' : v >= 60 ? '' : 'bad' },
+
     // Points
     pts: { label: 'Pts', key: 'l5.points', sortable: true, tip: 'Total points (L5)' },
-    ptsG: { label: 'Pts/G', key: 'ptsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Points per game', highlight: v => v >= 5 ? 'good' : v >= 3 ? '' : 'bad' },
+    ptsG: { label: 'Pts/G', key: 'ptsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Points per match his club played', highlight: v => v >= 5 ? 'good' : v >= 3 ? '' : 'bad' },
     form: { label: 'Form', key: 'form', sortable: true, format: v => v.toFixed(1), tip: 'FPL form rating', highlight: v => v >= 6 ? 'good' : v >= 4 ? '' : 'bad' },
     seasonPts: { label: 'Pts (S)', key: 'season.points', sortable: true, tip: 'Total season points' },
-    seasonPtsG: { label: 'Pts/G (S)', key: 'seasonPtsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Season points per game' },
+    seasonPtsG: { label: 'Pts/G (S)', key: 'seasonPtsPerGame', sortable: true, format: v => v.toFixed(1), tip: 'Season points per match his club played' },
     value: { label: 'Value', key: 'valueScore', sortable: true, format: v => v.toFixed(2), tip: 'Points per million', highlight: v => v >= 0.8 ? 'good' : '' },
     
     // Goals
     goals: { label: 'G', key: 'l5.goals', sortable: true, tip: 'Goals scored (L5)' },
     xG: { label: 'xG', key: 'l5.xG', sortable: true, format: v => v.toFixed(2), tip: 'Expected goals (L5)', term: 'xG' },
     xGG: { label: 'xG/G', key: 'xgPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xG per game' },
-    bcm: { label: 'BCM', key: 'l5.bigChancesMissed', sortable: true, tip: 'Big chances missed (L5). Null = estimated from xG', estimated: '_bigChancesMissedEst' },
     
     // Assists/Creativity
     assists: { label: 'A', key: 'l5.assists', sortable: true, tip: 'Assists (L5)' },
     xA: { label: 'xA', key: 'l5.xA', sortable: true, format: v => v.toFixed(2), tip: 'Expected assists (L5)', term: 'xA' },
     xAG: { label: 'xA/G', key: 'xaPerGame', sortable: true, format: v => v.toFixed(2), tip: 'xA per game' },
-    kp: { label: 'KP', key: 'l5.keyPasses', sortable: true, tip: 'Key passes (L5). Null = estimated from xA', estimated: '_keyPassesEst' },
-    bcc: { label: 'BCC', key: 'l5.bigChancesCreated', sortable: true, tip: 'Big chances created (L5). Null = estimated from xA', estimated: '_bigChancesCreatedEst' },
     
     // Combined Expected
     xGI: { label: 'xGI', key: 'l5.xGI', sortable: true, format: v => v.toFixed(2), tip: 'Expected goal involvement (L5)', term: 'xGI' },
@@ -115,7 +117,7 @@ function colValue(p, colKey) {
 // Column presets. 'player' is always first and always frozen.
 const COLUMN_PRESETS = {
     core:      { label: 'Core', cols: ['player', 'price', 'own', 'pts', 'form', 'xGIG', 'fixtures'] },
-    attacking: { label: 'Attacking', cols: ['player', 'price', 'goals', 'assists', 'xGG', 'xAG', 'xGIG', 'kp', 'bcc', 'bcm', 'fixtures'] },
+    attacking: { label: 'Attacking', cols: ['player', 'price', 'goals', 'assists', 'xGG', 'xAG', 'xGIG', 'fixtures'] },
     defensive: { label: 'Defensive', cols: ['player', 'price', 'csPct', 'xGC90', 'saves90', 'gc90', 'bps', 'fixtures'] },
     all:       { label: 'All stats', cols: null }
 };
@@ -141,15 +143,20 @@ const DEFAULT_COLS = {
     GK: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'saves', 'gc', 'xGC', 'bonus', 'fdr'],
     DEF: ['player', 'price', 'own', 'pts', 'ptsG', 'cs', 'gc', 'xGI', 'goals', 'assists', 'bonus', 'fdr'],
     MID: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'xA', 'bonus', 'fdr'],
-    FWD: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'bcm', 'bonus', 'fdr'],
-    ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
+    FWD: ['player', 'price', 'own', 'pts', 'ptsG', 'goals', 'assists', 'xGI', 'xG', 'bonus', 'fdr'],
+    ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
 };
 
 const COLS_STORAGE_KEY = 'fpl_allplayers_cols';
 function loadSavedColumns() {
     try {
         const saved = localStorage.getItem(COLS_STORAGE_KEY);
-        if (saved) return JSON.parse(saved);
+        /* Filtered against the live definitions. A stored key for a column that
+           no longer exists knocked the table out of alignment rather than being
+           ignored — renderTableHeader drops the cell (`if (!col) return ''`)
+           while renderCell keeps one (`return '<td>-</td>'`), so every column
+           after it moved one place left in the header only. */
+        if (saved) return JSON.parse(saved).filter(k => COLUMN_DEFS[k]);
     } catch(e) {}
     return null;
 }
@@ -160,10 +167,10 @@ function saveColumns(cols) {
 // Available columns per position - FULL LIST
 const AVAILABLE_COLS = {
     GK: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'saves', 'gc', 'xGC', 'penSaved', 'bonus', 'bps', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-    DEF: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'gc', 'xGC', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'bcc', 'kp', 'bonus', 'bps', 'ict', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-    MID: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'cs', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-    FWD: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
-    ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bcc', 'bcm', 'kp', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
+    DEF: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'cs', 'gc', 'xGC', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'bonus', 'bps', 'ict', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+    MID: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+    FWD: ['player', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures'],
+    ALL: ['player', 'pos', 'team', 'price', 'own', 'games', 'mins', 'minsG', 'pts', 'ptsG', 'form', 'goals', 'assists', 'xG', 'xA', 'xGI', 'xGIG', 'xGG', 'xAG', 'cs', 'gc', 'xGC', 'saves', 'bonus', 'bps', 'ict', 'influence', 'creativity', 'threat', 'seasonPts', 'seasonPtsG', 'value', 'fdr', 'fixtures']
 };
 
 function currentPresetName() {
@@ -634,7 +641,7 @@ function renderTableBody(position) {
 // Columns worth shading: numeric, comparable across players, and meaningful.
 const HEAT_COLS = new Set(['pts', 'ptsG', 'form', 'value', 'goals', 'assists', 'xG', 'xGG', 'xA', 'xAG',
     'xGI', 'xGIG', 'cs', 'csPct', 'saves', 'saves90', 'bonus', 'bps', 'ict', 'influence', 'creativity',
-    'threat', 'kp', 'bcc', 'minsG', 'seasonPts', 'seasonPtsG', 'xGC', 'xGC90', 'gc', 'gc90']);
+    'threat', 'minsG', 'seasonPts', 'seasonPtsG', 'xGC', 'xGC90', 'gc', 'gc90']);
 
 let heatScales = {};
 
@@ -794,15 +801,16 @@ function renderCell(p, colKey, position, isSelected) {
         return `<td style="color: var(--text-muted);">-</td>`;
     }
     
-    // Handle null/undefined values — check for estimated fallback
+    /* A missing number is shown as missing.
+
+       There used to be an "estimated" fallback here: a column with no data
+       rendered ~N, where N was a rescale of xA or xG wearing another stat's
+       name. See the note in fpl-teams-analysis.html, which faced the same
+       absence and refused it — FPL has never published big chances, key passes
+       or shots, so the estimate was not a fallback, it was the only path that
+       ever ran, and it carried no information xA and xG were not already
+       showing in their own columns. */
     if (value === null || value === undefined) {
-        // If this column has an estimated field, show it with ~ prefix
-        if (col.estimated) {
-            const estValue = getNestedValue(p, `l5.${col.estimated}`);
-            if (estValue !== null && estValue !== undefined && estValue !== 0) {
-                return `<td class="stat-cell" style="color: var(--text-muted);" title="Estimated from expected stats">~${estValue}</td>`;
-            }
-        }
         return `<td class="stat-cell" style="color: var(--text-muted);">-</td>`;
     }
     
@@ -1091,56 +1099,26 @@ document.addEventListener('click', function(e) {
 // ============================================
 // TIMEFRAME TOGGLE (ALL Players)
 // ============================================
+/* The Last 3 / Last 5 / Last 10 / Season toggle above the All Players table.
+
+   This was a third window over the same data, and it did not agree with the
+   other two: it sliced the last N ROWS and counted `games` as appearances,
+   while the L5 branch it sits next to sliced rows and counted `games` as rows.
+   Switching the toggle from Last 5 to Last 3 therefore changed what the GP
+   column meant and what every per-game column was divided by, on top of
+   changing the window — two different edits presented as one.
+
+   Same engine as L5 and the same engine as the profile card now, with N as the
+   only difference between them. */
 function computePlayerStats(player, timeframe) {
     if (timeframe === 'season') return player.season || {};
     if (timeframe === 'l5') return player.l5 || {};
+    if (typeof buildStatWindows !== 'function') return player.l5 || {};
 
-    // Compute from history for l10, l3
     const n = timeframe === 'l10' ? 10 : 3;
     const history = player.history || [];
-    const slice = history.slice(-n);
-    if (slice.length === 0) return player.l5 || {};
-
-    const stats = {
-        games: slice.filter(g => g.minutes > 0).length,
-        minutes: 0, points: 0, goals: 0, assists: 0,
-        xG: 0, xA: 0, xGI: 0, xGC: 0,
-        cleanSheets: 0, goalsConceded: 0, saves: 0,
-        bonus: 0, bps: 0, ict: 0,
-        influence: 0, creativity: 0, threat: 0,
-        bigChancesMissed: null, bigChancesCreated: null,
-        keyPasses: null, penaltiesSaved: 0
-    };
-
-    let hasBCM = false, hasBCC = false, hasKP = false;
-    slice.forEach(g => {
-        stats.minutes += g.minutes || 0;
-        stats.points += g.total_points || 0;
-        stats.goals += g.goals_scored || 0;
-        stats.assists += g.assists || 0;
-        stats.xG += parseFloat(g.expected_goals) || 0;
-        stats.xA += parseFloat(g.expected_assists) || 0;
-        stats.xGI += parseFloat(g.expected_goal_involvements) || 0;
-        stats.xGC += parseFloat(g.expected_goals_conceded) || 0;
-        stats.cleanSheets += g.clean_sheets || 0;
-        stats.goalsConceded += g.goals_conceded || 0;
-        stats.saves += g.saves || 0;
-        stats.bonus += g.bonus || 0;
-        stats.bps += g.bps || 0;
-        stats.ict += parseFloat(g.ict_index) || 0;
-        stats.influence += parseFloat(g.influence) || 0;
-        stats.creativity += parseFloat(g.creativity) || 0;
-        stats.threat += parseFloat(g.threat) || 0;
-        stats.penaltiesSaved += g.penalties_saved || 0;
-        if (g.big_chances_missed !== undefined && g.big_chances_missed !== null) { stats.bigChancesMissed = (stats.bigChancesMissed || 0) + g.big_chances_missed; hasBCM = true; }
-        if (g.big_chances_created !== undefined && g.big_chances_created !== null) { stats.bigChancesCreated = (stats.bigChancesCreated || 0) + g.big_chances_created; hasBCC = true; }
-        if (g.key_passes !== undefined && g.key_passes !== null) { stats.keyPasses = (stats.keyPasses || 0) + g.key_passes; hasKP = true; }
-    });
-    if (!hasBCM) stats.bigChancesMissed = null;
-    if (!hasBCC) stats.bigChancesCreated = null;
-    if (!hasKP) stats.keyPasses = null;
-
-    return stats;
+    if (!history.length) return player.l5 || {};
+    return buildStatWindows(player, history, { window: n }).recent || player.l5 || {};
 }
 
 function setTimeframe(tf) {

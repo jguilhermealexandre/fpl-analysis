@@ -75,67 +75,100 @@ function updateCompareBar() {
 // ============================================
 // AI SCOUTING REPORT — DATA ENGINE
 // ============================================
-        function calculateStats(history, last5 = false) {
-            const games = last5 ? history.slice(-5) : history;
-            if (games.length === 0) return null;
-            const sum = (arr, key) => arr.reduce((acc, g) => acc + (parseFloat(g[key]) || 0), 0);
+        /* The windowed totals every table and every report row on this site is
+           built from — and the ONLY place they are counted.
 
-            // Home/away splits for L5 (used by next-match scoring)
-            const homeGames = games.filter(g => g.was_home);
-            const awayGames = games.filter(g => !g.was_home);
-            const homeSplit = homeGames.length > 0 ? {
-                games: homeGames.length,
-                points: sum(homeGames, 'total_points'),
-                xGI: sum(homeGames, 'expected_goal_involvements'),
-                xG: sum(homeGames, 'expected_goals'),
-                xA: sum(homeGames, 'expected_assists'),
-                cleanSheets: sum(homeGames, 'clean_sheets'),
-                saves: sum(homeGames, 'saves'),
-                bonus: sum(homeGames, 'bonus'),
-                minutes: sum(homeGames, 'minutes')
-            } : null;
-            const awaySplit = awayGames.length > 0 ? {
-                games: awayGames.length,
-                points: sum(awayGames, 'total_points'),
-                xGI: sum(awayGames, 'expected_goal_involvements'),
-                xG: sum(awayGames, 'expected_goals'),
-                xA: sum(awayGames, 'expected_assists'),
-                cleanSheets: sum(awayGames, 'clean_sheets'),
-                saves: sum(awayGames, 'saves'),
-                bonus: sum(awayGames, 'bonus'),
-                minutes: sum(awayGames, 'minutes')
-            } : null;
+           This used to slice the player's own history: `history.slice(-5)`, the
+           last five ROWS. The profile card counts the last five ROUNDS from the
+           fixture list. They agree while every club plays every week and every
+           player has a row for every fixture, and they stop agreeing the moment
+           either is untrue — which it already is:
+
+             · A club with a blank has fewer rows, so slice(-5) reaches back a
+               sixth gameweek to fill the window. Two players in the same
+               comparison were being measured over different five gameweeks,
+               both labelled L5.
+             · 107 of the 658 players in the current feed have fewer rows than
+               their club has played, so the denominator under "per game" was a
+               different number for them than for their team-mates.
+             · FPL writes a zeroed row the moment a fixture is scheduled. A round
+               still in flight therefore gave everyone whose match had not kicked
+               off yet an extra game of nothing: Leeds had played every minute of
+               three matches and read 68 mins/g — "rotation risk" — because of a
+               fourth that starts this evening.
+
+           None of that is a rounding difference. One window, counted once, in
+           scripts/player-profile.js; this reshapes it into the flat totals the
+           tables want and adds the home/away split only this file consumes.
+
+           `games` is matches the club PLAYED in the window — the denominator for
+           anything per-game. `appearances` is how many of them he was on the
+           pitch for. They are different questions and both are carried, because
+           one standing in for the other is what "116 mins/game" was. */
+        function buildStatWindows(player, history, opts) {
+            const o = opts || {};
+            if (!history || !history.length) return { recent: null, season: null, window: null };
+
+            const fixtures = o.fixtures || (typeof allFixtures !== 'undefined' && allFixtures) || [];
+            const teamsById = o.teams || (typeof teams !== 'undefined' && teams) || {};
+            const w = (typeof pfFormWindow === 'function')
+                ? pfFormWindow(player, history, fixtures, teamsById, { window: o.window || 5 })
+                : null;
+
+            /* No window means no fixture has been played yet — preseason, or a
+               fixture list that has not loaded. Falling back to the whole
+               history keeps the tables populated rather than emptying them, and
+               it is honest: everything he has is everything there is. */
+            if (!w) {
+                const all = pfSum(history.map(pfMatchStats));
+                const apps = history.filter(r => (parseFloat(r.minutes) || 0) > 0).length;
+                const shape = statsShape(all, history.length, apps, null);
+                return { recent: shape, season: shape, window: null };
+            }
 
             return {
-                games: games.length,
-                minutes: sum(games, 'minutes'),
-                points: sum(games, 'total_points'),
-                goals: sum(games, 'goals_scored'),
-                assists: sum(games, 'assists'),
-                cleanSheets: sum(games, 'clean_sheets'),
-                goalsConceded: sum(games, 'goals_conceded'),
-                saves: sum(games, 'saves'),
-                bonus: sum(games, 'bonus'),
-                bps: sum(games, 'bps'),
-                xG: sum(games, 'expected_goals'),
-                xA: sum(games, 'expected_assists'),
-                xGI: sum(games, 'expected_goal_involvements'),
-                xGC: sum(games, 'expected_goals_conceded'),
-                penaltiesSaved: sum(games, 'penalties_saved'),
-                penaltiesMissed: sum(games, 'penalties_missed'),
-                bigChancesCreated: sum(games, 'big_chances_created') || null,
-                _bigChancesCreatedEst: !sum(games, 'big_chances_created') ? Math.round(sum(games, 'expected_assists') * 2) : null,
-                bigChancesMissed: sum(games, 'big_chances_missed') || null,
-                _bigChancesMissedEst: !sum(games, 'big_chances_missed') ? Math.round(sum(games, 'expected_goals') * 0.8) : null,
-                keyPasses: sum(games, 'key_passes') || null,
-                _keyPassesEst: !sum(games, 'key_passes') ? Math.round(sum(games, 'expected_assists') * 5) : null,
-                ict: sum(games, 'ict_index'),
-                influence: sum(games, 'influence'),
-                creativity: sum(games, 'creativity'),
-                threat: sum(games, 'threat'),
-                homeSplit,
-                awaySplit
+                recent: statsShape(w.totals, w.matches, w.appearances, splitsFrom(w)),
+                season: statsShape(w.season, w.seasonMatches || w.seasonGames, w.seasonGames, null),
+                window: w
             };
+        }
+
+        /* The window's totals, flattened into the shape the tables index by
+           name. Every figure is a field FPL publishes, summed — big chances and
+           key passes are not among them and nothing stands in for them, which is
+           why three fields that were xG and xA multiplied by 0.8, 2 and 5 and
+           given another stat's name are not here either. */
+        function statsShape(t, matches, appearances, splits) {
+            return {
+                games: matches, appearances,
+                minutes: t.minutes, points: t.points,
+                goals: t.goals, assists: t.assists, gi: t.gi,
+                xG: t.xG, xA: t.xA, xGI: t.xGI,
+                cleanSheets: t.cleanSheets, goalsConceded: t.goalsConceded, xGC: t.xGC,
+                saves: t.saves, penaltiesSaved: t.penaltiesSaved, penaltiesMissed: t.penaltiesMissed,
+                bonus: t.bonus, bps: t.bps,
+                ict: t.ict, influence: t.influence, creativity: t.creativity, threat: t.threat,
+                defCon: t.defCon,
+                homeSplit: splits ? splits.home : null,
+                awaySplit: splits ? splits.away : null
+            };
+        }
+
+        /* Home and away, from the window's own columns. The venue comes from the
+           fixture rather than the row's was_home flag, so a fixture he has no row
+           for still lands on the right side of the split. */
+        function splitsFrom(w) {
+            const side = home => {
+                const cols = w.columns.filter(c =>
+                    (c.state === 'played' || c.state === 'dnp') && !!c.isHome === home);
+                if (!cols.length) return null;
+                const t = pfSum(cols.map(c => c.stats));
+                return {
+                    games: cols.length, points: t.points, xGI: t.xGI, xG: t.xG, xA: t.xA,
+                    cleanSheets: t.cleanSheets, saves: t.saves, bonus: t.bonus, minutes: t.minutes
+                };
+            };
+            return { home: side(true), away: side(false) };
         }
 
         function recencyWeightedAvg(history, key, n = 5) {
@@ -190,30 +223,58 @@ function updateCompareBar() {
             const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             return players.map(p => {
                 const pos = posMap[p.position];
-                const l5Games = p.l5?.games || 1;
-                const seasonGames = p.season?.games || 1;
-                const ptsPerGame = (p.l5?.points || 0) / l5Games;
-                const minsPerGame = (p.l5?.minutes || 0) / l5Games;
-                const xgiPerGame = (p.l5?.xGI || 0) / l5Games;
-                const xgPerGame = (p.l5?.xG || 0) / l5Games;
-                const xaPerGame = (p.l5?.xA || 0) / l5Games;
-                const bonusPerGame = (p.l5?.bonus || 0) / l5Games;
-                const savesPerGame = (p.l5?.saves || 0) / l5Games;
-                const csPerGame = (p.l5?.cleanSheets || 0) / l5Games;
+                /* Matches his club played, not his appearances and not rows in
+                   the feed. Per appearance would flatter a man who only turns up
+                   half the time — what he gives you is what he gives you across
+                   the weeks you own him — and rows in the feed counted fixtures
+                   that had not kicked off. The table says "per match" now, in so
+                   many words, because "/G" was doing duty for all three. */
+                const l5Matches = p.l5?.games || 1;
+                const seasonMatches = p.season?.games || 1;
+                const ptsPerGame = (p.l5?.points || 0) / l5Matches;
+                const minsPerGame = (p.l5?.minutes || 0) / l5Matches;
+                const xgiPerGame = (p.l5?.xGI || 0) / l5Matches;
+                const xgPerGame = (p.l5?.xG || 0) / l5Matches;
+                const xaPerGame = (p.l5?.xA || 0) / l5Matches;
+                const bonusPerGame = (p.l5?.bonus || 0) / l5Matches;
+                const savesPerGame = (p.l5?.saves || 0) / l5Matches;
+                const csPerGame = (p.l5?.cleanSheets || 0) / l5Matches;
                 const valueScore = ptsPerGame / (p.price || 1);
+                const appearanceLabel = p.l5?.appearances == null ? null
+                    : `${p.l5.appearances} of ${p.l5.games}`;
 
-                // Reliability & Explosiveness
-                let reliability = 0, explosiveness = 0;
-                if (p.history && p.history.length >= 5) {
-                    const last10 = p.history.slice(-10);
-                    const returnGames = last10.filter(g => (parseFloat(g.total_points) || 0) >= 2).length;
-                    const explosiveGames = last10.filter(g => (parseFloat(g.total_points) || 0) >= 10).length;
-                    reliability = (returnGames / last10.length) * 100;
-                    explosiveness = (explosiveGames / last10.length) * 100;
+                /* Reliability and explosiveness — how often he returns, how often
+                   he hauls.
+
+                   Both were guarded on `history.length >= 5` and set to 0 when the
+                   guard failed. Four gameweeks into a season that is every player
+                   in the game, and the table printed "0%" for all of them — which
+                   reads as "never returns", a measurement, rather than "not enough
+                   football yet". Zero is an answer; it must not be the way we spell
+                   "we do not know".
+
+                   Counted over matches he actually PLAYED, not rows in the feed:
+                   FPL writes a row for an unused substitute, and a rate whose
+                   denominator counts weeks he was injured is not a rate about him.
+                   Below PLAYED_MIN there is no honest ratio, and both come back
+                   null so the row can say so. */
+                const RELIABILITY_WINDOW = 10, PLAYED_MIN = 3;
+                let reliability = null, explosiveness = null, reliabilityGames = 0;
+                if (p.history && p.history.length) {
+                    const played = p.history.slice(-RELIABILITY_WINDOW)
+                        .filter(g => (parseFloat(g.minutes) || 0) > 0);
+                    reliabilityGames = played.length;
+                    if (played.length >= PLAYED_MIN) {
+                        const returns = played.filter(g => (parseFloat(g.total_points) || 0) >= 2).length;
+                        const hauls = played.filter(g => (parseFloat(g.total_points) || 0) >= 10).length;
+                        reliability = (returns / played.length) * 100;
+                        explosiveness = (hauls / played.length) * 100;
+                    }
                 }
 
-                // Consistency (stdDev)
-                let consistency = 5;
+                // Consistency (stdDev). Null rather than a stand-in figure when
+                // there is nothing to measure — see the note on reliability above.
+                let consistency = null;
                 if (p.history && p.history.length >= 5) {
                     const last5 = p.history.slice(-5);
                     const pts = last5.map(g => parseFloat(g.total_points) || 0);
@@ -241,7 +302,11 @@ function updateCompareBar() {
                 const risingScore = (window._risingFormScores && window._risingFormScores[p.id]) || 0;
 
                 // Routes data
-                const routesData = (window._routesData && window._routesData[p.id]) || { routeCount: 0, compositeScore: 0 };
+                /* Only the players page precomputes these — window._routesData is
+                   never set on the squad page. Defaulting to zero routes told the
+                   squad page's reader that a player has none, which is a claim.
+                   Null, and the rows render a dash. */
+                const routesData = (window._routesData && window._routesData[p.id]) || null;
 
                 // Compute route details for this player (re-use logic from generateRoutesToPoints inline)
                 let routes = [];
@@ -261,23 +326,23 @@ function updateCompareBar() {
 
                     if (xGpg >= goalThresh) {
                         const ceil = pos === 'FWD' ? 0.6 : pos === 'MID' ? 0.5 : 0.3;
-                        routes.push({ name: 'Goals', strength: Math.min(10, (xGpg / ceil) * 10), detail: `${xGpg.toFixed(2)} xG/g`, color: '#F87171' });
+                        routes.push({ name: 'Goals', strength: Math.min(10, (xGpg / ceil) * 10), detail: `${xGpg.toFixed(2)} xG/match`, color: '#F87171' });
                     }
                     if (xApg >= assistThresh) {
                         const ceil = pos === 'MID' ? 0.4 : 0.3;
-                        routes.push({ name: 'Assists', strength: Math.min(10, (xApg / ceil) * 10), detail: `${xApg.toFixed(2)} xA/g`, color: '#60A5FA' });
+                        routes.push({ name: 'Assists', strength: Math.min(10, (xApg / ceil) * 10), detail: `${xApg.toFixed(2)} xA/match`, color: '#60A5FA' });
                     }
                     if (cPg >= 0.15 && pos !== 'FWD') {
                         routes.push({ name: 'Clean Sheets', strength: Math.min(10, (cPg / 0.55) * 10), detail: `${(cPg * 100).toFixed(0)}%`, color: '#34D399' });
                     }
                     if (bPg >= 0.3) {
-                        routes.push({ name: 'Bonus', strength: Math.min(10, (bPg / 2) * 10), detail: `${bPg.toFixed(1)}/g`, color: '#FBBF24' });
+                        routes.push({ name: 'Bonus', strength: Math.min(10, (bPg / 2) * 10), detail: `${bPg.toFixed(1)}/match`, color: '#FBBF24' });
                     }
                     if (pos === 'GK' && sPg >= 2) {
-                        routes.push({ name: 'Saves', strength: Math.min(10, (sPg / 5) * 10), detail: `${sPg.toFixed(1)}/g`, color: '#A78BFA' });
+                        routes.push({ name: 'Saves', strength: Math.min(10, (sPg / 5) * 10), detail: `${sPg.toFixed(1)}/match`, color: '#A78BFA' });
                     }
                     if (crPg >= 12 && (pos === 'MID' || pos === 'DEF')) {
-                        routes.push({ name: 'Creativity', strength: Math.min(10, (crPg / 45) * 10), detail: `${crPg.toFixed(0)} crea/g`, color: '#FB923C' });
+                        routes.push({ name: 'Creativity', strength: Math.min(10, (crPg / 45) * 10), detail: `${crPg.toFixed(0)} crea/match`, color: '#FB923C' });
                     }
                 } catch (e) {}
 
@@ -319,83 +384,131 @@ function updateCompareBar() {
 
                 return {
                     ...p, pos, ptsPerGame, minsPerGame, xgiPerGame, xgPerGame, xaPerGame,
-                    bonusPerGame, savesPerGame, csPerGame, valueScore, reliability, explosiveness,
+                    bonusPerGame, savesPerGame, csPerGame, valueScore, appearanceLabel,
+                    reliability, explosiveness,
                     consistency, xPts, csProb, ts, swing, risingScore, routesData, routes,
                     risingSignals, homeSplit, awaySplit, xgOverperf, seasonGoals, seasonXgVal
                 };
             });
         }
 
+        /* Everyone who tops a category, not whoever sorted first.
+
+           Each pick used `[...].sort(...)[0]`, so two players on an identical
+           score handed the award to whichever the sort happened to leave in
+           front — an arbitrary winner presented as a finding. A dead heat is
+           reported as one: both names, or a count once there are more than two.
+
+           `score` is the same expression the category ranks on, and ties are
+           compared on a rounded value so two figures that differ in the seventh
+           decimal are not called a winner and a loser. */
+        const PICK_EPS = 1e-6;
+
+        function pickWinners(reportData, score) {
+            const scored = reportData.map(p => ({ p, s: score(p) }))
+                .filter(x => typeof x.s === 'number' && isFinite(x.s));
+            if (!scored.length) return null;
+            const top = Math.max(...scored.map(x => x.s));
+            const winners = scored.filter(x => Math.abs(x.s - top) <= PICK_EPS).map(x => x.p);
+            const runnerUp = scored.filter(x => Math.abs(x.s - top) > PICK_EPS)
+                .sort((a, b) => b.s - a.s)[0];
+            return {
+                winners,
+                ids: winners.map(p => p.id),
+                // Two names read fine; past that a count is kinder than a list.
+                label: winners.length === 1 ? winners[0].name
+                    : winners.length === 2 ? `${winners[0].name} and ${winners[1].name}`
+                    : `${winners.length} players`,
+                tied: winners.length > 1,
+                first: winners[0],
+                runnerUp: runnerUp ? runnerUp.p : null
+            };
+        }
+
         function generateSituationalPicks(reportData) {
             const picks = [];
             if (reportData.length < 2) return picks;
 
-            // Best Value — highest pts/g per £m
-            const byValue = [...reportData].sort((a, b) => b.valueScore - a.valueScore);
-            const bestValue = byValue[0];
-            picks.push({
-                category: 'Best Value', cssClass: 'pick-value', icon: '',
-                winner: bestValue.name, winnerId: bestValue.id,
-                reason: `${bestValue.ptsPerGame.toFixed(1)} pts/g at just £${bestValue.price.toFixed(1)}m — ${bestValue.valueScore.toFixed(2)} pts per £m${byValue[1] ? `, ${((bestValue.valueScore - byValue[1].valueScore) / byValue[1].valueScore * 100).toFixed(0)}% better value than ${byValue[1].name}` : ''}`
-            });
+            // Best Value — highest pts/match per £m
+            const value = pickWinners(reportData, p => p.valueScore);
+            if (value) {
+                const bv = value.first;
+                const runner = value.runnerUp;
+                picks.push({
+                    category: 'Best Value', cssClass: 'pick-value', icon: '',
+                    winner: value.label, winnerIds: value.ids, tied: value.tied,
+                    reason: `${bv.ptsPerGame.toFixed(1)} pts/match at £${bv.price.toFixed(1)}m — ${bv.valueScore.toFixed(2)} pts per £m`
+                        + (value.tied ? ' — level on value' : (runner && runner.valueScore > 0
+                            ? `, ${((bv.valueScore - runner.valueScore) / runner.valueScore * 100).toFixed(0)}% better value than ${runner.name}` : ''))
+                });
+            }
 
             // Best Ceiling — explosiveness + routes + xGI
-            const byCeiling = [...reportData].sort((a, b) => {
-                const sa = a.explosiveness * 0.4 + (a.routesData.routeCount || 0) * 8 + a.xgiPerGame * 20;
-                const sb = b.explosiveness * 0.4 + (b.routesData.routeCount || 0) * 8 + b.xgiPerGame * 20;
-                return sb - sa;
-            });
-            const bestCeiling = byCeiling[0];
-            picks.push({
-                category: 'Best Ceiling', cssClass: 'pick-ceiling', icon: '',
-                winner: bestCeiling.name, winnerId: bestCeiling.id,
-                reason: `${bestCeiling.explosiveness.toFixed(0)}% explosive rate with ${bestCeiling.routesData.routeCount || 0} routes to points and ${bestCeiling.xgiPerGame.toFixed(2)} xGI/g`
-            });
+            const ceiling = pickWinners(reportData, p =>
+                (p.explosiveness || 0) * 0.4 + (p.routesData?.routeCount || 0) * 8 + p.xgiPerGame * 20);
+            if (ceiling) {
+                const bc = ceiling.first;
+                picks.push({
+                    category: 'Best Ceiling', cssClass: 'pick-ceiling', icon: '',
+                    winner: ceiling.label, winnerIds: ceiling.ids, tied: ceiling.tied,
+                    reason: [
+                        bc.explosiveness == null ? null : `${bc.explosiveness.toFixed(0)}% explosive rate`,
+                        bc.routesData ? `${bc.routesData.routeCount || 0} routes to points` : null,
+                        `${bc.xgiPerGame.toFixed(2)} xGI/match`
+                    ].filter(Boolean).join(', ') + (ceiling.tied ? ' — level' : '')
+                });
+            }
 
             // Best Safety — reliability + nailed + consistency
-            const bySafety = [...reportData].sort((a, b) => {
-                const sa = a.reliability * 0.5 + a.minsPerGame * 0.3 + a.consistency * 2;
-                const sb = b.reliability * 0.5 + b.minsPerGame * 0.3 + b.consistency * 2;
-                return sb - sa;
-            });
-            const bestSafety = bySafety[0];
-            picks.push({
-                category: 'Best Safety', cssClass: 'pick-safety', icon: '',
-                winner: bestSafety.name, winnerId: bestSafety.id,
-                reason: `${bestSafety.reliability.toFixed(0)}% return rate, ${bestSafety.minsPerGame.toFixed(0)} mins/g — the most consistent and nailed-on pick`
-            });
+            const safety = pickWinners(reportData, p =>
+                (p.reliability || 0) * 0.5 + p.minsPerGame * 0.3 + (p.consistency || 0) * 2);
+            if (safety) {
+                const bs = safety.first;
+                picks.push({
+                    category: 'Best Safety', cssClass: 'pick-safety', icon: '',
+                    winner: safety.label, winnerIds: safety.ids, tied: safety.tied,
+                    reason: `${bs.reliability == null ? 'no return rate yet' : `${bs.reliability.toFixed(0)}% return rate`}, `
+                        + `${bs.minsPerGame.toFixed(0)} mins per match`
+                        + (safety.tied ? ' — level on safety' : ' — the most consistent and nailed-on pick')
+                });
+            }
 
-            // Best Fixtures — FDR + swing + home games
-            const byFixtures = [...reportData].sort((a, b) => {
-                const fdrA = a.fixtures?.avgFDR3 || 3;
-                const fdrB = b.fixtures?.avgFDR3 || 3;
-                const swingA = (a.swing?.direction === 'improving') ? Math.abs(a.swing.swing) : 0;
-                const swingB = (b.swing?.direction === 'improving') ? Math.abs(b.swing.swing) : 0;
-                const homeA = (a.fixtures?.next5 || []).filter(f => f.isHome).length;
-                const homeB = (b.fixtures?.next5 || []).filter(f => f.isHome).length;
-                return (fdrA - swingA * 0.3 - homeA * 0.1) - (fdrB - swingB * 0.3 - homeB * 0.1);
-            });
-            const bestFixtures = byFixtures[0];
-            const bfFdr = bestFixtures.fixtures?.avgFDR3 || 3;
-            const bfHome = (bestFixtures.fixtures?.next5 || []).filter(f => f.isHome).length;
-            picks.push({
-                category: 'Best Fixtures', cssClass: 'pick-fixtures', icon: '',
-                winner: bestFixtures.name, winnerId: bestFixtures.id,
-                reason: `FDR ${bfFdr.toFixed(1)} next 3 with ${bfHome}/5 home games${bestFixtures.swing?.direction === 'improving' ? ' — fixtures improving' : ''}`
-            });
+            // Best Fixtures — FDR + swing + home games. Lower is better, so the
+            // score is negated: pickWinners always takes the maximum.
+            const fixtureScore = p => {
+                const fdr = p.fixtures?.avgFDR3 || 3;
+                const swing = (p.swing?.direction === 'improving') ? Math.abs(p.swing.swing) : 0;
+                const home = (p.fixtures?.next5 || []).filter(f => f.isHome).length;
+                return -(fdr - swing * 0.3 - home * 0.1);
+            };
+            const fixturesPick = pickWinners(reportData, fixtureScore);
+            if (fixturesPick) {
+                const bf = fixturesPick.first;
+                const bfFdr = bf.fixtures?.avgFDR3 || 3;
+                const bfHome = (bf.fixtures?.next5 || []).filter(f => f.isHome).length;
+                picks.push({
+                    category: 'Best Fixtures', cssClass: 'pick-fixtures', icon: '',
+                    winner: fixturesPick.label, winnerIds: fixturesPick.ids, tied: fixturesPick.tied,
+                    reason: `FDR ${bfFdr.toFixed(1)} next 3 with ${bfHome}/5 home games`
+                        + (bf.swing?.direction === 'improving' ? ' — fixtures improving' : '')
+                        + (fixturesPick.tied ? ' — the same run for each' : '')
+                });
+            }
 
             // Best Form — rising form + L5 trend
-            const byForm = [...reportData].sort((a, b) => {
-                const sa = a.risingScore * 2 + a.ptsPerGame * 3 + (a.form || 0);
-                const sb = b.risingScore * 2 + b.ptsPerGame * 3 + (b.form || 0);
-                return sb - sa;
-            });
-            const bestForm = byForm[0];
-            picks.push({
-                category: 'Best Form', cssClass: 'pick-form', icon: '',
-                winner: bestForm.name, winnerId: bestForm.id,
-                reason: `${bestForm.ptsPerGame.toFixed(1)} pts/g recently${bestForm.risingScore > 0 ? ` with rising form score of ${bestForm.risingScore.toFixed(0)}` : ''} — ${bestForm.form.toFixed(1)} FPL form`
-            });
+            const formPick = pickWinners(reportData, p =>
+                (p.risingScore || 0) * 2 + p.ptsPerGame * 3 + (p.form || 0));
+            if (formPick) {
+                const bfm = formPick.first;
+                picks.push({
+                    category: 'Best Form', cssClass: 'pick-form', icon: '',
+                    winner: formPick.label, winnerIds: formPick.ids, tied: formPick.tied,
+                    reason: `${bfm.ptsPerGame.toFixed(1)} pts/match recently`
+                        + (bfm.risingScore > 0 ? ` with rising form score of ${bfm.risingScore.toFixed(0)}` : '')
+                        + ` — ${bfm.form.toFixed(1)} FPL form`
+                        + (formPick.tied ? ' — level' : '')
+                });
+            }
 
             return picks;
         }
@@ -423,16 +536,17 @@ function updateCompareBar() {
 
             // Strengths
             const strengths = [];
-            if (player.routesData.routeCount >= 3) strengths.push(`${player.routesData.routeCount} routes to points — multi-dimensional scorer`);
-            else if (player.routesData.routeCount >= 2) strengths.push(`${player.routesData.routeCount} routes to points`);
+            const routeCount = player.routesData ? player.routesData.routeCount : null;
+            if (routeCount >= 3) strengths.push(`${routeCount} routes to points — multi-dimensional scorer`);
+            else if (routeCount >= 2) strengths.push(`${routeCount} routes to points`);
 
             if (player.valueScore > 0.8) strengths.push(`Strong value at £${player.price.toFixed(1)}m (${player.valueScore.toFixed(2)} pts/£m)`);
-            if (player.minsPerGame >= 85) strengths.push('Nailed-on starter with 85+ mins/g');
+            if (player.minsPerGame >= 85) strengths.push('Nailed-on starter — 85+ minutes of every match his club plays');
             if (player.reliability >= 70) strengths.push(`${player.reliability.toFixed(0)}% return rate — rarely blanks`);
             if (player.explosiveness >= 30) strengths.push(`${player.explosiveness.toFixed(0)}% explosive — frequent hauls`);
 
             if (isDefPos && player.csProb >= 0.35) strengths.push(`${(player.csProb * 100).toFixed(0)}% CS probability next GW`);
-            if (!isDefPos && player.xgiPerGame >= 0.5) strengths.push(`Elite ${player.xgiPerGame.toFixed(2)} xGI/g`);
+            if (!isDefPos && player.xgiPerGame >= 0.5) strengths.push(`Elite ${player.xgiPerGame.toFixed(2)} xGI/match`);
 
             if (player.ts?.formRating > 60) strengths.push(`Team in strong form (${player.ts.formRating.toFixed(0)}/100)`);
             if (player.swing?.direction === 'improving') strengths.push(`Fixture swing improving — FDR ${player.swing.currentFdr} → ${player.swing.futureFdr}`);
@@ -440,9 +554,20 @@ function updateCompareBar() {
             // Concerns
             const concerns = [];
             if ((player.fixtures?.avgFDR3 || 3) >= 4) concerns.push(`Tough fixtures (FDR ${(player.fixtures?.avgFDR3 || 3).toFixed(1)}) — short-term ceiling limited`);
-            if (player.minsPerGame < 70 && player.minsPerGame > 0) concerns.push(`Rotation risk — only ${player.minsPerGame.toFixed(0)} mins/g`);
+            /* The count as well as the rate. "41 minutes per match" is true of a
+               man rotated through every one of them and of a man who arrived
+               halfway through the window and has started both since — and the
+               advice for those two is opposite. The appearance count is what
+               tells them apart, so it is said rather than left implied. */
+            if (player.minsPerGame < 70 && player.minsPerGame > 0) {
+                const apps = player.l5?.appearances, matches = player.l5?.games;
+                concerns.push(`Rotation risk — ${player.minsPerGame.toFixed(0)} minutes per match his club played`
+                    + (apps != null && matches ? ` (started or came on in ${apps} of ${matches})` : ''));
+            }
             if (player.xgOverperf > 2) concerns.push(`Overperforming xG by ${player.xgOverperf.toFixed(1)} goals — regression risk`);
-            if (player.consistency < 4) concerns.push('Volatile returns — high variance in recent points');
+            /* `null < 4` is true, so an unmeasured player would have been called
+               volatile — the concern has to test that we measured it at all. */
+            if (player.consistency != null && player.consistency < 4) concerns.push('Volatile returns — high variance in recent points');
             if (player.swing?.direction === 'worsening') concerns.push(`Fixtures worsening — FDR ${player.swing.currentFdr} → ${player.swing.futureFdr}`);
             if (player.ts?.formRating < 40) concerns.push(`Team struggling (form ${player.ts?.formRating?.toFixed(0) || '?'}/100)`);
 
@@ -453,11 +578,11 @@ function updateCompareBar() {
                 const priceDiff = player.price - other.price;
                 if (Math.abs(ptsDiff) >= 0.5) {
                     if (ptsDiff > 0 && priceDiff <= 0) {
-                        edges.push(`Outscores ${other.name} by ${ptsDiff.toFixed(1)} pts/g and is £${Math.abs(priceDiff).toFixed(1)}m cheaper`);
+                        edges.push(`Outscores ${other.name} by ${ptsDiff.toFixed(1)} pts/match and is £${Math.abs(priceDiff).toFixed(1)}m cheaper`);
                     } else if (ptsDiff > 0 && priceDiff > 0) {
-                        edges.push(`${ptsDiff.toFixed(1)} pts/g more than ${other.name} but costs £${priceDiff.toFixed(1)}m extra`);
+                        edges.push(`${ptsDiff.toFixed(1)} pts/match more than ${other.name} but costs £${priceDiff.toFixed(1)}m extra`);
                     } else if (ptsDiff < 0 && priceDiff < 0) {
-                        edges.push(`£${Math.abs(priceDiff).toFixed(1)}m cheaper than ${other.name} despite only ${Math.abs(ptsDiff).toFixed(1)} pts/g less`);
+                        edges.push(`£${Math.abs(priceDiff).toFixed(1)}m cheaper than ${other.name} despite only ${Math.abs(ptsDiff).toFixed(1)} pts/match less`);
                     }
                 }
             }
@@ -474,10 +599,10 @@ function updateCompareBar() {
 
             const formVals = reportData.map(p => p.ptsPerGame);
             const valueVals = reportData.map(p => p.valueScore);
-            const ceilingVals = reportData.map(p => p.explosiveness + (p.routesData.routeCount || 0) * 5);
-            const safetyVals = reportData.map(p => p.reliability * 0.7 + p.consistency * 3);
+            const ceilingVals = reportData.map(p => (p.explosiveness || 0) + (p.routesData?.routeCount || 0) * 5);
+            const safetyVals = reportData.map(p => (p.reliability || 0) * 0.7 + (p.consistency || 0) * 3);
             const fixtureVals = reportData.map(p => Math.max(0, (5 - (p.fixtures?.avgFDR3 || 3)) * 25));
-            const routeVals = reportData.map(p => (p.routesData.compositeScore || 0));
+            const routeVals = reportData.map(p => (p.routesData?.compositeScore || 0));
 
             return {
                 labels: ['Form', 'Value', 'Ceiling', 'Safety', 'Fixtures', 'Routes'],
@@ -532,18 +657,41 @@ function updateCompareBar() {
             const hasAttacker = reportData.some(p => p.pos === 'MID' || p.pos === 'FWD');
 
             // Build enhanced stat rows
-            const getValue = (obj, path) => path.split('.').reduce((o, k) => (o || {})[k], obj);
-            const lowerIsBetter = new Set(['l5.goalsConceded', 'l5.xGC', 'fdr', 'price']);
+            /* Recent form, from the shared builder in scripts/player-profile.js
+               — the same window and the same five-per-position stats the profile
+               card draws, so the two cannot disagree about a player. Totals only
+               here: the match-by-match grid is five columns wide and this table
+               already carries up to five players across. */
+            /* The window object itself, carried from wherever p.l5 was built so
+               the prose below and the totals in the table are one computation
+               rather than two of the same thing. pfWindowFor() stays as the
+               fallback for an adapter that hands over l5 without it. */
+            reportData.forEach(p => {
+                p._form = p.formWindow
+                    || ((typeof pfWindowFor === 'function') ? pfWindowFor(p) : null);
+            });
+            const formWindow = reportData.map(p => p._form).find(Boolean) || null;
 
-            const findBestIdx = (key, lower = false) => {
+            const getValue = (obj, path) => path.split('.').reduce((o, k) => (o || {})[k], obj);
+
+        /* Every player who holds the best figure, not the first one listed.
+
+           This returned `vals.indexOf(target)`, so two players on an identical FDR
+           left one cell green and the other plain — the table asserting a
+           difference the numbers do not contain. A draw is a draw, and both
+           columns say so. */
+            const findBestIdxs = (key, lower = false) => {
                 const vals = reportData.map(p => {
                     const v = getValue(p, key);
-                    return typeof v === 'number' ? v : null;
+                    return typeof v === 'number' && isFinite(v) ? v : null;
                 });
-                if (vals.every(v => v === null)) return -1;
                 const filtered = vals.filter(v => v !== null);
+                if (!filtered.length) return new Set();
                 const target = lower ? Math.min(...filtered) : Math.max(...filtered);
-                return vals.indexOf(target);
+                const hits = new Set();
+                vals.forEach((v, i) => { if (v === target) hits.add(i); });
+                // Everyone level is nobody ahead, so nothing is highlighted.
+                return hits.size === reportData.length ? new Set() : hits;
             };
 
             let statRows = [];
@@ -555,56 +703,121 @@ function updateCompareBar() {
             statRows.push({ label: 'Total Pts', key: 'totalPoints' });
             statRows.push({ label: 'xPts (Next GW)', key: 'xPts', fmt: v => v?.toFixed(1) || '-' });
 
-            // Recent
-            statRows.push({ group: 'Recent Form (L5)' });
-            statRows.push({ label: 'Pts/G', key: 'ptsPerGame', fmt: v => v?.toFixed(1) || '-' });
-            statRows.push({ label: 'Mins/G', key: 'minsPerGame', fmt: v => v?.toFixed(0) || '-' });
-            statRows.push({ label: 'Reliability', key: 'reliability', fmt: v => `${v?.toFixed(0) || '?'}%` });
-            statRows.push({ label: 'Explosiveness', key: 'explosiveness', fmt: v => `${v?.toFixed(0) || '?'}%` });
+            /* Rates, with the denominator in the label. Every one of these is
+               divided by matches the player's CLUB played in the window — not by
+               his appearances, and not by rows in his history. Which of the three
+               it was used to depend on where you looked. */
+            statRows.push({ group: 'Recent Form' });
+            statRows.push({ label: 'Pts/Match', key: 'ptsPerGame', fmt: v => v?.toFixed(1) || '-' });
+            statRows.push({ label: 'Mins/Match', key: 'minsPerGame', fmt: v => v?.toFixed(0) || '-' });
+            /* Both halves, because the denominator is not the same for everyone
+               in the table: the window is five gameweeks, and how many matches
+               that is depends on whether his club blanked, doubled, or has one
+               still to kick off. A string on purpose — there is no "best" number
+               of fixtures to have had, so nothing here goes green. */
+            statRows.push({ label: 'Played', key: 'appearanceLabel', fmt: v => v || '—' });
+            /* Labelled with the window they are actually measured over. They sat
+               under a "Recent Form (L5)" heading while being counted over the last
+               ten, which is a second thing the table was quietly getting wrong. */
+            statRows.push({ label: 'Reliability (L10)', key: 'reliability',
+                fmt: v => v == null ? '—' : `${v.toFixed(0)}%` });
+            statRows.push({ label: 'Explosiveness (L10)', key: 'explosiveness',
+                fmt: v => v == null ? '—' : `${v.toFixed(0)}%` });
 
-            // Attacking
+            /* The raw totals that used to sit in these groups — Goals (L5),
+               Assists (L5), Clean Sheets (L5), Goals Conceded, Saves (L5),
+               Bonus (L5) — are the position block further down, now that l5 and
+               the card's window are the same count. Two rows of the same figure
+               under two labels invites the reader to look for a difference. */
             if (hasAttacker) {
                 statRows.push({ group: 'Attacking' });
-                statRows.push({ label: 'Goals (L5)', key: 'l5.goals' });
-                statRows.push({ label: 'Assists (L5)', key: 'l5.assists' });
-                statRows.push({ label: 'xGI/G', key: 'xgiPerGame', fmt: v => v?.toFixed(2) || '-' });
-                statRows.push({ label: 'xG/G', key: 'xgPerGame', fmt: v => v?.toFixed(2) || '-' });
+                statRows.push({ label: 'xGI/Match', key: 'xgiPerGame', fmt: v => v?.toFixed(2) || '-' });
+                statRows.push({ label: 'xG/Match', key: 'xgPerGame', fmt: v => v?.toFixed(2) || '-' });
             }
 
-            // Defensive
             if (hasDEF) {
                 statRows.push({ group: 'Defensive' });
-                statRows.push({ label: 'Clean Sheets (L5)', key: 'l5.cleanSheets' });
-                statRows.push({ label: 'Goals Conceded', key: 'l5.goalsConceded', lower: true });
                 statRows.push({ label: 'CS Prob (Next)', key: 'csProb', fmt: v => v > 0 ? `${(v * 100).toFixed(0)}%` : '-' });
             }
 
             if (hasGK) {
                 statRows.push({ group: 'Goalkeeping' });
-                statRows.push({ label: 'Saves (L5)', key: 'l5.saves' });
-                statRows.push({ label: 'Saves/G', key: 'savesPerGame', fmt: v => v?.toFixed(1) || '-' });
+                statRows.push({ label: 'Saves/Match', key: 'savesPerGame', fmt: v => v?.toFixed(1) || '-' });
             }
 
             // Bonus & Value
-            statRows.push({ group: 'Bonus & Value' });
-            statRows.push({ label: 'Bonus (L5)', key: 'l5.bonus' });
+            statRows.push({ group: 'Value & Fixtures' });
             statRows.push({ label: 'Value Score', key: 'valueScore', fmt: v => v?.toFixed(2) || '-' });
             statRows.push({ label: 'FDR (Next 3)', key: 'fixtures.avgFDR3', fmt: v => v?.toFixed(1) || '-', lower: true });
+
+            /* Position-specific where it can be. Comparing a keeper with a
+               forward has no five stats in common worth tabulating, so a mixed
+               selection falls back to the figures that mean the same thing in
+               any shirt rather than showing saves against a striker. */
+            if (formWindow) {
+                const positions = new Set(reportData.map(p => p.position).filter(Boolean));
+                const formStats = (positions.size === 1 && typeof pfStatsFor === 'function')
+                    ? pfStatsFor([...positions][0])
+                    : [{ key: 'goals', label: 'Goals' }, { key: 'assists', label: 'Assists' },
+                        { key: 'xGI', label: 'xGI', dp: 1 }, { key: 'bonus', label: 'Bonus' }];
+                /* Read off l5, which IS the window these labels name — the same
+                   object the profile card totals. It used to read _form.totals
+                   while the rows above read l5, so the table carried both
+                   windows at once and a blank gameweek made them disagree in
+                   public. */
+                /* The window is the same five gameweeks for everyone, but how
+                   many matches that is depends on the club — a blank, a double
+                   or a fixture still to come moves it. One player's count as the
+                   heading over five columns would be a claim about the other
+                   four, so it is only said when they agree. */
+                const wins = reportData.map(p => p._form).filter(Boolean);
+                const agree = wins.every(w => w.matches === wins[0].matches);
+                statRows.push({ group: (agree && typeof pfWindowLabel === 'function')
+                    ? pfWindowLabel(formWindow)
+                    : `Last ${formWindow.rounds.length} gameweeks` });
+                statRows.push({ label: 'Pts', key: 'l5.points', fmt: v => v == null ? '-' : String(Math.round(v)) });
+                statRows.push({ label: 'Mins', key: 'l5.minutes', fmt: v => v == null ? '-' : String(Math.round(v)) });
+                formStats.forEach(st => statRows.push({
+                    label: st.label, key: `l5.${st.key}`, lower: !!st.invert,
+                    fmt: v => v == null ? '-' : (typeof pfNum === 'function' ? pfNum(v, st.dp) : String(v))
+                }));
+            }
 
             // Rising Form & Routes
             statRows.push({ group: 'AI Insights' });
             statRows.push({ label: 'Rising Form Score', key: 'risingScore', fmt: v => v > 0 ? v.toFixed(0) : '-' });
-            statRows.push({ label: 'Routes to Points', key: 'routesData.routeCount', fmt: v => v || '0' });
+            // `v || '0'` printed a zero for a page that never computed routes at
+            // all, which is a claim about the player rather than about the page.
+            statRows.push({ label: 'Routes to Points', key: 'routesData.routeCount',
+                fmt: v => v == null ? '—' : String(v) });
             statRows.push({ label: 'Routes Score', key: 'routesData.compositeScore', fmt: v => v > 0 ? v.toFixed(1) : '-' });
 
             const statsTableHtml = statRows.map(row => {
                 if (row.group) return `<tr class="group-header"><td colspan="${reportData.length + 1}">${row.group}</td></tr>`;
-                const bestIdx = findBestIdx(row.key, row.lower);
+                const best = findBestIdxs(row.key, row.lower);
                 return `<tr>${[`<td>${row.label}</td>`].concat(reportData.map((p, i) => {
                     const val = getValue(p, row.key);
                     const formatted = row.fmt ? row.fmt(val) : (val ?? '-');
-                    return `<td class="${i === bestIdx && reportData.length > 1 ? 'best-val' : ''}">${formatted}</td>`;
+                    return `<td class="${best.has(i) && reportData.length > 1 ? 'best-val' : ''}">${formatted}</td>`;
                 })).join('')}</tr>`;
+            }).join('');
+
+            /* The reading, per player, in both windows. Prose rather than table
+               cells because that is what it is — a sentence about whether the
+               returns match the chances — and because pfVsExpected() is allowed
+               to say the sample is too thin, which is not a number. */
+            const formReadHtml = !formWindow ? '' : reportData.map(p => {
+                const w = p._form;
+                if (!w || typeof pfExpectedPairs !== 'function') return '';
+                const pairs = pfExpectedPairs(p.position);
+                if (!pairs.length) return '';
+                const reads = pairs.map(pr => {
+                    const l5 = pfVsExpected(w.totals[pr.key], w.totals[pr.expected], pr);
+                    const se = pfVsExpected(w.season[pr.key], w.season[pr.expected], pr);
+                    return `<div class="pf-read t-${l5.tone}"><em>${escHTML(pr.label)} · last ${w.rounds.length}</em> ${escHTML(l5.text)}</div>
+                            <div class="pf-read t-${se.tone}"><em>${escHTML(pr.label)} · season</em> ${escHTML(se.text)}</div>`;
+                }).join('');
+                return `<div class="pf-verdict"><div class="pf-verdict-head">${escHTML(p.name)}</div>${reads}</div>`;
             }).join('');
 
             // Build picks HTML
@@ -620,7 +833,7 @@ function updateCompareBar() {
             const profilesHtml = reportData.map(p => {
                 const narrative = generatePlayerNarrative(p, reportData);
                 const budget = getBudgetContext(p);
-                const pickBadges = picks.filter(pk => pk.winnerId === p.id).map(pk => `<span class="report-badge report-badge-pick">${pk.icon} ${pk.category}</span>`).join('');
+                const pickBadges = picks.filter(pk => (pk.winnerIds || []).includes(p.id)).map(pk => `<span class="report-badge report-badge-pick">${pk.icon} ${pk.category}</span>`).join('');
 
                 const fixtureChips = (p.fixtures?.next5 || []).slice(0, 5).map(f => {
                     const opp = teams[f.opponent]?.short_name || '???';
@@ -794,6 +1007,11 @@ function updateCompareBar() {
                             </table>
                         </div>
                     </div>
+
+                    ${formReadHtml ? `<div class="report-form-read">
+                        <h4>Actual against expected</h4>
+                        <div class="pf-verdicts">${formReadHtml}</div>
+                    </div>` : ''}
 
                     <!-- Player Profile Cards -->
                     <div class="report-profiles">${profilesHtml}</div>
