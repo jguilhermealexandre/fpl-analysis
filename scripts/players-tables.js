@@ -297,18 +297,20 @@ function createTable(position, analyses) {
        Routes and the rest, and as the squad panel in My Team it was always
        modelled on. The controls below it are unchanged; what was missing was
        anything saying what you are looking at. */
-    /* ----- One filter bar, everything on it -----
+    /* ----- One filter bar, and only the part of it you steer with -----
 
-       There were two. A compact strip carried position, search, four quick
-       filters, teams, column presets and a timeframe; behind a sliders button
-       sat a second panel with price, ownership and minutes. So the filters you
-       reached for most — "under £6m", "under 5% owned" — were the ones you had
-       to go looking for, and the strip that was left was still a run of
-       fourteen controls with nothing saying which was which.
+       This has been through two shapes. It was a compact strip with a
+       sliders button hiding price, ownership and minutes behind it, which
+       buried the filters people reach for most. So everything came out onto
+       one bar in labelled groups — and that bar is twenty-five controls in
+       eight groups across two rows, which is not a filter bar so much as a
+       control panel you have to read before you can use it.
 
-       Now it is one bar in labelled groups, wrapping. Everything is visible,
-       the button that hid half of it is gone, and each group says what it
-       filters rather than leaving you to infer it from the chips. */
+       What is actually steered with, constantly, is position and the search
+       box. Everything else is set once and left. So those two stay out, and
+       the rest goes into two menus that say how many of them are doing
+       something: Filters, which narrows the list, and View, which changes
+       what the list shows about each player. */
     const filterGroup = (label, inner) => `
         <div class="apf-group">
             <span class="apf-label">${label}</span>
@@ -317,6 +319,11 @@ function createTable(position, analyses) {
 
     const f = tableState[position].filters;
     const on = (type, value) => (f[type] === value ? ' active' : '');
+
+    /* How many of the hidden filters are on, so the button can say so rather
+       than leaving you to open it to find out. Same count apfSyncFilterCount()
+       keeps current between rebuilds — one definition, read from both. */
+    const activeFilterCount = position === 'ALL' ? apfCountActiveFilters() : 0;
 
     const toolbarHtml = position === 'ALL' ? `
         <div class="apf-bar" id="compactToolbar-${position}">
@@ -336,68 +343,81 @@ function createTable(position, analyses) {
                         oninput="handleSearch('${position}', this.value)">
                 </div>`)}
 
-            ${filterGroup('Price', `
-                <div class="apf-range">
-                    <input type="number" placeholder="Min" step="0.5" id="priceMin-${position}"
-                        onchange="applyRangeFilter('${position}', 'price')" aria-label="Minimum price">
-                    <span class="apf-range-sep">to</span>
-                    <input type="number" placeholder="Max" step="0.5" id="priceMax-${position}"
-                        onchange="applyRangeFilter('${position}', 'price')" aria-label="Maximum price">
-                </div>`)}
-
-            ${filterGroup('Ownership', `
-                <button class="filter-pill compact-pill${on('ownership', 'low')}" onclick="setFilter('${position}', 'ownership', 'low')">Under 5%</button>
-                <button class="filter-pill compact-pill${on('ownership', 'mid')}" onclick="setFilter('${position}', 'ownership', 'mid')">5-15%</button>
-                <button class="filter-pill compact-pill${on('ownership', 'high')}" onclick="setFilter('${position}', 'ownership', 'high')">15-30%</button>
-                <button class="filter-pill compact-pill${on('ownership', 'template')}" onclick="setFilter('${position}', 'ownership', 'template')">30%+</button>`)}
-
-            ${filterGroup('Minutes', `
-                <button class="filter-pill compact-pill${on('minutes', '90')}" onclick="setFilter('${position}', 'minutes', '90')">90 avg</button>
-                <button class="filter-pill compact-pill${on('minutes', '75')}" onclick="setFilter('${position}', 'minutes', '75')">75+</button>
-                <button class="filter-pill compact-pill${on('minutes', '60')}" onclick="setFilter('${position}', 'minutes', '60')">60+</button>`)}
-
-            ${filterGroup('Quick filters', `
-                <button class="filter-pill compact-pill${on('form', 'hot')}"
-                    onclick="quickFilter('${position}', 'form', 'hot')">${typeof v2Icon === 'function' ? v2Icon('flame') : ''} Hot</button>
-                <button class="filter-pill compact-pill${on('fixtures', 'easy')}"
-                    onclick="quickFilter('${position}', 'fixtures', 'easy')">${typeof v2Icon === 'function' ? v2Icon('calendar') : ''} Easy</button>
-                <button class="filter-pill compact-pill${on('value', 'high')}"
-                    onclick="quickFilter('${position}', 'value', 'high')">${typeof v2Icon === 'function' ? v2Icon('coins') : ''} Value</button>
-                <button class="filter-pill compact-pill${f.nailed === true ? ' active' : ''}"
-                    onclick="quickFilter('${position}', 'nailed', true)">${typeof v2Icon === 'function' ? v2Icon('lock') : ''} Nailed</button>
-                <button class="filter-pill compact-pill${tableState.ALL.filters.shortlist ? ' active' : ''}" id="shortlistPill-ALL"
-                    onclick="quickFilter('ALL', 'shortlist', true)">${typeof v2Icon === 'function' ? v2Icon('star') : ''} Shortlist${shortlistedPlayerIds.size > 0 ? ' (' + shortlistedPlayerIds.size + ')' : ''}</button>
-                <div class="team-filter-wrapper">
-                    <button class="filter-pill compact-pill team-filter-btn ${(tableState.ALL.filters.teams?.size > 0) ? 'active' : ''}" onclick="toggleTeamDropdown()" id="teamFilterBtn">
-                        ${typeof v2Icon === 'function' ? v2Icon('shield') : ''} Clubs${(tableState.ALL.filters.teams?.size > 0) ? ' (' + tableState.ALL.filters.teams.size + ')' : ''}
-                    </button>
-                    <div class="team-filter-dropdown" id="teamFilterDropdown">
-                        <div class="team-filter-dropdown-header">
-                            <span class="team-filter-dropdown-title">Filter by club</span>
-                            <button class="team-filter-clear" onclick="clearTeamFilter()">Clear all</button>
-                        </div>
-                        <div class="team-filter-grid">${teamChipsHtml}</div>
-                    </div>
-                </div>`)}
-
-            ${filterGroup('Stats from', `
-                <div class="timeframe-control" id="timeframeControl">
-                    <button class="timeframe-btn ${currentTimeframe === 'season' ? 'active' : ''}" onclick="setTimeframe('season')">Season</button>
-                    <button class="timeframe-btn ${currentTimeframe === 'l10' ? 'active' : ''}" onclick="setTimeframe('l10')">L10</button>
-                    <button class="timeframe-btn ${currentTimeframe === 'l5' ? 'active' : ''}" onclick="setTimeframe('l5')">L5</button>
-                    <button class="timeframe-btn ${currentTimeframe === 'l3' ? 'active' : ''}" onclick="setTimeframe('l3')">L3</button>
-                </div>`)}
-
-            ${filterGroup('Columns', `
-                <div class="col-preset-group" id="colPresets">
-                    ${Object.entries(COLUMN_PRESETS).map(([key, pr]) =>
-                        `<button class="col-preset-btn ${key === activePreset ? 'active' : ''}" data-preset="${key}"
-                            onclick="applyColumnPreset('${key}', this)" title="Switch the visible columns">${pr.label}</button>`).join('')}
+            <div class="apf-menu" id="apfMenu-filters">
+                <button class="apf-menu-btn${activeFilterCount ? ' is-on' : ''}" onclick="apfToggleMenu('filters', event)"
+                    aria-expanded="false" data-tooltip="Price, ownership, minutes, form, fixtures and clubs.">
+                    ${typeof v2Icon === 'function' ? v2Icon('sliders') : ''} Filters${activeFilterCount ? `<span class="apf-menu-n">${activeFilterCount}</span>` : ''}
+                </button>
+                <div class="apf-panel" hidden>
+                    ${filterGroup('Price', `
+                        <div class="apf-range">
+                            <input type="number" placeholder="Min" step="0.5" id="priceMin-${position}"
+                                onchange="applyRangeFilter('${position}', 'price')" aria-label="Minimum price">
+                            <span class="apf-range-sep">to</span>
+                            <input type="number" placeholder="Max" step="0.5" id="priceMax-${position}"
+                                onchange="applyRangeFilter('${position}', 'price')" aria-label="Maximum price">
+                        </div>`)}
+                    ${filterGroup('Ownership', `
+                        <button class="filter-pill compact-pill${on('ownership', 'low')}" onclick="setFilter('${position}', 'ownership', 'low')">Under 5%</button>
+                        <button class="filter-pill compact-pill${on('ownership', 'mid')}" onclick="setFilter('${position}', 'ownership', 'mid')">5-15%</button>
+                        <button class="filter-pill compact-pill${on('ownership', 'high')}" onclick="setFilter('${position}', 'ownership', 'high')">15-30%</button>
+                        <button class="filter-pill compact-pill${on('ownership', 'template')}" onclick="setFilter('${position}', 'ownership', 'template')">30%+</button>`)}
+                    ${filterGroup('Minutes', `
+                        <button class="filter-pill compact-pill${on('minutes', '90')}" onclick="setFilter('${position}', 'minutes', '90')">90 avg</button>
+                        <button class="filter-pill compact-pill${on('minutes', '75')}" onclick="setFilter('${position}', 'minutes', '75')">75+</button>
+                        <button class="filter-pill compact-pill${on('minutes', '60')}" onclick="setFilter('${position}', 'minutes', '60')">60+</button>`)}
+                    ${filterGroup('Shape', `
+                        <button class="filter-pill compact-pill${on('form', 'hot')}"
+                            onclick="quickFilter('${position}', 'form', 'hot')">${typeof v2Icon === 'function' ? v2Icon('flame') : ''} Hot</button>
+                        <button class="filter-pill compact-pill${on('fixtures', 'easy')}"
+                            onclick="quickFilter('${position}', 'fixtures', 'easy')">${typeof v2Icon === 'function' ? v2Icon('calendar') : ''} Easy</button>
+                        <button class="filter-pill compact-pill${on('value', 'high')}"
+                            onclick="quickFilter('${position}', 'value', 'high')">${typeof v2Icon === 'function' ? v2Icon('coins') : ''} Value</button>
+                        <button class="filter-pill compact-pill${f.nailed === true ? ' active' : ''}"
+                            onclick="quickFilter('${position}', 'nailed', true)">${typeof v2Icon === 'function' ? v2Icon('lock') : ''} Nailed</button>
+                        <button class="filter-pill compact-pill${tableState.ALL.filters.shortlist ? ' active' : ''}" id="shortlistPill-ALL"
+                            onclick="quickFilter('ALL', 'shortlist', true)">${typeof v2Icon === 'function' ? v2Icon('star') : ''} Shortlist${shortlistedPlayerIds.size > 0 ? ' (' + shortlistedPlayerIds.size + ')' : ''}</button>`)}
+                    ${filterGroup('Clubs', `
+                        <div class="team-filter-wrapper">
+                            <button class="filter-pill compact-pill team-filter-btn ${(tableState.ALL.filters.teams?.size > 0) ? 'active' : ''}" onclick="toggleTeamDropdown()" id="teamFilterBtn">
+                                ${typeof v2Icon === 'function' ? v2Icon('shield') : ''} ${(tableState.ALL.filters.teams?.size > 0) ? tableState.ALL.filters.teams.size + ' selected' : 'Any club'}
+                            </button>
+                            <div class="team-filter-dropdown" id="teamFilterDropdown">
+                                <div class="team-filter-dropdown-header">
+                                    <span class="team-filter-dropdown-title">Filter by club</span>
+                                    <button class="team-filter-clear" onclick="clearTeamFilter()">Clear all</button>
+                                </div>
+                                <div class="team-filter-grid">${teamChipsHtml}</div>
+                            </div>
+                        </div>`)}
                 </div>
-                <div class="column-selector">
-                    <button class="compact-icon-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}" title="Pick columns" aria-label="Toggle column visibility"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
-                    ${colDropdownHtml}
-                </div>`)}
+            </div>
+
+            <div class="apf-menu" id="apfMenu-view">
+                <button class="apf-menu-btn" onclick="apfToggleMenu('view', event)"
+                    aria-expanded="false" data-tooltip="Which gameweeks the stats come from, and which columns are shown.">
+                    ${typeof v2Icon === 'function' ? v2Icon('eye') : ''} View
+                </button>
+                <div class="apf-panel" hidden>
+                    ${filterGroup('Stats from', `
+                        <div class="timeframe-control" id="timeframeControl">
+                            <button class="timeframe-btn ${currentTimeframe === 'season' ? 'active' : ''}" onclick="setTimeframe('season')">Season</button>
+                            <button class="timeframe-btn ${currentTimeframe === 'l10' ? 'active' : ''}" onclick="setTimeframe('l10')">L10</button>
+                            <button class="timeframe-btn ${currentTimeframe === 'l5' ? 'active' : ''}" onclick="setTimeframe('l5')">L5</button>
+                            <button class="timeframe-btn ${currentTimeframe === 'l3' ? 'active' : ''}" onclick="setTimeframe('l3')">L3</button>
+                        </div>`)}
+                    ${filterGroup('Columns', `
+                        <div class="col-preset-group" id="colPresets">
+                            ${Object.entries(COLUMN_PRESETS).map(([key, pr]) =>
+                                `<button class="col-preset-btn ${key === activePreset ? 'active' : ''}" data-preset="${key}"
+                                    onclick="applyColumnPreset('${key}', this)" title="Switch the visible columns">${pr.label}</button>`).join('')}
+                        </div>
+                        <div class="column-selector">
+                            <button class="compact-icon-btn" onclick="toggleColumnDropdown('${position}')" id="colBtn-${position}" title="Pick columns" aria-label="Toggle column visibility"><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i></button>
+                            ${colDropdownHtml}
+                        </div>`)}
+                </div>
+            </div>
 
             <div class="apf-tail">
                 <span class="compact-count"><span id="rowCount-${position}">${players.length}</span> players</span>
@@ -878,6 +898,7 @@ function setPositionFilter(posFilter) {
     if (section) {
         section.innerHTML = createTable('ALL', allAnalyses);
         if (typeof lucide !== 'undefined') lucide.createIcons();
+        apfRestoreMenu();
     }
     
     // Update position filter pill active states
@@ -925,6 +946,94 @@ function clearFilters(position) {
 // ============================================
 // TEAM FILTER (ALL Players)
 // ============================================
+/* The two menus on the All Players bar.
+
+   One open at a time, closed by a click anywhere outside them — the same
+   behaviour the club dropdown inside one of them already has. They are
+   re-rendered wholesale whenever a filter changes, so which one was open has
+   to survive that: apfOpenMenu remembers, and apfRestoreMenu puts it back
+   after the bar is redrawn. Without it, choosing "Under 5%" would close the
+   panel you chose it in. */
+let apfOpenMenu = null;
+
+function apfCountActiveFilters() {
+    const f = (tableState.ALL && tableState.ALL.filters) || {};
+    let n = 0;
+    ['ownership', 'minutes', 'form', 'fixtures', 'value'].forEach(k => { if (f[k]) n++; });
+    if (f.nailed === true) n++;
+    if (f.shortlist) n++;
+    if (f.teams && f.teams.size > 0) n++;
+    if (f.priceMin != null || f.priceMax != null) n++;
+    return n;
+}
+
+function apfSyncFilterCount() {
+    const btn = document.querySelector('#apfMenu-filters .apf-menu-btn');
+    if (!btn) return;
+    const n = apfCountActiveFilters();
+    btn.classList.toggle('is-on', n > 0);
+    let tag = btn.querySelector('.apf-menu-n');
+    if (!n) { if (tag) tag.remove(); return; }
+    if (!tag) {
+        tag = document.createElement('span');
+        tag.className = 'apf-menu-n';
+        btn.appendChild(tag);
+    }
+    tag.textContent = String(n);
+}
+
+function apfToggleMenu(which, event) {
+    if (event) event.stopPropagation();
+    const opening = apfOpenMenu !== which;
+    apfCloseMenus();
+    if (!opening) return;
+    apfOpenMenu = which;
+    const host = document.getElementById(`apfMenu-${which}`);
+    if (!host) return;
+    const panel = host.querySelector('.apf-panel');
+    const btn = host.querySelector('.apf-menu-btn');
+    if (panel) panel.hidden = false;
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    host.classList.add('is-open');
+}
+
+function apfCloseMenus() {
+    apfOpenMenu = null;
+    document.querySelectorAll('.apf-menu').forEach(host => {
+        host.classList.remove('is-open');
+        const panel = host.querySelector('.apf-panel');
+        const btn = host.querySelector('.apf-menu-btn');
+        if (panel) panel.hidden = true;
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
+    document.getElementById('teamFilterDropdown')?.classList.remove('show');
+}
+
+/* Called by the renderer after it rewrites the bar. */
+function apfRestoreMenu() {
+    if (!apfOpenMenu) return;
+    const which = apfOpenMenu;
+    apfOpenMenu = null;
+    apfToggleMenu(which);
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('click', (ev) => {
+        if (!apfOpenMenu) return;
+        /* closest() rather than host.contains(): several controls inside these
+           panels rebuild the whole bar, so by the time this runs the element
+           that was clicked has been replaced and is no longer in the document.
+           Asking the document whether it still holds that node answers no, and
+           the panel you were using would close under you. Asking the node what
+           it sits inside still works after it is detached. */
+        if (ev.target instanceof Element && ev.target.closest('.apf-menu')) return;
+        apfCloseMenus();
+    });
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && apfOpenMenu) apfCloseMenus();
+    });
+}
+
 function toggleTeamDropdown() {
     const dropdown = document.getElementById('teamFilterDropdown');
     if (dropdown) {
@@ -1038,11 +1147,14 @@ function setTimeframe(tf) {
     tableState.ALL.timeframe = tf;
     tableState.ALL.page = 1;
 
-    // Re-render whole table section (createTable remaps player stats with new timeframe)
+    /* Re-render the whole section (createTable remaps player stats with the
+       new timeframe), then put the menu back: this control lives inside View,
+       so rebuilding the bar under it would close the panel you just used. */
     const section = document.getElementById('section-ALL');
     if (section) {
         section.innerHTML = createTable('ALL', allAnalyses);
         if (typeof lucide !== 'undefined') lucide.createIcons();
+        apfRestoreMenu();
     }
 }
 
@@ -1125,6 +1237,11 @@ function refreshTable(position) {
 }
 
 function updateFilterButtons(position) {
+    /* The Filters button carries a count of what is on behind it, and
+       refreshTable() rewrites the rows without rebuilding the bar — so
+       without this the number would describe the filters as they were when
+       the bar was last drawn. */
+    if (position === 'ALL') apfSyncFilterCount();
     const state = tableState[position];
     document.querySelectorAll(`#tableSection-${position} .filter-pill`).forEach(btn => {
         const text = btn.textContent.trim();

@@ -1094,14 +1094,27 @@ html.v2-theme body {
 }
 
 /* The hover tint is the accent at 5% rather than a grey step: it reads as
-   "this row is live" instead of "this row is disabled". */
-.v2-main-content .data-table tbody tr:hover,
-.v2-main-content table:not(.matrix-table) tbody tr:hover {
-    background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+   "this row is live" instead of "this row is disabled".
+
+   On .data-table it goes through --row-bg, the one value the row and its
+   frozen first column both read — see the block that defines it in
+   players.css. Setting `background` here instead would win on the row and
+   not on the sticky cell, which is how a hovered row ended up half one
+   colour and half another. Mixed against the surface rather than against
+   transparent, because the frozen cell has to be opaque. */
+.v2-main-content .data-table tbody tr:hover {
+    --row-bg: color-mix(in srgb, var(--color-primary) 5%, var(--surface-1));
+}
+.v2-main-content .data-table tbody tr.selected-row {
+    --row-bg: color-mix(in srgb, var(--color-primary) 10%, var(--surface-1));
+}
+.v2-main-content .data-table tbody tr.selected-row:hover {
+    --row-bg: color-mix(in srgb, var(--color-primary) 16%, var(--surface-1));
 }
 
-.v2-main-content .data-table tbody tr:hover td.col-player {
-    background: color-mix(in srgb, var(--color-primary) 5%, var(--surface-1));
+/* Tables without a frozen column keep the translucent tint. */
+.v2-main-content table:not(.matrix-table):not(.data-table) tbody tr:hover {
+    background: color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
 
 /* The frozen identity column sat on --surface-2, a visibly different grey

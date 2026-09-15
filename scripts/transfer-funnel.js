@@ -599,10 +599,20 @@
                it — this said the same thing again in text, one line above the
                thing it was describing. What is left is what the card does not
                carry: what this slot can spend. */
+            /* The market carries the step's own navigation, because on this
+               step the market is the step: there is no separate panel header
+               above it to hold Back and Review. */
+            const allFilled = transferState.pending.length > 0
+                && transferState.pending.every(x => x.replacement);
             return `<div class="twf-head">
                 <div class="twf-head-top">
-                    <span class="twf-head-title">Replacements</span>
+                    <span class="twf-head-title">Replacements for <strong>${escHTML(sold.name)}</strong></span>
                     <span class="twf-budget" ${reserved > 0 ? `data-tooltip="${escHTML(`£${reserved.toFixed(1)}m of the bank is held back so your other open slots can still be filled.`)}"` : ''}>£${budget.toFixed(1)}m${reserved > 0 ? `<em>£${reserved.toFixed(1)}m reserved</em>` : ''}</span>
+                    <span class="tw-step-nav">
+                        <button class="tw-back" onclick="twRailGo(1)" data-tooltip="Back to the plan — Single, Multi, Wildcard or Free Hit.">${v2Icon('up')} Plan</button>
+                        <button class="tw-next"${allFilled ? '' : ' disabled'} onclick="twShowSummary()"
+                            data-tooltip="${allFilled ? 'Review the finished plan' : 'Every player in the plan needs a replacement first.'}">Review plan ${v2Icon('next')}</button>
+                    </span>
                 </div>
                 <div class="twf-head-bot">
                     ${views}

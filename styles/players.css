@@ -1372,8 +1372,21 @@
     box-shadow: 1px 0 0 var(--border-default);
 }
 .data-table th.col-player { z-index: 25; background: var(--surface-2); }
-.data-table tbody tr:hover td.col-player { background: var(--surface-2); }
-.data-table tbody tr.selected-row td.col-player { background: color-mix(in srgb, var(--color-primary) 12%, var(--surface-1)); }
+
+/* One colour per row state, read by both the row and its sticky first cell.
+
+   The player column is position: sticky, so it has to be opaque or the
+   columns it scrolls over show through it — which means it cannot simply
+   inherit the row's translucent background and had its own rules instead.
+   Those rules drifted: hovering a selected row painted the row green and
+   that one cell grey, so half a row was one colour and half another. Now
+   both read the same variable, and the cell composites it over the surface
+   rather than restating it. */
+.data-table tbody tr { --row-bg: var(--surface-1); background: var(--row-bg); }
+.data-table tbody tr:hover { --row-bg: var(--surface-2); }
+.data-table tbody tr.selected-row { --row-bg: color-mix(in srgb, var(--color-primary) 10%, var(--surface-1)); }
+.data-table tbody tr.selected-row:hover { --row-bg: color-mix(in srgb, var(--color-primary) 16%, var(--surface-1)); }
+.data-table tbody td.col-player { background: var(--row-bg); }
 .data-table {
     width: 100%;
     border-collapse: collapse;
@@ -1433,7 +1446,8 @@
     vertical-align: middle;
 }
 .data-table tbody tr { transition: all 150ms; }
-.data-table tbody tr:hover { background: var(--surface-2); }
+/* Row hover is set through --row-bg further up, so the sticky player column
+   follows the rest of the row instead of holding a second opinion. */
 
 /* Player Cell */
 .player-cell {
@@ -2021,12 +2035,9 @@
     opacity: 0.3;
     cursor: not-allowed;
 }
-.selected-row {
-    background: rgba(74, 222, 128, 0.08) !important;
-}
-.selected-row:hover {
-    background: rgba(74, 222, 128, 0.12) !important;
-}
+/* Was rgba(74, 222, 128, …) — emerald-400, a different green from the brand's
+   own, painted with !important so nothing could correct it. The row state
+   above owns this now, in --color-primary. */
 
 /* Compare Bar */
 .compare-bar {
@@ -4464,7 +4475,6 @@
 /* The whole row opens the player now, so the pointer belongs to the row
    rather than to the 120px of it that used to be the only target. */
 tr.pl-row-click { cursor: pointer; }
-tr.pl-row-click:hover > td { background: var(--surface-2); }
 /* Anything in the row that does something else of its own keeps its own
    pointer; each already stops the click from reaching the row. */
 tr.pl-row-click .compare-checkbox,
@@ -5130,4 +5140,60 @@ tr.pl-row-click .row-action { cursor: pointer; }
 @media (max-width: 720px) {
     .apf-bar { gap: 10px 12px; }
     .apf-tail { margin-left: 0; }
+}
+
+/* ===== The All Players bar, and the two menus it folds into =====
+
+   Position and search are what the bar is steered with, constantly; the rest
+   is set once and left. So the rest lives in these. */
+.apf-menu { position: relative; display: inline-flex; }
+.apf-menu-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 700;
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.apf-menu-btn svg { width: 14px; height: 14px; color: inherit; }
+.apf-menu-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.apf-menu.is-open .apf-menu-btn { border-color: var(--color-primary); color: var(--color-primary); background: var(--surface-2); }
+/* Something behind it is on, and how many. */
+.apf-menu-btn.is-on { border-color: var(--color-primary); color: var(--color-primary); }
+.apf-menu-n {
+    min-width: 18px; height: 18px; padding: 0 5px;
+    display: inline-grid; place-items: center;
+    border-radius: 999px;
+    background: var(--color-primary); color: #fff;
+    font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+
+/* display:flex below would override the UA stylesheet's [hidden] rule, so the
+   panel has to say this itself — otherwise hiding it does nothing at all. */
+.apf-panel[hidden] { display: none; }
+.apf-panel {
+    position: absolute; top: calc(100% + 8px); left: 0; z-index: 60;
+    min-width: 340px; max-width: min(460px, calc(100vw - 32px));
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 14px;
+    border-radius: var(--v2-card-radius, 16px);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .16);
+}
+.apf-panel .apf-group { display: flex; flex-direction: column; gap: 6px; }
+.apf-panel .apf-controls { display: flex; flex-wrap: wrap; gap: 6px; }
+/* The club list opens from inside a panel that is already floating, so it
+   drops below its own button rather than trying to escape. */
+.apf-panel .team-filter-dropdown { position: static; display: none; box-shadow: none; border: none; padding: 8px 0 0; min-width: 0; }
+.apf-panel .team-filter-dropdown.show { display: block; }
+
+/* The bar itself is four things and a tail now, so it fits on one line. */
+.apf-bar { align-items: flex-end; }
+
+@media (max-width: 768px) {
+    .apf-panel { left: auto; right: 0; min-width: 0; width: min(380px, calc(100vw - 24px)); }
 }

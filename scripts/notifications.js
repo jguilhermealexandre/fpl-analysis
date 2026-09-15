@@ -89,12 +89,37 @@
             i: 'is injured', s: 'is suspended', u: 'is unavailable', d: 'is a doubt', a: 'is fit again'
         };
 
+        /* What is true right now and worth knowing, whether or not it changed.
+
+           The feed is a diff, which is the right shape for "what happened
+           while you were away" and the wrong shape for someone who has never
+           been here: nothing has changed yet, so the bell was empty on a first
+           visit and stayed empty until something moved twice. It was also
+           empty for anyone whose squad had been quietly carrying an injury
+           since before their last visit — the fact was still true, and still
+           the most useful thing the bell could say, but it was no longer news.
+
+           So a first pass reports the flags the squad is carrying now. Stable
+           ids mean each one is raised once and then behaves like any other
+           entry: read when you have read it, gone when the player recovers. */
+        function ntStanding(squad, gw, now) {
+            return (squad || [])
+                .filter(p => p && p.status && p.status !== 'a')
+                .map(p => ({
+                    id: `news-${gw}-${p.id}-${p.status}`,
+                    kind: 'squad-news',
+                    tone: p.status === 'd' ? 'warn' : 'bad',
+                    title: p.name,
+                    body: `${p.name} ${NT_STATUS_WORD[p.status] || 'has a news update'}${p.news ? ` — ${p.news}` : ''}`,
+                    at: now,
+                    href: `fpl-my-team-analysis.html#squad?player=${p.id}`
+                }));
+        }
+
         /* Every event the current state implies that the previous one did not.
 
            ctx: { squad, live, phase, gw, now, prev }  — prev is a snapshot from
-           ntSnapshot(), or null on a first visit. A first visit deliberately
-           produces nothing: a feed that opens with forty things that happened
-           before you ever arrived is noise pretending to be history. */
+           ntSnapshot(), or null on a first visit. */
         function ntCollect(ctx) {
             const c = ctx || {};
             const squad = c.squad || [];
@@ -103,7 +128,9 @@
             const gw = c.gw;
             const prev = c.prev;
             const out = [];
-            if (!prev) return out;
+            /* No previous visit to compare against, so there is no diff to
+               take — report the standing flags instead of nothing. */
+            if (!prev) return ntStanding(squad, gw, now);
 
             const byId = {};
             squad.forEach(p => { byId[p.id] = p; });

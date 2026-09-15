@@ -39,12 +39,44 @@ const squad = [
 ];
 const T0 = Date.UTC(2026, 8, 5, 12, 0);
 
-test('a first visit invents no history', () => {
+test('a first visit invents no history for a squad with nothing wrong', () => {
     /* There is nothing to diff against, and forty things that happened before
-       you arrived is noise dressed as a record. */
+       you arrived is noise dressed as a record. A fit squad has nothing
+       standing either, so a first visit is still silent. */
     const nt = load();
     const events = nt.ntCollect({ squad, live: {}, phase: 'live', gw: 4, now: T0, prev: null });
     assert.deepEqual([...events], []);
+});
+
+test('a first visit still reports the flags the squad is carrying', () => {
+    /* The feed is a diff, which is the wrong shape for someone who has never
+       been here: nothing has changed, so the bell was empty even with an
+       injured player in the squad. What is true now is reported once. */
+    const nt = load();
+    const hurt = [
+        { id: 1, name: 'Saka', status: 'i', news: 'Hamstring' },
+        { id: 2, name: 'Haaland', status: 'a', news: '' },
+        { id: 3, name: 'Raya', status: 'd', news: 'Knock — 75% chance' }
+    ];
+    const events = [...nt.ntCollect({ squad: hurt, live: {}, phase: 'pre', gw: 4, now: T0, prev: null })];
+    assert.equal(events.length, 2, 'only the two who are flagged');
+    const saka = events.find(e => e.title === 'Saka');
+    assert.ok(/injured/.test(saka.body), saka.body);
+    assert.equal(saka.tone, 'bad');
+    assert.equal(events.find(e => e.title === 'Raya').tone, 'warn');
+});
+
+test('a standing flag is raised once, not again on the next visit', () => {
+    /* Its id is the one the change-based path would give it, so the second
+       visit — which now has a snapshot and finds no change — adds nothing,
+       and the merge does not produce a duplicate. */
+    const nt = load();
+    const hurt = [{ id: 1, name: 'Saka', status: 'i', news: 'Hamstring' }];
+    const first = nt.ntUpdate({ squad: hurt, live: {}, phase: 'pre', gw: 4, now: T0 });
+    assert.equal(first.events.length, 1);
+    const second = nt.ntUpdate({ squad: hurt, live: {}, phase: 'pre', gw: 4, now: T0 + 60000 });
+    assert.equal(second.events.length, 1, 'still the one entry');
+    assert.equal(second.fresh, 0, 'and nothing new was collected');
 });
 
 test('a player picking up a knock is an event, and only once', () => {
