@@ -1082,11 +1082,20 @@ html.v2-theme body {
     padding: 13px 16px;
 }
 
-.v2-main-content .data-table thead th:hover,
-.v2-main-content table:not(.matrix-table) thead th:hover {
+/* Only headers that do something respond to the pointer.
+
+   This was every <th> in every table, which meant the match grid in a player's
+   profile — four fixed gameweek columns that sort nothing and click nowhere —
+   lit up under the mouse and promised an interaction it does not have. A hover
+   state is a claim about what happens next; on a static header it is a false
+   one. Sorting is wired through onclick, so that is what it asks for. */
+.v2-main-content .data-table thead th[onclick]:hover,
+.v2-main-content table:not(.matrix-table) thead th[onclick]:hover {
     background: var(--surface-2);
     color: var(--text-primary);
 }
+.v2-main-content .data-table thead th[onclick],
+.v2-main-content table:not(.matrix-table) thead th[onclick] { cursor: pointer; }
 
 .v2-main-content .data-table td,
 .v2-main-content table:not(.matrix-table) td {
@@ -1094,14 +1103,27 @@ html.v2-theme body {
 }
 
 /* The hover tint is the accent at 5% rather than a grey step: it reads as
-   "this row is live" instead of "this row is disabled". */
-.v2-main-content .data-table tbody tr:hover,
-.v2-main-content table:not(.matrix-table) tbody tr:hover {
-    background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+   "this row is live" instead of "this row is disabled".
+
+   On .data-table it goes through --row-bg, the one value the row and its
+   frozen first column both read — see the block that defines it in
+   players.css. Setting `background` here instead would win on the row and
+   not on the sticky cell, which is how a hovered row ended up half one
+   colour and half another. Mixed against the surface rather than against
+   transparent, because the frozen cell has to be opaque. */
+.v2-main-content .data-table tbody tr:hover {
+    --row-bg: color-mix(in srgb, var(--color-primary) 5%, var(--surface-1));
+}
+.v2-main-content .data-table tbody tr.selected-row {
+    --row-bg: color-mix(in srgb, var(--color-primary) 10%, var(--surface-1));
+}
+.v2-main-content .data-table tbody tr.selected-row:hover {
+    --row-bg: color-mix(in srgb, var(--color-primary) 16%, var(--surface-1));
 }
 
-.v2-main-content .data-table tbody tr:hover td.col-player {
-    background: color-mix(in srgb, var(--color-primary) 5%, var(--surface-1));
+/* Tables without a frozen column keep the translucent tint. */
+.v2-main-content table:not(.matrix-table):not(.data-table) tbody tr:hover {
+    background: color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
 
 /* The frozen identity column sat on --surface-2, a visibly different grey
@@ -1428,7 +1450,16 @@ html.v2-theme body {
     object-position: 50% 12%;
 }
 
-/* Only ever seen when no photo arrives — see .has-photo, set on load. */
+/* Only ever seen when no photo arrives.
+
+   Asked of the DOM rather than set by an onload handler: the handler ran a
+   frame after the card was inserted, so every re-render showed initials and
+   then replaced them with a face, which is the flicker. The <img> removes
+   itself when both photo URLs 404 (see playerPhotoHTML), so "no face element"
+   is the real condition and it needs nothing to fire. */
+.v2-pid-initials { display: none; }
+.v2-pid-avatar:not(:has(.v2-pid-face)) .v2-pid-initials { display: block; }
+/* Kept for anything still setting it; the rule above already covers it. */
 .v2-pid-avatar.has-photo .v2-pid-initials { display: none; }
 
 .v2-pid-crest {
@@ -2894,7 +2925,7 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .rv-card.you-have .rv-own-flag { background: var(--color-primary); color: #fff; }
 .rv-card.you-missing { border-color: color-mix(in srgb, var(--verdict-sell, #EF4444) 55%, transparent); }
 .rv-card.you-missing .rv-own-flag { background: var(--verdict-sell, #EF4444); color: #fff; }
-.rv-card.you-missing .v2-pid-portrait { opacity: .72; }
+.rv-card.you-missing .v2-pid-pitch { opacity: .72; }
 
 /* =====================================================================
    THE SHARED PITCH
@@ -2915,7 +2946,10 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     border: 1px solid var(--border-default);
     background: repeating-linear-gradient(0deg, #57ab5a 0, #57ab5a 12.5%, #4e9e51 12.5%, #4e9e51 25%);
     box-shadow: var(--shadow-md);
-    padding: 14px 12px 12px;
+    /* Room for the rows to sit apart the way they do on the dashboard's
+       pitch, where the grass is a 16:12.5 box and the lines of players are
+       spread across it rather than stacked up the middle of it. */
+    padding: 18px 14px 16px;
     overflow: hidden;
 }
 .dp-pitch-card::before {
@@ -2934,7 +2968,7 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     pointer-events: none;
 }
 .dp-pitch, .dp-bench { position: relative; z-index: 1; }
-.dp-pitch { display: flex; flex-direction: column; gap: 10px; }
+.dp-pitch { display: flex; flex-direction: column; gap: 16px; }
 .dp-row { display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; }
 .dp-bench {
     margin-top: 10px;
@@ -2955,6 +2989,14 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     background: var(--border-subtle, var(--border-emphasis));
 }
 .dp-bench-row { display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; }
+/* ---- the card ----
+   One pitch card for the whole site. The dashboard's pitch settled this
+   design and the other four drew variations on it: a coloured position
+   stripe along the top, the projection as a pill laid half over the photo,
+   the armband as a square chip hanging off the corner. They are the same
+   object and now look like it — a near-white tile on the grass, face and
+   crest side by side above the name, then the two things you actually read
+   across an eleven: the number, and who it comes against. */
 .dp-card {
     position: relative;
     /* The card is fluid, not fixed. --dp-card-w is the width it wants; the
@@ -2968,41 +3010,131 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     min-width: 0;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    text-align: center;
     gap: 2px;
-    padding: 7px 7px 6px;
-    border-radius: var(--radius-lg);
-    background: var(--surface-1);
-    border: 1px solid transparent;
-    border-top: 3px solid var(--text-muted);
+    padding: 10px 7px 8px;
+    border-radius: var(--radius-md);
+    /* Near-white rather than --surface-1, so the grass reads through as a
+       tint and the card is the same colour in either theme: it sits on a
+       pitch, which is green whatever the page around it is doing. */
+    background: rgba(255, 255, 255, 0.94);
+    border: 2px solid transparent;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
     cursor: pointer;
     transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
-.dp-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.dp-card .v2-pid-portrait { --v2-pid-face: 46%; --v2-pid-crest: 19px; margin-bottom: 2px; }
+.dp-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22); }
+/* The identity mark is v2IdentityHTML's pitch form: face and crest side by
+   side at a size worth looking at, with nothing laid over the photo. */
+.dp-card .v2-pid-pitch { --v2-pid-face: 34px; --v2-pid-crest: 22px; gap: 5px; margin-bottom: 2px; }
 .dp-transfer svg { width: 11px; height: 11px; }
-.dp-card.pos-gk { border-top-color: #f59e0b; }
-.dp-card.pos-def { border-top-color: #10b981; }
-.dp-card.pos-mid { border-top-color: #3b82f6; }
-.dp-card.pos-fwd { border-top-color: #ef4444; }
 .dp-card.is-out { opacity: .55; }
 .dp-card.swap-selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary); }
 .dp-card.swap-target { border-color: var(--verdict-hold); box-shadow: 0 0 0 2px var(--verdict-hold); }
 .dp-card.swap-ineligible { opacity: .35; cursor: not-allowed; }
-.dp-name { font-size: 12px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #17301F;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.15;
+}
+/* The number, on its own line and in the card's own ink. It was a pill on
+   the corner of the photo at 10px — the smallest type on a card whose whole
+   job is to show that number. */
+.dp-score {
+    display: flex; align-items: baseline; justify-content: center; gap: 3px;
+    font-family: var(--font-mono); color: #0F172A; line-height: 1.15; cursor: help;
+}
+.dp-score b { font-size: 16px; font-weight: 800; }
+.dp-score .u { font-size: 9.5px; font-weight: 700; color: rgba(15, 23, 42, 0.55); }
 .dp-meta { font-size: 9px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dp-xp { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); cursor: help; line-height: 1.1; }
 .dp-xp-u { font-size: 9px; color: var(--text-muted); margin-left: 1px; }
-.dp-badges { position: absolute; top: -6px; left: 5px; display: flex; gap: 2px; z-index: 2; }
+
+/* ---- who they play ----
+   Scoped to the pitch card: .dp-fix is also the fixture strip in the player
+   detail panel, where a difficulty-coloured chip is the entire point. Here
+   it is the dashboard's neutral pill, because six of them across a row of
+   cards read as a set of traffic lights sitting next to a pitch that has
+   none. The difficulty becomes a dot inside the pill — same signal, same
+   card. */
+.dp-card .dp-fixtures { display: flex; justify-content: center; flex-wrap: wrap; gap: 3px; margin: 0; max-width: 100%; }
+.dp-card .dp-fix {
+    flex: 0 1 auto;
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 10px; font-weight: 700; letter-spacing: -0.1px; line-height: 1.3;
+    color: rgba(15, 23, 42, 0.72);
+    background: rgba(15, 23, 42, 0.06);
+}
+.dp-card .dp-fix::before {
+    content: ''; flex: none;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--fdr-3);
+}
+.dp-card .dp-fix.fdr-1::before, .dp-card .dp-fix.v2-fdr-1::before { background: var(--fdr-1); }
+.dp-card .dp-fix.fdr-2::before, .dp-card .dp-fix.v2-fdr-2::before { background: var(--fdr-2); }
+.dp-card .dp-fix.fdr-3::before, .dp-card .dp-fix.v2-fdr-3::before { background: var(--fdr-3); }
+.dp-card .dp-fix.fdr-4::before, .dp-card .dp-fix.v2-fdr-4::before { background: var(--fdr-4); }
+.dp-card .dp-fix.fdr-5::before, .dp-card .dp-fix.v2-fdr-5::before { background: var(--fdr-5); }
+.dp-card .dp-fix-blank { background: rgba(15, 23, 42, 0.06); color: rgba(15, 23, 42, 0.5); }
+.dp-card .dp-fix-blank::before { background: rgba(15, 23, 42, 0.25); }
+.dp-card .dp-fix-ha { opacity: .7; font-size: 8px; }
+
+/* ---- the badges ----
+   Availability and bench order in the corner opposite the armband, both of
+   them inside the card now that it has padding to hold them. */
+.dp-badges { position: absolute; top: 2px; left: 3px; display: flex; gap: 2px; z-index: 3; }
 .dp-badge { font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; cursor: help; line-height: 1.5; }
-.dp-badge.cap { background: var(--color-captain, #facc15); color: #111827; }
-.dp-badge.vice { background: var(--text-muted); color: #fff; }
 .dp-badge.in { background: var(--verdict-hold); color: #fff; }
 .dp-badge.out { background: var(--verdict-sell); color: #fff; }
 .dp-badge.doubt { background: var(--verdict-monitor); color: #111827; }
-.dp-badge.bench { background: var(--surface-3); color: var(--text-secondary); }
+.dp-badge.bench { background: rgba(15, 23, 42, 0.10); color: rgba(15, 23, 42, 0.72); }
+/* The armband is the dashboard's: a small yellow disc on the card's
+   top-right corner, not a square chip in the row of status flags. It reads
+   at a glance across eleven cards, which a 8px chip the colour of a warning
+   badge never did. */
+.dp-cap {
+    position: absolute;
+    top: -6px; right: -6px;
+    z-index: 4;
+    width: 17px; height: 17px;
+    border-radius: 50%;
+    background: #FBBF24;
+    color: #1f2937;
+    font-size: 9.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    cursor: help;
+}
+/* The run total the draft and the lineup optimiser rank on. The dashboard
+   has no equivalent — it reports one gameweek — so this is the one line
+   these pitches carry that it does not, and it is set quietly for that
+   reason. */
+.dp-card .dp-xp-run {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: rgba(15, 23, 42, 0.55);
+    cursor: help;
+    margin-top: 0;
+}
+.dp-card .dp-xp-run-u { font-size: 8px; margin-left: 2px; opacity: .85; }
 .dp-transfer {
     position: absolute;
-    top: -6px; right: 4px;
+    /* The top-right corner belongs to the armband now. */
+    bottom: 4px; right: 4px;
     width: 19px; height: 19px;
     border-radius: 50%;
     border: 1px solid var(--border-default);
@@ -3013,10 +3145,26 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     cursor: pointer;
     opacity: 0;
     transition: opacity 140ms ease;
-    z-index: 2;
+    z-index: 3;
 }
 .dp-card:hover .dp-transfer { opacity: 1; }
 .dp-transfer:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+/* ---- on the bench ----
+   The bench sits on a panel, not on grass, so its cards follow the page's
+   surface the way the dashboard's do rather than staying pitch-white on a
+   dark background. */
+.dp-bench .dp-card {
+    background: var(--surface-1);
+    border-color: var(--v2-card-border, var(--border-emphasis));
+    box-shadow: none;
+}
+.dp-bench .dp-name { color: var(--text-secondary); }
+.dp-bench .dp-score { color: var(--text-primary); }
+.dp-bench .dp-score .u,
+.dp-bench .dp-card .dp-xp-run { color: var(--text-muted); }
+.dp-bench .dp-card .dp-fix { background: var(--surface-3); color: var(--text-secondary); }
+.dp-bench .dp-card .dp-fix-blank { color: var(--text-muted); }
+.dp-bench .dp-badge.bench { background: var(--surface-3); color: var(--text-secondary); }
 .dp-card { --dp-card-w: 96px; }
 .dp-pitch-card, .dp-bench { max-width: 760px; margin-left: auto; margin-right: auto; }
 .dp-pitch, .dp-bench-row { max-width: 720px; margin-left: auto; margin-right: auto; }
@@ -3181,5 +3329,3 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     margin-top: 1px;
 }
 .dp-xp-run-u { font-size: 8px; margin-left: 2px; opacity: 0.85; }
-    .dp-xp-run { font-size: 9px; }
-    .dp-xp-run-u { font-size: 7px; }

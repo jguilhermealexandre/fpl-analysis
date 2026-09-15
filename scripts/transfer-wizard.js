@@ -581,11 +581,10 @@
            'squad', and only the person clicking knows which one they are on.
            Everything below it still reads mode, so nothing else had to move. */
         const TW_STEPS = [
-            { n: 1, key: 'plan',    icon: 'sliders', label: 'Plan',        hint: 'How many transfers, and at what cost' },
-            { n: 2, key: 'out',     icon: 'outbox',  label: 'Who leaves',  hint: 'Pick the players you want to move on' },
-            { n: 3, key: 'find',    icon: 'cart',    label: 'Replacements', hint: 'Quick picks, or search on your own terms' },
-            { n: 4, key: 'compare', icon: 'scales',  label: 'Compare',     hint: 'The two of them, side by side' },
-            { n: 5, key: 'confirm', icon: 'check',   label: 'Confirm',     hint: 'What the plan costs and what it buys' }
+            { n: 1, key: 'plan',    icon: 'sliders', label: 'Plan',    hint: 'How many transfers, and at what cost' },
+            { n: 2, key: 'swap',    icon: 'swap',    label: 'Swap',    hint: 'Your squad on the left, who can replace them on the right' },
+            { n: 3, key: 'compare', icon: 'scales',  label: 'Compare', hint: 'The two of them, side by side' },
+            { n: 4, key: 'confirm', icon: 'check',   label: 'Confirm', hint: 'What the plan costs and what it buys' }
         ];
 
         /* One header shape for every step: what the step is, a hint, and the
@@ -607,7 +606,7 @@
 
         function twStep() {
             const n = transferState.step;
-            return n >= 1 && n <= 5 ? n : 1;
+            return n >= 1 && n <= TW_STEPS.length ? n : 1;
         }
 
         /* Direction is what the animation needs: going forward the incoming
@@ -616,7 +615,7 @@
            it. Set here, read once by the renderer, then cleared. */
         function twGoStep(n, opts) {
             const from = twStep();
-            const to = Math.max(1, Math.min(5, n));
+            const to = Math.max(1, Math.min(TW_STEPS.length, n));
             transferState.step = to;
             transferState._stepDir = to === from ? 0 : (to > from ? 1 : -1);
             if (!opts || opts.render !== false) renderTWAll();
@@ -629,8 +628,7 @@
         function twStepReachable(n) {
             if (n <= 1) return true;
             if (n === 2) return !!transferState.strategy;
-            if (n === 3) return transferState.pending.length > 0;
-            if (n === 4) return transferState.activeSlot >= 0 && !!transferState.previewPlayer;
+            if (n === 3) return transferState.activeSlot >= 0 && !!transferState.previewPlayer;
             return transferState.pending.length > 0
                 && transferState.pending.every(x => x.replacement);
         }
@@ -639,9 +637,10 @@
             if (!twStepReachable(n)) return;
             // Each step owns a mode; walking back has to put the mode back too,
             // or the pane renders step 3's market inside step 2's frame.
-            if (n <= 2) { transferState.mode = 'squad'; transferState.previewPlayer = null; }
-            else if (n === 3) { transferState.mode = 'market'; transferState.previewPlayer = null; }
-            else if (n === 4) transferState.mode = 'compare';
+            if (n <= 2) {
+                transferState.previewPlayer = null;
+                transferState.mode = transferState.activeSlot >= 0 ? 'market' : 'squad';
+            } else if (n === 3) transferState.mode = 'compare';
             else transferState.mode = 'summary';
             twGoStep(n);
         }
@@ -1421,61 +1420,188 @@
                 ${filled ? `<div class="twc-plan">${cart}</div>` : ''}`;
         }
 
-        /* ===== Step 3's left column · who you are replacing =====
+        /* ===== Step 2's left column · your squad =====
 
-           Which player the market on the right belongs to used to be findable
-           only in a 24px-tall plan row saying "Tzolakis → Choose…", and
-           switching between two open swaps meant hitting the right one of
-           those. They are cards here, in their clubs' colours, the one being
-           worked on outlined — the same card the market shows on the other
-           side, so a swap is two of the same object rather than a line of
-           text pointing at a list. */
-        function twRenderOutRail(el) {
+           Choosing who leaves and choosing who replaces them were two steps,
+           and the seam between them kept producing dead ends: pressing Clear
+           on the market step left you looking at a squad list you could not
+           click, because the thing that made it clickable belonged to the
+           step before. They are one step now — your squad on the left, the
+           market for whoever is selected on the right — so there is no state
+           where the squad is on screen and inert.
+
+           Every player is a card, the way the players being replaced already
+           were. The ones not in the plan are dimmed rather than hidden: you
+           need to see the whole squad to decide which part of it is the
+           problem, but only one of them is what the right-hand side is
+           currently answering for. */
+        /* What the squad column is built from, as one string.
+
+           Clicking a player used to rebuild all fifteen cards — fifteen <img>
+           elements destroyed and recreated — when the only thing that had
+           actually changed was which card is selected. The faces, names and
+           prices are identical before and after; only three classes and one
+           line of text differ. So the markup is rebuilt when the squad itself
+           changes and updated in place when it does not, which is every click.
+
+           Cheap to compute and compared as a whole: fifteen ids and prices is
+           shorter than one of the cards it saves rendering. */
+        function twSquadCardsKey() {
+            return selectedPlayers.map(p => `${p.id}:${(p.sellPrice || p.price).toFixed(1)}:${p.status || 'a'}`).join('|');
+        }
+        let twSquadCardsBuilt = null;
+
+        /* The three things a click actually changes, applied to the cards that
+           are already on screen. */
+        function twUpdateSquadCardStates(el) {
+            const slotOf = id => transferState.pending.findIndex(x => x.soldPlayer.id === id);
             const gws = twPlanGWs(3);
-            const cards = transferState.pending.map((slot, i) => {
-                const o = slot.soldPlayer;
-                const active = i === transferState.activeSlot;
-                const budget = twSlotBudget(i);
-                const inP = slot.replacement;
-                return `<button class="tw-outc${active ? ' is-active' : ''}${inP ? ' is-filled' : ''}"
-                    onclick="twSelectSlot(${i})"
-                    data-tooltip="${inP ? escHTML(`${o.name} out, ${inP.name} in — click to pick someone else`) : escHTML(`Show replacements for ${o.name}`)}">
-                    <span class="tw-outc-hero">${typeof v2PlayerHeroHTML === 'function'
-                        ? v2PlayerHeroHTML({ ...o, price: o.sellPrice || o.price },
-                            { size: 'compact', chip: String(i + 1) })
-                        : escHTML(o.name)}</span>
-                    <span class="tw-outc-foot">
-                        ${inP
-                            ? `<span class="tw-outc-in">${v2Icon('check')} ${escHTML(inP.name)}</span>`
-                            : `<span class="tw-outc-open">Needs a replacement</span>`}
-                        <span class="tw-outc-budget">£${budget.toFixed(1)}m</span>
-                    </span>
-                    <span class="tw-outc-xp" data-tooltip="What ${escHTML(o.name)} projects over the next ${gws.length} gameweeks.">${twXPOver(o, gws).toFixed(1)}<i>xP</i></span>
-                </button>`;
-            }).join('');
+            el.querySelectorAll('.tw-sqc').forEach(node => {
+                const id = Number(node.dataset.pid);
+                const p = selectedPlayers.find(x => x.id === id);
+                if (!p) return;
+                const i = slotOf(id);
+                const picked = i >= 0;
+                const slot = picked ? transferState.pending[i] : null;
+                const inP = slot && slot.replacement;
+                node.classList.toggle('is-picked', picked);
+                node.classList.toggle('is-active', picked && i === transferState.activeSlot);
+                node.classList.toggle('is-filled', !!inP);
+                node.setAttribute('aria-pressed', String(picked));
 
+                const chip = node.querySelector('.pdm-hero-chip');
+                if (chip) {
+                    chip.classList.toggle('is-blank', !picked);
+                    if (picked) chip.textContent = String(i + 1);
+                }
+
+                const state = node.querySelector('.tw-outc-open, .tw-outc-in');
+                if (state) {
+                    if (inP) {
+                        state.className = 'tw-outc-in';
+                        state.innerHTML = `${v2Icon('check')} ${escHTML(inP.name)}`;
+                    } else {
+                        state.className = 'tw-outc-open';
+                        state.textContent = picked
+                            ? 'Choosing a replacement'
+                            : `${twXPOver(p, gws).toFixed(1)} xP next ${gws.length}`;
+                    }
+                }
+            });
+            const hint = el.querySelector('.twc-panel-hint');
+            if (hint) {
+                const n = transferState.pending.length;
+                hint.textContent = n
+                    ? `${n}${transferState.sellMode ? ` of ${twMaxTransfers()}` : ''} in the plan`
+                    : 'Click anyone to replace them';
+            }
+        }
+
+        function twRenderSquadCards(el) {
+            /* Same squad as last time: nothing here needs rebuilding, and
+               rebuilding it is what makes the faces blink. */
+            const key = twSquadCardsKey();
+            if (twSquadCardsBuilt === key && el.querySelector('.tw-sqc')) {
+                twUpdateSquadCardStates(el);
+                return;
+            }
+            twSquadCardsBuilt = key;
+            const gws = twPlanGWs(3);
+            const slotOf = id => transferState.pending.findIndex(x => x.soldPlayer.id === id);
+            const positions = [
+                { type: 1, label: 'Goalkeepers' }, { type: 2, label: 'Defenders' },
+                { type: 3, label: 'Midfielders' }, { type: 4, label: 'Forwards' }
+            ];
+
+            let groups = '';
+            positions.forEach(pos => {
+                const players = selectedPlayers.filter(p => p.position === pos.type);
+                if (!players.length) return;
+                const cards = players.map(p => {
+                    const i = slotOf(p.id);
+                    const picked = i >= 0;
+                    const slot = picked ? transferState.pending[i] : null;
+                    const active = picked && i === transferState.activeSlot;
+                    const inP = slot && slot.replacement;
+                    const flag = p.status === 'i' || p.status === 'u' || p.status === 's'
+                        ? '<span class="tw-sqc-flag out">OUT</span>'
+                        : p.status === 'd' ? `<span class="tw-sqc-flag doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}">?</span>` : '';
+                    return `<button class="tw-outc tw-sqc${picked ? ' is-picked' : ''}${active ? ' is-active' : ''}${inP ? ' is-filled' : ''}"
+                        data-pid="${p.id}"
+                        onclick="twSquadCardClick(${p.id})"
+                        aria-pressed="${picked}"
+                        data-tooltip="${inP
+                            ? escHTML(`${p.name} out, ${inP.name} in — click to pick someone else for this slot`)
+                            : picked
+                                ? escHTML(`Showing replacements for ${p.name} — click again to take him out of the plan`)
+                                : escHTML(`Move ${p.name} on`)}">
+                        <!-- The rank chip is always in the markup, hidden until the
+                             player is in the plan, so selecting one can reveal it
+                             rather than having to rebuild the card to add it. -->
+                        <span class="tw-outc-hero">${typeof v2PlayerHeroHTML === 'function'
+                            ? v2PlayerHeroHTML({ ...p, price: p.sellPrice || p.price },
+                                { size: 'compact', chip: picked ? String(i + 1) : '0',
+                                  chipClass: picked ? '' : 'is-blank' })
+                            : escHTML(p.name)}</span>
+                        <span class="tw-outc-foot">
+                            ${inP
+                                ? `<span class="tw-outc-in">${v2Icon('check')} ${escHTML(inP.name)}</span>`
+                                : picked
+                                    ? `<span class="tw-outc-open">Choosing a replacement</span>`
+                                    : `<span class="tw-outc-open">${twXPOver(p, gws).toFixed(1)} xP next ${gws.length}</span>`}
+                            ${flag}
+                            <span class="tw-outc-budget">£${(p.sellPrice || p.price).toFixed(1)}m</span>
+                        </span>
+                    </button>`;
+                }).join('');
+                groups += `<div class="tw-sqc-group">
+                    <div class="twc-group-head"><span>${pos.label}</span></div>
+                    <div class="tw-outc-list">${cards}</div>
+                </div>`;
+            });
+
+            const picked = transferState.pending.length;
             const open = transferState.pending.filter(x => !x.replacement).length;
+            const max = twMaxTransfers();
 
             el.innerHTML = `<div class="twc-panel tw-outrail">
                 <div class="twc-panel-head">
-                    <span class="twc-panel-title">${v2Icon('outbox')} Swapping out</span>
-                    <span class="twc-panel-hint">${transferState.pending.length} ${transferState.pending.length === 1 ? 'player' : 'players'}</span>
+                    <span class="twc-panel-title">${v2Icon('users')} Your squad</span>
+                    <span class="twc-panel-hint">${picked ? `${picked}${transferState.sellMode ? ` of ${max}` : ''} in the plan` : 'Click anyone to replace them'}</span>
                 </div>
                 <div class="twc-panel-body">
-                    <div class="tw-outc-list">${cards}</div>
                     ${open > 1 ? `<button class="tw-outrail-fill" onclick="twFillAllSlots()" data-tooltip="Pick the best affordable replacement for every open slot, sharing the bank across them.">${v2Icon('bolt')} Fill all ${open} slots</button>` : ''}
-                    <button class="tw-outrail-add" onclick="twRailGo(2)" data-tooltip="Go back to your squad and pick someone else to move on.">${v2Icon('up')} Change who is leaving</button>
-                    ${open > 1 ? `<div class="tw-outrail-note">Or pick any of them to choose one at a time.</div>` : ''}
+                    ${groups}
                 </div>
             </div>`;
+        }
+
+        /* One click on a squad card.
+
+           Not in the plan yet → put him in and point the market at him. Already
+           the one the market is answering for → take him back out. In the plan
+           but not the active one → switch the market to him. On Single there is
+           only ever one slot, so a new player replaces the pick rather than
+           being refused for exceeding a limit of one. */
+        function twSquadCardClick(playerId) {
+            const i = transferState.pending.findIndex(x => x.soldPlayer.id === playerId);
+            if (i >= 0) {
+                if (i === transferState.activeSlot) { twPickOutPlayer(playerId); return; }
+                twSelectSlot(i);
+                return;
+            }
+            if (!transferState.sellMode) {
+                transferState.pending = transferState.pending.filter(x => x.replacement);
+            }
+            twSwapPlayer(playerId);
         }
 
         function renderTWSquadPane() {
             const el = document.getElementById('twSquadPane');
             if (!el) return;
-            /* On step 3 this column stops being the squad and becomes the
-               players you are replacing, beside the market that replaces them. */
-            if (twStep() === 3 && transferState.pending.length) return twRenderOutRail(el);
+            /* On the swap step the squad is a column of cards beside the
+               market, not a table of rows. */
+            if (twStep() === 2) return twRenderSquadCards(el);
             /* The squad is on screen at every step, but it is only a control at
                some of them. On step 1 no plan has been chosen yet, so there is
                no answer to how many players you may move — Swap is shown and
@@ -1627,11 +1753,10 @@
             transferState.previewPlayer = null;
             transferState.candidateCache = {};
             twfState().search = '';
-            /* Swap is a decision on Single — there is nothing else to collect,
-               so it carries you to the replacements. Under a plan that takes
-               several players it is one of a set, and the step stays where the
-               set is being built until you say you are done. */
-            twGoStep(transferState.sellMode ? 2 : 3);
+            /* Choosing who leaves and choosing who replaces them are one step
+               now — the squad is on the left and the market on the right — so
+               this only has to name the slot the market is answering for. */
+            twGoStep(2);
         }
 
         function renderTWMarketPane() {
@@ -1643,8 +1768,26 @@
             if (mode === 'compare' && transferState.previewPlayer && transferState.activeSlot >= 0) return renderTWComparison(el);
             if (mode === 'market' && transferState.activeSlot >= 0) return renderTWMarket(el);
             if (mode === 'summary') return twRenderSummaryPanel(el);
-            /* Step 2 is the squad pane's screen; this one is not on it. */
-            el.innerHTML = '';
+
+            /* Step 2 with nobody selected. The squad is beside this, so the
+               only thing missing is the instruction. */
+            const anyFilled = transferState.pending.some(x => x.replacement);
+            el.innerHTML = `<div class="twc-panel tw-step-panel">
+                ${twStepHead({
+                    icon: 'cart', title: 'Replacements',
+                    hint: 'Pick someone on the left',
+                    back: { label: 'Change plan', on: 'twRailGo(1)' },
+                    next: anyFilled
+                        ? { label: 'Review plan', on: 'twShowSummary()',
+                            disabled: !transferState.pending.every(x => x.replacement),
+                            tip: 'Every transfer needs a replacement before you can review.' }
+                        : null
+                })}
+                <div class="twc-panel-body">
+                    <div class="twc-idle">Click any player in your squad and the replacements you can
+                    afford for them appear here, ranked, with the reason each one is worth having.</div>
+                </div>
+            </div>`;
         }
 
         /* ===== Step 1 · the plan =====
@@ -1698,7 +1841,7 @@
                 ${twStepHead({
                     icon: 'sliders', title: 'How are you transferring?',
                     hint: `You have ${ft} free transfer${ft === 1 ? '' : 's'} this week`,
-                    next: chosen ? { label: 'Who leaves', on: 'twGoStep(2)', tip: `You are on ${chosenLabel}. Pick another card to change it.` } : null
+                    next: chosen ? { label: 'Start swapping', on: 'twGoStep(2)', tip: `You are on ${chosenLabel}. Pick another card to change it.` } : null
                 })}
                 <div class="twc-panel-body">
                     <div class="tw-plans">${cards}</div>
@@ -1857,8 +2000,13 @@
 
             const blocked = !!blockedReason;
             el.innerHTML = `<div class="twc-panel">
+                <!-- "Calafiori vs Guéhi" is what the two cards below say, in
+                     their clubs' colours with their faces on them. Saying it
+                     again in 13px grey above them is the same sentence twice,
+                     and it was crowding the only two controls on this screen
+                     that go anywhere. -->
                 ${twStepHead({
-                    icon: 'scales', title: `${sold.name} vs ${cand.name}`,
+                    icon: 'scales', title: 'Compare',
                     back: { label: 'Replacements', on: 'twBackToMarket()', tip: 'Back to the replacement list' },
                     next: { label: `Confirm ${cand.name}`, on: 'twConfirmPick()',
                             disabled: blocked, tip: blockedReason || `Put ${cand.name} in for ${sold.name}.` }
@@ -1898,8 +2046,18 @@
                     <div class="twh-chart"><canvas id="twFdrCanvas"></canvas></div>
                     <div class="twh-chart-note">Fixture difficulty over the next ${fdrGWs.length} gameweeks — lower is easier. A gap means no fixture.</div>
 
-                    <div class="twh-deep-label">Full profile</div>
-                    <div class="twh-deep">
+                    <!-- Everything below is the whole of both player cards —
+                         two scouting reports, two price histories, two stat
+                         blocks, two fixture lists. It is the right depth for
+                         someone who wants it and a wall for everyone else, and
+                         it sat between the decision and nothing at all. Closed
+                         by default, and it says what it is before you open it. -->
+                    <button class="twh-deep-toggle" onclick="twToggleDeepProfile(this)" aria-expanded="false">
+                        <span class="twh-deep-toggle-l">${v2Icon('report')} Full profile for both players</span>
+                        <span class="twh-deep-toggle-sub">Scouting report, price history, season numbers, fixtures</span>
+                        <span class="twh-deep-toggle-c" aria-hidden="true">${v2Icon('down')}</span>
+                    </button>
+                    <div class="twh-deep" hidden>
                         <div class="twh-deep-col out">
                             <div class="twh-deep-col-head out">OUT · ${escHTML(sold.name)}</div>
                             ${soldProfile}
@@ -1916,12 +2074,45 @@
             twDrawComparisonCharts(sold, cand, fdrGWs);
         }
 
+        /* The full profile is closed on arrival and stays where you left it
+           for as long as the panel lives — reopening it on every comparison
+           would undo the point of closing it, and forgetting it between two
+           players you are deliberately reading in depth would be its own
+           annoyance. So the preference is remembered for the session. */
+        let twDeepProfileOpen = false;
+
+        function twToggleDeepProfile(btn) {
+            const box = document.querySelector('.twh-deep');
+            if (!box) return;
+            twDeepProfileOpen = box.hidden;
+            box.hidden = !twDeepProfileOpen;
+            btn.setAttribute('aria-expanded', String(twDeepProfileOpen));
+            btn.classList.toggle('is-open', twDeepProfileOpen);
+            const label = btn.querySelector('.twh-deep-toggle-l');
+            if (label) {
+                label.innerHTML = `${v2Icon('report')} ${twDeepProfileOpen ? 'Hide the full profile' : 'Full profile for both players'}`;
+            }
+        }
+
         function twDrawComparisonCharts(sold, cand, fdrGWs) {
             /* Chart.js comes from a CDN, and a CDN is a thing that can be
                blocked — by an extension, a corporate proxy, or a bad minute.
                Returning early left the reserved chart box and its caption on
                screen as a tall empty rectangle explaining a picture that was
                never drawn. Take both away instead. */
+            /* Re-applied here because this runs right after the comparison
+               panel is written, and the panel is rebuilt from scratch every
+               time you look at a different player. */
+            const deep = document.querySelector('.twh-deep');
+            const deepBtn = document.querySelector('.twh-deep-toggle');
+            if (deep && deepBtn && twDeepProfileOpen) {
+                deep.hidden = false;
+                deepBtn.setAttribute('aria-expanded', 'true');
+                deepBtn.classList.add('is-open');
+                const label = deepBtn.querySelector('.twh-deep-toggle-l');
+                if (label) label.innerHTML = `${v2Icon('report')} Hide the full profile`;
+            }
+
             if (typeof Chart === 'undefined') {
                 document.querySelectorAll('.twh-chart, .twh-chart-note').forEach(n => { n.hidden = true; });
                 return;
@@ -2061,12 +2252,27 @@
             const hit = getTWHitCost();
             const xpDelta = newXP - oldXP - hit;
 
-            const card = p => `<div class="twp-card ${p.isIncoming ? 'in' : ''}">
-                <div class="twp-card-name">${escHTML(p.name)}${p.isIncoming ? '<span class="twp-in">IN</span>' : ''}</div>
-                <div class="twp-card-sub">${escHTML(p.team)} · £${p.price.toFixed(1)}m</div>
-                <div class="twp-card-xp">${predictedGWPoints(p).toFixed(1)}<span class="twp-u">xP</span></div>
-            </div>`;
-            const rowFor = n => `<div class="twp-row">${xi.filter(p => p.position === n).map(card).join('')}</div>`;
+            /* The pitch every other screen draws — the dashboard's card,
+               face and crest above the name with the projection on its own
+               line beneath. This preview was the last place still rendering
+               a player as a name over two lines of text on a plain grey
+               tile, which made the one screen whose whole job is "what does
+               this squad look like" the one that looked like nothing else. */
+            const card = p => {
+                const posClass = `pos-${(typeof V2_POS_CLASS !== 'undefined' && V2_POS_CLASS[p.position]) || 'mid'}`;
+                const ident = { name: p.name, code: p.code, teamId: p.teamId, team: p.team };
+                const fx = (teamFixtures[p.teamId] || p.fixtures || [])[0];
+                return `<div class="dp-card ${posClass}${p.isIncoming ? ' twp-in-card' : ''}">
+                    ${p.isIncoming ? '<div class="dp-badges"><span class="dp-badge in">IN</span></div>' : ''}
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident, 'v2-pid-pitch') : ''}
+                    <div class="dp-name">${escHTML(p.name)}</div>
+                    <div class="dp-score" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}."><b>${predictedGWPoints(p).toFixed(1)}</b><span class="u">xP</span></div>
+                    <div class="dp-fixtures">${fx
+                        ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">(${fx.isHome ? 'H' : 'A'})</span></span>`
+                        : '<span class="dp-fix dp-fix-blank" data-tooltip="No fixture this gameweek.">Blank</span>'}</div>
+                </div>`;
+            };
+            const rowFor = n => `<div class="dp-row">${xi.filter(p => p.position === n).map(card).join('')}</div>`;
 
             return `<div class="detail-section">
                 <div class="twp-stats">
@@ -2081,8 +2287,12 @@
                 ${overStacked.length ? `<div class="twp-warn">More than three players from ${escHTML(overStacked.join(', '))} — FPL does not allow it.</div>` : ''}
                 ${getTWLiveITB() < 0 ? `<div class="twp-warn">You are £${Math.abs(getTWLiveITB()).toFixed(1)}m over budget.</div>` : ''}
 
-                <div class="twp-pitch">${rowFor(4)}${rowFor(3)}${rowFor(2)}${rowFor(1)}
-                    <div class="twp-bench"><div class="twp-bench-l">Bench</div><div class="twp-row">${bench.map(card).join('')}</div></div>
+                <div class="dp-pitch-card"><div class="dp-pitch">
+                    ${rowFor(4)}${rowFor(3)}${rowFor(2)}${rowFor(1)}
+                </div></div>
+                <div class="dp-bench">
+                    <div class="dp-bench-label">Bench</div>
+                    <div class="dp-bench-row">${bench.map(card).join('')}</div>
                 </div>
             </div>`;
         }
@@ -2127,7 +2337,7 @@
             transferState.previewPlayer = null;
             transferState.candidateCache = {};
             twfState().search = '';
-            twGoStep(3);
+            twGoStep(2);
         }
 
         function twSelectSlot(idx) {
@@ -2135,7 +2345,7 @@
             transferState.activeSlot = idx;
             transferState.mode = 'market';
             transferState.previewPlayer = null;
-            twGoStep(3);
+            twGoStep(2);
         }
 
         function twRemoveSlot(idx) {
@@ -2159,13 +2369,13 @@
             if (!candidate) return;
             transferState.previewPlayer = candidate;
             transferState.mode = 'compare';
-            twGoStep(4);
+            twGoStep(3);
         }
 
         function twBackToMarket() {
             transferState.previewPlayer = null;
             transferState.mode = 'market';
-            twGoStep(3);
+            twGoStep(2);
         }
 
         function twBackToSquad() {
@@ -2212,11 +2422,11 @@
             if (nextUnfilled >= 0) {
                 transferState.activeSlot = nextUnfilled;
                 transferState.mode = 'market';
-                twGoStep(3);
+                twGoStep(2);
             } else {
                 transferState.mode = 'summary';
                 transferState.activeSlot = -1;
-                twGoStep(5);
+                twGoStep(4);
             }
         }
 
@@ -2294,11 +2504,11 @@
             if (nextOpen >= 0) {
                 transferState.activeSlot = nextOpen;
                 transferState.mode = 'market';
-                twGoStep(3);
+                twGoStep(2);
             } else {
                 transferState.mode = 'summary';
                 transferState.activeSlot = -1;
-                twGoStep(5);
+                twGoStep(4);
             }
         }
 
@@ -2315,7 +2525,7 @@
             if (!transferState.pending.every(s => s.replacement)) return;
             if (transferState.pending.length === 0) return;
             transferState.mode = 'summary';
-            twGoStep(5);
+            twGoStep(4);
         }
 
         /* ===== Step 5 · confirm =====
@@ -2454,6 +2664,21 @@
                     next: { label: 'Plan another', on: 'renderTransferWizard()', tip: 'Start a new plan from step 1.' }
                 })}
                 <div class="twc-panel-body">
+                    <!-- Something actually happened, so the screen should say
+                         so before it starts qualifying it. The warning below
+                         is the important half and it stays; this is the half
+                         that tells you the thing you pressed worked. -->
+                    <div class="tw-done-hero">
+                        <span class="tw-done-tick">${v2Icon('check')}</span>
+                        <span class="tw-done-words">
+                            <strong>${n} transfer${n === 1 ? '' : 's'} applied</strong>
+                            <em>${r.moves.map(m => `${escHTML(m.outName)} \u2192 ${escHTML(m.inName)}`).join(' \u00b7 ')}</em>
+                        </span>
+                        <span class="tw-done-net ${net > 0.3 ? 'up' : net < -0.3 ? 'down' : ''}">
+                            ${net > 0 ? '+' : ''}${net.toFixed(1)}<i>pts</i>
+                        </span>
+                    </div>
+
                     <!-- The reminder outlives the modal: this is the screen
                          someone will be looking at when they decide whether
                          they have finished, and they have not. -->
@@ -2613,7 +2838,7 @@
             transferState.previewPlayer = null;
             transferState.candidateCache = {};
             transferState.mode = 'summary';
-            twGoStep(5);
+            twGoStep(4);
             updateStatus(`${moves.length} transfer${moves.length === 1 ? '' : 's'} applied on EasyFPL — now make ${moves.length === 1 ? 'it' : 'them'} on the FPL site`, 'success');
         }
 

@@ -2689,12 +2689,12 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .news-card-hero .news-card-headline { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; font-weight: 600; line-height: 1.3; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .news-card-hero .news-card-detail { font-size: 13.5px; line-height: 1.5; -webkit-line-clamp: 3; line-clamp: 3; color: var(--text-secondary); }
 .news-card-hero .news-card-footer { margin-top: auto; padding-top: 14px; }
-.news-card-hero.is-squad { border: 2px solid rgba(245,158,11,0.5); box-shadow: 0 0 24px rgba(245,158,11,0.12); }
+.news-card-hero.is-squad { border: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent); box-shadow: 0 0 24px color-mix(in srgb, var(--color-primary) 14%, transparent); }
 
 /* Standard card — vertical image + content */
 .news-card { display: flex; flex-direction: column; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; transition: transform 200ms, box-shadow 200ms; position: relative; }
 .news-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.1); }
-.news-card.is-squad { border: 2px solid rgba(245,158,11,0.5); box-shadow: 0 0 16px rgba(245,158,11,0.1); }
+.news-card.is-squad { border: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 12%, transparent); }
 
 /* Card image (real thumbnail) */
 .news-card-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
@@ -2725,7 +2725,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 /* Club-colored team tag */
 .news-card-team-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
 /* Squad impact badge — prominent glow */
-.news-card-squad-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; background: rgba(245,158,11,0.18); color: #D97706; box-shadow: 0 0 8px rgba(245,158,11,0.2); animation: squadBadgePulse 2s ease-in-out infinite; }
+.news-card-squad-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary); box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 22%, transparent); animation: squadBadgePulse 2s ease-in-out infinite; }
 @keyframes squadBadgePulse {
     0%, 100% { box-shadow: 0 0 8px rgba(245,158,11,0.2); }
     50% { box-shadow: 0 0 16px rgba(245,158,11,0.35); }
@@ -5119,8 +5119,17 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twc-unl { font-size: 10px; font-weight: 600; color: var(--color-primary); font-family: var(--font-sans); }
 .twc-actions { display: flex; gap: 5px; margin-left: auto; flex-wrap: wrap; }
 .twc-actions .rc-btn { flex: 0 0 auto; }
-.rc-btn.primary { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
-.rc-btn:disabled { opacity: .45; cursor: not-allowed; }
+.rc-btn.primary {
+    background: var(--color-primary); border-color: var(--color-primary); color: #fff;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+.rc-btn.primary:hover:not(:disabled) { box-shadow: 0 3px 12px color-mix(in srgb, var(--color-primary) 38%, transparent); }
+/* A primary button at 45% opacity is a green smudge. Disabled drops the fill
+   instead, so it reads as a button that is not ready rather than a faded one. */
+.rc-btn:disabled {
+    background: var(--surface-2); border-color: var(--v2-card-border, var(--border-emphasis));
+    color: var(--text-muted); box-shadow: none; opacity: 1; cursor: not-allowed;
+}
 
 .twc-plan { padding: 0 2px 8px; }
 .twc-plan-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 6px; }
@@ -6709,27 +6718,43 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tw-step-foot-note { font-size: 11.5px; color: var(--text-muted); }
 .tw-step-foot .tw-next { margin-left: auto; }
 
+/* The two controls that move you through the wizard. They were sized like
+   the filter chips beside them, which is the wrong weight for the only
+   buttons on the screen that change which step you are on. */
 .tw-next, .tw-back {
     display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 16px;
+    padding: 10px 18px;
     border-radius: 999px;
     font-family: var(--font-display);
-    font-size: 12.5px; font-weight: 700;
+    font-size: 13.5px; font-weight: 700;
+    white-space: nowrap;
     cursor: pointer;
-    transition: background .18s ease, border-color .18s ease, color .18s ease, opacity .18s ease;
+    transition: background .18s ease, border-color .18s ease, color .18s ease,
+                box-shadow .18s ease, transform .12s ease, opacity .18s ease;
 }
-.tw-next svg, .tw-back svg { width: 14px; height: 14px; }
+.tw-next svg, .tw-back svg { width: 15px; height: 15px; color: inherit; }
 .tw-next {
     border: 1px solid var(--color-primary);
     background: var(--color-primary); color: #fff;
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--color-primary) 32%, transparent);
 }
-.tw-next:hover:not(:disabled) { filter: brightness(1.06); }
-.tw-next:disabled { opacity: .4; cursor: default; }
+.tw-next:hover:not(:disabled) {
+    filter: brightness(1.06);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--color-primary) 42%, transparent);
+    transform: translateY(-1px);
+}
+.tw-next:active:not(:disabled) { transform: none; }
+/* Disabled says "not yet", so it keeps its shape and loses its lift — rather
+   than fading to the point where it reads as decoration. */
+.tw-next:disabled {
+    background: var(--surface-2); border-color: var(--v2-card-border, var(--border-emphasis));
+    color: var(--text-muted); box-shadow: none; cursor: not-allowed;
+}
 .tw-back {
-    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
     background: var(--surface-1); color: var(--text-secondary);
 }
-.tw-back:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.tw-back:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--surface-2); }
 
 /* ===== Step 1 · the four plans ===== */
 .tw-plans {
@@ -6815,7 +6840,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tw-container:not([data-tw-step="1"]):not([data-tw-step="2"]) #wcPanel { display: none; }
 /* Ownership against the field is a question about a finished plan, not one
    you answer while deciding who to sell. */
-.tw-container:not([data-tw-step="2"]):not([data-tw-step="5"]) .eo-panel { display: none; }
+.tw-container:not([data-tw-step="4"]) .eo-panel { display: none; }
 
 /* One screen at a time.
 
@@ -6825,14 +6850,15 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    full width of the page now, directly under the rail that names it: the plan
    on step 1, your squad on step 2, the market from step 3 on. */
 .twc-body { grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
-/* Step 3 is the one step that is two things at once: who is going out on the
-   left, who can come in on the right. Every other step is one screen. */
-.tw-container[data-tw-step="3"] .twc-body { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); }
-.tw-container[data-tw-step="3"] #twSquadPane { display: block; }
+/* The swap step is the one that is two things at once: your squad on the
+   left, who can replace them on the right. Every other step is one screen. */
+.tw-container[data-tw-step="2"] .twc-body { grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
+.tw-container[data-tw-step="2"] #twSquadPane,
+.tw-container[data-tw-step="2"] #twMarketPane { display: block; }
 /* Both of these say who is being replaced, and the card on the left says it
    with a face on it. Two more copies in text above and beside it is three. */
-.tw-container[data-tw-step="3"] .twc-plan { display: none; }
-.tw-container[data-tw-step="3"] .twf-out { display: none; }
+.tw-container[data-tw-step="2"] .twc-plan { display: none; }
+.tw-container[data-tw-step="2"] .twf-out { display: none; }
 
 /* A slot with nobody in it yet is already on screen twice — lit green in
    the squad on step 2, and a card on the left of step 3. A third copy as
@@ -6840,7 +6866,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    the finished swaps stay, because those are the plan. */
 .twc-plan-row.open { display: none; }
 @media (max-width: 900px) {
-    .tw-container[data-tw-step="3"] .twc-body { grid-template-columns: minmax(0, 1fr); }
+    .tw-container[data-tw-step="2"] .twc-body { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* The players being replaced, as cards. */
@@ -6904,8 +6930,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* A nested scroller made sense when the pane was one of two half-width
    columns. Full width, one step at a time, the page is the scroller. */
 .tw-container .twc-panel-body { max-height: none; overflow: visible; }
-.tw-container[data-tw-step="2"] #twMarketPane { display: none; }
-.tw-container:not([data-tw-step="2"]):not([data-tw-step="3"]) #twSquadPane { display: none; }
+.tw-container:not([data-tw-step="2"]) #twSquadPane { display: none; }
 
 /* ===== The movement between steps ===== */
 @keyframes twStepFwd {
@@ -7103,3 +7128,144 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 .tw-outrail-fill:hover { background: var(--color-primary); color: #fff; }
 .tw-outrail-fill svg { width: 13px; height: 13px; color: inherit; }
+
+/* ===== Step 2's squad column ===== */
+.tw-sqc-group { margin-bottom: 14px; }
+.tw-sqc-group:last-child { margin-bottom: 0; }
+.tw-sqc-group .twc-group-head { padding: 0 2px 6px; }
+
+/* A player not in the plan is dimmed, not hidden: you need the whole squad on
+   screen to decide which part of it is the problem, but only one of them is
+   what the market on the right is currently answering for. */
+/* Greyscale rather than opacity: these names are white on a club colour, and
+   fading the whole card fades the text with it — at .52 the squad was a list
+   you had to squint at to read. Draining the colour says "not selected" just
+   as clearly and leaves the name at full contrast. */
+.tw-sqc:not(.is-picked) { filter: grayscale(.72); opacity: .9; }
+.tw-sqc:not(.is-picked):hover { filter: none; opacity: 1; }
+.tw-sqc.is-picked:not(.is-active) { filter: grayscale(.25); }
+/* Fifteen of these share one column, so the whole squad should be readable
+   without scrolling it twice. Shorter card, smaller face, tighter foot — the
+   name and the price are what you scan, and both survive at this size. */
+/* .is-compact is in every one of these on purpose. v2-design.css sizes the
+   compact hero with .pdm-hero.is-compact .pdm-hero-photo — three classes, the
+   same weight as .tw-sqc .tw-outc-hero .pdm-hero-photo — and it is loaded
+   after this file, so an even fight there goes to the other sheet and these
+   rules did nothing at all. Naming the variant makes them four. */
+.tw-sqc .tw-outc-hero .pdm-hero.is-compact { min-height: 54px; padding: 0 10px; gap: 0 8px; }
+.tw-sqc .tw-outc-hero .is-compact .pdm-hero-photo { width: 34px; height: 50px; }
+.tw-sqc .tw-outc-hero .is-compact .pdm-hero-face { height: 50px; max-width: 34px; }
+.tw-sqc .tw-outc-hero .is-compact .pdm-hero-text { padding: 6px 0 5px; }
+.tw-sqc .tw-outc-hero .is-compact .pdm-hero-last { font-size: 12.5px; }
+.tw-sqc .tw-outc-hero .is-compact .pdm-hero-first { display: none; }
+.tw-sqc .tw-outc-hero .is-compact .pdm-hero-meta { font-size: 9.5px; }
+.tw-sqc .tw-outc-hero .is-compact .pdm-hero-crest { width: 13px; height: 13px; }
+.tw-sqc .tw-outc-hero .is-compact .pdm-hero-price { display: none; }
+.tw-sqc .tw-outc-hero .is-compact .pdm-hero-chip { top: 5px; left: 8px; font-size: 8px; padding: 1px 5px; }
+.tw-sqc .tw-outc-foot { padding: 4px 10px 5px; font-size: 10px; gap: 6px; }
+.tw-sqc .tw-outc-list { gap: 6px; }
+.tw-sqc-group { margin-bottom: 10px; }
+.tw-sqc-flag {
+    padding: 1px 5px; border-radius: 4px;
+    font-size: 8.5px; font-weight: 800; letter-spacing: .03em;
+}
+.tw-sqc-flag.out { background: var(--verdict-sell); color: #fff; }
+.tw-sqc-flag.doubt { background: var(--verdict-monitor); color: #111827; cursor: help; }
+
+/* The market's own header carries this step's navigation. */
+.twf-head-top .tw-step-nav { margin-left: auto; }
+.twf-head-top { flex-wrap: wrap; }
+
+/* The preview's incoming players, marked on the shared card. */
+.dp-card.twp-in-card { box-shadow: 0 0 0 2px var(--color-primary); }
+.dp-badge.in { background: var(--color-primary); color: #fff; }
+
+/* Present but not shown: the rank chip exists on every squad card so that
+   picking a player can reveal it in place rather than rebuilding the card. */
+.pdm-hero-chip.is-blank { visibility: hidden; }
+
+/* ===== The full profile, folded away ===== */
+.twh-deep-toggle {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; margin: 4px 0 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-1);
+    text-align: left; cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+}
+.twh-deep-toggle:hover { border-color: var(--color-primary); background: var(--surface-2); }
+.twh-deep-toggle-l {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-display); font-size: 13px; font-weight: 700;
+    color: var(--text-primary);
+}
+.twh-deep-toggle-l svg { width: 15px; height: 15px; }
+.twh-deep-toggle-sub { font-size: 11px; color: var(--text-muted); }
+.twh-deep-toggle-c { margin-left: auto; color: var(--text-muted); display: inline-flex; transition: transform .2s ease; }
+.twh-deep-toggle-c svg { width: 16px; height: 16px; color: inherit; }
+.twh-deep-toggle.is-open .twh-deep-toggle-c { transform: rotate(180deg); }
+.twh-deep-toggle.is-open .twh-deep-toggle-sub { display: none; }
+.twh-deep[hidden] { display: none; }
+
+@media (max-width: 620px) {
+    .twh-deep-toggle { flex-wrap: wrap; }
+    .twh-deep-toggle-sub { flex-basis: 100%; }
+    .twh-deep-toggle-c { margin-left: auto; }
+}
+
+/* The two controls that leave this screen. They were sized like the chips in
+   the toolbar above them; on the longest panel in the wizard they are the
+   only things you are looking for. */
+.tw-step-nav .tw-next, .tw-step-nav .tw-back { padding: 11px 20px; font-size: 14px; }
+.tw-step-nav .tw-next svg, .tw-step-nav .tw-back svg { width: 16px; height: 16px; }
+
+/* ===== "It worked" =====
+
+   Confirming used to land on a warning, which is the right thing to say
+   second and a strange thing to say first: the screen opened by qualifying
+   something it had not yet told you had happened. */
+.tw-done-hero {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px; margin-bottom: 10px;
+    border-radius: var(--v2-card-radius, 16px);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 9%, transparent);
+}
+.tw-done-tick {
+    flex: 0 0 auto;
+    width: 40px; height: 40px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--color-primary); color: #fff;
+    animation: twDoneTick 420ms cubic-bezier(.22, 1.2, .36, 1) both;
+}
+.tw-done-tick svg { width: 22px; height: 22px; color: inherit; }
+@keyframes twDoneTick {
+    from { transform: scale(.4); opacity: 0; }
+    to   { transform: none; opacity: 1; }
+}
+.tw-done-words { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tw-done-words strong {
+    font-family: var(--font-display);
+    font-size: 17px; font-weight: 800; color: var(--text-primary);
+}
+.tw-done-words em {
+    font-style: normal; font-size: 12px; color: var(--text-secondary);
+    overflow: hidden; text-overflow: ellipsis;
+}
+.tw-done-net {
+    margin-left: auto; flex: 0 0 auto;
+    font-family: var(--font-mono, monospace);
+    font-size: 24px; font-weight: 800; color: var(--text-secondary);
+}
+.tw-done-net i { font-style: normal; font-size: 11px; margin-left: 2px; }
+.tw-done-net.up { color: var(--color-primary); }
+.tw-done-net.down { color: var(--color-error); }
+
+@media (prefers-reduced-motion: reduce) { .tw-done-tick { animation: none; } }
+@media (max-width: 560px) {
+    .tw-done-hero { flex-wrap: wrap; }
+    .tw-done-net { margin-left: 0; }
+}

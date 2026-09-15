@@ -69,7 +69,15 @@ function browserContext() {
         },
         sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
         navigator: { userAgent: 'node-test', sendBeacon: () => true, serviceWorker: { register: () => Promise.resolve() } },
-        location: { pathname: '/', hash: '', search: '', href: 'https://easyfpl.com/', origin: 'https://easyfpl.com', reload() {} },
+        /* assign/replace are recorded rather than performed: the squad pages
+           redirect a signed-out visitor to the landing page before anything
+           paints, and this harness has no Team ID — so without these the guard
+           throws and the smoke test reports it as the page failing to load. */
+        location: {
+            pathname: '/', hash: '', search: '', href: 'https://easyfpl.com/',
+            origin: 'https://easyfpl.com', reload() {},
+            assign(u) { this.__went = u; }, replace(u) { this.__went = u; }
+        },
         history: { replaceState() {}, pushState() {} },
         // Never resolves to real data: this is a load test, not a data test.
         fetch: () => Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}), text: () => Promise.resolve('') }),

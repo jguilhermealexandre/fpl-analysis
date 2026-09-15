@@ -2,6 +2,34 @@
 <html lang="en" class="v2-theme">
 <head>
     <meta charset="UTF-8">
+    <!-- ===== Signed-in only =====
+
+         This page is entirely about one manager's squad, and without a Team ID
+         there is no squad to be about — so a shared link used to open the whole
+         tool on somebody else's empty state. It now sends them to the landing
+         page instead, before anything paints, so there is no flash of a page
+         they are not entitled to.
+
+         Inline and first in <head> deliberately: a guard that waits for a
+         script file has already let the page render. localStorage is the only
+         thing the site has to go on — this is a client-side app with no server
+         session, so the gate is a redirect for the benefit of the person
+         sharing the link, not a security boundary, and nothing behind it is
+         secret. What it protects is the experience: a stranger should meet the
+         product, not an empty dashboard.
+
+         Where they were going is carried in ?next= so that entering an ID on
+         the landing page takes them there rather than dropping them at the
+         dashboard, which is the whole point of someone sharing the link. -->
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('fpl_team_id')) return;
+            } catch (e) { /* storage unreadable — treat that as signed out */ }
+            var next = location.pathname + location.search + location.hash;
+            location.replace('/?next=' + encodeURIComponent(next));
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="manifest.json">
     <title>EasyFPL — League Rivals</title>
@@ -17,16 +45,16 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=220">
-    <link rel="stylesheet" href="styles/v2-design.css?v=220">
-    <link rel="stylesheet" href="styles/responsive.css?v=220">
-    <script src="scripts/error-monitor.js?v=220"></script>
-    <script src="scripts/common.js?v=220"></script>
+    <link rel="stylesheet" href="styles/common.css?v=224">
+    <link rel="stylesheet" href="styles/v2-design.css?v=224">
+    <link rel="stylesheet" href="styles/responsive.css?v=224">
+    <script src="scripts/error-monitor.js?v=224"></script>
+    <script src="scripts/common.js?v=224"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=220"></script>
-    <script src="scripts/notifications.js?v=220"></script>
-    <script src="scripts/sidebar-nav.js?v=220"></script>
+    <script src="scripts/push-alerts.js?v=224"></script>
+    <script src="scripts/notifications.js?v=224"></script>
+    <script src="scripts/sidebar-nav.js?v=224"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -2718,11 +2746,9 @@
                     return `<div class="dp-card rv-card ${p.youOwn ? 'you-have' : 'you-missing'}"
                         data-tooltip="${escHTML(pl.name)} — ${escHTML(pl.teamName)}, ${escHTML(pl.posName)}. ${p.youOwn ? 'In your squad.' : 'Not in your squad.'}">
                         <span class="rv-own-flag">${p.youOwn ? 'OWNED' : 'MISSING'}</span>
-                        ${typeof v2IdentityHTML === 'function'
-                            ? v2IdentityHTML(ident, 'v2-pid-portrait',
-                                `<span class="v2-pid-num">${pct}<span class="u">%</span></span>`)
-                            : ''}
+                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident, 'v2-pid-pitch') : ''}
                         <div class="dp-name">${escHTML(pl.name)}</div>
+                        <div class="dp-score" data-tooltip="Started by ${p.startCount} of ${allManagerIds.length} managers in this league."><b>${pct}</b><span class="u">%</span></div>
                         <div class="dp-xp-run">${p.startCount}<span class="dp-xp-run-u">of ${allManagerIds.length} start</span></div>
                     </div>`;
                 }).join('')}</div>`;

@@ -479,10 +479,24 @@ function playerPhotoHTML(code, className) {
        element is itself draggable by default — so grabbing a card by the
        player's face started an image drag and the substitution never began.
        The crest below opts out for the same reason. */
-    return `<img class="${className}" alt="" loading="lazy" draggable="false"
+    /* No loading="lazy", and no class set on load.
+
+       Both were causing the flicker you see when a list re-renders. A lazy
+       image that is re-created starts unloaded however warm the cache is, so
+       the browser re-runs its in-viewport check before it will even look at
+       the bytes — on a 30px avatar that is all cost and no saving, since these
+       are almost always on screen already. And hiding the initials from an
+       onload handler means every freshly-inserted card shows initials for a
+       frame and then swaps them for the face: the flash is the handler, not
+       the network.
+
+       The initials are hidden by default now and revealed by CSS only when
+       there is no <img> in the avatar at all — which is the case this exists
+       for, since a photo that 404s through both URLs removes itself below.
+       Nothing has to fire for the common path to look right. */
+    return `<img class="${className}" alt="" decoding="async" draggable="false"
         src="${playerPhotoSrc(code)}"
         data-photo-fallback="${playerPhotoLegacySrc(code)}"
-        onload="this.parentNode.classList.add('has-photo')"
         onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else { this.remove(); }">`;
 }
 
@@ -740,11 +754,11 @@ function clubColours(player) {
 function playerPhotoLargeHTML(code, className) {
     if (code == null) return '';
     const big = `${PLAYER_PHOTO_BASE}/${PLAYER_PHOTO_SEASON}/photos/players/250x250/${code}.png`;
-    return `<img class="${className}" alt="" loading="lazy" draggable="false"
+    // Same reasoning as playerPhotoHTML() above.
+    return `<img class="${className}" alt="" decoding="async" draggable="false"
         src="${big}"
         data-photo-fallback="${playerPhotoSrc(code)}"
         data-photo-fallback2="${playerPhotoLegacySrc(code)}"
-        onload="this.parentNode.classList.add('has-photo')"
         onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else if (this.dataset.photoFallback2) { this.src = this.dataset.photoFallback2; delete this.dataset.photoFallback2; } else { this.remove(); }">`;
 }
 
@@ -2113,7 +2127,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=220')
+    fetch('footer.html?v=224')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
