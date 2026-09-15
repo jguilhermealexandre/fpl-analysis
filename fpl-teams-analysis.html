@@ -45,17 +45,17 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=227">
-    <link rel="stylesheet" href="styles/teams.css?v=227">
-    <link rel="stylesheet" href="styles/v2-design.css?v=227">
-    <link rel="stylesheet" href="styles/responsive.css?v=227">
-    <script src="scripts/error-monitor.js?v=227"></script>
-    <script src="scripts/common.js?v=227"></script>
+    <link rel="stylesheet" href="styles/common.css?v=228">
+    <link rel="stylesheet" href="styles/teams.css?v=228">
+    <link rel="stylesheet" href="styles/v2-design.css?v=228">
+    <link rel="stylesheet" href="styles/responsive.css?v=228">
+    <script src="scripts/error-monitor.js?v=228"></script>
+    <script src="scripts/common.js?v=228"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=227"></script>
-    <script src="scripts/notifications.js?v=227"></script>
-    <script src="scripts/sidebar-nav.js?v=227"></script>
+    <script src="scripts/push-alerts.js?v=228"></script>
+    <script src="scripts/notifications.js?v=228"></script>
+    <script src="scripts/sidebar-nav.js?v=228"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -143,6 +143,9 @@
         // The swing window: five against five where there is room, three against
         // three when a season is running out of gameweeks to compare.
         const SWING_LONG = 5, SWING_SHORT = 3, SWING_MIN = SWING_SHORT * 2;
+        // Two fixtures a side before an average is an average, and the pivot has
+        // to be close enough that a transfer made now is still the right one.
+        const SWING_MIN_SIDE = 2;
         /* Which gameweek the patch list is being asked about. null is "any".
            Picking one shows every patch that COVERS it, which is the question a
            manager actually has — "I am wildcarding in GW9, whose run is good
@@ -1282,6 +1285,82 @@
                 <div class="swing-section">
                     ${renderUpcomingGoldMines(teamFixtureMap, displayGWs)}
                     <div class="swings-layout">
+                        <!-- Fixture Swings Panel -->
+                        <div class="swings-panel">
+                            <div class="swings-panel-header">
+                                <span class="swings-panel-icon"><i data-lucide="trending-up" style="width:16px;height:16px;"></i></span>
+                                <span class="swings-panel-title">Fixture Swings</span>
+                                <span class="swings-panel-count">${fixtureSwingTeams.length} swings</span>
+                            </div>
+                            <div class="swings-panel-body">
+                                <!-- Improving -->
+                                <div class="swing-direction-group">
+                                    <div class="swing-direction-label" style="color: var(--color-success);">↑ Getting Easier (${improvingSwings.length})</div>
+                                    ${improvingSwings.length === 0 ? 
+                                        '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
+                                        improvingSwings.map((s, i) => `
+                                            <div class="swing-card improving" onclick="openSwingModal(${i}, 'improving')">
+                                                <div class="swing-card-top">
+                                                    <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                    <div class="swings-run-info">
+                                                        <div class="swings-run-name">${escHTML(s.teamName)}</div>
+                                                        <div class="swings-run-detail">${s.homeCountNext}H ${s.afterLen - s.homeCountNext}A across the new run · ${s.beforeLen} GWs then ${s.afterLen}</div>
+                                                    </div>
+                                                    <span class="swing-delta improving">${s.currentFdr} → ${s.futureFdr}</span>
+                                                    <span class="swings-run-arrow">›</span>
+                                                </div>
+                                                <div class="swing-timeline">
+                                                    <div class="swing-side">
+                                                        <span class="swing-side-label">GW${s.fromGW}–${s.swingGW - 1}</span>
+                                                        <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
+                                                    </div>
+                                                    <div class="swing-pivot">
+                                                        <span class="swing-pivot-badge improving">Eases GW${s.swingGW}</span>
+                                                    </div>
+                                                    <div class="swing-side">
+                                                        <span class="swing-side-label">GW${s.swingGW}–${s.toGW}</span>
+                                                        <div class="fx-run">${renderFdrRun((s.nextFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })))}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('')
+                                    }
+                                </div>
+                                <!-- Worsening -->
+                                <div class="swing-direction-group">
+                                    <div class="swing-direction-label" style="color: var(--color-error);">↓ Getting Harder (${worseningSwings.length})</div>
+                                    ${worseningSwings.length === 0 ?
+                                        '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
+                                        worseningSwings.map((s, i) => `
+                                            <div class="swing-card worsening" onclick="openSwingModal(${i}, 'worsening')">
+                                                <div class="swing-card-top">
+                                                    <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
+                                                    <div class="swings-run-info">
+                                                        <div class="swings-run-name">${escHTML(s.teamName)}</div>
+                                                        <div class="swings-run-detail">${s.homeCountNext}H ${s.afterLen - s.homeCountNext}A across the new run · ${s.beforeLen} GWs then ${s.afterLen}</div>
+                                                    </div>
+                                                    <span class="swing-delta worsening">${s.currentFdr} → ${s.futureFdr}</span>
+                                                    <span class="swings-run-arrow">›</span>
+                                                </div>
+                                                <div class="swing-timeline">
+                                                    <div class="swing-side">
+                                                        <span class="swing-side-label">GW${s.fromGW}–${s.swingGW - 1}</span>
+                                                        <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
+                                                    </div>
+                                                    <div class="swing-pivot">
+                                                        <span class="swing-pivot-badge worsening">Hardens GW${s.swingGW}</span>
+                                                    </div>
+                                                    <div class="swing-side">
+                                                        <span class="swing-side-label">GW${s.swingGW}–${s.toGW}</span>
+                                                        <div class="fx-run">${renderFdrRun((s.nextFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })))}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('')
+                                    }
+                                </div>
+                            </div>
+                        </div>
                         <!-- Easy Fixture Runs Panel -->
                         <div class="swings-panel">
                             <div class="swings-panel-header">
@@ -1328,82 +1407,6 @@
                             </div>
                         </div>
 
-                        <!-- Fixture Swings Panel -->
-                        <div class="swings-panel">
-                            <div class="swings-panel-header">
-                                <span class="swings-panel-icon"><i data-lucide="trending-up" style="width:16px;height:16px;"></i></span>
-                                <span class="swings-panel-title">Fixture Swings</span>
-                                <span class="swings-panel-count">${fixtureSwingTeams.length} swings</span>
-                            </div>
-                            <div class="swings-panel-body">
-                                <!-- Improving -->
-                                <div class="swing-direction-group">
-                                    <div class="swing-direction-label" style="color: var(--color-success);">↑ Getting Easier (${improvingSwings.length})</div>
-                                    ${improvingSwings.length === 0 ? 
-                                        '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
-                                        improvingSwings.map((s, i) => `
-                                            <div class="swing-card improving" onclick="openSwingModal(${i}, 'improving')">
-                                                <div class="swing-card-top">
-                                                    <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
-                                                    <div class="swings-run-info">
-                                                        <div class="swings-run-name">${escHTML(s.teamName)}</div>
-                                                        <div class="swings-run-detail">${s.homeCountNext}H ${s.windowSize - s.homeCountNext}A across the new run · ${s.windowSize} GWs each side</div>
-                                                    </div>
-                                                    <span class="swing-delta improving">${s.currentFdr} → ${s.futureFdr}</span>
-                                                    <span class="swings-run-arrow">›</span>
-                                                </div>
-                                                <div class="swing-timeline">
-                                                    <div class="swing-side">
-                                                        <span class="swing-side-label">GW${s.fromGW}–${s.swingGW - 1}</span>
-                                                        <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
-                                                    </div>
-                                                    <div class="swing-pivot">
-                                                        <span class="swing-pivot-badge improving">Eases GW${s.swingGW}</span>
-                                                    </div>
-                                                    <div class="swing-side">
-                                                        <span class="swing-side-label">GW${s.swingGW}–${s.toGW}</span>
-                                                        <div class="fx-run">${renderFdrRun((s.nextFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })))}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `).join('')
-                                    }
-                                </div>
-                                <!-- Worsening -->
-                                <div class="swing-direction-group">
-                                    <div class="swing-direction-label" style="color: var(--color-error);">↓ Getting Harder (${worseningSwings.length})</div>
-                                    ${worseningSwings.length === 0 ?
-                                        '<div style="padding: var(--space-2); font-size: 11px; color: var(--text-muted);">None found</div>' :
-                                        worseningSwings.map((s, i) => `
-                                            <div class="swing-card worsening" onclick="openSwingModal(${i}, 'worsening')">
-                                                <div class="swing-card-top">
-                                                    <img src="${s.badgeUrl}" alt="${escHTML(s.teamShort)}" class="swings-run-badge" onerror="this.style.display='none'">
-                                                    <div class="swings-run-info">
-                                                        <div class="swings-run-name">${escHTML(s.teamName)}</div>
-                                                        <div class="swings-run-detail">${s.homeCountNext}H ${s.windowSize - s.homeCountNext}A across the new run · ${s.windowSize} GWs each side</div>
-                                                    </div>
-                                                    <span class="swing-delta worsening">${s.currentFdr} → ${s.futureFdr}</span>
-                                                    <span class="swings-run-arrow">›</span>
-                                                </div>
-                                                <div class="swing-timeline">
-                                                    <div class="swing-side">
-                                                        <span class="swing-side-label">GW${s.fromGW}–${s.swingGW - 1}</span>
-                                                        <div class="fx-run">${renderFdrRun((s.currentFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })), { dim: true })}</div>
-                                                    </div>
-                                                    <div class="swing-pivot">
-                                                        <span class="swing-pivot-badge worsening">Hardens GW${s.swingGW}</span>
-                                                    </div>
-                                                    <div class="swing-side">
-                                                        <span class="swing-side-label">GW${s.swingGW}–${s.toGW}</span>
-                                                        <div class="fx-run">${renderFdrRun((s.nextFixtures || []).map(f => ({ gw: f.gw, fixtures: [f] })))}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `).join('')
-                                    }
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     
                     ${renderTargetableCalendar(teamFixtureMap, displayGWs)}
@@ -1715,7 +1718,6 @@
             
             // Find easy runs for analysis
             const easyRuns = findEasyRuns(teamFixtureMap);
-            const fixtureSwingTeams = findFixtureSwings(teamFixtureMap);
             
             // Determine GW range based on view mode
             const allGWs = Object.keys(teamFixtureMap[allTeamsData[0]?.id] || {}).map(Number).sort((a, b) => a - b);
@@ -3594,54 +3596,10 @@
             return bestRuns;
         }
 
-        function findFixtureSwings(fixtureMap) {
-            const swings = [];
-
-            allTeamsData.forEach(team => {
-                const teamFixtures = fixtureMap[team.id];
-                if (!teamFixtures) return;
-
-                // Compare next 3 GWs vs GWs 4-6
-                const futureGWs = Object.keys(teamFixtures)
-                    .map(Number)
-                    .filter(gw => gw >= planningGW && unplayedGW(teamFixtures[gw]))
-                    .sort((a, b) => a - b)
-                    .slice(0, 6);
-
-                if (futureGWs.length < 6) return;
-
-                const first3 = futureGWs.slice(0, 3);
-                const next3 = futureGWs.slice(3, 6);
-
-                const avgFirst = first3.reduce((sum, gw) => {
-                    const f = teamFixtures[gw];
-                    return sum + (f && f[0] ? getEffectiveFdr(f[0]) : 3);
-                }, 0) / 3;
-
-                const avgNext = next3.reduce((sum, gw) => {
-                    const f = teamFixtures[gw];
-                    return sum + (f && f[0] ? getEffectiveFdr(f[0]) : 3);
-                }, 0) / 3;
-
-                const swing = avgFirst - avgNext;
-
-                if (Math.abs(swing) > 0.5) {
-                    swings.push({
-                        teamId: team.id,
-                        teamName: team.name,
-                        teamShort: team.shortName,
-                        badgeUrl: team.badgeUrl,
-                        swing: swing,
-                        direction: swing > 0 ? 'improving' : 'worsening',
-                        currentFdr: avgFirst.toFixed(1),
-                        futureFdr: avgNext.toFixed(1),
-                        swingGW: futureGWs[3]
-                    });
-                }
-            });
-
-            return swings.sort((a, b) => b.swing - a.swing);
-        }
+        /* findFixtureSwings() lived here — a second swing implementation with
+           its own fixed GW1-3 vs GW4-6 pivot. renderFullCalendar computed it on
+           every render and never read the result, so it was a divergent copy of
+           findFixtureSwingsEnhanced that nothing could even see. */
 
         function findFixtureSwingsEnhanced(fixtureMap) {
             const swings = [];
@@ -3667,26 +3625,43 @@
                     return f && f[0] ? { ...f[0], gw } : null;
                 }).filter(Boolean);
 
-                /* Five against five, falling back to three against three.
+                /* Where does THIS club's run turn?
 
-                   Three gameweeks is a short enough window that one awkward
-                   opponent moves the average by a third, so a "swing" could be a
-                   single fixture. Five is the horizon the rest of the page plans
-                   over — the transfer you make now is owned for about that long
-                   — and it takes more than one hard match to move it.
+                   The pivot used to be a fixed slice index — the next N against
+                   the N after — which by construction lands on the same gameweek
+                   for every club in the division. So the badge read "Eases GW10"
+                   twenty times, and that was not a finding about anybody; it was
+                   the slice index with a GW in front of it. (It said GW8 for
+                   everyone before the window widened. Same fault, quieter.)
 
-                   It needs ten future gameweeks to compare five against five,
-                   which is not true near the end of a season, so the shorter
-                   window takes over rather than the panel emptying. Which one was
-                   used is carried on the swing and printed, because a 0.6 swing
-                   over three is a different claim from a 0.6 over five. */
+                   Each club picks its own pivot now: the split, among those near
+                   enough to act on, where the difficulty actually changes most.
+                   The run so far is anchored at now and grows to meet the pivot;
+                   the run after is the planning horizon beyond it. Both sides
+                   need two fixtures before an average means anything.
+
+                   Five gameweeks after the pivot, falling back to three when a
+                   season is running out — a 0.6 swing over three is a different
+                   claim from a 0.6 over five, so both lengths are carried and
+                   printed rather than assumed. */
                 const half = futureGWs.length >= SWING_LONG * 2 ? SWING_LONG : SWING_SHORT;
-                const first3 = futureGWs.slice(0, half);
-                const next3 = futureGWs.slice(half, half * 2);
+                let best = null;
+                for (let k = SWING_MIN_SIDE; k <= Math.min(half, futureGWs.length - SWING_MIN_SIDE); k++) {
+                    const before = futureGWs.slice(0, k);
+                    const after = futureGWs.slice(k, k + half);
+                    if (after.length < SWING_MIN_SIDE) continue;
+                    const d = getAvg(before) - getAvg(after);
+                    if (!best || Math.abs(d) > Math.abs(best.swing)) {
+                        best = { before, after, swing: d, avgFirst: getAvg(before), avgNext: getAvg(after) };
+                    }
+                }
+                if (!best) return;
 
-                const avgFirst = getAvg(first3);
-                const avgNext = getAvg(next3);
-                const swing = avgFirst - avgNext;
+                const first3 = best.before;
+                const next3 = best.after;
+                const avgFirst = best.avgFirst;
+                const avgNext = best.avgNext;
+                const swing = best.swing;
 
                 // Lowered threshold to 0.3 to capture more swings
                 if (Math.abs(swing) > 0.3) {
@@ -3694,7 +3669,6 @@
                     const currentFixtures = getFixtures(first3);
                     const homeCountNext = nextFixtures.filter(f => f.isHome).length;
                     const homeCountCurrent = currentFixtures.filter(f => f.isHome).length;
-                    let longSwing = null;
 
                     swings.push({
                         teamId: team.id,
@@ -3705,15 +3679,16 @@
                         direction: swing > 0 ? 'improving' : 'worsening',
                         currentFdr: avgFirst.toFixed(1),
                         futureFdr: avgNext.toFixed(1),
-                        windowSize: half,
+                        // The real lengths, because the pivot moves per club.
+                        beforeLen: first3.length,
+                        afterLen: next3.length,
                         fromGW: first3[0],
                         toGW: next3[next3.length - 1],
-                        swingGW: futureGWs[half],
+                        swingGW: next3[0],
                         currentFixtures,
                         nextFixtures,
                         homeCountNext,
                         homeCountCurrent,
-                        longSwing,
                         xgFor: team.xgFor,
                         xgAgainst: team.xgAgainst,
                         last5Ppg: team.last5Ppg,
@@ -4344,7 +4319,7 @@
                         <div class="modal-stat">
                             <div class="modal-stat-label">Future FDR</div>
                             <div class="modal-stat-value ${parseFloat(s.futureFdr) <= 2.5 ? 'good' : parseFloat(s.futureFdr) >= 3.5 ? 'bad' : 'warn'}">${s.futureFdr}</div>
-                            <div class="modal-stat-sub">GW${s.swingGW}–${s.swingGW + 2}</div>
+                            <div class="modal-stat-sub">GW${s.swingGW}–${s.toGW}</div>
                         </div>
                     </div>
                     <div class="modal-stat-grid">
@@ -4404,29 +4379,16 @@
                     }).join('')}
                 </div>
 
-                ${s.longSwing ? `
-                    <div class="modal-section">
-                        <div class="modal-section-title">Long-term View (Next 10 GWs)</div>
-                        <div style="background: var(--surface-0); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-3);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
-                                <span style="font-size: 11px; color: var(--text-muted);">GW${planningGW}–${planningGW+4} avg</span>
-                                <span style="font-size: 11px; color: var(--text-muted);">GW${planningGW+5}–${planningGW+9} avg</span>
+                <div class="modal-section">
+                    <div class="modal-section-title">The next ten gameweeks</div>
+                    <div style="display: flex; gap: 2px;">
+                        ${(s.allFutureFixtures || []).map(f => `
+                            <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 700; background: ${getFdrColor(getEffectiveFdr(f))}; color: ${getFdrTextColor(getEffectiveFdr(f))}; ${f.gw === s.swingGW ? 'border-left: 2px solid var(--color-primary);' : ''}">
+                                ${escHTML(f.opponent)}
                             </div>
-                            <div style="display: flex; align-items: center; gap: var(--space-3); justify-content: center;">
-                                <span style="font-family: 'Space Grotesk'; font-size: 22px; font-weight: 700; color: ${parseFloat(s.longSwing.currentFdr) <= 2.8 ? 'var(--color-success)' : parseFloat(s.longSwing.currentFdr) >= 3.5 ? 'var(--color-error)' : 'var(--text-primary)'}">${s.longSwing.currentFdr}</span>
-                                <span style="font-size: 18px; color: ${swingColor};">${isImproving ? '→' : '→'}</span>
-                                <span style="font-family: 'Space Grotesk'; font-size: 22px; font-weight: 700; color: ${parseFloat(s.longSwing.futureFdr) <= 2.8 ? 'var(--color-success)' : parseFloat(s.longSwing.futureFdr) >= 3.5 ? 'var(--color-error)' : 'var(--text-primary)'}">${s.longSwing.futureFdr}</span>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 2px;">
-                            ${s.allFutureFixtures.map((f, i) => `
-                                <div style="flex: 1; padding: 4px 0; border-radius: var(--radius-sm); text-align: center; font-size: 8px; font-weight: 700; background: ${getFdrColor(getEffectiveFdr(f))}; color: ${getFdrTextColor(getEffectiveFdr(f))}; ${i === 4 ? 'border-left: 2px solid var(--surface-1); border-right: 2px solid var(--surface-1);' : ''}">
-                                    ${escHTML(f.opponent)}
-                                </div>
-                            `).join('')}
-                        </div>
+                        `).join('')}
                     </div>
-                ` : ''}
+                </div>
 
                 <div class="modal-section">
                     <div class="modal-section-title">FPL Insight</div>
