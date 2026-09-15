@@ -391,7 +391,7 @@
 
             // Remaining squad (excluding sold players)
             const sellIds = new Set(sells.map(p => p.id));
-            const remainingSquad = selectedPlayers.filter(p => !sellIds.has(p.id));
+            const remainingSquad = twSquad().filter(p => !sellIds.has(p.id));
             const remainingIds = new Set(remainingSquad.map(p => p.id));
 
             // Count players per team in remaining squad
@@ -494,6 +494,11 @@
 
         function renderTransferWizard() {
             transferRendered = true;
+            /* The plan survives a reload: it is the manager's own working state
+               and losing it on refresh is what made the wizard feel throwaway.
+               Reloaded here rather than at page load so it is always read
+               against the gameweek currently being planned. */
+            twPlanLoad();
             if (!draftStates[activeDraftSlot]) {
                 initDraft(activeDraftSlot);
                 loadDraft();
@@ -690,7 +695,7 @@
         // budget across six or eight sales one row at a time is the part of a
         // wildcard that actually wastes time.
         function twSellAll(position) {
-            const targets = selectedPlayers.filter(p => position ? p.position === position : true);
+            const targets = twSquad().filter(p => position ? p.position === position : true);
             targets.forEach(p => {
                 if (transferState.pending.length >= twMaxTransfers()) return;
                 if (transferState.pending.some(s => s.soldPlayer.id === p.id)) return;
@@ -875,7 +880,7 @@
 
             const pending = [];
             for (let i = 0; i < outs.length; i++) {
-                const soldPlayer = (selectedPlayers || []).find(p => p.id === outs[i]);
+                const soldPlayer = (twSquad() || []).find(p => p.id === outs[i]);
                 const replacement = (allPlayers || []).find(p => p.id === ins[i]);
                 // Both ends must still be real: the squad changes, and players move.
                 if (!soldPlayer || !replacement) return false;
@@ -930,7 +935,7 @@
                 el.innerHTML = '<div class="twr-empty">The wildcard builder did not load.</div>';
                 return;
             }
-            if (!selectedPlayers || !selectedPlayers.length) {
+            if (!twSquad() || !twSquad().length) {
                 el.innerHTML = '<div class="twr-empty">Load a squad first — the budget comes from what your players are worth plus your bank.</div>';
                 return;
             }
@@ -940,7 +945,7 @@
                 let r = null;
                 try {
                     r = wcBuildPlans({
-                        squad: selectedPlayers,
+                        squad: twSquad(),
                         bank: getTWBank(),
                         horizon: transferState.strategy === 'freehit' ? 1 : undefined
                     });
@@ -1082,10 +1087,10 @@
             if (!plan) return;
 
             const targetIds = new Set(plan.squad.map(p => p.id));
-            const haveIds = new Set(selectedPlayers.map(p => p.id));
+            const haveIds = new Set(twSquad().map(p => p.id));
             const outByPos = { 1: [], 2: [], 3: [], 4: [] };
             const inByPos = { 1: [], 2: [], 3: [], 4: [] };
-            selectedPlayers.filter(p => !targetIds.has(p.id)).forEach(p => outByPos[p.position].push(p));
+            twSquad().filter(p => !targetIds.has(p.id)).forEach(p => outByPos[p.position].push(p));
             plan.squad.filter(p => !haveIds.has(p.id)).forEach(p => inByPos[p.position].push(p));
 
             /* Both squads are 2/5/5/3, so the players leaving and arriving
@@ -1208,7 +1213,7 @@
         function twUnbuyableIds() {
             const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
             const ids = new Set();
-            for (const p of selectedPlayers) if (!soldIds.has(p.id)) ids.add(p.id);
+            for (const p of twSquad()) if (!soldIds.has(p.id)) ids.add(p.id);
             for (const s of transferState.pending) if (s.replacement) ids.add(s.replacement.id);
             return ids;
         }
@@ -1263,7 +1268,7 @@
         function twClubCountExcludingSlot(teamId, slotIdx) {
             const soldIds = new Set(transferState.pending.map(s => s.soldPlayer.id));
             let n = 0;
-            for (const p of selectedPlayers) {
+            for (const p of twSquad()) {
                 if (soldIds.has(p.id)) continue;
                 if (p.teamId === teamId) n++;
             }
@@ -1447,7 +1452,7 @@
            Cheap to compute and compared as a whole: fifteen ids and prices is
            shorter than one of the cards it saves rendering. */
         function twSquadCardsKey() {
-            return selectedPlayers.map(p => `${p.id}:${(p.sellPrice || p.price).toFixed(1)}:${p.status || 'a'}`).join('|');
+            return twSquad().map(p => `${p.id}:${(p.sellPrice || p.price).toFixed(1)}:${p.status || 'a'}`).join('|');
         }
         let twSquadCardsBuilt = null;
 
@@ -1458,7 +1463,7 @@
             const gws = twPlanGWs(3);
             el.querySelectorAll('.tw-sqc').forEach(node => {
                 const id = Number(node.dataset.pid);
-                const p = selectedPlayers.find(x => x.id === id);
+                const p = twSquad().find(x => x.id === id);
                 if (!p) return;
                 const i = slotOf(id);
                 const picked = i >= 0;
@@ -1515,7 +1520,7 @@
 
             let groups = '';
             positions.forEach(pos => {
-                const players = selectedPlayers.filter(p => p.position === pos.type);
+                const players = twSquad().filter(p => p.position === pos.type);
                 if (!players.length) return;
                 const cards = players.map(p => {
                     const i = slotOf(p.id);
@@ -1617,7 +1622,7 @@
 
             let rows = '';
             positions.forEach(pos => {
-                const players = selectedPlayers.filter(p => p.position === pos.type);
+                const players = twSquad().filter(p => p.position === pos.type);
                 if (!players.length) return;
                 rows += `<div class="twc-group">
                     <div class="twc-group-head">
@@ -1740,7 +1745,7 @@
         function twSwapPlayer(playerId) {
             const existing = transferState.pending.findIndex(s => s.soldPlayer.id === playerId);
             if (existing < 0) {
-                const player = selectedPlayers.find(p => p.id === playerId);
+                const player = twSquad().find(p => p.id === playerId);
                 if (!player) return;
                 if (transferState.pending.length >= twMaxTransfers()) {
                     updateStatus(`That is the maximum of ${twMaxTransfers()} transfers`, 'error');
@@ -2172,7 +2177,7 @@
         // the thing still works — whether it picks a legal eleven, and what it costs.
         function twBuildPendingSquad() {
             const outIds = new Set(transferState.pending.filter(s => s.replacement).map(s => s.soldPlayer.id));
-            const kept = selectedPlayers.filter(p => !outIds.has(p.id));
+            const kept = twSquad().filter(p => !outIds.has(p.id));
             const incoming = transferState.pending.filter(s => s.replacement).map(s => ({
                 ...s.replacement, sellPrice: s.replacement.price, isIncoming: true
             }));
@@ -2223,14 +2228,14 @@
             squad.forEach(p => { counts[p.position] = (counts[p.position] || 0) + 1; });
             const byTeam = {};
             squad.forEach(p => { byTeam[p.teamId] = (byTeam[p.teamId] || 0) + 1; });
-            const oldXI = selectedPlayers.filter(p => !p.onBench);
+            const oldXI = twSquad().filter(p => !p.onBench);
 
             return {
                 squad, xi, bench, counts,
                 // The shape that eleven actually plays, for the preview modal.
                 formation: solved && solved.formation ? solved.formation : null,
                 value: squad.reduce((s, p) => s + p.price, 0),
-                oldValue: selectedPlayers.reduce((s, p) => s + p.price, 0),
+                oldValue: twSquad().reduce((s, p) => s + p.price, 0),
                 xiXP: xi.reduce((s, p) => s + predictedGWPoints(p), 0),
                 oldXiXP: oldXI.reduce((s, p) => s + predictedGWPoints(p), 0),
                 benchXP: bench.reduce((s, p) => s + predictedGWPoints(p), 0),
@@ -2300,7 +2305,7 @@
         // ===== Transfer Control Room — Actions =====
 
         function twPickOutPlayer(playerId) {
-            const player = selectedPlayers.find(p => p.id === playerId);
+            const player = twSquad().find(p => p.id === playerId);
             if (!player) return;
 
             const existingIdx = transferState.pending.findIndex(s => s.soldPlayer.id === playerId);
@@ -2720,11 +2725,68 @@
            puts the squad back rather than leaving someone to re-transfer the
            player they started with just to cancel a decision. */
         function twUndoConfirmed() {
+            /* Nothing to reload: the real squad was never changed, so dropping
+               the plan is the whole undo. */
             twConfirmedClear();
+            twPlan = [];
             twConfirmedResult = null;
-            updateStatus('Transfers taken back out of your EasyFPL squad \u2014 reloading your real one', 'success');
-            if (typeof loadTeamById === 'function') { loadTeamById(); return; }
-            location.reload();
+            transferRendered = false;
+            updateStatus('Plan cleared \u2014 the wizard is back on your real squad', 'success');
+            if (typeof twGoStep === 'function') twGoStep(1);
+        }
+
+        /* ===== The wizard's own squad =====
+
+           EasyFPL cannot make a transfer — FPL has no public write API — so a
+           swap agreed here is a PLAN, and a plan is not a squad. It used to be
+           treated as one: confirming rewrote selectedPlayers and picksData in
+           place, which are the page's shared record of the team the manager
+           actually owns, so Squad Analysis, the Gameweek Review and every panel
+           that reads them started describing a team that exists only on this
+           site. Reloading did not clear it either, because applyConfirmedSwaps
+           folded the stored plan back in on the way past.
+
+           The plan lives here now. twSquad() is the real squad with the plan
+           laid over it, and only the wizard reads it; selectedPlayers is left
+           exactly as FPL handed it over. Squad Analysis therefore shows the team
+           the manager owns until FPL itself says otherwise — which is the point
+           of it — and the wizard still remembers what you were planning, across
+           reloads, because the plan is persisted on its own.
+
+           Position, captaincy and bench slot come from the man going out: a
+           plan changes who is in the squad, never its shape. */
+        let twPlan = [];
+
+        function twPlanLoad() {
+            const teamId = (() => { try { return localStorage.getItem('fpl_team_id') || ''; } catch (e) { return ''; } })();
+            const rec = typeof twConfirmedRead === 'function' ? twConfirmedRead() : null;
+            twPlan = (rec && String(rec.teamId) === String(teamId) && rec.gw === planningGW)
+                ? rec.moves.slice() : [];
+            return twPlan;
+        }
+
+        function twSquad() {
+            const base = selectedPlayers || [];
+            if (!twPlan.length) return base;
+            return base.map(slot => {
+                const move = twPlan.find(m => m.outId === slot.id);
+                if (!move) return slot;
+                const incoming = (allPlayers || []).find(x => x.id === move.inId);
+                if (!incoming) return slot;
+                return {
+                    ...incoming,
+                    isCaptain: slot.isCaptain, isVice: slot.isVice,
+                    onBench: slot.onBench, pickPosition: slot.pickPosition,
+                    multiplier: slot.multiplier,
+                    sellPrice: move.inPrice / 10,
+                    twPlanned: true
+                };
+            });
+        }
+
+        // What the plan has done to the bank, in millions.
+        function twPlanBankDelta() {
+            return twPlan.reduce((s, m) => s + (m.outPrice - m.inPrice), 0) / 10;
         }
 
         /* ===== Confirming =====
@@ -2736,9 +2798,28 @@
            number on every page would then be describing a team they do not
            own. So confirming says that first, in as many words, and needs it
            acknowledged before it writes anything. */
+        /* Read once, dismissed for good if asked. The warning matters the first
+           time and becomes noise by the fifth — but it is the only thing telling
+           a manager that EasyFPL cannot make the transfer for them, so opting out
+           has to be deliberate rather than a click-through. */
+        const TW_GUARD_SKIP = 'easyfpl_tw_guard_skip';
+
+        function twGuardSkipped() {
+            try { return localStorage.getItem(TW_GUARD_SKIP) === '1'; } catch (e) { return false; }
+        }
+
+        function twGuardSkipSet(on) {
+            try {
+                if (on) localStorage.setItem(TW_GUARD_SKIP, '1');
+                else localStorage.removeItem(TW_GUARD_SKIP);
+            } catch (e) { /* private mode — the box simply keeps appearing */ }
+        }
+
         function twOpenConfirmGuard() {
             if (!transferState.pending.length) return;
             if (!transferState.pending.every(x => x.replacement)) return;
+            // Already acknowledged, permanently. Straight through.
+            if (twGuardSkipped()) { twApplyConfirmed(); return; }
             document.getElementById('twConfirmGuard')?.remove();
 
             const list = transferState.pending.map(x =>
@@ -2764,9 +2845,13 @@
                             <input type="checkbox" id="twGuardAck" onchange="twGuardAckChanged(this.checked)">
                             <span>I understand — I will make ${transferState.pending.length === 1 ? 'this transfer' : 'these transfers'} on the FPL site myself.</span>
                         </label>
+                        <label class="tw-guard-ack tw-guard-skip">
+                            <input type="checkbox" id="twGuardSkip">
+                            <span>Do not show this again</span>
+                        </label>
                         <div class="tw-guard-actions">
                             <button class="tw-back" onclick="twCloseConfirmGuard()">Cancel</button>
-                            <button class="tw-next" id="twGuardGo" disabled onclick="twApplyConfirmed()">
+                            <button class="tw-next" id="twGuardGo" disabled onclick="twGuardConfirm()">
                                 Apply to my squad ${v2Icon('next')}
                             </button>
                         </div>
@@ -2777,6 +2862,14 @@
                 document.getElementById('twConfirmGuard')?.classList.add('open');
                 document.body.classList.add('v2-blurred');
             });
+        }
+
+        // The opt-out is only honoured alongside the acknowledgement, so it
+        // cannot be used to skip reading the thing it is opting out of.
+        function twGuardConfirm() {
+            const skip = document.getElementById('twGuardSkip');
+            if (skip && skip.checked) twGuardSkipSet(true);
+            twApplyConfirmed();
         }
 
         function twGuardAckChanged(on) {
@@ -2796,8 +2889,8 @@
         /* Write the swaps, then show what they left behind.
 
            Stored in FPL's own units — tenths of a million — because that is
-           what picks payloads carry and applyConfirmedSwaps() folds these
-           straight into one. */
+           what picks payloads carry, and what twSquad() converts back when it
+           lays the plan over the real squad. */
         function twApplyConfirmed() {
             const moves = transferState.pending.filter(x => x.replacement).map(x => ({
                 outId: x.soldPlayer.id,
@@ -2846,34 +2939,15 @@
 
         /* Swap the players in the page's own state, in the outgoing player's
            slot so the formation, the captaincy and the bench order survive. */
+        /* Record the plan. Nothing here touches selectedPlayers or picksData:
+           those are the squad FPL says the manager owns, and the wizard is not
+           entitled to rewrite them on the strength of an intention. */
         function twApplySwapsLocally(moves) {
             moves.forEach(m => {
-                const idx = selectedPlayers.findIndex(p => p.id === m.outId);
-                if (idx < 0) return;
-                const incoming = allPlayers.find(p => p.id === m.inId);
-                if (!incoming) return;
-                const slot = selectedPlayers[idx];
-                selectedPlayers[idx] = {
-                    ...incoming,
-                    isCaptain: slot.isCaptain, isVice: slot.isVice,
-                    onBench: slot.onBench, pickPosition: slot.pickPosition,
-                    multiplier: slot.multiplier,
-                    sellPrice: m.inPrice / 10
-                };
-                if (picksData && Array.isArray(picksData.picks)) {
-                    const pk = picksData.picks.find(x => x.element === m.outId);
-                    if (pk) { pk.element = m.inId; pk.selling_price = m.inPrice; pk.purchase_price = m.inPrice; }
-                    if (picksData.entry_history) {
-                        picksData.entry_history.bank += m.outPrice - m.inPrice;
-                    }
-                }
+                twPlan = twPlan.filter(x => x.outId !== m.outId && x.inId !== m.inId);
+                twPlan.push(m);
             });
-
-            // Every tab is built from selectedPlayers, so all of them are stale.
-            if (typeof analyzeTeam === 'function') analyzeTeam();
             transferRendered = false;
-            lineupRendered = false;
-            draftTabRendered = false;
         }
 
         function twBackFromSummary() {
@@ -2920,7 +2994,7 @@
             });
             closeSettings();
             
-            if (selectedPlayers.length > 0) {
+            if (twSquad().length > 0) {
                 analyzeTeam();
             }
 
@@ -3128,7 +3202,7 @@
                 teamShort: (p.team || '???').substring(0, 3)
             }));
 
-            const squadIds = new Set(selectedPlayers.map(p => p.id));
+            const squadIds = new Set(twSquad().map(p => p.id));
 
             const filterPlayers = (list) => {
                 let filtered = tmPosFilter === 'all' ? list : list.filter(p => p.position === parseInt(tmPosFilter));

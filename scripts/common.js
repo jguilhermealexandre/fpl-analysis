@@ -296,52 +296,13 @@ function twConfirmedClear() {
     try { localStorage.removeItem(TW_CONFIRMED_KEY); } catch (e) { /* nothing to clear */ }
 }
 
-/* Fold confirmed swaps into a picks payload, in place on a copy.
- *
- * Same shape as applyPendingTransfers() above and the same rules: the
- * incoming player takes the outgoing one's slot so the formation is
- * untouched, and the bank moves by what each side actually cost. A move
- * whose outgoing player is not in the squad is skipped rather than guessed
- * at — he has either been sold for real already or was never there.
- *
- * Returns null when nothing applied, so callers can leave their own data
- * alone rather than swapping in an identical copy.
+/* applyConfirmedSwaps() lived here. It folded the Transfer Wizard's saved
+ * plan into a picks payload so the whole site would render the squad the
+ * manager intended rather than the one they own — which is the wrong way round.
+ * The plan is the wizard's business and stays there; see twPlan in
+ * scripts/transfer-wizard.js. twConfirmedRead/Save/Clear above are still what
+ * persists it.
  */
-function applyConfirmedSwaps(picksData, teamId, gw) {
-    const rec = twConfirmedRead();
-    if (!rec || !picksData || !Array.isArray(picksData.picks)) return null;
-    if (String(rec.teamId) !== String(teamId) || rec.gw !== gw) return null;
-
-    const picks = picksData.picks.map(p => ({ ...p }));
-    const applied = [];
-    let bank = picksData.entry_history ? picksData.entry_history.bank : 0;
-
-    rec.moves.forEach(m => {
-        const slot = picks.find(p => p.element === m.outId);
-        if (!slot) return;                       // already made for real
-        if (picks.some(p => p.element === m.inId)) return;   // would duplicate
-        slot.element = m.inId;
-        slot.selling_price = m.inPrice;
-        slot.purchase_price = m.inPrice;
-        bank += m.outPrice - m.inPrice;
-        applied.push(m);
-    });
-
-    if (!applied.length) {
-        // Every one of them has happened on FPL. Stop carrying the record.
-        twConfirmedClear();
-        return null;
-    }
-
-    return {
-        picksData: {
-            ...picksData,
-            picks,
-            entry_history: { ...(picksData.entry_history || {}), bank }
-        },
-        moves: applied
-    };
-}
 
 function applyPendingTransfers(picksData, transfers, gw, nowCostTenths) {
     if (!picksData || !Array.isArray(picksData.picks) || !picksData.picks.length) return null;
@@ -2127,7 +2088,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=229')
+    fetch('footer.html?v=230')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

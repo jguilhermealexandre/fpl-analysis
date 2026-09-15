@@ -557,7 +557,7 @@
                 '</div>';
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            if (s.step === 1 && s.search) twfRestoreSearchFocus();
+            if (s.search) twfRestoreSearchFocus();
         }
 
         function twfRenderHead(slotIdx, sold, gws, nBase, nClubs, nFinal) {
@@ -982,6 +982,17 @@
                     <span class="twf-group-l">Sort</span>
                     <div class="twf-chips">${sorts}</div>
                 </div>
+                ${/* The search lived on step 1 only, which is the step for
+                      narrowing by club and shape. Step 2 is where you are
+                      looking AT the players, and "is he in here?" is the
+                      question you have on this screen — the filter already
+                      existed, it just had nowhere to be typed. */''}
+                <div class="twf-searchrow twf-searchrow-pick">
+                    <input class="twf-search" type="text" placeholder="Search by name\u2026"
+                        value="${escHTML(s.search)}" oninput="twfSearch(this.value)"
+                        aria-label="Search candidates by name">
+                    ${s.search ? `<button class="twf-linkbtn" onclick="twfSearch('')">Clear</button>` : ''}
+                </div>
                 <div class="twf-out" data-tooltip="Every card below is priced against this player over the same gameweeks.">
                     <span class="twf-out-l">Selling</span>
                     <span class="twf-out-name">${escHTML(sold.name)}</span>
@@ -1126,7 +1137,12 @@
                         <div class="twf-kv" data-tooltip="Recency-weighted form over the last five: W${run.wins} D${run.draws} L${run.losses}."><span>Team form</span><b>${run.form}</b><span class="twf-form5">${(run.last5 || []).slice(-5).map(z => `<i class="twf-r ${z.toLowerCase()}">${z}</i>`).join('')}</span></div>
                         <div class="twf-kv"><span>Goals for / against</span><b>${run.avgGoals.toFixed(1)}</b><span class="twf-dim">${run.avgConceded.toFixed(1)}</span></div>
                         <div class="twf-kv" data-tooltip="Share of matches with a clean sheet, and with no goal scored."><span>Clean sheets / blanks</span><b>${run.csPercent != null ? run.csPercent + '%' : Math.round(run.csRate * 100) + '%'}</b>${run.ftsPercent != null ? `<span class="twf-dim">${run.ftsPercent}%</span>` : ''}</div>
-                        <div class="twf-kv" data-tooltip="Team expected goals and expected goals conceded per game, against their own season averages."><span>xG / xGC trend</span><b class="${run.xgTrend === 'rising' ? 'up' : run.xgTrend === 'falling' ? 'down' : ''}">${escHTML(run.xgTrend)}</b><span class="twf-dim ${run.xgcTrend === 'improving' ? 'up' : run.xgcTrend === 'worsening' ? 'down' : ''}">${escHTML(run.xgcTrend)}</span></div>
+                        ${/* null until the club has played enough for a six-match window to be
+      compared against its season. escHTML(null) is an empty string, so
+      leaving it unguarded printed a labelled row with nothing in it. */''}
+                        <div class="twf-kv" data-tooltip="Team expected goals and expected goals conceded per game, against their own season averages. Needs about ten matches before a six-match window says anything."><span>xG / xGC trend</span>${run.xgTrend || run.xgcTrend
+                            ? `<b class="${run.xgTrend === 'rising' ? 'up' : run.xgTrend === 'falling' ? 'down' : ''}">${escHTML(run.xgTrend || '—')}</b><span class="twf-dim ${run.xgcTrend === 'improving' ? 'up' : run.xgcTrend === 'worsening' ? 'down' : ''}">${escHTML(run.xgcTrend || '—')}</span>`
+                            : `<b class="twf-dim">not enough games yet</b>`}</div>
                         <div class="twf-kv" data-tooltip="${escHTML(`${run.games} match${run.games === 1 ? '' : 'es'} across ${gws.length} gameweeks, ${run.homes} at home. Average difficulty ${run.avgFdr.toFixed(1)}.`)}"><span>Run</span><b>${run.games} in ${gws.length}</b><span class="twf-dim">${run.homes}H · FDR ${run.avgFdr.toFixed(1)}</span></div>
                         ${swingChip ? `<div class="twf-kv"><span>Swing</span>${swingChip}</div>` : ''}
                     </div>

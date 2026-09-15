@@ -362,16 +362,21 @@
                     }
                 }
 
-                /* Then the swaps confirmed in the wizard but not yet made on
-                   FPL. After the real log, never before it: a move the manager
-                   has since made for real is in that log, and this drops its
-                   own record of it rather than applying it twice. */
-                const confirmed = typeof applyConfirmedSwaps === 'function'
-                    ? applyConfirmedSwaps(picksData, teamId, planningGW) : null;
-                if (confirmed) {
-                    picksData = confirmed.picksData;
-                    console.log(`[Transfers] ${confirmed.moves.length} confirmed swap(s) folded into the squad`);
-                }
+                /* Swaps confirmed in the Transfer Wizard are NOT folded in here.
+
+                   They used to be, and that made this squad a mixture of two
+                   different things: the team FPL says you own, plus the team you
+                   were thinking about. Every panel downstream — the analysis, the
+                   gameweek review, the pitch — then described a squad that exists
+                   on this site and nowhere else, and a reload did not clear it
+                   because the plan was re-applied on the way past.
+
+                   This is the squad FPL has, and it changes when FPL changes:
+                   transfers you have actually made show up through the pending
+                   transfer log above, because that is the official record of
+                   them. The wizard keeps its own plan — see twPlan in
+                   scripts/transfer-wizard.js — and lays it over its own view
+                   only. */
 
                 const premierLeagueSeason = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
                 await loadPremierLeagueJerseyNumbers(picksData.picks, premierLeagueSeason);
