@@ -7290,3 +7290,80 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     opacity: .85;
     font-size: 11px;
 }
+
+/* ===== The wizard's pitch =====
+
+   The squad is the thing being changed, so it is the thing on screen. Same
+   green field as the squad page's snapshot; the cards are the wizard's own,
+   because their states are about a transfer plan rather than about a lineup. */
+.tw-pitchpanel { display: flex; flex-direction: column; gap: 10px; }
+.tw-pitch-head {
+    display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: flex-end;
+}
+.tw-pstat { display: inline-flex; flex-direction: column; line-height: 1.15; }
+.tw-pstat b { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 800; color: var(--text-primary); }
+.tw-pstat em { font-style: normal; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.tw-pstat i { font-style: normal; font-size: 10px; color: var(--color-warning); }
+
+.tw-pitch {
+    position: relative; width: 100%; aspect-ratio: 16 / 10.5;
+    background: repeating-linear-gradient(0deg, #CFEBD0 0, #CFEBD0 12.5%, #C4E5C6 12.5%, #C4E5C6 25%);
+    border-radius: var(--radius-lg); overflow: hidden;
+}
+.tw-pitch-rows { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-evenly; }
+.tw-pitch-row { display: flex; justify-content: space-evenly; align-items: center; gap: 6px; }
+
+.tw-pitch-bench {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 8px; border-radius: var(--radius-md); background: var(--surface-2);
+}
+.tw-pitch-bench-l {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-muted); margin-right: 4px;
+}
+
+/* A player on the pitch. Three states that have to be told apart at a glance:
+   marked to leave, marked and already replaced, and the one being shopped for. */
+.tw-pp {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    min-width: 58px; padding: 4px 3px; border: 0; border-radius: var(--radius-sm);
+    background: transparent; cursor: pointer; transition: background 120ms ease;
+}
+.tw-pp:hover { background: rgba(255,255,255,.35); }
+.tw-pp-name { font-size: 10.5px; font-weight: 700; color: #16281A; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-pp-meta { font-size: 9px; font-weight: 600; color: #3B5240; white-space: nowrap; }
+.tw-pp-in { color: var(--color-success); }
+
+.tw-pp.is-picked { background: rgba(248,113,113,.28); outline: 2px solid var(--color-error); }
+.tw-pp.is-picked .tw-pp-name { text-decoration: line-through; }
+.tw-pp.is-filled { background: rgba(74,222,128,.28); outline: 2px solid var(--color-success); }
+.tw-pp.is-filled .tw-pp-name { text-decoration: none; }
+.tw-pp.is-active { outline-width: 3px; }
+.tw-pp-out .tw-pp-name { color: var(--color-error); }
+.tw-pp-doubt .tw-pp-name::after { content: ' ?'; color: var(--color-warning); }
+
+.tw-pitch-offer {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 7px 10px; border-radius: var(--radius-sm);
+    background: rgba(251,191,36,.10); border: 1px solid rgba(251,191,36,.28);
+    font-size: 11px; color: var(--text-secondary);
+}
+.tw-pitch-hint { font-size: 11px; color: var(--text-muted); }
+.tw-prompt-facts { margin-top: 12px; display: grid; gap: 4px; font-size: 11.5px; color: var(--text-secondary); }
+.tw-prompt-facts b { color: var(--text-primary); }
+.tw-linkbtn {
+    background: none; border: 0; padding: 0; cursor: pointer;
+    color: var(--color-info); font-size: 11px; font-weight: 700; text-decoration: underline;
+}
+
+/* The per-match comparison table. The delta rides with the incoming player,
+   because the question is what HE changes. */
+.twh-sub {
+    margin: 14px 0 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted);
+}
+.twh-grid-data .twh-b { display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; }
+.twh-d { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+.twh-d.up { color: var(--color-success); }
+.twh-d.down { color: var(--color-error); }
+.twh-l em { font-style: normal; color: var(--text-muted); }

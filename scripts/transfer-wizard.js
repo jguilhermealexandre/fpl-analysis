@@ -585,11 +585,14 @@
            a mode: choosing a plan and choosing who leaves are both mode
            'squad', and only the person clicking knows which one they are on.
            Everything below it still reads mode, so nothing else had to move. */
+        /* Two. "Compare" and "Confirm" were never steps in the first place —
+           they are modes of the right-hand pane, reached from the swap step and
+           returning to it, and putting them on a rail implied a journey that
+           ends. It does not: the plan is live, the pitch shows it, and there is
+           nothing at the end to arrive at. */
         const TW_STEPS = [
-            { n: 1, key: 'plan',    icon: 'sliders', label: 'Plan',    hint: 'How many transfers, and at what cost' },
-            { n: 2, key: 'swap',    icon: 'swap',    label: 'Swap',    hint: 'Your squad on the left, who can replace them on the right' },
-            { n: 3, key: 'compare', icon: 'scales',  label: 'Compare', hint: 'The two of them, side by side' },
-            { n: 4, key: 'confirm', icon: 'check',   label: 'Confirm', hint: 'What the plan costs and what it buys' }
+            { n: 1, key: 'squad', icon: 'users', label: 'Squad', hint: 'Click anyone to mark them for sale' },
+            { n: 2, key: 'swap',  icon: 'swap',  label: 'Swap',  hint: 'Your pitch on the left, who can replace them on the right' }
         ];
 
         /* One header shape for every step: what the step is, a hint, and the
@@ -1256,7 +1259,13 @@
             const slot = transferState.pending[slotIdx];
             if (!slot) return getTWLiveITB();
             const refund = slot.replacement ? slot.replacement.price : 0;
-            return Math.max(0, getTWLiveITB() + refund - twReservedFor(slotIdx));
+            /* Raw: bank, plus what is coming out, minus what has been bought.
+               It used to subtract a reserve — the cheapest player who could fill
+               each of your other empty slots — which is the safe answer and
+               reads as money disappearing for no stated reason. Spend it all on
+               one man if you like; the slot that can no longer be filled says so
+               where the problem actually is. */
+            return Math.max(0, getTWLiveITB() + refund);
         }
 
         // FPL's three-per-club rule, evaluated for one transfer slot: how many
@@ -1451,135 +1460,237 @@
 
            Cheap to compute and compared as a whole: fifteen ids and prices is
            shorter than one of the cards it saves rendering. */
-        function twSquadCardsKey() {
-            return twSquad().map(p => `${p.id}:${(p.sellPrice || p.price).toFixed(1)}:${p.status || 'a'}`).join('|');
-        }
+        // twSquadCardsKey()/twUpdateSquadCardStates() went with the card list
+        // they existed to avoid rebuilding.
+
         let twSquadCardsBuilt = null;
 
         /* The three things a click actually changes, applied to the cards that
            are already on screen. */
-        function twUpdateSquadCardStates(el) {
-            const slotOf = id => transferState.pending.findIndex(x => x.soldPlayer.id === id);
+        /* ===== The squad, as a pitch =====
+
+           The wizard used to open on four cards asking which KIND of transfer
+           you wanted — one, several, wildcard, free hit — before it would show
+           you anything. That is the wrong first question: you do not know
+           whether you want one transfer or three until you have looked at who
+           is in your team. So the first thing is the team.
+
+           Click a man to mark him for sale. The plan strip underneath fills in,
+           every number in the header moves, and the kind of transfer you are
+           making follows from how many you marked rather than being declared in
+           advance — one is free, more is a hit, and if a Wildcard or Free Hit is
+           still in hand it is offered at the point where it starts to pay.
+
+           The same twSquadCardClick() the card list used, and the same state
+           classes, so marking behaves exactly as it did — this is a new shape
+           for it, not new behaviour. */
+        function twPitchRows() {
+            const squad = twSquad();
+            const xi = squad.filter(p => !p.onBench);
+            const bench = squad.filter(p => p.onBench)
+                .sort((a, b) => (a.pickPosition || 0) - (b.pickPosition || 0));
+            return {
+                rows: [1, 2, 3, 4].map(t => xi.filter(p => p.position === t)).filter(r => r.length),
+                bench
+            };
+        }
+
+        /* Everything the header states, recomputed on every render because all
+           of it moves the moment a player is marked.
+
+           The budget is the raw arithmetic — bank, plus what the men going out
+           are worth, minus what the men coming in cost. It used to be shown net
+           of a reserve held back for your other unfilled slots, which is safer
+           and reads as money quietly going missing. Second slot may now turn out
+           unfillable; that is visible in the slot rather than hidden here. */
+        function twLiveTotals() {
+            const squad = twSquad();
+            const gws = twPlanGWs(5);
+            const one = twPlanGWs(1);
+            const marked = transferState.pending.length;
+            const free = twFreeTransfers() || 0;
+            const chipFree = transferState.strategy === 'wildcard' || transferState.strategy === 'freehit';
+            const hits = chipFree ? 0 : Math.max(0, marked - free);
+            return {
+                value: squad.reduce((t, p) => t + (p.sellPrice || p.price), 0),
+                bank: getTWLiveITB(),
+                xpNext: squad.filter(p => !p.onBench).reduce((t, p) => t + twXPOver(p, one), 0),
+                xpRun: squad.filter(p => !p.onBench).reduce((t, p) => t + twXPOver(p, gws), 0),
+                span: gws.length, marked, free, hits, hitCost: hits * 4, chipFree
+            };
+        }
+
+        // Which chips are still in hand for the round being planned. The squad
+        // page derives this from the manager's own history; absent, nothing is
+        // offered rather than something being offered that cannot be played.
+        function twChipsInHand() {
+            const chips = typeof deriveChipStatus === 'function'
+                ? (deriveChipStatus(planningGW) || []) : [];
+            const has = name => chips.some(c => c.name === name && c.available);
+            return { wildcard: has('wildcard'), freehit: has('freehit') };
+        }
+
+        /* Step 1's right-hand pane. The strategy chooser stood here and asked
+           which kind of transfer you wanted before showing you your team; the
+           pitch answers that by being marked, so this says what to do and gets
+           out of the way. */
+        function twRenderPickPrompt(el) {
+            const chips = twChipsInHand();
+            const t = twLiveTotals();
+            el.innerHTML = `<div class="twc-panel tw-step-panel">
+                ${twStepHead({ icon: 'users', title: 'Who is leaving?',
+                    hint: 'Mark them on the pitch' })}
+                <div class="twc-panel-body">
+                    <div class="twc-idle">Click any player and the replacements you can afford for
+                    him appear here, ranked, with the reason each one is worth having.</div>
+                    <div class="tw-prompt-facts">
+                        <div><b>${t.free}</b> free transfer${t.free === 1 ? '' : 's'} in hand</div>
+                        <div><b>£${t.bank.toFixed(1)}m</b> in the bank before any sale</div>
+                        ${chips.wildcard ? '<div>Wildcard still available</div>' : ''}
+                        ${chips.freehit ? '<div>Free Hit still available</div>' : ''}
+                    </div>
+                </div>
+            </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        /* ===== Out against in, in numbers =====
+
+           The comparison used to be mostly prose. It is a table now, because the
+           question it answers — is this man better than the one I have — is
+           settled by figures side by side rather than by a paragraph about each
+           of them. Every row is an engine that already exists and is already on
+           screen elsewhere: the windowed per-match rates the scouting report
+           tabulates, the routes each of them scores through, and the actual
+           against expected reading. Nothing new is modelled here.
+
+           `delta` is signed from the incoming player's point of view, and rows
+           where less is better say so, because +0.4 conceded is not an upgrade. */
+        function twCompareRows(out, inc) {
+            const win = (p) => {
+                if (typeof buildStatWindows !== 'function') return null;
+                const hist = (typeof playersDetailData !== 'undefined' && playersDetailData
+                    && playersDetailData.players || []).find(x => x.id === p.id);
+                return buildStatWindows(p, (hist && hist.history) || p.history || []);
+            };
+            const a = win(out), b = win(inc);
+            if (!a || !b || !a.recent || !b.recent) return null;
+            const per = (w, key) => (w.recent[key] || 0) / (w.recent.games || 1);
+
+            const ROWS = [
+                { k: 'points', l: 'Points', dp: 1 },
+                { k: 'minutes', l: 'Minutes', dp: 0 },
+                { k: 'goals', l: 'Goals', dp: 2 },
+                { k: 'assists', l: 'Assists', dp: 2 },
+                { k: 'xG', l: 'xG', dp: 2 },
+                { k: 'xA', l: 'xA', dp: 2 },
+                { k: 'xGI', l: 'xGI', dp: 2 },
+                { k: 'cleanSheets', l: 'Clean sheets', dp: 2 },
+                { k: 'goalsConceded', l: 'Conceded', dp: 2, lower: true },
+                { k: 'xGC', l: 'xGC', dp: 2, lower: true },
+                { k: 'saves', l: 'Saves', dp: 1, gkOnly: true },
+                { k: 'defCon', l: 'Def. actions', dp: 1 },
+                { k: 'tackles', l: 'Tackles', dp: 1 },
+                { k: 'cbi', l: 'CBI', dp: 1 },
+                { k: 'recoveries', l: 'Recoveries', dp: 1 },
+                { k: 'threat', l: 'Threat', dp: 0 },
+                { k: 'creativity', l: 'Creativity', dp: 0 },
+                { k: 'bonus', l: 'Bonus', dp: 2 },
+                { k: 'bps', l: 'BPS', dp: 0 }
+            ];
+            const isGK = out.position === 1 || inc.position === 1;
+            return ROWS.filter(r => !r.gkOnly || isGK).map(r => {
+                const va = per(a, r.k), vb = per(b, r.k);
+                const d = vb - va;
+                const better = r.lower ? d < -0.005 : d > 0.005;
+                const worse = r.lower ? d > 0.005 : d < -0.005;
+                return { label: r.l, out: va.toFixed(r.dp), inc: vb.toFixed(r.dp),
+                    delta: (d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(r.dp),
+                    tone: better ? 'up' : worse ? 'down' : '', lower: !!r.lower };
+            });
+        }
+
+        function twRenderPitch(el) {
+            const { rows, bench } = twPitchRows();
+            const t = twLiveTotals();
             const gws = twPlanGWs(3);
-            el.querySelectorAll('.tw-sqc').forEach(node => {
-                const id = Number(node.dataset.pid);
-                const p = twSquad().find(x => x.id === id);
-                if (!p) return;
-                const i = slotOf(id);
+            const slotOf = id => transferState.pending.findIndex(x => x.soldPlayer.id === id);
+
+            const node = (p) => {
+                const i = slotOf(p.id);
                 const picked = i >= 0;
                 const slot = picked ? transferState.pending[i] : null;
                 const inP = slot && slot.replacement;
-                node.classList.toggle('is-picked', picked);
-                node.classList.toggle('is-active', picked && i === transferState.activeSlot);
-                node.classList.toggle('is-filled', !!inP);
-                node.setAttribute('aria-pressed', String(picked));
+                const active = picked && i === transferState.activeSlot;
+                const flag = p.status === 'i' || p.status === 'u' || p.status === 's' ? ' tw-pp-out'
+                    : p.status === 'd' ? ' tw-pp-doubt' : '';
+                const tip = inP
+                    ? `${p.name} out, ${inP.name} in — click to pick someone else`
+                    : picked ? `${p.name} is marked to leave — click to unmark`
+                    : `Mark ${p.name} to leave`;
+                return `<button class="tw-pp${picked ? ' is-picked' : ''}${inP ? ' is-filled' : ''}${active ? ' is-active' : ''}${flag}"
+                    data-pid="${p.id}" onclick="twSquadCardClick(${p.id})" aria-pressed="${picked}"
+                    data-tooltip="${escHTML(tip)}">
+                    <span class="tw-pp-hero">${typeof v2PlayerHeroHTML === 'function'
+                        ? v2PlayerHeroHTML({ ...p, price: p.sellPrice || p.price }, { size: 'mini' })
+                        : escHTML(p.name)}</span>
+                    <span class="tw-pp-name">${escHTML(inP ? inP.name : p.name)}</span>
+                    <span class="tw-pp-meta">${inP
+                        ? `<b class="tw-pp-in">${v2Icon('check')} in</b>`
+                        : `${twXPOver(p, gws).toFixed(1)} xP · £${(p.sellPrice || p.price).toFixed(1)}m`}</span>
+                </button>`;
+            };
 
-                const chip = node.querySelector('.pdm-hero-chip');
-                if (chip) {
-                    chip.classList.toggle('is-blank', !picked);
-                    if (picked) chip.textContent = String(i + 1);
-                }
+            const chips = twChipsInHand();
+            const overFree = t.marked > t.free && !t.chipFree;
+            const offer = overFree && (chips.wildcard || chips.freehit)
+                ? `<div class="tw-pitch-offer">
+                        ${t.marked} marked, ${t.free} free — that is a ${t.hitCost}-point hit.
+                        ${chips.wildcard ? `<button class="tw-linkbtn" onclick="twChoosePlan('wildcard')">Play your Wildcard instead</button>` : ''}
+                        ${chips.freehit ? `<button class="tw-linkbtn" onclick="twChoosePlan('freehit')">Free Hit</button>` : ''}
+                   </div>`
+                : overFree
+                    ? `<div class="tw-pitch-offer">${t.marked} marked, ${t.free} free — a ${t.hitCost}-point hit.</div>`
+                    : '';
 
-                const state = node.querySelector('.tw-outc-open, .tw-outc-in');
-                if (state) {
-                    if (inP) {
-                        state.className = 'tw-outc-in';
-                        state.innerHTML = `${v2Icon('check')} ${escHTML(inP.name)}`;
-                    } else {
-                        state.className = 'tw-outc-open';
-                        state.textContent = picked
-                            ? 'Choosing a replacement'
-                            : `${twXPOver(p, gws).toFixed(1)} xP next ${gws.length}`;
-                    }
-                }
-            });
-            const hint = el.querySelector('.twc-panel-hint');
-            if (hint) {
-                const n = transferState.pending.length;
-                hint.textContent = n
-                    ? `${n}${transferState.sellMode ? ` of ${twMaxTransfers()}` : ''} in the plan`
-                    : 'Click anyone to replace them';
-            }
-        }
+            const stat = (label, value, sub, tip) =>
+                `<span class="tw-pstat"${tip ? ` data-tooltip="${escHTML(tip)}"` : ''}>
+                    <b>${value}</b><em>${label}</em>${sub ? `<i>${sub}</i>` : ''}</span>`;
 
-        function twRenderSquadCards(el) {
-            /* Same squad as last time: nothing here needs rebuilding, and
-               rebuilding it is what makes the faces blink. */
-            const key = twSquadCardsKey();
-            if (twSquadCardsBuilt === key && el.querySelector('.tw-sqc')) {
-                twUpdateSquadCardStates(el);
-                return;
-            }
-            twSquadCardsBuilt = key;
-            const gws = twPlanGWs(3);
-            const slotOf = id => transferState.pending.findIndex(x => x.soldPlayer.id === id);
-            const positions = [
-                { type: 1, label: 'Goalkeepers' }, { type: 2, label: 'Defenders' },
-                { type: 3, label: 'Midfielders' }, { type: 4, label: 'Forwards' }
-            ];
-
-            let groups = '';
-            positions.forEach(pos => {
-                const players = twSquad().filter(p => p.position === pos.type);
-                if (!players.length) return;
-                const cards = players.map(p => {
-                    const i = slotOf(p.id);
-                    const picked = i >= 0;
-                    const slot = picked ? transferState.pending[i] : null;
-                    const active = picked && i === transferState.activeSlot;
-                    const inP = slot && slot.replacement;
-                    const flag = p.status === 'i' || p.status === 'u' || p.status === 's'
-                        ? '<span class="tw-sqc-flag out">OUT</span>'
-                        : p.status === 'd' ? `<span class="tw-sqc-flag doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}">?</span>` : '';
-                    return `<button class="tw-outc tw-sqc${picked ? ' is-picked' : ''}${active ? ' is-active' : ''}${inP ? ' is-filled' : ''}"
-                        data-pid="${p.id}"
-                        onclick="twSquadCardClick(${p.id})"
-                        aria-pressed="${picked}"
-                        data-tooltip="${inP
-                            ? escHTML(`${p.name} out, ${inP.name} in — click to pick someone else for this slot`)
-                            : picked
-                                ? escHTML(`Showing replacements for ${p.name} — click again to take him out of the plan`)
-                                : escHTML(`Move ${p.name} on`)}">
-                        <!-- The rank chip is always in the markup, hidden until the
-                             player is in the plan, so selecting one can reveal it
-                             rather than having to rebuild the card to add it. -->
-                        <span class="tw-outc-hero">${typeof v2PlayerHeroHTML === 'function'
-                            ? v2PlayerHeroHTML({ ...p, price: p.sellPrice || p.price },
-                                { size: 'compact', chip: picked ? String(i + 1) : '0',
-                                  chipClass: picked ? '' : 'is-blank' })
-                            : escHTML(p.name)}</span>
-                        <span class="tw-outc-foot">
-                            ${inP
-                                ? `<span class="tw-outc-in">${v2Icon('check')} ${escHTML(inP.name)}</span>`
-                                : picked
-                                    ? `<span class="tw-outc-open">Choosing a replacement</span>`
-                                    : `<span class="tw-outc-open">${twXPOver(p, gws).toFixed(1)} xP next ${gws.length}</span>`}
-                            ${flag}
-                            <span class="tw-outc-budget">£${(p.sellPrice || p.price).toFixed(1)}m</span>
-                        </span>
-                    </button>`;
-                }).join('');
-                groups += `<div class="tw-sqc-group">
-                    <div class="twc-group-head"><span>${pos.label}</span></div>
-                    <div class="tw-outc-list">${cards}</div>
-                </div>`;
-            });
-
-            const picked = transferState.pending.length;
-            const open = transferState.pending.filter(x => !x.replacement).length;
-            const max = twMaxTransfers();
-
-            el.innerHTML = `<div class="twc-panel tw-outrail">
-                <div class="twc-panel-head">
-                    <span class="twc-panel-title">${v2Icon('users')} Your squad</span>
-                    <span class="twc-panel-hint">${picked ? `${picked}${transferState.sellMode ? ` of ${max}` : ''} in the plan` : 'Click anyone to replace them'}</span>
+            el.innerHTML = `<div class="twc-panel tw-pitchpanel">
+                <div class="twc-panel-head tw-pitch-head">
+                    ${stat('squad value', `£${t.value.toFixed(1)}m`, '', 'What the fifteen are worth at their selling prices.')}
+                    ${stat('in the bank', `£${t.bank.toFixed(1)}m`, '',
+                        'Your bank, plus what the players you have marked would sell for, minus anyone you have already bought.')}
+                    ${stat('xP next GW', t.xpNext.toFixed(1), t.hitCost ? `−${t.hitCost} hit` : '',
+                        'Projected points for the starting eleven, as the plan currently stands.')}
+                    ${stat(`xP next ${t.span}`, t.xpRun.toFixed(1), '',
+                        `Projected points for the eleven across the next ${t.span} gameweeks.`)}
+                    ${stat('marked', `${t.marked}${t.chipFree ? '' : `/${t.free}`}`,
+                        t.chipFree ? 'no hits' : (t.hits ? `${t.hits} hit${t.hits === 1 ? '' : 's'}` : 'free'),
+                        t.chipFree ? 'A chip is active, so there are no hits to pay.' : 'Marked to leave, against the free transfers you hold.')}
                 </div>
-                <div class="twc-panel-body">
-                    ${open > 1 ? `<button class="tw-outrail-fill" onclick="twFillAllSlots()" data-tooltip="Pick the best affordable replacement for every open slot, sharing the bank across them.">${v2Icon('bolt')} Fill all ${open} slots</button>` : ''}
-                    ${groups}
+                ${offer}
+                <div class="tw-pitch">
+                    <div class="tw-pitch-rows">
+                        ${rows.map(r => `<div class="tw-pitch-row">${r.map(node).join('')}</div>`).join('')}
+                    </div>
                 </div>
+                <div class="tw-pitch-bench">
+                    <span class="tw-pitch-bench-l">Bench</span>
+                    ${bench.map(node).join('')}
+                </div>
+                <div class="tw-pitch-hint">${transferState.pending.length
+                    ? 'Pick a replacement on the right. Everything above moves as you do.'
+                    : 'Click anyone to mark them for sale.'}</div>
             </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
+
+        /* twRenderSquadCards() lived here — the squad as a column of cards
+           beside the market. twRenderPitch() replaced it: the same click
+           handler and the same three states, on a pitch, because the shape of
+           the team is itself information and a list threw it away. */
 
         /* One click on a squad card.
 
@@ -1604,9 +1715,10 @@
         function renderTWSquadPane() {
             const el = document.getElementById('twSquadPane');
             if (!el) return;
-            /* On the swap step the squad is a column of cards beside the
-               market, not a table of rows. */
-            if (twStep() === 2) return twRenderSquadCards(el);
+            /* The pitch, at every step. It is the thing being changed, so it is
+               the thing on screen — and seeing a marked man go red and the
+               projected points move is the feedback the card list never gave. */
+            return twRenderPitch(el);
             /* The squad is on screen at every step, but it is only a control at
                some of them. On step 1 no plan has been chosen yet, so there is
                no answer to how many players you may move — Swap is shown and
@@ -1768,7 +1880,7 @@
             const el = document.getElementById('twMarketPane');
             if (!el) return;
             const step = twStep();
-            if (step === 1) return twRenderPlanStep(el);
+            if (step === 1) return twRenderPickPrompt(el);
             const mode = transferState.mode;
             if (mode === 'compare' && transferState.previewPlayer && transferState.activeSlot >= 0) return renderTWComparison(el);
             if (mode === 'market' && transferState.activeSlot >= 0) return renderTWMarket(el);
@@ -1801,58 +1913,15 @@
            and captioned only by a tooltip, which is a strange way to ask the
            one question that decides everything after it: how many transfers
            you get and what they cost. Four cards that say so instead. */
-        const TW_PLAN_COPY = {
-            single:   { icon: 'swap',   what: 'One player out, one in.',
-                        moves: '1 transfer', cost: 'Free, then −4 each', span: 'Next 5 GWs',
-                        when: 'The normal week. Pick the one move that helps most and bank the rest.' },
-            multi:    { icon: 'shuffle', what: 'Several players out at once, sharing one bank.',
-                        moves: 'Up to 5', cost: '−4 per extra', span: 'Next 5 GWs',
-                        when: 'When two problems have to be fixed together, or one sale pays for another.' },
-            wildcard: { icon: 'chip',   what: 'Rebuild the whole squad. No hits.',
-                        moves: 'Unlimited', cost: 'No hits', span: 'Next 5 GWs',
-                        when: 'You keep this squad, so it is judged over a run of fixtures rather than one week.' },
-            freehit:  { icon: 'ticket', what: 'A squad for one gameweek, then you get yours back.',
-                        moves: 'Unlimited', cost: 'No hits', span: 'This GW only',
-                        when: 'A blank or a double. Nothing beyond Sunday counts, so it is scored over one week.' }
-        };
+        // TW_PLAN_COPY went with twRenderPlanStep(). TW_STRATEGIES stays: the
+        // strategy is still a real thing, chosen from the pitch rather than
+        // declared before it.
 
-        function twRenderPlanStep(el) {
-            const chosen = transferState.strategy;
-            const ft = twFreeTransfers();
-
-            const cards = TW_STRATEGIES.map(x => {
-                const c = TW_PLAN_COPY[x.id] || {};
-                const on = chosen === x.id;
-                return `<button class="tw-plan${on ? ' is-on' : ''}" onclick="twChoosePlan('${x.id}')"
-                    aria-pressed="${on}">
-                    <span class="tw-plan-top">
-                        <span class="tw-plan-ico">${v2Icon(c.icon || 'swap')}</span>
-                        <span class="tw-plan-name">${escHTML(x.label)}</span>
-                        <span class="tw-plan-tick">${v2Icon('check')}</span>
-                    </span>
-                    <span class="tw-plan-what">${escHTML(c.what || '')}</span>
-                    <span class="tw-plan-facts">
-                        <span class="tw-plan-fact"><em>Transfers</em><b>${escHTML(c.moves || '')}</b></span>
-                        <span class="tw-plan-fact"><em>Cost</em><b>${escHTML(c.cost || '')}</b></span>
-                        <span class="tw-plan-fact"><em>Judged over</em><b>${escHTML(c.span || '')}</b></span>
-                    </span>
-                    <span class="tw-plan-when">${escHTML(c.when || '')}</span>
-                </button>`;
-            }).join('');
-
-            const chosenLabel = chosen ? (TW_STRATEGIES.find(x => x.id === chosen) || {}).label : '';
-
-            el.innerHTML = `<div class="twc-panel tw-step-panel">
-                ${twStepHead({
-                    icon: 'sliders', title: 'How are you transferring?',
-                    hint: `You have ${ft} free transfer${ft === 1 ? '' : 's'} this week`,
-                    next: chosen ? { label: 'Start swapping', on: 'twGoStep(2)', tip: `You are on ${chosenLabel}. Pick another card to change it.` } : null
-                })}
-                <div class="twc-panel-body">
-                    <div class="tw-plans">${cards}</div>
-                </div>
-            </div>`;
-        }
+        /* twRenderPlanStep() lived here — four cards asking which KIND of
+           transfer you wanted before showing you your squad. You cannot answer
+           that until you have looked at who is in the team, so the pitch asks
+           it by being marked: one is free, more is a hit, and a chip is offered
+           at the point where it starts to pay. */
 
         /* ===== Step 2 · who leaves =====
 
@@ -1935,11 +2004,14 @@
             // Reserved money is not a preference — it is the cheapest body each
             // other open slot needs. Spending it here leaves those slots
             // unfillable, so the way out is to drop a slot, not to overspend.
-            const strandsOthers = !affordable && reserved > 0
-                && cand.price <= getTWLiveITB() + (slot.replacement ? slot.replacement.price : 0) + 0.001;
-            const blockedReason = strandsOthers
-                ? `£${reserved.toFixed(1)}m is reserved to fill your other open slots, leaving £${itb.toFixed(1)}m here — remove a slot to free it`
-                : !affordable
+            /* Nothing is held back from this slot any more, so a candidate is
+               either affordable out of the whole bank or he is not. What the
+               reserve used to prevent is now allowed and reported: buying him
+               may leave another open slot with too little to fill it, which is
+               a consequence to state rather than a purchase to refuse. */
+            const strandsOthers = false;
+            const stranded = affordable && reserved > 0 && (itb - cand.price) < reserved;
+            const blockedReason = !affordable
                     ? `£${cand.price.toFixed(1)}m is outside the £${itb.toFixed(1)}m this slot has`
                     : clubFull
                         ? `You already hold three players from ${escHTML(cand.team || 'that club')}`
@@ -1973,11 +2045,29 @@
                 ? { cls: 'bad', text: `${escHTML(cand.name)} fits your total bank but not this slot — £${reserved.toFixed(1)}m is held back to fill your other open transfers, leaving £${itb.toFixed(1)}m here. Drop one of those slots and he becomes affordable.` }
                 : !affordable
                 ? { cls: 'bad', text: `You cannot afford ${escHTML(cand.name)} — £${cand.price.toFixed(1)}m against £${itb.toFixed(1)}m available.` }
+                : stranded
+                ? { cls: 'flat', text: `${escHTML(cand.name)} is affordable, but buying him leaves £${(itb - cand.price).toFixed(1)}m for your other open transfer${transferState.pending.filter(x => !x.replacement).length > 2 ? 's' : ''} — about £${reserved.toFixed(1)}m short of the cheapest player who could fill ${transferState.pending.filter(x => !x.replacement).length > 2 ? 'them' : 'it'}. Drop that slot or spend less here.` }
                 : delta > 0.3
                     ? { cls: 'good', text: `Recommended. ${escHTML(cand.name)} projects <strong>+${delta.toFixed(1)} points</strong> more than ${escHTML(sold.name)} over the next ${planGWs.length} gameweeks${getTWHitCost() > 0 && !transferState.wildcard ? `, before the ${getTWHitCost()}-point hit this plan carries` : ''}.` }
                     : delta < -0.3
                         ? { cls: 'bad', text: `Not recommended. ${escHTML(cand.name)} projects <strong>${delta.toFixed(1)} points</strong> against ${escHTML(sold.name)} over the next ${planGWs.length} gameweeks.` }
                         : { cls: 'flat', text: `Close call — about ${Math.abs(delta).toFixed(1)} points between them over the next ${planGWs.length} gameweeks. Not worth a hit on projection alone.` };
+
+            /* The windowed per-match table, from the same engine the scouting
+               report tabulates — buildStatWindows, so the two surfaces cannot
+               disagree about a player. Every figure is per match his club
+               played, which is the denominator that makes two players with
+               different appearance counts comparable at all. */
+            const cmp = twCompareRows(sold, cand);
+            const cmpHtml = !cmp ? '' : `
+                <div class="twh-sub">Per match, over the window</div>
+                <div class="twh-grid twh-grid-data">
+                    ${cmp.map(r => `<div class="twh-row">
+                        <div class="twh-a ${r.tone === 'down' ? 'win' : ''}">${r.out}</div>
+                        <div class="twh-l"${r.lower ? ' data-tooltip="Fewer is better on this row."' : ''}>${escHTML(r.label)}${r.lower ? ' <em>&darr;</em>' : ''}</div>
+                        <div class="twh-b ${r.tone === 'up' ? 'win' : ''}">${r.inc}<span class="twh-d ${r.tone}">${r.delta}</span></div>
+                    </div>`).join('')}
+                </div>`;
 
             let statRows = '';
             for (let i = 0; i < Math.min(statsS.length, statsC.length); i++) {
@@ -2047,6 +2137,7 @@
                         ${row('Price', '£' + (sold.sellPrice || sold.price).toFixed(1) + 'm', '£' + cand.price.toFixed(1) + 'm', false, 'Selling price against buying price.')}
                         ${statRows}
                     </div>
+                    ${cmpHtml}
 
                     <div class="twh-chart"><canvas id="twFdrCanvas"></canvas></div>
                     <div class="twh-chart-note">Fixture difficulty over the next ${fdrGWs.length} gameweeks — lower is easier. A gap means no fixture.</div>
@@ -2374,7 +2465,8 @@
             if (!candidate) return;
             transferState.previewPlayer = candidate;
             transferState.mode = 'compare';
-            twGoStep(3);
+            // Compare is a mode of the swap step. The pitch stays beside it.
+            twGoStep(2);
         }
 
         function twBackToMarket() {
@@ -2431,7 +2523,7 @@
             } else {
                 transferState.mode = 'summary';
                 transferState.activeSlot = -1;
-                twGoStep(4);
+                twGoStep(2);
             }
         }
 
@@ -2513,7 +2605,7 @@
             } else {
                 transferState.mode = 'summary';
                 transferState.activeSlot = -1;
-                twGoStep(4);
+                twGoStep(2);
             }
         }
 
@@ -2530,7 +2622,7 @@
             if (!transferState.pending.every(s => s.replacement)) return;
             if (transferState.pending.length === 0) return;
             transferState.mode = 'summary';
-            twGoStep(4);
+            twGoStep(2);
         }
 
         /* ===== Step 5 · confirm =====
@@ -2931,7 +3023,7 @@
             transferState.previewPlayer = null;
             transferState.candidateCache = {};
             transferState.mode = 'summary';
-            twGoStep(4);
+            twGoStep(2);
             updateStatus(`${moves.length} transfer${moves.length === 1 ? '' : 's'} applied on EasyFPL — now make ${moves.length === 1 ? 'it' : 'them'} on the FPL site`, 'success');
         }
 
