@@ -148,7 +148,12 @@ function updateCompareBar() {
                 saves: t.saves, penaltiesSaved: t.penaltiesSaved, penaltiesMissed: t.penaltiesMissed,
                 bonus: t.bonus, bps: t.bps,
                 ict: t.ict, influence: t.influence, creativity: t.creativity, threat: t.threat,
-                defCon: t.defCon,
+                /* The defensive counts behind the contribution total. FPL
+                   publishes tackles, clearances/blocks/interceptions and
+                   recoveries per match and pfMatchStats has always parsed them;
+                   nothing on the site showed them, so a defender's work could
+                   only be seen through the single number it adds up to. */
+                defCon: t.defCon, tackles: t.tackles, cbi: t.cbi, recoveries: t.recoveries,
                 homeSplit: splits ? splits.home : null,
                 awaySplit: splits ? splits.away : null
             };
@@ -239,6 +244,20 @@ function updateCompareBar() {
                 const bonusPerGame = (p.l5?.bonus || 0) / l5Matches;
                 const savesPerGame = (p.l5?.saves || 0) / l5Matches;
                 const csPerGame = (p.l5?.cleanSheets || 0) / l5Matches;
+                /* The rest of what FPL actually publishes, per match. Threat,
+                   creativity and influence are the ICT components — indices
+                   rather than counts, and named as such rather than dressed up
+                   as the shot and key-pass numbers they are not. Tackles, CBI
+                   and recoveries are counts, and are the defensive work the
+                   contribution threshold is measured over. */
+                const threatPerGame = (p.l5?.threat || 0) / l5Matches;
+                const creativityPerGame = (p.l5?.creativity || 0) / l5Matches;
+                const influencePerGame = (p.l5?.influence || 0) / l5Matches;
+                const ictPerGame = (p.l5?.ict || 0) / l5Matches;
+                const defConPerGame = (p.l5?.defCon || 0) / l5Matches;
+                const tacklesPerGame = (p.l5?.tackles || 0) / l5Matches;
+                const cbiPerGame = (p.l5?.cbi || 0) / l5Matches;
+                const recoveriesPerGame = (p.l5?.recoveries || 0) / l5Matches;
                 const valueScore = ptsPerGame / (p.price || 1);
                 const appearanceLabel = p.l5?.appearances == null ? null
                     : `${p.l5.appearances} of ${p.l5.games}`;
@@ -344,6 +363,8 @@ function updateCompareBar() {
                 return {
                     ...p, pos, ptsPerGame, minsPerGame, xgiPerGame, xgPerGame, xaPerGame,
                     bonusPerGame, savesPerGame, csPerGame, valueScore, appearanceLabel,
+                    threatPerGame, creativityPerGame, influencePerGame, ictPerGame,
+                    defConPerGame, tacklesPerGame, cbiPerGame, recoveriesPerGame,
                     reliability, explosiveness,
                     consistency, xPts, csProb, ts, swing, risingScore, routesData, routes, routeSignals,
                     risingSignals, risingNote, homeSplit, awaySplit, xgOverperf, seasonGoals, seasonXgVal
@@ -472,81 +493,198 @@ function updateCompareBar() {
             return picks;
         }
 
-        function generatePlayerNarrative(player, allReportData) {
+        /* The scout's take on one player, written against the others.
+
+           This was three bullet lists — a verdict fragment, up to five
+           strengths, up to four concerns and two comparative asides — which is
+           a form that hides the thing the reader came for. "3 routes to points",
+           "100% return rate", "Team in strong form (86/100)" sit at equal weight
+           in a column, so nothing says which of them decides the pick, and the
+           one line that actually compares the two players is the last and
+           smallest thing on the card.
+
+           It is a paragraph now, in the voice the profile card's Scout's Take
+           uses, and it is comparison-aware throughout rather than in a footnote:
+           the whole reason to open this report instead of two profile cards is
+           to be told how these particular players differ.
+
+           Every beat has three phrasings, chosen by pfPick on a seed of the
+           player and the company he is in — so a player reads the same each time
+           you open the same comparison, differently from the man beside him, and
+           differently again when you swap who he is compared against. */
+        function buildScoutTake(player, allReportData) {
             const pos = player.pos;
             const others = allReportData.filter(p => p.id !== player.id);
             const isDefPos = (pos === 'GK' || pos === 'DEF');
+            const seedTail = allReportData.map(p => p.id).join('-');
+            const pick = (beat, options) => (typeof pfPick === 'function'
+                ? pfPick(`${player.id}:${seedTail}:${beat}`, options) : options[0]);
+            const s = [];
+            const fdr = player.fixtures?.avgFDR3 || 3;
 
-            // Overall verdict
-            let verdictParts = [];
-            if (player.ptsPerGame >= 6) verdictParts.push('premium output');
-            else if (player.ptsPerGame >= 4) verdictParts.push('solid output');
-            else verdictParts.push('modest output');
+            // ── What he is, at what price.
+            const tier = player.ptsPerGame >= 6 ? 'premium' : player.ptsPerGame >= 4 ? 'solid' : 'modest';
+            s.push(pick('lead', {
+                premium: [
+                    `${player.name} is returning ${player.ptsPerGame.toFixed(1)} a match at £${player.price.toFixed(1)}m, which is premium output.`,
+                    `At ${player.ptsPerGame.toFixed(1)} points a match, ${player.name} is scoring at the rate you pay £${player.price.toFixed(1)}m for.`,
+                    `${player.name} has been worth the money — ${player.ptsPerGame.toFixed(1)} a match from a £${player.price.toFixed(1)}m asset.`],
+                solid: [
+                    `${player.name} is a steady ${player.ptsPerGame.toFixed(1)} a match at £${player.price.toFixed(1)}m.`,
+                    `${player.ptsPerGame.toFixed(1)} points a match from ${player.name} — dependable rather than spectacular, at £${player.price.toFixed(1)}m.`,
+                    `${player.name} has been reliable without being explosive: ${player.ptsPerGame.toFixed(1)} a match, £${player.price.toFixed(1)}m.`],
+                modest: [
+                    `${player.name} is on ${player.ptsPerGame.toFixed(1)} a match at £${player.price.toFixed(1)}m, which is thin.`,
+                    `The returns have not come — ${player.ptsPerGame.toFixed(1)} a match for a £${player.price.toFixed(1)}m player.`,
+                    `${player.name} has managed ${player.ptsPerGame.toFixed(1)} points a match, which is modest at £${player.price.toFixed(1)}m.`]
+            }[tier]));
 
-            if (player.explosiveness >= 30) verdictParts.push('high ceiling');
-            if (player.reliability >= 70) verdictParts.push('consistent returns');
-            if ((player.fixtures?.avgFDR3 || 3) <= 2.5) verdictParts.push('excellent fixtures');
-            else if ((player.fixtures?.avgFDR3 || 3) >= 4) verdictParts.push('tough fixtures ahead');
-            if (player.risingScore != null && player.risingScore >= 10) verdictParts.push('form on the rise');
-
-            const verdict = verdictParts.length > 0
-                ? `${verdictParts[0].charAt(0).toUpperCase() + verdictParts[0].slice(1)} player with ${verdictParts.slice(1).join(', ')}.`
-                : 'Average profile across metrics.';
-
-            // Strengths
-            const strengths = [];
-            const routeCount = player.routesData ? player.routesData.routeCount : null;
-            if (routeCount >= 3) strengths.push(`${routeCount} routes to points — multi-dimensional scorer`);
-            else if (routeCount >= 2) strengths.push(`${routeCount} routes to points`);
-
-            if (player.valueScore > 0.8) strengths.push(`Strong value at £${player.price.toFixed(1)}m (${player.valueScore.toFixed(2)} pts/£m)`);
-            if (player.minsPerGame >= 85) strengths.push('Nailed-on starter — 85+ minutes of every match his club plays');
-            if (player.reliability >= 70) strengths.push(`${player.reliability.toFixed(0)}% return rate — rarely blanks`);
-            if (player.explosiveness >= 30) strengths.push(`${player.explosiveness.toFixed(0)}% explosive — frequent hauls`);
-
-            if (isDefPos && player.csProb >= 0.35) strengths.push(`${(player.csProb * 100).toFixed(0)}% CS probability next GW`);
-            if (!isDefPos && player.xgiPerGame >= 0.5) strengths.push(`Elite ${player.xgiPerGame.toFixed(2)} xGI/match`);
-
-            if (player.ts?.formRating > 60) strengths.push(`Team in strong form (${player.ts.formRating.toFixed(0)}/100)`);
-            if (player.swing?.direction === 'improving') strengths.push(`Fixture swing improving — FDR ${player.swing.currentFdr} → ${player.swing.futureFdr}`);
-
-            // Concerns
-            const concerns = [];
-            if ((player.fixtures?.avgFDR3 || 3) >= 4) concerns.push(`Tough fixtures (FDR ${(player.fixtures?.avgFDR3 || 3).toFixed(1)}) — short-term ceiling limited`);
-            /* The count as well as the rate. "41 minutes per match" is true of a
-               man rotated through every one of them and of a man who arrived
-               halfway through the window and has started both since — and the
-               advice for those two is opposite. The appearance count is what
-               tells them apart, so it is said rather than left implied. */
-            if (player.minsPerGame < 70 && player.minsPerGame > 0) {
-                const apps = player.l5?.appearances, matches = player.l5?.games;
-                concerns.push(`Rotation risk — ${player.minsPerGame.toFixed(0)} minutes per match his club played`
-                    + (apps != null && matches ? ` (started or came on in ${apps} of ${matches})` : ''));
+            // ── Minutes, with the appearance count so rotation cannot be inferred
+            //    from a low average that a mid-window arrival also produces.
+            const apps = player.l5?.appearances, matches = player.l5?.games;
+            const of = (apps != null && matches) ? ` (${apps} of ${matches})` : '';
+            if (player.minsPerGame >= 85) {
+                s.push(pick('mins', [
+                    `He is nailed on, playing ${player.minsPerGame.toFixed(0)} minutes of every match his club has played${of}.`,
+                    `Minutes are not a question: ${player.minsPerGame.toFixed(0)} a match${of}.`,
+                    `He starts and finishes — ${player.minsPerGame.toFixed(0)} minutes per club match${of}.`]));
+            } else if (player.minsPerGame > 0 && player.minsPerGame < 70) {
+                s.push(pick('mins', [
+                    `Minutes are the catch: ${player.minsPerGame.toFixed(0)} per match his club played${of}.`,
+                    `He is not guaranteed to start — ${player.minsPerGame.toFixed(0)} minutes a match${of}.`,
+                    `${player.minsPerGame.toFixed(0)} minutes per club match${of} is rotation territory.`]));
             }
-            if (player.xgOverperf > 2) concerns.push(`Overperforming xG by ${player.xgOverperf.toFixed(1)} goals — regression risk`);
-            /* `null < 4` is true, so an unmeasured player would have been called
-               volatile — the concern has to test that we measured it at all. */
-            if (player.consistency != null && player.consistency < 4) concerns.push('Volatile returns — high variance in recent points');
-            if (player.swing?.direction === 'worsening') concerns.push(`Fixtures worsening — FDR ${player.swing.currentFdr} → ${player.swing.futureFdr}`);
-            if (player.ts?.formRating < 40) concerns.push(`Team struggling (form ${player.ts?.formRating?.toFixed(0) || '?'}/100)`);
 
-            // Comparative edges
-            const edges = [];
-            for (const other of others) {
-                const ptsDiff = player.ptsPerGame - other.ptsPerGame;
-                const priceDiff = player.price - other.price;
-                if (Math.abs(ptsDiff) >= 0.5) {
-                    if (ptsDiff > 0 && priceDiff <= 0) {
-                        edges.push(`Outscores ${other.name} by ${ptsDiff.toFixed(1)} pts/match and is £${Math.abs(priceDiff).toFixed(1)}m cheaper`);
-                    } else if (ptsDiff > 0 && priceDiff > 0) {
-                        edges.push(`${ptsDiff.toFixed(1)} pts/match more than ${other.name} but costs £${priceDiff.toFixed(1)}m extra`);
-                    } else if (ptsDiff < 0 && priceDiff < 0) {
-                        edges.push(`£${Math.abs(priceDiff).toFixed(1)}m cheaper than ${other.name} despite only ${Math.abs(ptsDiff).toFixed(1)} pts/match less`);
-                    }
+            // ── Where the points come from, by name rather than by count.
+            const names = (player.routes || []).map(r => r.name.toLowerCase());
+            if (names.length >= 3) {
+                s.push(pick('routes', [
+                    `The points arrive by several roads — ${listOf(names)} — so one drying up does not end the return.`,
+                    `He scores in more than one way: ${listOf(names)}.`,
+                    `${listOf(names, true)} all pay him, which is what makes the floor hold up.`]));
+            } else if (names.length) {
+                s.push(pick('routes', [
+                    `Almost everything comes through ${listOf(names)}, so the return rides on that alone.`,
+                    `${listOf(names, true)} is the whole case — a narrow profile.`,
+                    `One road to points here: ${listOf(names)}.`]));
+            }
+
+            // ── Reliability and ceiling, only when they were measurable.
+            if (player.reliability != null && player.reliability >= 70) {
+                s.push(pick('rel', [
+                    `He returns something in ${player.reliability.toFixed(0)}% of the matches he plays.`,
+                    `Blanks are rare — a return in ${player.reliability.toFixed(0)}% of his appearances.`,
+                    `${player.reliability.toFixed(0)}% of his appearances bring a return.`]));
+            }
+            if (player.explosiveness != null && player.explosiveness >= 30) {
+                s.push(pick('ceil', [
+                    `And the ceiling is real: ${player.explosiveness.toFixed(0)}% of them are double-digit hauls.`,
+                    `${player.explosiveness.toFixed(0)}% of his appearances go double figures.`,
+                    `He hauls often — ${player.explosiveness.toFixed(0)}% of appearances reach ten points.`]));
+            }
+
+            // ── The club, in goals rather than in a rating out of a hundred.
+            const ts = player.ts || {};
+            if (ts.matchesPlayed) {
+                const wdl = `${ts.wins}W ${ts.draws}D ${ts.losses}L`;
+                const scored = (ts.avgGoals || 0).toFixed(1), conceded = (ts.avgConceded || 0).toFixed(1);
+                s.push(isDefPos
+                    ? pick('team', [
+                        `${player.team} are ${wdl} and concede ${conceded} a game, with ${ts.totalCS || 0} clean sheet${(ts.totalCS || 0) === 1 ? '' : 's'} in ${ts.matchesPlayed}.`,
+                        `Behind him, ${player.team} have kept ${ts.totalCS || 0} clean sheet${(ts.totalCS || 0) === 1 ? '' : 's'} in ${ts.matchesPlayed} and ship ${conceded} a game (${wdl}).`,
+                        `The defence matters here: ${conceded} conceded a game, ${ts.totalCS || 0} shut-outs in ${ts.matchesPlayed}, ${wdl}.`])
+                    : pick('team', [
+                        `${player.team} are ${wdl} and scoring ${scored} a game.`,
+                        `The side around him is producing — ${scored} goals a game, ${wdl}.`,
+                        `${player.team} have ${wdl} behind them and average ${scored} goals a game.`]));
+            }
+
+            // ── Fixtures, including the swing when there is one.
+            if (player.swing?.direction === 'improving') {
+                s.push(pick('fix', [
+                    `The run is turning in his favour — FDR ${player.swing.currentFdr} to ${player.swing.futureFdr}.`,
+                    `Fixtures improve from here: FDR ${player.swing.currentFdr} → ${player.swing.futureFdr}.`,
+                    `The calendar opens up, FDR ${player.swing.currentFdr} becoming ${player.swing.futureFdr}.`]));
+            } else if (player.swing?.direction === 'worsening') {
+                s.push(pick('fix', [
+                    `The fixtures harden from here — FDR ${player.swing.currentFdr} to ${player.swing.futureFdr}.`,
+                    `The run gets worse, not better: FDR ${player.swing.currentFdr} → ${player.swing.futureFdr}.`,
+                    `Against him, the calendar tightens — FDR ${player.swing.currentFdr} becoming ${player.swing.futureFdr}.`]));
+            } else if (fdr <= 2.5) {
+                s.push(pick('fix', [`The next three are kind at FDR ${fdr.toFixed(1)}.`,
+                    `Fixtures are favourable — FDR ${fdr.toFixed(1)} over three.`,
+                    `A soft run immediately, FDR ${fdr.toFixed(1)}.`]));
+            } else if (fdr >= 4) {
+                s.push(pick('fix', [`The next three are unforgiving at FDR ${fdr.toFixed(1)}, which caps the short term.`,
+                    `FDR ${fdr.toFixed(1)} over the next three is a hard run to own through.`,
+                    `Short term the fixtures are against him — FDR ${fdr.toFixed(1)}.`]));
+            }
+
+            // ── What could go wrong.
+            if (player.xgOverperf > 2) {
+                s.push(pick('reg', [
+                    `One caution: he is ${player.xgOverperf.toFixed(1)} goals ahead of his xG this season, and that gap usually closes.`,
+                    `He has outscored his chances by ${player.xgOverperf.toFixed(1)} goals, which tends not to last.`,
+                    `The finishing has been hot — ${player.xgOverperf.toFixed(1)} goals above expected — so expect some regression.`]));
+            }
+            if (isDefPos && player.csProb >= 0.35) {
+                s.push(pick('cs', [`A clean sheet next week is live at ${(player.csProb * 100).toFixed(0)}%.`,
+                    `${(player.csProb * 100).toFixed(0)}% clean-sheet chance in the next match.`,
+                    `Next week's shut-out is a ${(player.csProb * 100).toFixed(0)}% shot.`]));
+            }
+
+            // ── Against the men he is being compared with. The point of the page.
+            others.forEach(other => {
+                const dPts = player.ptsPerGame - other.ptsPerGame;
+                const dPrice = player.price - other.price;
+                const dMins = player.minsPerGame - other.minsPerGame;
+                const dRoutes = (player.routesData?.routeCount || 0) - (other.routesData?.routeCount || 0);
+                const money = Math.abs(dPrice).toFixed(1);
+                const beat = `vs${other.id}`;
+
+                if (Math.abs(dPts) < 0.5 && Math.abs(dPrice) < 0.3) {
+                    // Level on the headline, so the tie-breaker is the story.
+                    const edge = dMins > 15 ? `he plays ${Math.round(Math.abs(dMins))} more minutes a match`
+                        : dMins < -15 ? `${other.name} plays ${Math.round(Math.abs(dMins))} more minutes a match`
+                        : dRoutes > 0 ? `he scores in more ways`
+                        : dRoutes < 0 ? `${other.name} scores in more ways`
+                        : null;
+                    s.push(pick(beat, [
+                        `Against ${other.name} there is almost nothing in it on points or price${edge ? `, so it comes down to this: ${edge}` : ''}.`,
+                        `He and ${other.name} are level on both output and cost${edge ? ` — ${edge}` : ''}.`,
+                        `${other.name} is the same bet at the same price${edge ? `, except that ${edge}` : ''}.`]));
+                } else if (dPts > 0 && dPrice <= 0) {
+                    s.push(pick(beat, [
+                        `He beats ${other.name} on both counts — ${dPts.toFixed(1)} more points a match${dPrice < 0 ? ` and £${money}m cheaper` : ' at the same price'}.`,
+                        `Against ${other.name} there is no trade-off: ${dPts.toFixed(1)} points a match more${dPrice < 0 ? `, £${money}m less` : ''}.`,
+                        `${other.name} costs ${dPrice < 0 ? `£${money}m more` : 'the same'} and returns ${dPts.toFixed(1)} a match less.`]));
+                } else if (dPts > 0) {
+                    s.push(pick(beat, [
+                        `He outscores ${other.name} by ${dPts.toFixed(1)} a match, and the £${money}m extra is what you are paying for it.`,
+                        `The ${dPts.toFixed(1)} points a match he has over ${other.name} cost £${money}m.`,
+                        `Better than ${other.name} by ${dPts.toFixed(1)} a match — at a £${money}m premium.`]));
+                } else if (dPrice < 0) {
+                    s.push(pick(beat, [
+                        `He gives up ${Math.abs(dPts).toFixed(1)} a match to ${other.name} but frees £${money}m for the rest of the squad.`,
+                        `${Math.abs(dPts).toFixed(1)} points a match behind ${other.name}, £${money}m cheaper — the saving has to go somewhere useful.`,
+                        `The case over ${other.name} is the £${money}m, not the points: he is ${Math.abs(dPts).toFixed(1)} a match short.`]));
+                } else {
+                    s.push(pick(beat, [
+                        `${other.name} is both cheaper and more productive, which is hard to argue with.`,
+                        `On these numbers ${other.name} wins on both price and output.`,
+                        `Against ${other.name} he is behind on points and dearer.`]));
                 }
-            }
+            });
 
-            return { verdict, strengths: strengths.slice(0, 5), concerns: concerns.slice(0, 4), edges: edges.slice(0, 2) };
+            return s;
+        }
+
+        // "goals, clean sheets and bonus" — an Oxford-free list, capitalised on
+        // request for the phrasings that open with it.
+        function listOf(items, capitalise) {
+            const out = items.length <= 1 ? (items[0] || '')
+                : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+            return capitalise ? out.charAt(0).toUpperCase() + out.slice(1) : out;
         }
 
         function getRadarAxes(reportData) {
@@ -613,7 +751,11 @@ function updateCompareBar() {
             // Determine stat groups based on positions present
             const hasGK = reportData.some(p => p.pos === 'GK');
             const hasDEF = reportData.some(p => p.pos === 'DEF' || p.pos === 'GK');
-            const hasAttacker = reportData.some(p => p.pos === 'MID' || p.pos === 'FWD');
+            /* Any outfielder, not just a midfielder or a forward. A defender who
+               scores from corners has attacking output that decides whether you
+               own him, and gating these rows on MID/FWD hid xGI, xG and xA for
+               every defence-only comparison — which is most of them. */
+            const hasAttacker = reportData.some(p => p.pos !== 'GK');
 
             // Build enhanced stat rows
             /* Recent form, from the shared builder in scripts/player-profile.js
@@ -692,10 +834,28 @@ function updateCompareBar() {
                 statRows.push({ group: 'Attacking' });
                 statRows.push({ label: 'xGI/Match', key: 'xgiPerGame', fmt: v => v?.toFixed(2) || '-' });
                 statRows.push({ label: 'xG/Match', key: 'xgPerGame', fmt: v => v?.toFixed(2) || '-' });
+                statRows.push({ label: 'xA/Match', key: 'xaPerGame', fmt: v => v?.toFixed(2) || '-' });
+                /* The ICT components, named as the indices they are. They are
+                   FPL's own weighting of shooting, chance creation and general
+                   involvement — the closest thing published to a shot count or a
+                   key-pass count, and not either of them, so they keep their own
+                   names and their own units. */
+                statRows.push({ label: 'Threat/Match', key: 'threatPerGame', fmt: v => v == null ? '—' : v.toFixed(0) });
+                statRows.push({ label: 'Creativity/Match', key: 'creativityPerGame', fmt: v => v == null ? '—' : v.toFixed(0) });
+                statRows.push({ label: 'ICT/Match', key: 'ictPerGame', fmt: v => v == null ? '—' : v.toFixed(1) });
             }
 
+            /* The defensive work, counted. Defensive contribution is the total
+               FPL pays on; the three counts beneath it are what that total is
+               made of, and they are what tells a centre-back who heads clearances
+               apart from a midfielder who wins the ball back. All four are
+               published per match and none of them was shown anywhere. */
+            statRows.push({ group: 'Defensive work' });
+            statRows.push({ label: 'Def. actions/Match', key: 'defConPerGame', fmt: v => v == null ? '—' : v.toFixed(1) });
+            statRows.push({ label: 'Tackles/Match', key: 'tacklesPerGame', fmt: v => v == null ? '—' : v.toFixed(1) });
+            statRows.push({ label: 'CBI/Match', key: 'cbiPerGame', fmt: v => v == null ? '—' : v.toFixed(1) });
+            statRows.push({ label: 'Recoveries/Match', key: 'recoveriesPerGame', fmt: v => v == null ? '—' : v.toFixed(1) });
             if (hasDEF) {
-                statRows.push({ group: 'Defensive' });
                 statRows.push({ label: 'CS Prob (Next)', key: 'csProb', fmt: v => v > 0 ? `${(v * 100).toFixed(0)}%` : '-' });
             }
 
@@ -765,23 +925,81 @@ function updateCompareBar() {
                 })).join('')}</tr>`;
             }).join('');
 
-            /* The reading, per player, in both windows. Prose rather than table
-               cells because that is what it is — a sentence about whether the
-               returns match the chances — and because pfVsExpected() is allowed
-               to say the sample is too thin, which is not a number. */
-            const formReadHtml = !formWindow ? '' : reportData.map(p => {
-                const w = p._form;
-                if (!w || typeof pfExpectedPairs !== 'function') return '';
-                const pairs = pfExpectedPairs(p.position);
+            /* Actual against expected, as a table with the players as columns.
+
+               It was a stack of sentences, one per player per stat per window —
+               four paragraphs for a two-man comparison before anyone had read a
+               number, and the one thing a comparison is for, reading down the
+               same row, could not be done at all.
+
+               Two rows collapse into one when they would say the same thing.
+               Early in a season the last-five window IS the season, so every
+               stat printed its sentence twice, identically; that is not a bug in
+               the arithmetic but it is four rows of nothing. They separate on
+               their own once the window stops covering the whole season.
+
+               The sentence pfVsExpected() writes is kept as the cell's tooltip,
+               including its refusal to call a direction when the expected figure
+               is too small to divide by — the cell shows a dash for that rather
+               than a delta it cannot support. */
+            const aveHtml = (() => {
+                if (!formWindow || typeof pfExpectedPairs !== 'function') return '';
+
+                // Union of the pairs across the compared players: a keeper and a
+                // forward have none in common, and both still get their rows.
+                const order = ['goals', 'assists', 'gi', 'goalsConceded'];
+                const pairsById = new Map();
+                reportData.forEach(p => (pfExpectedPairs(p.position) || []).forEach(pr => {
+                    if (!pairsById.has(pr.key)) pairsById.set(pr.key, pr);
+                }));
+                const pairs = [...pairsById.values()].sort(
+                    (a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
                 if (!pairs.length) return '';
-                const reads = pairs.map(pr => {
-                    const l5 = pfVsExpected(w.totals[pr.key], w.totals[pr.expected], pr);
-                    const se = pfVsExpected(w.season[pr.key], w.season[pr.expected], pr);
-                    return `<div class="pf-read t-${l5.tone}"><em>${escHTML(pr.label)} · last ${w.rounds.length}</em> ${escHTML(l5.text)}</div>
-                            <div class="pf-read t-${se.tone}"><em>${escHTML(pr.label)} · season</em> ${escHTML(se.text)}</div>`;
+
+                const readFor = (p, pr, scope) => {
+                    const w = p._form;
+                    if (!w) return null;
+                    const own = pfExpectedPairs(p.position).some(x => x.key === pr.key);
+                    if (!own) return null;
+                    const t = scope === 'season' ? w.season : w.totals;
+                    return Object.assign(pfVsExpected(t[pr.key], t[pr.expected], pr),
+                        { actual: t[pr.key], expected: t[pr.expected] });
+                };
+                /* Two blanks are the same blank. A keeper has no goals-against-xG
+                   row, so without this a stat that IS identical across both
+                   windows still printed twice the moment one player in the
+                   comparison did not have it. */
+                const same = (a, b) => (!a && !b)
+                    || (!!a && !!b && a.actual === b.actual && a.expected === b.expected);
+
+                const cell = (r) => {
+                    if (!r) return '<td class="ave-na">—</td>';
+                    const delta = r.tone === 'thin' ? '—'
+                        : `${r.delta >= 0 ? '+' : '−'}${Math.abs(r.delta).toFixed(1)}`;
+                    return `<td class="ave-cell t-${r.tone}" data-tooltip="${escHTML(r.text)}">
+                        <span class="ave-pair">${pfNum(r.actual, r.actual % 1 === 0 ? 0 : 1)} <i>v</i> ${r.expected.toFixed(1)}</span>
+                        <span class="ave-delta">${delta}</span></td>`;
+                };
+
+                const body = pairs.map(pr => {
+                    const recent = reportData.map(p => readFor(p, pr, 'recent'));
+                    const season = reportData.map(p => readFor(p, pr, 'season'));
+                    // One row while the window still covers the whole season.
+                    const identical = recent.every((r, i) => same(r, season[i]));
+                    if (identical) {
+                        return `<tr><th scope="row">${escHTML(pr.label)}<small>season so far</small></th>${recent.map(cell).join('')}</tr>`;
+                    }
+                    return `<tr><th scope="row">${escHTML(pr.label)}<small>last ${formWindow.rounds.length}</small></th>${recent.map(cell).join('')}</tr>`
+                        + `<tr><th scope="row">${escHTML(pr.label)}<small>season</small></th>${season.map(cell).join('')}</tr>`;
                 }).join('');
-                return `<div class="pf-verdict"><div class="pf-verdict-head">${escHTML(p.name)}</div>${reads}</div>`;
-            }).join('');
+
+                return `<table class="ave-table">
+                    <thead><tr><th scope="col"></th>${reportData.map(p =>
+                        `<th scope="col">${escHTML(p.name)}</th>`).join('')}</tr></thead>
+                    <tbody>${body}</tbody>
+                </table>
+                <div class="ave-key">Each cell is what he actually managed against what the chances were worth. Hover for the reading.</div>`;
+            })();
 
             // Build picks HTML
             const picksHtml = picks.map(pick => `
@@ -794,7 +1012,7 @@ function updateCompareBar() {
 
             // Build player profile cards
             const profilesHtml = reportData.map(p => {
-                const narrative = generatePlayerNarrative(p, reportData);
+                const narrative = buildScoutTake(p, reportData);
                 const budget = getBudgetContext(p);
                 const pickBadges = picks.filter(pk => (pk.winnerIds || []).includes(p.id)).map(pk => `<span class="report-badge report-badge-pick">${pk.icon} ${pk.category}</span>`).join('');
 
@@ -804,9 +1022,13 @@ function updateCompareBar() {
                     return `<div class="report-fixture-chip ${fdrClass}"><span>${opp}</span><span class="venue">${f.isHome ? 'H' : 'A'}</span></div>`;
                 }).join('');
 
-                const strengthsHtml = narrative.strengths.length > 0 ? `<ul class="report-strengths">${narrative.strengths.map(s => `<li>${s}</li>`).join('')}</ul>` : '';
-                const concernsHtml = narrative.concerns.length > 0 ? `<ul class="report-concerns">${narrative.concerns.map(c => `<li>${c}</li>`).join('')}</ul>` : '';
-                const edgesHtml = narrative.edges.length > 0 ? narrative.edges.map(e => `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-style:italic;">↔ ${e}</div>`).join('') : '';
+                // Two paragraphs: what he is, then how he sits against the others.
+                const split = Math.max(1, narrative.length - reportData.length + 1);
+                const para = (from, to) => {
+                    const run = narrative.slice(from, to).join(' ');
+                    return run ? `<p>${escHTML(run)}</p>` : '';
+                };
+                const takeHtml = `<div class="report-take">${para(0, split)}${para(split)}</div>`;
 
                 let budgetHtml = '';
                 if (budget) {
@@ -824,12 +1046,7 @@ function updateCompareBar() {
                             </div>
                             <div class="report-player-badges">${pickBadges}</div>
                         </div>
-                        <div class="report-narrative">
-                            <div class="report-verdict">${narrative.verdict}</div>
-                            ${strengthsHtml}
-                            ${concernsHtml}
-                            ${edgesHtml}
-                        </div>
+                        <div class="report-narrative">${takeHtml}</div>
                         <div class="report-fixture-strip">${fixtureChips}</div>
                         ${budgetHtml}
                     </div>
@@ -1043,9 +1260,9 @@ function updateCompareBar() {
                         </div>
                     </div>
 
-                    ${formReadHtml ? `<div class="report-form-read">
+                    ${aveHtml ? `<div class="report-form-read">
                         <h4>Actual against expected</h4>
-                        <div class="pf-verdicts">${formReadHtml}</div>
+                        ${aveHtml}
                     </div>` : ''}
 
                     <!-- Player Profile Cards -->
