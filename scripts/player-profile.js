@@ -819,18 +819,28 @@
             const delta = actual - expected;
             // For conceded, under the expected figure is the good side.
             const good = invert ? -delta : delta;
+            // "more" and "fewer" describe the gap; whether that gap is good news
+            // is what `tone` carries, because it depends on the stat.
+            const word = delta > 0 ? 'more' : 'fewer';
+            const mag = Math.abs(delta).toFixed(1);
 
             if (!(expected >= PF_THIN)) {
-                return { tone: 'thin', delta,
-                    text: `${expected.toFixed(1)} expected — too few ${noun} to read anything into yet` };
+                /* The actual belongs in this sentence too. It used to read
+                   "0.3 expected — too few chances to read anything into yet",
+                   which is a true statement about the expected side and silently
+                   dropped the three goals he had scored from those chances. What
+                   cannot be read is the RATE, not the return. */
+                return { tone: 'thin', delta, short: 'too few chances',
+                    text: `${actual} from just ${expected.toFixed(1)} expected — too few ${noun} for the gap to mean anything yet` };
             }
             if (Math.abs(delta) < PF_PAR) {
-                return { tone: 'par', delta,
+                return { tone: 'par', delta, short: 'about par',
                     text: `${actual} against ${expected.toFixed(1)} expected — about par` };
             }
             return {
                 tone: good > 0 ? 'over' : 'under', delta,
-                text: `${actual} against ${expected.toFixed(1)} expected — ${Math.abs(delta).toFixed(1)} ${delta > 0 ? 'more' : 'fewer'} than the ${noun} suggest`
+                short: `${mag} ${word}`,
+                text: `${actual} against ${expected.toFixed(1)} expected — ${mag} ${word} than the ${noun} suggest`
             };
         }
 

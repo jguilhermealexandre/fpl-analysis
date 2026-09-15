@@ -972,25 +972,36 @@ function updateCompareBar() {
                 const same = (a, b) => (!a && !b)
                     || (!!a && !!b && a.actual === b.actual && a.expected === b.expected);
 
+                /* Every cell says what it is. "2 v 1.4 / +0.6" needs the reader
+                   to already know which number is which, and — worse — that the
+                   sign means opposite things from one row to the next: +0.6 goals
+                   is good news and +0.6 conceded is not. So the actual is
+                   labelled, the expected is labelled, and the gap is written in
+                   words with the colour carrying whether it is the good side. */
                 const cell = (r) => {
                     if (!r) return '<td class="ave-na">—</td>';
-                    const delta = r.tone === 'thin' ? '—'
-                        : `${r.delta >= 0 ? '+' : '−'}${Math.abs(r.delta).toFixed(1)}`;
                     return `<td class="ave-cell t-${r.tone}" data-tooltip="${escHTML(r.text)}">
-                        <span class="ave-pair">${pfNum(r.actual, r.actual % 1 === 0 ? 0 : 1)} <i>v</i> ${r.expected.toFixed(1)}</span>
-                        <span class="ave-delta">${delta}</span></td>`;
+                        <span class="ave-pair"><b>${pfNum(r.actual, r.actual % 1 === 0 ? 0 : 1)}</b> actual
+                            <i>vs</i> <b>${r.expected.toFixed(1)}</b> expected</span>
+                        <span class="ave-delta">${escHTML(r.short)}</span></td>`;
                 };
+
+                // Which way is up, per row — the one thing a reader cannot get
+                // from the numbers, and the thing the colours depend on.
+                const aim = pr => pr.invert ? 'fewer is better' : 'more is better';
 
                 const body = pairs.map(pr => {
                     const recent = reportData.map(p => readFor(p, pr, 'recent'));
                     const season = reportData.map(p => readFor(p, pr, 'season'));
+                    const head = (when) => `<th scope="row">${escHTML(pr.label)}
+                        <small>${when}</small><em>${aim(pr)}</em></th>`;
                     // One row while the window still covers the whole season.
                     const identical = recent.every((r, i) => same(r, season[i]));
                     if (identical) {
-                        return `<tr><th scope="row">${escHTML(pr.label)}<small>season so far</small></th>${recent.map(cell).join('')}</tr>`;
+                        return `<tr>${head('season so far')}${recent.map(cell).join('')}</tr>`;
                     }
-                    return `<tr><th scope="row">${escHTML(pr.label)}<small>last ${formWindow.rounds.length}</small></th>${recent.map(cell).join('')}</tr>`
-                        + `<tr><th scope="row">${escHTML(pr.label)}<small>season</small></th>${season.map(cell).join('')}</tr>`;
+                    return `<tr>${head(`last ${formWindow.rounds.length}`)}${recent.map(cell).join('')}</tr>`
+                        + `<tr>${head('season')}${season.map(cell).join('')}</tr>`;
                 }).join('');
 
                 return `<table class="ave-table">
@@ -998,7 +1009,15 @@ function updateCompareBar() {
                         `<th scope="col">${escHTML(p.name)}</th>`).join('')}</tr></thead>
                     <tbody>${body}</tbody>
                 </table>
-                <div class="ave-key">Each cell is what he actually managed against what the chances were worth. Hover for the reading.</div>`;
+                <div class="ave-key">
+                    <span><i class="ave-sw t-over"></i> ahead of the chances</span>
+                    <span><i class="ave-sw t-par"></i> about par</span>
+                    <span><i class="ave-sw t-under"></i> behind the chances</span>
+                    <span><i class="ave-sw t-thin"></i> too few chances to tell</span>
+                </div>
+                <p class="ave-note">Expected goals and assists value every chance by how often it is normally taken, so
+                    a player ahead of his expected figure has finished better than the chances deserved — which usually
+                    does not last — and one behind it has been wasteful or unlucky. Hover any cell for the full reading.</p>`;
             })();
 
             // Build picks HTML
@@ -1086,6 +1105,38 @@ function updateCompareBar() {
                weakly to call it. The first is about the calendar and the other
                two are about the player, and a reader cannot act on the same
                sentence for all three. risingFormFor() returns the reason. */
+            /* Purple patch — is the hot run backed by anything?
+
+               purplePatchFor() lives in scripts/purple-patch.js, which both
+               pages load; it used to be inside the players page's inline block
+               and so was unreachable from the squad page's copy of this report.
+               It returns the reason when a run cannot be judged, which four
+               gameweeks into a season is every player in the game — a panel that
+               renders nothing and says nothing looks broken. */
+            const patchHtml = reportData.map(p => {
+                const pp = (typeof purplePatchFor === 'function') ? purplePatchFor(p) : null;
+                if (!pp || !pp.patch) {
+                    return `<div class="report-routes-player">
+                        <div class="report-routes-player-name">${escHTML(p.name)}</div>
+                        <div class="report-rising-none">${escHTML((pp && pp.note) || 'No run to judge.')}</div></div>`;
+                }
+                const patch = pp.patch, su = pp.sustainability;
+                const dims = Object.values(su.dimensions || {});
+                const bars = dims.map(d => `
+                    <div class="report-route-bar">
+                        <div class="report-route-label">${escHTML(d.label)}</div>
+                        <div class="report-route-track"><div class="report-route-fill" style="width:${Math.round((d.score / d.max) * 100)}%;background:${su.verdictColor};"></div></div>
+                        <div class="report-route-value">${Math.round(d.score)}/${d.max}</div>
+                    </div>`).join('');
+                return `<div class="report-routes-player">
+                    <div class="report-routes-player-name">${escHTML(p.name)}
+                        <span style="color:${su.verdictColor};font-weight:700;">${escHTML(su.verdict)} ${Math.round(su.totalScore)}/100</span></div>
+                    <div class="report-patch-lead">${patch.l5PPG.toFixed(1)} a match over his last ${patch.patchGames}, against ${patch.seasonPPG.toFixed(1)} for the season — ${Math.round(patch.uplift * 100)}% up.</div>
+                    ${bars}
+                    <div class="report-patch-verdict">${escHTML(su.verdictText)}</div>
+                </div>`;
+            }).join('');
+
             const risingHtml = reportData.map(p => {
                 if (p.risingSignals.length === 0) {
                     const why = p.risingNote || 'Nothing in his recent form, his club or his fixtures is trending up.';
@@ -1198,22 +1249,11 @@ function updateCompareBar() {
                 `;
             }).join('');
 
-            // xG regression analysis
-            const regressionHtml = reportData.map(p => {
-                const overperf = p.xgOverperf;
-                const label = overperf > 1 ? 'Overperforming' : overperf < -1 ? 'Underperforming' : 'In line';
-                const color = overperf > 2 ? 'var(--color-warning)' : overperf < -2 ? 'var(--color-success)' : 'var(--text-secondary)';
-                return `
-                    <div class="report-routes-player">
-                        <div class="report-routes-player-name">${escHTML(p.name)}</div>
-                        <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px;">
-                            <span>Goals: ${p.seasonGoals}</span>
-                            <span>xG: ${p.seasonXgVal.toFixed(1)}</span>
-                            <span style="color:${color};font-weight:600;">${label} (${overperf >= 0 ? '+' : ''}${overperf.toFixed(1)})</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            /* The xG Regression block used to sit here — Goals, xG and an
+               "Overperforming (+1.2)" label per player. That is the season Goals
+               row of the Actual-against-expected table above, in a second place
+               and a second wording, so the report told the reader the same thing
+               twice and gave them two numbers to reconcile. */
 
             // Build fixture comparison
             const fixtureCompHtml = reportData.map(p => {
@@ -1274,6 +1314,12 @@ function updateCompareBar() {
                         <div class="report-routes-grid">${routesHtml}</div>
                     </div>
 
+                    <!-- Purple Patch: is the run backed by the process? -->
+                    <div class="report-routes-section">
+                        <h4>Purple Patch — will the run hold?</h4>
+                        <div class="report-routes-grid">${patchHtml}</div>
+                    </div>
+
                     <!-- Fixture Comparison -->
                     <div class="report-collapsible open">
                         <div class="report-collapsible-header" onclick="this.parentElement.classList.toggle('open')">
@@ -1310,14 +1356,6 @@ function updateCompareBar() {
                         <div class="report-collapsible-body"><div class="report-collapsible-content"><div class="report-routes-grid">${splitsHtml}</div></div></div>
                     </div>
 
-                    <!-- Deep Analysis: xG Regression -->
-                    <div class="report-collapsible open">
-                        <div class="report-collapsible-header" onclick="this.parentElement.classList.toggle('open')">
-                            <h4><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> xG Regression Analysis</h4>
-                            <span class="report-collapsible-caret">▾</span>
-                        </div>
-                        <div class="report-collapsible-body"><div class="report-collapsible-content"><div class="report-routes-grid">${regressionHtml}</div></div></div>
-                    </div>
                 </div>
             `;
 
