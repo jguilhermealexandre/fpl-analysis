@@ -1680,6 +1680,9 @@
                     <span class="tw-pitch-bench-l">Bench</span>
                     ${bench.map(node).join('')}
                 </div>
+                ${typeof renderSquadEO === 'function'
+                    ? renderSquadEO(typeof twBuildPendingSquad === 'function' ? twBuildPendingSquad() : null)
+                    : ''}
                 <div class="tw-pitch-hint">${transferState.pending.length
                     ? 'Pick a replacement on the right. Everything above moves as you do.'
                     : 'Click anyone to mark them for sale.'}</div>
@@ -1719,107 +1722,6 @@
                the thing on screen — and seeing a marked man go red and the
                projected points move is the feedback the card list never gave. */
             return twRenderPitch(el);
-            /* The squad is on screen at every step, but it is only a control at
-               some of them. On step 1 no plan has been chosen yet, so there is
-               no answer to how many players you may move — Swap is shown and
-               inert, with the reason on it, rather than removed. */
-            const planStep = twStep() === 1;
-            const gws = twPlanGWs(3);
-            const filledIds = new Set(transferState.pending.filter(s => s.replacement).map(s => s.soldPlayer.id));
-            const pendingIds = new Set(transferState.pending.filter(s => !s.replacement).map(s => s.soldPlayer.id));
-            const positions = [
-                { type: 1, label: 'Goalkeepers' }, { type: 2, label: 'Defenders' },
-                { type: 3, label: 'Midfielders' }, { type: 4, label: 'Forwards' }
-            ];
-
-            let rows = '';
-            positions.forEach(pos => {
-                const players = twSquad().filter(p => p.position === pos.type);
-                if (!players.length) return;
-                rows += `<div class="twc-group">
-                    <div class="twc-group-head">
-                        <span>${pos.label}</span>
-                        ${transferState.sellMode && !planStep ? `<button class="twc-mini" onclick="twSellAll(${pos.type})" data-tooltip="Sell every ${pos.label.toLowerCase().replace(/s$/, '')} at once and pool the money">Sell all</button>` : ''}
-                    </div>
-                    <div class="twc-rows">`;
-                players.forEach(p => {
-                    const sold = filledIds.has(p.id), pending = pendingIds.has(p.id);
-                    /* Scored over the same three fixtures shown next to it. This
-                       column used to run over the recommender's five-gameweek
-                       horizon while the chips beside it showed three, so the
-                       number and the context under it disagreed. The gain figures
-                       in the replacement views still use the full five — that is
-                       the horizon the recommendation is actually decided on, and
-                       each is labelled with its own span. */
-                    const twRun = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON) : gws;
-                    const xp = twXPOver(p, twRun);
-                    // Three fixtures at a glance is the context that decides a sale.
-                    const fx = (teamFixtures[p.teamId] || p.fixtures || []).slice(0, 3);
-                    const blocks = fx.length
-                        ? fx.map(f => `<span class="twc-fdr v2-fdr-${f.difficulty || 3}" data-tooltip="${f.isHome ? 'Home to' : 'Away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3}">${escHTML((f.opponent || '?').slice(0, 3))}</span>`).join('')
-                        : '<span class="twc-fdr twc-fdr-none">—</span>';
-                    const status = p.status === 'i' || p.status === 'u' || p.status === 's' ? '<span class="twc-flag out">OUT</span>'
-                        : p.status === 'd' ? `<span class="twc-flag doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}">?</span>` : '';
-
-                    const twPosEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
-                    const twIdent = { name: p.name, code: p.code, teamId: p.teamId, team: p.team };
-
-                    /* The row is the button.
-
-                       There used to be a 70px Swap button on the right of a
-                       1200px row, and the row itself was only clickable under
-                       a multi plan — so the same list was operated two
-                       different ways depending on a setting three steps
-                       earlier. Click anywhere on anyone now, under any plan;
-                       picked stays lit until you click it again. */
-                    const pickable = !planStep && !sold;
-                    rows += `<div class="twc-row ${twPosEdge} ${sold ? 'is-sold' : ''} ${pending ? 'is-picked' : ''} ${pickable ? 'is-pickable' : ''}"
-                        ${pickable ? `role="button" tabindex="0" aria-pressed="${pending}"
-                            onclick="twRowPick(${p.id})"
-                            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twRowPick(${p.id});}"
-                            data-tooltip="${pending ? escHTML(`${p.name} is in the plan — click to take him back out`) : escHTML(`Move ${p.name} on`)}"` : ''}>
-                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(twIdent) : ''}
-                        <div class="twc-who">
-                            <div class="twc-name">${escHTML(p.name)}${status}</div>
-                            <div class="twc-sub">${escHTML(p.team)}</div>
-                        </div>
-                        <div class="twc-price">£${(p.sellPrice || p.price).toFixed(1)}m</div>
-                        <div class="twc-fdrs" data-tooltip="Next three fixtures.">${blocks}</div>
-                        <div class="twc-xp" data-tooltip="Projected points across GW${twRun[0]}\u2013GW${twRun[twRun.length - 1]} \u2014 the same three fixtures shown beside it.">${xp.toFixed(1)}<span class="twc-xp-u">xP${twRun.length}</span></div>
-                        ${sold ? `<span class="twc-swapped">Swapped</span>`
-                            : `<span class="twc-mark" aria-hidden="true">${pending ? v2Icon('check') : ''}</span>`}
-                    </div>`;
-                });
-                rows += `</div></div>`;
-            });
-
-            /* How the squad this plan would leave you with sits against the
-               tier you are competing against. Here rather than on Squad
-               Analysis because the only thing you can do about being too
-               template is a transfer, and it reads the pending squad — so the
-               numbers move as you stage moves rather than describing a team you
-               have already stopped looking at. */
-            const eoStrip = typeof renderSquadEO === 'function'
-                ? renderSquadEO(typeof twBuildPendingSquad === 'function' ? twBuildPendingSquad() : null)
-                : '';
-
-            const open = transferState.pending.filter(x => !x.replacement).length;
-            el.innerHTML = `<div class="twc-panel">
-                ${twStep() === 2
-                    ? twStepHead({
-                        icon: 'users', title: 'Who is leaving?',
-                        hint: escHTML(twOutStepHint()),
-                        back: { label: 'Change plan', on: 'twRailGo(1)' },
-                        next: { label: `Find replacement${open === 1 ? '' : 's'}`, on: 'twStartMarketForSlots()',
-                                disabled: !open, tip: open ? '' : 'Pick at least one player to move on.' }
-                    })
-                    : `<div class="twc-panel-head">
-                        <span class="twc-panel-title">${v2Icon('users')} Your squad</span>
-                        ${planStep ? `<span class="twc-panel-hint">Pick a plan first</span>` : ''}
-                    </div>`}
-                <div class="twc-panel-body">${rows}</div>
-                ${eoStrip}
-            </div>`;
         }
 
         /* One entry point for picking someone out, whatever the plan.
