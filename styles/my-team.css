@@ -6836,11 +6836,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    every renderer: the panels stay where they are and the step says which
    of them it is asking about. */
 .tw-container[data-tw-step="1"] #twBudgetBar { display: none; }
-.tw-container:not([data-tw-step="1"]) #twRecoPanel,
-.tw-container:not([data-tw-step="1"]):not([data-tw-step="2"]) #wcPanel { display: none; }
-/* Ownership against the field is a question about a finished plan, not one
-   you answer while deciding who to sell. */
-.tw-container:not([data-tw-step="4"]) .eo-panel { display: none; }
+.tw-container:not([data-tw-step="1"]) #twRecoPanel { display: none; }
+/* Ownership against the field rides on the pitch now, so it is on screen
+   wherever the pitch is — which is both steps. It used to be gated to step 4,
+   and step 4 no longer exists, so that rule hid it permanently. */
 
 /* One screen at a time.
 
@@ -6850,11 +6849,19 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    full width of the page now, directly under the rail that names it: the plan
    on step 1, your squad on step 2, the market from step 3 on. */
 .twc-body { grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
-/* The swap step is the one that is two things at once: your squad on the
-   left, who can replace them on the right. Every other step is one screen. */
-.tw-container[data-tw-step="2"] .twc-body { grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
-.tw-container[data-tw-step="2"] #twSquadPane,
-.tw-container[data-tw-step="2"] #twMarketPane { display: block; }
+
+/* The pitch is on screen at both steps, because it is the thing being changed.
+
+   This block used to hide #twSquadPane at every step but 2 — correct when step
+   1 was a chooser with no squad on it, and the reason the pitch appeared to not
+   exist once step 1 became the pitch: it was rendering into a pane the
+   stylesheet had switched off.
+
+   Step 1 gives it the room, since there is nothing to compare yet. Step 2
+   narrows it to make space for the market beside it. */
+.tw-container[data-tw-step="1"] .twc-body { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+.tw-container[data-tw-step="2"] .twc-body { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); }
+#twSquadPane, #twMarketPane { display: block; }
 /* Both of these say who is being replaced, and the card on the left says it
    with a face on it. Two more copies in text above and beside it is three. */
 .tw-container[data-tw-step="2"] .twc-plan { display: none; }
@@ -6866,6 +6873,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    the finished swaps stay, because those are the plan. */
 .twc-plan-row.open { display: none; }
 @media (max-width: 900px) {
+    .tw-container[data-tw-step="1"] .twc-body,
     .tw-container[data-tw-step="2"] .twc-body { grid-template-columns: minmax(0, 1fr); }
 }
 
@@ -6930,7 +6938,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* A nested scroller made sense when the pane was one of two half-width
    columns. Full width, one step at a time, the page is the scroller. */
 .tw-container .twc-panel-body { max-height: none; overflow: visible; }
-.tw-container:not([data-tw-step="2"]) #twSquadPane { display: none; }
+/* (The rule that hid the squad pane away from step 2 was here. See the
+   layout block above — the pitch is wanted at every step now.) */
 
 /* ===== The movement between steps ===== */
 @keyframes twStepFwd {
