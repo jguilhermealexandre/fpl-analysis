@@ -426,8 +426,11 @@
                 // goals lately is a different bet from one whose season xGC merely
                 // looks bad, and the armband is a one-week call on current form.
                 const oppTA = fx && typeof teamAnalysis !== 'undefined' ? teamAnalysis[fx.opponentId] : null;
-                const oppTrend = oppTA && oppTA.xgcTrend === 'rising' ? 'leaking more lately'
-                    : oppTA && oppTA.xgcTrend === 'falling' ? 'tightening up lately' : null;
+                /* xgcTrend is 'worsening' / 'improving' — 'rising' and 'falling'
+                   are what xgTrend uses, so both branches here tested for values
+                   this field never holds and oppTrend was always null. */
+                const oppTrend = oppTA && oppTA.xgcTrend === 'worsening' ? 'leaking more lately'
+                    : oppTA && oppTA.xgcTrend === 'improving' ? 'tightening up lately' : null;
                 const myTA = typeof teamAnalysis !== 'undefined' ? teamAnalysis[p.teamId] : null;
                 const venuePower = myTA && fx
                     ? (fx.isHome ? myTA.attackPowerHome : myTA.attackPowerAway)

@@ -391,10 +391,20 @@
 
                 // xG trend data (ported from fpl-players-analysis.html's computeTeamScores,
                 // so the shared AI Scouting Report's Team Context section has real data here too)
+                /* null, not 'stable', when the sample cannot support a reading.
+
+                   These are a six-match window compared against the season that
+                   contains it, so below ten games there is nothing to compare —
+                   and they defaulted to the string 'stable', which the scouting
+                   report printed as a finding. Four gameweeks into a season that
+                   was every club in the division being described as steady by a
+                   branch that had never run. A trend nobody has measured is not a
+                   stable trend. */
                 const seasonXg = typeof getTeamSeasonXg === 'function' ? getTeamSeasonXg(teamId) : null;
                 const recent6Xg = typeof getTeamXgWindow === 'function' ? getTeamXgWindow(teamId, 6) : null;
-                let xgTrend = 'stable', xgcTrend = 'stable';
+                let xgTrend = null, xgcTrend = null;
                 if (recent6Xg && seasonXg && (seasonXg.games || 0) >= 10) {
+                    xgTrend = 'stable'; xgcTrend = 'stable';
                     const xgDelta = recent6Xg.xGpg - seasonXg.xGpg;
                     if (xgDelta > 0.25) xgTrend = 'rising';
                     else if (xgDelta < -0.25) xgTrend = 'falling';

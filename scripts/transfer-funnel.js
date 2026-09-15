@@ -372,7 +372,10 @@
                 defence: ta.defensePower != null ? ta.defensePower : 50,
                 attackHome: ta.attackPowerHome, attackAway: ta.attackPowerAway,
                 defenceHome: ta.defensePowerHome, defenceAway: ta.defensePowerAway,
-                xgTrend: ta.xgTrend || 'stable', xgcTrend: ta.xgcTrend || 'stable',
+                // null when the club has not played enough for a six-match
+                // window to be compared against its season. `|| 'stable'` here
+                // turned "we cannot tell" back into a claim.
+                xgTrend: ta.xgTrend || null, xgcTrend: ta.xgcTrend || null,
                 xgDelta: ta.xgTrendDelta || 0, xgcDelta: ta.xgcTrendDelta || 0,
                 avgGoals: ta.avgGoals || 0, avgConceded: ta.avgConceded || 0,
                 csRate: ta.csRate || 0,
@@ -686,7 +689,8 @@
             const trend = (kind) => {
                 const t = kind === 'xg' ? r.xgTrend : r.xgcTrend;
                 const d = kind === 'xg' ? r.xgDelta : r.xgcDelta;
-                if (t === 'stable') return '';
+                // No chip for "stable", and none for "not measurable yet" either.
+                if (!t || t === 'stable') return '';
                 const good = t === 'rising' || t === 'improving';
                 return `<span class="twf-trend ${good ? 'up' : 'down'}" data-tooltip="${escHTML(kind === 'xg'
                     ? `Team xG per game is ${t} — ${d >= 0 ? '+' : ''}${d.toFixed(2)} against its season average.`

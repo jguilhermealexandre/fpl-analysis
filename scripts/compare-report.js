@@ -298,8 +298,21 @@ function updateCompareBar() {
                 const ts = p.teamScores || {};
                 const swing = fixtureSwingData[p.teamId] || null;
 
-                // Rising form score
-                const risingScore = (window._risingFormScores && window._risingFormScores[p.id]) || 0;
+                /* One engine — scripts/form-trend.js. The score was read from
+                   window._risingFormScores, which only the players page ever
+                   populates, so on Squad Analysis every player's rising form was
+                   0 and the section was empty with nothing to say about why. The
+                   signals below it were a second copy of the same pillars,
+                   computed here, which could and did disagree with the score
+                   sitting beside them.
+
+                   `score` is null rather than 0 when it cannot be read: a player
+                   nobody can measure has not scored zero. */
+                const rf = (typeof risingFormFor === 'function') ? risingFormFor(p)
+                    : { measurable: false, score: null, signals: [], note: null };
+                const risingScore = rf.score;
+                const risingSignals = rf.signals;
+                const risingNote = rf.note;
 
                 /* One engine — scripts/routes-engine.js. This file carried a copy
                    of the players page's route logic, with its own thresholds and
@@ -318,32 +331,6 @@ function updateCompareBar() {
                     ? { routeCount: rt.routeCount, compositeScore: rt.compositeScore }
                     : ((window._routesData && window._routesData[p.id]) || null);
 
-                // Rising form signals (re-compute for this player)
-                let risingSignals = [];
-                try {
-                    const isDefPos = (pos === 'GK' || pos === 'DEF');
-                    if (ts && ts.formRating > 55) {
-                        risingSignals.push({ label: 'Team in form', detail: `${ts.wins || '?'}W ${ts.draws || '?'}D ${ts.losses || '?'}L (L5)`, strength: Math.min(10, ((ts.formRating - 55) / 45) * 9), color: '#4ADE80' });
-                    }
-                    const recent6Xg = getTeamXgWindow(p.teamId, 6);
-                    const seasonXg = getTeamSeasonXg(p.teamId);
-                    if (recent6Xg && seasonXg && seasonXg.games >= 10) {
-                        if (isDefPos) {
-                            const delta = seasonXg.xGCpg - recent6Xg.xGCpg;
-                            if (delta > 0.10) risingSignals.push({ label: 'Team xGC improving', detail: `${recent6Xg.xGCpg.toFixed(2)} vs ${seasonXg.xGCpg.toFixed(2)} xGC/g`, strength: Math.min(10, (delta / 0.6) * 10), color: '#34D399' });
-                        } else {
-                            const delta = recent6Xg.xGpg - seasonXg.xGpg;
-                            if (delta > 0.10) risingSignals.push({ label: 'Team xG rising', detail: `${recent6Xg.xGpg.toFixed(2)} vs ${seasonXg.xGpg.toFixed(2)} xG/g`, strength: Math.min(10, (delta / 0.6) * 10), color: '#34D399' });
-                        }
-                    }
-                    if (swing && swing.direction === 'improving') {
-                        risingSignals.push({ label: 'Fixtures improving', detail: `FDR ${swing.currentFdr} → ${swing.futureFdr}`, strength: Math.min(10, Math.abs(swing.swing) * 4), color: '#60A5FA' });
-                    }
-                    const avgFdr = p.fixtures?.avgFDR3 || 3;
-                    if (avgFdr <= 2.5) {
-                        risingSignals.push({ label: 'Easy run now', detail: `FDR ${avgFdr.toFixed(1)}`, strength: Math.min(10, (3 - avgFdr) * 6 * 1.5), color: '#4ADE80' });
-                    }
-                } catch (e) {}
 
                 // Home/away splits
                 const homeSplit = p.l5?.homeSplit || null;
@@ -359,7 +346,7 @@ function updateCompareBar() {
                     bonusPerGame, savesPerGame, csPerGame, valueScore, appearanceLabel,
                     reliability, explosiveness,
                     consistency, xPts, csProb, ts, swing, risingScore, routesData, routes, routeSignals,
-                    risingSignals, homeSplit, awaySplit, xgOverperf, seasonGoals, seasonXgVal
+                    risingSignals, risingNote, homeSplit, awaySplit, xgOverperf, seasonGoals, seasonXgVal
                 };
             });
         }
@@ -500,7 +487,7 @@ function updateCompareBar() {
             if (player.reliability >= 70) verdictParts.push('consistent returns');
             if ((player.fixtures?.avgFDR3 || 3) <= 2.5) verdictParts.push('excellent fixtures');
             else if ((player.fixtures?.avgFDR3 || 3) >= 4) verdictParts.push('tough fixtures ahead');
-            if (player.risingScore >= 10) verdictParts.push('form on the rise');
+            if (player.risingScore != null && player.risingScore >= 10) verdictParts.push('form on the rise');
 
             const verdict = verdictParts.length > 0
                 ? `${verdictParts[0].charAt(0).toUpperCase() + verdictParts[0].slice(1)} player with ${verdictParts.slice(1).join(', ')}.`
@@ -757,7 +744,11 @@ function updateCompareBar() {
 
             // Rising Form & Routes
             statRows.push({ group: 'AI Insights' });
-            statRows.push({ label: 'Rising Form Score', key: 'risingScore', fmt: v => v > 0 ? v.toFixed(0) : '-' });
+            /* Null when the season is too short to compare a recent window
+               against, which is a different thing from a player who scored zero
+               on it — so it renders as a dash rather than as a 0. */
+            statRows.push({ label: 'Rising Form Score', key: 'risingScore',
+                fmt: v => v == null ? '\u2014' : v.toFixed(0) });
             // `v || '0'` printed a zero for a page that never computed routes at
             // all, which is a claim about the player rather than about the page.
             statRows.push({ label: 'Routes to Points', key: 'routesData.routeCount',
@@ -869,9 +860,23 @@ function updateCompareBar() {
                 return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)} <span style="color:var(--text-muted);font-weight:400;">(${rs.length} route${rs.length === 1 ? '' : 's'})</span></div>${body}</div>`;
             }).join('');
 
-            // Build rising form collapsible
+            /* Rising form, and why it is blank when it is.
+
+               "No rising form signals detected" was printed in three different
+               situations that mean three different things: the season is too
+               short to compare a recent window against at all, he is available
+               and measured and simply not rising, and the pillars fired too
+               weakly to call it. The first is about the calendar and the other
+               two are about the player, and a reader cannot act on the same
+               sentence for all three. risingFormFor() returns the reason. */
             const risingHtml = reportData.map(p => {
-                if (p.risingSignals.length === 0) return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)}</div><div style="font-size:11px;color:var(--text-muted);">No rising form signals detected</div></div>`;
+                if (p.risingSignals.length === 0) {
+                    const why = p.risingNote || 'Nothing in his recent form, his club or his fixtures is trending up.';
+                    return `<div class="report-routes-player">
+                        <div class="report-routes-player-name">${escHTML(p.name)}</div>
+                        <div class="report-rising-none">${escHTML(why)}</div>
+                    </div>`;
+                }
                 const signals = p.risingSignals.map(s => `
                     <div class="report-signal-row">
                         <div class="report-signal-icon" style="background:${s.color}20;color:${s.color};">▲</div>
@@ -882,22 +887,72 @@ function updateCompareBar() {
                         <div class="report-signal-bar"><div class="report-signal-fill" style="width:${s.strength * 10}%;background:${s.color};"></div></div>
                     </div>
                 `).join('');
-                return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)} <span style="color:var(--text-muted);font-weight:400;">(score: ${p.risingScore > 0 ? p.risingScore.toFixed(0) : '0'})</span></div>${signals}</div>`;
+                // Signals can fire without the score clearing its floor; "score: 0"
+                // for a player showing two green bars reads as a contradiction.
+                const score = p.risingScore == null
+                    ? 'not enough season to score yet'
+                    : `score: ${p.risingScore.toFixed(0)}`;
+                return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)} <span style="color:var(--text-muted);font-weight:400;">(${score})</span></div>${signals}</div>`;
             }).join('');
 
-            // Build team context collapsible
+            /* Team context, in the units the numbers are measured in.
+
+               This was four 0-100 indices — Attack Power, Defense Power, Form
+               Rating, Fixture Score — and two trend words. An index is a ranking
+               dressed as a measurement: "Attack Power 72" cannot be checked
+               against anything, does not say whether 72 is one goal a game or
+               three, and is not comparable to the 72 next to it if the two were
+               scaled off different pools. Teams Rankings went to real quantities
+               for the same reason; this follows it.
+
+               Every figure below is counted rather than scored. Where a reading
+               needs more football than has been played, it says so — the trend
+               rows used to print "stable", which is a finding, for clubs that had
+               never been measured at all. */
             const teamContextHtml = reportData.map(p => {
                 const ts = p.ts || {};
                 const teamName = teams[p.teamId]?.name || p.team;
+                const played = ts.matchesPlayed || 0;
+                const xg = (typeof getTeamSeasonXg === 'function') ? getTeamSeasonXg(p.teamId) : null;
+                const trend = (typeof ftTeamTrend === 'function') ? ftTeamTrend(p.teamId) : { usable: false };
+
+                const row = (label, value, tone, tip) => `
+                    <div class="report-team-stat"${tip ? ` data-tooltip="${escHTML(tip)}"` : ''}>
+                        <span class="report-team-stat-label">${label}</span>
+                        <span class="report-team-stat-value"${tone ? ` style="color:${tone}"` : ''}>${value}</span>
+                    </div>`;
+                const num = (v, dp) => (typeof v === 'number' && isFinite(v)) ? v.toFixed(dp) : '—';
+
+                if (!played) {
+                    return `<div class="report-team-card">
+                        <div class="report-team-card-name">${escHTML(p.name)} — ${escHTML(teamName)}</div>
+                        <div class="report-team-none">No matches played yet this season.</div>
+                    </div>`;
+                }
+
+                const ppg = (ts.wins * 3 + ts.draws) / played;
+                const trendRow = trend.usable
+                    ? row('xG trend (last 6)',
+                        `${trend.xgDelta >= 0 ? '+' : ''}${num(trend.xgDelta, 2)} xG · ${trend.xgcDelta >= 0 ? '+' : ''}${num(trend.xgcDelta, 2)} xGC`,
+                        (trend.xgDelta > 0.1 || trend.xgcDelta > 0.1) ? 'var(--color-success)'
+                            : (trend.xgDelta < -0.1 || trend.xgcDelta < -0.1) ? 'var(--color-error)' : null,
+                        'Their last six matches against their own season average. Positive is more chances created and fewer conceded.')
+                    : row('xG trend (last 6)', '—', null,
+                        `A six-match window only says something against a longer season — ${teamName} have played ${played} of the ${trend.need || 10} matches this needs.`);
+
                 return `
                     <div class="report-team-card">
                         <div class="report-team-card-name">${escHTML(p.name)} — ${escHTML(teamName)}</div>
-                        <div class="report-team-stat"><span class="report-team-stat-label">Attack Power</span><span class="report-team-stat-value">${ts.attackPower?.toFixed(0) || '?'}</span></div>
-                        <div class="report-team-stat"><span class="report-team-stat-label">Defense Power</span><span class="report-team-stat-value">${ts.defensePower?.toFixed(0) || '?'}</span></div>
-                        <div class="report-team-stat"><span class="report-team-stat-label">Form Rating</span><span class="report-team-stat-value">${ts.formRating?.toFixed(0) || '?'}</span></div>
-                        <div class="report-team-stat"><span class="report-team-stat-label">Fixture Score</span><span class="report-team-stat-value">${ts.fixtureScore?.toFixed(0) || '?'}</span></div>
-                        <div class="report-team-stat"><span class="report-team-stat-label">xG Trend</span><span class="report-team-stat-value" style="color:${ts.xgTrend === 'rising' ? 'var(--color-success)' : ts.xgTrend === 'falling' ? 'var(--color-error)' : 'var(--text-muted)'}">${ts.xgTrend || 'stable'}</span></div>
-                        <div class="report-team-stat"><span class="report-team-stat-label">xGC Trend</span><span class="report-team-stat-value" style="color:${ts.xgcTrend === 'improving' ? 'var(--color-success)' : ts.xgcTrend === 'worsening' ? 'var(--color-error)' : 'var(--text-muted)'}">${ts.xgcTrend || 'stable'}</span></div>
+                        ${row('Record', `${ts.wins}W ${ts.draws}D ${ts.losses}L`, null, `${num(ppg, 2)} league points a game from ${played} match${played === 1 ? '' : 'es'}`)}
+                        ${row('Scored', `${num(ts.avgGoals, 1)} a game`, null, 'Goals scored per match played')}
+                        ${row('Conceded', `${num(ts.avgConceded, 1)} a game`, null, 'Goals conceded per match played')}
+                        ${row('Chances', xg ? `${num(xg.xGpg, 2)} xG · ${num(xg.xGCpg, 2)} xGC` : '—', null,
+                            'Expected goals created and conceded per match — what the chances were worth, before finishing')}
+                        ${row('Clean sheets', `${ts.totalCS || 0} in ${played}`, null, 'Matches they have kept a clean sheet')}
+                        ${row('Next 5 FDR', num(ts.avgFdr, 1),
+                            ts.avgFdr <= 2.5 ? 'var(--color-success)' : ts.avgFdr >= 3.8 ? 'var(--color-error)' : null,
+                            'Average fixture difficulty over their next five')}
+                        ${trendRow}
                     </div>
                 `;
             }).join('');

@@ -45,13 +45,13 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=224">
-    <link rel="stylesheet" href="styles/players.css?v=224">
+    <link rel="stylesheet" href="styles/common.css?v=225">
+    <link rel="stylesheet" href="styles/players.css?v=225">
     <!-- The shared player profile card. Loaded after this page's own sheet so
          either can still override the other, exactly as on the squad page. -->
-    <link rel="stylesheet" href="styles/player-profile.css?v=224">
-    <link rel="stylesheet" href="styles/v2-design.css?v=224">
-    <link rel="stylesheet" href="styles/responsive.css?v=224">
+    <link rel="stylesheet" href="styles/player-profile.css?v=225">
+    <link rel="stylesheet" href="styles/v2-design.css?v=225">
+    <link rel="stylesheet" href="styles/responsive.css?v=225">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -81,18 +81,19 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=224">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=224">
-    <link rel="preload" as="script" href="scripts/routes-engine.js?v=224">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=224">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=224">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=224">
-    <link rel="preload" as="script" href="scripts/player-profile.js?v=224">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=224">
-    <link rel="preload" as="script" href="scripts/common.js?v=224">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=224">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=224">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=224">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=225">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=225">
+    <link rel="preload" as="script" href="scripts/routes-engine.js?v=225">
+    <link rel="preload" as="script" href="scripts/form-trend.js?v=225">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=225">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=225">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=225">
+    <link rel="preload" as="script" href="scripts/player-profile.js?v=225">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=225">
+    <link rel="preload" as="script" href="scripts/common.js?v=225">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=225">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=225">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=225">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1069,58 +1070,19 @@
          * Pre-computes rising form scores for all players and stores in window._risingFormScores.
          * This allows calculatePositionScore to reward players with rising momentum.
          */
+        /* One engine — risingFormScores() in scripts/form-trend.js.
+
+           This was the only copy, and it lived here, so on Squad Analysis the
+           scouting report's rising-form rows were empty for every player. Its
+           gates were also silent: six season matches before it says anything,
+           which four gameweeks in is every player in the game, and it returned
+           early with no record of why — so window._risingFormScores was an empty
+           object and every Rising Form Score in the report read 0. */
         function precomputeRisingFormScores(analyses) {
-            window._risingFormScores = {};
-            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            analyses.forEach(p => {
-                if ((p.l5?.games || 0) < 3 || (p.season?.games || 0) < 6) return;
-                if ((p.l5?.minutes || 0) < 180) return;
-                if (p.status !== 'a') return;
-                const l5PPG = (p.l5?.points || 0) / (p.l5?.games || 1);
-                const seasonPPG = (p.season?.points || 0) / (p.season?.games || 1);
-                if (l5PPG <= seasonPPG * 1.15) return;
-                const pos = posMap[p.position];
-                if (pos === 'MID' || pos === 'FWD') {
-                    const l5XGIper90 = (p.l5?.xGI || 0) / ((p.l5?.minutes || 1) / 90);
-                    if (l5XGIper90 <= 0.2) return;
-                }
-                const isDefPos = (pos === 'GK' || pos === 'DEF');
-                let risingScore = 0;
-
-                // Pillar 1: Team form
-                const ts = p.teamScores;
-                if (ts && ts.formRating > 55) risingScore += Math.min(9, ((ts.formRating - 55) / 45) * 9) * 1.5;
-
-                // Pillar 1b: Team xG trend
-                const seasonXg = getTeamSeasonXg(p.teamId);
-                const recent6Xg = getTeamXgWindow(p.teamId, 6);
-                if (recent6Xg && seasonXg && (seasonXg.games || 0) >= 10) {
-                    if (isDefPos) {
-                        const xgcDelta = seasonXg.xGCpg - recent6Xg.xGCpg;
-                        if (xgcDelta > 0.10) risingScore += Math.min(10, (xgcDelta / 0.6) * 10) * 2;
-                    } else {
-                        const xgDelta = recent6Xg.xGpg - seasonXg.xGpg;
-                        if (xgDelta > 0.10) risingScore += Math.min(10, (xgDelta / 0.6) * 10) * 2;
-                    }
-                }
-
-                // Pillar 2: Fixture swing
-                const swing = fixtureSwingData[p.teamId];
-                if (swing && swing.direction === 'improving') risingScore += Math.min(10, Math.abs(swing.swing) * 4) * 2.5;
-                const avgFdr = p.fixtures?.avgFDR3 || 3;
-                if (avgFdr <= 2.5) risingScore += Math.min(8, (3 - avgFdr) * 6) * 1.2;
-
-                // Pillar 3: Player stats improving (simplified — L3 vs season trend)
-                const history = p.history || [];
-                if (history.length >= 5) {
-                    const last5Pts = history.slice(-5).map(g => parseFloat(g.total_points) || 0);
-                    const l3Avg = last5Pts.slice(-3).reduce((s, v) => s + v, 0) / 3;
-                    const p2Avg = last5Pts.slice(0, 2).reduce((s, v) => s + v, 0) / 2;
-                    if (l3Avg > p2Avg + 1) risingScore += Math.min(8, (l3Avg - p2Avg) * 1.5);
-                }
-
-                if (risingScore >= 6) window._risingFormScores[p.id] = risingScore;
-            });
+            const rf = risingFormScores(analyses);
+            window._risingFormScores = rf.scores;
+            // Why the map is empty, for the section that has to render nothing.
+            window._risingFormNote = rf.note;
         }
 
         /**
@@ -3725,21 +3687,22 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=224"></script>
+    <script src="scripts/error-monitor.js?v=225"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=224"></script>
-    <script src="scripts/routes-engine.js?v=224"></script>
-    <script src="scripts/players-tables.js?v=224"></script>
-    <script src="scripts/compare-report.js?v=224"></script>
+    <script src="scripts/xp-engine.js?v=225"></script>
+    <script src="scripts/routes-engine.js?v=225"></script>
+    <script src="scripts/form-trend.js?v=225"></script>
+    <script src="scripts/players-tables.js?v=225"></script>
+    <script src="scripts/compare-report.js?v=225"></script>
     <!-- The price meter and the season's price path, from the game's own price
          engine. Pure functions, no DOM — the profile card renders them. -->
-    <script src="scripts/price-watch.js?v=224"></script>
+    <script src="scripts/price-watch.js?v=225"></script>
     <!-- Everything the site knows about one player, in one card. Shared with the
          squad page; the trend charts this page adds to it are wired up in the
          inline block below via pdmPageSections()/pdmAfterRender(). -->
-    <script src="scripts/player-profile.js?v=224"></script>
+    <script src="scripts/player-profile.js?v=225"></script>
     <script>
         // buildStatWindows / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5692,14 +5655,14 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=224"></script>
+    <script src="scripts/players-ai.js?v=225"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=224"></script>
+    <script src="scripts/common.js?v=225"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=224"></script>
-    <script src="scripts/notifications.js?v=224"></script>
-    <script src="scripts/sidebar-nav.js?v=224"></script>
+    <script src="scripts/push-alerts.js?v=225"></script>
+    <script src="scripts/notifications.js?v=225"></script>
+    <script src="scripts/sidebar-nav.js?v=225"></script>
     <script>
         loadSidebarNav();
         initIcons();
