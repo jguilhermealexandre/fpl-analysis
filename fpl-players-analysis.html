@@ -17,13 +17,13 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=219">
-    <link rel="stylesheet" href="styles/players.css?v=219">
+    <link rel="stylesheet" href="styles/common.css?v=220">
+    <link rel="stylesheet" href="styles/players.css?v=220">
     <!-- The shared player profile card. Loaded after this page's own sheet so
          either can still override the other, exactly as on the squad page. -->
-    <link rel="stylesheet" href="styles/player-profile.css?v=219">
-    <link rel="stylesheet" href="styles/v2-design.css?v=219">
-    <link rel="stylesheet" href="styles/responsive.css?v=219">
+    <link rel="stylesheet" href="styles/player-profile.css?v=220">
+    <link rel="stylesheet" href="styles/v2-design.css?v=220">
+    <link rel="stylesheet" href="styles/responsive.css?v=220">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -53,17 +53,18 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=219">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=219">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=219">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=219">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=219">
-    <link rel="preload" as="script" href="scripts/player-profile.js?v=219">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=219">
-    <link rel="preload" as="script" href="scripts/common.js?v=219">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=219">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=219">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=219">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=220">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=220">
+    <link rel="preload" as="script" href="scripts/routes-engine.js?v=220">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=220">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=220">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=220">
+    <link rel="preload" as="script" href="scripts/player-profile.js?v=220">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=220">
+    <link rel="preload" as="script" href="scripts/common.js?v=220">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=220">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=220">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=220">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1098,58 +1099,20 @@
          * Pre-computes routes-to-points data for all players and stores in window._routesData.
          * This allows calculatePositionScore to reward players with multiple reliable routes.
          */
+        /* Route counts for cross-wiring into the recommendation cards.
+
+           This was a third copy of the route rules — its own thresholds, its own
+           weights, no defensive contribution, and Creativity counted as a route
+           that pays points. routesFor() in scripts/routes-engine.js is the only
+           place any of that is decided now. */
         function precomputeRoutesData(analyses) {
             window._routesData = {};
-            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const goalPts = { GK: 6, DEF: 6, MID: 5, FWD: 4 };
-
             analyses.filter(p => isPlayerEligible(p, { minGames: 3 })).forEach(p => {
-                const pos = posMap[p.position];
-                const g5 = p.l5?.games || 1;
-                const gS = p.season?.games || g5;
-                const blend = (l5val, sVal) => (l5val / g5) * 0.6 + (sVal / gS) * 0.4;
-
-                const xGpg = blend(p.l5?.xG || 0, p.season?.xG || 0);
-                const xApg = blend(p.l5?.xA || 0, p.season?.xA || 0);
-                const goalsPg = blend(p.l5?.goals || 0, p.season?.goals || 0);
-                const assistsPg = blend(p.l5?.assists || 0, p.season?.assists || 0);
-                const csPg = blend(p.l5?.cleanSheets || 0, p.season?.cleanSheets || 0);
-                const bonusPg = blend(p.l5?.bonus || 0, p.season?.bonus || 0);
-                const savesPg = blend(p.l5?.saves || 0, p.season?.saves || 0);
-                const creativityPg = blend(p.l5?.creativity || 0, p.season?.creativity || 0);
-
-                const goalThresh = { GK: 0.03, DEF: 0.06, MID: 0.12, FWD: 0.15 }[pos];
-                const assistThresh = { GK: 0.02, DEF: 0.06, MID: 0.10, FWD: 0.08 }[pos];
-                const csThresh = { GK: 0.15, DEF: 0.15, MID: 0.30, FWD: 999 }[pos];
-                const bonusThresh = { GK: 0.3, DEF: 0.3, MID: 0.4, FWD: 0.5 }[pos];
-
-                let routeCount = 0;
-                let weightedSum = 0;
-
-                if (xGpg >= goalThresh || goalsPg >= goalThresh * 1.5) {
-                    const ceiling = pos === 'FWD' ? 0.6 : pos === 'MID' ? 0.5 : 0.3;
-                    routeCount++; weightedSum += Math.min(10, (xGpg / ceiling) * 10) * goalPts[pos];
-                }
-                if (xApg >= assistThresh || assistsPg >= assistThresh * 1.5) {
-                    const ceiling = pos === 'MID' ? 0.4 : 0.3;
-                    routeCount++; weightedSum += Math.min(10, (xApg / ceiling) * 10) * 3;
-                }
-                if (csPg >= csThresh) {
-                    const ptWeight = { GK: 4, DEF: 4, MID: 1, FWD: 0 }[pos];
-                    routeCount++; weightedSum += Math.min(10, (csPg / 0.55) * 10) * ptWeight;
-                }
-                if (bonusPg >= bonusThresh) {
-                    routeCount++; weightedSum += Math.min(10, (bonusPg / 2) * 10) * 2;
-                }
-                if (pos === 'GK' && savesPg >= 2) {
-                    routeCount++; weightedSum += Math.min(10, (savesPg / 5) * 10) * 1.5;
-                }
-                if (creativityPg >= 12 && (pos === 'MID' || pos === 'DEF')) {
-                    routeCount++; weightedSum += Math.min(10, (creativityPg / 45) * 10) * 1.5;
-                }
-
-                if (routeCount >= 2) {
-                    window._routesData[p.id] = { routeCount, compositeScore: weightedSum };
+                const rt = routesFor(p);
+                if (rt.routeCount >= 2) {
+                    window._routesData[p.id] = {
+                        routeCount: rt.routeCount, compositeScore: rt.compositeScore
+                    };
                 }
             });
         }
@@ -1296,189 +1259,36 @@
             if (isPreseason) {
                 return renderLastSeasonRoutes(analyses);
             }
-            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            /* One engine — routesFor() in scripts/routes-engine.js.
 
-            // FPL point values per route (used to weight composite score)
-            // Goals: GK/DEF=6, MID=5, FWD=4. Assists: 3. CS: GK/DEF=4, MID=1. Bonus: 1-3. Saves: 1 per 3.
-            const goalPts = { GK: 6, DEF: 6, MID: 5, FWD: 4 };
-            const csPts  = { GK: 4, DEF: 4, MID: 1, FWD: 0 };
+               This function used to decide, for itself, which routes exist, what
+               each is worth, how strong it is, and where the projected points
+               come from. compare-report.js carried a copy of the first half and
+               the profile card answered the second half from the real
+               projection, so the site held three answers to one question.
 
-            // Compute routes for each eligible player
+               It renders now. Everything it used to compute is the engine's. */
             const scored = analyses
                 .filter(p => isPlayerEligible(p, { minGames: 3 }))
                 .map(p => {
-                    const pos = posMap[p.position];
-                    const g5 = p.l5?.games || 1;
-                    const gS = p.season?.games || g5;
-
-                    // Blend L5 (60%) + Season (40%) for robustness — per-game metrics
-                    const blend = (l5val, sVal) => {
-                        const l5pg = l5val / g5;
-                        const spg = sVal / gS;
-                        return l5pg * 0.6 + spg * 0.4;
+                    const rt = routesFor(p);
+                    const bd = rt.breakdown;
+                    return {
+                        ...p, pos: rt.pos,
+                        routes: rt.routes, signals: rt.signals, routeCount: rt.routeCount,
+                        compositeScore: rt.compositeScore,
+                        nailedMultiplier: rt.nailedMultiplier,
+                        per90: rt.per90, gamesSample: rt.gamesSample, minsPg: rt.minsPg,
+                        defConHit: rt.defConHit,
+                        /* The point-source bar is the projection broken open, not
+                           a second model reconstructed from blended rates — which
+                           is what it was, and why defensive contribution was
+                           missing from every bar on this page while the engine
+                           had been projecting it all along. */
+                        pointSources: bd ? bd.sources : [],
+                        xpTotal: bd ? bd.total : 0,
+                        xpConceded: bd ? bd.conceded : 0
                     };
-
-                    const xGpg = blend(p.l5?.xG || 0, p.season?.xG || 0);
-                    const xApg = blend(p.l5?.xA || 0, p.season?.xA || 0);
-                    const goalsPg = blend(p.l5?.goals || 0, p.season?.goals || 0);
-                    const assistsPg = blend(p.l5?.assists || 0, p.season?.assists || 0);
-                    const csPg = blend(p.l5?.cleanSheets || 0, p.season?.cleanSheets || 0);
-                    const bonusPg = blend(p.l5?.bonus || 0, p.season?.bonus || 0);
-                    const savesPg = blend(p.l5?.saves || 0, p.season?.saves || 0);
-                    const minsPg = blend(p.l5?.minutes || 0, p.season?.minutes || 0);
-                    const creativityPg = blend(p.l5?.creativity || 0, p.season?.creativity || 0);
-
-                    // Penalty duty is published — penalties_order, 1 for the first
-                    // choice. This used to be inferred from a goals-minus-xG gap,
-                    // which guessed at something the API states outright and was
-                    // worthless early in a season when that gap is one match wide.
-                    const penOrder = p.penaltiesOrder;
-                    const isPenTaker = penOrder != null && penOrder <= 2;
-                    const penAttempts = (p.season?.penaltiesMissed || 0)
-                        + Math.max(0, Math.round((p.season?.goals || 0) - (p.season?.xG || 0)));
-
-                    // Consistency: std deviation of per-game points in L5
-                    let consistency = 0;
-                    if (p.history && p.history.length >= 5) {
-                        const last5 = p.history.slice(-5);
-                        const pts = last5.map(g => parseFloat(g.total_points) || 0);
-                        const mean = pts.reduce((s, v) => s + v, 0) / pts.length;
-                        const variance = pts.reduce((s, v) => s + (v - mean) ** 2, 0) / pts.length;
-                        const stdDev = Math.sqrt(variance);
-                        // Lower stdDev = more consistent. Convert to 0-10 score (stdDev of ~5 is normal)
-                        consistency = Math.max(0, Math.min(10, (1 - stdDev / 6) * 10));
-                    }
-
-                    // Nailed-on multiplier (not a route): 0.85-1.15 range
-                    const nailedMultiplier = minsPg >= 85 ? 1.15 : minsPg >= 75 ? 1.07 : minsPg >= 60 ? 1.0 : 0.85;
-
-                    // Position-specific thresholds
-                    const goalThresh = { GK: 0.03, DEF: 0.06, MID: 0.12, FWD: 0.15 }[pos];
-                    const assistThresh = { GK: 0.02, DEF: 0.06, MID: 0.10, FWD: 0.08 }[pos];
-                    const csThresh = { GK: 0.15, DEF: 0.15, MID: 0.30, FWD: 999 }[pos]; // FWD can't use CS route
-                    const bonusThresh = { GK: 0.3, DEF: 0.3, MID: 0.4, FWD: 0.5 }[pos];
-
-                    // Define routes: each has a name, icon, strength (0-10), point weight, and detail
-                    const routes = [];
-
-                    // 1. Goals route — weighted by position point value
-                    if (xGpg >= goalThresh || goalsPg >= goalThresh * 1.5) {
-                        const ceiling = pos === 'FWD' ? 0.6 : pos === 'MID' ? 0.5 : 0.3;
-                        const strength = Math.min(10, (xGpg / ceiling) * 10);
-                        const ptWeight = goalPts[pos];
-                        routes.push({ name: 'Goals', icon: '<i data-lucide="circle-dot" style="width:14px;height:14px;"></i>', strength, detail: `${xGpg.toFixed(2)} xG/g`, color: '#F87171', ptWeight });
-                    }
-
-                    // 2. Assists route
-                    if (xApg >= assistThresh || assistsPg >= assistThresh * 1.5) {
-                        const ceiling = pos === 'MID' ? 0.4 : 0.3;
-                        const strength = Math.min(10, (xApg / ceiling) * 10);
-                        routes.push({ name: 'Assists', icon: '<i data-lucide="a-large-small" style="width:14px;height:14px;"></i>', strength, detail: `${xApg.toFixed(2)} xA/g`, color: '#60A5FA', ptWeight: 3 });
-                    }
-
-                    // 3. Clean Sheets route (position-weighted)
-                    if (csPg >= csThresh) {
-                        const strength = Math.min(10, (csPg / 0.55) * 10);
-                        const ptWeight = csPts[pos];
-                        routes.push({ name: 'Clean Sheets', icon: '<i data-lucide="shield-check" style="width:14px;height:14px;"></i>', strength, detail: `${(csPg * 100).toFixed(0)}% rate`, color: '#34D399', ptWeight });
-                    }
-
-                    // 4. Bonus Magnet routes
-                    if (bonusPg >= bonusThresh) {
-                        const strength = Math.min(10, (bonusPg / 2) * 10);
-                        routes.push({ name: 'Bonus', icon: '<i data-lucide="star" style="width:14px;height:14px;"></i>', strength, detail: `${bonusPg.toFixed(1)}/g`, color: '#FBBF24', ptWeight: 2 });
-                    }
-
-                    // 5. Saves route (GK only) — 1pt per 3 saves
-                    if (pos === 'GK' && savesPg >= 2) {
-                        const strength = Math.min(10, (savesPg / 5) * 10);
-                        routes.push({ name: 'Saves', icon: '<i data-lucide="hand" style="width:14px;height:14px;"></i>', strength, detail: `${savesPg.toFixed(1)}/g`, color: '#A78BFA', ptWeight: 1.5 });
-                    }
-
-                    // 6. Creativity / Chance Creation route
-                    if (creativityPg >= 12 && (pos === 'MID' || pos === 'DEF')) {
-                        const strength = Math.min(10, (creativityPg / 45) * 10);
-                        routes.push({ name: 'Creativity', icon: '<i data-lucide="crosshair" style="width:14px;height:14px;"></i>', strength, detail: `${creativityPg.toFixed(0)} crea/g`, color: '#FB923C', ptWeight: 1.5 });
-                    }
-
-                    // 7. Penalty Taker route — reliable ~0.76 conversion = ~5 pts each
-                    if (isPenTaker && pos !== 'GK') {
-                        const strength = penOrder === 1 ? 9 : 5;
-                        routes.push({ name: 'Penalties', icon: '<i data-lucide="goal" style="width:14px;height:14px;"></i>',
-                            strength, detail: penOrder === 1 ? 'First choice' : `Order ${penOrder}`,
-                            color: '#F472B6', ptWeight: goalPts[pos] * 0.76 });
-                    }
-
-                    // (BPS Floor route removed — redundant with Bonus route)
-
-                    // ── Composite Score ──
-                    // Weighted sum of (route strength × FPL point weight) rather than count × avg
-                    const routeCount = routes.length;
-                    const weightedSum = routes.reduce((s, r) => s + r.strength * (r.ptWeight || 1), 0);
-
-                    // Opponent-specific fixture factor using next match opponent quality
-                    const nextFx = p.fixtures?.next3?.[0] || null;
-                    let fixtureFactor = 1.0;
-                    if (nextFx?.opponent && teamAnalysis[nextFx.opponent]) {
-                        const oppData = teamAnalysis[nextFx.opponent];
-                        const oppAttack = nextFx.isHome ? (oppData.attackPowerAway || oppData.attackPower || 50) : (oppData.attackPowerHome || oppData.attackPower || 50);
-                        const oppDefense = nextFx.isHome ? (oppData.defensePowerAway || oppData.defensePower || 50) : (oppData.defensePowerHome || oppData.defensePower || 50);
-                        const relevantOpp = (pos === 'GK' || pos === 'DEF') ? oppAttack : oppDefense;
-                        fixtureFactor = 1 + (50 - relevantOpp) * 0.004;
-                        if (nextFx.isHome) fixtureFactor += 0.04; // home boost
-                        fixtureFactor = Math.max(0.75, Math.min(1.3, fixtureFactor));
-                    } else {
-                        const fdr = p.fixtures?.avgFDR3 || 3;
-                        fixtureFactor = Math.max(0.8, Math.min(1.2, (4 - fdr) * 0.15 + 1));
-                    }
-
-                    const compositeScore = weightedSum * nailedMultiplier * fixtureFactor;
-                    // Reliability bonus: consistent players with many routes are extra valuable
-                    const reliabilityBonus = routeCount >= 3 ? consistency * 0.5 : 0;
-
-                    // ── Point source breakdown ──
-                    // Where the expected points actually come from, in points per
-                    // game. The segments must be mutually exclusive or the shares
-                    // mean nothing, which rules out two of the routes above:
-                    // penalty goals are already inside xG, and creativity is an
-                    // ICT component that predicts assists rather than scoring
-                    // separately. Both stay as route badges; neither gets a slice.
-                    const ev = Math.min(1, gS / 4);
-                    const base = posRateBaseline(pos);
-                    // Same price-aware prior the xP model uses, so the breakdown
-                    // and the headline number stay in agreement.
-                    const pqr = paPriceQualityMultiplier(p.price, pos);
-                    const rg = (v, b) => v * ev + b * (1 - ev);
-                    const xGr = rg(xGpg, base.xG * pqr);
-                    const xAr = rg(xApg, base.xA * pqr);
-                    const csr = rg(csPg, base.cs);
-                    const bonusR = rg(bonusPg, base.bonus);
-                    const savesR = rg(savesPg, base.saves);
-
-                    // Fixed segment order — this exact sequence is what the
-                    // colour-blindness check was run against. Do not reorder.
-                    const pointSources = [
-                        { key: 'appearance', label: 'Appearance', color: '#94A3B8', pts: minsPg >= 60 ? 2 : minsPg > 0 ? 1 : 0 },
-                        { key: 'goals',      label: 'Goals',       color: '#F87171', pts: xGr * goalPts[pos] },
-                        { key: 'assists',    label: 'Assists',     color: '#60A5FA', pts: xAr * 3 },
-                        { key: 'cs',         label: 'Clean sheets', color: '#34D399', pts: csr * (csPts[pos] || 0) },
-                        { key: 'saves',      label: 'Saves',       color: '#A78BFA', pts: pos === 'GK' ? savesR / 3 : 0 },
-                        { key: 'bonus',      label: 'Bonus',       color: '#FBBF24', pts: bonusR }
-                    ].filter(s => s.pts >= 0.05);
-                    const xpTotal = pointSources.reduce((s, r) => s + r.pts, 0);
-                    pointSources.forEach(s => { s.share = xpTotal > 0 ? s.pts / xpTotal : 0; });
-
-                    // Per-90 figures for the raw stat pills — minutes-normalised,
-                    // which is the form these numbers are usually quoted in.
-                    const p90 = v => minsPg > 0 ? v * (90 / minsPg) : 0;
-                    const per90 = {
-                        xG: p90(xGpg), xA: p90(xApg), xGI: p90(xGpg + xApg),
-                        saves: p90(savesPg), bonus: bonusPg, cs: csPg,
-                        gc: p90(blend(p.l5?.goalsConceded || 0, p.season?.goalsConceded || 0))
-                    };
-
-                    return { ...p, pos, routes, routeCount, compositeScore: compositeScore + reliabilityBonus, consistency, nailedMultiplier,
-                             pointSources, xpTotal, per90, gamesSample: gS, minsPg };
                 })
                 .filter(p => p.routeCount >= 2)
                 .sort((a, b) => b.compositeScore - a.compositeScore);
@@ -1615,7 +1425,7 @@
                 const pct = s.share * 100;
                 const room = pct >= 14;
                 return `<span class="rp-seg" style="width:${pct.toFixed(2)}%;background:${s.color};"
-                    data-tooltip="${escHTML(s.label)}: ${s.pts.toFixed(2)} pts per game, ${Math.round(pct)}% of his expected points">
+                    data-tooltip="${escHTML(s.label)}: ${s.pts.toFixed(2)} projected points, ${Math.round(pct)}% of the total">
                     ${room ? `<span class="rp-seg-l rp-when-prop">${Math.round(pct)}%</span><span class="rp-seg-l rp-when-raw">${s.pts.toFixed(1)}</span>` : ''}
                 </span>`;
             }).join('');
@@ -1625,8 +1435,8 @@
                 <b class="rp-when-prop">${Math.round(s.share * 100)}%</b><b class="rp-when-raw">${s.pts.toFixed(1)}</b></span>`).join('');
             return `<div class="rp-profile">
                 <div class="rp-profile-head">
-                    <span class="rp-profile-t">Projected per game</span>
-                    <span class="rp-xp" data-tooltip="Expected points per game from these sources, with thin-sample rates regressed toward the position average. Excludes cards and other minor adjustments.">${p.xpTotal.toFixed(1)}<small>xP/g</small></span>
+                    <span class="rp-profile-t">Projected next match</span>
+                    <span class="rp-xp" data-tooltip="The squad projection's own breakdown for his next fixture — the same model the rest of the site runs on, split by where the points come from. Positive sources only; the deduction for goals conceded and for cards is not a slice of a total it subtracts from.">${p.xpTotal.toFixed(1)}<small>xP</small></span>
                 </div>
                 <div class="rp-bar" style="--rp-rawfill:${rawFill.toFixed(2)}%">${segs}</div>
                 <div class="rp-keys">${legend}</div>
@@ -1635,11 +1445,21 @@
 
         function rpMiniPills(p) {
             const r = p.per90 || {};
+            /* Defensive contribution reads as a hit rate, not a per-90 average.
+               The two points come off a cliff — ten actions pays, nine pays
+               nothing — so "8.4 per 90" tells you almost nothing about whether he
+               banks it, and "cleared 10+ in 3 of 4" tells you exactly. Shown
+               whatever the rate, including 0 of 4, because that is a measurement;
+               it is absent only for a keeper, who cannot score it, and for a
+               player with too few appearances to divide by. */
+            const dc = p.defConHit;
+            const dcPill = dc ? [[paIcon('shield'), `${dc.hits}/${dc.n}`,
+                `${dc.threshold}+ def. actions`]] : [];
             const pills = p.pos === 'GK'
                 ? [[paIcon('gloves'), r.saves.toFixed(1), 'saves/90'], [paIcon('shield'), Math.round((r.cs || 0) * 100) + '%', 'CS rate'], [paIcon('goal'), r.gc.toFixed(1), 'conceded/90'], [paIcon('star'), (r.bonus || 0).toFixed(1), 'bonus/g']]
                 : p.pos === 'DEF'
-                ? [[paIcon('target'), r.xG.toFixed(2), 'xG/90'], [paIcon('boot'), r.xA.toFixed(2), 'xA/90'], [paIcon('shield'), Math.round((r.cs || 0) * 100) + '%', 'CS rate'], [paIcon('star'), (r.bonus || 0).toFixed(1), 'bonus/g']]
-                : [[paIcon('target'), r.xG.toFixed(2), 'xG/90'], [paIcon('boot'), r.xA.toFixed(2), 'xA/90'], [paIcon('swords'), r.xGI.toFixed(2), 'xGI/90'], [paIcon('star'), (r.bonus || 0).toFixed(1), 'bonus/g']];
+                ? [[paIcon('target'), r.xG.toFixed(2), 'xG/90'], [paIcon('boot'), r.xA.toFixed(2), 'xA/90'], [paIcon('shield'), Math.round((r.cs || 0) * 100) + '%', 'CS rate'], ...dcPill, [paIcon('star'), (r.bonus || 0).toFixed(1), 'bonus/g']]
+                : [[paIcon('target'), r.xG.toFixed(2), 'xG/90'], [paIcon('boot'), r.xA.toFixed(2), 'xA/90'], [paIcon('swords'), r.xGI.toFixed(2), 'xGI/90'], ...dcPill, [paIcon('star'), (r.bonus || 0).toFixed(1), 'bonus/g']];
             const thin = (p.gamesSample || 0) < 3;
             const sample = thin ? `<span class="rp-pill rp-pill-sample" data-tooltip="Season is ${p.gamesSample} game${p.gamesSample === 1 ? '' : 's'} old, so these are single results rather than settled rates.">${paIcon('ruler')} ${p.gamesSample}g</span>` : '';
             return `<div class="rp-pills-t">Observed so far</div>
@@ -1663,7 +1483,12 @@
         }
 
         function routeScoutNote(p, rel) {
-            const named = { goals: 'goal threat', assists: 'chance creation', cs: 'clean sheets', saves: 'save volume', bonus: 'bonus points' };
+            /* Keyed on the engine's own keys. These used to say `cs`, and the
+               engine says `cleanSheet` — a lookup miss here reads as "undefined"
+               in the middle of a sentence, which is how every phrase below would
+               have greeted defensive contribution. */
+            const named = { goals: 'goal threat', assists: 'chance creation', cleanSheet: 'clean sheets',
+                saves: 'save volume', defCon: 'defensive work', bonus: 'bonus points' };
             const src = (p.pointSources || []).filter(s => s.key !== 'appearance').sort((a, b) => b.pts - a.pts);
             if (!src.length) return 'No meaningful attacking or defensive output yet — currently an appearance-points asset only.';
             const top = src[0], second = src[1];
@@ -1685,12 +1510,22 @@
             const secondPct = second ? Math.round(second.share * 100) : 0;
             const pair = second ? [top.key, second.key].sort().join('+') : top.key;
             const PAIR_NOTE = {
-                'cs+saves': `Save volume is the cushion here — it pays in exactly the weeks the clean sheet does not arrive, which is what makes a busy keeper worth owning.`,
-                'bonus+cs': `Clean sheets carry ${topPct}% of it, and the bonus largely lands on those same afternoons rather than forming a route of its own.`,
+                'cleanSheet+saves': `Save volume is the cushion here — it pays in exactly the weeks the clean sheet does not arrive, which is what makes a busy keeper worth owning.`,
+                'bonus+cleanSheet': `Clean sheets carry ${topPct}% of it, and the bonus largely lands on those same afternoons rather than forming a route of its own.`,
                 'bonus+goals': `Goals lead at ${topPct}%, and bonus mostly follows them — fewer genuinely independent routes than the badge suggests.`,
                 'assists+goals': `Both halves of the attacking return are live — ${named[top.key]} at ${topPct}%, ${named[second.key]} at ${secondPct}% — which is the most durable shape an attacking profile takes.`,
-                'cs+goals': `${backLine ? 'Dual threat from the back' : 'Two-way profile'}: clean sheets and goal threat are worth ${topPct}% and ${secondPct}%, and they do not depend on each other.`,
-                'assists+cs': `${backLine ? 'Dual threat from the back' : 'Two-way profile'}: clean sheets and chance creation are worth ${topPct}% and ${secondPct}%, and they do not depend on each other.`
+                'cleanSheet+goals': `${backLine ? 'Dual threat from the back' : 'Two-way profile'}: clean sheets and goal threat are worth ${topPct}% and ${secondPct}%, and they do not depend on each other.`,
+                'assists+cleanSheet': `${backLine ? 'Dual threat from the back' : 'Two-way profile'}: clean sheets and chance creation are worth ${topPct}% and ${secondPct}%, and they do not depend on each other.`,
+                /* Defensive contribution is the one route that does NOT arrive on
+                   the same afternoon as the others. A clean sheet needs ten other
+                   players; tackles and interceptions are his alone, and they are
+                   paid in the heavy defeats where everything else pays nothing.
+                   That is the opposite of the double-counting the notes above
+                   warn about, so it is worth saying out loud. */
+                'cleanSheet+defCon': `Clean sheets and defensive work at ${topPct}% and ${secondPct}% — and these genuinely are independent: the tackles and interceptions pay in exactly the weeks the clean sheet does not.`,
+                'defCon+goals': `Goal threat and defensive work, ${topPct}% and ${secondPct}%. Two sources that land on different afternoons, which is the shape you want.`,
+                'assists+defCon': `Chance creation and defensive work, ${topPct}% and ${secondPct}% — box to box, and the two rarely fail in the same week.`,
+                'bonus+defCon': `Defensive work is doing the heavy lifting, and it drags the bonus along with it — the same actions feed the BPS, so treat these as closer to one route than two.`
             };
 
             let lead;
@@ -3862,20 +3697,21 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=219"></script>
+    <script src="scripts/error-monitor.js?v=220"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=219"></script>
-    <script src="scripts/players-tables.js?v=219"></script>
-    <script src="scripts/compare-report.js?v=219"></script>
+    <script src="scripts/xp-engine.js?v=220"></script>
+    <script src="scripts/routes-engine.js?v=220"></script>
+    <script src="scripts/players-tables.js?v=220"></script>
+    <script src="scripts/compare-report.js?v=220"></script>
     <!-- The price meter and the season's price path, from the game's own price
          engine. Pure functions, no DOM — the profile card renders them. -->
-    <script src="scripts/price-watch.js?v=219"></script>
+    <script src="scripts/price-watch.js?v=220"></script>
     <!-- Everything the site knows about one player, in one card. Shared with the
          squad page; the trend charts this page adds to it are wired up in the
          inline block below via pdmPageSections()/pdmAfterRender(). -->
-    <script src="scripts/player-profile.js?v=219"></script>
+    <script src="scripts/player-profile.js?v=220"></script>
     <script>
         // buildStatWindows / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -4185,8 +4021,20 @@
                     filter: p => p.pos === 'DEF',
                     sort: (a, b) => b.xgiPerGame - a.xgiPerGame,
                     statValue: p => p.xgiPerGame.toFixed(2),
-                    statLabel: 'xGI/G',
-                    reason: p => `${p.xgiPerGame.toFixed(2)} xGI/g — attacking wingback/centre-back with set piece threat`
+                    statLabel: 'xGI/Match',
+                    reason: p => `${p.xgiPerGame.toFixed(2)} xGI per match — attacking wingback/centre-back with set piece threat`
+                },
+                /* Ranked on the hit rate rather than actions per 90: the per-90
+                   figure is the input, and what a manager is buying is how often
+                   the two points actually arrive. */
+                defCon: {
+                    title: 'Defensive Contribution',
+                    subtitle: 'How often the defensive-contribution points land',
+                    filter: p => (p.pos === 'DEF' || p.pos === 'MID') && p.defConHit,
+                    sort: (a, b) => b.defConHit.rate - a.defConHit.rate,
+                    statValue: p => Math.round(p.defConHit.rate * 100) + '%',
+                    statLabel: 'hit rate',
+                    reason: p => `Cleared ${p.defConHit.threshold}+ defensive actions in ${p.defConHit.hits} of ${p.defConHit.n} appearances — ${(p.defConHit.rate * 2).toFixed(1)} pts a match`
                 },
                 gkSaves: {
                     title: 'Save Point Machines',
@@ -4571,8 +4419,16 @@
                 bl: ['Leaky', 'bad'], br: ['Unlucky defence', 'watch']
             },
             defAttackingChart: {
-                tl: ['Attacking threat', 'watch'], tr: ['Dual threat', 'good'],
-                bl: ['Limited', 'muted'], br: ['Clean sheets only', 'watch']
+                tl: ['Creator', 'watch'], tr: ['Dual threat', 'good'],
+                bl: ['No attacking threat', 'muted'], br: ['Scorer', 'watch']
+            },
+            /* Bottom-right is the quadrant worth naming: high per-90 and a low
+               hit rate means he is doing the work and finishing just short of the
+               threshold, which is the profile that turns into points on the day
+               his side spends ninety minutes defending. */
+            defConChart: {
+                tl: ['Efficient', 'good'], tr: ['Banks it weekly', 'good'],
+                bl: ['Not a route', 'muted'], br: ['Falls just short', 'watch']
             },
             gkSavesChart: {
                 tl: ['Busy keeper', 'watch'], tr: ['Save points + sheets', 'good'],
@@ -4853,7 +4709,19 @@
                         reliabilityPct,
                         explosivenessPct,
                         // Estimated touches in box (based on xGI)
-                        touchesInBox: Math.round(xgiPerGame * 15 + (pos === 'FWD' ? 5 : pos === 'MID' ? 3 : pos === 'DEF' ? 2 : 0)),
+                        /* "Est. Touches in Box" used to be here, plotted as the
+                           x-axis of the defensive chart below. It was
+                           xGI/game × 15 plus a per-position constant — FPL has
+                           never published touches, in the box or anywhere else,
+                           and there is no such field in bootstrap-static or in
+                           any of the gameweek rows. It was xGI wearing another
+                           stat's name, so the chart was xGI against xGI with a
+                           straight line through it.
+
+                           Defensive contribution is a real published field and
+                           the real answer to what that panel was asking. */
+                        defConHit: (typeof rtDefConHit === 'function') ? rtDefConHit(p) : null,
+                        defCon90: p.defCon90 || 0,
                         // For GK chart
                         totalSaves: p.l5.saves || 0,
                         totalxGC: p.l5.xGC || 0
@@ -4929,11 +4797,18 @@
                                 <div class="chart-container"><canvas id="xgcVsCSChart"></canvas></div>
                             </div>
                             
-                            <div class="chart-card" onclick="expandChart('defAttacking', 'Attacking Defenders (xGI)', 'Top-Right = Wingback gold (TAA, Porro types)')">
+                            <div class="chart-card" onclick="expandChart('defAttacking', 'Attacking Defenders (xG vs xA)', 'Top-Right = threat from both sides of the ball')">
                                 <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
-                                <div class="chart-title" style="color: #60a5fa;"><i data-lucide="swords" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Attacking Defenders (xGI)</div>
-                                <div class="chart-subtitle">Top-Right = Wingback gold (TAA, Porro types)</div>
+                                <div class="chart-title" style="color: #60a5fa;"><i data-lucide="swords" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Attacking Defenders (xG vs xA)</div>
+                                <div class="chart-subtitle">Right = scores them, Top = creates them, Top-Right = both</div>
                                 <div class="chart-container"><canvas id="defAttackingChart"></canvas></div>
+                            </div>
+
+                            <div class="chart-card" onclick="expandChart('defCon', 'Defensive Contribution', 'Right = does the work, Top = actually banks the 2 points')">
+                                <div class="chart-expand-hint"><i data-lucide="maximize-2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Fullscreen</div>
+                                <div class="chart-title" style="color: #38bdf8;"><i data-lucide="shield" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Defensive Contribution</div>
+                                <div class="chart-subtitle">Threshold is a cliff — 10+ actions for a defender, 12+ for a midfielder</div>
+                                <div class="chart-container"><canvas id="defConChart"></canvas></div>
                             </div>
                             
                             <div class="chart-card" onclick="expandChart('gkSaves', 'GK: Saves vs xGC', 'Top-Right = Save point magnets (busy keepers)')">
@@ -5313,7 +5188,18 @@
                 });
             }
             
-            // 6. Attacking Defenders (DEF only - xGI based)
+            /* 6. Attacking defenders — the two halves of xGI, both real.
+
+               The x-axis was "Est. Touches in Box", which was xGI/game × 15 plus
+               a per-position constant. FPL publishes no touch data of any kind,
+               so this plotted xGI against a rescaling of xGI: a straight line,
+               drawn at a 45-degree angle, that could only ever say what the
+               y-axis had already said.
+
+               Splitting xGI into its own components is the honest version of the
+               same question and a more useful one — a centre-back who scores from
+               corners and a wing-back who crosses have the same xGI and are not
+               the same asset. */
             const ctx6 = document.getElementById('defAttackingChart')?.getContext('2d');
             if (ctx6) {
                 const defPlayers = players.filter(p => p.pos === 'DEF');
@@ -5324,8 +5210,8 @@
                             label: 'DEF',
                             position: 'DEF',
                             data: defPlayers.map(p => ({
-                                x: p.touchesInBox,
-                                y: p.xgiPerGame,
+                                x: p.xgPerGame,
+                                y: p.xaPerGame,
                                 ...p
                             })),
                             backgroundColor: POSITION_COLORS['DEF'].bg,
@@ -5335,11 +5221,11 @@
                             pointHoverRadius: 11
                         }]
                     },
-                    options: { 
-                        ...baseOptions, 
-                        scales: { 
-                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Est. Touches in Box', color: ct.text }, min: 0 }, 
-                            y: { ...baseOptions.scales.y, title: { display: true, text: 'xGI per Game', color: ct.text }, min: 0 } 
+                    options: {
+                        ...baseOptions,
+                        scales: {
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'xG per Match', color: ct.text }, min: 0 },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: 'xA per Match', color: ct.text }, min: 0 }
                         },
                         plugins: {
                             ...baseOptions.plugins,
@@ -5351,10 +5237,73 @@
                                         const p = ctx.raw;
                                         if (!p) return '';
                                         return [
-                                            `xGI/G: ${p.xgiPerGame?.toFixed(2)}`,
-                                            `xG/G: ${p.xgPerGame?.toFixed(2)}`,
-                                            `xA/G: ${p.xaPerGame?.toFixed(2)}`,
-                                            `CS/G: ${p.csPerGame?.toFixed(2)}`,
+                                            `xG/Match: ${p.xgPerGame?.toFixed(2)}`,
+                                            `xA/Match: ${p.xaPerGame?.toFixed(2)}`,
+                                            `xGI/Match: ${p.xgiPerGame?.toFixed(2)}`,
+                                            `CS/Match: ${p.csPerGame?.toFixed(2)}`,
+                                            `Price: £${p.price?.toFixed(1)}m`
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            /* 6b. Defensive contribution — how often the two points actually land.
+
+               Two axes that are genuinely different questions. The x-axis is the
+               rate: how much defensive work he gets through per 90. The y-axis is
+               what FPL pays for it, which is NOT a rescaling of the same number,
+               because the reward is a cliff — ten actions for a defender, twelve
+               for a midfielder, and nothing at all below. A man averaging nine
+               and a half clears it about half the time; a man averaging fifteen
+               clears it every week. Where a dot sits above or below the line its
+               per-90 would predict is the whole point of plotting both.
+
+               Only players with at least three appearances are here, because
+               below that a hit rate is one match's luck with a denominator. */
+            const ctxDC = document.getElementById('defConChart')?.getContext('2d');
+            if (ctxDC) {
+                const dcSet = pos => ({
+                    label: pos,
+                    position: pos,
+                    data: players.filter(p => p.pos === pos && p.defConHit).map(p => ({
+                        x: p.defCon90,
+                        y: p.defConHit.rate * 100,
+                        ...p
+                    })),
+                    backgroundColor: POSITION_COLORS[pos].bg,
+                    borderColor: POSITION_COLORS[pos].border,
+                    pointStyle: pos === 'DEF' ? 'rect' : 'circle',
+                    pointRadius: 7,
+                    pointHoverRadius: 11
+                });
+                chartInstances.defCon = new Chart(ctxDC, {
+                    type: 'scatter',
+                    data: { datasets: [dcSet('DEF'), dcSet('MID')] },
+                    options: {
+                        ...baseOptions,
+                        scales: {
+                            x: { ...baseOptions.scales.x, title: { display: true, text: 'Defensive actions per 90', color: ct.text }, min: 0 },
+                            y: { ...baseOptions.scales.y, title: { display: true, text: '% of matches that paid the 2 pts', color: ct.text }, min: 0, max: 100 }
+                        },
+                        plugins: {
+                            ...baseOptions.plugins,
+                            legend: { display: true, labels: { color: ct.text, usePointStyle: true, boxWidth: 8 } },
+                            tooltip: {
+                                ...baseOptions.plugins.tooltip,
+                                callbacks: {
+                                    title: ctx => ctx[0]?.raw ? `${ctx[0].raw.name} (${ctx[0].raw.team})` : '',
+                                    label: ctx => {
+                                        const p = ctx.raw;
+                                        if (!p || !p.defConHit) return '';
+                                        const d = p.defConHit;
+                                        return [
+                                            `Cleared ${d.threshold}+ in ${d.hits} of ${d.n} appearances`,
+                                            `Defensive actions/90: ${(p.defCon90 || 0).toFixed(1)}`,
+                                            `Worth ${(d.rate * 2).toFixed(1)} pts per match played`,
                                             `Price: £${p.price?.toFixed(1)}m`
                                         ];
                                     }
@@ -5715,14 +5664,14 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=219"></script>
+    <script src="scripts/players-ai.js?v=220"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=219"></script>
+    <script src="scripts/common.js?v=220"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=219"></script>
-    <script src="scripts/notifications.js?v=219"></script>
-    <script src="scripts/sidebar-nav.js?v=219"></script>
+    <script src="scripts/push-alerts.js?v=220"></script>
+    <script src="scripts/notifications.js?v=220"></script>
+    <script src="scripts/sidebar-nav.js?v=220"></script>
     <script>
         loadSidebarNav();
         initIcons();

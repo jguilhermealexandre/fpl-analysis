@@ -301,50 +301,22 @@ function updateCompareBar() {
                 // Rising form score
                 const risingScore = (window._risingFormScores && window._risingFormScores[p.id]) || 0;
 
-                // Routes data
-                /* Only the players page precomputes these — window._routesData is
-                   never set on the squad page. Defaulting to zero routes told the
-                   squad page's reader that a player has none, which is a claim.
-                   Null, and the rows render a dash. */
-                const routesData = (window._routesData && window._routesData[p.id]) || null;
+                /* One engine — scripts/routes-engine.js. This file carried a copy
+                   of the players page's route logic, with its own thresholds and
+                   its own idea of which routes exist, and the two had already
+                   parted company: the copy had no defensive contribution, no
+                   penalty route, and a clean-sheet bar that ignored position.
 
-                // Compute route details for this player (re-use logic from generateRoutesToPoints inline)
-                let routes = [];
-                try {
-                    const g5 = p.l5?.games || 1;
-                    const gS = p.season?.games || g5;
-                    const blend = (l5v, sv) => (l5v / g5) * 0.6 + (sv / gS) * 0.4;
-                    const xGpg = blend(p.l5?.xG || 0, p.season?.xG || 0);
-                    const xApg = blend(p.l5?.xA || 0, p.season?.xA || 0);
-                    const cPg = blend(p.l5?.cleanSheets || 0, p.season?.cleanSheets || 0);
-                    const bPg = blend(p.l5?.bonus || 0, p.season?.bonus || 0);
-                    const sPg = blend(p.l5?.saves || 0, p.season?.saves || 0);
-                    const crPg = blend(p.l5?.creativity || 0, p.season?.creativity || 0);
-                    const goalPtsMap = { GK: 6, DEF: 6, MID: 5, FWD: 4 };
-                    const goalThresh = { GK: 0.03, DEF: 0.06, MID: 0.12, FWD: 0.15 }[pos];
-                    const assistThresh = { GK: 0.02, DEF: 0.06, MID: 0.10, FWD: 0.08 }[pos];
-
-                    if (xGpg >= goalThresh) {
-                        const ceil = pos === 'FWD' ? 0.6 : pos === 'MID' ? 0.5 : 0.3;
-                        routes.push({ name: 'Goals', strength: Math.min(10, (xGpg / ceil) * 10), detail: `${xGpg.toFixed(2)} xG/match`, color: '#F87171' });
-                    }
-                    if (xApg >= assistThresh) {
-                        const ceil = pos === 'MID' ? 0.4 : 0.3;
-                        routes.push({ name: 'Assists', strength: Math.min(10, (xApg / ceil) * 10), detail: `${xApg.toFixed(2)} xA/match`, color: '#60A5FA' });
-                    }
-                    if (cPg >= 0.15 && pos !== 'FWD') {
-                        routes.push({ name: 'Clean Sheets', strength: Math.min(10, (cPg / 0.55) * 10), detail: `${(cPg * 100).toFixed(0)}%`, color: '#34D399' });
-                    }
-                    if (bPg >= 0.3) {
-                        routes.push({ name: 'Bonus', strength: Math.min(10, (bPg / 2) * 10), detail: `${bPg.toFixed(1)}/match`, color: '#FBBF24' });
-                    }
-                    if (pos === 'GK' && sPg >= 2) {
-                        routes.push({ name: 'Saves', strength: Math.min(10, (sPg / 5) * 10), detail: `${sPg.toFixed(1)}/match`, color: '#A78BFA' });
-                    }
-                    if (crPg >= 12 && (pos === 'MID' || pos === 'DEF')) {
-                        routes.push({ name: 'Creativity', strength: Math.min(10, (crPg / 45) * 10), detail: `${crPg.toFixed(0)} crea/match`, color: '#FB923C' });
-                    }
-                } catch (e) {}
+                   The count used to be read from window._routesData, which only
+                   the players page ever populates — so the squad page showed a
+                   dash for every player. It is computed here now, on whichever
+                   page is asking. */
+                const rt = (typeof routesFor === 'function') ? routesFor(p) : null;
+                const routes = rt ? rt.routes : [];
+                const routeSignals = rt ? rt.signals : [];
+                const routesData = rt
+                    ? { routeCount: rt.routeCount, compositeScore: rt.compositeScore }
+                    : ((window._routesData && window._routesData[p.id]) || null);
 
                 // Rising form signals (re-compute for this player)
                 let risingSignals = [];
@@ -386,7 +358,7 @@ function updateCompareBar() {
                     ...p, pos, ptsPerGame, minsPerGame, xgiPerGame, xgPerGame, xaPerGame,
                     bonusPerGame, savesPerGame, csPerGame, valueScore, appearanceLabel,
                     reliability, explosiveness,
-                    consistency, xPts, csProb, ts, swing, risingScore, routesData, routes,
+                    consistency, xPts, csProb, ts, swing, risingScore, routesData, routes, routeSignals,
                     risingSignals, homeSplit, awaySplit, xgOverperf, seasonGoals, seasonXgVal
                 };
             });
@@ -874,19 +846,27 @@ function updateCompareBar() {
             }).join('');
 
             // Build routes comparison
-            const routesHtml = reportData.map(p => {
-                if (p.routes.length === 0) return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)}</div><div style="font-size:11px;color:var(--text-muted);">No qualifying routes</div></div>`;
-                const bars = p.routes.sort((a, b) => {
-                    const order = { Goals: 0, Assists: 1, 'Clean Sheets': 2, Bonus: 3, Saves: 4, Creativity: 5 };
-                    return (order[a.name] ?? 99) - (order[b.name] ?? 99);
-                }).map(r => `
-                    <div class="report-route-bar">
-                        <div class="report-route-label">${r.name}</div>
+            /* Ordered by key rather than by display name — the names are the
+               engine's now, and a lookup keyed on the rendered string silently
+               sends anything it does not recognise to the bottom. That is how
+               Defensive contribution would have arrived: below Saves, on a
+               defender, under a heading about where his points come from. */
+            const ROUTE_ORDER = ['goals', 'assists', 'cleanSheet', 'defCon', 'saves', 'bonus', 'penalties'];
+            const bar = (r, muted) => `
+                    <div class="report-route-bar${muted ? ' report-route-signal' : ''}"${muted ? ` data-tooltip="${escHTML(r.note || '')}"` : ''}>
+                        <div class="report-route-label">${escHTML(r.name)}</div>
                         <div class="report-route-track"><div class="report-route-fill" style="width:${r.strength * 10}%;background:${r.color};"></div></div>
-                        <div class="report-route-value">${r.detail}</div>
-                    </div>
-                `).join('');
-                return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)} <span style="color:var(--text-muted);font-weight:400;">(${p.routes.length} routes)</span></div>${bars}</div>`;
+                        <div class="report-route-value">${escHTML(r.detail)}</div>
+                    </div>`;
+            const routesHtml = reportData.map(p => {
+                const rs = [...p.routes].sort((a, b) =>
+                    (ROUTE_ORDER.indexOf(a.key) + 1 || 99) - (ROUTE_ORDER.indexOf(b.key) + 1 || 99));
+                const sig = (p.routeSignals || []);
+                if (!rs.length && !sig.length) return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)}</div><div style="font-size:11px;color:var(--text-muted);">No qualifying routes</div></div>`;
+                // Signals sit under the routes, dimmed, and are not in the count.
+                const body = rs.map(r => bar(r, false)).join('')
+                    + (sig.length ? `<div class="report-route-signal-head">Not a scoring route</div>` + sig.map(r => bar(r, true)).join('') : '');
+                return `<div class="report-routes-player"><div class="report-routes-player-name">${escHTML(p.name)} <span style="color:var(--text-muted);font-weight:400;">(${rs.length} route${rs.length === 1 ? '' : 's'})</span></div>${body}</div>`;
             }).join('');
 
             // Build rising form collapsible

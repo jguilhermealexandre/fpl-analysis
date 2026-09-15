@@ -1079,7 +1079,8 @@
         // nothing to do with the fixture being projected.
         function projectPlayerPointsDetailed(player, opts) {
             const o = opts || {};
-            const out = { total: 0, appearance: 0, attack: 0, cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, defCon: 0, cards: 0, pStart: 0 };
+            const out = { total: 0, appearance: 0, attack: 0, goals: 0, assists: 0,
+                cleanSheet: 0, saves: 0, bonus: 0, conceded: 0, defCon: 0, cards: 0, pStart: 0 };
             if (!player) return out;
             if (xpIsUnavailable(player)) return out;
 
@@ -1107,7 +1108,14 @@
             const { xg90, xa90 } = regressedPer90(player);
 
             const goalPts = player.position <= 2 ? 6 : player.position === 3 ? 5 : 4;
-            out.attack = (xg90 * goalPts + xa90 * 3) * min90 * attackAdj;
+            /* The two halves as well as the sum. Everything downstream that
+               wants a total reads .attack and is unchanged; the routes breakdown
+               wants to draw goals and assists as separate segments, and deriving
+               that split a second time from its own regressed rates is how it
+               ended up being a second projection that disagreed with this one. */
+            out.goals = xg90 * goalPts * min90 * attackAdj;
+            out.assists = xa90 * 3 * min90 * attackAdj;
+            out.attack = out.goals + out.assists;
 
             const csProb = cleanSheetProbFor(player.teamId, fx || fdr);
             const xga = expectedGoalsAgainst(player.teamId, fx || { isHome: true, opponentId: null, difficulty: fdr });

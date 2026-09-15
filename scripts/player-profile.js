@@ -990,20 +990,19 @@
         // is a component the projection already computes — nothing new is modelled
         // here, it is the same total broken open.
         function renderRoutesToPoints(player) {
-            if (typeof projectPlayerPointsDetailed !== 'function') return '';
-            const d = projectPlayerPointsDetailed(player);
-            const total = d.total || 0;
+            if (typeof rtPointSources !== 'function') return '';
+            /* Segments, labels and colours come from the routes engine, which is
+               also what the Routes tab and the scouting report draw — the card
+               used to keep its own literals, so "Clean sheet" here and "Clean
+               Sheets" there were the same thing wearing two names, and the split
+               between goals and assists existed on one surface only. */
+            const bd = rtPointSources(player, player);
+            if (!bd) return '';
+            const total = bd.projected || 0;
             if (total <= 0) return '';
-
-            const parts = [
-                { key: 'appearance', label: 'Appearance', color: '#94A3B8', value: d.appearance },
-                { key: 'attack',     label: 'Goals & assists', color: '#F87171', value: d.attack },
-                { key: 'cleanSheet', label: 'Clean sheet', color: '#34D399', value: d.cleanSheet },
-                { key: 'saves',      label: 'Saves', color: '#A78BFA', value: d.saves },
-                { key: 'defCon',     label: 'Defensive contribution', color: '#38BDF8', value: d.defCon },
-                { key: 'bonus',      label: 'Bonus', color: '#FBBF24', value: d.bonus }
-            ].filter(p => p.value >= 0.05);
-            const sum = parts.reduce((s, p) => s + p.value, 0) || 1;
+            const d = { conceded: bd.conceded };
+            const parts = bd.sources.map(s => ({ key: s.key, label: s.label, color: s.color, value: s.pts }));
+            const sum = bd.total || 1;
 
             const duty = [];
             if (player.penaltiesOrder != null && player.penaltiesOrder <= 2) {
