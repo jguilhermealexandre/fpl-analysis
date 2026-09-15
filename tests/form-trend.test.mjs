@@ -12,7 +12,9 @@ import { loadFunction } from './helpers/load.mjs';
 const F = 'scripts/form-trend.js';
 
 const ftShortfall = loadFunction(F, 'ftShortfall');
-const ftTeamTrend = loadFunction(F, 'ftTeamTrend', { FT_MIN_TREND: 10 });
+/* The team trend is stubbed out for these, and loaded for real inside the one
+   test that is about it — it reads getTeamSeasonXg/getTeamXgWindow off the page,
+   so each case has to supply its own pair. */
 const risingFormFor = loadFunction(F, 'risingFormFor', {
     FT_MIN_RECENT: 3, FT_MIN_SEASON: 6, FT_SCORE_FLOOR: 6,
     ftShortfall, ftTeamTrend: () => ({ usable: false }),
