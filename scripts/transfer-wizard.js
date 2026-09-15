@@ -1435,7 +1435,77 @@
            need to see the whole squad to decide which part of it is the
            problem, but only one of them is what the right-hand side is
            currently answering for. */
+        /* What the squad column is built from, as one string.
+
+           Clicking a player used to rebuild all fifteen cards — fifteen <img>
+           elements destroyed and recreated — when the only thing that had
+           actually changed was which card is selected. The faces, names and
+           prices are identical before and after; only three classes and one
+           line of text differ. So the markup is rebuilt when the squad itself
+           changes and updated in place when it does not, which is every click.
+
+           Cheap to compute and compared as a whole: fifteen ids and prices is
+           shorter than one of the cards it saves rendering. */
+        function twSquadCardsKey() {
+            return selectedPlayers.map(p => `${p.id}:${(p.sellPrice || p.price).toFixed(1)}:${p.status || 'a'}`).join('|');
+        }
+        let twSquadCardsBuilt = null;
+
+        /* The three things a click actually changes, applied to the cards that
+           are already on screen. */
+        function twUpdateSquadCardStates(el) {
+            const slotOf = id => transferState.pending.findIndex(x => x.soldPlayer.id === id);
+            const gws = twPlanGWs(3);
+            el.querySelectorAll('.tw-sqc').forEach(node => {
+                const id = Number(node.dataset.pid);
+                const p = selectedPlayers.find(x => x.id === id);
+                if (!p) return;
+                const i = slotOf(id);
+                const picked = i >= 0;
+                const slot = picked ? transferState.pending[i] : null;
+                const inP = slot && slot.replacement;
+                node.classList.toggle('is-picked', picked);
+                node.classList.toggle('is-active', picked && i === transferState.activeSlot);
+                node.classList.toggle('is-filled', !!inP);
+                node.setAttribute('aria-pressed', String(picked));
+
+                const chip = node.querySelector('.pdm-hero-chip');
+                if (chip) {
+                    chip.classList.toggle('is-blank', !picked);
+                    if (picked) chip.textContent = String(i + 1);
+                }
+
+                const state = node.querySelector('.tw-outc-open, .tw-outc-in');
+                if (state) {
+                    if (inP) {
+                        state.className = 'tw-outc-in';
+                        state.innerHTML = `${v2Icon('check')} ${escHTML(inP.name)}`;
+                    } else {
+                        state.className = 'tw-outc-open';
+                        state.textContent = picked
+                            ? 'Choosing a replacement'
+                            : `${twXPOver(p, gws).toFixed(1)} xP next ${gws.length}`;
+                    }
+                }
+            });
+            const hint = el.querySelector('.twc-panel-hint');
+            if (hint) {
+                const n = transferState.pending.length;
+                hint.textContent = n
+                    ? `${n}${transferState.sellMode ? ` of ${twMaxTransfers()}` : ''} in the plan`
+                    : 'Click anyone to replace them';
+            }
+        }
+
         function twRenderSquadCards(el) {
+            /* Same squad as last time: nothing here needs rebuilding, and
+               rebuilding it is what makes the faces blink. */
+            const key = twSquadCardsKey();
+            if (twSquadCardsBuilt === key && el.querySelector('.tw-sqc')) {
+                twUpdateSquadCardStates(el);
+                return;
+            }
+            twSquadCardsBuilt = key;
             const gws = twPlanGWs(3);
             const slotOf = id => transferState.pending.findIndex(x => x.soldPlayer.id === id);
             const positions = [
@@ -1457,6 +1527,7 @@
                         ? '<span class="tw-sqc-flag out">OUT</span>'
                         : p.status === 'd' ? `<span class="tw-sqc-flag doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}">?</span>` : '';
                     return `<button class="tw-outc tw-sqc${picked ? ' is-picked' : ''}${active ? ' is-active' : ''}${inP ? ' is-filled' : ''}"
+                        data-pid="${p.id}"
                         onclick="twSquadCardClick(${p.id})"
                         aria-pressed="${picked}"
                         data-tooltip="${inP
@@ -1464,9 +1535,13 @@
                             : picked
                                 ? escHTML(`Showing replacements for ${p.name} — click again to take him out of the plan`)
                                 : escHTML(`Move ${p.name} on`)}">
+                        <!-- The rank chip is always in the markup, hidden until the
+                             player is in the plan, so selecting one can reveal it
+                             rather than having to rebuild the card to add it. -->
                         <span class="tw-outc-hero">${typeof v2PlayerHeroHTML === 'function'
                             ? v2PlayerHeroHTML({ ...p, price: p.sellPrice || p.price },
-                                { size: 'compact', chip: picked ? String(i + 1) : '' })
+                                { size: 'compact', chip: picked ? String(i + 1) : '0',
+                                  chipClass: picked ? '' : 'is-blank' })
                             : escHTML(p.name)}</span>
                         <span class="tw-outc-foot">
                             ${inP
@@ -1925,8 +2000,13 @@
 
             const blocked = !!blockedReason;
             el.innerHTML = `<div class="twc-panel">
+                <!-- "Calafiori vs Guéhi" is what the two cards below say, in
+                     their clubs' colours with their faces on them. Saying it
+                     again in 13px grey above them is the same sentence twice,
+                     and it was crowding the only two controls on this screen
+                     that go anywhere. -->
                 ${twStepHead({
-                    icon: 'scales', title: `${sold.name} vs ${cand.name}`,
+                    icon: 'scales', title: 'Compare',
                     back: { label: 'Replacements', on: 'twBackToMarket()', tip: 'Back to the replacement list' },
                     next: { label: `Confirm ${cand.name}`, on: 'twConfirmPick()',
                             disabled: blocked, tip: blockedReason || `Put ${cand.name} in for ${sold.name}.` }
@@ -1966,8 +2046,18 @@
                     <div class="twh-chart"><canvas id="twFdrCanvas"></canvas></div>
                     <div class="twh-chart-note">Fixture difficulty over the next ${fdrGWs.length} gameweeks — lower is easier. A gap means no fixture.</div>
 
-                    <div class="twh-deep-label">Full profile</div>
-                    <div class="twh-deep">
+                    <!-- Everything below is the whole of both player cards —
+                         two scouting reports, two price histories, two stat
+                         blocks, two fixture lists. It is the right depth for
+                         someone who wants it and a wall for everyone else, and
+                         it sat between the decision and nothing at all. Closed
+                         by default, and it says what it is before you open it. -->
+                    <button class="twh-deep-toggle" onclick="twToggleDeepProfile(this)" aria-expanded="false">
+                        <span class="twh-deep-toggle-l">${v2Icon('report')} Full profile for both players</span>
+                        <span class="twh-deep-toggle-sub">Scouting report, price history, season numbers, fixtures</span>
+                        <span class="twh-deep-toggle-c" aria-hidden="true">${v2Icon('down')}</span>
+                    </button>
+                    <div class="twh-deep" hidden>
                         <div class="twh-deep-col out">
                             <div class="twh-deep-col-head out">OUT · ${escHTML(sold.name)}</div>
                             ${soldProfile}
@@ -1984,12 +2074,45 @@
             twDrawComparisonCharts(sold, cand, fdrGWs);
         }
 
+        /* The full profile is closed on arrival and stays where you left it
+           for as long as the panel lives — reopening it on every comparison
+           would undo the point of closing it, and forgetting it between two
+           players you are deliberately reading in depth would be its own
+           annoyance. So the preference is remembered for the session. */
+        let twDeepProfileOpen = false;
+
+        function twToggleDeepProfile(btn) {
+            const box = document.querySelector('.twh-deep');
+            if (!box) return;
+            twDeepProfileOpen = box.hidden;
+            box.hidden = !twDeepProfileOpen;
+            btn.setAttribute('aria-expanded', String(twDeepProfileOpen));
+            btn.classList.toggle('is-open', twDeepProfileOpen);
+            const label = btn.querySelector('.twh-deep-toggle-l');
+            if (label) {
+                label.innerHTML = `${v2Icon('report')} ${twDeepProfileOpen ? 'Hide the full profile' : 'Full profile for both players'}`;
+            }
+        }
+
         function twDrawComparisonCharts(sold, cand, fdrGWs) {
             /* Chart.js comes from a CDN, and a CDN is a thing that can be
                blocked — by an extension, a corporate proxy, or a bad minute.
                Returning early left the reserved chart box and its caption on
                screen as a tall empty rectangle explaining a picture that was
                never drawn. Take both away instead. */
+            /* Re-applied here because this runs right after the comparison
+               panel is written, and the panel is rebuilt from scratch every
+               time you look at a different player. */
+            const deep = document.querySelector('.twh-deep');
+            const deepBtn = document.querySelector('.twh-deep-toggle');
+            if (deep && deepBtn && twDeepProfileOpen) {
+                deep.hidden = false;
+                deepBtn.setAttribute('aria-expanded', 'true');
+                deepBtn.classList.add('is-open');
+                const label = deepBtn.querySelector('.twh-deep-toggle-l');
+                if (label) label.innerHTML = `${v2Icon('report')} Hide the full profile`;
+            }
+
             if (typeof Chart === 'undefined') {
                 document.querySelectorAll('.twh-chart, .twh-chart-note').forEach(n => { n.hidden = true; });
                 return;
@@ -2544,6 +2667,21 @@
                     next: { label: 'Plan another', on: 'renderTransferWizard()', tip: 'Start a new plan from step 1.' }
                 })}
                 <div class="twc-panel-body">
+                    <!-- Something actually happened, so the screen should say
+                         so before it starts qualifying it. The warning below
+                         is the important half and it stays; this is the half
+                         that tells you the thing you pressed worked. -->
+                    <div class="tw-done-hero">
+                        <span class="tw-done-tick">${v2Icon('check')}</span>
+                        <span class="tw-done-words">
+                            <strong>${n} transfer${n === 1 ? '' : 's'} applied</strong>
+                            <em>${r.moves.map(m => `${escHTML(m.outName)} \u2192 ${escHTML(m.inName)}`).join(' \u00b7 ')}</em>
+                        </span>
+                        <span class="tw-done-net ${net > 0.3 ? 'up' : net < -0.3 ? 'down' : ''}">
+                            ${net > 0 ? '+' : ''}${net.toFixed(1)}<i>pts</i>
+                        </span>
+                    </div>
+
                     <!-- The reminder outlives the modal: this is the screen
                          someone will be looking at when they decide whether
                          they have finished, and they have not. -->

@@ -750,16 +750,28 @@
 .ph-end { font-size: 10px; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ph-end em { display: block; font-style: normal; font-size: 9px; font-weight: 500; color: var(--text-muted); }
 .ph-end.right { text-align: right; }
-.ph-spark { flex: 1; height: 46px; min-width: 0; }
-.ph-spark polyline { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.ph-spark.up polyline { stroke: var(--color-success); }
-.ph-spark.down polyline { stroke: var(--color-error); }
-.ph-spark.flat polyline { stroke: var(--text-muted); }
-.ph-spark .ph-dot { fill: var(--surface-0); stroke: currentColor; stroke-width: 1.5; }
-.ph-spark.up { color: var(--color-success); }
-.ph-spark.down { color: var(--color-error); }
-.ph-spark.flat { color: var(--text-muted); }
-.ph-spark .ph-dot-now { fill: currentColor; }
+/* The plot is the positioning context the dots are placed in; the svg inside
+   it carries only the line, which is the one thing that survives being
+   stretched (non-scaling-stroke keeps it 2px at any width). */
+.ph-plot { position: relative; flex: 1; height: 46px; min-width: 0; display: block; }
+.ph-spark { display: block; width: 100%; height: 100%; }
+.ph-spark polyline { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; stroke: currentColor; }
+.ph-plot.up { color: var(--color-success); }
+.ph-plot.down { color: var(--color-error); }
+.ph-plot.flat { color: var(--text-muted); }
+
+/* Round at every width, because they are elements sized in pixels rather than
+   circles inside a box that is pulled twice as wide as it is tall. */
+.ph-dot {
+    position: absolute;
+    width: 7px; height: 7px;
+    margin: -3.5px 0 0 -3.5px;
+    border-radius: 50%;
+    background: var(--surface-0);
+    border: 1.5px solid currentColor;
+    cursor: help;
+}
+.ph-dot.is-now { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: currentColor; }
 .ph-moves { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; }
 
 .ph-moves li {
@@ -854,3 +866,49 @@
 .report-form-read { margin-top: 18px; }
 .report-form-read h4 { font-size: 13px; margin-bottom: 10px; }
 .report-form-read .pf-verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+
+/* ===== Season Numbers =====
+
+   Eight totals with nothing to measure them against became eight rates with
+   a bar each. The bar is always filled against a benchmark the tooltip names,
+   rather than a percentile the card does not actually have — a bar that means
+   nothing in particular is worse than a number on its own. */
+.pf-season-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+    gap: 8px;
+}
+.pf-season-tile {
+    padding: 10px 12px 11px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle, var(--border-emphasis));
+    background: var(--surface-1);
+    cursor: help;
+}
+.pf-season-label {
+    font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+.pf-season-value {
+    font-family: var(--font-mono, monospace);
+    font-size: 21px; font-weight: 800; line-height: 1.15;
+    color: var(--text-primary);
+    margin: 1px 0 6px;
+}
+.pf-season-value.good { color: var(--color-success); }
+.pf-season-value.bad { color: var(--color-error); }
+.pf-season-value.warn { color: var(--color-warning); }
+.pf-season-bar {
+    height: 4px; border-radius: 2px;
+    background: var(--surface-3, var(--surface-2));
+    overflow: hidden;
+}
+.pf-season-bar i {
+    display: block; height: 100%; border-radius: 2px;
+    background: var(--text-muted);
+    transition: width .25s ease;
+}
+.pf-season-bar i.good { background: var(--color-success); }
+.pf-season-bar i.bad { background: var(--color-error); }
+.pf-season-bar i.warn { background: var(--color-warning); }
+.pf-season-note { margin-top: 5px; font-size: 10px; color: var(--text-muted); }

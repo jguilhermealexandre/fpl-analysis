@@ -1082,11 +1082,20 @@ html.v2-theme body {
     padding: 13px 16px;
 }
 
-.v2-main-content .data-table thead th:hover,
-.v2-main-content table:not(.matrix-table) thead th:hover {
+/* Only headers that do something respond to the pointer.
+
+   This was every <th> in every table, which meant the match grid in a player's
+   profile — four fixed gameweek columns that sort nothing and click nowhere —
+   lit up under the mouse and promised an interaction it does not have. A hover
+   state is a claim about what happens next; on a static header it is a false
+   one. Sorting is wired through onclick, so that is what it asks for. */
+.v2-main-content .data-table thead th[onclick]:hover,
+.v2-main-content table:not(.matrix-table) thead th[onclick]:hover {
     background: var(--surface-2);
     color: var(--text-primary);
 }
+.v2-main-content .data-table thead th[onclick],
+.v2-main-content table:not(.matrix-table) thead th[onclick] { cursor: pointer; }
 
 .v2-main-content .data-table td,
 .v2-main-content table:not(.matrix-table) td {
@@ -1441,7 +1450,16 @@ html.v2-theme body {
     object-position: 50% 12%;
 }
 
-/* Only ever seen when no photo arrives — see .has-photo, set on load. */
+/* Only ever seen when no photo arrives.
+
+   Asked of the DOM rather than set by an onload handler: the handler ran a
+   frame after the card was inserted, so every re-render showed initials and
+   then replaced them with a face, which is the flicker. The <img> removes
+   itself when both photo URLs 404 (see playerPhotoHTML), so "no face element"
+   is the real condition and it needs nothing to fire. */
+.v2-pid-initials { display: none; }
+.v2-pid-avatar:not(:has(.v2-pid-face)) .v2-pid-initials { display: block; }
+/* Kept for anything still setting it; the rule above already covers it. */
 .v2-pid-avatar.has-photo .v2-pid-initials { display: none; }
 
 .v2-pid-crest {

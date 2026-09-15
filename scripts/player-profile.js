@@ -1206,9 +1206,25 @@
             const pts = h.points.map((p, i) => `${x(i).toFixed(1)},${y(p.tenths).toFixed(1)}`).join(' ');
 
             const label = p => p.isNow ? 'now' : p.isStart ? 'season start' : `GW${p.gw}`;
+
+            /* The dots are elements, not <circle>s.
+
+               This chart spans whatever width the panel gives it — 240 units
+               of viewBox drawn across 480 real pixels in the comparison — and
+               it has to, because a sparkline that keeps its aspect ratio would
+               be 46px of line in the middle of an empty box. The line survives
+               that stretch: it is a polyline with non-scaling-stroke, so it
+               stays 2px however far it is pulled. A circle does not. Every dot
+               on it was drawn as a 2:1 ellipse, which is most of why the whole
+               thing looked wrong.
+
+               So the line is stretched and the dots are positioned over it in
+               percentages, at a fixed pixel size. Same coordinates, no
+               distortion, and it adapts to any width without being told. */
             const dots = h.points.map((p, i) =>
-                `<circle cx="${x(i).toFixed(1)}" cy="${y(p.tenths).toFixed(1)}" r="${p.isNow ? 3 : 2}"
-                    class="${p.isNow ? 'ph-dot-now' : 'ph-dot'}"><title>${escHTML(label(p))}: \u00a3${(p.tenths / 10).toFixed(1)}m</title></circle>`
+                `<i class="${p.isNow ? 'ph-dot is-now' : 'ph-dot'}"
+                    style="left:${((x(i) / W) * 100).toFixed(2)}%;top:${((y(p.tenths) / H) * 100).toFixed(2)}%"
+                    title="${escHTML(label(p))}: \u00a3${(p.tenths / 10).toFixed(1)}m"></i>`
             ).join('');
 
             /* Only the weeks the price actually moved. Most gameweeks it does
@@ -1229,11 +1245,13 @@
                 </div>
                 <div class="ph-rail">
                     <span class="ph-end"><em>start</em>\u00a3${h.start.toFixed(1)}m</span>
-                    <svg class="ph-spark ${dir}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
-                        aria-label="Price from \u00a3${h.start.toFixed(1)}m at the start of the season to \u00a3${h.now.toFixed(1)}m now">
-                        <polyline points="${pts}" fill="none" />
+                    <span class="ph-plot ${dir}">
+                        <svg class="ph-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+                            aria-label="Price from \u00a3${h.start.toFixed(1)}m at the start of the season to \u00a3${h.now.toFixed(1)}m now">
+                            <polyline points="${pts}" fill="none" />
+                        </svg>
                         ${dots}
-                    </svg>
+                    </span>
                     <span class="ph-end right"><em>now</em>\u00a3${h.now.toFixed(1)}m</span>
                 </div>
                 ${h.moves.length
@@ -1644,21 +1662,78 @@
                 ${pfRenderRecentForm(player)}
             </div>`;
 
+            /* Season Numbers, with something to measure them against.
+
+               These were eight bare totals — "Goals 6", "ICT 74" — and a total
+               on its own answers nothing: six goals is a striker having a poor
+               season and a defender having the season of his life. Each now
+               carries a rate and a bar, and the bar states the benchmark it is
+               filled against rather than implying a percentile it does not
+               have. Where a total is the honest unit (ownership, EP) it stays
+               a total.
+
+               Per game, not per 90: the division is by gameweeks the player's
+               club has played, which is the number the rest of this card uses. */
+            const gp = Math.max(1, gamesPlayed);
+            const seasonTile = (label, big, pct, tone, note, tip) => `
+                <div class="pf-season-tile" ${tip ? `data-tooltip="${escHTML(tip)}"` : ''}>
+                    <div class="pf-season-label">${escHTML(label)}</div>
+                    <div class="pf-season-value ${tone || ''}">${big}</div>
+                    <div class="pf-season-bar"><i class="${tone || ''}" style="width:${Math.max(0, Math.min(100, pct * 100)).toFixed(0)}%"></i></div>
+                    <div class="pf-season-note">${note}</div>
+                </div>`;
+
+            const attackTiles = `
+                ${seasonTile('Goals', player.goals, (player.goals / gp) / 0.5,
+                    player.goals / gp >= 0.4 ? 'good' : '',
+                    `${(player.goals / gp).toFixed(2)} per game`,
+                    'Bar is filled against 0.5 goals a game, which is a top-of-the-position rate.')}
+                ${seasonTile('Assists', player.assists, (player.assists / gp) / 0.4,
+                    player.assists / gp >= 0.3 ? 'good' : '',
+                    `${(player.assists / gp).toFixed(2)} per game`,
+                    'Bar is filled against 0.4 assists a game.')}`;
+
+            const defenceTiles = `
+                ${seasonTile('Clean sheets', player.cleanSheets, player.cleanSheets / gp,
+                    player.cleanSheets / gp >= 0.4 ? 'good' : '',
+                    `${Math.round((player.cleanSheets / gp) * 100)}% of games`,
+                    'Bar is the share of his club\u2019s games that ended in a clean sheet.')}
+                ${player.position === 1
+                    ? seasonTile('Saves', player.saves, (player.saves / gp) / 4,
+                        player.saves / gp >= 3 ? 'good' : '',
+                        `${(player.saves / gp).toFixed(1)} per game`,
+                        'Bar is filled against 4 saves a game. Three saves is one point.')
+                    : seasonTile('Goals', player.goals, (player.goals / gp) / 0.25,
+                        player.goals / gp >= 0.15 ? 'good' : '',
+                        `${(player.goals / gp).toFixed(2)} per game`,
+                        'Bar is filled against 0.25 a game, which is a lot for a defender.')}`;
+
+            const net = player.netTransfers || 0;
             html += `<div class="detail-section" data-accent="season">
-                <div class="detail-section-title">\ud83d\udcc8 Season Numbers <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
-                <div class="pdm-metrics">
-                    ${player.position >= 3 ? `
-                        <div class="metric-box"><div class="metric-label">Goals</div><div class="metric-value neutral">${player.goals}</div></div>
-                        <div class="metric-box"><div class="metric-label">Assists</div><div class="metric-value neutral">${player.assists}</div></div>
-                    ` : `
-                        <div class="metric-box"><div class="metric-label">CS</div><div class="metric-value neutral">${player.cleanSheets}</div></div>
-                        <div class="metric-box"><div class="metric-label">${player.position === 1 ? 'Saves' : 'Goals'}</div><div class="metric-value neutral">${player.position === 1 ? player.saves : player.goals}</div></div>
-                    `}
-                    <div class="metric-box"><div class="metric-label">Bonus</div><div class="metric-value neutral">${player.bonus}</div></div>
-                    <div class="metric-box"><div class="metric-label">ICT</div><div class="metric-value neutral">${player.ictIndex.toFixed(0)}</div></div>
-                    <div class="metric-box"><div class="metric-label">Ownership</div><div class="metric-value neutral">${player.ownership.toFixed(1)}%</div></div>
-                    <div class="metric-box"><div class="metric-label">Net Transfers</div><div class="metric-value ${(player.netTransfers||0) > 0 ? 'good' : (player.netTransfers||0) < -5000 ? 'bad' : 'neutral'}">${(player.netTransfers||0) > 0 ? '+' : ''}${((player.netTransfers||0) / 1000).toFixed(1)}k</div></div>
-                    <div class="metric-box"><div class="metric-label">EP Next</div><div class="metric-value ${player.epNext >= 5 ? 'good' : 'neutral'}">${player.epNext.toFixed(1)}</div></div>
+                <div class="detail-section-title">${v2Icon('chart')} Season Numbers <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
+                <div class="pf-season-grid">
+                    ${player.position >= 3 ? attackTiles : defenceTiles}
+                    ${seasonTile('Bonus', player.bonus, (player.bonus / gp) / 1,
+                        player.bonus / gp >= 0.6 ? 'good' : '',
+                        `${(player.bonus / gp).toFixed(1)} per game`,
+                        'Bar is filled against one bonus point a game.')}
+                    ${seasonTile('ICT', player.ictIndex.toFixed(0), (player.ictIndex / gp) / 10,
+                        player.ictIndex / gp >= 8 ? 'good' : '',
+                        `${(player.ictIndex / gp).toFixed(1)} per game`,
+                        'FPL\u2019s own influence, creativity and threat index. Bar is filled against 10 a game.')}
+                    ${seasonTile('Owned by', player.ownership.toFixed(1) + '%', player.ownership / 100,
+                        player.ownership >= 30 ? 'warn' : '',
+                        player.ownership >= 30 ? 'Template' : player.ownership < 10 ? 'Differential' : 'Middling',
+                        'Share of all managers holding him. The bar is that share of everyone.')}
+                    ${seasonTile('Net transfers', `${net > 0 ? '+' : ''}${(net / 1000).toFixed(1)}k`,
+                        Math.min(Math.abs(net) / 500000, 1),
+                        net > 0 ? 'good' : net < -5000 ? 'bad' : '',
+                        net > 0 ? 'Being bought' : net < 0 ? 'Being sold' : 'Steady',
+                        'Transfers in minus transfers out this gameweek. Bar is filled against 500k either way.')}
+                    ${seasonTile('EP next', player.epNext.toFixed(1), player.epNext / 10,
+                        player.epNext >= 5 ? 'good' : '',
+                        'FPL\u2019s own projection',
+                        'Fantasy Premier League\u2019s expected points for the next gameweek. Bar is filled against 10.')}
                 </div>
             </div>`;
 
