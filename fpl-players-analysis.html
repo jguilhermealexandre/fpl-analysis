@@ -50,13 +50,13 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=246">
-    <link rel="stylesheet" href="styles/players.css?v=246">
+    <link rel="stylesheet" href="styles/common.css?v=247">
+    <link rel="stylesheet" href="styles/players.css?v=247">
     <!-- The shared player profile card. Loaded after this page's own sheet so
          either can still override the other, exactly as on the squad page. -->
-    <link rel="stylesheet" href="styles/player-profile.css?v=246">
-    <link rel="stylesheet" href="styles/v2-design.css?v=246">
-    <link rel="stylesheet" href="styles/responsive.css?v=246">
+    <link rel="stylesheet" href="styles/player-profile.css?v=247">
+    <link rel="stylesheet" href="styles/v2-design.css?v=247">
+    <link rel="stylesheet" href="styles/responsive.css?v=247">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -86,20 +86,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=246">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=246">
-    <link rel="preload" as="script" href="scripts/routes-engine.js?v=246">
-    <link rel="preload" as="script" href="scripts/form-trend.js?v=246">
-    <link rel="preload" as="script" href="scripts/purple-patch.js?v=246">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=246">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=246">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=246">
-    <link rel="preload" as="script" href="scripts/player-profile.js?v=246">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=246">
-    <link rel="preload" as="script" href="scripts/common.js?v=246">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=246">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=246">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=246">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=247">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=247">
+    <link rel="preload" as="script" href="scripts/routes-engine.js?v=247">
+    <link rel="preload" as="script" href="scripts/form-trend.js?v=247">
+    <link rel="preload" as="script" href="scripts/purple-patch.js?v=247">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=247">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=247">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=247">
+    <link rel="preload" as="script" href="scripts/player-profile.js?v=247">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=247">
+    <link rel="preload" as="script" href="scripts/common.js?v=247">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=247">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=247">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=247">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1366,8 +1366,23 @@
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#34D399"></span> Clean sheets</span>
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#A78BFA"></span> Saves</span>
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#FBBF24"></span> Bonus</span>
-                        <span class="legend-panel-item" style="margin-left:8px;opacity:.75;">Penalties and creativity count as routes but get no slice — pens are already inside xG, creativity predicts assists rather than scoring separately.</span>
                         <span class="legend-panel-item" style="margin-left:8px;"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> = Nailed on</span>
+                        <span class="legend-panel-item">${paIcon('goal')} = Penalty taker</span>
+                        ${/* Creativity used to be listed here as a route that gets
+                              no slice. It is not a route at all any more — it is an
+                              ICT component that predicts assists, and assists are
+                              already their own route, so counting both paid the
+                              same expected points twice. Penalties still are a
+                              route and still get no slice, because penalty goals
+                              are already inside xG. */''}
+                        <span class="legend-panel-item legend-panel-note">Penalties count as a route but get no slice of the bar — penalty goals are already inside xG.</span>
+                        <span class="legend-panel-item legend-panel-note">
+                            <b>Why the order is not simply the route count.</b> The list is ranked on how much
+                            the routes are worth, not how many there are: each one counts for how strong it is
+                            multiplied by what that route pays, and the total is then adjusted for how reliably
+                            he starts and for the fixtures ahead. Four strong routes beat five weak ones, so a
+                            player with fewer routes can sit above one with more.
+                        </span>
                     </div>
                     <div class="routes-database-view active">
                         <div class="routes-grid" id="routesDatabaseGrid">${dbHtml}</div>
@@ -1574,19 +1589,19 @@
                         <div class="rp-badge" data-tooltip="Distinct ways this player scores: ${escHTML(routeNames)}. More routes means less reliance on any one of them.">
                             <span class="rp-badge-star">${paIcon('routes')}</span><b>${p.routeCount}</b><span class="rp-badge-l">routes</span>
                         </div>
-                        ${/* The number the list is ordered by, on the card that the
-                              order puts first.
-
-                              The count was the biggest thing here and is not the
-                              ranking: four strong routes beat five weak ones, and
-                              the list has always known that. So the man at the top
-                              showed "4 routes" while the man below him showed 5,
-                              and the only honest reading of that was that the sort
-                              was broken. It was not — it was invisible. */''}
-                        <div class="rp-score" data-tooltip="Routes score ${p.compositeScore.toFixed(1)} — this list is ordered by it. Each route counts for how strong it is multiplied by what that route pays, then the total is adjusted for how reliably he starts and for the run of fixtures ahead. It is why a player with fewer routes can rank above one with more.">
-                            <b>${Math.round(p.compositeScore)}</b><span class="rp-score-l">routes score</span>
-                        </div>
                         ${nailed ? `<span class="rp-nailed" data-tooltip="Plays essentially every available minute">${paIcon('lock')} Nailed on</span>` : ''}
+                        ${/* Penalty duty, beside the minutes. FPL publishes the
+                              order outright — penalties_order, 1 for the first
+                              choice — so this is stated rather than inferred from
+                              a goals-minus-xG gap the way it once was. It belongs
+                              on the card because it changes the floor of every
+                              other route he has. */''}
+                        ${p.penaltiesOrder != null && p.penaltiesOrder <= 2
+                            ? `<span class="rp-pens${p.penaltiesOrder === 1 ? ' is-first' : ''}"
+                                data-tooltip="${p.penaltiesOrder === 1
+                                    ? 'First-choice penalty taker, as published by FPL.'
+                                    : 'Second-choice penalty taker, as published by FPL — he takes them when the first choice is off the pitch.'}">${paIcon('goal')} ${p.penaltiesOrder === 1 ? 'Penalties' : '2nd pens'}</span>`
+                            : ''}
                     </div>
                     ${rpReliabilityMeter(rel)}
                     ${rpStackBar(p)}
@@ -3470,23 +3485,23 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=246"></script>
+    <script src="scripts/error-monitor.js?v=247"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=246"></script>
-    <script src="scripts/routes-engine.js?v=246"></script>
-    <script src="scripts/form-trend.js?v=246"></script>
-    <script src="scripts/purple-patch.js?v=246"></script>
-    <script src="scripts/players-tables.js?v=246"></script>
-    <script src="scripts/compare-report.js?v=246"></script>
+    <script src="scripts/xp-engine.js?v=247"></script>
+    <script src="scripts/routes-engine.js?v=247"></script>
+    <script src="scripts/form-trend.js?v=247"></script>
+    <script src="scripts/purple-patch.js?v=247"></script>
+    <script src="scripts/players-tables.js?v=247"></script>
+    <script src="scripts/compare-report.js?v=247"></script>
     <!-- The price meter and the season's price path, from the game's own price
          engine. Pure functions, no DOM — the profile card renders them. -->
-    <script src="scripts/price-watch.js?v=246"></script>
+    <script src="scripts/price-watch.js?v=247"></script>
     <!-- Everything the site knows about one player, in one card. Shared with the
          squad page; the trend charts this page adds to it are wired up in the
          inline block below via pdmPageSections()/pdmAfterRender(). -->
-    <script src="scripts/player-profile.js?v=246"></script>
+    <script src="scripts/player-profile.js?v=247"></script>
     <script>
         // buildStatWindows / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5439,14 +5454,14 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=246"></script>
+    <script src="scripts/players-ai.js?v=247"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=246"></script>
+    <script src="scripts/common.js?v=247"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=246"></script>
-    <script src="scripts/notifications.js?v=246"></script>
-    <script src="scripts/sidebar-nav.js?v=246"></script>
+    <script src="scripts/push-alerts.js?v=247"></script>
+    <script src="scripts/notifications.js?v=247"></script>
+    <script src="scripts/sidebar-nav.js?v=247"></script>
     <script>
         loadSidebarNav();
         initIcons();
