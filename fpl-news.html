@@ -47,9 +47,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=238">
-    <link rel="stylesheet" href="styles/v2-design.css?v=238">
-    <link rel="stylesheet" href="styles/responsive.css?v=238">
+    <link rel="stylesheet" href="styles/common.css?v=239">
+    <link rel="stylesheet" href="styles/v2-design.css?v=239">
+    <link rel="stylesheet" href="styles/responsive.css?v=239">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -455,6 +455,83 @@
         .news-section-title svg { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
         .news-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-default); }
         .news-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        /* ---- the front page's shapes ----
+           A magazine says what matters by how much room it gives a thing. This
+           page gave everything the same box, so nothing on it was louder than
+           anything else. Four shapes now: the lead with its headline column,
+           a three-up for the FPL desks, the old two-up for longer reads, and
+           a plain numbered list. */
+        .news-lead-grid { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+        .news-lead-main .news-card-hero { min-height: 300px; align-items: stretch; }
+        .news-lead-main .news-card-hero .news-card-img,
+        .news-lead-main .news-card-hero .news-card-graphic { align-self: stretch; height: auto; }
+        .news-lead-main .news-card-hero .news-card-headline { font-size: 26px; -webkit-line-clamp: 4; line-clamp: 4; }
+        .news-grid-trio { grid-template-columns: repeat(3, 1fr); }
+
+        /* The headline column beside the lead. */
+        .news-lead-side {
+            display: flex; flex-direction: column;
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 4px 14px;
+        }
+        .news-brief-list {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 22px;
+            background: var(--surface-1); border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg); padding: 4px 16px;
+        }
+        .news-brief { display: flex; gap: 11px; padding: 13px 0; border-bottom: 1px solid var(--border-subtle); position: relative; }
+        .news-brief:last-child { border-bottom: none; }
+        .news-brief-n {
+            flex: none; width: 20px;
+            font-family: var(--font-display); font-size: 15px; font-weight: 800;
+            color: var(--border-emphasis); line-height: 1.25;
+        }
+        .news-brief.is-squad .news-brief-n { color: var(--color-primary); }
+        .news-brief-body { min-width: 0; }
+        .news-brief-head { font-size: 13.5px; font-weight: 700; line-height: 1.35; color: var(--text-primary); }
+        .news-brief:hover .news-brief-head { color: var(--color-primary); }
+        .news-brief-meta { font-size: 10.5px; color: var(--text-muted); margin-top: 4px; }
+
+        /* A highlighted band. Your own squad is what the reader came for, so it
+           does not sit in the same white as the wire copy around it. */
+        .news-section.is-accent {
+            background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+            border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+            border-radius: var(--v2-card-radius, 16px);
+            padding: 18px 18px 20px;
+        }
+        .news-section.is-accent .news-section-title { color: var(--color-primary); }
+        .news-section.is-accent .news-section-title::after { background: color-mix(in srgb, var(--color-primary) 28%, transparent); }
+        .news-section-n {
+            min-width: 18px; height: 18px; padding: 0 6px;
+            display: inline-grid; place-items: center;
+            border-radius: 999px; background: var(--surface-3); color: var(--text-secondary);
+            font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums;
+            letter-spacing: 0;
+        }
+        .news-section.is-accent .news-section-n { background: var(--color-primary); color: #fff; }
+
+        /* ---- the whole card is the link ----
+           It was the headline only, so the picture — the biggest thing on the
+           card and the first thing anyone aims at — did nothing when clicked.
+           The anchor stretches over its whole card instead. Anything else
+           clickable inside has to be lifted above it, which is what the second
+           rule does for the footer's own links. */
+        .news-card, .news-card-hero, .news-brief { position: relative; }
+        .news-card-link::after { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+        .news-card-footer, .news-card-cta, .news-card-team-tag { position: relative; z-index: 2; }
+        .news-card:hover .news-card-headline, .news-card-hero:hover .news-card-headline { color: var(--color-primary); }
+
+        @media (max-width: 1100px) {
+            .news-lead-grid { grid-template-columns: 1fr; }
+            .news-grid-trio { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 760px) {
+            .news-grid, .news-grid-trio, .news-brief-list { grid-template-columns: 1fr; }
+            .news-lead-main .news-card-hero .news-card-headline { font-size: 21px; }
+        }
         .news-card-hero { grid-column: 1 / -1; display: flex; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; transition: transform 200ms, box-shadow 200ms; position: relative; min-height: 220px; }
         .news-card-hero:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.14); }
         .news-card-hero .news-card-img { width: 50%; min-height: 220px; flex-shrink: 0; object-fit: cover; }
@@ -543,8 +620,8 @@
         .news-card-time { font-size: 10.5px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
         .news-card-headline { font-family: Georgia, 'Times New Roman', serif; font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.4; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .news-card-detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .news-card-link { color: var(--text-primary); text-decoration: none; }
-        .news-card-link:hover { color: var(--color-info); }
+        .news-card-link { color: inherit; text-decoration: none; }
+        .news-card-link:hover { color: var(--color-primary); }
         /* The footer sits on the floor of the card, not under whatever the
    headline happened to leave. Cards in a grid row are the same height, so
    with margin-top:auto every "Read more" lands on the same line across the
@@ -607,13 +684,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=238"></script>
-    <script src="scripts/common.js?v=238"></script>
+    <script src="scripts/error-monitor.js?v=239"></script>
+    <script src="scripts/common.js?v=239"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=238"></script>
-    <script src="scripts/notifications.js?v=238"></script>
-    <script src="scripts/sidebar-nav.js?v=238"></script>
+    <script src="scripts/push-alerts.js?v=239"></script>
+    <script src="scripts/notifications.js?v=239"></script>
+    <script src="scripts/sidebar-nav.js?v=239"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1440,49 +1517,153 @@
                     </div>`;
                 }
 
-                function renderSection(title, items) {
-                    if (!items.length) return `<div class="news-section"><div class="news-section-title">${title}</div><div class="news-empty">No news in this category</div></div>`;
-                    const cards = items.map((item, i) => renderCard(item, i === 0)).join('');
-                    return `<div class="news-section"><div class="news-section-title">${title}</div><div class="news-grid">${cards}</div></div>`;
+                /* ---- the compact row ----
+                   A headline, a thumbnail and a time. The lead story gets the
+                   picture and the standfirst; the four under it do not need
+                   either to be worth scanning, and giving them the same card
+                   as everything else is what made this page one long ladder
+                   of identical boxes. */
+                function renderBrief(item, n) {
+                    const isValidLink = item.link && /^https?:\/\//i.test(item.link);
+                    const head = escHTML(item.headline);
+                    const inner = isValidLink
+                        ? `<a href="${escHTML(item.link)}" target="_blank" rel="noopener noreferrer" class="news-card-link">${head}</a>`
+                        : head;
+                    return `<div class="news-brief${item.isSquad ? ' is-squad' : ''}">
+                        <span class="news-brief-n">${n}</span>
+                        <div class="news-brief-body">
+                            <div class="news-brief-head">${inner}</div>
+                            <div class="news-brief-meta">${escHTML(item.source || item.categoryLabel || '')}${item.timestamp ? ` \u00b7 ${timeAgo(item.timestamp)}` : ''}</div>
+                        </div>
+                    </div>`;
+                }
+
+                /* ---- a section, in one of four shapes ----
+                   'lead' is the front page's top: one hero with a column of
+                   briefs beside it. 'grid' is the old two-column block, 'trio'
+                   a tighter three-column one, and 'briefs' a plain list. The
+                   variety is the point — a magazine tells you what matters by
+                   how much room it gives it, and every block being the same
+                   size said everything here matters equally. */
+                function renderSection(title, items, opts) {
+                    const o = opts || {};
+                    const shape = o.shape || 'grid';
+                    const head = title
+                        ? `<div class="news-section-title">${title}${o.count && items.length ? `<span class="news-section-n">${items.length}</span>` : ''}</div>`
+                        : '';
+                    if (!items.length) {
+                        return o.hideWhenEmpty ? '' :
+                            `<div class="news-section">${head}<div class="news-empty">No news in this category</div></div>`;
+                    }
+                    const cls = `news-section${o.accent ? ' is-accent' : ''}`;
+
+                    if (shape === 'lead') {
+                        const [first, ...rest] = items;
+                        const briefs = rest.slice(0, 5).map((it, i) => renderBrief(it, i + 2)).join('');
+                        return `<div class="${cls} news-lead">${head}
+                            <div class="news-lead-grid">
+                                <div class="news-lead-main">${renderCard(first, true)}</div>
+                                ${briefs ? `<div class="news-lead-side">${briefs}</div>` : ''}
+                            </div>
+                        </div>`;
+                    }
+                    if (shape === 'briefs') {
+                        return `<div class="${cls}">${head}
+                            <div class="news-brief-list">${items.map((it, i) => renderBrief(it, i + 1)).join('')}</div>
+                        </div>`;
+                    }
+                    const gridCls = shape === 'trio' ? 'news-grid news-grid-trio' : 'news-grid';
+                    return `<div class="${cls}">${head}<div class="${gridCls}">${items.map(it => renderCard(it, false)).join('')}</div></div>`;
+                }
+
+                function byTeam(list, teamId) {
+                    if (!teamId || teamId === 'all') return list;
+                    const tid = parseInt(teamId);
+                    return list.filter(i => {
+                        if (i.player && i.player.teamId === tid) return true;
+                        if (i.matchedTeamIds && i.matchedTeamIds.includes(tid)) return true;
+                        return false;
+                    });
+                }
+
+                /* ---- the front page ----
+                   This was one flat block: a hero, then everything else in an
+                   identical two-column grid, however many dozen there were, in
+                   whichever order they arrived. Nothing on it said what mattered
+                   more than anything else, and the things most worth reading —
+                   news about players you actually own — were behind a filter tab
+                   rather than on the page.
+
+                   It reads as a front page now. The lead story takes the room a
+                   lead story takes, with the next five beside it as headlines.
+                   Your own squad follows in its own tinted band, because on this
+                   site that is the section the reader came for. Then the FPL
+                   desks — availability, prices, transfers — each in a tighter
+                   three-column block, and the rest of the league's news under
+                   them. A section with nothing in it does not appear at all
+                   rather than printing "no news in this category" six times. */
+                function renderFrontPage(teamId, subFilter) {
+                    const ext = byTeam([...externalItems], teamId);
+                    const fpl = byTeam([...fplItems], teamId);
+                    const squad = fpl.filter(i => i.isSquad);
+                    const inCat = c => fpl.filter(i => i.category === c && !i.isSquad);
+
+                    /* The sub-filter narrows the FPL desks to one. When it is on,
+                       the page is that desk rather than a front page — the reader
+                       has asked a specific question and a magazine spread is not
+                       the answer to it. */
+                    if (subFilter && subFilter !== 'all') {
+                        const titles = {
+                            injury: CAT_ICONS.injury + ' Injuries &amp; availability',
+                            price: CAT_ICONS.price + ' Price changes',
+                            transfer: CAT_ICONS.transfer + ' Transfer activity'
+                        };
+                        return renderSection(titles[subFilter] || subFilter,
+                            fpl.filter(i => i.category === subFilter), { shape: 'grid', count: true });
+                    }
+
+                    let html = '';
+                    const lead = ext.length ? ext : fpl;
+                    html += renderSection('', lead.slice(0, 6), { shape: 'lead', hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.squad + ' Your squad', squad.slice(0, 6),
+                        { shape: 'trio', accent: true, count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', inCat('injury').slice(0, 6),
+                        { shape: 'trio', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.price + ' Price changes', inCat('price').slice(0, 6),
+                        { shape: 'trio', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.transfer + ' Transfer activity', inCat('transfer').slice(0, 6),
+                        { shape: 'trio', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.external + ' Around the league', ext.slice(6, 14),
+                        { shape: 'grid', count: true, hideWhenEmpty: true });
+
+                    return html || '<div class="news-empty">Nothing matches this filter right now.</div>';
                 }
 
                 function renderFiltered(primaryFilter, subFilter, teamId) {
-                    let items = [];
-                    let sectionTitle = '';
+                    if (primaryFilter === 'all') return renderFrontPage(teamId, subFilter);
 
                     if (primaryFilter === 'external') {
-                        items = [...externalItems];
-                        sectionTitle = CAT_ICONS.external + ' External News';
-                    } else {
-                        const scope = primaryFilter === 'squad'
-                            ? fplItems.filter(i => i.isSquad)
-                            : fplItems;
-                        if (subFilter && subFilter !== 'all') {
-                            items = scope.filter(i => i.category === subFilter);
-                            const subTitles = {
-                                injury: CAT_ICONS.injury + ' Injuries & Availability',
-                                price: CAT_ICONS.price + ' Price Changes',
-                                transfer: CAT_ICONS.transfer + ' Transfer Activity'
-                            };
-                            sectionTitle = subTitles[subFilter] || subFilter;
-                        } else {
-                            items = [...scope];
-                            sectionTitle = primaryFilter === 'squad'
-                                ? CAT_ICONS.squad + ' Your Squad'
-                                : CAT_ICONS.all + ' All Players';
-                        }
+                        const ext = byTeam([...externalItems], teamId);
+                        return renderSection('', ext.slice(0, 6), { shape: 'lead', hideWhenEmpty: true })
+                            + renderSection(CAT_ICONS.external + ' More from around the league', ext.slice(6),
+                                { shape: 'grid', count: true, hideWhenEmpty: true })
+                            || '<div class="news-empty">No external news right now.</div>';
                     }
 
-                    if (teamId && teamId !== 'all') {
-                        const tid = parseInt(teamId);
-                        items = items.filter(i => {
-                            if (i.player && i.player.teamId === tid) return true;
-                            if (i.matchedTeamIds && i.matchedTeamIds.includes(tid)) return true;
-                            return false;
-                        });
+                    // Squad: the reader's own players, split by desk.
+                    const squad = byTeam(fplItems.filter(i => i.isSquad), teamId);
+                    if (subFilter && subFilter !== 'all') {
+                        return renderSection(CAT_ICONS.squad + ' Your squad',
+                            squad.filter(i => i.category === subFilter), { shape: 'grid', count: true });
                     }
-
-                    return renderSection(sectionTitle, items);
+                    const cat = c => squad.filter(i => i.category === c);
+                    const html = renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', cat('injury'),
+                            { shape: 'trio', accent: true, count: true, hideWhenEmpty: true })
+                        + renderSection(CAT_ICONS.price + ' Price changes', cat('price'),
+                            { shape: 'trio', count: true, hideWhenEmpty: true })
+                        + renderSection(CAT_ICONS.transfer + ' Transfer activity', cat('transfer'),
+                            { shape: 'trio', count: true, hideWhenEmpty: true });
+                    return html || '<div class="news-empty">No news about your squad right now.</div>';
                 }
 
                 // Build team select
@@ -1498,9 +1679,9 @@
                 const filtersHTML = `<div class="news-filter-group" id="newsFilterGroup">
                     <div class="news-filter-top-row">
                         <div class="news-filter-bar" id="newsFilterBar">
-                            <button class="news-filter-btn active" data-filter="external"><span class="btn-icon">${CAT_ICONS.external}</span> External <span class="news-count">(${filterCounts.external})</span></button>
-                            <button class="news-filter-btn" data-filter="squad"><span class="btn-icon">${CAT_ICONS.squad}</span> Squad <span class="news-count">(${filterCounts.squad})</span></button>
-                            <button class="news-filter-btn" data-filter="all"><span class="btn-icon">${CAT_ICONS.all}</span> All <span class="news-count">(${filterCounts.all})</span></button>
+                            <button class="news-filter-btn active" data-filter="all"><span class="btn-icon">${CAT_ICONS.all}</span> Front page <span class="news-count">(${filterCounts.all})</span></button>
+                            <button class="news-filter-btn" data-filter="squad"><span class="btn-icon">${CAT_ICONS.squad}</span> Your squad <span class="news-count">(${filterCounts.squad})</span></button>
+                            <button class="news-filter-btn" data-filter="external"><span class="btn-icon">${CAT_ICONS.external}</span> Around the league <span class="news-count">(${filterCounts.external})</span></button>
                         </div>
                         <div class="v2-filter-row-tail">${v2MenuHTML({
                             key: 'news-team', icon: 'shirt', label: 'Club',
@@ -1508,7 +1689,7 @@
                             options: teamMenuOptions
                         })}</div>
                     </div>
-                    <div class="news-filter-bar news-sub-bar" id="newsSubBar" style="display:none">
+                    <div class="news-filter-bar news-sub-bar" id="newsSubBar">
                         <button class="news-filter-btn active" data-sub="all"><span class="btn-icon">${CAT_ICONS.all}</span> All</button>
                         <button class="news-filter-btn" data-sub="injury"><span class="btn-icon">${CAT_ICONS.injury}</span> Injuries <span class="news-count">(${filterCounts.injury})</span></button>
                         <button class="news-filter-btn" data-sub="price"><span class="btn-icon">${CAT_ICONS.price}</span> Prices <span class="news-count">(${filterCounts.price})</span></button>
@@ -1523,12 +1704,14 @@
                 container.innerHTML = `<div class="news-container">
                     <section class="v2-section news-panel">
                         ${filtersHTML}
-                        <div id="newsContent">${renderFiltered('external', null, 'all')}</div>
+                        <div id="newsContent">${renderFiltered('all', 'all', 'all')}</div>
                     </section>
                 </div>`;
 
                 // Filter state
-                let currentPrimary = 'external';
+                /* The front page, not the wire feed. This opened on External —
+                   the one section with nothing of the reader's own in it. */
+                let currentPrimary = 'all';
                 let currentSub = 'all';
 
                 function updateSubCounts(primary) {
