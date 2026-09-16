@@ -760,6 +760,7 @@ export default [
                 mdLiveById: 'writable',
                 mdMatchCard: 'writable',
                 mdNextKickoff: 'writable',
+                mdPanelGW: 'writable',
                 mdPlayerChip: 'writable',
                 mdPlayerLive: 'writable',
                 mdPollTimer: 'writable',
