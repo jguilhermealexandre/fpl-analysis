@@ -124,17 +124,22 @@
                 : 'Rebuild the highest-projecting legal eleven from your available players.';
             container.innerHTML = `
                 <div class="lw-cc">
+                    <!-- What the lineup IS sits with the title; what you can DO
+                         sits on the right. Four chips used to share the right-hand
+                         end - a formation, a total and two buttons - drawn with the
+                         same border, fill and radius, so a read-only figure and a
+                         click target were the same object, and the whole row sat a
+                         screen's width from the heading it belonged to. -->
                     <div class="lw-cc-head">
-                        <div class="lw-cc-title">${v2Icon('sliders')} Lineup command centre <span class="lw-cc-gw">GW${planningGW}</span></div>
-                        <div class="lw-cc-stats">
-                            <span class="lw-cc-stat" data-tooltip="The shape the optimiser settled on for your available players.">
-                                <span class="lw-cc-stat-l">Formation</span><span class="lw-cc-stat-v" id="lwFormation">${lineupState.formation}</span></span>
-                            <span class="lw-cc-stat" data-tooltip="Projected points for the starting eleven this gameweek, with the captain's points doubled.">
-                                <span class="lw-cc-stat-l">Projected</span><span class="lw-cc-stat-v accent" id="lwTotal">${lwTotalXP().toFixed(1)}</span></span>
+                        <div class="lw-cc-title">${v2Icon('sliders')} Lineup command centre
+                            <span class="lw-cc-gw">GW${planningGW}</span>
+                            <span class="lw-cc-gw" id="lwFormation"
+                                data-tooltip="The shape the optimiser settled on for your available players.">${lineupState.formation}</span></div>
+                        <div class="lw-cc-actions">
+                            <button class="rc-btn primary" onclick="resetLineupToOptimal()" data-tooltip="${optimiseTip}">${v2Icon('sparkle')} Auto-optimise</button>
+                            ${lineupState.undo ? `<button class="rc-btn" onclick="lwUndoOptimise()"
+                                data-tooltip="Put back the eleven, bench order and armband you had before Auto-optimise ran.">↩︎ Undo</button>` : ''}
                         </div>
-                        <button class="rc-btn" onclick="resetLineupToOptimal()" data-tooltip="${optimiseTip}">${v2Icon('sparkle')} Auto-optimise</button>
-                        ${lineupState.undo ? `<button class="rc-btn" onclick="lwUndoOptimise()"
-                            data-tooltip="Put back the eleven, bench order and armband you had before Auto-optimise ran.">↩︎ Undo</button>` : ''}
                     </div>
                     ${lineupState.optimizeReport ? `<div class="sq-optimize-summary">${buildOptimizeSummary(lineupState.optimizeReport, 'openLineupOptimizeReport()')}</div>` : ''}
                     <div class="lw-cc-body">
@@ -251,7 +256,23 @@
                     : sel.length === 1 ? renderLWContextSingle(sel[0])
                     : renderLWContextCompare(sel[0], sel[1]);
             }
+            /* The projected total belongs to the lineup, not to one tab of the
+               panel that discusses it. It was drawn twice from the same
+               lwTotalXP() call - once as a chip in the command-centre header and
+               once as this hero inside the Overview - so one figure appeared in
+               two places on the same screen. Deleting the header chip and leaving
+               the hero where it sat would have hidden the page's headline number
+               behind the Captaincy tab, or behind selecting a player to compare.
+               Above the tabs: one number, one place, true of all three. */
+            const heroCap = lineupState.squad.find(p => p.id === lineupState.captain);
+            const hero = lineupState.xi.length
+                ? `<div class="lw-sum-hero">
+                        <div class="lw-sum-hero-v">${lwTotalXP().toFixed(1)}</div>
+                        <div class="lw-sum-hero-l">projected points · ${escHTML(lineupState.formation)}${heroCap ? ` · ${escHTML(heroCap.web_name)} captained` : ''}</div>
+                    </div>`
+                : '';
             return `<div class="lw-intel">
+                ${hero}
                 <div class="lw-intel-tabs">
                     <button class="lw-intel-tab ${tab === 'overview' ? 'active' : ''}" onclick="setLWIntelTab('overview')">${v2Icon('brain')} Overview</button>
                     <button class="lw-intel-tab ${tab === 'captaincy' ? 'active' : ''}" onclick="setLWIntelTab('captaincy')">${v2Icon('crown')} Captaincy</button>
@@ -315,7 +336,6 @@
 
             const flagged = lineupState.squad.filter(p => p.status === 'i' || p.status === 'u' || p.status === 's' || p.status === 'd');
             const risky = xi.filter(p => typeof expectedMinutesModel === 'function' && expectedMinutesModel(p).pStart < 0.6);
-            const cap = lineupState.squad.find(p => p.id === lineupState.captain);
 
             // How dependable the eleven is, and what it is walking into.
             const starts = xi.map(p => typeof expectedMinutesModel === 'function' ? expectedMinutesModel(p).pStart : 1);
@@ -335,11 +355,6 @@
             const sources = lwPointsSources(xi);
 
             return `<div class="lw-sum">
-                <div class="lw-sum-hero">
-                    <div class="lw-sum-hero-v">${lwTotalXP().toFixed(1)}</div>
-                    <div class="lw-sum-hero-l">projected points · ${escHTML(lineupState.formation)}${cap ? ` · ${escHTML(cap.web_name)} captained` : ''}</div>
-                </div>
-
                 <div class="opt-grid">
                     <div class="opt-stat"><div class="opt-stat-v">${xi.reduce((s, p) => s + p.gwScore, 0).toFixed(1)}</div>
                         <div class="opt-stat-l" data-tooltip="Sum of projected points across the eleven starters, before the captain's double.">XI xP</div></div>
@@ -365,27 +380,39 @@
                             : 'No club supplies three or more of your starters, so the week is spread across teams.'}</div>
                 </div>
 
+                <!-- The weakest starter and the best substitute were two cards,
+                     and they are one question: is there a swap to make? The code
+                     already knew that - the upgrade computed above reads the two
+                     of them together - but the panel asked it twice and answered
+                     it twice, once per card, so the notes had to hedge around
+                     each other ("nothing beats them in a legal formation" beside
+                     "out-projects a starter"). Side by side the comparison is the
+                     card, and one note can say the whole thing. -->
                 <div class="lw-sum-block">
-                    <div class="lw-sum-h">${v2Icon('down')} Weakest link in the XI</div>
-                    <div class="lw-sum-row">
-                        <span class="lw-sum-name">${escHTML(weakest.web_name)}</span>
-                        <span class="lw-sum-xp">${weakest.lwScore.toFixed(1)} ${runUnit}</span>
+                    <div class="lw-sum-h">${v2Icon('scales')} Key player decisions</div>
+                    <div class="lw-sum-duo">
+                        <div class="lw-sum-duo-i">
+                            <div class="lw-sum-duo-l">${v2Icon('down')} Weakest in the XI</div>
+                            <div class="lw-sum-name">${escHTML(weakest.web_name)}</div>
+                            <div class="lw-sum-xp">${weakest.lwScore.toFixed(1)}</div>
+                        </div>
+                        <div class="lw-sum-duo-i">
+                            <div class="lw-sum-duo-l">${v2Icon('bench')} Strongest on the bench</div>
+                            ${strongestBench
+                                ? `<div class="lw-sum-name">${escHTML(strongestBench.web_name)}</div>
+                            <div class="lw-sum-xp">${strongestBench.lwScore.toFixed(1)}</div>`
+                                : `<div class="lw-sum-name lw-sum-duo-none">None</div>
+                            <div class="lw-sum-xp lw-sum-duo-none">—</div>`}
+                        </div>
                     </div>
+                    <div class="lw-sum-duo-u">${runUnit}</div>
                     <div class="lw-sum-note">${upgrade
-                        ? `${escHTML(upgrade.in.web_name)} projects <strong>+${upgrade.gain.toFixed(1)}</strong> more and the shape still works. <button class="lw-sum-apply" onclick="lwApplySwap(${upgrade.out.id}, ${upgrade.in.id})">Make the swap</button>`
-                        : 'Nothing on the bench beats them in a legal formation — this is as good as the eleven gets.'}</div>
-                </div>
-
-                <div class="lw-sum-block">
-                    <div class="lw-sum-h">${v2Icon('bench')} Strongest player on the bench</div>
-                    ${strongestBench ? `<div class="lw-sum-row">
-                        <span class="lw-sum-name">${escHTML(strongestBench.web_name)}</span>
-                        <span class="lw-sum-xp">${strongestBench.lwScore.toFixed(1)} ${runUnit}</span>
-                    </div>
-                    <div class="lw-sum-note">${strongestBench.lwScore > weakest.lwScore
-                        ? 'Out-projects a starter, so they are the first thing to look at.'
-                        : 'Projects below every starter — the bench order is right.'}</div>`
-                    : '<div class="lw-sum-note">No outfield players on the bench.</div>'}
+                        ? `${escHTML(upgrade.in.web_name)} projects <strong>+${upgrade.gain.toFixed(1)}</strong> more than ${escHTML(upgrade.out.web_name)}, and the shape still works. <button class="lw-sum-apply" onclick="lwApplySwap(${upgrade.out.id}, ${upgrade.in.id})">Make the swap</button>`
+                        : !strongestBench
+                            ? 'No outfield players on the bench, so there is no swap to make.'
+                            : strongestBench.lwScore > weakest.lwScore
+                                ? `${escHTML(strongestBench.web_name)} out-projects ${escHTML(weakest.web_name)}, but no legal formation lets them swap — the shape is what is keeping them out.`
+                                : 'Nothing on the bench beats a starter — this is as good as the eleven gets.'}</div>
                 </div>
 
                 ${(flagged.length || risky.length) ? `<div class="lw-sum-block">
@@ -930,8 +957,12 @@
                 if (vcP) changes.push({ player: vcP, type: 'captain', label: 'New Vice-Captain' });
             }
 
+            /* A whole card to report that nothing happened. The Overview above
+               is already a stack of cards, and this one spent a 16px-padded box,
+               its own heading and its own shadow to say "No Changes". One line
+               carries the same information at the weight it is worth. */
             if (changes.length === 0) {
-                return `<div class="lw-final-section"><div class="lw-final-header"><i data-lucide="check-circle" style="width:16px;height:16px;color:var(--color-success);"></i> No Changes</div><div style="font-size:12px;color:var(--text-secondary);">Your current FPL lineup matches the optimal recommendation.</div></div>`;
+                return `<div class="lw-sum-quiet">${v2Icon('check')} Your FPL lineup already matches this one — nothing to change.</div>`;
             }
 
             let html = `<div class="lw-final-section"><div class="lw-final-header"><i data-lucide="git-compare" style="width:16px;height:16px;color:#A78BFA;"></i> Changes vs Current FPL Lineup (${changes.length})</div>`;
@@ -1238,7 +1269,7 @@
                 '<div style="padding:12px 12px;">' + (r2 || '<div style="font-size:11px;color:var(--text-muted);padding:8px;">In line</div>') + '</div></div>';
         }
 
-        // Repaints the pitch, the header figures and the intel pane together, so a
+        // Repaints the pitch, the formation and the intel pane together, so a
         // swap can never leave the projected total describing the previous lineup.
         function refreshLWView() {
             // Every in-place change ends here — a swap, an armband, a vice — so
@@ -1248,8 +1279,9 @@
             if (pitch) pitch.innerHTML = renderLWPitch();
             const f = document.getElementById('lwFormation');
             if (f) f.textContent = lineupState.formation;
-            const t = document.getElementById('lwTotal');
-            if (t) t.textContent = lwTotalXP().toFixed(1);
+            // The total was written here too, into a header chip that no longer
+            // exists. It sits above the intel tabs now, and updateLWContextPanel
+            // repaints that pane wholesale, so the figure still follows the swap.
             updateLWContextPanel();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }

@@ -2139,8 +2139,11 @@
 .lw-cap-btn:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
 .lw-cap-btn.active-c { background: #F59E0B; border-color: #F59E0B; color: #000; }
 .lw-cap-btn.active-vc { background: #9CA3AF; border-color: #9CA3AF; color: #000; }
-.lw-final-section { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 16px; }
-.lw-final-header { font-weight: 600; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+/* This is the last card in the Overview column, and it was drawn to a different
+   scale from every card above it - 16px of padding and 16px of margin against
+   the 9px and 8px of .lw-sum-block - so the stack got heavier as it went down. */
+.lw-final-section { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 9px 10px; margin-bottom: 8px; }
+.lw-final-header { font-weight: 600; font-size: 12px; margin-bottom: 7px; display: flex; align-items: center; gap: 6px; }
 .lw-change-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--border-subtle); }
 .lw-change-row:last-child { border-bottom: none; }
 .lw-change-badge { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
@@ -5025,21 +5028,21 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     margin-bottom: 14px; padding-bottom: 12px;
     border-bottom: 1px solid var(--border-subtle);
 }
-.lw-cc-title { font-size: 17px; font-weight: 700; font-family: var(--font-display); color: var(--text-primary); }
-.lw-cc-gw { font-size: 11px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
-.lw-cc-stats { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
-
-.lw-cc-stat {
-    display: flex; flex-direction: column; gap: 1px;
-    padding: 5px 11px;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-lg);
-    background: var(--surface-2);
+/* What the lineup is, beside the title. The gameweek and the formation used to
+   sit at the far right of the row inside .lw-cc-stat boxes built from the same
+   border, surface and radius as .rc-btn - so two read-only figures were drawn as
+   the same object as the two buttons beside them, and the whole cluster sat a
+   screen's width from the heading. A chip with no border is a tag; a button has
+   an edge. Only the actions keep the margin-left that pushes them right. */
+.lw-cc-title {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    font-size: 17px; font-weight: 700; font-family: var(--font-display); color: var(--text-primary);
 }
-
-.lw-cc-stat-l { font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
-.lw-cc-stat-v { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
-.lw-cc-stat-v.accent { color: var(--color-primary); }
+.lw-cc-gw {
+    font-size: 11px; font-weight: 600; font-family: var(--font-mono); color: var(--text-muted);
+    padding: 2px 8px; border-radius: var(--radius-full); background: var(--surface-2);
+}
+.lw-cc-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
 
 /* 60/40, the pitch getting the larger share. */
 .lw-cc-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
@@ -5051,27 +5054,56 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-intel-tab {
     flex: 1; padding: 9px 6px;
     border: none; background: transparent;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: 12px; font-weight: 600;
     cursor: pointer;
-    border-bottom: 2px solid transparent;
+    border-bottom: 3px solid transparent;
 }
 
 .lw-intel-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
 .lw-intel-body { padding: 11px; }
 .lw-side-empty { font-size: 12px; color: var(--text-muted); line-height: 1.55; }
 
-.lw-sum-hero { text-align: center; padding: 10px 8px 12px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 10px; }
+/* Above the tabs now rather than inside the Overview, so it carries its own
+   inset instead of borrowing .lw-intel-body's. */
+.lw-sum-hero { text-align: center; padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); }
 .lw-sum-hero-v { font-size: 32px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); line-height: 1.05; }
 .lw-sum-hero-l { font-size: 11px; color: var(--text-muted); }
 
 .lw-sum-block { padding: 9px 10px; margin-bottom: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-2); }
 .lw-sum-h { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; }
-.lw-sum-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .lw-sum-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .lw-sum-xp { font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
 .lw-sum-note { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-top: 3px; }
 .lw-sum-note strong { color: var(--verdict-hold); }
+
+/* Two readings of one question, side by side, so the comparison is the card
+   rather than something the reader carries between two of them. auto-fit drops
+   to a single column when the panel is too narrow to seat both - the same rule
+   .lw-cap-grid below already uses. */
+.lw-sum-duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 8px; }
+.lw-sum-duo-i { min-width: 0; }
+.lw-sum-duo-l {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600; color: var(--text-muted); margin-bottom: 2px;
+}
+.lw-sum-duo-l svg { width: 11px; height: 11px; flex-shrink: 0; }
+/* Long names are common here - Szoboszlai in a half-width column - so the name
+   clips rather than wrapping under its own number. */
+.lw-sum-duo-i .lw-sum-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lw-sum-duo-i .lw-sum-xp { display: block; }
+.lw-sum-duo-i .lw-sum-name.lw-sum-duo-none,
+.lw-sum-duo-i .lw-sum-xp.lw-sum-duo-none { color: var(--text-muted); font-weight: 600; }
+/* The unit reads the same on both sides, so it is said once, under them. */
+.lw-sum-duo-u { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+/* "Nothing to change" is a line, not a card. */
+.lw-sum-quiet {
+    display: flex; align-items: center; gap: 6px;
+    padding: 2px 2px 0;
+    font-size: 11px; color: var(--text-muted); line-height: 1.5;
+}
+.lw-sum-quiet svg { width: 13px; height: 13px; color: var(--color-success); flex-shrink: 0; }
 
 .lw-sum-apply {
     display: inline-block; margin-top: 4px;
