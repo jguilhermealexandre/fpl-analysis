@@ -1785,11 +1785,11 @@ export default [
         languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } },
         rules: { 'no-undef': 'error' }
     },
-    /* The news scraper is a Node script that carries page code inside
+    /* The scrapers are Node scripts that carry page code inside
        page.evaluate() — that body is serialised and run in the browser, so it
        legitimately reaches for document while the file around it is Node. */
     {
-        files: ['tools/pl-news-browser.mjs'],
+        files: ['tools/pl-news-browser.mjs', 'tools/fetch-pl-injuries.mjs'],
         languageOptions: {
             ecmaVersion: 2022, sourceType: 'module',
             globals: { ...globals.node, document: 'readonly', window: 'readonly' }

@@ -1,0 +1,128 @@
+name: Fetch Premier League Injuries
+
+# The club-by-club injury table at premierleague.com/en/latest-player-injuries,
+# and the club articles its "Details" links point at.
+#
+# This needs a browser. Every URL on that domain answers with the same ~80KB
+# client-rendered shell — the injuries page has no injury rows in it, /en/clubs
+# has no club links, and sitemap_index.xml returns HTML. Four API spellings were
+# probed: three 404, and api.premierleague.com/content/premierleague/injuries/en
+# answers 400, which is the same wall fetch-pl-news.mjs documents at length. So
+# the rendered page is the source, exactly as it is for news.
+#
+# The table has no date column. Ordering comes from the club articles behind the
+# Details links — arsenal.com, avfc.co.uk and eighteen others — which are
+# ordinary server-rendered pages, so they are read with plain fetch.
+
+on:
+  schedule:
+    # Twice a day. Team news moves on press-conference days rather than
+    # continuously, and each run reads twenty-odd club articles.
+    - cron: '40 7,17 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'What to run'
+        type: choice
+        options: [fetch, dump]
+        default: fetch
+
+# Writes data/ back to main, and nothing else.
+permissions:
+  contents: write
+
+# Shares a lane with the other data writers so two runs cannot race the branch.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # --with-deps shells out to apt and exits 100 on the runner. The hosted
+      # image already carries Chromium's shared libraries, so install the
+      # browser alone — the same thing fetch-pl-news.yml does.
+      - name: Install a browser
+        run: npm i --no-save playwright@1 && npx playwright install chromium
+
+      # Writes the rendered HTML as an artifact so the table's real structure can
+      # be read when the extractor stops matching it. The extractor keys off
+      # <table> and its Player/Injury header rather than class names, but that is
+      # a bet on the markup and this is how the bet gets checked.
+      - name: Dump the rendered page
+        if: inputs.mode == 'dump'
+        run: node tools/fetch-pl-injuries.mjs --dump
+
+      - uses: actions/upload-artifact@v4
+        if: inputs.mode == 'dump'
+        with:
+          name: injuries-rendered
+          path: injuries-rendered.html
+
+      - name: Fetch the injury table
+        if: inputs.mode == '' || inputs.mode == 'fetch'
+        run: node tools/fetch-pl-injuries.mjs --out data/injuries.json
+
+      # A valid-JSON-but-empty result would replace a good file with nothing, so
+      # the shape is checked before it goes anywhere near a commit.
+      - name: Check what was written
+        if: inputs.mode == '' || inputs.mode == 'fetch'
+        run: |
+          node -e '
+            const fs = require("fs");
+            let d;
+            try { d = JSON.parse(fs.readFileSync("data/injuries.json", "utf8")); }
+            catch (e) { console.error("::error::injuries.json is not valid JSON"); process.exit(1); }
+            if (!Array.isArray(d.items) || d.items.length < 10) {
+              console.error(`::error::only ${d.items ? d.items.length : 0} row(s) — twenty clubs never have that few between them`);
+              process.exit(1);
+            }
+            const noName = d.items.filter(i => !i.player);
+            if (noName.length) {
+              console.error(`::error::${noName.length} row(s) have no player name`);
+              process.exit(1);
+            }
+            // The links are the point of the page: they are what the reader
+            // opens. A table that scraped but linked nowhere is a failed run.
+            const linked = d.items.filter(i => i.url);
+            if (linked.length < d.items.length * 0.25) {
+              console.error(`::error::only ${linked.length}/${d.items.length} rows carry a link`);
+              process.exit(1);
+            }
+            // Never publish a premierleague.com campaign parameter.
+            const tagged = d.items.filter(i => /[?&]utm_/.test(i.url || ""));
+            if (tagged.length) {
+              console.error(`::error::${tagged.length} link(s) still carry utm_ parameters`);
+              process.exit(1);
+            }
+            const clubs = new Set(d.items.map(i => i.club).filter(Boolean));
+            const dated = d.items.filter(i => i.published).length;
+            const crested = d.items.filter(i => i.clubId != null).length;
+            console.log(`${d.items.length} players across ${clubs.size} clubs; ${linked.length} linked, ${dated} dated, ${crested} matched to a crest`);
+            // Not a failure — the feed falls back to club order when the club
+            // sites publish no date — but it should be visible in the log.
+            if (!dated) console.log("::warning::no article published a date; the feed will be grouped by club");
+          '
+
+      - name: Commit
+        if: inputs.mode == '' || inputs.mode == 'fetch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/injuries.json; then
+            echo "no change"
+            exit 0
+          fi
+          git add data/injuries.json
+          git commit -m "Update Premier League injuries - $(date -u '+%Y-%m-%d %H:%M UTC')"
+          # The data lane is shared, so another writer may have pushed since
+          # checkout. Rebase onto it rather than failing the run.
+          git pull --rebase --autostash origin main
+          git push
