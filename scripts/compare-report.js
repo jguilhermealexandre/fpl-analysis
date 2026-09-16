@@ -262,6 +262,25 @@ function updateCompareBar() {
                 const appearanceLabel = p.l5?.appearances == null ? null
                     : `${p.l5.appearances} of ${p.l5.games}`;
 
+                /* What is true about him before any of the above fires: does he
+                   play, and does he take the set pieces. Both decide how often
+                   the rest of this table gets the chance to happen, and neither
+                   was comparable anywhere in the report — the minutes were a
+                   sentence in the prose and the penalties were not mentioned at
+                   all. Numeric so the table can rank them; the formatter turns
+                   them back into words. */
+                /* Three states, not two. 85 is the mark the profile card and the
+                   routes tab both use and it stays — moving it here would make a
+                   player nailed on one screen and not on another. But a cliff
+                   printed as a tick or a dash says a man on 84 minutes is not a
+                   regular, which is nonsense: the row above shows 84 and this one
+                   would flatly contradict it. "Close" covers the edge without
+                   moving the line. */
+                const nailedOn = minsPerGame >= 85 ? 2 : minsPerGame >= 78 ? 1 : 0;
+                const penDuty = p.penaltiesOrder === 1 ? 2 : p.penaltiesOrder === 2 ? 1 : 0;
+                const fkDuty = p.freekicksOrder === 1 ? 1 : 0;
+                const cornerDuty = p.cornersOrder === 1 ? 1 : 0;
+
                 /* Reliability and explosiveness — how often he returns, how often
                    he hauls.
 
@@ -363,6 +382,7 @@ function updateCompareBar() {
                 return {
                     ...p, pos, ptsPerGame, minsPerGame, xgiPerGame, xgPerGame, xaPerGame,
                     bonusPerGame, savesPerGame, csPerGame, valueScore, appearanceLabel,
+                    nailedOn, penDuty, fkDuty, cornerDuty,
                     threatPerGame, creativityPerGame, influencePerGame, ictPerGame,
                     defConPerGame, tacklesPerGame, cbiPerGame, recoveriesPerGame,
                     reliability, explosiveness,
@@ -817,6 +837,15 @@ function updateCompareBar() {
                still to kick off. A string on purpose — there is no "best" number
                of fixtures to have had, so nothing here goes green. */
             statRows.push({ label: 'Played', key: 'appearanceLabel', fmt: v => v || '—' });
+            /* Nailed on is the same 85-minute mark the profile card uses, so a
+               player cannot be nailed on one screen and not the other. Set-piece
+               duty is FPL's own published order rather than anything inferred. */
+            statRows.push({ label: 'Nailed on', key: 'nailedOn',
+                fmt: v => v === 2 ? '\u2713' : v === 1 ? 'close' : '\u2014' });
+            statRows.push({ label: 'Penalties', key: 'penDuty',
+                fmt: v => v === 2 ? '1st choice' : v === 1 ? '2nd choice' : '\u2014' });
+            statRows.push({ label: 'Free kicks', key: 'fkDuty', fmt: v => v ? '\u2713' : '\u2014' });
+            statRows.push({ label: 'Corners', key: 'cornerDuty', fmt: v => v ? '\u2713' : '\u2014' });
             /* Labelled with the window they are actually measured over. They sat
                under a "Recent Form (L5)" heading while being counted over the last
                ten, which is a second thing the table was quietly getting wrong. */
