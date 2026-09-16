@@ -47,9 +47,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=236">
-    <link rel="stylesheet" href="styles/v2-design.css?v=236">
-    <link rel="stylesheet" href="styles/responsive.css?v=236">
+    <link rel="stylesheet" href="styles/common.css?v=237">
+    <link rel="stylesheet" href="styles/v2-design.css?v=237">
+    <link rel="stylesheet" href="styles/responsive.css?v=237">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -607,13 +607,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=236"></script>
-    <script src="scripts/common.js?v=236"></script>
+    <script src="scripts/error-monitor.js?v=237"></script>
+    <script src="scripts/common.js?v=237"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=236"></script>
-    <script src="scripts/notifications.js?v=236"></script>
-    <script src="scripts/sidebar-nav.js?v=236"></script>
+    <script src="scripts/push-alerts.js?v=237"></script>
+    <script src="scripts/notifications.js?v=237"></script>
+    <script src="scripts/sidebar-nav.js?v=237"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1486,10 +1486,14 @@
                 }
 
                 // Build team select
-                const teamOptions = Object.values(localTeams)
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(t => `<option value="${t.id}">${escHTML(t.name)}</option>`)
-                    .join('');
+                /* Declared above filtersHTML, which reads it: a `let` below the
+                   template it is used in is still in its temporal dead zone
+                   when the template runs. */
+                let newsTeamFilter = 'all';
+                const teamMenuOptions = [{ value: 'all', label: 'All teams' }].concat(
+                    Object.values(localTeams)
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(t => ({ value: String(t.id), label: t.name })));
 
                 const filtersHTML = `<div class="news-filter-group" id="newsFilterGroup">
                     <div class="news-filter-top-row">
@@ -1498,10 +1502,11 @@
                             <button class="news-filter-btn" data-filter="squad"><span class="btn-icon">${CAT_ICONS.squad}</span> Squad <span class="news-count">(${filterCounts.squad})</span></button>
                             <button class="news-filter-btn" data-filter="all"><span class="btn-icon">${CAT_ICONS.all}</span> All <span class="news-count">(${filterCounts.all})</span></button>
                         </div>
-                        <select class="news-team-select" id="newsTeamSelect">
-                            <option value="all">All Teams</option>
-                            ${teamOptions}
-                        </select>
+                        <div class="v2-filter-row-tail">${v2MenuHTML({
+                            key: 'news-team', icon: 'shirt', label: 'Club',
+                            value: newsTeamFilter, onPick: 'setNewsTeam',
+                            options: teamMenuOptions
+                        })}</div>
                     </div>
                     <div class="news-filter-bar news-sub-bar" id="newsSubBar" style="display:none">
                         <button class="news-filter-btn active" data-sub="all"><span class="btn-icon">${CAT_ICONS.all}</span> All</button>
@@ -1540,7 +1545,7 @@
                 }
 
                 function applyFilters() {
-                    const teamId = document.getElementById('newsTeamSelect').value;
+                    const teamId = newsTeamFilter;
                     document.getElementById('newsContent').innerHTML = renderFiltered(currentPrimary, currentSub, teamId);
                 }
 
@@ -1576,7 +1581,24 @@
                 });
 
                 // Team select handler
-                document.getElementById('newsTeamSelect').addEventListener('change', applyFilters);
+                /* The club filter is the shared menu now rather than a native
+                   <select> — it was the last raw form control on the site, and
+                   next to a row of pill buttons it read as part of a different
+                   page. setNewsTeam is global so the menu's inline handler can
+                   reach it; it calls back into this closure's applyFilters. */
+                window.setNewsTeam = (id) => {
+                    newsTeamFilter = id;
+                    const host = document.getElementById('v2menu-news-team');
+                    if (host) {
+                        const picked = teamMenuOptions.find(o => o.value === id);
+                        const v = host.querySelector('.v2-menu-v');
+                        if (v && picked) v.textContent = picked.label;
+                        host.querySelectorAll('.v2-menu-opt').forEach(o =>
+                            o.classList.toggle('is-on', (o.getAttribute('onclick') || '').includes(`'${id}'`)));
+                    }
+                    if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
+                    applyFilters();
+                };
 
             } catch (err) {
                 console.error('News init error:', err);
