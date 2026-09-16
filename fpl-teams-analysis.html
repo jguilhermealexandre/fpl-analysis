@@ -50,17 +50,17 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=256">
-    <link rel="stylesheet" href="styles/teams.css?v=256">
-    <link rel="stylesheet" href="styles/v2-design.css?v=256">
-    <link rel="stylesheet" href="styles/responsive.css?v=256">
-    <script src="scripts/error-monitor.js?v=256"></script>
-    <script src="scripts/common.js?v=256"></script>
+    <link rel="stylesheet" href="styles/common.css?v=257">
+    <link rel="stylesheet" href="styles/teams.css?v=257">
+    <link rel="stylesheet" href="styles/v2-design.css?v=257">
+    <link rel="stylesheet" href="styles/responsive.css?v=257">
+    <script src="scripts/error-monitor.js?v=257"></script>
+    <script src="scripts/common.js?v=257"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=256"></script>
-    <script src="scripts/notifications.js?v=256"></script>
-    <script src="scripts/sidebar-nav.js?v=256"></script>
+    <script src="scripts/push-alerts.js?v=257"></script>
+    <script src="scripts/notifications.js?v=257"></script>
+    <script src="scripts/sidebar-nav.js?v=257"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -187,8 +187,13 @@
            hashchange, so there is no loop back into this. */
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.replace('#', '');
-            if (!HASH_TO_VIEW[hash] || hash === currentView) return;
-            currentView = hash;
+            /* An empty hash is the first tab, not "nothing to do". Backing out
+               of the last pushed tab lands on the bare URL the page was opened
+               at, and bailing there left whichever tab you were on still
+               showing while the URL said otherwise. */
+            const view = hash === '' ? 'rankings' : HASH_TO_VIEW[hash];
+            if (!view || view === currentView) return;
+            currentView = view;
             // Before the first load resolves there is nothing to draw; that render
             // will pick up currentView on its own.
             if (allTeamsData.length) renderCurrentView();
